@@ -28,7 +28,7 @@ if (typeof window.DisputeModal === 'undefined') {
                     // Create file name display div
                     const fileNameDisplay = document.createElement('div');
                     fileNameDisplay.className = 'file-name-display visible';
-                    fileNameDisplay.textContent = '📄 ' + tempInput.files[0].name;
+                    fileNameDisplay.textContent = tempInput.files[0].name;
 
                     const newInput = document.createElement('input');
                     newInput.type = 'file';
@@ -84,7 +84,7 @@ if (typeof window.DisputeModal === 'undefined') {
                     fileGroup.insertBefore(fileNameDisplay, input);
                 }
 
-                fileNameDisplay.textContent = '📄 ' + input.files[0].name;
+                fileNameDisplay.textContent = input.files[0].name;
                 fileNameDisplay.classList.add('visible');
 
                 const removeBtn = fileGroup.querySelector('.remove-file-btn');
@@ -173,6 +173,25 @@ if (typeof window.DisputeModal === 'undefined') {
                 document.getElementById('modal_dispute_desc').value = disputeData.dispute_desc;
                 document.getElementById('modalCharCount').textContent = disputeData.dispute_desc.length + ' / 2000 characters';
 
+                // If dispute type is Others, show the modal 'If Others' input and prefill
+                try {
+                    const modalIfOthersGroup = document.getElementById('modal_if_others_group');
+                    const modalIfOthersInput = document.getElementById('modal_if_others_distype');
+                    if (disputeData.dispute_type === 'Others') {
+                        if (modalIfOthersGroup) modalIfOthersGroup.style.display = 'block';
+                        if (modalIfOthersInput) {
+                            modalIfOthersInput.setAttribute('required', 'required');
+                            modalIfOthersInput.value = disputeData.if_others_distype || '';
+                        }
+                    } else {
+                        if (modalIfOthersGroup) modalIfOthersGroup.style.display = 'none';
+                        if (modalIfOthersInput) {
+                            modalIfOthersInput.removeAttribute('required');
+                            modalIfOthersInput.value = '';
+                        }
+                    }
+                } catch (e) {}
+
                 // Hide project selection fields in edit mode and remove required attribute
                 document.getElementById('modalProjectGroup').style.display = 'none';
                 document.getElementById('modalMilestoneGroup').style.display = 'none';
@@ -236,6 +255,12 @@ if (typeof window.DisputeModal === 'undefined') {
                 document.getElementById('modal_milestone_item_id').setAttribute('required', 'required');
                 document.getElementById('modalFilesLabel').textContent = 'Evidence Files (Optional)';
                 document.getElementById('modalExistingFilesSection').style.display = 'none';
+
+                // Ensure 'If Others' is hidden in add mode
+                const modalIfOthersGroup = document.getElementById('modal_if_others_group');
+                const modalIfOthersInput = document.getElementById('modal_if_others_distype');
+                if (modalIfOthersGroup) modalIfOthersGroup.style.display = 'none';
+                if (modalIfOthersInput) { modalIfOthersInput.removeAttribute('required'); modalIfOthersInput.value = ''; }
 
                 // Pre-fill if coming from project details
                 if (disputeData && disputeData.project_id) {
@@ -461,6 +486,26 @@ if (typeof window.DisputeModal === 'undefined') {
                     } else {
                         document.getElementById('modal_milestone_id').innerHTML = '<option value="">Select Milestone</option>';
                         document.getElementById('modal_milestone_item_id').innerHTML = '<option value="">Select Milestone Item</option>';
+                    }
+                });
+            }
+
+            // Modal dispute type toggle for 'Others'
+            const modalDisputeType = document.getElementById('modal_dispute_type');
+            const modalIfOthersGroup = document.getElementById('modal_if_others_group');
+            const modalIfOthersInput = document.getElementById('modal_if_others_distype');
+
+            if (modalDisputeType) {
+                modalDisputeType.addEventListener('change', function() {
+                    if (this.value === 'Others') {
+                        if (modalIfOthersGroup) modalIfOthersGroup.style.display = 'block';
+                        if (modalIfOthersInput) modalIfOthersInput.setAttribute('required', 'required');
+                    } else {
+                        if (modalIfOthersGroup) modalIfOthersGroup.style.display = 'none';
+                        if (modalIfOthersInput) {
+                            modalIfOthersInput.removeAttribute('required');
+                            modalIfOthersInput.value = '';
+                        }
                     }
                 });
             }
@@ -1030,6 +1075,17 @@ if (typeof window.ProgressDelete === 'undefined') {
             this.progressToDelete = progressId;
             const modal = document.getElementById('deleteProgressModal');
             if (modal) {
+                // reset reason and messages
+                const reasonInput = document.getElementById('delete_progress_reason');
+                if (reasonInput) {
+                    reasonInput.value = '';
+                    reasonInput.focus();
+                }
+                const errDiv = document.getElementById('deleteProgressErrorMessage');
+                if (errDiv) { errDiv.style.display = 'none'; errDiv.innerHTML = ''; }
+                const successDiv = document.getElementById('deleteProgressSuccessMessage');
+                if (successDiv) { successDiv.style.display = 'none'; successDiv.innerHTML = ''; }
+
                 modal.style.display = 'flex';
                 document.body.style.overflow = 'hidden';
             }
@@ -1050,30 +1106,64 @@ if (typeof window.ProgressDelete === 'undefined') {
             if (!this.progressToDelete) return;
 
             const progressId = this.progressToDelete;
-            this.close();
+            // read delete reason from modal textarea
+            const reasonInput = document.getElementById('delete_progress_reason');
+            const reason = reasonInput ? reasonInput.value.trim() : '';
 
+            if (!reason) {
+                const errDiv = document.getElementById('deleteProgressErrorMessage');
+                if (errDiv) {
+                    errDiv.innerHTML = 'Please provide a reason for deleting this progress report.';
+                    errDiv.style.display = 'block';
+                } else {
+                    alert('Please provide a reason for deleting this progress report.');
+                }
+                return;
+            }
+
+            // Do not close modal yet — show success message inside modal on success
             fetch(`/contractor/progress/${progressId}`, {
                 method: 'DELETE',
                 headers: {
                     'X-CSRF-TOKEN': getCsrfToken(),
                     'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ reason: reason })
             })
             .then(response => response.json())
             .then(result => {
+                const errDiv = document.getElementById('deleteProgressErrorMessage');
+                const successDiv = document.getElementById('deleteProgressSuccessMessage');
+
                 if (result.success) {
-                    if (typeof showSuccess === 'function') {
-                        showSuccess(result.message);
+                    if (errDiv) { errDiv.style.display = 'none'; errDiv.innerHTML = ''; }
+                    if (successDiv) {
+                        successDiv.innerHTML = result.message || 'Progress report deleted successfully';
+                        successDiv.style.display = 'block';
                     } else {
-                        alert(result.message || 'Progress report deleted successfully');
+                        if (typeof showSuccess === 'function') { showSuccess(result.message); }
                     }
+
+                    // disable confirm button to prevent duplicate submits
+                    const confirmBtn = document.querySelector('#deleteProgressModal .modal-actions .btn-danger');
+                    if (confirmBtn) { confirmBtn.disabled = true; confirmBtn.textContent = 'Deleting...'; }
+
                     setTimeout(() => {
+                        // close modal and reload after short delay
+                        const modal = document.getElementById('deleteProgressModal');
+                        if (modal) modal.style.display = 'none';
+                        document.body.style.overflow = 'auto';
                         location.reload();
                     }, 1000);
                 } else {
-                    if (typeof showError === 'function') {
-                        showError(result.message);
+                    if (successDiv) { successDiv.style.display = 'none'; successDiv.innerHTML = ''; }
+                    if (errDiv) {
+                        errDiv.innerHTML = result.message || 'Error deleting progress report';
+                        errDiv.style.display = 'block';
+                    } else if (typeof showError === 'function') {
+                        showError(result.message || 'Error deleting progress report');
                     } else {
                         alert('Error: ' + result.message);
                     }
@@ -1081,7 +1171,11 @@ if (typeof window.ProgressDelete === 'undefined') {
             })
             .catch(error => {
                 console.error('Delete error:', error);
-                if (typeof showError === 'function') {
+                const errDiv = document.getElementById('deleteProgressErrorMessage');
+                if (errDiv) {
+                    errDiv.innerHTML = 'An error occurred while deleting the progress report.';
+                    errDiv.style.display = 'block';
+                } else if (typeof showError === 'function') {
                     showError('An error occurred while deleting the progress report.');
                 } else {
                     alert('An error occurred while deleting the progress report.');
@@ -1249,7 +1343,7 @@ if (typeof window.ProgressModal === 'undefined') {
         },
 
         removeFileInput: function(button) {
-            window.DisputeModal.removeFileInput(button, 'progress-file-upload-container', 'progress-add_more-files');
+            window.DisputeModal.removeFileInput(button, 'progress-file-upload-container', 'progress-add-more-files');
         },
 
         addMoreFiles: function() {

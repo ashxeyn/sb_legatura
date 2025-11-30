@@ -250,7 +250,7 @@
                 <h2 style="font-size: 20px; margin-bottom: 15px; color: #1c1e21; border-bottom: 2px solid #e4e6eb; padding-bottom: 10px;">Project Bids</h2>
                 @if(isset($bids) && count($bids) > 0)
                     <p style="margin-bottom: 20px; color: #65676b;">Review and select a contractor for this project.</p>
-                
+
                 <div style="display: grid; gap: 15px;">
                     @foreach($bids as $bid)
                         <div class="bid-item" style="border: 1px solid #e4e6eb; border-radius: 8px; padding: 20px; background: #f8f9fa;">
@@ -308,7 +308,7 @@
 
                             @if($bid->bid_status === 'submitted' || $bid->bid_status === 'under_review')
                                 <div style="display: flex; gap: 10px; margin-top: 15px;">
-                                    <button onclick="AcceptBidModal.open({{ $bid->bid_id }}, '{{ addslashes($bid->company_name) }}', {{ $bid->proposed_cost }}, {{ $project->project_id }})" 
+                                    <button onclick="AcceptBidModal.open({{ $bid->bid_id }}, '{{ addslashes($bid->company_name) }}', {{ $bid->proposed_cost }}, {{ $project->project_id }})"
                                             class="btn btn-primary">Select This Contractor</button>
                                 </div>
                             @elseif($bid->bid_status === 'accepted')
@@ -451,7 +451,15 @@
 
                                                     @if($progress->progress_status == 'submitted' || $progress->progress_status == 'under_review')
                                                         <button class="btn btn-success" onclick="ProgressApprove.open({{ $progress->progress_id }})">Approve</button>
-                                                        <button class="btn btn-danger" onclick="rejectProgress({{ $progress->progress_id }}, {{ $item['item_id'] }}, {{ $project->project_id }}, {{ $milestone['milestone_id'] }})">Reject / File Dispute</button>
+                                                        @if(!empty($item['has_open_dispute']))
+                                                            <button class="btn btn-danger" disabled style="opacity:0.6;cursor:not-allowed;" title="A dispute is already open for this item or milestone.">Reject / File Dispute</button>
+                                                        @else
+                                                            <button class="btn btn-danger" onclick="rejectProgress({{ $progress->progress_id }}, {{ $item['item_id'] }}, {{ $project->project_id }}, {{ $milestone['milestone_id'] }})">Reject / File Dispute</button>
+                                                        @endif
+
+                                                        @if(!empty($item['user_open_dispute_id']))
+                                                            <button class="btn btn-secondary" onclick="cancelDispute({{ $item['user_open_dispute_id'] }})">Cancel Dispute</button>
+                                                        @endif
                                                 @endif
                                             </div>
                                         @endforeach
@@ -623,7 +631,15 @@
                                                             @if($payment->payment_status === 'submitted')
                                                                 <button class="btn btn-success" onclick="openApprovePaymentModal({{ $payment->payment_id }})">Approve</button>
                                                             @endif
-                                                    <button class="btn btn-danger" onclick="disputePayment({{ $payment->payment_id }}, {{ $item['item_id'] }}, {{ $project->project_id }}, {{ $milestone['milestone_id'] }})">Dispute Payment</button>
+                                                        @if(!empty($item['has_open_dispute']))
+                                                            <button class="btn btn-danger" disabled style="opacity:0.6;cursor:not-allowed;" title="A dispute is already open for this item or milestone.">Dispute Payment</button>
+                                                        @else
+                                                            <button class="btn btn-danger" onclick="disputePayment({{ $payment->payment_id }}, {{ $item['item_id'] }}, {{ $project->project_id }}, {{ $milestone['milestone_id'] }})">Dispute Payment</button>
+                                                        @endif
+
+                                                        @if(!empty($item['user_open_dispute_id']))
+                                                            <button class="btn btn-secondary" onclick="cancelDispute({{ $item['user_open_dispute_id'] }})">Cancel Dispute</button>
+                                                        @endif
                                                         @endif
                                                 </div>
                                                 @endif
@@ -631,7 +647,15 @@
                                     @else
                                         <div class="empty-state">
                                             <p>No payment validations uploaded yet.</p>
-                                            <button class="btn btn-danger" onclick="disputePayment(0, {{ $item['item_id'] }}, {{ $project->project_id }}, {{ $milestone['milestone_id'] }})">File Payment Dispute</button>
+                                            @if(!empty($item['has_open_dispute']))
+                                                <button class="btn btn-danger" disabled style="opacity:0.6;cursor:not-allowed;" title="A dispute is already open for this item or milestone.">File Payment Dispute</button>
+                                            @else
+                                                <button class="btn btn-danger" onclick="disputePayment(0, {{ $item['item_id'] }}, {{ $project->project_id }}, {{ $milestone['milestone_id'] }})">File Payment Dispute</button>
+                                            @endif
+
+                                            @if(!empty($item['user_open_dispute_id']))
+                                                <button class="btn btn-secondary" onclick="cancelDispute({{ $item['user_open_dispute_id'] }})">Cancel Dispute</button>
+                                            @endif
                                         </div>
                                         @endif
                                     @endif
@@ -659,6 +683,7 @@
     @include('modals.addEditPaymentModal')
     @include('modals.deletePaymentModal')
     @include('modals.approvePaymentModal')
+    @include('modals.cancelDisputeModal')
     @if($isOwner && $project->project_status === 'open')
         @include('modals.acceptBidModal')
     @endif

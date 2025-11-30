@@ -37,7 +37,7 @@ class biddingController extends Controller
 
         // Get project details
         $project = $this->biddingClass->getProjectForBidding($projectId);
-        
+
         if (!$project) {
             return redirect('/dashboard')->with('error', 'Project not found or not available for bidding.');
         }
@@ -79,9 +79,9 @@ class biddingController extends Controller
                 return response()->json(['success' => false, 'message' => 'Contractor profile not found.'], 404);
             }
 
-            // Check if bid already exists
+            // Check if bid already exists; allow creating a new bid if previous bid was cancelled
             $existingBid = $this->biddingClass->getContractorBid($request->project_id, $contractor->contractor_id);
-            if ($existingBid) {
+            if ($existingBid && $existingBid->bid_status !== 'cancelled') {
                 return response()->json(['success' => false, 'message' => 'You have already submitted a bid for this project.'], 400);
             }
 
@@ -224,12 +224,12 @@ class biddingController extends Controller
                 return response()->json(['success' => false, 'message' => 'Bid not found or you do not have permission to cancel it.'], 404);
             }
 
-            // Check if bid can be cancelled (only submitted or under_review status, not already withdrawn)
+            // Check if bid can be cancelled (only submitted or under_review status, not already cancelled)
             if (!in_array($bid->bid_status, ['submitted', 'under_review'])) {
                 return response()->json(['success' => false, 'message' => 'This bid cannot be cancelled in its current status.'], 400);
             }
-            
-            if ($bid->bid_status === 'withdrawn') {
+
+            if ($bid->bid_status === 'cancelled') {
                 return response()->json(['success' => false, 'message' => 'This bid has already been cancelled.'], 400);
             }
 

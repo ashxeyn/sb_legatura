@@ -82,7 +82,7 @@ class progressUploadClass
     public function getProgressFilesByItem($itemId, $contractorId = null)
     {
         $progressList = $this->getProgressByItem($itemId, $contractorId);
-        
+
         $result = [];
         foreach ($progressList as $progress) {
             $files = $this->getProgressFiles($progress->progress_id);
@@ -151,13 +151,20 @@ class progressUploadClass
             ->first();
     }
 
-    public function updateProgressStatus($progressId, $status)
+    public function updateProgressStatus($progressId, $status, $reason = null)
     {
+        $update = [
+            'progress_status' => $status,
+            'updated_at' => date('Y-m-d H:i:s')
+        ];
+
+        if ($reason !== null) {
+            $update['delete_reason'] = $reason;
+        }
+
         return DB::table('progress')
             ->where('progress_id', $progressId)
-            ->update([
-                'progress_status' => $status
-            ]);
+            ->update($update);
     }
 
     public function updateProgress($progressId, $data)
@@ -173,9 +180,12 @@ class progressUploadClass
         }
 
         if (!empty($updateData)) {
+            // ensure updated_at is set when modifying the progress
+            $updateData['updated_at'] = date('Y-m-d H:i:s');
+
             return DB::table('progress')
                 ->where('progress_id', $progressId)
-            ->update($updateData);
+                ->update($updateData);
         }
 
         return false;

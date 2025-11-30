@@ -207,6 +207,26 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Toggle "If Others" input
+    const disputeTypeSelect = document.getElementById('dispute_type');
+    const ifOthersGroup = document.getElementById('if_others_group');
+    const ifOthersInput = document.getElementById('if_others_distype');
+
+    if (disputeTypeSelect) {
+        disputeTypeSelect.addEventListener('change', function() {
+            if (this.value === 'Others') {
+                if (ifOthersGroup) ifOthersGroup.style.display = 'block';
+                if (ifOthersInput) ifOthersInput.setAttribute('required', 'required');
+            } else {
+                if (ifOthersGroup) ifOthersGroup.style.display = 'none';
+                if (ifOthersInput) {
+                    ifOthersInput.removeAttribute('required');
+                    ifOthersInput.value = '';
+                }
+            }
+        });
+    }
+
     // Load milestones when project is selected
     const projectSelect = document.getElementById('project_id');
     const milestoneSelect = document.getElementById('milestone_id');
@@ -286,6 +306,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 errors.push(typeValidation);
             }
 
+            // If Others selected, require the additional field
+            if (disputeType === 'Others') {
+                const othersVal = (ifOthersInput && ifOthersInput.value) ? ifOthersInput.value.trim() : '';
+                if (!othersVal) {
+                    errors.push('Please specify the dispute type for "Others".');
+                } else if (othersVal.length > 255) {
+                    errors.push('The specified dispute type cannot exceed 255 characters.');
+                }
+            }
+
             const descValidation = validateDisputeDescription(disputeDesc);
             if (descValidation !== 'valid') {
                 errors.push(descValidation);
@@ -321,6 +351,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (milestoneId) {
                 formData.append('milestone_id', milestoneId);
+            }
+
+            // Append Others field if present
+            if (disputeType === 'Others' && ifOthersInput && ifOthersInput.value.trim() !== '') {
+                formData.append('if_others_distype', ifOthersInput.value.trim());
             }
 
             // Append all evidence files
@@ -580,7 +615,7 @@ function handleFileSelection(input) {
             fileGroup.insertBefore(fileNameDisplay, input);
         }
 
-        fileNameDisplay.textContent = '📄 ' + input.files[0].name;
+        fileNameDisplay.textContent = input.files[0].name;
         fileNameDisplay.classList.add('visible');
 
         // Show remove button
@@ -629,7 +664,7 @@ function addMoreFiles() {
             // Create file name display div
             const fileNameDisplay = document.createElement('div');
             fileNameDisplay.className = 'file-name-display visible';
-            fileNameDisplay.textContent = '📄 ' + tempInput.files[0].name;
+            fileNameDisplay.textContent = tempInput.files[0].name;
 
             const newInput = document.createElement('input');
             newInput.type = 'file';

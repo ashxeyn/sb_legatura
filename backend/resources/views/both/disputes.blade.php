@@ -222,6 +222,11 @@
                 </select>
             </div>
 
+            <div class="form-group" id="if_others_group" style="display:none;">
+                <label for="if_others_distype">If Others, specify *</label>
+                <input type="text" id="if_others_distype" name="if_others_distype" maxlength="255" placeholder="Please specify the dispute type">
+            </div>
+
             <div class="form-group">
                 <label for="dispute_desc">Dispute Description *</label>
                 <textarea id="dispute_desc" name="dispute_desc" required maxlength="2000" placeholder="Provide detailed description of the dispute..."></textarea>

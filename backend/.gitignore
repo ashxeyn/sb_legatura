@@ -1,4 +1,4 @@
-*.log
+git branch -M maingit branch -M main*.log
 .DS_Store
 .env
 .env.backup

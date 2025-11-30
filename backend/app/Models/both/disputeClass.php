@@ -17,6 +17,7 @@ class disputeClass
             'milestone_item_id' => $data['milestone_item_id'],
             'dispute_type' => $data['dispute_type'],
             'dispute_desc' => $data['dispute_desc'],
+            'if_others_distype' => isset($data['if_others_distype']) ? $data['if_others_distype'] : null,
             'dispute_status' => 'open',
             'admin_response' => null,
             'created_at' => now(),
@@ -47,6 +48,7 @@ class disputeClass
                 'd.milestone_item_id',
                 'd.dispute_type',
                 'd.dispute_desc',
+                'd.if_others_distype',
                 'd.dispute_status',
                 'd.admin_response',
                 'd.created_at as dispute_created_at',
@@ -79,6 +81,7 @@ class disputeClass
                 'd.milestone_item_id',
                 'd.dispute_type',
                 'd.dispute_desc',
+                'd.if_others_distype',
                 'd.dispute_status',
                 'd.admin_response',
                 'd.created_at as dispute_created_at',
@@ -328,6 +331,7 @@ class disputeClass
                 'd.milestone_item_id',
                 'd.dispute_type',
                 'd.dispute_desc',
+                'd.if_others_distype',
                 'd.dispute_status',
                 'd.admin_response',
                 'd.created_at as dispute_created_at',
@@ -354,12 +358,14 @@ class disputeClass
         $project = DB::table('projects as p')
             ->leftJoin('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
             ->leftJoin('contractors as c', 'p.selected_contractor_id', '=', 'c.contractor_id')
+            ->leftJoin('property_owners as po', 'pr.owner_id', '=', 'po.owner_id')
             ->where('p.project_id', $projectId)
             ->select(
                 'p.project_id',
                 'pr.owner_id',
+                'po.user_id as owner_user_id',
                 'p.project_title',
-                'c.user_id as contractor_id',
+                'c.user_id as contractor_user_id',
                 'p.selected_contractor_id'
             )
             ->first();
@@ -368,21 +374,21 @@ class disputeClass
             return ['valid' => false, 'message' => 'Project not found'];
         }
 
-        $ownerExists = DB::table('property_owners')->where('owner_id', $project->owner_id)->exists();
-        if (!$ownerExists) {
+        // Ensure we can determine the owner user id (property_owners.user_id)
+        if (empty($project->owner_user_id)) {
             return [
                 'valid' => false,
-                'message' => "Project owner (user_id: {$project->owner_id}) not found in users table"
+                'message' => "Project owner not found or missing associated user account"
             ];
         }
 
         // If project has contractor, check if contractor user exists
-        if ($project->contractor_id) {
-            $contractorExists = DB::table('users')->where('user_id', $project->contractor_id)->exists();
+        if (!empty($project->contractor_user_id)) {
+            $contractorExists = DB::table('users')->where('user_id', $project->contractor_user_id)->exists();
             if (!$contractorExists) {
                 return [
                     'valid' => false,
-                    'message' => "Project contractor (user_id: {$project->contractor_id}) not found in users table"
+                    'message' => "Project contractor (user_id: {$project->contractor_user_id}) not found in users table"
                 ];
             }
         }
@@ -405,6 +411,24 @@ class disputeClass
             ->where('raised_by_user_id', $userId)
             ->whereIn('dispute_status', ['open', 'under_review'])
             ->exists();
+    }
+
+    public function hasOpenDisputeForItem($itemId)
+    {
+        return DB::table('disputes')
+            ->where('milestone_item_id', $itemId)
+            ->whereIn('dispute_status', ['open', 'under_review'])
+            ->exists();
+    }
+
+    public function getOpenDisputeForItemByUser($itemId, $userId)
+    {
+        return DB::table('disputes')
+            ->where('milestone_item_id', $itemId)
+            ->where('raised_by_user_id', $userId)
+            ->whereIn('dispute_status', ['open', 'under_review'])
+            ->select('dispute_id')
+            ->first();
     }
 
     public function hasOpenDisputeForProject($userId, $projectId)

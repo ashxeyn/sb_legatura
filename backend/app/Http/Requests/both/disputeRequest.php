@@ -33,7 +33,6 @@ class disputeRequest extends FormRequest
                 'integer',
                 'exists:projects,project_id',
                 function ($attribute, $value, $fail) {
-                    // Custom validation to ensure project has valid contractor and owner
                     $project = \DB::table('projects as p')
                         ->leftJoin('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
                         ->leftJoin('contractors as c', 'p.selected_contractor_id', '=', 'c.contractor_id')
@@ -46,22 +45,19 @@ class disputeRequest extends FormRequest
                         return;
                     }
 
-                    // Check if owner exists (via property_owners table for new schema, or users table for legacy)
                     if (!$project->owner_id) {
                         $fail('Project owner not found.');
                         return;
                     }
-                    
-                    // For new schema, check property_owners table; for legacy, check users table
+
                     $ownerExists = \DB::table('property_owners')->where('owner_id', $project->owner_id)->exists() ||
                                    \DB::table('users')->where('user_id', $project->owner_id)->exists();
-                    
+
                     if (!$ownerExists) {
                         $fail('Project owner not found.');
                         return;
                     }
 
-                    // Check if contractor exists in users table (only if project has a contractor)
                     if ($project->contractor_user_id && !\DB::table('users')->where('user_id', $project->contractor_user_id)->exists()) {
                         $fail('Project contractor user not found.');
                         return;
@@ -81,7 +77,6 @@ class disputeRequest extends FormRequest
                     if ($value) {
                         $user = \Session::get('user');
                         if ($user) {
-                            // Check for existing open disputes for this milestone item by the same user
                             $existingDispute = \DB::table('disputes')
                                 ->where('milestone_item_id', $value)
                                 ->where('raised_by_user_id', $user->user_id)
@@ -97,14 +92,13 @@ class disputeRequest extends FormRequest
             ],
             'dispute_type' => 'required|string|in:Payment,Delay,Quality,Others',
             'dispute_desc' => 'required|string|max:2000',
-            // Legacy single file support
+            'if_others_distype' => 'nullable|required_if:dispute_type,Others|string|max:255',
             'evidence_file' => [
                 'nullable',
                 'file',
                 'mimes:jpg,jpeg,png,pdf,doc,docx',
                 'max:5120'
             ],
-            // Multiple files support
             'evidence_files' => 'nullable|array|max:10',
             'evidence_files.*' => [
                 'file',
@@ -136,6 +130,9 @@ class disputeRequest extends FormRequest
             'dispute_desc.required' => 'Please provide a detailed description of the dispute.',
             'dispute_desc.max' => 'Dispute description cannot exceed 2000 characters.',
 
+            'if_others_distype.required_if' => 'Please specify the dispute type when "Others" is selected.',
+            'if_others_distype.max' => 'The specified dispute type cannot exceed 255 characters.',
+
             'evidence_file.file' => 'Evidence must be a valid file.',
             'evidence_file.mimes' => 'Evidence file must be JPG, JPEG, PNG, PDF, DOC, or DOCX format.',
             'evidence_file.max' => 'Evidence file must not exceed 5MB.',
@@ -166,3 +163,4 @@ class disputeRequest extends FormRequest
         throw new HttpResponseException(response()->json($response, 422));
     }
 }
+

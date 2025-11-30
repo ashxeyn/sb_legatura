@@ -12,8 +12,8 @@
             <div id="cancelDisputeSuccessMessage" class="success-message" style="display: none;"></div>
         </div>
         <div class="modal-actions">
-            <button type="button" class="btn btn-secondary" onclick="DisputeCancel.close()">No, Keep It</button>
-            <button type="button" class="btn btn-danger" onclick="DisputeCancel.confirm()">Yes, Cancel Dispute</button>
+            <button type="button" class="btn btn-secondary" onclick="DisputeCancel.close()">No</button>
+            <button type="button" class="btn btn-danger" onclick="DisputeCancel.confirm()">Yes</button>
         </div>
     </div>
 </div>

@@ -104,11 +104,11 @@ class biddingClass
 
     public function cancelBid($bidId)
     {
-        // Update bid status to 'withdrawn' instead of deleting
+        // Update bid status to 'cancelled' instead of deleting
         return DB::table('bids')
             ->where('bid_id', $bidId)
             ->update([
-                'bid_status' => 'withdrawn'
+                'bid_status' => 'cancelled'
             ]);
     }
 

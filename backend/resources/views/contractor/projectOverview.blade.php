@@ -254,7 +254,7 @@
             color: #721c24;
         }
 
-        .status-withdrawn {
+        .status-cancelled {
             background-color: #e2e3e5;
             color: #383d41;
         }
@@ -516,7 +516,7 @@
                 </div>
             @endif
 
-            @if($existingBid)
+            @if($existingBid && $existingBid->bid_status !== 'cancelled')
                 <div class="existing-bid-info">
                     <h3>Your Bid</h3>
                     <p><strong>Proposed Cost:</strong> ₱{{ number_format($existingBid->proposed_cost, 2) }}</p>
@@ -524,7 +524,7 @@
                     @if($existingBid->contractor_notes)
                         <p><strong>Notes:</strong> {{ $existingBid->contractor_notes }}</p>
                     @endif
-                    <p><strong>Status:</strong> 
+                    <p><strong>Status:</strong>
                         <span class="bid-status status-{{ $existingBid->bid_status }}">
                             {{ ucfirst(str_replace('_', ' ', $existingBid->bid_status)) }}
                         </span>
@@ -535,14 +535,12 @@
 
             <div class="action-buttons">
                 @if($canBid)
-                    @if($existingBid && in_array($existingBid->bid_status, ['submitted', 'under_review']))
-                        <button class="btn btn-primary" onclick="openBidModal('edit')">Edit Bid</button>
-                        <button class="btn btn-danger" onclick="openCancelBidModal()">Cancel Bid</button>
-                    @elseif($existingBid && $existingBid->bid_status === 'withdrawn')
-                        <span class="btn btn-secondary" style="cursor: default;">Bid Cancelled</span>
-                    @elseif(!$existingBid)
-                        <button class="btn btn-secondary" onclick="openBidModal('create')">Apply for Bid</button>
-                    @endif
+                        @if($existingBid && in_array($existingBid->bid_status, ['submitted', 'under_review']))
+                            <button class="btn btn-primary" onclick="openBidModal('edit')">Edit Bid</button>
+                            <button class="btn btn-danger" onclick="openCancelBidModal()">Cancel Bid</button>
+                        @elseif(!$existingBid || ($existingBid && $existingBid->bid_status === 'cancelled'))
+                            <button class="btn btn-secondary" onclick="openBidModal('create')">Apply for Bid</button>
+                        @endif
                 @else
                     <button class="btn" disabled>Bidding Deadline Has Passed</button>
                 @endif
@@ -581,15 +579,15 @@
                 modalTitle.textContent = 'Edit Bid';
                 formMethod.value = 'PUT';
                 submitBtn.textContent = 'Update Bid';
-                
+
                 // Ensure bid_id is set and populate form fields with existing bid data
                 if (window.existingBid && window.existingBid.bid_id) {
                     bidIdInput.value = window.existingBid.bid_id;
-                    
+
                     const proposedCost = document.getElementById('proposed_cost');
                     const estimatedTimeline = document.getElementById('estimated_timeline');
                     const contractorNotes = document.getElementById('contractor_notes');
-                    
+
                     // Set values if they exist and fields are empty
                     if (proposedCost && !proposedCost.value && window.existingBid.proposed_cost) {
                         proposedCost.value = window.existingBid.proposed_cost;
@@ -611,7 +609,7 @@
             // Clear error/success messages
             document.getElementById('errorMessage').style.display = 'none';
             document.getElementById('successMessage').style.display = 'none';
-            
+
             modal.style.display = 'block';
         }
 
@@ -697,9 +695,9 @@
             const bidId = document.getElementById('bid_id').value;
 
             // Get CSRF token from meta tag or form
-            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || 
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
                              document.querySelector('input[name="_token"]')?.value;
-            
+
             if (!csrfToken) {
                 alert('CSRF token not found. Please refresh the page.');
                 submitBtn.disabled = false;
@@ -708,7 +706,7 @@
             }
 
             formData.append('_token', csrfToken);
-            
+
             // Get form values
             const proposedCost = document.getElementById('proposed_cost').value.trim();
             const estimatedTimeline = document.getElementById('estimated_timeline').value.trim();

@@ -627,7 +627,16 @@ class progressUploadController extends Controller
                 ], 403);
             }
 
-            $this->progressUploadClass->updateProgressStatus($progressId, 'deleted');
+            $deleteReason = $request->input('reason') ?? $request->input('delete_reason') ?? null;
+
+            if (empty(trim((string) $deleteReason))) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Delete reason is required'
+                ], 400);
+            }
+
+            $this->progressUploadClass->updateProgressStatus($progressId, 'deleted', $deleteReason);
 
             return response()->json([
                 'success' => true,

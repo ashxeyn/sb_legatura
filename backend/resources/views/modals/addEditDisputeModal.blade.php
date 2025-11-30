@@ -103,6 +103,11 @@
                 </select>
             </div>
 
+            <div class="form-group" id="modal_if_others_group" style="display:none;">
+                <label for="modal_if_others_distype">If Others, specify *</label>
+                <input type="text" id="modal_if_others_distype" name="if_others_distype" maxlength="255" placeholder="Please specify the dispute type">
+            </div>
+
             <div class="form-group">
                 <label for="modal_dispute_desc">Dispute Description *</label>
                 <textarea id="modal_dispute_desc" name="dispute_desc" required maxlength="2000" placeholder="Provide detailed description of the dispute..."></textarea>

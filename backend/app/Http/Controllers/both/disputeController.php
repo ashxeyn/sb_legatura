@@ -89,8 +89,8 @@ class disputeController extends Controller
 
             $project = $validation['project'];
 
-            // Check if project has a contractor assigned
-            if (!$project->contractor_id) {
+            // Check if project has a contractor assigned (use contractor_user_id returned by validator)
+            if (empty($project->contractor_user_id)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Cannot file dispute: Project does not have a contractor assigned yet'
@@ -99,10 +99,10 @@ class disputeController extends Controller
 
             // If ung current user is contractor, ung dispute is against owner and vice versa
             $againstUserId = null;
-            if ($project->contractor_id == $userId) {
-                $againstUserId = $project->owner_id;
-            } else if ($project->owner_id == $userId) {
-                $againstUserId = $project->contractor_id;
+            if (isset($project->contractor_user_id) && $project->contractor_user_id == $userId) {
+                $againstUserId = $project->owner_user_id ?? null;
+            } else if (isset($project->owner_user_id) && $project->owner_user_id == $userId) {
+                $againstUserId = $project->contractor_user_id ?? null;
             } else {
                 return response()->json([
                     'success' => false,
@@ -133,7 +133,8 @@ class disputeController extends Controller
                 'milestone_id' => $validated['milestone_id'],
                 'milestone_item_id' => $validated['milestone_item_id'],
                 'dispute_type' => $validated['dispute_type'],
-                'dispute_desc' => $validated['dispute_desc']
+                'dispute_desc' => $validated['dispute_desc'],
+                'if_others_distype' => isset($validated['if_others_distype']) ? $validated['if_others_distype'] : null
             ];
 
             $disputeId = $this->disputeClass->createDispute($disputeData);
@@ -527,6 +528,9 @@ class disputeController extends Controller
 
                 $canUploadPayment = ($hasApprovedProgress && !$hasActivePayment);
 
+                // Determine whether current user has an open dispute for this item
+                $userOpenDispute = $this->disputeClass->getOpenDisputeForItemByUser($data->item_id, $userId);
+
                 $milestones[$data->milestone_id]['items'][] = [
                     'item_id' => $data->item_id,
                     'milestone_item_title' => $data->milestone_item_title,
@@ -539,7 +543,10 @@ class disputeController extends Controller
                     'payments' => $payments,
                     'has_approved_progress' => $hasApprovedProgress,
                     'has_active_payment' => $hasActivePayment,
-                    'can_upload_payment' => $canUploadPayment
+                    'can_upload_payment' => $canUploadPayment,
+                    // Whether there is an open/under_review dispute for this item (any user)
+                    'has_open_dispute' => $this->disputeClass->hasOpenDisputeForItem($data->item_id) || $this->disputeClass->hasOpenDisputeForMilestone($userId, $data->milestone_id),
+                    'user_open_dispute_id' => $userOpenDispute->dispute_id ?? null
                 ];
             }
         }

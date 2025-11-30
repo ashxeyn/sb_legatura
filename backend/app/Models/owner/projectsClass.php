@@ -266,7 +266,7 @@ class projectsClass
                 $join->on('b.bid_id', '=', 'bf.bid_id');
             })
             ->where('b.project_id', $projectId)
-            ->whereNotIn('b.bid_status', ['withdrawn'])
+            ->whereNotIn('b.bid_status', ['cancelled'])
             ->select(
                 'b.bid_id',
                 'b.proposed_cost',
@@ -340,7 +340,7 @@ class projectsClass
             DB::table('bids')
                 ->where('project_id', $projectId)
                 ->where('bid_id', '!=', $bidId)
-                ->whereNotIn('bid_status', ['withdrawn', 'accepted'])
+                ->whereNotIn('bid_status', ['cancelled', 'accepted'])
                 ->update([
                     'bid_status' => 'rejected',
                     'decision_date' => now()
