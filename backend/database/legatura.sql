@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Nov 21, 2025 at 03:42 PM
+-- Generation Time: Dec 01, 2025 at 03:55 AM
 -- Server version: 11.4.5-MariaDB
 -- PHP Version: 8.2.12
 
@@ -59,7 +59,8 @@ CREATE TABLE `bids` (
   `proposed_cost` decimal(15,2) NOT NULL,
   `estimated_timeline` int(11) NOT NULL,
   `contractor_notes` text DEFAULT NULL,
-  `bid_status` enum('submitted','under_review','accepted','rejected','withdrawn') DEFAULT 'submitted',
+  `bid_status` enum('submitted','under_review','accepted','rejected','cancelled') DEFAULT 'submitted',
+  `reason` text DEFAULT NULL,
   `submitted_at` timestamp NULL DEFAULT current_timestamp(),
   `decision_date` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -68,8 +69,12 @@ CREATE TABLE `bids` (
 -- Dumping data for table `bids`
 --
 
-INSERT INTO `bids` (`bid_id`, `project_id`, `contractor_id`, `proposed_cost`, `estimated_timeline`, `contractor_notes`, `bid_status`, `submitted_at`, `decision_date`) VALUES
-(1, 1, 1, 1000000.00, 12, 'SHEESH', 'accepted', '2025-11-05 12:17:23', NULL);
+INSERT INTO `bids` (`bid_id`, `project_id`, `contractor_id`, `proposed_cost`, `estimated_timeline`, `contractor_notes`, `bid_status`, `reason`, `submitted_at`, `decision_date`) VALUES
+(1, 1, 1, 1000000.00, 12, 'SHEESH', 'accepted', '', '2025-11-05 12:17:23', NULL),
+(4, 7, 1, 10000.00, 23, 'adasdasdadasda', 'accepted', '', '2025-11-21 08:28:08', '2025-11-21 08:42:57'),
+(5, 8, 1, 1000.00, 10, 'dasdadqqqqqq', 'submitted', '', '2025-11-22 07:51:42', NULL),
+(6, 8, 3, 900.00, 2, 'ffsfaf', 'submitted', '', '2025-11-21 08:52:09', NULL),
+(13, 31, 1, 200.00, 2, 'dadas', 'cancelled', NULL, '2025-11-30 09:01:52', NULL);
 
 -- --------------------------------------------------------
 
@@ -85,6 +90,16 @@ CREATE TABLE `bid_files` (
   `description` varchar(255) DEFAULT NULL,
   `uploaded_at` timestamp NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `bid_files`
+--
+
+INSERT INTO `bid_files` (`file_id`, `bid_id`, `file_name`, `file_path`, `description`, `uploaded_at`) VALUES
+(3, 4, 'Adobe Express - file.png', 'bid_files/1763742488_Adobe Express - file.png', NULL, '2025-11-21 08:28:08'),
+(4, 6, 'theo 2x2 1x1.pdf', 'bid_files/1763743929_theo 2x2 1x1.pdf', NULL, '2025-11-21 08:52:09'),
+(5, 5, 'phase3.drawio.png', 'bid_files/1763826702_phase3.drawio.png', NULL, '2025-11-22 07:51:42'),
+(6, 13, 'slide2.png', 'bid_files/1764394893_slide2.png', NULL, '2025-11-28 21:41:33');
 
 -- --------------------------------------------------------
 
@@ -127,15 +142,15 @@ CREATE TABLE `contractors` (
 --
 
 INSERT INTO `contractors` (`contractor_id`, `user_id`, `company_name`, `years_of_experience`, `type_id`, `contractor_type_other`, `services_offered`, `business_address`, `company_email`, `company_phone`, `company_website`, `company_social_media`, `company_description`, `picab_number`, `picab_category`, `picab_expiration_date`, `business_permit_number`, `business_permit_city`, `business_permit_expiration`, `tin_business_reg_number`, `dti_sec_registration_photo`, `verification_status`, `verification_date`, `rejection_reason`, `completed_projects`, `created_at`, `updated_at`) VALUES
-(1, 2, 'Sandbox', 13, 5, NULL, 'SHEESH', 'Sheesh, Sagua, Margosatubig, Zamboanga Del Sur 7000', 'sandbox@gmail.com', '09926314079', 'https://chatgpt.com/c/6905fa96-08c0-8321-8a63-d13ae3fabea5', NULL, NULL, '123123', 'AAA', '2025-11-06', '123213', 'Abucay', '2025-11-06', '123123', 'DTI_SEC/9Fx1ys8wvaTxw6UsmqO2QyJufudjy4T1gXRIAqCY.jpg', 'pending', NULL, NULL, 0, '2025-11-01 05:30:31', '2025-11-01 05:30:31'),
-(2, 1, 'sad', 12, 5, NULL, 'dsd', 'asdasd, Minanga Sur, Iguig, Cagayan 1234', 'ashxeyn@gmail.com', '09926312271', NULL, NULL, NULL, 'ad12312', 'AAAA', '2025-11-08', '13231', 'Al-Barka', '2025-11-08', '13123123', 'contractor_documents/1762006595_dti_sec_557969314_2535718666804066_2236441680610974884_n.png', 'pending', NULL, NULL, 0, '2025-11-01 06:16:37', '2025-11-01 06:16:37'),
-(3, 11, 'Niggatura', 12, 9, 'naueg', 'afsf', 'asasda, Taloto, City of Tagbilaran, Bohol 2311', 'ahdbahsahdbahs@gmail.com', '09926314033', NULL, NULL, NULL, '12312312312', 'AA', '2025-11-07', '123123131', 'Abra De Ilog', '2025-11-06', '13123132131', 'DTI_SEC/ghZAar8qp7Uxv8pz82RX3JHN3CLHXJlNHVphoRIR.png', 'pending', NULL, NULL, 0, '2025-11-02 00:05:40', '2025-11-02 00:05:40'),
-(5, 10, 'adad', 23, 2, NULL, 'sdada', 'adad, Singi, Vinzons, Camarines Norte 2311', 'ahdbahs@gmal.com', '09926314072', NULL, NULL, NULL, '12312333', 'AAA', '2025-11-06', '12312312312313', 'Abra De Ilog', '2025-11-12', '13123124123', 'contractor_documents/1762074010_dti_sec_work diagram.drawio.png', 'pending', NULL, NULL, 0, '2025-11-02 01:00:12', '2025-11-02 01:00:12'),
-(6, 15, 'asdasd', 123, 8, NULL, 'adasd', 'asdasda, Catacdegan Nuevo, Manabo, Abra 2311', 'krystalbwerongow24@gmail.com', '09926314071', NULL, NULL, NULL, '123456', 'AAA', '2025-11-26', '1231231321', 'Abuyog', '2025-11-26', '123123', 'DTI_SEC/JbQ9fPQN2SI2lwi52Sxq1l1dQTZyHGn2nFHglcuD.png', 'pending', NULL, NULL, 0, '2025-11-11 06:51:26', '2025-11-11 06:51:26'),
+(1, 2, 'Sandbox', 13, 5, NULL, 'SHEESH', 'Sheesh, Sagua, Margosatubig, Zamboanga Del Sur 7000', 'sandbox@gmail.com', '09926314079', 'https://chatgpt.com/c/6905fa96-08c0-8321-8a63-d13ae3fabea5', NULL, NULL, '123123', 'AAA', '2025-11-06', '123213', 'Abucay', '2025-11-06', '123123', 'DTI_SEC/9Fx1ys8wvaTxw6UsmqO2QyJufudjy4T1gXRIAqCY.jpg', 'approved', NULL, NULL, 0, '2025-11-01 05:30:31', '2025-11-21 15:47:25'),
+(2, 1, 'sad', 12, 5, NULL, 'dsd', 'asdasd, Minanga Sur, Iguig, Cagayan 1234', 'ashxeyn@gmail.com', '09926312271', NULL, NULL, NULL, 'ad12312', 'AAAA', '2025-11-08', '13231', 'Al-Barka', '2025-11-08', '13123123', 'contractor_documents/1762006595_dti_sec_557969314_2535718666804066_2236441680610974884_n.png', 'approved', NULL, NULL, 0, '2025-11-01 06:16:37', '2025-11-21 15:47:32'),
+(3, 11, 'Niggatura', 12, 9, 'naueg', 'afsf', 'asasda, Taloto, City of Tagbilaran, Bohol 2311', 'ahdbahsahdbahs@gmail.com', '09926314033', NULL, NULL, NULL, '12312312312', 'AA', '2025-11-07', '123123131', 'Abra De Ilog', '2025-11-06', '13123132131', 'DTI_SEC/ghZAar8qp7Uxv8pz82RX3JHN3CLHXJlNHVphoRIR.png', 'approved', NULL, NULL, 0, '2025-11-02 00:05:40', '2025-11-21 15:47:39'),
+(5, 10, 'adad', 23, 2, NULL, 'sdada', 'adad, Singi, Vinzons, Camarines Norte 2311', 'ahdbahs@gmal.com', '09926314072', NULL, NULL, NULL, '12312333', 'AAA', '2025-11-06', '12312312312313', 'Abra De Ilog', '2025-11-12', '13123124123', 'contractor_documents/1762074010_dti_sec_work diagram.drawio.png', 'approved', NULL, NULL, 0, '2025-11-02 01:00:12', '2025-11-21 15:47:56'),
+(6, 15, 'asdasd', 123, 8, NULL, 'adasd', 'asdasda, Catacdegan Nuevo, Manabo, Abra 2311', 'krystalbwerongow24@gmail.com', '09926314071', NULL, NULL, NULL, '123456', 'AAA', '2025-11-26', '1231231321', 'Abuyog', '2025-11-26', '123123', 'DTI_SEC/JbQ9fPQN2SI2lwi52Sxq1l1dQTZyHGn2nFHglcuD.png', 'approved', NULL, NULL, 0, '2025-11-11 06:51:26', '2025-11-21 15:48:03'),
 (7, 16, 'sdfsdfsdfs', 23, 1, NULL, 'asdasda', 'asda, Pedagan, Mahayag, Zamboanga Del Sur 2311', 'asdada@gmail.com', '09926314073', NULL, NULL, NULL, 'asdada', 'AAA', '2025-11-19', 'asdasd', 'Abuyog', '2025-11-28', 'adasda', 'DTI_SEC/IZKWiIa1uVBdBuwQV9EbDFxQqxpXOgA8aP1VyPQR.png', 'pending', NULL, NULL, 0, '2025-11-13 06:26:39', '2025-11-13 06:26:39'),
-(8, 19, 'ASASD', 12, 5, NULL, 'qsdas', 'zxcz, Rosario, Cortes, Bohol 2311', 'ashASxeyn@gmail.com', '09926314072', NULL, NULL, NULL, '12312313', 'AAA', '2025-11-21', 'asdsd', 'Abucay', '2025-11-14', '1231231', 'DTI_SEC/cAQh2ZkQqn7aEkmKIwFbwuyEFBawqswZ70oqdJWh.jpg', 'pending', NULL, NULL, 0, '2025-11-13 06:55:25', '2025-11-13 06:55:25'),
+(8, 19, 'ASASD', 12, 5, NULL, 'qsdas', 'zxcz, Rosario, Cortes, Bohol 2311', 'ashASxeyn@gmail.com', '09926314072', NULL, NULL, NULL, '12312313', 'AAA', '2025-11-21', 'asdsd', 'Abucay', '2025-11-14', '1231231', 'DTI_SEC/cAQh2ZkQqn7aEkmKIwFbwuyEFBawqswZ70oqdJWh.jpg', 'approved', NULL, NULL, 0, '2025-11-13 06:55:25', '2025-11-21 15:48:11'),
 (9, 22, 'asd', 2, 2, NULL, 'dsd', 'sdf, Magbangon (Pob.), Cabucgayan, Biliran 2311', 'sdfsssfd@wmsu.edu.ph', '09926314033', NULL, NULL, NULL, '234234', 'AAA', '2025-11-22', '23423234', 'Abuyog', '2025-11-22', '23432', 'contractor_documents/1763055635_dti_sec_19a87211-2771-468f-9af6-598e9e20c2f5-removebg-preview.png', 'pending', NULL, NULL, 0, '2025-11-13 09:40:37', '2025-11-13 09:40:37'),
-(10, 24, 'ad', 23, 5, NULL, '3df', 'sdf, Kitaihon, Kitaotao, Bukidnon 2311', 'sdfddddsssfd@wmsu.edu.ph', '09926314033', NULL, NULL, NULL, '231231', 'AA', '2025-12-06', '12313131', 'Agdangan', '2025-11-22', '132313', 'DTI_SEC/qLZOtzwcMNmHx8zu7c4FccXY3oi6qxNXnFqfcVto.jpg', 'pending', NULL, NULL, 0, '2025-11-13 09:48:08', '2025-11-13 09:48:08');
+(10, 24, 'ad', 23, 5, NULL, '3df', 'sdf, Kitaihon, Kitaotao, Bukidnon 2311', 'sdfddddsssfd@wmsu.edu.ph', '09926314033', NULL, NULL, NULL, '231231', 'AA', '2025-12-06', '12313131', 'Agdangan', '2025-11-22', '132313', 'DTI_SEC/qLZOtzwcMNmHx8zu7c4FccXY3oi6qxNXnFqfcVto.jpg', 'approved', NULL, NULL, 0, '2025-11-13 09:48:08', '2025-11-21 15:48:18');
 
 -- --------------------------------------------------------
 
@@ -211,8 +226,10 @@ CREATE TABLE `disputes` (
   `milestone_id` int(11) DEFAULT NULL,
   `milestone_item_id` int(11) DEFAULT NULL,
   `dispute_type` enum('Payment','Delay','Quality','Others') NOT NULL,
+  `if_others_distype` varchar(255) DEFAULT NULL,
   `dispute_desc` text NOT NULL,
   `dispute_status` enum('open','under_review','resolved','closed','cancelled') DEFAULT 'open',
+  `reason` text DEFAULT NULL,
   `admin_response` text DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT current_timestamp(),
   `resolved_at` timestamp NULL DEFAULT NULL
@@ -222,13 +239,15 @@ CREATE TABLE `disputes` (
 -- Dumping data for table `disputes`
 --
 
-INSERT INTO `disputes` (`dispute_id`, `project_id`, `raised_by_user_id`, `against_user_id`, `milestone_id`, `milestone_item_id`, `dispute_type`, `dispute_desc`, `dispute_status`, `admin_response`, `created_at`, `resolved_at`) VALUES
-(15, 1, 2, 10, 2, 6, 'Delay', 'asdasdasdasdasda', 'cancelled', NULL, '2025-11-14 01:53:23', '2025-11-18 15:19:35'),
-(35, 3, 2, 10, 7, 17, 'Delay', 'asdasd', 'cancelled', NULL, '2025-11-14 08:35:33', '2025-11-19 19:54:33'),
-(36, 5, 2, 10, 8, 18, 'Payment', 'asdsd', 'cancelled', NULL, '2025-11-15 04:45:57', '2025-11-19 19:55:24'),
-(44, 3, 2, 10, 7, 16, 'Delay', 'asdasdsaxsxa', 'cancelled', NULL, '2025-11-18 16:20:06', '2025-11-19 19:55:29'),
-(45, 5, 2, 10, 8, 18, 'Delay', 'ads', 'open', NULL, '2025-11-19 19:55:43', NULL),
-(46, 1, 2, 10, 2, 5, 'Quality', 'asdsd', 'open', NULL, '2025-11-20 06:02:53', NULL);
+INSERT INTO `disputes` (`dispute_id`, `project_id`, `raised_by_user_id`, `against_user_id`, `milestone_id`, `milestone_item_id`, `dispute_type`, `if_others_distype`, `dispute_desc`, `dispute_status`, `reason`, `admin_response`, `created_at`, `resolved_at`) VALUES
+(35, 3, 2, 10, 7, 17, 'Delay', NULL, 'asdasd', 'cancelled', '', NULL, '2025-11-14 08:35:33', '2025-11-19 19:54:33'),
+(36, 5, 2, 10, 8, 18, 'Payment', NULL, 'asdsd', 'cancelled', '', NULL, '2025-11-15 04:45:57', '2025-11-19 19:55:24'),
+(44, 3, 2, 10, 7, 16, 'Delay', NULL, 'asdasdsaxsxa', 'cancelled', '', NULL, '2025-11-18 16:20:06', '2025-11-19 19:55:29'),
+(45, 5, 2, 10, 8, 18, 'Delay', NULL, 'adsjuujj', 'open', '', NULL, '2025-11-19 19:55:43', NULL),
+(48, 29, 1, 1, 13, 27, 'Payment', NULL, 'Owner claims overbilling.', 'open', 'Pending admin review.', NULL, '2025-11-28 07:15:15', NULL),
+(49, 29, 1, 1, 13, 28, 'Delay', NULL, 'Contractor claims delay due to late payment.', 'under_review', 'Under admin review.', NULL, '2025-11-25 07:15:15', NULL),
+(50, 29, 1, 1, 13, 28, 'Quality', NULL, 'Owner unhappy with concrete quality.', 'resolved', 'Resolved by admin.', 'Contractor agreed to rework.', '2025-11-18 07:15:15', '2025-11-23 07:15:15'),
+(54, 7, 2, 12, 14, 39, 'Delay', NULL, 'asdasd', 'cancelled', NULL, NULL, '2025-11-30 08:51:31', '2025-11-30 08:53:17');
 
 -- --------------------------------------------------------
 
@@ -255,9 +274,7 @@ INSERT INTO `dispute_files` (`file_id`, `dispute_id`, `storage_path`, `original_
 (61, 44, 'disputes/evidence/1763511606_691d0d36ce335.png', '19a87211-2771-468f-9af6-598e9e20c2f5-removebg-preview.png', 'image/png', 240418, '2025-11-18 16:20:06'),
 (63, 44, 'disputes/evidence/1763511624_691d0d48d4c36.jpg', '19a87211-2771-468f-9af6-598e9e20c2f5.jpg', 'image/jpeg', 445335, '2025-11-18 16:20:24'),
 (64, 44, 'disputes/evidence/1763511624_691d0d48d6395.pdf', 'PROGRESS REPORT NI RON9.pdf', 'application/pdf', 260981, '2025-11-18 16:20:24'),
-(65, 45, 'disputes/evidence/1763610943_691e913f55e17.pdf', 'PROGRESS REPORT NI RON6.pdf', 'application/pdf', 256063, '2025-11-19 19:55:44'),
-(66, 46, 'disputes/evidence/1763647373_691f1f8d143e8.jpeg', '9dee9c29-6a22-4b03-92e2-a36c70d43bcb.jpeg', 'image/jpeg', 412206, '2025-11-20 06:02:53'),
-(67, 46, 'disputes/evidence/1763647373_691f1f8dcabce.jpeg', '9dee9c29-6a22-4b03-92e2-a36c70d43bcb.jpeg', 'image/jpeg', 412206, '2025-11-20 06:02:53');
+(65, 45, 'disputes/evidence/1763610943_691e913f55e17.pdf', 'PROGRESS REPORT NI RON6.pdf', 'application/pdf', 256063, '2025-11-19 19:55:44');
 
 -- --------------------------------------------------------
 
@@ -274,6 +291,14 @@ CREATE TABLE `messages` (
   `created_at` timestamp NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `messages`
+--
+
+INSERT INTO `messages` (`message_id`, `sender_id`, `receiver_id`, `content`, `is_read`, `created_at`) VALUES
+(1, 1, 1, 'Hello, can you provide an update on the current milestone?', 0, '2025-11-28 07:15:15'),
+(2, 1, 1, 'We have uploaded a new progress report for your review.', 1, '2025-11-28 06:15:15');
+
 -- --------------------------------------------------------
 
 --
@@ -287,9 +312,13 @@ CREATE TABLE `milestones` (
   `plan_id` int(11) NOT NULL,
   `milestone_name` varchar(200) NOT NULL,
   `milestone_description` text NOT NULL,
-  `milestone_status` enum('not_started','in_progress','submitted','under_review','approved','rejected','delayed') DEFAULT 'not_started',
+  `milestone_status` enum('not_started','in_progress','rejected','delayed','cancelled') DEFAULT 'not_started',
   `start_date` datetime NOT NULL,
   `end_date` datetime NOT NULL,
+  `is_deleted` tinyint(1) DEFAULT NULL,
+  `reason` text DEFAULT NULL,
+  `setup_status` enum('submitted','rejected','approved','') NOT NULL DEFAULT 'submitted',
+  `setup_rej_reason` text DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -298,11 +327,16 @@ CREATE TABLE `milestones` (
 -- Dumping data for table `milestones`
 --
 
-INSERT INTO `milestones` (`milestone_id`, `project_id`, `contractor_id`, `plan_id`, `milestone_name`, `milestone_description`, `milestone_status`, `start_date`, `end_date`, `created_at`, `updated_at`) VALUES
-(2, 1, 1, 2, 'MSJNSJD', 'MSJNSJD', 'not_started', '2025-11-05 00:00:00', '2026-11-05 23:59:59', '2025-11-05 05:13:10', '2025-11-05 05:13:10'),
-(7, 3, 1, 7, 'NIGGA', 'NIGGA', 'not_started', '2025-11-14 00:00:00', '2025-12-31 23:59:59', '2025-11-14 00:20:50', '2025-11-14 00:20:50'),
-(8, 5, 1, 8, 'asdad', 'asdad', 'not_started', '2025-11-15 00:00:00', '2025-12-31 23:59:59', '2025-11-15 04:45:04', '2025-11-15 04:45:04'),
-(9, 6, 1, 9, 'MNAME SAMPLE', 'MNAME SAMPLE', 'not_started', '2025-11-21 00:00:00', '2026-01-31 23:59:59', '2025-11-20 22:50:42', '2025-11-20 22:50:42');
+INSERT INTO `milestones` (`milestone_id`, `project_id`, `contractor_id`, `plan_id`, `milestone_name`, `milestone_description`, `milestone_status`, `start_date`, `end_date`, `is_deleted`, `reason`, `setup_status`, `setup_rej_reason`, `created_at`, `updated_at`) VALUES
+(2, 1, 1, 2, 'nsah', 'nsah', 'not_started', '2025-11-01 00:00:00', '2026-11-05 23:59:59', NULL, '', 'submitted', '', '2025-11-05 05:13:10', '2025-11-28 21:40:49'),
+(7, 3, 1, 7, 'NIGGA', 'NIGGA', 'not_started', '2025-11-14 00:00:00', '2025-12-31 23:59:59', 1, '', 'submitted', '', '2025-11-14 00:20:50', '2025-11-21 23:31:37'),
+(8, 5, 1, 8, 'asdad', 'asdad', 'not_started', '2025-11-15 00:00:00', '2025-12-31 23:59:59', 1, 'sas', 'approved', '', '2025-11-15 04:45:04', '2025-11-28 21:38:19'),
+(9, 6, 1, 9, 'MNAMwwE SAMPLE', 'MNAMwwE SAMPLE', 'not_started', '2025-11-20 00:00:00', '2026-01-31 23:59:59', NULL, '', 'submitted', '', '2025-11-20 22:50:42', '2025-11-28 08:55:30'),
+(10, 7, 1, 10, 'DSDSFS', 'DSDSFS', 'not_started', '2025-11-30 00:00:00', '2026-01-31 23:59:59', 1, 'fsdfsdfsf', 'submitted', '', '2025-11-21 10:00:23', '2025-11-21 23:43:08'),
+(11, 7, 1, 13, 'SHEESHqdqd', 'SHEESHqdqd', 'not_started', '2025-11-30 00:00:00', '2025-12-31 23:59:59', 1, NULL, 'approved', '', '2025-11-21 10:31:26', '2025-11-21 23:34:46'),
+(12, 3, 1, 14, 'sfvsdfs', 'sfvsdfs', 'not_started', '2025-11-30 00:00:00', '2025-12-31 23:59:59', NULL, NULL, 'submitted', NULL, '2025-11-21 23:52:13', '2025-11-21 23:52:13'),
+(13, 29, 2, 15, 'Foundation Work', 'Excavation and foundation works.', 'in_progress', '2025-11-23 15:15:15', '2025-12-08 15:15:15', 0, NULL, 'approved', NULL, '2025-11-28 07:15:15', '2025-11-28 07:15:15'),
+(14, 7, 1, 16, 'MILESOTNE NI R', 'MILESOTNE NI R', 'not_started', '2025-11-30 00:00:00', '2026-11-30 23:59:59', 0, '', 'approved', NULL, '2025-11-28 21:42:36', '2025-11-30 14:31:12');
 
 -- --------------------------------------------------------
 
@@ -326,14 +360,23 @@ CREATE TABLE `milestone_items` (
 --
 
 INSERT INTO `milestone_items` (`item_id`, `milestone_id`, `sequence_order`, `percentage_progress`, `milestone_item_title`, `milestone_item_description`, `milestone_item_cost`, `date_to_finish`) VALUES
-(5, 2, 1, 50.00, 'M1', 'ASDASDA', 50000.00, '2026-07-05 23:59:59'),
-(6, 2, 2, 50.00, 'M2', 'ASDAD', 50000.00, '2026-11-05 23:59:59'),
 (16, 7, 1, 90.00, 'NIGGA 1', 'ASDD', 8100.00, '2025-11-30 23:59:59'),
 (17, 7, 2, 10.00, 'NIGGA 2', 'ASD', 900.00, '2025-12-31 23:59:59'),
 (18, 8, 1, 90.00, 'NIGGA SI CARL', 'SDFSDF', 7200.00, '2025-11-30 23:59:59'),
 (19, 8, 2, 10.00, 'CARL WAYNE SUNTUKAN', 'SDFSDFSDF', 800.00, '2025-12-31 23:59:59'),
-(20, 9, 1, 10.00, 'first', 'hshahaha', 400.00, '2025-11-30 23:59:59'),
-(21, 9, 2, 90.00, 'zvz', 'vzvzvz', 3600.00, '2026-01-31 23:59:59');
+(22, 10, 1, 50.00, 'MSJNSF', 'SDFSDF', 2000.00, '2025-11-30 23:59:59'),
+(23, 10, 2, 50.00, 'SFF', 'SDFSF', 2000.00, '2026-01-31 23:59:59'),
+(24, 11, 1, 100.00, 'asdas', 'asda', 1000.00, '2025-12-31 23:59:59'),
+(25, 12, 1, 50.00, 'adasda', 'dasda', 2500.00, '2025-11-30 23:59:59'),
+(26, 12, 2, 50.00, 'asfafasf', 'afaf', 2500.00, '2025-12-31 23:59:59'),
+(27, 13, 1, 30.00, 'Excavation', 'Excavation of footing area.', 300000.00, '2025-12-01 15:15:15'),
+(28, 13, 2, 20.00, 'Formworks', 'Formworks setup.', 200000.00, '2025-12-05 15:15:15'),
+(33, 9, 1, 10.00, 'first', 'hshahaha', 400.00, '2025-11-30 23:59:59'),
+(34, 9, 2, 90.00, 'zvz', 'vzvzvz', 3600.00, '2026-01-31 23:59:59'),
+(37, 2, 1, 50.00, 'M1', 'ASDASDA', 50000.00, '2026-07-05 23:59:59'),
+(38, 2, 2, 50.00, 'M2', 'ASDAD', 50000.00, '2026-11-05 23:59:59'),
+(39, 14, 1, 50.00, 'm1cc', 'ccc', 100000.00, '2026-06-30 23:59:59'),
+(40, 14, 2, 50.00, 'mcc', 'asd', 100000.00, '2026-11-30 23:59:59');
 
 -- --------------------------------------------------------
 
@@ -353,6 +396,7 @@ CREATE TABLE `milestone_payments` (
   `receipt_photo` varchar(255) NOT NULL,
   `transaction_date` date DEFAULT current_timestamp(),
   `payment_status` enum('submitted','approved','rejected','deleted') DEFAULT 'submitted',
+  `reason` text DEFAULT NULL,
   `updated_at` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -360,10 +404,15 @@ CREATE TABLE `milestone_payments` (
 -- Dumping data for table `milestone_payments`
 --
 
-INSERT INTO `milestone_payments` (`payment_id`, `item_id`, `project_id`, `owner_id`, `contractor_user_id`, `amount`, `payment_type`, `transaction_number`, `receipt_photo`, `transaction_date`, `payment_status`, `updated_at`) VALUES
-(8, 18, 5, 10, 2, 20000.00, 'bank_transfer', 'AS123123', 'payments/receipts/1763694818_691fd8e2ece88.jpg', '2025-11-20', 'submitted', '2025-11-21 13:49:46'),
-(9, 19, 5, 10, 2, 10098.00, 'check', 'adad1231', 'payments/receipts/1763695141_691fda255e475.png', '2025-11-19', 'submitted', '2025-11-21 03:19:01'),
-(10, 18, 5, 10, 2, 3453.00, 'bank_transfer', 'dda', 'payments/receipts/1763731984_69206a103bd59.jpg', '2025-11-26', 'deleted', '2025-11-21 14:21:15');
+INSERT INTO `milestone_payments` (`payment_id`, `item_id`, `project_id`, `owner_id`, `contractor_user_id`, `amount`, `payment_type`, `transaction_number`, `receipt_photo`, `transaction_date`, `payment_status`, `reason`, `updated_at`) VALUES
+(8, 18, 5, 10, 2, 20000.00, 'bank_transfer', 'AS123123', 'payments/receipts/1763694818_691fd8e2ece88.jpg', '2025-11-20', 'submitted', '', '2025-11-21 13:49:46'),
+(9, 19, 5, 10, 2, 10098.00, 'check', 'adad1231', 'payments/receipts/1763695141_691fda255e475.png', '2025-11-19', 'deleted', '', '2025-11-21 15:13:57'),
+(10, 18, 5, 10, 2, 3453.00, 'bank_transfer', 'dda', 'payments/receipts/1763731984_69206a103bd59.jpg', '2025-11-26', 'deleted', '', '2025-11-21 14:21:15'),
+(11, 24, 7, 12, 2, 20000.00, 'check', '23423123e', 'payments/receipts/1763752320_6920b980d192e.jpg', '2025-11-29', 'submitted', NULL, '2025-11-21 19:28:04'),
+(12, 27, 29, 1, 1, 150000.00, 'bank_transfer', 'TXN-APPROVED-001', 'payments/receipts/demo_approved.jpg', '2025-11-27', 'approved', NULL, '2025-11-28 15:15:15'),
+(13, 27, 29, 1, 1, 150000.00, 'online_payment', 'TXN-SUBMITTED-001', 'payments/receipts/demo_submitted.jpg', '2025-11-28', 'submitted', NULL, NULL),
+(14, 27, 29, 1, 1, 150000.00, 'cash', 'TXN-REJECTED-001', 'payments/receipts/demo_rejected.jpg', '2025-11-26', 'rejected', 'Invalid receipt.', '2025-11-28 15:15:15'),
+(15, 39, 7, 12, 2, 20000.00, 'check', 'AS123123q', 'payments/receipts/1764403894_692aaab6cb0b8.pdf', '2025-11-29', 'submitted', NULL, '2025-11-29 08:20:57');
 
 -- --------------------------------------------------------
 
@@ -381,6 +430,14 @@ CREATE TABLE `notifications` (
   `action_link` varchar(255) DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `notifications`
+--
+
+INSERT INTO `notifications` (`notification_id`, `user_id`, `message`, `type`, `is_read`, `delivery_method`, `action_link`, `created_at`) VALUES
+(1, 1, 'Your project has been approved and is now visible to contractors.', 'Project Alert', 0, 'App', '/dashboard', '2025-11-28 07:15:15'),
+(2, 1, 'A new project is available for bidding.', 'Bid Status', 1, 'App', '/dashboard', '2025-11-28 05:15:15');
 
 -- --------------------------------------------------------
 
@@ -449,11 +506,16 @@ CREATE TABLE `payment_plans` (
 
 INSERT INTO `payment_plans` (`plan_id`, `project_id`, `contractor_id`, `payment_mode`, `total_project_cost`, `downpayment_amount`, `is_confirmed`, `created_at`, `updated_at`) VALUES
 (1, 1, 1, 'downpayment', 100000.00, 10000.00, 1, '2025-11-05 04:28:00', '2025-11-12 14:37:04'),
-(2, 1, 1, 'full_payment', 100000.00, 0.00, 0, '2025-11-05 05:13:10', '2025-11-05 05:13:10'),
+(2, 1, 1, 'full_payment', 100000.00, 0.00, 0, '2025-11-05 05:13:10', '2025-11-28 21:40:49'),
 (6, 3, 1, 'downpayment', 20000.00, 1000.00, 0, '2025-11-14 00:12:32', '2025-11-14 00:12:32'),
 (7, 3, 1, 'downpayment', 10000.00, 1000.00, 0, '2025-11-14 00:20:50', '2025-11-14 00:20:50'),
 (8, 5, 1, 'downpayment', 9000.00, 1000.00, 0, '2025-11-15 04:45:04', '2025-11-15 04:45:04'),
-(9, 6, 1, 'downpayment', 5000.00, 1000.00, 0, '2025-11-20 22:50:42', '2025-11-20 22:50:42');
+(9, 6, 1, 'downpayment', 5000.00, 1000.00, 0, '2025-11-20 22:50:42', '2025-11-28 08:55:30'),
+(10, 7, 1, 'downpayment', 5000.00, 1000.00, 0, '2025-11-21 10:00:23', '2025-11-21 10:00:23'),
+(13, 7, 1, 'full_payment', 1000.00, 0.00, 0, '2025-11-21 10:31:26', '2025-11-21 10:31:26'),
+(14, 3, 1, 'downpayment', 10000.00, 5000.00, 0, '2025-11-21 23:52:13', '2025-11-21 23:52:13'),
+(15, 29, 2, 'downpayment', 2000000.00, 400000.00, 1, '2025-11-28 07:15:15', '2025-11-28 07:15:15'),
+(16, 7, 1, 'full_payment', 200000.00, 0.00, 0, '2025-11-28 21:42:36', '2025-11-28 21:42:36');
 
 -- --------------------------------------------------------
 
@@ -476,6 +538,13 @@ CREATE TABLE `platform_payments` (
   `approved_by` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `platform_payments`
+--
+
+INSERT INTO `platform_payments` (`platform_payment_id`, `project_id`, `contractor_id`, `owner_id`, `payment_for`, `percentage`, `amount`, `transaction_number`, `receipt_photo`, `transaction_date`, `is_approved`, `approved_by`) VALUES
+(1, NULL, 2, 1, 'commission', 2.00, 30000.00, 'PLATFORM-TXN-001', 'platform/receipts/demo_commission.jpg', '2025-11-28 07:15:15', 1, NULL);
+
 -- --------------------------------------------------------
 
 --
@@ -487,6 +556,7 @@ CREATE TABLE `progress` (
   `milestone_item_id` int(11) NOT NULL,
   `purpose` varchar(255) NOT NULL,
   `progress_status` enum('submitted','approved','rejected','deleted') DEFAULT 'submitted',
+  `delete_reason` text DEFAULT NULL,
   `submitted_at` timestamp NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -495,9 +565,12 @@ CREATE TABLE `progress` (
 -- Dumping data for table `progress`
 --
 
-INSERT INTO `progress` (`progress_id`, `milestone_item_id`, `purpose`, `progress_status`, `submitted_at`, `updated_at`) VALUES
-(7, 18, 'asdasdfssdfedsd', 'approved', '2025-11-20 04:07:46', NULL),
-(8, 20, 'aadadaf', 'deleted', '2025-11-21 06:51:15', NULL);
+INSERT INTO `progress` (`progress_id`, `milestone_item_id`, `purpose`, `progress_status`, `delete_reason`, `submitted_at`, `updated_at`) VALUES
+(7, 18, 'asdasdfssdfedsd', 'approved', NULL, '2025-11-20 04:07:46', NULL),
+(11, 27, 'Excavation completed', 'approved', NULL, '2025-11-27 07:15:15', '2025-11-28 07:15:15'),
+(12, 28, 'Formworks 50% done', 'submitted', NULL, '2025-11-28 07:15:15', NULL),
+(13, 28, 'Formworks need revision', 'rejected', NULL, '2025-11-28 02:15:15', '2025-11-28 07:15:15'),
+(14, 39, 'Itong progress na to mam kainin mo', 'approved', '', '2025-11-29 05:54:10', '2025-11-30 06:33:00');
 
 -- --------------------------------------------------------
 
@@ -521,7 +594,10 @@ INSERT INTO `progress_files` (`file_id`, `progress_id`, `file_path`, `original_n
 (10, 7, 'progress_uploads/1763643611_691f10dbc90ce.jpg', '19a87211-2771-468f-9af6-598e9e20c2f5.jpg'),
 (11, 7, 'progress_uploads/1763643611_691f10dbd100a.png', '8kjqosfqk.png'),
 (12, 7, 'progress_uploads/1763643611_691f10dbd1f8d.pdf', 'A Tool for Subscriptions Startups – Responses.pdf'),
-(13, 8, 'progress_uploads/1763707875_69200be3f232e.pdf', 'PROGRESS REPORT NI RON6.pdf');
+(19, 11, 'progress_uploads/demo_approved_photo.jpg', 'approved_photo.jpg'),
+(20, 12, 'progress_uploads/demo_submitted_photo.jpg', 'submitted_photo.jpg'),
+(21, 14, 'progress_uploads/1764395650_692a8a82489d2.png', 'slide2.png'),
+(24, 14, 'progress_uploads/1764509731_692c48236034a.pdf', 'ADS-Final-Project-Instructions-Individaul.pdf');
 
 -- --------------------------------------------------------
 
@@ -531,7 +607,7 @@ INSERT INTO `progress_files` (`file_id`, `progress_id`, `file_path`, `original_n
 
 CREATE TABLE `projects` (
   `project_id` int(11) NOT NULL,
-  `owner_id` int(11) NOT NULL,
+  `relationship_id` int(11) DEFAULT NULL,
   `project_title` varchar(200) NOT NULL,
   `project_description` text NOT NULL,
   `project_location` text NOT NULL,
@@ -541,24 +617,50 @@ CREATE TABLE `projects` (
   `floor_area` int(11) NOT NULL,
   `property_type` enum('Residential','Commercial','Industrial','Agricultural') NOT NULL,
   `type_id` int(11) NOT NULL,
+  `if_others_ctype` varchar(255) DEFAULT NULL,
   `to_finish` int(11) DEFAULT NULL,
   `project_status` enum('open','bidding_closed','in_progress','completed','terminated','deleted_post') DEFAULT 'open',
-  `selected_contractor_id` int(11) DEFAULT NULL,
-  `bidding_deadline` timestamp NOT NULL,
-  `created_at` timestamp NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+  `selected_contractor_id` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `projects`
 --
 
-INSERT INTO `projects` (`project_id`, `owner_id`, `project_title`, `project_description`, `project_location`, `budget_range_min`, `budget_range_max`, `lot_size`, `floor_area`, `property_type`, `type_id`, `to_finish`, `project_status`, `selected_contractor_id`, `bidding_deadline`, `created_at`, `updated_at`) VALUES
-(1, 4, 'SAMPLE TITLE', 'SAMPLE TITLE DESC', 'TUMAGA', 1000000.00, 10000000.00, 235, 135, 'Residential', 1, 12, 'bidding_closed', 1, '2025-11-20 15:14:34', '2025-11-05 12:14:31', '2025-11-20 15:14:34'),
-(3, 10, 'EYY WASAP', 'WSSAP', 'ASDAS', 20000.00, 100000.00, 123, 123, 'Commercial', 1, 10, 'bidding_closed', 1, '2025-11-14 08:08:28', '2025-11-14 07:54:01', '2025-11-14 08:08:28'),
-(4, 5, 'ASD', 'ASDASDAD', 'ASDSD', 1000.00, 2000.00, 23, 23, 'Residential', 7, 10, 'bidding_closed', 2, '2025-11-14 08:21:36', '2025-11-14 08:21:36', '2025-11-14 08:21:36'),
-(5, 10, 'NIGGA CARL WAYNE ', 'SDSDVSDV', 'SDVSDV', 9000.00, 10000.00, 232, 212, 'Industrial', 2, 12, 'bidding_closed', 1, '2025-11-15 12:38:10', '2025-11-15 12:38:10', '2025-11-15 12:38:10'),
-(6, 4, 'PROJKSFSFCJAFCLAK', 'AFAFAWEFWEF', 'ASDweref', 1000.00, 2000.00, 10, 10, 'Commercial', 1, 2, 'bidding_closed', 1, '2025-11-21 06:46:35', '2025-11-21 06:46:35', '2025-11-21 06:46:35');
+INSERT INTO `projects` (`project_id`, `relationship_id`, `project_title`, `project_description`, `project_location`, `budget_range_min`, `budget_range_max`, `lot_size`, `floor_area`, `property_type`, `type_id`, `if_others_ctype`, `to_finish`, `project_status`, `selected_contractor_id`) VALUES
+(1, NULL, 'SAMPLE TITLE', 'SAMPLE TITLE DESC', 'TUMAGA', 1000000.00, 10000000.00, 235, 135, 'Residential', 1, NULL, 12, 'bidding_closed', 1),
+(3, NULL, 'EYY WASAP', 'WSSAP', 'ASDAS', 20000.00, 100000.00, 123, 123, 'Commercial', 1, NULL, 10, 'open', 0),
+(4, NULL, 'ASD', 'ASDASDAD', 'ASDSD', 1000.00, 2000.00, 23, 23, 'Residential', 7, NULL, 10, 'bidding_closed', 2),
+(5, 2, 'NIGGA CARL WAYNE ', 'SDSDVSDV', 'SDVSDV', 9000.00, 10000.00, 232, 212, 'Industrial', 2, NULL, 12, 'bidding_closed', 1),
+(6, NULL, 'PROJKSFSFCJAFCLAK', 'AFAFAWEFWEF', 'ASDweref', 1000.00, 2000.00, 10, 10, 'Commercial', 1, NULL, 2, 'bidding_closed', 1),
+(7, 2, 'PROJECT NI RONRON', 'DESCRIPTION', 'Lumbangan', 10000.00, 15000.00, 100, 90, 'Residential', 3, NULL, NULL, 'bidding_closed', 1),
+(8, 3, 'PROJECT NI SHANE', 'DESC', 'Paraiso Homes', 1000.00, 2000.00, 23, 20, 'Commercial', 5, NULL, NULL, 'bidding_closed', NULL),
+(9, 4, 'wgwg', 'wgwgwgw', 'gwwegwefw', 3000.00, 5000.00, 304, 234, 'Commercial', 4, NULL, NULL, 'bidding_closed', NULL),
+(10, 5, 'ggg', 'rgtrfgg', 'werwer', 42342.00, 234234.00, 234, 232, 'Commercial', 8, NULL, NULL, 'bidding_closed', NULL),
+(11, 6, 'Modern Residential House Construction', 'Looking for a contractor to build a modern 2-story residential house. Project includes foundation work, structural framing, roofing, electrical, plumbing, and finishing works.', 'Zamboanga City, Zamboanga del Sur', 2500000.00, 3500000.00, 300, 180, 'Residential', 1, NULL, 12, 'open', NULL),
+(12, 7, 'Commercial Building Renovation', 'Need contractor for complete renovation of a 3-story commercial building. Includes interior design, electrical rewiring, plumbing upgrade, and facade improvement.', 'Pagadian City, Zamboanga del Sur', 1500000.00, 2000000.00, 250, 450, 'Commercial', 1, NULL, 8, 'open', NULL),
+(13, 8, 'Warehouse Construction Project', 'Industrial warehouse construction project. Need experienced contractor for steel structure, concrete flooring, roofing, and basic electrical setup.', 'Dipolog City, Zamboanga del Norte', 5000000.00, 7000000.00, 1000, 800, 'Industrial', 1, NULL, 10, 'open', NULL),
+(14, 9, 'Single Family Home Construction', 'Building a cozy single-family home with 3 bedrooms, 2 bathrooms, living area, kitchen, and garage. Looking for reliable contractor with good track record.', 'Ipil, Zamboanga Sibugay', 1800000.00, 2500000.00, 200, 120, 'Residential', 1, NULL, 9, 'open', NULL),
+(15, 10, 'Agricultural Storage Facility', 'Construction of agricultural storage facility with proper ventilation, pest control features, and easy access roads. Must be durable and weather-resistant.', 'Molave, Zamboanga del Sur', 800000.00, 1200000.00, 500, 200, 'Agricultural', 1, NULL, 6, 'open', NULL),
+(16, 11, 'Modern Residential House Construction', 'Looking for a contractor to build a modern 2-story residential house. Project includes foundation work, structural framing, roofing, electrical, plumbing, and finishing works.', 'Zamboanga City, Zamboanga del Sur', 2500000.00, 3500000.00, 300, 180, 'Residential', 1, NULL, 12, 'open', NULL),
+(17, 12, 'Commercial Building Renovation', 'Need contractor for complete renovation of a 3-story commercial building. Includes interior design, electrical rewiring, plumbing upgrade, and facade improvement.', 'Pagadian City, Zamboanga del Sur', 1500000.00, 2000000.00, 250, 450, 'Commercial', 1, NULL, 8, 'open', NULL),
+(18, 13, 'Warehouse Construction Project', 'Industrial warehouse construction project. Need experienced contractor for steel structure, concrete flooring, roofing, and basic electrical setup.', 'Dipolog City, Zamboanga del Norte', 5000000.00, 7000000.00, 1000, 800, 'Industrial', 1, NULL, 10, 'open', NULL),
+(19, 14, 'Single Family Home Construction', 'Building a cozy single-family home with 3 bedrooms, 2 bathrooms, living area, kitchen, and garage. Looking for reliable contractor with good track record.', 'Ipil, Zamboanga Sibugay', 1800000.00, 2500000.00, 200, 120, 'Residential', 1, NULL, 9, 'open', NULL),
+(20, 15, 'Agricultural Storage Facility', 'Construction of agricultural storage facility with proper ventilation, pest control features, and easy access roads. Must be durable and weather-resistant.', 'Molave, Zamboanga del Sur', 800000.00, 1200000.00, 500, 200, 'Agricultural', 1, NULL, 6, 'open', NULL),
+(21, 16, 'Demo Project - Under Review', 'Owner just submitted, waiting for admin approval.', 'Demo City', 500000.00, 800000.00, 200, 120, 'Residential', 6, NULL, 6, 'open', NULL),
+(22, 17, 'Demo Project - Open For Bidding', 'Approved project, accepting bids.', 'Demo City', 1000000.00, 1500000.00, 300, 180, 'Residential', 6, NULL, 9, 'open', NULL),
+(23, 18, 'Demo Project - Bidding Closed', 'Bidding finished, contractor selected.', 'Demo City', 2000000.00, 2500000.00, 350, 220, 'Residential', 6, NULL, 12, 'bidding_closed', 2),
+(24, 19, 'Demo Project - Under Review', 'Owner just submitted, waiting for admin approval.', 'Demo City', 500000.00, 800000.00, 200, 120, 'Residential', 6, NULL, 6, 'open', NULL),
+(25, 20, 'Demo Project - Open For Bidding', 'Approved project, accepting bids.', 'Demo City', 1000000.00, 1500000.00, 300, 180, 'Residential', 6, NULL, 9, 'open', NULL),
+(26, 21, 'Demo Project - Bidding Closed', 'Bidding finished, contractor selected.', 'Demo City', 2000000.00, 2500000.00, 350, 220, 'Residential', 6, NULL, 12, 'bidding_closed', 2),
+(27, 22, 'Demo Project - Under Review', 'Owner just submitted, waiting for admin approval.', 'Demo City', 500000.00, 800000.00, 200, 120, 'Residential', 6, NULL, 6, 'open', NULL),
+(28, 23, 'Demo Project - Open For Bidding', 'Approved project, accepting bids.', 'Demo City', 1000000.00, 1500000.00, 300, 180, 'Residential', 6, NULL, 9, 'open', NULL),
+(29, 24, 'Demo Project - Bidding Closed', 'Bidding finished, contractor selected.', 'Demo City', 2000000.00, 2500000.00, 350, 220, 'Residential', 6, NULL, 12, 'bidding_closed', 2),
+(30, 25, 'asda', 'sdadada', 'asdasdasdadasdasdasd', 10000.00, 20000.00, 234, 211, 'Residential', 5, NULL, NULL, 'open', NULL),
+(31, 26, 'RONRONRONRON', 'RONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRON', 'Guiwan, RONRONRONRON, Zamboanga City, Zamboanga del Sur', 11000.00, 12000.00, 205, 100, 'Industrial', 5, NULL, NULL, 'open', NULL),
+(32, 27, 'SAMPLE TITLE NI ENOR', 'SAMPLE TITLE NI ENORSAMPLE TITLE NI ENORSAMPLE TITLE NI ENORSAMPLE TITLE NI ENORSAMPLE TITLE NI ENORSAMPLE TITLE NI ENORSAMPLE TITLE NI ENORSAMPLE TITLE NI ENORSAMPLE TITLE NI ENORSAMPLE TITLE NI ENOR', 'Cabaluay, SAMPLE TITLE NI ENOR, Zamboanga City, Zamboanga del Sur', 50000.00, 100000.00, 125, 100, 'Commercial', 4, NULL, NULL, 'open', NULL),
+(33, 28, 'Sample project ni shane hart jimenez', 'sample desc ni shane hart jmenez', 'Bunguiao, Bungiauooo, Zamboanga City, Zamboanga del Sur', 20000.00, 50000.00, 300, 200, 'Residential', 5, NULL, NULL, 'open', NULL),
+(34, 29, 'Sample sample', 'Sample sampleSample sampleSample sampleSample sampleSample sampleSample sample', 'Baliwasan, Sample sampleSample sample, Zamboanga City, Zamboanga del Sur', 10000.00, 20000.00, 200, 100, 'Commercial', 9, 'nigger', NULL, 'open', NULL);
 
 -- --------------------------------------------------------
 
@@ -573,6 +675,85 @@ CREATE TABLE `project_files` (
   `file_path` varchar(255) NOT NULL,
   `uploaded_at` timestamp NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `project_files`
+--
+
+INSERT INTO `project_files` (`file_id`, `project_id`, `file_type`, `file_path`, `uploaded_at`) VALUES
+(1, 7, 'building permit', 'projects/1763741088_69208da05048b.jpg', '2025-11-21 08:04:48'),
+(2, 7, 'title', 'projects/1763741088_69208da0516dc.png', '2025-11-21 08:04:48'),
+(3, 8, 'building permit', 'projects/1763743548_6920973ce2842.jpg', '2025-11-21 08:45:48'),
+(4, 8, 'title', 'projects/1763743548_6920973ce3b83.png', '2025-11-21 08:45:48'),
+(5, 9, 'building permit', 'projects/1763746344_6920a2282695c.jpg', '2025-11-21 09:32:24'),
+(6, 9, 'title', 'projects/1763746344_6920a228281c2.png', '2025-11-21 09:32:24'),
+(7, 9, 'blueprint', 'projects/1763746344_6920a22829262.pdf', '2025-11-21 09:32:24'),
+(8, 10, 'building permit', 'projects/1763826168_6921d9f8475b8.png', '2025-11-22 07:42:48'),
+(9, 10, 'title', 'projects/1763826168_6921d9f850e5f.png', '2025-11-22 07:42:48'),
+(10, 10, 'blueprint', 'projects/1763826168_6921d9f851eb1.pdf', '2025-11-22 07:42:48'),
+(11, 30, 'building permit', 'projects/1764349472_6929d6205b29c.png', '2025-11-28 09:04:32'),
+(12, 30, 'title', 'projects/1764349472_6929d62064905.png', '2025-11-28 09:04:32'),
+(13, 30, 'blueprint', 'projects/1764349472_6929d62065ca2.png', '2025-11-28 09:04:32'),
+(14, 31, 'building permit', 'projects/1764352378_6929e17aed051.png', '2025-11-28 09:52:58'),
+(15, 31, 'title', 'projects/1764352378_6929e17aeeb63.png', '2025-11-28 09:52:58'),
+(16, 32, 'building permit', 'projects/1764385898_692a646a89f0a.png', '2025-11-28 19:11:38'),
+(17, 32, 'title', 'projects/1764385898_692a646a9226b.png', '2025-11-28 19:11:38'),
+(18, 33, 'building permit', 'projects/1764386704_692a67906d747.png', '2025-11-28 19:25:04'),
+(19, 33, 'title', 'projects/1764386704_692a67906eaaa.png', '2025-11-28 19:25:04'),
+(20, 34, 'building permit', 'projects/1764386765_692a67cde05ce.png', '2025-11-28 19:26:05'),
+(21, 34, 'title', 'projects/1764386765_692a67cde1ba5.png', '2025-11-28 19:26:05');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `project_relationships`
+--
+
+CREATE TABLE `project_relationships` (
+  `rel_id` int(11) NOT NULL,
+  `owner_id` int(11) NOT NULL,
+  `selected_contractor_id` int(11) DEFAULT NULL,
+  `project_post_status` enum('under_review','deleted','approved','rejected','due') NOT NULL DEFAULT 'under_review',
+  `admin_reason` text DEFAULT NULL COMMENT 'Reason for post rejection by admin',
+  `reason` text DEFAULT NULL,
+  `bidding_due` date DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `project_relationships`
+--
+
+INSERT INTO `project_relationships` (`rel_id`, `owner_id`, `selected_contractor_id`, `project_post_status`, `admin_reason`, `reason`, `bidding_due`, `created_at`, `updated_at`) VALUES
+(2, 6, 1, 'due', NULL, '', '2025-11-29', '2025-11-21 08:04:48', '2025-11-30 09:24:52'),
+(3, 6, NULL, 'due', NULL, '', '2025-11-23', '2025-11-21 08:45:48', '2025-11-30 09:24:52'),
+(4, 6, NULL, 'under_review', NULL, '', '2025-11-23', '2025-11-21 09:32:24', '2025-11-21 09:32:24'),
+(5, 6, NULL, 'under_review', NULL, NULL, '2025-11-24', '2025-11-22 07:42:47', '2025-11-22 07:42:47'),
+(6, 1, NULL, 'approved', NULL, NULL, '2025-12-28', '2025-11-28 07:00:06', '2025-11-28 07:00:06'),
+(7, 1, NULL, 'approved', NULL, NULL, '2025-12-28', '2025-11-28 07:00:06', '2025-11-28 07:00:06'),
+(8, 1, NULL, 'approved', NULL, NULL, '2025-12-28', '2025-11-28 07:00:06', '2025-11-28 07:00:06'),
+(9, 1, NULL, 'approved', NULL, NULL, '2025-12-28', '2025-11-28 07:00:06', '2025-11-28 07:00:06'),
+(10, 1, NULL, 'approved', NULL, NULL, '2025-12-28', '2025-11-28 07:00:06', '2025-11-28 07:00:06'),
+(11, 1, NULL, 'approved', NULL, NULL, '2025-12-28', '2025-11-28 07:14:11', '2025-11-28 07:14:11'),
+(12, 1, NULL, 'approved', NULL, NULL, '2025-12-28', '2025-11-28 07:14:11', '2025-11-28 07:14:11'),
+(13, 1, NULL, 'approved', NULL, NULL, '2025-12-28', '2025-11-28 07:14:11', '2025-11-28 07:14:11'),
+(14, 1, NULL, 'approved', NULL, NULL, '2025-12-28', '2025-11-28 07:14:11', '2025-11-28 07:14:11'),
+(15, 1, NULL, 'approved', NULL, NULL, '2025-12-28', '2025-11-28 07:14:11', '2025-11-28 07:14:11'),
+(16, 1, NULL, 'under_review', NULL, NULL, '2025-12-13', '2025-11-28 07:14:11', '2025-11-28 07:14:11'),
+(17, 1, NULL, 'approved', NULL, NULL, '2025-12-18', '2025-11-28 07:14:11', '2025-11-28 07:14:11'),
+(18, 1, 2, 'due', NULL, NULL, '2025-11-27', '2025-11-28 07:14:11', '2025-11-30 09:24:52'),
+(19, 1, NULL, 'under_review', NULL, NULL, '2025-12-13', '2025-11-28 07:14:46', '2025-11-28 07:14:46'),
+(20, 1, NULL, 'approved', NULL, NULL, '2025-12-18', '2025-11-28 07:14:46', '2025-11-28 07:14:46'),
+(21, 1, 2, 'due', NULL, NULL, '2025-11-27', '2025-11-28 07:14:46', '2025-11-30 09:24:52'),
+(22, 1, NULL, 'under_review', NULL, NULL, '2025-12-13', '2025-11-28 07:15:15', '2025-11-28 07:15:15'),
+(23, 1, NULL, 'approved', NULL, NULL, '2025-12-18', '2025-11-28 07:15:15', '2025-11-28 07:15:15'),
+(24, 1, 2, 'due', NULL, NULL, '2025-11-27', '2025-11-28 07:15:15', '2025-11-30 09:24:52'),
+(25, 2, NULL, 'due', NULL, NULL, '2025-11-30', '2025-11-28 09:04:31', '2025-11-30 17:26:28'),
+(26, 2, NULL, 'approved', NULL, NULL, '2025-12-01', '2025-11-28 09:52:58', '2025-11-28 17:53:25'),
+(27, 6, NULL, 'under_review', NULL, NULL, '2025-11-30', '2025-11-28 19:11:38', '2025-11-28 19:11:38'),
+(28, 6, NULL, 'under_review', NULL, NULL, '2025-11-30', '2025-11-28 19:25:04', '2025-11-28 19:25:04'),
+(29, 6, NULL, 'under_review', NULL, NULL, '2025-11-30', '2025-11-28 19:26:05', '2025-11-28 19:26:05');
 
 -- --------------------------------------------------------
 
@@ -617,7 +798,8 @@ INSERT INTO `property_owners` (`owner_id`, `user_id`, `last_name`, `middle_name`
 (10, 23, 'Sdsdf', 'Sdfsd', 'Sds', '09926314987', 'sdfsdfssd, Buahan, City of Lamitan, Basilan, 7000', 2, 'validID/OCFo8HJJwfaRRhguC1dIdczuhAs6K6TzMXhSRYqo.jpg', 'validID/Tjx0eFN8ftFmr7tAM9PkfMqWXqTGKmhfcOjmPhb5.jpg', 'policeClearance/FgOpbkfe0SEs3cbcVbG2o3sNEWFiunkNxXH4gJZU.jpg', '2003-06-10', 22, 23, NULL, 'pending', '2025-11-13 17:44:26', '2025-11-13 09:44:26'),
 (11, 25, 'Hart', NULL, 'Shane', '09926354567', 'aasdasd, Loo, Buguias, Benguet, 7000', 2, 'validID/dZBohE5Jfgx3Waz3PcygOoiir47FYrL6WgaA7pSl.jpg', 'validID/H9kN5gESlOAHUPpgDPS48ckbsWK6rkPkXGE2zrwz.jpg', 'policeClearance/ydazaxBY9v79UL7vtkTREyCI7c9BwCKSqMmXU9Jc.jpg', '1992-03-04', 33, 23, NULL, 'pending', '2025-11-15 13:36:42', '2025-11-15 05:36:42'),
 (12, 26, 'Yut7i6rifytk', 'Trytkfyit', 'Ljuguyguyl', '09926354987', 'aasdasd, Lengaoan, Buguias, Benguet, 7000', 18, 'validID/SUPYW6qWZbdHTjRfnXgUgwyZVshmGGE33XfElzkj.jpg', 'validID/fMv60QxefoLchPyXcmDcZWFc6tM95d5BelX37GVq.jpg', 'policeClearance/kSmRaUAvyQ1wCiJUkuUEpN4VEioBk3ZJkLJ7DRWk.jpg', '1999-02-02', 26, 17, NULL, 'pending', '2025-11-16 11:20:07', '2025-11-16 03:20:07'),
-(13, 27, 'Asdsa', NULL, 'Asda', '09926314071', 'aasdasd, Bunga, Cabucgayan, Biliran, 7000', 2, 'validID/ZHvs9fU7rFasEu2BvurDVaKjsWu4GB5059egIzQV.png', 'validID/ee64nJxOD8AM4DxJjeyIoArF7mGVD80jrmOKxRyx.png', 'policeClearance/KsLAb117HjwIMAqfQzwYkwnkCTxfCTx92NpO7MRj.png', '2001-02-08', 24, 22, NULL, 'pending', '2025-11-19 00:17:48', '2025-11-18 16:17:48');
+(13, 27, 'Asdsa', NULL, 'Asda', '09926314071', 'aasdasd, Bunga, Cabucgayan, Biliran, 7000', 2, 'validID/ZHvs9fU7rFasEu2BvurDVaKjsWu4GB5059egIzQV.png', 'validID/ee64nJxOD8AM4DxJjeyIoArF7mGVD80jrmOKxRyx.png', 'policeClearance/KsLAb117HjwIMAqfQzwYkwnkCTxfCTx92NpO7MRj.png', '2001-02-08', 24, 22, NULL, 'pending', '2025-11-19 00:17:48', '2025-11-18 16:17:48'),
+(14, 28, 'Sld', 'Wyne', 'Crl', '09360211158', 'Porcentro, 097332094, 097332000, 097300000, 7000', 17, 'validID/wiUA5CzU1hJD8GbQPWOnaKNfiLHV451gAutR6iLq.jpg', 'validID/dhWEhBmtzT3KCEaW8SqiA8SWRrGgQxMIab12vJFf.jpg', 'policeClearance/iE8nDNfpRW3mfurX2KMLzxBPhD10OWdoXhcqizND.jpg', '1999-11-27', 26, 21, NULL, 'pending', '2025-11-27 14:34:25', '2025-11-27 06:34:25');
 
 -- --------------------------------------------------------
 
@@ -649,6 +831,13 @@ CREATE TABLE `reviews` (
   `created_at` timestamp NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `reviews`
+--
+
+INSERT INTO `reviews` (`review_id`, `project_id`, `reviewer_user_id`, `reviewee_user_id`, `rating`, `comment`, `created_at`) VALUES
+(1, 29, 1, 1, 5, 'Great work and very professional.', '2025-11-28 07:15:15');
+
 -- --------------------------------------------------------
 
 --
@@ -658,6 +847,7 @@ CREATE TABLE `reviews` (
 CREATE TABLE `users` (
   `user_id` int(11) NOT NULL,
   `profile_pic` varchar(255) DEFAULT NULL,
+  `cover_photo` varchar(255) DEFAULT NULL,
   `username` varchar(50) NOT NULL,
   `email` varchar(100) NOT NULL,
   `password_hash` varchar(255) NOT NULL,
@@ -673,27 +863,28 @@ CREATE TABLE `users` (
 -- Dumping data for table `users`
 --
 
-INSERT INTO `users` (`user_id`, `profile_pic`, `username`, `email`, `password_hash`, `OTP_hash`, `user_type`, `is_verified`, `is_active`, `created_at`, `updated_at`) VALUES
-(1, NULL, 'ashxeyn', 'ashjjxeyn@gmail.com', '$2y$12$fWskY6zbdZiOvj3bbVPJyOahwb1VSPonLaIJVqciJQZb2Ove3AzMW', '$2y$12$rp.IOsHrjuormElLiwz5bOeYjEZ/665JAXMCmy1qqMp3cbAAJBB0a', 'both', 1, 1, '2025-11-01 04:49:04', '2025-11-15 13:34:57'),
-(2, NULL, 'sandbox', 'sandbox@gmail.com', '$2y$12$7wRYH0dS2P/O9AKHmUUtR.zHkCE2gnDxGfrIV8z0.QbIX9kjMas8q', '$2y$12$ptwr5DjWPCTWSGVTgvdVJ.HufXk2iAp.Xr1wwG0qH.HyU/2Clnn9m', 'both', 1, 1, '2025-11-01 05:30:31', '2025-11-02 08:32:25'),
-(10, NULL, 'ahdbahs', 'ahdbahs@gmal.com', '$2y$12$t6Uvs0VsuVL3ofAtuwKc.Ojsxh9BYW6FbMP1qSurCYWhdZ8shFcsu', '$2y$12$BGvjcwo2.veK2UqFIlSww.7CKetz8KCvRye4RqfeJbftLZ4b5vD3a', 'both', 1, 1, '2025-11-02 00:03:30', '2025-11-02 01:00:12'),
-(11, 'profile_pictures/1762072945_profile_552180896_2235352176965283_3789601433528090852_n.jpg', 'ahdbahsahdbahs', 'ahdbahsahdbahs@gmail.com', '$2y$12$v6B4cZ6Zwx4vAnHsEeUYFe0MShzeHah20OxVo/gpw8ekgeQ2X23nK', '$2y$12$TuG8rquHKVRj9w8dNGqgCuOAyTt2uC5LdFZsGOySWQlgO5BKqoPhq', 'both', 1, 1, '2025-11-02 00:05:40', '2025-11-02 00:42:25'),
-(12, NULL, 'ronron', 'ronron@gmail.com', '$2y$12$039Xd8JzNUj9XDWfQXosEePFngCgXAXcg8Ca9hIdtrI3tOnmKnPZS', '$2y$12$sxa0MzGRsL2DbUSScb.T0eYjBOTo/onaLyRty8O5EFE840SSpU6y2', 'property_owner', 1, 1, '2025-11-02 01:05:44', '2025-11-12 16:05:18'),
-(13, NULL, 'Ronie', 'rone@gmail.com', '$2y$12$sgNYpj05G27xtZxpZhbBu.Rl8gpGzhVCft2JA18SaTamZV2Mz1J.a', '$2y$12$DCQDCvU8tZEtWMI1tbOFkubyIsG2zlVuGlIks4h7xiMvu/eSU1E0S', 'property_owner', 0, 1, '2025-11-11 06:35:01', '2025-11-11 06:35:01'),
-(14, NULL, 'asdas', 'daasdad@gmail.com', '$2y$12$cK8JLtzQ64vqkYOwZhesoeNP/VdfF8Ldt4V3y7zqvxAMOl59uob5y', '$2y$12$Ma9sbAx.P.Yj0xqUbtMTfeTiPS1gLzgw6Rs.erSXCRgns.SbHaYz.', 'property_owner', 0, 1, '2025-11-11 06:41:52', '2025-11-11 06:41:52'),
-(15, NULL, 'werwrwerwr', 'krystalbwerongow24@gmail.com', '$2y$12$chxZo.smd2kMDDp5sudBI.h6T69dSbiDHgetI7bM93LSynnud8Mo2', '$2y$12$2iFEJDBxObsUuT11/KT9He4GPA.SUYwkqLO96MSw1ZUC4tLK9wb7e', 'contractor', 0, 1, '2025-11-11 06:51:26', '2025-11-11 06:51:26'),
-(16, NULL, 'asdasd', 'asdada@gmail.com', '$2y$12$7pQfbTa/4jB7iGe19dme.u39zldsnv2W6LcZr2Kr3ai8vws3acmB.', '$2y$12$lNHrR94yYKjiH5l6.r0Up.Y28SGKlnpHwnNbH2yS8XPM3AHRzQLlm', 'contractor', 0, 0, '2025-11-13 06:26:39', '2025-11-13 06:26:39'),
-(17, NULL, 'adas', 'dasdaasd@gmail.com', '$2y$12$2I8xH1G.T869ppuheRHMc.f28tM.5C/XmCD1Iwe0DruyIDmq.wHpi', '$2y$12$9cfp.5hwS.wmHmAn0Srh5OBn8J3Z/Z59cy7KIA0ynOtUbqgwr7WjK', 'property_owner', 0, 0, '2025-11-13 06:40:49', '2025-11-13 06:40:49'),
-(18, NULL, '3rwer', 'wewerw@gmail.com', '$2y$12$GNb65rCw1nsra3qw3QnofO4VUdyOFwoFJGqfYp3KWcNnHX40s4zo6', '$2y$12$q7.7Yy0rzTYC8r31Kbq/LetK0WFNIcLU2Avhu.vQGGWpvJhU12RrK', 'property_owner', 0, 0, '2025-11-13 06:51:12', '2025-11-13 06:51:12'),
-(19, NULL, 'sds', 'ashASxeyn@gmail.com', '$2y$12$Q89JIrXTfe0Opqr6USgx9uEJNFcaqEyUWB4pvsaZ6P576L31w3HNu', '$2y$12$eFPZ9R8ZhS85z/3a.Rpr1ervgAoDpTZ0EXKusCH4Pc979gK1ILkFG', 'contractor', 0, 0, '2025-11-13 06:55:25', '2025-11-13 06:55:25'),
-(20, NULL, 'asddas', 'ashxaaeyn@gmail.com', '$2y$12$XlmIokVrxsdwh8HyioXIsOoX9nH3jlwCL2UAK2No0ixAC3lP7Mboq', '$2y$12$pvDtHTsmnE3EDtOCWythGe8OCfKa.FeEjC8Y6RUpOlrAX26gQD/ha', 'property_owner', 0, 0, '2025-11-13 06:57:08', '2025-11-13 06:57:08'),
-(21, NULL, 'asdassssd', 'asdsssas@wmsu.edu.ph', '$2y$12$AI36ZSkW7vYvh/Z/zejlKe4SpVWHJ/hXnytQUNVbsSrqs4WWeQJEC', '$2y$12$5QIwCGQSUVvwlzzhaH3Zu.JhAwFW4hhgpXvhNVpxnRLOEx7JUd6B2', 'property_owner', 0, 0, '2025-11-13 07:10:56', '2025-11-13 07:10:56'),
-(22, NULL, 'asdasqqqd', 'sdfsssfd@wmsu.edu.ph', '$2y$12$zBAqQhNTbUxSMt164YXB.O9ZEz5F6XASGENyVTLCbyhaP.F1DxuGG', '$2y$12$wOZfnp4Q4hzASzFN3NorFetAGpFx1fSNU1KQGNRFE0.enIdqIroWO', 'both', 1, 1, '2025-11-13 07:20:42', '2025-11-13 09:40:37'),
-(23, NULL, 'werwerwerw', 'sdwerwerfsfd@wmsu.edu.ph', '$2y$12$WCrGtbB1dF0qkolAZS0RUeMH8ayvKo8hUTf9fqyCdkTUUHWSJUuMW', '$2y$12$r7Kx3fca9wo9Hk5W.URmROIMQj9vBFcRvQgHpUF4.kCOVSuyCII.y', 'property_owner', 1, 0, '2025-11-13 09:44:26', '2025-11-14 03:26:51'),
-(24, NULL, 'sdfsfdf', 'sdfddddsssfd@wmsu.edu.ph', '$2y$12$XZy815mrT32eJHMMaiiAwO9G34GHAPbJopiaJ2GQzUsgt7suox65O', '$2y$12$VaSuKG68htUWLWM9KQweSOXJiVj5QKnjgrA7bggUVjBaPrmeQjC7a', 'contractor', 0, 0, '2025-11-13 09:48:08', '2025-11-13 09:48:08'),
-(25, NULL, 'qweqweeqweqwe', 'asjjhxeyn@gmail.com', '$2y$12$7hIhwmsJEQI9aw72O3mHCOlq5WRaZU.ACT4l73xXtA5Ph5WCYHUha', '$2y$12$6QbbV6rkmUtnprY4q91ukeLA9CPeCUDECsNQsYVtvWxCIwoPJCsv6', 'property_owner', 1, 1, '2025-11-15 05:36:42', '2025-11-21 06:41:36'),
-(26, 'profiles/UPo1lTDBB7eaVjd25vpz6IzmTk8EinlCwwQ3sKmq.jpg', 'niggaaa', 'shanehart1001@gmail.com', '$2y$12$D4HOGluctzfO6x33rBKDCeySWY12peVNOpBKsih4/9vD8IXX7vahq', '$2y$12$4FvvXevobxAA3DkG53HqD.zqameMzfqqL8G/eHjLc9SMS1VU5n78C', 'property_owner', 0, 0, '2025-11-16 03:20:07', '2025-11-16 03:20:07'),
-(27, NULL, 'wfsdf', 'ashxeyn@gmail.com', '$2y$12$tUuNd7bZlaCoi7as7o8AkOUtDCHYlYyUEr.keuH2PGDLf8tndzWMq', '$2y$12$ZtxNUGDlYljbJYMUbh8tpuVc2KfiN0c5sOA4Qo2F8AcO3FxUMZQgG', 'property_owner', 0, 0, '2025-11-18 16:17:48', '2025-11-18 16:17:48');
+INSERT INTO `users` (`user_id`, `profile_pic`, `cover_photo`, `username`, `email`, `password_hash`, `OTP_hash`, `user_type`, `is_verified`, `is_active`, `created_at`, `updated_at`) VALUES
+(1, NULL, NULL, 'ashxeyn', 'ashjjxeyn@gmail.com', '$2y$12$fWskY6zbdZiOvj3bbVPJyOahwb1VSPonLaIJVqciJQZb2Ove3AzMW', '$2y$12$rp.IOsHrjuormElLiwz5bOeYjEZ/665JAXMCmy1qqMp3cbAAJBB0a', 'both', 1, 1, '2025-11-01 04:49:04', '2025-11-15 13:34:57'),
+(2, NULL, NULL, 'sandbox', 'sandbox@gmail.com', '$2y$12$7wRYH0dS2P/O9AKHmUUtR.zHkCE2gnDxGfrIV8z0.QbIX9kjMas8q', '$2y$12$ptwr5DjWPCTWSGVTgvdVJ.HufXk2iAp.Xr1wwG0qH.HyU/2Clnn9m', 'both', 1, 1, '2025-11-01 05:30:31', '2025-11-02 08:32:25'),
+(10, NULL, NULL, 'ahdbahs', 'ahdbahs@gmal.com', '$2y$12$t6Uvs0VsuVL3ofAtuwKc.Ojsxh9BYW6FbMP1qSurCYWhdZ8shFcsu', '$2y$12$BGvjcwo2.veK2UqFIlSww.7CKetz8KCvRye4RqfeJbftLZ4b5vD3a', 'both', 1, 1, '2025-11-02 00:03:30', '2025-11-02 01:00:12'),
+(11, 'profile_pictures/1762072945_profile_552180896_2235352176965283_3789601433528090852_n.jpg', NULL, 'ahdbahsahdbahs', 'ahdbahsahdbahs@gmail.com', '$2y$12$v6B4cZ6Zwx4vAnHsEeUYFe0MShzeHah20OxVo/gpw8ekgeQ2X23nK', '$2y$12$TuG8rquHKVRj9w8dNGqgCuOAyTt2uC5LdFZsGOySWQlgO5BKqoPhq', 'both', 1, 1, '2025-11-02 00:05:40', '2025-11-02 00:42:25'),
+(12, NULL, NULL, 'ronron', 'ronron@gmail.com', '$2y$12$039Xd8JzNUj9XDWfQXosEePFngCgXAXcg8Ca9hIdtrI3tOnmKnPZS', '$2y$12$sxa0MzGRsL2DbUSScb.T0eYjBOTo/onaLyRty8O5EFE840SSpU6y2', 'property_owner', 1, 1, '2025-11-02 01:05:44', '2025-11-12 16:05:18'),
+(13, NULL, NULL, 'Ronie', 'rone@gmail.com', '$2y$12$sgNYpj05G27xtZxpZhbBu.Rl8gpGzhVCft2JA18SaTamZV2Mz1J.a', '$2y$12$DCQDCvU8tZEtWMI1tbOFkubyIsG2zlVuGlIks4h7xiMvu/eSU1E0S', 'property_owner', 0, 1, '2025-11-11 06:35:01', '2025-11-11 06:35:01'),
+(14, NULL, NULL, 'asdas', 'daasdad@gmail.com', '$2y$12$cK8JLtzQ64vqkYOwZhesoeNP/VdfF8Ldt4V3y7zqvxAMOl59uob5y', '$2y$12$Ma9sbAx.P.Yj0xqUbtMTfeTiPS1gLzgw6Rs.erSXCRgns.SbHaYz.', 'property_owner', 0, 1, '2025-11-11 06:41:52', '2025-11-11 06:41:52'),
+(15, NULL, NULL, 'werwrwerwr', 'krystalbwerongow24@gmail.com', '$2y$12$chxZo.smd2kMDDp5sudBI.h6T69dSbiDHgetI7bM93LSynnud8Mo2', '$2y$12$2iFEJDBxObsUuT11/KT9He4GPA.SUYwkqLO96MSw1ZUC4tLK9wb7e', 'contractor', 1, 1, '2025-11-11 06:51:26', '2025-11-21 15:57:59'),
+(16, NULL, NULL, 'asdasd', 'asdada@gmail.com', '$2y$12$7pQfbTa/4jB7iGe19dme.u39zldsnv2W6LcZr2Kr3ai8vws3acmB.', '$2y$12$lNHrR94yYKjiH5l6.r0Up.Y28SGKlnpHwnNbH2yS8XPM3AHRzQLlm', 'contractor', 0, 0, '2025-11-13 06:26:39', '2025-11-13 06:26:39'),
+(17, NULL, NULL, 'adas', 'dasdaasd@gmail.com', '$2y$12$2I8xH1G.T869ppuheRHMc.f28tM.5C/XmCD1Iwe0DruyIDmq.wHpi', '$2y$12$9cfp.5hwS.wmHmAn0Srh5OBn8J3Z/Z59cy7KIA0ynOtUbqgwr7WjK', 'property_owner', 0, 0, '2025-11-13 06:40:49', '2025-11-13 06:40:49'),
+(18, NULL, NULL, '3rwer', 'wewerw@gmail.com', '$2y$12$GNb65rCw1nsra3qw3QnofO4VUdyOFwoFJGqfYp3KWcNnHX40s4zo6', '$2y$12$q7.7Yy0rzTYC8r31Kbq/LetK0WFNIcLU2Avhu.vQGGWpvJhU12RrK', 'property_owner', 0, 0, '2025-11-13 06:51:12', '2025-11-13 06:51:12'),
+(19, NULL, NULL, 'sds', 'ashASxeyn@gmail.com', '$2y$12$Q89JIrXTfe0Opqr6USgx9uEJNFcaqEyUWB4pvsaZ6P576L31w3HNu', '$2y$12$eFPZ9R8ZhS85z/3a.Rpr1ervgAoDpTZ0EXKusCH4Pc979gK1ILkFG', 'contractor', 0, 0, '2025-11-13 06:55:25', '2025-11-13 06:55:25'),
+(20, NULL, NULL, 'asddas', 'ashxaaeyn@gmail.com', '$2y$12$XlmIokVrxsdwh8HyioXIsOoX9nH3jlwCL2UAK2No0ixAC3lP7Mboq', '$2y$12$pvDtHTsmnE3EDtOCWythGe8OCfKa.FeEjC8Y6RUpOlrAX26gQD/ha', 'property_owner', 0, 0, '2025-11-13 06:57:08', '2025-11-13 06:57:08'),
+(21, NULL, NULL, 'asdassssd', 'asdsssas@wmsu.edu.ph', '$2y$12$AI36ZSkW7vYvh/Z/zejlKe4SpVWHJ/hXnytQUNVbsSrqs4WWeQJEC', '$2y$12$5QIwCGQSUVvwlzzhaH3Zu.JhAwFW4hhgpXvhNVpxnRLOEx7JUd6B2', 'property_owner', 0, 0, '2025-11-13 07:10:56', '2025-11-13 07:10:56'),
+(22, NULL, NULL, 'asdasqqqd', 'sdfsssfd@wmsu.edu.ph', '$2y$12$zBAqQhNTbUxSMt164YXB.O9ZEz5F6XASGENyVTLCbyhaP.F1DxuGG', '$2y$12$wOZfnp4Q4hzASzFN3NorFetAGpFx1fSNU1KQGNRFE0.enIdqIroWO', 'both', 1, 1, '2025-11-13 07:20:42', '2025-11-13 09:40:37'),
+(23, NULL, NULL, 'werwerwerw', 'sdwerwerfsfd@wmsu.edu.ph', '$2y$12$WCrGtbB1dF0qkolAZS0RUeMH8ayvKo8hUTf9fqyCdkTUUHWSJUuMW', '$2y$12$r7Kx3fca9wo9Hk5W.URmROIMQj9vBFcRvQgHpUF4.kCOVSuyCII.y', 'property_owner', 1, 0, '2025-11-13 09:44:26', '2025-11-14 03:26:51'),
+(24, NULL, NULL, 'sdfsfdf', 'sdfddddsssfd@wmsu.edu.ph', '$2y$12$XZy815mrT32eJHMMaiiAwO9G34GHAPbJopiaJ2GQzUsgt7suox65O', '$2y$12$VaSuKG68htUWLWM9KQweSOXJiVj5QKnjgrA7bggUVjBaPrmeQjC7a', 'contractor', 0, 0, '2025-11-13 09:48:08', '2025-11-13 09:48:08'),
+(25, NULL, NULL, 'qweqweeqweqwe', 'asjjhxeyn@gmail.com', '$2y$12$7hIhwmsJEQI9aw72O3mHCOlq5WRaZU.ACT4l73xXtA5Ph5WCYHUha', '$2y$12$6QbbV6rkmUtnprY4q91ukeLA9CPeCUDECsNQsYVtvWxCIwoPJCsv6', 'property_owner', 1, 1, '2025-11-15 05:36:42', '2025-11-21 06:41:36'),
+(26, 'profiles/UPo1lTDBB7eaVjd25vpz6IzmTk8EinlCwwQ3sKmq.jpg', NULL, 'niggaaa', 'shanehart1001@gmail.com', '$2y$12$D4HOGluctzfO6x33rBKDCeySWY12peVNOpBKsih4/9vD8IXX7vahq', '$2y$12$4FvvXevobxAA3DkG53HqD.zqameMzfqqL8G/eHjLc9SMS1VU5n78C', 'property_owner', 0, 0, '2025-11-16 03:20:07', '2025-11-16 03:20:07'),
+(27, NULL, NULL, 'wfsdf', 'ashxeyn@gmail.com', '$2y$12$tUuNd7bZlaCoi7as7o8AkOUtDCHYlYyUEr.keuH2PGDLf8tndzWMq', '$2y$12$ZtxNUGDlYljbJYMUbh8tpuVc2KfiN0c5sOA4Qo2F8AcO3FxUMZQgG', 'property_owner', 0, 0, '2025-11-18 16:17:48', '2025-11-18 16:17:48'),
+(28, 'profiles/S8t77YFFVlfdgtwIovdQIpi4dzUIpQtMADJc5B28.jpg', NULL, 'carl_saludo', 'carlwaynesaludo@gmail.com', '$2y$12$rg/LHSGXKVba8SS2BOv/BebiGKnU/vOXA86lv7wTbcUpfZS5L.Nsm', '$2y$12$ShuCmghNrHUPfbqEJz8LHe4qztk3WikX0qqlpvGRQ5aJl/uQHY316', 'property_owner', 1, 1, '2025-11-27 06:34:25', '2025-11-27 14:39:04');
 
 -- --------------------------------------------------------
 
@@ -879,8 +1070,8 @@ ALTER TABLE `progress_files`
 --
 ALTER TABLE `projects`
   ADD PRIMARY KEY (`project_id`),
-  ADD KEY `owner_id` (`owner_id`),
-  ADD KEY `type_id` (`type_id`);
+  ADD KEY `fk_projects_type_id` (`type_id`),
+  ADD KEY `fk_projects_relationship_id` (`relationship_id`);
 
 --
 -- Indexes for table `project_files`
@@ -888,6 +1079,14 @@ ALTER TABLE `projects`
 ALTER TABLE `project_files`
   ADD PRIMARY KEY (`file_id`),
   ADD KEY `project_id` (`project_id`);
+
+--
+-- Indexes for table `project_relationships`
+--
+ALTER TABLE `project_relationships`
+  ADD PRIMARY KEY (`rel_id`),
+  ADD KEY `fk_projectrel_owner` (`owner_id`),
+  ADD KEY `fk_projectrel_contractor` (`selected_contractor_id`);
 
 --
 -- Indexes for table `property_owners`
@@ -941,13 +1140,13 @@ ALTER TABLE `admin_users`
 -- AUTO_INCREMENT for table `bids`
 --
 ALTER TABLE `bids`
-  MODIFY `bid_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `bid_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
 
 --
 -- AUTO_INCREMENT for table `bid_files`
 --
 ALTER TABLE `bid_files`
-  MODIFY `file_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `file_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `contractors`
@@ -971,43 +1170,43 @@ ALTER TABLE `contractor_users`
 -- AUTO_INCREMENT for table `disputes`
 --
 ALTER TABLE `disputes`
-  MODIFY `dispute_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=48;
+  MODIFY `dispute_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=55;
 
 --
 -- AUTO_INCREMENT for table `dispute_files`
 --
 ALTER TABLE `dispute_files`
-  MODIFY `file_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=69;
+  MODIFY `file_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=70;
 
 --
 -- AUTO_INCREMENT for table `messages`
 --
 ALTER TABLE `messages`
-  MODIFY `message_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `message_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `milestones`
 --
 ALTER TABLE `milestones`
-  MODIFY `milestone_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
+  MODIFY `milestone_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
 
 --
 -- AUTO_INCREMENT for table `milestone_items`
 --
 ALTER TABLE `milestone_items`
-  MODIFY `item_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
+  MODIFY `item_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=41;
 
 --
 -- AUTO_INCREMENT for table `milestone_payments`
 --
 ALTER TABLE `milestone_payments`
-  MODIFY `payment_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `payment_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
 
 --
 -- AUTO_INCREMENT for table `notifications`
 --
 ALTER TABLE `notifications`
-  MODIFY `notification_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `notification_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `occupations`
@@ -1019,43 +1218,49 @@ ALTER TABLE `occupations`
 -- AUTO_INCREMENT for table `payment_plans`
 --
 ALTER TABLE `payment_plans`
-  MODIFY `plan_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
+  MODIFY `plan_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
 
 --
 -- AUTO_INCREMENT for table `platform_payments`
 --
 ALTER TABLE `platform_payments`
-  MODIFY `platform_payment_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `platform_payment_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `progress`
 --
 ALTER TABLE `progress`
-  MODIFY `progress_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `progress_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
 
 --
 -- AUTO_INCREMENT for table `progress_files`
 --
 ALTER TABLE `progress_files`
-  MODIFY `file_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
+  MODIFY `file_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
 
 --
 -- AUTO_INCREMENT for table `projects`
 --
 ALTER TABLE `projects`
-  MODIFY `project_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `project_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=35;
 
 --
 -- AUTO_INCREMENT for table `project_files`
 --
 ALTER TABLE `project_files`
-  MODIFY `file_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `file_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
+
+--
+-- AUTO_INCREMENT for table `project_relationships`
+--
+ALTER TABLE `project_relationships`
+  MODIFY `rel_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=30;
 
 --
 -- AUTO_INCREMENT for table `property_owners`
 --
 ALTER TABLE `property_owners`
-  MODIFY `owner_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
+  MODIFY `owner_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
 
 --
 -- AUTO_INCREMENT for table `qr_codes`
@@ -1067,13 +1272,13 @@ ALTER TABLE `qr_codes`
 -- AUTO_INCREMENT for table `reviews`
 --
 ALTER TABLE `reviews`
-  MODIFY `review_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `review_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=28;
+  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=29;
 
 --
 -- AUTO_INCREMENT for table `valid_ids`
@@ -1196,14 +1401,21 @@ ALTER TABLE `progress_files`
 -- Constraints for table `projects`
 --
 ALTER TABLE `projects`
-  ADD CONSTRAINT `projects_ibfk_1` FOREIGN KEY (`owner_id`) REFERENCES `property_owners` (`owner_id`),
-  ADD CONSTRAINT `projects_ibfk_2` FOREIGN KEY (`type_id`) REFERENCES `contractor_types` (`type_id`);
+  ADD CONSTRAINT `fk_projects_relationship_id` FOREIGN KEY (`relationship_id`) REFERENCES `project_relationships` (`rel_id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_projects_type_id` FOREIGN KEY (`type_id`) REFERENCES `contractor_types` (`type_id`);
 
 --
 -- Constraints for table `project_files`
 --
 ALTER TABLE `project_files`
   ADD CONSTRAINT `project_files_ibfk_1` FOREIGN KEY (`project_id`) REFERENCES `projects` (`project_id`);
+
+--
+-- Constraints for table `project_relationships`
+--
+ALTER TABLE `project_relationships`
+  ADD CONSTRAINT `fk_projectrel_contractor` FOREIGN KEY (`selected_contractor_id`) REFERENCES `contractors` (`contractor_id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_projectrel_owner` FOREIGN KEY (`owner_id`) REFERENCES `property_owners` (`owner_id`);
 
 --
 -- Constraints for table `property_owners`

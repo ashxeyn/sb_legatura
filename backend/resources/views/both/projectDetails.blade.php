@@ -452,9 +452,9 @@
                                                     @if($progress->progress_status == 'submitted' || $progress->progress_status == 'under_review')
                                                         <button class="btn btn-success" onclick="ProgressApprove.open({{ $progress->progress_id }})">Approve</button>
                                                         @if(!empty($item['has_open_dispute']))
-                                                            <button class="btn btn-danger" disabled style="opacity:0.6;cursor:not-allowed;" title="A dispute is already open for this item or milestone.">Reject / File Dispute</button>
+                                                            <button class="btn btn-danger" disabled style="opacity:0.6;cursor:not-allowed;" title="A dispute is already open for this item or milestone.">File Dispute</button>
                                                         @else
-                                                            <button class="btn btn-danger" onclick="rejectProgress({{ $progress->progress_id }}, {{ $item['item_id'] }}, {{ $project->project_id }}, {{ $milestone['milestone_id'] }})">Reject / File Dispute</button>
+                                                            <button class="btn btn-danger" onclick="rejectProgress({{ $progress->progress_id }}, {{ $item['item_id'] }}, {{ $project->project_id }}, {{ $milestone['milestone_id'] }})">File Dispute</button>
                                                         @endif
 
                                                         @if(!empty($item['user_open_dispute_id']))
@@ -464,7 +464,18 @@
                                             </div>
                                         @endforeach
                                     @else
-                                        <div class="empty-state">No progress reports uploaded yet.</div>
+                                        <div class="empty-state">
+                                            <p>No progress reports uploaded yet.</p>
+                                            @if(!empty($item['has_open_dispute']))
+                                                <button class="btn btn-danger" disabled style="opacity:0.6;cursor:not-allowed;" title="A dispute is already open for this item or milestone.">File Progress Report Dispute</button>
+                                            @else
+                                                <button class="btn btn-danger" onclick="disputeProgress(0, {{ $item['item_id'] }}, {{ $project->project_id }}, {{ $milestone['milestone_id'] }})">File Progress Report Dispute</button>
+                                            @endif
+
+                                            @if(!empty($item['user_open_dispute_id']))
+                                                <button class="btn btn-secondary" onclick="cancelDispute({{ $item['user_open_dispute_id'] }})">Cancel Dispute</button>
+                                            @endif
+                                        </div>
                                         @endif
 
                                         <h5 style="margin-top:12px;">Payment Validations:</h5>
@@ -530,12 +541,14 @@
                                                         @endif
                                                         <p><small>Date: {{ $payment->transaction_date ? date('M d, Y', strtotime($payment->transaction_date)) : 'N/A' }}</small></p>
                                                         @if($payment->receipt_photo)
-                                                            <p><a href="{{ asset('storage/' . $payment->receipt_photo) }}" target="_blank">View Receipt</a></p>
+                                                            <p><a href="/storage/{{ $payment->receipt_photo }}">View Receipt</a></p>
                                                         @endif
-                                                        <div style="margin-top:8px;">
-                                                            <button class="btn btn-secondary" onclick='PaymentModal.open("edit", @json(array_merge((array)$payment, ["item_title" => $item["milestone_item_title"]])))'>Edit</button>
-                                                            <button class="btn btn-danger" onclick="PaymentDelete.open({{ $payment->payment_id }})">Delete</button>
-                                                        </div>
+                                                        @if($payment->payment_status !== 'approved')
+                                                            <div style="margin-top:8px;">
+                                                                <button class="btn btn-secondary" onclick='PaymentModal.open("edit", @json(array_merge((array)$payment, ["item_title" => $item["milestone_item_title"]])))'>Edit</button>
+                                                                <button class="btn btn-danger" onclick="PaymentDelete.open({{ $payment->payment_id }})">Delete</button>
+                                                            </div>
+                                                        @endif
                                                     </div>
                                                 @endif
                                             @endforeach

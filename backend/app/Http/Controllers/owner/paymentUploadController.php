@@ -158,6 +158,9 @@ class paymentUploadController extends Controller
 			if ($payment->owner_id != $user->user_id) {
 				return response()->json(['success' => false, 'message' => 'Access denied'], 403);
 			}
+			if ($payment->payment_status === 'approved') {
+				return response()->json(['success' => false, 'message' => 'Cannot edit approved payment validations'], 403);
+			}
 
 			$rules = [
 				'amount' => 'nullable|numeric',
@@ -214,11 +217,19 @@ class paymentUploadController extends Controller
 			if ($payment->owner_id != $user->user_id) {
 				return response()->json(['success' => false, 'message' => 'Access denied'], 403);
 			}
+			if ($payment->payment_status === 'approved') {
+				return response()->json(['success' => false, 'message' => 'Cannot delete approved payment validations'], 403);
+			}
 
-			// perform soft-delete (mark as deleted)
-			$this->paymentClass->deletePayment($paymentId);
+			// Validate deletion reason
+			$validated = $request->validate([
+				'reason' => 'required|string|max:500'
+			]);
 
-			return response()->json(['success' => true, 'message' => 'Payment marked as deleted']);
+			// perform soft-delete (mark as deleted) with reason
+			$this->paymentClass->deletePayment($paymentId, $validated['reason']);
+
+			return response()->json(['success' => true, 'message' => 'Payment deleted successfully']);
 		} catch (\Exception $e) {
 			return response()->json(['success' => false, 'message' => 'Error deleting payment: ' . $e->getMessage()], 500);
 		}
