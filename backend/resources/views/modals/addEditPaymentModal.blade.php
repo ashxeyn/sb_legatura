@@ -48,13 +48,13 @@
             <div class="form-group">
                 <label id="paymentFilesLabel">Receipt / Proof <span class="required">*</span></label>
                 <div id="payment-file-upload-container">
-                    <div id="existingReceiptSection" style="display:none; margin-bottom:8px;">
-                        <div id="existingReceiptLink" style="margin-bottom:6px;"></div>
-                        <button type="button" id="chooseFileAgainBtn" class="btn btn-secondary">Choose file again</button>
+                    <div id="existingReceiptSection" style="display:none; margin-bottom:12px;">
+                        <div id="existingReceiptLink" style="margin-bottom:8px; padding:10px; background:#f8f9fa; border-radius:6px;"></div>
+                        <button type="button" id="chooseFileAgainBtn" class="btn btn-secondary" style="display:none;">Choose file again</button>
                     </div>
 
                     <div class="file-input-group">
-                        <input type="file" name="receipt_photo" accept=".jpg,.jpeg,.png,.pdf" class="evidence-file-input">
+                        <input type="file" id="payment_receipt_input" name="receipt_photo" accept=".jpg,.jpeg,.png,.pdf" class="evidence-file-input" style="display:block;">
                     </div>
                 </div>
             </div>

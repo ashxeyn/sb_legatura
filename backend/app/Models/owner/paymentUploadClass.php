@@ -38,7 +38,7 @@ class paymentUploadClass
             ->update($data);
     }
 
-    public function deletePayment($paymentId, $deletionReason = null)
+    public function deletePayment($paymentId, $reason = null)
     {
         // Soft-delete: mark payment_status as 'deleted' and keep the record
         $update = [
@@ -46,8 +46,8 @@ class paymentUploadClass
             'updated_at' => date('Y-m-d H:i:s')
         ];
 
-        if (!is_null($deletionReason)) {
-            $update['deletion_reason'] = $deletionReason;
+        if (!is_null($reason)) {
+            $update['reason'] = $reason;
         }
 
         return DB::table('milestone_payments')->where('payment_id', $paymentId)->update($update);

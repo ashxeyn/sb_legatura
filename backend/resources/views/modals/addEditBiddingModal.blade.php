@@ -16,19 +16,19 @@
 
                 <div class="form-group">
                     <label for="proposed_cost">Proposed Cost (₱) <span class="required">*</span></label>
-                    <input type="number" id="proposed_cost" name="proposed_cost" step="0.01" min="0" required 
+                    <input type="number" id="proposed_cost" name="proposed_cost" step="0.01" min="0" required
                            value="{{ old('proposed_cost', $existingBid->proposed_cost ?? '') }}">
                 </div>
 
                 <div class="form-group">
                     <label for="estimated_timeline">Estimated Timeline (months) <span class="required">*</span></label>
-                    <input type="number" id="estimated_timeline" name="estimated_timeline" min="1" required 
+                    <input type="number" id="estimated_timeline" name="estimated_timeline" min="1" required
                            value="{{ old('estimated_timeline', $existingBid->estimated_timeline ?? '') }}">
                 </div>
 
                 <div class="form-group">
                     <label for="contractor_notes">Contractor Notes</label>
-                    <textarea id="contractor_notes" name="contractor_notes" rows="4" 
+                    <textarea id="contractor_notes" name="contractor_notes" rows="4"
                               placeholder="Add any additional notes or information about your bid...">{{ old('contractor_notes', $existingBid->contractor_notes ?? '') }}</textarea>
                 </div>
 
@@ -36,9 +36,9 @@
                     <label>Bid Files (Sample works, portfolio, etc.)</label>
                     <div class="file-upload-area" id="fileUploadArea">
                         <p>Drag and drop files here or click to select</p>
-                        <input type="file" id="bid_files" name="bid_files[]" multiple 
+                        <input type="file" id="bid_files" name="bid_files[]" multiple
                                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.zip,.rar" style="display: none;">
-                        <button type="button" onclick="document.getElementById('bid_files').click()" 
+                        <button type="button" onclick="document.getElementById('bid_files').click()"
                                 class="btn btn-primary" style="margin-top: 10px;">Select Files</button>
                     </div>
                     <ul class="file-list-upload" id="fileList"></ul>

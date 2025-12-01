@@ -80,6 +80,17 @@ class projectsClass
 
     public function getApprovedProjects()
     {
+        // Ensure any approved project whose bidding deadline has passed
+        // is marked as 'due' so it will not appear on contractor feeds.
+        DB::table('project_relationships')
+            ->where('project_post_status', 'approved')
+            ->whereNotNull('bidding_due')
+            ->where('bidding_due', '<', date('Y-m-d'))
+            ->update([
+                'project_post_status' => 'due',
+                'updated_at' => now()
+            ]);
+
         return DB::table('projects')
             ->join('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
             ->join('contractor_types', 'projects.type_id', '=', 'contractor_types.type_id')

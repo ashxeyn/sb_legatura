@@ -102,6 +102,24 @@ function disputePayment(paymentId, itemId, projectId, milestoneId) {
     }
 }
 
+function disputeProgress(progressId, itemId, projectId, milestoneId) {
+    console.log('Dispute progress clicked:', { progressId, itemId, projectId, milestoneId });
+
+    // Check if modal exists (if we're on a page that includes it)
+    if (typeof openDisputeModal === 'function') {
+        openDisputeModal('add', {
+            project_id: projectId,
+            milestone_id: milestoneId,
+            milestone_item_id: itemId
+        });
+    } else {
+        // Fallback to redirect if modal not available
+        const url = '/both/disputes?project_id=' + projectId + '&milestone_id=' + milestoneId + '&milestone_item_id=' + itemId;
+        console.log('Redirecting to:', url);
+        window.location.href = url;
+    }
+}
+
 // Initialize project details page
 function initializeProjectDetails() {
     console.log('Project Details page loaded');

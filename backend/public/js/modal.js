@@ -861,56 +861,57 @@ if (typeof window.PaymentModal === 'undefined') {
 
             // reset file input container; include existing receipt section and a single file input
             const fileContainer = document.getElementById('payment-file-upload-container');
-            fileContainer.innerHTML = `
-                <div id="existingReceiptSection" style="display:none; margin-bottom:8px;">
-                    <div id="existingReceiptLink" style="margin-bottom:6px;"></div>
-                    <button type="button" id="chooseFileAgainBtn" class="btn-secondary">Choose file again</button>
-                </div>
-                <div class="file-input-group">
-                    <input type="file" name="receipt_photo" accept=".jpg,.jpeg,.png,.pdf" class="evidence-file-input">
-                </div>
-            `;
-
-            // attach file input handler using DisputeModal helper
-            const newFileInput = fileContainer.querySelector('.evidence-file-input');
-            const chooseFileBtn = document.getElementById('chooseFileAgainBtn');
             const existingSection = document.getElementById('existingReceiptSection');
+            const existingLink = document.getElementById('existingReceiptLink');
+            const fileInput = document.getElementById('payment_receipt_input');
+            const chooseAgainBtn = document.getElementById('chooseFileAgainBtn');
+            const fileInputGroup = fileContainer.querySelector('.file-input-group');
 
-            if (chooseFileBtn) {
-                chooseFileBtn.addEventListener('click', function() {
-                    // trigger file input to allow user to pick a new file
-                    if (newFileInput) newFileInput.click();
-                });
+            // Reset existing receipt section
+            if (existingSection) existingSection.style.display = 'none';
+            if (existingLink) existingLink.innerHTML = '';
+            if (fileInput) {
+                fileInput.value = '';
+                fileInput.style.display = 'block';
             }
-
-            if (newFileInput) {
-                newFileInput.addEventListener('change', function() {
-                    // when user chooses a new file, show the chosen filename in the existingReceiptLink area
-                    const linkDiv = document.getElementById('existingReceiptLink');
-                    if (this.files && this.files.length > 0) {
-                        const f = this.files[0];
-                        if (linkDiv) {
-                            // show filename (not a storage link) to indicate a newly selected file
-                            linkDiv.innerHTML = `<span>Selected file: ${f.name}</span>`;
-                        }
-                        if (existingSection) existingSection.style.display = 'block';
-                        // show file name and remove button via existing helper
-                        window.DisputeModal.handleFileSelection(this, 'payment-file-upload-container', '');
-                    } else {
-                        if (linkDiv) linkDiv.innerHTML = '';
-                        if (existingSection) existingSection.style.display = 'none';
-                    }
-                });
-            }
+            if (chooseAgainBtn) chooseAgainBtn.style.display = 'none';
+            if (fileInputGroup) fileInputGroup.style.display = 'block';
 
             // If we're in edit mode and paymentData has an existing receipt, show it
             if (isEditInput && isEditInput.value === '1' && typeof paymentData !== 'undefined' && paymentData && paymentData.receipt_photo) {
-                const linkDiv = document.getElementById('existingReceiptLink');
-                if (linkDiv) {
-                    const url = '/storage/' + paymentData.receipt_photo;
-                    linkDiv.innerHTML = `<a href="${url}" target="_blank">View current receipt</a>`;
+                if (existingLink && existingSection && chooseAgainBtn && fileInput && fileInputGroup) {
+                    const filename = paymentData.receipt_photo.split('/').pop();
+                    const receiptUrl = window.location.origin + '/storage/' + paymentData.receipt_photo;
+                    existingLink.innerHTML = `
+                        <strong>Current Receipt:</strong><br>
+                        <a href="${receiptUrl}" target="_blank" style="color:#1877f2; text-decoration:none;">${filename}</a>
+                    `;
+                    existingSection.style.display = 'block';
+                    chooseAgainBtn.style.display = 'inline-block';
+
+                    // Hide the default file input when in edit mode with existing file
+                    fileInputGroup.style.display = 'none';
+
+                    // Setup choose file again button
+                    chooseAgainBtn.onclick = function() {
+                        fileInput.click();
+                    };
+
+                    // When user selects a new file, show the file input group and update display
+                    fileInput.onchange = function() {
+                        if (this.files && this.files.length > 0) {
+                            const newFilename = this.files[0].name;
+                            existingLink.innerHTML = `
+                                <strong>New Receipt Selected:</strong><br>
+                                <span style="color:#28a745;">${newFilename}</span>
+                            `;
+                        }
+                    };
                 }
-                if (existingSection) existingSection.style.display = 'block';
+            } else {
+                // In add mode, show the file input normally
+                if (fileInputGroup) fileInputGroup.style.display = 'block';
+                if (fileInput) fileInput.style.display = 'block';
             }
 
             // attach cancel
@@ -986,13 +987,103 @@ if (typeof window.PaymentModal === 'undefined') {
 if (typeof window.PaymentDelete === 'undefined') {
     window.PaymentDelete = {
         paymentToDelete: null,
-        open: function(paymentId) { this.paymentToDelete = paymentId; const modal = document.getElementById('deletePaymentModal'); if (modal) { modal.style.display = 'flex'; document.body.style.overflow = 'hidden'; } },
-        close: function() { const modal = document.getElementById('deletePaymentModal'); if (modal) { modal.style.display = 'none'; document.body.style.overflow = 'auto'; } this.paymentToDelete = null; },
+
+        open: function(paymentId) {
+            this.paymentToDelete = paymentId;
+            const modal = document.getElementById('deletePaymentModal');
+            const errorMsg = document.getElementById('deletePaymentErrorMessage');
+            const successMsg = document.getElementById('deletePaymentSuccessMessage');
+            const reasonTextarea = document.getElementById('delete_payment_reason');
+
+            // Reset messages and textarea
+            if (errorMsg) errorMsg.style.display = 'none';
+            if (successMsg) successMsg.style.display = 'none';
+            if (reasonTextarea) reasonTextarea.value = '';
+
+            if (modal) {
+                modal.style.display = 'flex';
+                document.body.style.overflow = 'hidden';
+            }
+        },
+
+        close: function() {
+            const modal = document.getElementById('deletePaymentModal');
+            if (modal) {
+                modal.style.display = 'none';
+                document.body.style.overflow = 'auto';
+            }
+            this.paymentToDelete = null;
+        },
+
         confirm: function() {
             if (!this.paymentToDelete) return;
-            const pid = this.paymentToDelete; this.close();
-            fetch(`/owner/payment/${pid}`, { method: 'DELETE', credentials: 'same-origin', headers: { 'X-CSRF-TOKEN': getCsrfToken(), 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
-            .then(r => r.json()).then(res => { if (res.success) { alert(res.message || 'Deleted'); setTimeout(() => location.reload(), 700); } else { alert(res.message || 'Error deleting'); } }).catch(err => { console.error(err); alert('Error deleting payment'); });
+
+            const reasonTextarea = document.getElementById('delete_payment_reason');
+            const reason = reasonTextarea ? reasonTextarea.value.trim() : '';
+            const errorMsg = document.getElementById('deletePaymentErrorMessage');
+            const successMsg = document.getElementById('deletePaymentSuccessMessage');
+
+            // Hide previous messages
+            if (errorMsg) errorMsg.style.display = 'none';
+            if (successMsg) successMsg.style.display = 'none';
+
+            // Validate reason
+            if (!reason) {
+                if (errorMsg) {
+                    errorMsg.textContent = 'Please provide a reason for deletion.';
+                    errorMsg.style.display = 'block';
+                }
+                return;
+            }
+
+            if (reason.length > 500) {
+                if (errorMsg) {
+                    errorMsg.textContent = 'Deletion reason cannot exceed 500 characters.';
+                    errorMsg.style.display = 'block';
+                }
+                return;
+            }
+
+            const pid = this.paymentToDelete;
+            const formData = new FormData();
+            formData.append('_method', 'DELETE');
+            formData.append('reason', reason);
+
+            fetch(`/owner/payment/${pid}`, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'X-CSRF-TOKEN': getCsrfToken(),
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: formData
+            })
+            .then(r => r.json())
+            .then(res => {
+                if (res.success) {
+                    if (successMsg) {
+                        successMsg.textContent = res.message || 'Payment deleted successfully';
+                        successMsg.style.display = 'block';
+                    }
+                    setTimeout(() => {
+                        this.close();
+                        location.reload();
+                    }, 1000);
+                } else {
+                    if (errorMsg) {
+                        errorMsg.textContent = res.message || 'Error deleting payment';
+                        errorMsg.style.display = 'block';
+                    }
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                if (errorMsg) {
+                    errorMsg.textContent = 'An error occurred while deleting the payment';
+                    errorMsg.style.display = 'block';
+                }
+            });
         }
     };
 }
