@@ -1,5 +1,5 @@
 // API configuration for connecting to Laravel backend
-const API_BASE_URL = 'http://192.168.254.113:8081';
+const API_BASE_URL = 'http://192.168.100.27:8000';
 
 export const api_config = {
     base_url: API_BASE_URL,

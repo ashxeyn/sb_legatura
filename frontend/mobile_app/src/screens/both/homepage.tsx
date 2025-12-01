@@ -54,16 +54,29 @@ interface HomepageProps {
   userType?: 'property_owner' | 'contractor';
   userData?: UserData;
   onLogout?: () => void;
+  onViewProfile?: () => void; 
+  onEditProfile?: () => void; 
+  initialTab?: 'home' | 'dashboard' | 'messages' | 'profile'; 
+
 }
 
-export default function HomepageScreen({ userType = 'property_owner', userData, onLogout }: HomepageProps) {
+
+export default function HomepageScreen({
+  userType = 'property_owner',
+  userData,
+  onLogout,
+  onViewProfile,
+  onEditProfile,
+  initialTab = 'home', 
+}: HomepageProps) {
   const insets = useSafeAreaInsets();
   const [popularContractors, setPopularContractors] = useState<ContractorType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('home');
+  const [activeTab, setActiveTab] = useState(initialTab); 
   const [error, setError] = useState<string | null>(null);
   const [profileImageError, setProfileImageError] = useState(false);
-  
+
+
   // Get status bar height (top inset)
   const statusBarHeight = insets.top || (Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 44);
 
@@ -98,7 +111,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
         // API response structure: { success: true, data: { success: true, data: [...contractors] } }
         // The actual contractors array is nested inside response.data.data
         const contractorsData = response.data?.data || response.data;
-        
+
         if (response.success && contractorsData && Array.isArray(contractorsData)) {
           // Transform backend contractor data to frontend format
           const transformedContractors = contractors_service.transform_contractors(contractorsData);
@@ -114,7 +127,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
         const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';
         setError(errorMessage);
         console.error('Unexpected error fetching contractors:', err);
-        
+
         Alert.alert(
           'Error',
           'Failed to load contractors. Please check your connection and try again.',
@@ -152,10 +165,10 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
    */
   const renderContractorCard = ({ item }: { item: ContractorType }) => {
     const hasCoverPhoto = item.cover_photo && !item.cover_photo.includes('placeholder');
-    const coverPhotoUri = hasCoverPhoto 
+    const coverPhotoUri = hasCoverPhoto
       ? `${api_config.base_url}/storage/${item.cover_photo}`
       : null;
-    
+
     // Generate initials for avatar fallback
     const initials = item.company_name
       ?.split(' ')
@@ -163,7 +176,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
       .map(word => word[0])
       .join('')
       .toUpperCase() || 'CO';
-    
+
     return (
       <TouchableOpacity style={styles.contractorCard} activeOpacity={0.95}>
         {/* Header: Company Avatar + Info + Action Button */}
@@ -172,7 +185,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
           <View style={styles.companyAvatar}>
             <Text style={styles.avatarText}>{initials}</Text>
           </View>
-          
+
           {/* Company Info */}
           <View style={styles.companyInfo}>
             <Text style={styles.cardCompanyName} numberOfLines={1}>
@@ -182,13 +195,13 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
               {item.contractor_type || 'General Contractor'}
             </Text>
           </View>
-          
+
           {/* Follow/Contact Button */}
           <TouchableOpacity style={styles.contactButton} activeOpacity={0.7}>
             <Text style={styles.contactButtonText}>Contact</Text>
           </TouchableOpacity>
         </View>
-        
+
         {/* Cover Photo */}
         <View style={styles.cardImageContainer}>
           <Image
@@ -197,7 +210,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
             resizeMode="cover"
           />
         </View>
-        
+
         {/* Engagement Bar */}
         <View style={styles.engagementBar}>
           {/* Rating */}
@@ -206,30 +219,30 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
             <Text style={styles.engagementValue}>{item.rating?.toFixed(1) || '5.0'}</Text>
             <Text style={styles.engagementLabel}>Rating</Text>
           </View>
-          
+
           {/* Divider */}
           <View style={styles.engagementDivider} />
-          
+
           {/* Reviews */}
           <View style={styles.engagementItem}>
             <MaterialIcons name="rate-review" size={20} color="#666666" />
             <Text style={styles.engagementValue}>{item.reviews_count || 128}</Text>
             <Text style={styles.engagementLabel}>Reviews</Text>
           </View>
-          
+
           {/* Divider */}
           <View style={styles.engagementDivider} />
-          
+
           {/* Projects */}
           <View style={styles.engagementItem}>
             <MaterialIcons name="work" size={20} color="#666666" />
             <Text style={styles.engagementValue}>{item.completed_projects || 0}</Text>
             <Text style={styles.engagementLabel}>Projects</Text>
           </View>
-          
+
           {/* Divider */}
           <View style={styles.engagementDivider} />
-          
+
           {/* Experience */}
           <View style={styles.engagementItem}>
             <MaterialIcons name="schedule" size={20} color="#666666" />
@@ -237,7 +250,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
             <Text style={styles.engagementLabel}>Exp</Text>
           </View>
         </View>
-        
+
         {/* Footer: Location & Services */}
         <View style={styles.cardFooter}>
           <View style={styles.footerRow}>
@@ -268,99 +281,99 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
   // Render the home content (contractors feed for property owners)
   const renderHomeContent = () => {
     // Build profile image URL
-    const profileImageUrl = userData?.profile_pic 
+    const profileImageUrl = userData?.profile_pic
       ? `${api_config.base_url}/storage/${userData.profile_pic}`
       : null;
-    
+
     console.log('Profile image URL:', profileImageUrl);
 
     return (
-    <ScrollView 
-      style={styles.scrollView}
-      showsVerticalScrollIndicator={false}
-      contentContainerStyle={styles.scrollContent}
-    >
-      {/* User Profile and Project Input */}
-      <View style={styles.profileSection}>
-        {profileImageUrl && !profileImageError ? (
-          <Image
-            source={{ uri: profileImageUrl }}
-            style={styles.profileImage}
-            onError={(e) => {
-              console.log('Image load error:', e.nativeEvent.error);
-              setProfileImageError(true);
-            }}
-          />
-        ) : (
-          <View style={styles.profileImagePlaceholder}>
-            <Ionicons name="person" size={28} color="#999999" />
-          </View>
-        )}
-        <TouchableOpacity style={styles.projectInput}>
-          <Text style={styles.projectInputText}>Post your project</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Popular Contractors Section */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Popular Contractors</Text>
-        
-        {/* Loading State */}
-        {isLoading && (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#EC7E00" />
-            <Text style={styles.loadingText}>Loading contractors...</Text>
-          </View>
-        )}
-
-        {/* Error State */}
-        {!isLoading && error && (
-          <View style={styles.errorContainer}>
-            <MaterialIcons name="error-outline" size={48} color="#E74C3C" />
-            <Text style={styles.errorText}>{error}</Text>
-            <TouchableOpacity 
-              style={styles.retryButton}
-              onPress={() => {
-                // Retry fetching contractors
-                setError(null);
-                setIsLoading(true);
-                contractors_service.get_active_contractors()
-                  .then(response => {
-                    const contractorsData = response.data?.data || response.data;
-                    if (response.success && contractorsData && Array.isArray(contractorsData)) {
-                      const transformedContractors = contractors_service.transform_contractors(contractorsData);
-                      setPopularContractors(transformedContractors);
-                    }
-                  })
-                  .finally(() => setIsLoading(false));
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* User Profile and Project Input */}
+        <View style={styles.profileSection}>
+          {profileImageUrl && !profileImageError ? (
+            <Image
+              source={{ uri: profileImageUrl }}
+              style={styles.profileImage}
+              onError={(e) => {
+                console.log('Image load error:', e.nativeEvent.error);
+                setProfileImageError(true);
               }}
-            >
-              <Text style={styles.retryButtonText}>Retry</Text>
-            </TouchableOpacity>
-          </View>
-        )}
+            />
+          ) : (
+            <View style={styles.profileImagePlaceholder}>
+              <Ionicons name="person" size={28} color="#999999" />
+            </View>
+          )}
+          <TouchableOpacity style={styles.projectInput}>
+            <Text style={styles.projectInputText}>Post your project</Text>
+          </TouchableOpacity>
+        </View>
 
-        {/* Empty State */}
-        {!isLoading && !error && popularContractors.length === 0 && (
-          <View style={styles.emptyContainer}>
-            <MaterialIcons name="business" size={48} color="#999999" />
-            <Text style={styles.emptyText}>No contractors available at the moment</Text>
-          </View>
-        )}
+        {/* Popular Contractors Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Popular Contractors</Text>
 
-        {/* Contractors List */}
-        {!isLoading && !error && popularContractors.length > 0 && (
-          <>
-            {popularContractors.map((contractor, index) => (
-              <View key={`contractor-${contractor.contractor_id || index}-${index}`}>
-                {renderContractorCard({ item: contractor })}
-              </View>
-            ))}
-          </>
-        )}
-      </View>
-    </ScrollView>
-  );
+          {/* Loading State */}
+          {isLoading && (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#EC7E00" />
+              <Text style={styles.loadingText}>Loading contractors...</Text>
+            </View>
+          )}
+
+          {/* Error State */}
+          {!isLoading && error && (
+            <View style={styles.errorContainer}>
+              <MaterialIcons name="error-outline" size={48} color="#E74C3C" />
+              <Text style={styles.errorText}>{error}</Text>
+              <TouchableOpacity
+                style={styles.retryButton}
+                onPress={() => {
+                  // Retry fetching contractors
+                  setError(null);
+                  setIsLoading(true);
+                  contractors_service.get_active_contractors()
+                    .then(response => {
+                      const contractorsData = response.data?.data || response.data;
+                      if (response.success && contractorsData && Array.isArray(contractorsData)) {
+                        const transformedContractors = contractors_service.transform_contractors(contractorsData);
+                        setPopularContractors(transformedContractors);
+                      }
+                    })
+                    .finally(() => setIsLoading(false));
+                }}
+              >
+                <Text style={styles.retryButtonText}>Retry</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Empty State */}
+          {!isLoading && !error && popularContractors.length === 0 && (
+            <View style={styles.emptyContainer}>
+              <MaterialIcons name="business" size={48} color="#999999" />
+              <Text style={styles.emptyText}>No contractors available at the moment</Text>
+            </View>
+          )}
+
+          {/* Contractors List */}
+          {!isLoading && !error && popularContractors.length > 0 && (
+            <>
+              {popularContractors.map((contractor, index) => (
+                <View key={`contractor-${contractor.contractor_id || index}-${index}`}>
+                  {renderContractorCard({ item: contractor })}
+                </View>
+              ))}
+            </>
+          )}
+        </View>
+      </ScrollView>
+    );
   };
 
   // Render profile based on user type
@@ -368,12 +381,12 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
     // For contractors, show the contractor profile
     if (userType === 'contractor') {
       return (
-        <ContractorProfile 
+        <ContractorProfile
           onLogout={handleLogout}
           userData={{
             username: userData?.username,
             email: userData?.email,
-            profile_pic: userData?.profile_pic 
+            profile_pic: userData?.profile_pic
               ? `${api_config.base_url}/storage/${userData.profile_pic}`
               : undefined,
             cover_photo: userData?.cover_photo
@@ -387,15 +400,17 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
         />
       );
     }
-    
+
     // For property owners (and default), show property owner profile
     return (
-      <PropertyOwnerProfile 
+      <PropertyOwnerProfile
         onLogout={handleLogout}
+        onViewProfile={() => onViewProfile && onViewProfile()} // ✅ new
+        onEditProfile={() => onEditProfile && onEditProfile()} // ✅ new (if needed)
         userData={{
           username: userData?.username,
           email: userData?.email,
-          profile_pic: userData?.profile_pic 
+          profile_pic: userData?.profile_pic
             ? `${api_config.base_url}/storage/${userData.profile_pic}`
             : undefined,
           cover_photo: userData?.cover_photo
@@ -407,17 +422,18 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
     );
   };
 
+
   // Render dashboard based on user type
   const renderDashboardContent = () => {
     // For contractors, show the contractor dashboard
     if (userType === 'contractor') {
       return (
-        <ContractorDashboard 
+        <ContractorDashboard
           userData={{
             user_id: userData?.user_id,
             username: userData?.username,
             email: userData?.email,
-            profile_pic: userData?.profile_pic 
+            profile_pic: userData?.profile_pic
               ? `http://192.168.254.131:3000/storage/${userData.profile_pic}`
               : undefined,
             company_name: userData?.company_name,
@@ -427,15 +443,15 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
         />
       );
     }
-    
+
     // For property owners (and default), show property owner dashboard
     return (
-      <PropertyOwnerDashboard 
+      <PropertyOwnerDashboard
         userData={{
           user_id: userData?.user_id,
           username: userData?.username,
           email: userData?.email,
-          profile_pic: userData?.profile_pic 
+          profile_pic: userData?.profile_pic
             ? `http://192.168.254.131:3000/storage/${userData.profile_pic}`
             : undefined,
         }}
@@ -445,12 +461,12 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
 
   // Render messages screen
   const renderMessagesContent = () => (
-    <MessagesScreen 
+    <MessagesScreen
       userData={{
         user_id: userData?.user_id,
         username: userData?.username,
         email: userData?.email,
-        profile_pic: userData?.profile_pic 
+        profile_pic: userData?.profile_pic
           ? `http://192.168.254.131:3000/storage/${userData.profile_pic}`
           : undefined,
         user_type: userData?.user_type,
@@ -502,56 +518,56 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
 
       {/* Bottom Navigation Bar */}
       <View style={styles.bottomNav}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.navItem}
           onPress={() => setActiveTab('home')}
         >
-          <MaterialIcons 
-            name="home" 
-            size={26} 
-            color={activeTab === 'home' ? '#EC7E00' : '#8E8E93'} 
+          <MaterialIcons
+            name="home"
+            size={26}
+            color={activeTab === 'home' ? '#EC7E00' : '#8E8E93'}
           />
           <Text style={[styles.navText, activeTab === 'home' && styles.navTextActive]}>
             Home
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.navItem}
           onPress={() => setActiveTab('dashboard')}
         >
-          <Ionicons 
-            name={activeTab === 'dashboard' ? 'grid' : 'grid-outline'} 
-            size={24} 
-            color={activeTab === 'dashboard' ? '#EC7E00' : '#8E8E93'} 
+          <Ionicons
+            name={activeTab === 'dashboard' ? 'grid' : 'grid-outline'}
+            size={24}
+            color={activeTab === 'dashboard' ? '#EC7E00' : '#8E8E93'}
           />
           <Text style={[styles.navText, activeTab === 'dashboard' && styles.navTextActive]}>
             Dashboard
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.navItem}
           onPress={() => setActiveTab('messages')}
         >
-          <Ionicons 
-            name={activeTab === 'messages' ? 'chatbubble' : 'chatbubble-outline'} 
-            size={24} 
-            color={activeTab === 'messages' ? '#EC7E00' : '#8E8E93'} 
+          <Ionicons
+            name={activeTab === 'messages' ? 'chatbubble' : 'chatbubble-outline'}
+            size={24}
+            color={activeTab === 'messages' ? '#EC7E00' : '#8E8E93'}
           />
           <Text style={[styles.navText, activeTab === 'messages' && styles.navTextActive]}>
             Messages
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.navItem}
           onPress={() => setActiveTab('profile')}
         >
-          <Ionicons 
-            name={activeTab === 'profile' ? 'person' : 'person-outline'} 
-            size={24} 
-            color={activeTab === 'profile' ? '#EC7E00' : '#8E8E93'} 
+          <Ionicons
+            name={activeTab === 'profile' ? 'person' : 'person-outline'}
+            size={24}
+            color={activeTab === 'profile' ? '#EC7E00' : '#8E8E93'}
           />
           <Text style={[styles.navText, activeTab === 'profile' && styles.navTextActive]}>
             Profile
