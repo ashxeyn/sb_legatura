@@ -88,7 +88,7 @@ export default function ProfileScreen({ onLogout, userData }: ProfileScreenProps
         },
         {
           id: 'change_password',
-          icon: 'lock-outline',
+          icon: 'lock-closed-outline',
           label: 'Change Password',
           subtitle: 'Update your password',
           showArrow: true,

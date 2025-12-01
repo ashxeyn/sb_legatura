@@ -20,10 +20,12 @@ interface LoginScreenProps {
   on_signup: () => void;
 }
 
+
 export default function LoginScreen({ on_back, on_login_success, on_signup }: LoginScreenProps) {
   const [username, set_username] = useState('');
   const [password, set_password] = useState('');
   const [is_loading, set_is_loading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handle_login = async () => {
     if (!username.trim() || !password.trim()) {
@@ -43,10 +45,14 @@ export default function LoginScreen({ on_back, on_login_success, on_signup }: Lo
       const response = await auth_service.login(login_credentials);
 
       console.log('Login response:', response);
+      console.log('Login response.data:', response.data);
+      console.log('Login response.data?.user:', response.data?.user);
 
       if (response.success) {
         // Extract user data from response
         const userData = response.data?.user || response.data;
+        console.log('Extracted userData:', userData);
+        console.log('userData.profile_pic:', userData?.profile_pic);
         Alert.alert('Success', 'Login successful!', [
           { text: 'OK', onPress: () => on_login_success(userData) }
         ]);
@@ -104,15 +110,28 @@ export default function LoginScreen({ on_back, on_login_success, on_signup }: Lo
 
           <View style={styles.input_container}>
             <Text style={styles.label}>Password *</Text>
-            <TextInput
-              style={styles.input}
-              value={password}
-              onChangeText={set_password}
-              placeholder="Enter your password"
-              placeholderTextColor="#999"
-              secureTextEntry
-              editable={!is_loading}
-            />
+            <View style={{ position: 'relative' }}>
+              <TextInput
+                style={styles.input}
+                value={password}
+                onChangeText={set_password}
+                placeholder="Enter your password"
+                placeholderTextColor="#999"
+                secureTextEntry={!showPassword}
+                editable={!is_loading}
+              />
+              <TouchableOpacity
+                style={styles.eye_icon}
+                onPress={() => setShowPassword((prev) => !prev)}
+                disabled={is_loading}
+              >
+                <Ionicons
+                  name={showPassword ? 'eye-off' : 'eye'}
+                  size={22}
+                  color="#999"
+                />
+              </TouchableOpacity>
+            </View>
           </View>
 
           <TouchableOpacity
@@ -206,6 +225,16 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     fontSize: 16,
     color: '#333333',
+    paddingRight: 44, // space for eye icon
+  },
+  eye_icon: {
+    position: 'absolute',
+    right: 12,
+    top: 0,
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 32,
   },
   login_button: {
     backgroundColor: '#EC7E00',

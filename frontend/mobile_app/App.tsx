@@ -330,8 +330,8 @@ export default function App() {
                             console.log('🔥 App.tsx - Final step response:', response);
                             
                             if (response.success) {
-                                Alert.alert('Success', 'Registration completed successfully!', [
-                                    { text: 'OK', onPress: () => set_app_state('main') }
+                                Alert.alert('Success', 'Registration completed successfully! Please login to continue.', [
+                                    { text: 'OK', onPress: () => set_app_state('login') }
                                 ]);
                             } else {
                                 const errorMsg = response.message || `Failed to complete registration. Status: ${response.status}`;
@@ -350,8 +350,8 @@ export default function App() {
                             const response = await auth_service.property_owner_final({});
                             
                             if (response.success) {
-                                Alert.alert('Success', 'Registration completed successfully!', [
-                                    { text: 'OK', onPress: () => set_app_state('main') }
+                                Alert.alert('Success', 'Registration completed successfully! Please login to continue.', [
+                                    { text: 'OK', onPress: () => set_app_state('login') }
                                 ]);
                             } else {
                                 Alert.alert('Error', response.message || 'Failed to complete registration. Please try again.');

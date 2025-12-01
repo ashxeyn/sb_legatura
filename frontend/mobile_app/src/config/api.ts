@@ -1,5 +1,5 @@
 // API configuration for connecting to Laravel backend
-const API_BASE_URL = 'http://192.168.254.131:3000';
+const API_BASE_URL = 'http://192.168.254.113:8081';
 
 export const api_config = {
     base_url: API_BASE_URL,
@@ -60,14 +60,14 @@ export const getCsrfToken = async (): Promise<string | null> => {
             method: 'GET',
             credentials: 'include', // This ensures cookies are sent and received
         });
-        
+
         console.log('CSRF response status:', response.status);
-        
+
         if (response.ok) {
             // Try to get from response headers
             const setCookieHeader = response.headers.get('set-cookie');
             console.log('Set-Cookie header:', setCookieHeader);
-            
+
             if (setCookieHeader) {
                 const tokenMatch = setCookieHeader.match(/XSRF-TOKEN=([^;]+)/);
                 if (tokenMatch) {
@@ -77,7 +77,7 @@ export const getCsrfToken = async (): Promise<string | null> => {
                 }
             }
         }
-        
+
         console.log('Failed to get CSRF token from response');
     } catch (error) {
         console.log('CSRF token fetch failed:', error);

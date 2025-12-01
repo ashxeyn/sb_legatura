@@ -120,7 +120,7 @@ class psgcApiService
             ['code' => '0746', 'name' => 'Negros Occidental'],
             ['code' => '0761', 'name' => 'Bohol'],
             ['code' => '0772', 'name' => 'Cebu'],
-            ['code' => '0746', 'name' => 'Negros Oriental'],
+            ['code' => '0747', 'name' => 'Negros Oriental'],
             ['code' => '0852', 'name' => 'Siquijor'],
             ['code' => '0826', 'name' => 'Eastern Samar'],
             ['code' => '0837', 'name' => 'Leyte'],

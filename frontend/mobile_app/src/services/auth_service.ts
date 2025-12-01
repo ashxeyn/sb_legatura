@@ -82,19 +82,67 @@ export class auth_service {
     });
   }
 
-  // Get provinces from PSGC API
+  // Get provinces directly from PSGC API (bypassing backend for consistent codes)
   static async get_provinces(): Promise<api_response<province[]>> {
-    return await api_request(api_config.endpoints.address.provinces);
+    try {
+      console.log('Fetching provinces from PSGC API...');
+      const response = await fetch('https://psgc.gitlab.io/api/provinces/');
+      if (response.ok) {
+        const data = await response.json();
+        // Sort by name and map to simpler format
+        const provinces = data
+          .map((p: any) => ({ code: p.code, name: p.name }))
+          .sort((a: province, b: province) => a.name.localeCompare(b.name));
+        console.log('Loaded', provinces.length, 'provinces from PSGC API');
+        return { success: true, data: provinces, status: 200 };
+      }
+      return { success: false, data: [], status: response.status, message: 'Failed to fetch provinces' };
+    } catch (error) {
+      console.error('PSGC provinces fetch error:', error);
+      return { success: false, data: [], status: 0, message: 'Network error' };
+    }
   }
 
-  // Get cities by province
+  // Get cities by province directly from PSGC API
   static async get_cities_by_province(province_code: string): Promise<api_response<city[]>> {
-    return await api_request(api_config.endpoints.address.cities(province_code));
+    try {
+      console.log('Fetching cities for province:', province_code);
+      const response = await fetch(`https://psgc.gitlab.io/api/provinces/${province_code}/cities-municipalities/`);
+      if (response.ok) {
+        const data = await response.json();
+        // Sort by name and map to simpler format
+        const cities = data
+          .map((c: any) => ({ code: c.code, name: c.name }))
+          .sort((a: city, b: city) => a.name.localeCompare(b.name));
+        console.log('Loaded', cities.length, 'cities from PSGC API');
+        return { success: true, data: cities, status: 200 };
+      }
+      return { success: false, data: [], status: response.status, message: 'Failed to fetch cities' };
+    } catch (error) {
+      console.error('PSGC cities fetch error:', error);
+      return { success: false, data: [], status: 0, message: 'Network error' };
+    }
   }
 
-  // Get barangays by city
+  // Get barangays by city directly from PSGC API
   static async get_barangays_by_city(city_code: string): Promise<api_response<barangay[]>> {
-    return await api_request(api_config.endpoints.address.barangays(city_code));
+    try {
+      console.log('Fetching barangays for city:', city_code);
+      const response = await fetch(`https://psgc.gitlab.io/api/cities-municipalities/${city_code}/barangays/`);
+      if (response.ok) {
+        const data = await response.json();
+        // Sort by name and map to simpler format
+        const barangays = data
+          .map((b: any) => ({ code: b.code, name: b.name }))
+          .sort((a: barangay, b: barangay) => a.name.localeCompare(b.name));
+        console.log('Loaded', barangays.length, 'barangays from PSGC API');
+        return { success: true, data: barangays, status: 200 };
+      }
+      return { success: false, data: [], status: response.status, message: 'Failed to fetch barangays' };
+    } catch (error) {
+      console.error('PSGC barangays fetch error:', error);
+      return { success: false, data: [], status: 0, message: 'Network error' };
+    }
   }
 
   // Property Owner Registration Steps (using proper backend flow)

@@ -571,7 +571,7 @@ export default function CompanyInfoScreen({ onBackPress, onNext, formData, initi
 
                         <FlatList
                             data={provinces}
-                            keyExtractor={(item) => item.code}
+                            keyExtractor={(item, index) => `${item.code}-${index}`}
                             renderItem={({ item }) => (
                                 <TouchableOpacity
                                     style={styles.modalItem}
@@ -612,7 +612,7 @@ export default function CompanyInfoScreen({ onBackPress, onNext, formData, initi
 
                         <FlatList
                             data={cities}
-                            keyExtractor={(item) => item.code}
+                            keyExtractor={(item, index) => `${item.code}-${index}`}
                             renderItem={({ item }) => (
                                 <TouchableOpacity
                                     style={styles.modalItem}
@@ -652,7 +652,7 @@ export default function CompanyInfoScreen({ onBackPress, onNext, formData, initi
 
                         <FlatList
                             data={barangays}
-                            keyExtractor={(item) => item.code}
+                            keyExtractor={(item, index) => `${item.code}-${index}`}
                             renderItem={({ item }) => (
                                 <TouchableOpacity
                                     style={styles.modalItem}
