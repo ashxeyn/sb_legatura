@@ -19,6 +19,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { contractors_service, Contractor as ContractorType } from '../../services/contractors_service';
+import { api_config } from '../../config/api';
 
 // Import profile screens
 import PropertyOwnerProfile from '../owner/profile';
@@ -53,15 +54,29 @@ interface HomepageProps {
   userType?: 'property_owner' | 'contractor';
   userData?: UserData;
   onLogout?: () => void;
+  onViewProfile?: () => void; 
+  onEditProfile?: () => void; 
+  initialTab?: 'home' | 'dashboard' | 'messages' | 'profile'; 
+
 }
 
-export default function HomepageScreen({ userType = 'property_owner', userData, onLogout }: HomepageProps) {
+
+export default function HomepageScreen({
+  userType = 'property_owner',
+  userData,
+  onLogout,
+  onViewProfile,
+  onEditProfile,
+  initialTab = 'home', 
+}: HomepageProps) {
   const insets = useSafeAreaInsets();
   const [popularContractors, setPopularContractors] = useState<ContractorType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('home');
+  const [activeTab, setActiveTab] = useState(initialTab); 
   const [error, setError] = useState<string | null>(null);
-  
+  const [profileImageError, setProfileImageError] = useState(false);
+
+
   // Get status bar height (top inset)
   const statusBarHeight = insets.top || (Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 44);
 
@@ -96,7 +111,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
         // API response structure: { success: true, data: { success: true, data: [...contractors] } }
         // The actual contractors array is nested inside response.data.data
         const contractorsData = response.data?.data || response.data;
-        
+
         if (response.success && contractorsData && Array.isArray(contractorsData)) {
           // Transform backend contractor data to frontend format
           const transformedContractors = contractors_service.transform_contractors(contractorsData);
@@ -112,7 +127,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
         const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';
         setError(errorMessage);
         console.error('Unexpected error fetching contractors:', err);
-        
+
         Alert.alert(
           'Error',
           'Failed to load contractors. Please check your connection and try again.',
@@ -146,192 +161,236 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
 
   /**
    * Render a single contractor card
-   * Displays contractor information matching the backend dashboard.blade.php structure
-   * This mirrors the exact display logic from lines 322-393 of dashboard.blade.php
+   * Displays contractor information matching the provided design
    */
   const renderContractorCard = ({ item }: { item: ContractorType }) => {
-    // Check if contractor has a cover photo
     const hasCoverPhoto = item.cover_photo && !item.cover_photo.includes('placeholder');
-    const coverPhotoUri = hasCoverPhoto 
-      ? `http://192.168.254.131:3000/storage/${item.cover_photo}`
+    const coverPhotoUri = hasCoverPhoto
+      ? `${api_config.base_url}/storage/${item.cover_photo}`
       : null;
-    
+
+    // Generate initials for avatar fallback
+    const initials = item.company_name
+      ?.split(' ')
+      .slice(0, 2)
+      .map(word => word[0])
+      .join('')
+      .toUpperCase() || 'CO';
+
     return (
-    <TouchableOpacity style={styles.contractorCard}>
-      <View style={styles.cardImageContainer}>
-        {/* Cover Photo - use default if no cover photo */}
-        <Image
-          source={coverPhotoUri ? { uri: coverPhotoUri } : defaultCoverPhoto}
-          style={styles.cardImage}
-          resizeMode="cover"
-        />
-      </View>
-      
-      <View style={styles.cardContent}>
-        <Text style={styles.cardCompanyName}>{item.company_name}</Text>
-        
-        {/* Company Description */}
-        {item.company_description && (
-          <Text style={styles.cardCompanyDescription} numberOfLines={2}>
-            {item.company_description}
-          </Text>
-        )}
-        
-        {/* Location */}
-        {item.location && (
-          <View style={styles.cardInfoRow}>
-            <MaterialIcons name="location-on" size={16} color="#666666" />
-            <Text style={styles.cardLocation}>{item.location}</Text>
+      <TouchableOpacity style={styles.contractorCard} activeOpacity={0.95}>
+        {/* Header: Company Avatar + Info + Action Button */}
+        <View style={styles.cardHeader}>
+          {/* Company Avatar */}
+          <View style={styles.companyAvatar}>
+            <Text style={styles.avatarText}>{initials}</Text>
           </View>
-        )}
-        
-        {/* Rating and Reviews */}
-        <View style={styles.cardRatingRow}>
-          <View style={styles.ratingContainer}>
-            <Text style={styles.ratingText}>{item.rating?.toFixed(1) || '5.0'}</Text>
-            <View style={styles.starsContainer}>
-              {[1, 2, 3, 4, 5].map((star) => (
-                <MaterialIcons key={star} name="star" size={14} color="#EC7E00" />
-              ))}
-            </View>
-          </View>
-          <Text style={styles.reviewsText}>({item.reviews_count || 0} Reviews)</Text>
-        </View>
-        
-        {/* Contractor Type and Experience - matching backend meta display */}
-        <View style={styles.cardTypeRow}>
-          <MaterialIcons name="business" size={16} color="#EC7E00" />
-          <Text style={styles.cardType}>{item.contractor_type || 'Contractor'}</Text>
-          {item.years_of_experience !== undefined && (
-            <Text style={styles.cardExperience}>
-              • {item.years_of_experience} {item.years_of_experience === 1 ? 'year' : 'years'} experience
+
+          {/* Company Info */}
+          <View style={styles.companyInfo}>
+            <Text style={styles.cardCompanyName} numberOfLines={1}>
+              {item.company_name}
             </Text>
+            <Text style={styles.contractorTypeBadge} numberOfLines={1}>
+              {item.contractor_type || 'General Contractor'}
+            </Text>
+          </View>
+
+          {/* Follow/Contact Button */}
+          <TouchableOpacity style={styles.contactButton} activeOpacity={0.7}>
+            <Text style={styles.contactButtonText}>Contact</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Cover Photo */}
+        <View style={styles.cardImageContainer}>
+          <Image
+            source={coverPhotoUri ? { uri: coverPhotoUri } : defaultCoverPhoto}
+            style={styles.cardImage}
+            resizeMode="cover"
+          />
+        </View>
+
+        {/* Engagement Bar */}
+        <View style={styles.engagementBar}>
+          {/* Rating */}
+          <View style={styles.engagementItem}>
+            <MaterialIcons name="star" size={20} color="#EC7E00" />
+            <Text style={styles.engagementValue}>{item.rating?.toFixed(1) || '5.0'}</Text>
+            <Text style={styles.engagementLabel}>Rating</Text>
+          </View>
+
+          {/* Divider */}
+          <View style={styles.engagementDivider} />
+
+          {/* Reviews */}
+          <View style={styles.engagementItem}>
+            <MaterialIcons name="rate-review" size={20} color="#666666" />
+            <Text style={styles.engagementValue}>{item.reviews_count || 128}</Text>
+            <Text style={styles.engagementLabel}>Reviews</Text>
+          </View>
+
+          {/* Divider */}
+          <View style={styles.engagementDivider} />
+
+          {/* Projects */}
+          <View style={styles.engagementItem}>
+            <MaterialIcons name="work" size={20} color="#666666" />
+            <Text style={styles.engagementValue}>{item.completed_projects || 0}</Text>
+            <Text style={styles.engagementLabel}>Projects</Text>
+          </View>
+
+          {/* Divider */}
+          <View style={styles.engagementDivider} />
+
+          {/* Experience */}
+          <View style={styles.engagementItem}>
+            <MaterialIcons name="schedule" size={20} color="#666666" />
+            <Text style={styles.engagementValue}>{item.years_of_experience || 0}y</Text>
+            <Text style={styles.engagementLabel}>Exp</Text>
+          </View>
+        </View>
+
+        {/* Footer: Location & Services */}
+        <View style={styles.cardFooter}>
+          <View style={styles.footerRow}>
+            <Ionicons name="location-sharp" size={16} color="#EC7E00" />
+            <Text style={styles.footerText} numberOfLines={1}>
+              {item.location || 'Location not specified'}
+            </Text>
+          </View>
+          {item.services_offered && (
+            <View style={styles.footerRow}>
+              <Ionicons name="construct" size={16} color="#666666" />
+              <Text style={styles.footerTextSecondary} numberOfLines={1}>
+                {item.services_offered}
+              </Text>
+            </View>
           )}
         </View>
-        
-        {/* Services Offered - matching backend display */}
-        {item.services_offered && (
-          <View style={styles.cardInfoRow}>
-            <MaterialIcons name="work" size={16} color="#666666" />
-            <Text style={styles.cardServices}>
-              <Text style={styles.cardServicesLabel}>Services: </Text>
-              {item.services_offered}
-            </Text>
-          </View>
-        )}
-        
-        {/* Completed Projects */}
-        {item.completed_projects !== undefined && item.completed_projects > 0 && (
-          <View style={styles.cardInfoRow}>
-            <MaterialIcons name="check-circle" size={16} color="#42B883" />
-            <Text style={styles.cardProjects}>
-              {item.completed_projects} {item.completed_projects === 1 ? 'project' : 'projects'} completed
-            </Text>
-          </View>
-        )}
-      </View>
-    </TouchableOpacity>
+      </TouchableOpacity>
     );
   };
 
+  // Debug: Log userData to console
+  useEffect(() => {
+    console.log('Homepage userData:', userData);
+    console.log('Profile pic:', userData?.profile_pic);
+  }, [userData]);
+
   // Render the home content (contractors feed for property owners)
-  const renderHomeContent = () => (
-    <ScrollView 
-      style={styles.scrollView}
-      showsVerticalScrollIndicator={false}
-      contentContainerStyle={styles.scrollContent}
-    >
-      {/* User Profile and Project Input */}
-      <View style={styles.profileSection}>
-        <Image
-          source={{ 
-            uri: userData?.profile_pic 
-              ? `http://192.168.254.131:3000/storage/${userData.profile_pic}`
-              : 'https://via.placeholder.com/60' 
-          }}
-          style={styles.profileImage}
-        />
-        <TouchableOpacity style={styles.projectInput}>
-          <Text style={styles.projectInputText}>Post your project</Text>
-        </TouchableOpacity>
-      </View>
+  const renderHomeContent = () => {
+    // Build profile image URL
+    const profileImageUrl = userData?.profile_pic
+      ? `${api_config.base_url}/storage/${userData.profile_pic}`
+      : null;
 
-      {/* Popular Contractors Section */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Popular Contractors</Text>
-        
-        {/* Loading State */}
-        {isLoading && (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#EC7E00" />
-            <Text style={styles.loadingText}>Loading contractors...</Text>
-          </View>
-        )}
+    console.log('Profile image URL:', profileImageUrl);
 
-        {/* Error State */}
-        {!isLoading && error && (
-          <View style={styles.errorContainer}>
-            <MaterialIcons name="error-outline" size={48} color="#E74C3C" />
-            <Text style={styles.errorText}>{error}</Text>
-            <TouchableOpacity 
-              style={styles.retryButton}
-              onPress={() => {
-                // Retry fetching contractors
-                setError(null);
-                setIsLoading(true);
-                contractors_service.get_active_contractors()
-                  .then(response => {
-                    const contractorsData = response.data?.data || response.data;
-                    if (response.success && contractorsData && Array.isArray(contractorsData)) {
-                      const transformedContractors = contractors_service.transform_contractors(contractorsData);
-                      setPopularContractors(transformedContractors);
-                    }
-                  })
-                  .finally(() => setIsLoading(false));
+    return (
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* User Profile and Project Input */}
+        <View style={styles.profileSection}>
+          {profileImageUrl && !profileImageError ? (
+            <Image
+              source={{ uri: profileImageUrl }}
+              style={styles.profileImage}
+              onError={(e) => {
+                console.log('Image load error:', e.nativeEvent.error);
+                setProfileImageError(true);
               }}
-            >
-              <Text style={styles.retryButtonText}>Retry</Text>
-            </TouchableOpacity>
-          </View>
-        )}
+            />
+          ) : (
+            <View style={styles.profileImagePlaceholder}>
+              <Ionicons name="person" size={28} color="#999999" />
+            </View>
+          )}
+          <TouchableOpacity style={styles.projectInput}>
+            <Text style={styles.projectInputText}>Post your project</Text>
+          </TouchableOpacity>
+        </View>
 
-        {/* Empty State */}
-        {!isLoading && !error && popularContractors.length === 0 && (
-          <View style={styles.emptyContainer}>
-            <MaterialIcons name="business" size={48} color="#999999" />
-            <Text style={styles.emptyText}>No contractors available at the moment</Text>
-          </View>
-        )}
+        {/* Popular Contractors Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Popular Contractors</Text>
 
-        {/* Contractors List */}
-        {!isLoading && !error && popularContractors.length > 0 && (
-          <>
-            {popularContractors.map((contractor) => (
-              <View key={contractor.contractor_id}>
-                {renderContractorCard({ item: contractor })}
-              </View>
-            ))}
-          </>
-        )}
-      </View>
-    </ScrollView>
-  );
+          {/* Loading State */}
+          {isLoading && (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#EC7E00" />
+              <Text style={styles.loadingText}>Loading contractors...</Text>
+            </View>
+          )}
+
+          {/* Error State */}
+          {!isLoading && error && (
+            <View style={styles.errorContainer}>
+              <MaterialIcons name="error-outline" size={48} color="#E74C3C" />
+              <Text style={styles.errorText}>{error}</Text>
+              <TouchableOpacity
+                style={styles.retryButton}
+                onPress={() => {
+                  // Retry fetching contractors
+                  setError(null);
+                  setIsLoading(true);
+                  contractors_service.get_active_contractors()
+                    .then(response => {
+                      const contractorsData = response.data?.data || response.data;
+                      if (response.success && contractorsData && Array.isArray(contractorsData)) {
+                        const transformedContractors = contractors_service.transform_contractors(contractorsData);
+                        setPopularContractors(transformedContractors);
+                      }
+                    })
+                    .finally(() => setIsLoading(false));
+                }}
+              >
+                <Text style={styles.retryButtonText}>Retry</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Empty State */}
+          {!isLoading && !error && popularContractors.length === 0 && (
+            <View style={styles.emptyContainer}>
+              <MaterialIcons name="business" size={48} color="#999999" />
+              <Text style={styles.emptyText}>No contractors available at the moment</Text>
+            </View>
+          )}
+
+          {/* Contractors List */}
+          {!isLoading && !error && popularContractors.length > 0 && (
+            <>
+              {popularContractors.map((contractor, index) => (
+                <View key={`contractor-${contractor.contractor_id || index}-${index}`}>
+                  {renderContractorCard({ item: contractor })}
+                </View>
+              ))}
+            </>
+          )}
+        </View>
+      </ScrollView>
+    );
+  };
 
   // Render profile based on user type
   const renderProfileContent = () => {
     // For contractors, show the contractor profile
     if (userType === 'contractor') {
       return (
-        <ContractorProfile 
+        <ContractorProfile
           onLogout={handleLogout}
           userData={{
             username: userData?.username,
             email: userData?.email,
-            profile_pic: userData?.profile_pic 
-              ? `http://192.168.254.131:3000/storage/${userData.profile_pic}`
+            profile_pic: userData?.profile_pic
+              ? `${api_config.base_url}/storage/${userData.profile_pic}`
               : undefined,
             cover_photo: userData?.cover_photo
-              ? `http://192.168.254.131:3000/storage/${userData.cover_photo}`
+              ? `${api_config.base_url}/storage/${userData.cover_photo}`
               : undefined,
             user_type: userData?.user_type,
             company_name: userData?.company_name,
@@ -341,19 +400,21 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
         />
       );
     }
-    
+
     // For property owners (and default), show property owner profile
     return (
-      <PropertyOwnerProfile 
+      <PropertyOwnerProfile
         onLogout={handleLogout}
+        onViewProfile={() => onViewProfile && onViewProfile()} // ✅ new
+        onEditProfile={() => onEditProfile && onEditProfile()} // ✅ new (if needed)
         userData={{
           username: userData?.username,
           email: userData?.email,
-          profile_pic: userData?.profile_pic 
-            ? `http://192.168.254.131:3000/storage/${userData.profile_pic}`
+          profile_pic: userData?.profile_pic
+            ? `${api_config.base_url}/storage/${userData.profile_pic}`
             : undefined,
           cover_photo: userData?.cover_photo
-            ? `http://192.168.254.131:3000/storage/${userData.cover_photo}`
+            ? `${api_config.base_url}/storage/${userData.cover_photo}`
             : undefined,
           user_type: userData?.user_type,
         }}
@@ -361,17 +422,18 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
     );
   };
 
+
   // Render dashboard based on user type
   const renderDashboardContent = () => {
     // For contractors, show the contractor dashboard
     if (userType === 'contractor') {
       return (
-        <ContractorDashboard 
+        <ContractorDashboard
           userData={{
             user_id: userData?.user_id,
             username: userData?.username,
             email: userData?.email,
-            profile_pic: userData?.profile_pic 
+            profile_pic: userData?.profile_pic
               ? `http://192.168.254.131:3000/storage/${userData.profile_pic}`
               : undefined,
             company_name: userData?.company_name,
@@ -381,15 +443,15 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
         />
       );
     }
-    
+
     // For property owners (and default), show property owner dashboard
     return (
-      <PropertyOwnerDashboard 
+      <PropertyOwnerDashboard
         userData={{
           user_id: userData?.user_id,
           username: userData?.username,
           email: userData?.email,
-          profile_pic: userData?.profile_pic 
+          profile_pic: userData?.profile_pic
             ? `http://192.168.254.131:3000/storage/${userData.profile_pic}`
             : undefined,
         }}
@@ -399,12 +461,12 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
 
   // Render messages screen
   const renderMessagesContent = () => (
-    <MessagesScreen 
+    <MessagesScreen
       userData={{
         user_id: userData?.user_id,
         username: userData?.username,
         email: userData?.email,
-        profile_pic: userData?.profile_pic 
+        profile_pic: userData?.profile_pic
           ? `http://192.168.254.131:3000/storage/${userData.profile_pic}`
           : undefined,
         user_type: userData?.user_type,
@@ -456,56 +518,56 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
 
       {/* Bottom Navigation Bar */}
       <View style={styles.bottomNav}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.navItem}
           onPress={() => setActiveTab('home')}
         >
-          <MaterialIcons 
-            name="home" 
-            size={26} 
-            color={activeTab === 'home' ? '#EC7E00' : '#8E8E93'} 
+          <MaterialIcons
+            name="home"
+            size={26}
+            color={activeTab === 'home' ? '#EC7E00' : '#8E8E93'}
           />
           <Text style={[styles.navText, activeTab === 'home' && styles.navTextActive]}>
             Home
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.navItem}
           onPress={() => setActiveTab('dashboard')}
         >
-          <Ionicons 
-            name={activeTab === 'dashboard' ? 'grid' : 'grid-outline'} 
-            size={24} 
-            color={activeTab === 'dashboard' ? '#EC7E00' : '#8E8E93'} 
+          <Ionicons
+            name={activeTab === 'dashboard' ? 'grid' : 'grid-outline'}
+            size={24}
+            color={activeTab === 'dashboard' ? '#EC7E00' : '#8E8E93'}
           />
           <Text style={[styles.navText, activeTab === 'dashboard' && styles.navTextActive]}>
             Dashboard
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.navItem}
           onPress={() => setActiveTab('messages')}
         >
-          <Ionicons 
-            name={activeTab === 'messages' ? 'chatbubble' : 'chatbubble-outline'} 
-            size={24} 
-            color={activeTab === 'messages' ? '#EC7E00' : '#8E8E93'} 
+          <Ionicons
+            name={activeTab === 'messages' ? 'chatbubble' : 'chatbubble-outline'}
+            size={24}
+            color={activeTab === 'messages' ? '#EC7E00' : '#8E8E93'}
           />
           <Text style={[styles.navText, activeTab === 'messages' && styles.navTextActive]}>
             Messages
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.navItem}
           onPress={() => setActiveTab('profile')}
         >
-          <Ionicons 
-            name={activeTab === 'profile' ? 'person' : 'person-outline'} 
-            size={24} 
-            color={activeTab === 'profile' ? '#EC7E00' : '#8E8E93'} 
+          <Ionicons
+            name={activeTab === 'profile' ? 'person' : 'person-outline'}
+            size={24}
+            color={activeTab === 'profile' ? '#EC7E00' : '#8E8E93'}
           />
           <Text style={[styles.navText, activeTab === 'profile' && styles.navTextActive]}>
             Profile
@@ -585,6 +647,7 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+    backgroundColor: '#F0F0F0',
   },
   scrollContent: {
     paddingBottom: 20,
@@ -592,15 +655,25 @@ const styles = StyleSheet.create({
   profileSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEEEEE',
   },
   profileImage: {
     width: 50,
     height: 50,
     borderRadius: 25,
     backgroundColor: '#E5E5E5',
+  },
+  profileImagePlaceholder: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#E5E5E5',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   projectInput: {
     flex: 1,
@@ -616,99 +689,190 @@ const styles = StyleSheet.create({
     color: '#999999',
   },
   section: {
-    marginTop: 8,
-    paddingHorizontal: 20,
+    marginTop: 0,
+    paddingHorizontal: 0,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#666666',
-    paddingHorizontal: 20,
-    marginBottom: 16,
-  },
-  contractorCard: {
-    width: '100%',
+    fontWeight: '700',
+    color: '#1A1A1A',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    overflow: 'hidden',
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  // Modern Full-Width Contractor Card (LinkedIn/Indeed inspired)
+  contractorCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 0,
+    marginVertical: 0,
+    marginHorizontal: 0,
+    borderBottomWidth: 8,
+    borderBottomColor: '#F0F0F0',
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  companyAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#EC7E00',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  companyInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  cardCompanyName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    marginBottom: 2,
+  },
+  contractorTypeBadge: {
+    fontSize: 13,
+    color: '#666666',
+  },
+  contactButton: {
+    backgroundColor: '#EC7E00',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  contactButtonText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '600',
   },
   cardImageContainer: {
-    position: 'relative',
-    height: 180,
-    backgroundColor: '#E5E5E5',
+    width: '100%',
+    height: 220,
+    backgroundColor: '#F5F5F5',
   },
   cardImage: {
     width: '100%',
     height: '100%',
   },
+  engagementBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    backgroundColor: '#FAFAFA',
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: '#EEEEEE',
+  },
+  engagementItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  engagementValue: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    marginTop: 4,
+  },
+  engagementLabel: {
+    fontSize: 11,
+    color: '#888888',
+    marginTop: 2,
+  },
+  engagementDivider: {
+    width: 1,
+    height: 32,
+    backgroundColor: '#E0E0E0',
+  },
+  cardFooter: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  footerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  footerText: {
+    fontSize: 14,
+    color: '#1A1A1A',
+    marginLeft: 8,
+    flex: 1,
+  },
+  footerTextSecondary: {
+    fontSize: 13,
+    color: '#666666',
+    marginLeft: 8,
+    flex: 1,
+  },
+  // Legacy styles (kept for compatibility)
   cardContent: {
     padding: 16,
   },
-  cardCompanyName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333333',
-    marginBottom: 4,
-    textAlign: 'center',
-  },
-  cardCompanyDescription: {
-    fontSize: 14,
-    color: '#666666',
-    marginBottom: 12,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  cardInfoRow: {
+  cardLocationRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 8,
-    gap: 6,
+    gap: 4,
   },
   cardLocation: {
-    fontSize: 14,
+    fontSize: 15,
     color: '#666666',
+    flex: 1,
   },
   cardRatingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
-    gap: 8,
-  },
-  ratingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
+    marginBottom: 12,
+    gap: 6,
   },
   ratingText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333333',
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#1A1A1A',
   },
   starsContainer: {
     flexDirection: 'row',
     gap: 2,
   },
   reviewsText: {
-    fontSize: 12,
-    color: '#666666',
+    fontSize: 14,
+    color: '#EC7E00',
+    marginLeft: 4,
   },
-  cardDistance: {
+  cardDivider: {
+    height: 1,
+    backgroundColor: '#E5E5E5',
+    marginVertical: 12,
+  },
+  cardBottomRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  cardServicesContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  cardServicesText: {
     fontSize: 14,
     color: '#666666',
   },
-  cardTypeRow: {
+  cardTypeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 4,
     gap: 6,
   },
   cardType: {
@@ -716,25 +880,11 @@ const styles = StyleSheet.create({
     color: '#EC7E00',
     fontWeight: '500',
   },
-  cardExperience: {
-    fontSize: 12,
-    color: '#666666',
-    marginLeft: 4,
-  },
-  cardProjects: {
-    fontSize: 14,
-    color: '#42B883',
-    fontWeight: '500',
-  },
   cardServices: {
     fontSize: 14,
-    color: '#333333',
-    flex: 1,
-    flexWrap: 'wrap',
-  },
-  cardServicesLabel: {
-    fontWeight: '600',
-    color: '#333333',
+    color: '#666',
+    marginBottom: 2,
+    flexShrink: 1,
   },
   bottomNav: {
     flexDirection: 'row',

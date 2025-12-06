@@ -11,11 +11,15 @@ import UserTypeSelectionScreen from './src/screens/userTypeSelection';
 import PersonalInfoScreen from './src/screens/owner/personalInfo';
 import AccountSetupScreen from './src/screens/owner/accountSetup';
 import POVerificationScreen from './src/screens/owner/poRoleVerification';
+
 // Contractor Flow
 import ContractorCompanyInfoScreen from './src/screens/contractor/companyInfo';
 import ContractorAccountSetupScreen from './src/screens/contractor/accountSetup';
 import ContractorBusinessDocumentsScreen from './src/screens/contractor/businessDocuments';
+
 // Shared Screens
+import EditProfileScreen from './src/screens/both/editProfile';
+import ViewProfileScreen from './src/screens/both/viewProfile';
 import EmailVerificationScreen from './src/screens/both/emailVerification';
 import ProfilePictureScreen from './src/screens/both/profilePic';
 import HomepageScreen from './src/screens/both/homepage';
@@ -27,17 +31,20 @@ type AppState = 'loading' | 'onboarding' | 'auth_choice' | 'login' | 'signup' | 
     'contractor_company_info' | 'contractor_account_setup' | 'contractor_email_verification' | 'contractor_business_documents' | 'contractor_profile_picture' |
     // Property Owner Flow
     'po_personal_info' | 'po_account_setup' | 'po_email_verification' | 'po_role_verification' | 'po_profile_picture' |
-    'main';
+    'main' | 'edit_profile' | 'view_profile';
 
 export default function App() {
     const [app_state, set_app_state] = useState<AppState>('loading');
-    
+
     // Hide status bar globally whenever app state changes
     useEffect(() => {
         StatusBar.setHidden(true, 'fade');
     }, [app_state]);
     const [onboarding_step, set_onboarding_step] = useState(0);
     const [selected_user_type, set_selected_user_type] = useState<'contractor' | 'property_owner' | null>(null);
+
+
+    const [initial_home_tab, set_initial_home_tab] = useState<'home' | 'dashboard' | 'messages' | 'profile'>('home');
 
     // Form data from backend
     const [form_data, set_form_data] = useState<any>(null);
@@ -103,7 +110,7 @@ export default function App() {
         try {
             // Send personal info to backend (Step 1)
             const response = await auth_service.property_owner_step1(personalInfo);
-            
+
             if (response.success) {
                 set_po_personal_info(personalInfo);
                 set_app_state('po_account_setup');
@@ -119,7 +126,7 @@ export default function App() {
         try {
             // Send account setup to backend (Step 2) - this triggers OTP email
             const response = await auth_service.property_owner_step2(accountSetup);
-            
+
             if (response.success) {
                 set_po_account_setup(accountSetup);
                 set_app_state('po_email_verification');
@@ -169,7 +176,7 @@ export default function App() {
         set_contractor_company_info(null);
         set_contractor_account_info(null);
         set_contractor_documents_info(null);
-        
+
         // Navigate to auth choice screen
         set_app_state('auth_choice');
     };
@@ -326,12 +333,12 @@ export default function App() {
                             console.log('🔥 App.tsx - Profile picture complete, calling final step');
                             // Complete registration with profile picture
                             const response = await auth_service.property_owner_final(profileInfo);
-                            
+
                             console.log('🔥 App.tsx - Final step response:', response);
-                            
+
                             if (response.success) {
-                                Alert.alert('Success', 'Registration completed successfully!', [
-                                    { text: 'OK', onPress: () => set_app_state('main') }
+                                Alert.alert('Success', 'Registration completed successfully! Please login to continue.', [
+                                    { text: 'OK', onPress: () => set_app_state('login') }
                                 ]);
                             } else {
                                 const errorMsg = response.message || `Failed to complete registration. Status: ${response.status}`;
@@ -348,10 +355,10 @@ export default function App() {
                         try {
                             // Complete registration without profile picture
                             const response = await auth_service.property_owner_final({});
-                            
+
                             if (response.success) {
-                                Alert.alert('Success', 'Registration completed successfully!', [
-                                    { text: 'OK', onPress: () => set_app_state('main') }
+                                Alert.alert('Success', 'Registration completed successfully! Please login to continue.', [
+                                    { text: 'OK', onPress: () => set_app_state('login') }
                                 ]);
                             } else {
                                 Alert.alert('Error', response.message || 'Failed to complete registration. Please try again.');
@@ -369,14 +376,52 @@ export default function App() {
         return (
             <SafeAreaProvider>
                 <StatusBar hidden={true} />
-                <HomepageScreen 
-                    userType={selected_user_type || 'property_owner'} 
+                <HomepageScreen
+                    userType={selected_user_type || 'property_owner'}
                     userData={user_data}
                     onLogout={handle_logout}
+                    onViewProfile={() => set_app_state('view_profile')} 
+                    onEditProfile={() => set_app_state('edit_profile')} 
+                    initialTab={initial_home_tab} 
                 />
             </SafeAreaProvider>
         );
     }
+
+
+    if (app_state === 'edit_profile') {
+        return (
+            <SafeAreaProvider>
+                <EditProfileScreen
+                    userData={user_data}
+                    onBackPress={() => {
+                        set_initial_home_tab('profile'); 
+                        set_app_state('main');
+                    }}
+                    onSaveSuccess={(updatedUser) => {
+                        set_user_data(updatedUser);
+                        set_initial_home_tab('profile'); 
+                        set_app_state('main');
+                    }}
+                />
+            </SafeAreaProvider>
+        );
+    }
+
+
+
+    if (app_state === 'view_profile') {
+        return (
+            <SafeAreaProvider>
+                <ViewProfileScreen
+                    onBack={() => set_app_state('main')}
+                    userData={user_data}
+                />
+            </SafeAreaProvider>
+        );
+    }
+
+
 
     // Contractor Registration Flow
     if (app_state === 'contractor_company_info') {
@@ -387,7 +432,7 @@ export default function App() {
                     onNext={async (companyInfo: any) => {
                         try {
                             const response = await auth_service.contractor_step1(companyInfo);
-                            
+
                             if (response.success) {
                                 set_contractor_company_info(companyInfo);
                                 set_app_state('contractor_account_setup');
@@ -413,7 +458,7 @@ export default function App() {
                     onNext={async (accountInfo: any) => {
                         try {
                             const response = await auth_service.contractor_step2(accountInfo);
-                            
+
                             if (response.success) {
                                 set_contractor_account_info(accountInfo);
                                 set_app_state('contractor_email_verification');
@@ -502,7 +547,7 @@ export default function App() {
                     onComplete={async (profileInfo: any) => {
                         try {
                             const response = await auth_service.contractor_final(profileInfo);
-                            
+
                             if (response.success) {
                                 Alert.alert('Success', 'Registration completed successfully!', [
                                     { text: 'OK', onPress: () => set_app_state('main') }
@@ -517,7 +562,7 @@ export default function App() {
                     onSkip={async () => {
                         try {
                             const response = await auth_service.contractor_final({});
-                            
+
                             if (response.success) {
                                 Alert.alert('Success', 'Registration completed successfully!', [
                                     { text: 'OK', onPress: () => set_app_state('main') }

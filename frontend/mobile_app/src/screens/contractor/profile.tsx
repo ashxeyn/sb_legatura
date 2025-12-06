@@ -120,7 +120,7 @@ export default function ContractorProfileScreen({ onLogout, userData }: Contract
         },
         {
           id: 'change_password',
-          icon: 'lock-outline',
+          icon: 'lock-closed-outline',
           label: 'Change Password',
           subtitle: 'Update your password',
           showArrow: true,

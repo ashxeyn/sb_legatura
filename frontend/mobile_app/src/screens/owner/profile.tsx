@@ -16,12 +16,16 @@ import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 
 interface ProfileScreenProps {
   onLogout: () => void;
+  onEditProfile?: () => void; // ✅ Add this line
   userData?: {
     username?: string;
     email?: string;
     profile_pic?: string;
     cover_photo?: string;
     user_type?: string;
+    onViewProfile?: () => void;
+    onEditProfile?: () => void;
+
   };
 }
 
@@ -35,10 +39,10 @@ interface MenuItem {
   danger?: boolean;
 }
 
-export default function ProfileScreen({ onLogout, userData }: ProfileScreenProps) {
+export default function ProfileScreen({ onLogout, onViewProfile, onEditProfile, userData }: ProfileScreenProps) {
   const insets = useSafeAreaInsets();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  
+
   // Get status bar height (top inset)
   const statusBarHeight = insets.top || (Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 44);
 
@@ -79,16 +83,25 @@ export default function ProfileScreen({ onLogout, userData }: ProfileScreenProps
       title: 'Account',
       items: [
         {
+          id: 'view_profile',
+          icon: 'eye-outline',
+          label: 'View Profile',
+          subtitle: 'See your public profile view',
+          showArrow: true,
+          onPress: onViewProfile
+        },
+        {
           id: 'edit_profile',
           icon: 'person-outline',
           label: 'Edit Profile',
           subtitle: 'Update your personal information',
           showArrow: true,
-          onPress: () => Alert.alert('Coming Soon', 'This feature is under development.'),
+          onPress: onEditProfile,
+
         },
         {
           id: 'change_password',
-          icon: 'lock-outline',
+          icon: 'lock-closed-outline',
           label: 'Change Password',
           subtitle: 'Update your password',
           showArrow: true,
@@ -171,7 +184,7 @@ export default function ProfileScreen({ onLogout, userData }: ProfileScreenProps
   return (
     <SafeAreaView style={[styles.container, { paddingTop: statusBarHeight }]}>
       <StatusBar hidden={true} />
-      <ScrollView 
+      <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
@@ -221,7 +234,7 @@ export default function ProfileScreen({ onLogout, userData }: ProfileScreenProps
 
             <Text style={styles.userName}>{userData?.username || 'Property Owner'}</Text>
             <Text style={styles.userEmail}>{userData?.email || 'user@example.com'}</Text>
-            
+
             <View style={styles.userTypeBadge}>
               <MaterialIcons name="home" size={14} color="#EC7E00" />
               <Text style={styles.userTypeText}>Property Owner</Text>
