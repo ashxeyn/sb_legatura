@@ -1,0 +1,338 @@
+/* Posting Management Styles */
+
+/* Tab Styles */
+.tab-btn {
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.tab-btn.active {
+  color: #f97316;
+  border-bottom-color: #f97316;
+  background-color: #fff7ed;
+}
+
+.tab-btn:not(.active):hover {
+  background-color: #f9fafb;
+  color: #4b5563;
+}
+
+/* Modal Animations */
+#viewModal.show,
+#approveModal.show,
+#declineModal.show {
+  display: flex !important;
+  animation: fadeIn 0.3s ease;
+}
+
+#viewModal.show .modal-content,
+#approveModal.show .modal-content,
+#declineModal.show .modal-content {
+  animation: scaleIn 0.3s ease;
+  transform: scale(1);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Button Hover Effects */
+.view-btn:hover,
+.approve-btn:hover,
+.decline-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Table Row Animations */
+tbody tr {
+  transition: all 0.2s ease;
+}
+
+tbody tr:hover {
+  transform: translateX(4px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+/* Filter Select Focus */
+select:focus,
+input:focus,
+textarea:focus {
+  transform: scale(1.02);
+  transition: all 0.2s ease;
+}
+
+/* Badge Animation */
+.inline-flex {
+  transition: all 0.2s ease;
+}
+
+tbody tr:hover .inline-flex {
+  transform: scale(1.05);
+}
+
+/* Scrollbar Styling */
+.overflow-y-auto::-webkit-scrollbar {
+  width: 8px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-track {
+  background: #f3f4f6;
+  border-radius: 4px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 4px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* Loading State */
+.loading {
+  position: relative;
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+.loading::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  margin-top: -10px;
+  margin-left: -10px;
+  border: 2px solid #f3f4f6;
+  border-top-color: #6366f1;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Success Animation */
+@keyframes successPulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.success-animation {
+  animation: successPulse 0.5s ease;
+}
+
+/* Hide scrollbar for table */
+.overflow-x-auto {
+  overflow-x: auto;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.overflow-x-auto::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+/* Approve Modal Specific Animations */
+.approve-icon-container {
+  animation: bounceIn 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+@keyframes bounceIn {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.approve-checkmark {
+  stroke-dasharray: 50;
+  stroke-dashoffset: 50;
+  animation: drawCheck 0.8s ease forwards;
+  animation-delay: 0.3s;
+}
+
+@keyframes drawCheck {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Loading spinner for approve button */
+.approve-loading {
+  display: inline-block;
+}
+
+/* Backdrop blur effect */
+.backdrop-blur-sm {
+  backdrop-filter: blur(4px);
+}
+
+/* Button scale animation */
+button:active {
+  transform: scale(0.95) !important;
+}
+
+/* Modal entrance animation */
+#approveModal .modal-content {
+  animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#declineModal .modal-content {
+  animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px) scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+/* Pulse animation for approve modal background elements */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+#approveModal .absolute.top-0,
+#approveModal .absolute.bottom-0 {
+  animation: pulse 3s ease-in-out infinite;
+}
+
+#declineModal .absolute.top-0,
+#declineModal .absolute.bottom-0 {
+  animation: pulse 3s ease-in-out infinite;
+}
+
+/* Decline Modal Specific Animations */
+.decline-icon-container {
+  animation: bounceIn 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.decline-x {
+  stroke-dasharray: 70;
+  stroke-dashoffset: 70;
+  animation: drawX 0.8s ease forwards;
+  animation-delay: 0.3s;
+}
+
+@keyframes drawX {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Loading spinner for decline button */
+.decline-loading {
+  display: inline-block;
+}
+
+/* Notification animations */
+@keyframes slideInRight {
+  from {
+    transform: translateX(400px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutRight {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(400px);
+    opacity: 0;
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.animate-slideInRight {
+  animation: slideInRight 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* View Card Enhancements */
+.view-image {
+  transition: all 0.3s ease;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+.view-image.zoomed {
+  max-height: 65vh !important;
+  object-fit: contain !important;
+  background: #000;
+}
+.zoom-cursor {
+  cursor: zoom-in;
+}
+.zoomed-cursor {
+  cursor: zoom-out;
+}
+.copy-pulse {
+  animation: successPulse 0.5s ease;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  .flex-wrap {
+    flex-direction: column;
+  }
+  
+  table {
+    min-width: 800px;
+  }
+}

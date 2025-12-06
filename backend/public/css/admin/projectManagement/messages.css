@@ -1,0 +1,333 @@
+/* Statistics Cards */
+.stat-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.stat-card:hover {
+  transform: translateY(-4px);
+}
+
+/* Filter Tabs */
+.filter-tab {
+  color: #6b7280;
+  position: relative;
+}
+
+.filter-tab:hover {
+  color: #4f46e5;
+  background: #f5f3ff;
+}
+
+.filter-tab.active {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: white;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+}
+
+.filter-tab.active span {
+  background: rgba(255, 255, 255, 0.25);
+  color: white;
+}
+
+/* Conversation Item */
+.conversation-item {
+  padding: 1rem;
+  border-bottom: 1px solid #f3f4f6;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.conversation-item:hover {
+  background: linear-gradient(90deg, #faf5ff 0%, #f5f3ff 100%);
+}
+
+.conversation-item.active {
+  background: linear-gradient(90deg, #ede9fe 0%, #e0e7ff 100%);
+  border-left: 4px solid #6366f1;
+}
+
+.conversation-item.flagged::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: linear-gradient(180deg, #f59e0b, #f97316);
+}
+
+.conversation-item.suspended {
+  opacity: 0.6;
+  background: #fef2f2;
+}
+
+.conversation-item.suspended::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: linear-gradient(180deg, #ef4444, #dc2626);
+}
+
+.unread-badge {
+  min-width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: 9999px;
+  padding: 0 6px;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+}
+
+/* Message Bubble */
+.message-bubble {
+  max-width: 70%;
+  padding: 0.875rem 1.125rem;
+  border-radius: 1.25rem;
+  position: relative;
+  word-wrap: break-word;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  animation: messageSlide 0.3s ease-out;
+}
+
+@keyframes messageSlide {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.message-bubble.sent {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: white;
+  border-bottom-right-radius: 0.375rem;
+  margin-left: auto;
+}
+
+.message-bubble.received {
+  background: white;
+  color: #1f2937;
+  border-bottom-left-radius: 0.375rem;
+  border: 1px solid #e5e7eb;
+}
+
+.message-time {
+  font-size: 0.7rem;
+  opacity: 0.7;
+  margin-top: 0.375rem;
+  display: block;
+}
+
+/* Status Badge */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.status-badge.flagged {
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  color: #92400e;
+}
+
+.status-badge.suspended {
+  background: linear-gradient(135deg, #fee2e2, #fecaca);
+  color: #991b1b;
+}
+
+.status-badge.active {
+  background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+  color: #065f46;
+}
+
+/* Modal Overlay */
+.modal-overlay {
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.modal-content {
+  animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Pulse animation for modal icons */
+.animate-pulse-slow {
+  animation: pulseSlow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulseSlow {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
+}
+
+/* Scrollbar Styling */
+#conversationsList::-webkit-scrollbar,
+#messagesArea::-webkit-scrollbar {
+  width: 6px;
+}
+
+#conversationsList::-webkit-scrollbar-track,
+#messagesArea::-webkit-scrollbar-track {
+  background: #f9fafb;
+}
+
+#conversationsList::-webkit-scrollbar-thumb,
+#messagesArea::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 3px;
+}
+
+#conversationsList::-webkit-scrollbar-thumb:hover,
+#messagesArea::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* Toast Notification */
+.toast {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  padding: 1rem 1.5rem;
+  border-radius: 0.75rem;
+  color: white;
+  font-weight: 600;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  z-index: 9999;
+  animation: toastSlide 0.3s ease-out;
+}
+
+@keyframes toastSlide {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Avatar with status indicator */
+.avatar-container {
+  position: relative;
+  display: inline-block;
+}
+
+.avatar-status {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid white;
+}
+
+.avatar-status.online {
+  background: #10b981;
+}
+
+.avatar-status.offline {
+  background: #6b7280;
+}
+
+/* Hover effects for action buttons */
+button:hover {
+  transform: translateY(-1px);
+}
+
+button:active {
+  transform: translateY(0);
+}
+
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+  #messagePanel {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    background: white;
+  }
+  
+  #messagePanel.mobile-active {
+    display: flex !important;
+  }
+}
+
+/* Compose Tabs */
+.compose-tab { color:#6b7280; transition:all .25s ease; }
+.compose-tab:hover { background:#eef2ff; color:#4f46e5; }
+.compose-tab.active { background:linear-gradient(135deg,#6366f1,#8b5cf6); color:#fff; box-shadow:0 4px 14px rgba(99,102,241,.35); }
+
+/* Compose Modal textarea autosize helper (visual only) */
+#composeMessage { min-height:140px; font-size:.95rem; }
+#composeMessage:focus { background:#ffffff; }
+
+/* Character count color states */
+#composeCharCount.warn { color:#f59e0b; }
+#composeCharCount.error { color:#dc2626; }
+
+/* Disabled send button state already via Tailwind, reinforce for older browsers */
+#sendComposeBtn:disabled { filter:grayscale(.4); }
+
+/* Recipient Multi-Select */
+.compose-recipients-wrapper { min-height:52px; position:relative; }
+.compose-recipient-chip { display:inline-flex; align-items:center; gap:6px; background:linear-gradient(135deg,#6366f1,#8b5cf6); color:#fff; padding:4px 10px; border-radius:9999px; font-size:11px; font-weight:600; box-shadow:0 2px 6px rgba(99,102,241,.35); animation:chipIn .25s ease; }
+@keyframes chipIn { from{opacity:0; transform:scale(.8);} to{opacity:1; transform:scale(1);} }
+.compose-recipient-chip button { background:transparent; border:none; color:#fff; cursor:pointer; font-size:14px; line-height:1; display:flex; align-items:center; padding:0; }
+.compose-recipient-chip button:hover { color:#ffe4e6; }
+.compose-recipient-dropdown { animation:fadeIn .15s ease; }
+.compose-recipient-dropdown .dropdown-item { padding:8px 12px; cursor:pointer; display:flex; align-items:center; gap:8px; }
+.compose-recipient-dropdown .dropdown-item:hover { background:#eef2ff; }
+.compose-recipient-dropdown .dropdown-item span { font-size:11px; background:#e0e7ff; color:#4338ca; padding:2px 6px; border-radius:6px; }
+
+/* Attachments */
+.compose-attachment-drop { transition:background .25s, border-color .25s; }
+.compose-attachment-drop.dragover { background:#e0e7ff; border-color:#6366f1; }
+.compose-attachment-preview .attachment-item { position:relative; width:88px; height:88px; border:1px solid #e5e7eb; border-radius:12px; overflow:hidden; background:#fff; box-shadow:0 2px 6px rgba(0,0,0,.06); animation:fadeIn .25s ease; }
+.compose-attachment-preview .attachment-item img { width:100%; height:100%; object-fit:cover; }
+.compose-attachment-preview .attachment-item .file-icon { display:flex; flex-direction:column; align-items:center; justify-content:center; width:100%; height:100%; font-size:11px; color:#4b5563; background:linear-gradient(135deg,#f8fafc,#f1f5f9); }
+.compose-attachment-preview .remove-attachment { position:absolute; top:4px; right:4px; background:#ef4444; color:#fff; width:20px; height:20px; border-radius:6px; font-size:12px; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 2px 4px rgba(239,68,68,.4); }
+.compose-attachment-preview .remove-attachment:hover { background:#dc2626; }
+.compose-attachment-preview .attachment-meta { position:absolute; left:4px; bottom:4px; font-size:10px; background:#6366f1; color:#fff; padding:2px 5px; border-radius:6px; opacity:.85; }
