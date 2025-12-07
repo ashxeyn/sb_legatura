@@ -79,20 +79,35 @@ class biddingController extends Controller
                 return response()->json(['success' => false, 'message' => 'Contractor profile not found.'], 404);
             }
 
-            // Check if bid already exists; allow creating a new bid if previous bid was cancelled
+            // Check if bid already exists
             $existingBid = $this->biddingClass->getContractorBid($request->project_id, $contractor->contractor_id);
-            if ($existingBid && $existingBid->bid_status !== 'cancelled') {
-                return response()->json(['success' => false, 'message' => 'You have already submitted a bid for this project.'], 400);
-            }
 
-            // Create bid
-            $bidId = $this->biddingClass->createBid([
-                'project_id' => $request->project_id,
-                'contractor_id' => $contractor->contractor_id,
-                'proposed_cost' => $request->proposed_cost,
-                'estimated_timeline' => $request->estimated_timeline,
-                'contractor_notes' => $request->contractor_notes
-            ]);
+            if ($existingBid) {
+                // If bid exists and is not cancelled, don't allow resubmission
+                if ($existingBid->bid_status !== 'cancelled') {
+                    return response()->json(['success' => false, 'message' => 'You have already submitted a bid for this project.'], 400);
+                }
+
+                // If bid was cancelled, update it instead of creating new one
+                $this->biddingClass->updateBid($existingBid->bid_id, [
+                    'proposed_cost' => $request->proposed_cost,
+                    'estimated_timeline' => $request->estimated_timeline,
+                    'contractor_notes' => $request->contractor_notes
+                ]);
+
+                // Update status back to submitted
+                $this->biddingClass->reactivateBid($existingBid->bid_id);
+                $bidId = $existingBid->bid_id;
+            } else {
+                // Create new bid
+                $bidId = $this->biddingClass->createBid([
+                    'project_id' => $request->project_id,
+                    'contractor_id' => $contractor->contractor_id,
+                    'proposed_cost' => $request->proposed_cost,
+                    'estimated_timeline' => $request->estimated_timeline,
+                    'contractor_notes' => $request->contractor_notes
+                ]);
+            }
 
             // Handle file uploads
             if ($request->hasFile('bid_files')) {

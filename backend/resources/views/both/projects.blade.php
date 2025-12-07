@@ -49,6 +49,34 @@
             color: #8a8d91;
             font-size: 12px;
         }
+
+        .btn-sm {
+            padding: 8px 16px;
+            font-size: 13px;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .btn-warning {
+            background-color: #ffc107;
+            color: #000;
+        }
+
+        .btn-warning:hover {
+            background-color: #e0a800;
+        }
+
+        .btn-danger {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background-color: #c82333;
+        }
     </style>
 </head>
 <body>
@@ -73,24 +101,35 @@
                     <div class="project-item" onclick="window.location.href='/both/projects/{{ $project->project_id }}'">
                             <div class="project-item-header">
                             <strong>{{ $project->project_title }}</strong>
-                                @if(isset($isContractor) && $isContractor && $project->project_status === 'bidding_closed' && isset($project->milestone_status))
+                                @if(isset($isContractor) && $isContractor && isset($project->display_status) && $project->display_status === 'bidded' && isset($project->milestone_status))
                                     @if($project->milestone_status === 'set_up')
                                         <span class="status-badge status-milestone-setup">Milestone Done</span>
                                     @elseif($project->milestone_status === 'not_set_up')
                                         <span class="status-badge status-milestone-not-setup">Milestone Not Set Up Yet</span>
                                     @else
-                                        <span class="status-badge status-{{ $project->project_status }}">
-                                            {{ ucfirst(str_replace('_', ' ', $project->project_status)) }}
+                                        <span class="status-badge status-{{ $project->display_status ?? $project->project_status }}">
+                                            {{ ucfirst(str_replace('_', ' ', $project->display_status ?? $project->project_status)) }}
                                         </span>
                                     @endif
                                 @else
-                                    <span class="status-badge status-{{ $project->project_status }}">
-                                {{ ucfirst(str_replace('_', ' ', $project->project_status)) }}
+                                    <span class="status-badge status-{{ $project->display_status ?? $project->project_status }}">
+                                {{ ucfirst(str_replace('_', ' ', $project->display_status ?? $project->project_status)) }}
                             </span>
                                 @endif
                         </div>
                         <p><strong>Description:</strong> {{ \Illuminate\Support\Str::limit($project->project_description, 150) }}</p>
                         <p><small>Created: {{ date('M d, Y', strtotime($project->created_at)) }}</small></p>
+
+                        @if(isset($project->display_status) && $project->display_status !== 'bidded')
+                            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                                <button class="btn btn-warning btn-sm" onclick="event.stopPropagation(); editProject({{ $project->project_id }})" style="flex: 1;">
+                                    Edit
+                                </button>
+                                <button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); deleteProject({{ $project->project_id }}, '{{ addslashes($project->project_title) }}')" style="flex: 1;">
+                                    Delete
+                                </button>
+                            </div>
+                        @endif
                     </div>
                 @endforeach
             @else
@@ -102,5 +141,32 @@
             </div>
         </div>
     </div>
+
+    @include('modals.editPostedProject')
+    @include('modals.deletePostedProject')
+
+    <script src="{{ asset('js/modal.js') }}"></script>
+    <script>
+        // CSRF token helper function
+        function getCsrfToken() {
+            return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        }
+
+        function editProject(projectId) {
+            if (typeof ProjectEdit !== 'undefined') {
+                ProjectEdit.open(projectId);
+            } else {
+                alert('Edit functionality not available');
+            }
+        }
+
+        function deleteProject(projectId, projectTitle) {
+            if (typeof ProjectDelete !== 'undefined') {
+                ProjectDelete.open(projectId, projectTitle);
+            } else {
+                alert('Delete functionality not available');
+            }
+        }
+    </script>
 </body>
 </html>

@@ -397,3 +397,335 @@ function viewContractorProfile(contractorId) {
     alert('Contractor profile view - ID: ' + contractorId + '\nThis feature can be implemented later.');
 }
 
+// ============================================================================
+// PROJECT POST FILE UPLOAD HANDLING
+// ============================================================================
+
+function handleFileSelection(input, containerId) {
+    if (input.files && input.files.length > 0) {
+        const file = input.files[0];
+        const container = document.getElementById(containerId);
+        const fileGroup = input.closest('.file-input-group');
+        const removeBtn = fileGroup.querySelector('.remove-file-btn');
+
+        input.classList.add('has-file');
+
+        let fileNameDisplay = fileGroup.querySelector('.file-name-display');
+        if (!fileNameDisplay) {
+            fileNameDisplay = document.createElement('div');
+            fileNameDisplay.className = 'file-name-display visible';
+            fileGroup.insertBefore(fileNameDisplay, removeBtn);
+        }
+        fileNameDisplay.textContent = '📄 ' + file.name;
+        fileNameDisplay.classList.add('visible');
+
+        if (removeBtn) removeBtn.style.display = 'inline-block';
+
+        if (!input.hasAttribute('required')) {
+            const addMoreBtn = container.parentElement.querySelector('.add-more-files-btn');
+            if (addMoreBtn) addMoreBtn.classList.add('visible');
+        }
+    }
+}
+
+function removeFileInput(btn, containerId) {
+    const fileGroup = btn.closest('.file-input-group');
+    const input = fileGroup.querySelector('.evidence-file-input');
+    const fileNameDisplay = fileGroup.querySelector('.file-name-display');
+
+    input.value = '';
+    input.classList.remove('has-file');
+    if (fileNameDisplay) {
+        fileNameDisplay.remove();
+    }
+    btn.style.display = 'none';
+
+    const container = document.getElementById(containerId);
+    const fileGroups = container.querySelectorAll('.file-input-group');
+    const hasFiles = Array.from(fileGroups).some(group => {
+        const fileInput = group.querySelector('.evidence-file-input');
+        return fileInput && fileInput.files && fileInput.files.length > 0;
+    });
+
+    if (!hasFiles) {
+        const addMoreBtn = container.parentElement.querySelector('.add-more-files-btn');
+        if (addMoreBtn) addMoreBtn.classList.remove('visible');
+    }
+}
+
+function addMoreFiles(containerId, fieldName) {
+    const container = document.getElementById(containerId);
+    const fileGroups = container.querySelectorAll('.file-input-group');
+
+    if (fileGroups.length >= 10) {
+        alert('Maximum of 10 files allowed');
+        return;
+    }
+
+    const existingInput = container.querySelector('.evidence-file-input');
+    const acceptAttr = existingInput ? existingInput.getAttribute('accept') : '';
+    const isMultiple = fieldName === 'others';
+
+    const newFileGroup = document.createElement('div');
+    newFileGroup.className = 'file-input-group';
+
+    const newInput = document.createElement('input');
+    newInput.type = 'file';
+    newInput.className = 'evidence-file-input';
+    newInput.accept = acceptAttr;
+    if (isMultiple) {
+        newInput.name = 'others[]';
+    } else {
+        newInput.name = fieldName;
+    }
+    newInput.addEventListener('change', function() {
+        handleFileSelection(this, containerId);
+    });
+
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'remove-file-btn';
+    removeBtn.textContent = 'Remove';
+    removeBtn.onclick = function() {
+        removeFileInput(this, containerId);
+        updateRemoveButtons(containerId);
+    };
+
+    newFileGroup.appendChild(newInput);
+    newFileGroup.appendChild(removeBtn);
+    container.appendChild(newFileGroup);
+
+    updateRemoveButtons(containerId);
+}
+
+function updateRemoveButtons(containerId) {
+    const container = document.getElementById(containerId);
+    const fileGroups = container.querySelectorAll('.file-input-group');
+
+    fileGroups.forEach((group, index) => {
+        const removeBtn = group.querySelector('.remove-file-btn');
+        const fileInput = group.querySelector('.evidence-file-input');
+
+        if (removeBtn && fileInput) {
+            const hasFile = fileInput.files && fileInput.files.length > 0;
+            const shouldShow = fileGroups.length > 1 || hasFile;
+            removeBtn.style.display = shouldShow ? 'inline-block' : 'none';
+        }
+    });
+}
+
+// ============================================================================
+// PROJECT POST FORM INITIALIZATION
+// ============================================================================
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize file inputs for project post form
+    const fileInputs = document.querySelectorAll('.evidence-file-input');
+    fileInputs.forEach(input => {
+        const containerId = input.closest('[id$="-upload-container"]')?.id;
+        if (containerId) {
+            input.addEventListener('change', function() {
+                handleFileSelection(this, containerId);
+                updateRemoveButtons(containerId);
+            });
+        }
+    });
+
+    // Form validation for project post
+    const projectForm = document.getElementById('projectForm');
+    if (projectForm) {
+        projectForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            // Hide previous messages
+            const successDiv = document.getElementById('projectFormSuccess');
+            const errorDiv = document.getElementById('projectFormError');
+            if (successDiv) successDiv.style.display = 'none';
+            if (errorDiv) errorDiv.style.display = 'none';
+
+            // Compose hidden project_location from barangay (PSGC select) + street + fixed city/province
+            const barangayEl = document.getElementById('project_barangay');
+            const streetEl = document.getElementById('street_address');
+            const hiddenLocation = document.getElementById('project_location_hidden');
+            if (hiddenLocation) {
+                const barangayVal = barangayEl && barangayEl.selectedIndex > -1
+                    ? (barangayEl.options[barangayEl.selectedIndex].getAttribute('data-name') || barangayEl.value).trim()
+                    : '';
+                const streetVal = streetEl ? streetEl.value.trim() : '';
+                const city = 'Zamboanga City';
+                const province = 'Zamboanga del Sur';
+                let composed = '';
+                if (barangayVal) composed += barangayVal + ', ';
+                if (streetVal) composed += streetVal + ', ';
+                composed += city + ', ' + province;
+                hiddenLocation.value = composed;
+            }
+            const budgetMin = parseFloat(document.querySelector('input[name="budget_range_min"]').value);
+            const budgetMax = parseFloat(document.querySelector('input[name="budget_range_max"]').value);
+
+            if (budgetMax < budgetMin) {
+                if (errorDiv) {
+                    errorDiv.textContent = 'Maximum budget must be greater than or equal to minimum budget.';
+                    errorDiv.style.display = 'block';
+                    errorDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                } else {
+                    alert('Maximum budget must be greater than or equal to minimum budget.');
+                }
+                return false;
+            }
+
+            // Get CSRF token
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
+                             document.querySelector('input[name="_token"]')?.value;
+
+            // Disable submit button
+            const submitBtn = projectForm.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Submitting...';
+            }
+
+            // Submit form via AJAX
+            const formData = new FormData(projectForm);
+
+            try {
+                const response = await fetch('/owner/projects', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    if (successDiv) {
+                        successDiv.textContent = data.message || 'Project posted successfully!';
+                        successDiv.style.display = 'block';
+                        successDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+
+                    // Reset form after 2 seconds
+                    setTimeout(() => {
+                        window.location.href = data.redirect || '/dashboard';
+                    }, 2000);
+                } else {
+                    if (errorDiv) {
+                        let errorMessage = data.message || 'An error occurred while posting the project.';
+                        if (data.errors && typeof data.errors === 'object') {
+                            const errorList = Object.values(data.errors).flat();
+                            errorMessage = errorList.join('<br>');
+                        }
+                        errorDiv.innerHTML = errorMessage;
+                        errorDiv.style.display = 'block';
+                        errorDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = 'Post Project';
+                    }
+                }
+            } catch (error) {
+                if (errorDiv) {
+                    errorDiv.textContent = 'Network error. Please try again.';
+                    errorDiv.style.display = 'block';
+                    errorDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Post Project';
+                }
+            }
+        });
+    }
+
+    // Contractor Type "Others" handling
+    const typeSelect = document.getElementById('project_type_id');
+    const otherContainer = document.getElementById('other_contractor_type_container');
+    const otherInput = document.getElementById('if_others_ctype');
+
+    if (typeSelect) {
+        function toggleOther() {
+            const selected = typeSelect.options[typeSelect.selectedIndex];
+            const name = (selected && selected.getAttribute('data-name')) ? selected.getAttribute('data-name').toLowerCase() : '';
+            if (name === 'others') {
+                otherContainer.style.display = 'block';
+                if (otherInput) otherInput.setAttribute('required', 'required');
+            } else {
+                otherContainer.style.display = 'none';
+                if (otherInput) {
+                    otherInput.removeAttribute('required');
+                }
+            }
+        }
+
+        typeSelect.addEventListener('change', toggleOther);
+        toggleOther();
+    }
+
+    // PSGC: populate barangays for Zamboanga City
+    const barangaySelect = document.getElementById('project_barangay');
+    if (barangaySelect) {
+        const oldBarangay = barangaySelect.getAttribute('data-old-value');
+
+        fetch('/api/psgc/provinces')
+            .then(r => {
+                if (!r.ok) throw new Error('Failed to load provinces: ' + r.status + ' ' + r.statusText);
+                return r.json();
+            })
+            .then(provinces => {
+                let prov = provinces.find(p => p.name && p.name.toLowerCase().includes('zamboanga del sur'));
+                if (!prov) {
+                    prov = provinces.find(p => {
+                        const n = (p.name || '').toLowerCase();
+                        return n.includes('zamboanga') && n.includes('sur');
+                    });
+                }
+                if (!prov) {
+                    prov = provinces.find(p => (p.name || '').toLowerCase().includes('zamboanga'));
+                }
+                if (!prov) throw new Error('Province not found in PSGC response');
+                const provInput = document.getElementById('project_province_code_hidden');
+                if (provInput) provInput.value = prov.code;
+                return fetch('/api/psgc/provinces/' + prov.code + '/cities');
+            })
+            .then(r => {
+                if (!r.ok) throw new Error('Failed to load cities: ' + r.status + ' ' + r.statusText);
+                return r.json();
+            })
+            .then(cities => {
+                let city = cities.find(c => c.name && c.name.toLowerCase().includes('zamboanga city'));
+                if (!city) {
+                    city = cities.find(c => (c.name || '').toLowerCase().includes('zamboanga'));
+                }
+                if (!city) throw new Error('City not found in PSGC response');
+                const cityInput = document.getElementById('project_city_code_hidden');
+                if (cityInput) cityInput.value = city.code;
+                return fetch('/api/psgc/cities/' + city.code + '/barangays');
+            })
+            .then(r => r.json())
+            .then(barangays => {
+                barangaySelect.innerHTML = '<option value="">Select Barangay</option>';
+                barangays.forEach(function(b) {
+                    const option = document.createElement('option');
+                    option.value = b.code;
+                    option.setAttribute('data-name', b.name);
+                    option.textContent = b.name;
+                    if (oldBarangay && oldBarangay === b.name) {
+                        option.selected = true;
+                    }
+                    barangaySelect.appendChild(option);
+                });
+                barangaySelect.disabled = false;
+            })
+            .catch(err => {
+                const msg = err && err.message ? err.message : 'Unknown error';
+                barangaySelect.innerHTML = '<option value="">Error loading barangays: ' + msg + '</option>';
+                barangaySelect.disabled = false;
+            });
+    }
+});

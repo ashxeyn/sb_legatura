@@ -3,6 +3,8 @@
 namespace App\Http\Requests\contractor;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Contracts\Validation\Validator;
+use Illuminate\Http\Exceptions\HttpResponseException;
 
 class biddingRequest extends FormRequest
 {
@@ -45,6 +47,23 @@ class biddingRequest extends FormRequest
             'bid_id.exists' => 'The specified bid does not exist.'
         ];
     }
-}
 
+    protected function failedValidation(Validator $validator)
+    {
+        $isMobileRequest = $this->expectsJson();
+
+        $response = [
+            'success' => false,
+            'message' => 'Validation failed',
+            'errors' => $validator->errors()
+        ];
+
+        if ($isMobileRequest) {
+            $response['validation_errors'] = $validator->errors()->toArray();
+            $response['message'] = 'Please check your input and try again';
+        }
+
+        throw new HttpResponseException(response()->json($response, 422));
+    }
+}
 

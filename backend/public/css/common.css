@@ -294,6 +294,17 @@ body {
     color: #856404;
 }
 
+.status-expired,
+.status-due {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+.status-bidded {
+    background-color: #cfe2ff;
+    color: #084298;
+}
+
 .status-milestone-setup {
     background-color: #d4edda;
     color: #155724;

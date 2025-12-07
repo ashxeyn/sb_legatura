@@ -327,7 +327,7 @@
     @endphp
 
     <div class="header-section">
-        <h1>My Projects</h1>
+        <h1>Dashbwoard</h1>
         <div class="nav-links">
             <a href="/both/projects">All Projects</a>
             @if($isOwner)

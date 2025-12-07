@@ -1,24 +1,13 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard - Legatura</title>
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    <link rel="stylesheet" href="{{ asset('css/common.css') }}">
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-    <h1>Admin Dashboard</h1>
-            <div class="nav-links">
-        <a href="/accounts/logout">Logout</a>
-            </div>
-        </div>
+@extends('admin.layouts.app')
 
-        <div class="card">
-            <p style="font-size: 16px; color: #65676b;">Welcome, <strong>{{ session('user')->username ?? 'Admin' }}</strong>!</p>
-        </div>
-    </div>
-</body>
-</html>
+@section('title','Dashboard')
+
+@section('content')
+<h1>Admin Dashboard</h1>
+<div class="row">
+  <div class="col-md-3"><div class="card p-3">Total Projects: {{ $totalProjects }}</div></div>
+  <div class="col-md-3"><div class="card p-3">Open Projects: {{ $openProjects }}</div></div>
+  <div class="col-md-3"><div class="card p-3">Pending Verifications: {{ $pendingVerifications }}</div></div>
+  <div class="col-md-3"><div class="card p-3">Open Disputes: {{ $openDisputes }}</div></div>
+</div>
+@endsection

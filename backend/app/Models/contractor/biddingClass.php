@@ -112,6 +112,17 @@ class biddingClass
             ]);
     }
 
+    public function reactivateBid($bidId)
+    {
+        // Update bid status back to 'submitted' and update submitted_at timestamp
+        return DB::table('bids')
+            ->where('bid_id', $bidId)
+            ->update([
+                'bid_status' => 'submitted',
+                'submitted_at' => now()
+            ]);
+    }
+
     public function deleteBidFile($fileId)
     {
         $file = DB::table('bid_files')

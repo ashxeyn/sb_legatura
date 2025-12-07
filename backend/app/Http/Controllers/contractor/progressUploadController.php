@@ -197,7 +197,7 @@ class progressUploadController extends Controller
 
             // Ensure the progress_uploads directory exists
             if (!Storage::disk('public')->exists('progress_uploads')) {
-                Storage::disk('public')->makeDirectory('progress_uploads', 0755, true);
+                Storage::disk('public')->makeDirectory('progress_uploads');
             }
 
             // Handle multiple progress files

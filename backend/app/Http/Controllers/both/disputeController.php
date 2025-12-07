@@ -144,7 +144,7 @@ class disputeController extends Controller
             if ($request->hasFile('evidence_files')) {
                 $files = $request->file('evidence_files');
                 if (!is_array($files)) {
-                    $files = [$files]; // Handle single file case
+                    $files = [$files];
                 }
 
                 foreach ($files as $file) {
@@ -697,20 +697,12 @@ class disputeController extends Controller
             // Update dispute
             $this->disputeClass->updateDispute($disputeId, $updateData);
 
-            \Log::info('Checking for deleted_file_ids', [
-                'has_deleted_file_ids' => $request->has('deleted_file_ids'),
-                'deleted_file_ids_value' => $request->input('deleted_file_ids'),
-                'all_input' => $request->all()
-            ]);
-
             if ($request->has('deleted_file_ids') && !empty($request->input('deleted_file_ids'))) {
                 $deletedFileIds = explode(',', $request->input('deleted_file_ids'));
-                \Log::info('Processing deleted files', ['file_ids' => $deletedFileIds]);
 
                 foreach ($deletedFileIds as $fileId) {
                     if (!empty($fileId) && is_numeric($fileId)) {
-                        $result = $this->disputeClass->deleteDisputeFile($fileId);
-                        \Log::info('Deleted file', ['file_id' => $fileId, 'result' => $result]);
+                        $this->disputeClass->deleteDisputeFile($fileId);
                     }
                 }
             }

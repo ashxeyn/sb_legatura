@@ -9,7 +9,6 @@ function showErrors(errors) {
     const successDiv = document.getElementById('successMessages');
 
     if (!errorDiv) {
-        console.error('Error div not found');
         return;
     }
 
@@ -21,7 +20,7 @@ function showErrors(errors) {
 
     if (typeof errors === 'object') {
         let errorHtml = '<ul>';
-        for (let field in errors) {
+        for (const field in errors) {
             if (Array.isArray(errors[field])) {
                 errors[field].forEach(error => {
                     errorHtml += `<li>${error}</li>`;
@@ -46,7 +45,6 @@ function showSuccess(message) {
     const successDiv = document.getElementById('successMessages');
 
     if (!successDiv) {
-        console.error('Success div not found');
         return;
     }
 
@@ -61,14 +59,11 @@ function showSuccess(message) {
 
 // Project Details page functionality
 function approveProgress(fileId) {
-    console.log('Approve progress clicked for file:', fileId);
     alert('Progress approved! (This will be implemented with AJAX later)');
     // TODO: Implement AJAX call to approve progress
 }
 
 function rejectProgress(fileId, itemId, projectId, milestoneId) {
-    console.log('Reject progress clicked:', { fileId, itemId, projectId, milestoneId });
-
     // Check if modal exists (if we're on a page that includes it)
     if (typeof openDisputeModal === 'function') {
         openDisputeModal('add', {
@@ -79,14 +74,12 @@ function rejectProgress(fileId, itemId, projectId, milestoneId) {
     } else {
         // Fallback to redirect if modal not available
         const url = '/both/disputes?project_id=' + projectId + '&milestone_id=' + milestoneId + '&milestone_item_id=' + itemId;
-        console.log('Redirecting to:', url);
+
         window.location.href = url;
     }
 }
 
 function disputePayment(paymentId, itemId, projectId, milestoneId) {
-    console.log('Dispute payment clicked:', { paymentId, itemId, projectId, milestoneId });
-
     // Check if modal exists (if we're on a page that includes it)
     if (typeof openDisputeModal === 'function') {
         openDisputeModal('add', {
@@ -97,14 +90,12 @@ function disputePayment(paymentId, itemId, projectId, milestoneId) {
     } else {
         // Fallback to redirect if modal not available
         const url = '/both/disputes?project_id=' + projectId + '&milestone_id=' + milestoneId + '&milestone_item_id=' + itemId;
-        console.log('Redirecting to:', url);
+
         window.location.href = url;
     }
 }
 
 function disputeProgress(progressId, itemId, projectId, milestoneId) {
-    console.log('Dispute progress clicked:', { progressId, itemId, projectId, milestoneId });
-
     // Check if modal exists (if we're on a page that includes it)
     if (typeof openDisputeModal === 'function') {
         openDisputeModal('add', {
@@ -115,16 +106,14 @@ function disputeProgress(progressId, itemId, projectId, milestoneId) {
     } else {
         // Fallback to redirect if modal not available
         const url = '/both/disputes?project_id=' + projectId + '&milestone_id=' + milestoneId + '&milestone_item_id=' + itemId;
-        console.log('Redirecting to:', url);
+
         window.location.href = url;
     }
 }
 
 // Initialize project details page
 function initializeProjectDetails() {
-    console.log('Project Details page loaded');
     const disputeButtons = document.querySelectorAll('.btn-danger');
-    console.log('Found', disputeButtons.length, 'dispute buttons');
 }
 
 // Initialize project details when page loads
@@ -480,8 +469,6 @@ function loadMilestones(projectId) {
     })
     .then(response => response.json())
     .then(data => {
-        console.log('Milestones response:', data);
-
         // Try different response structures for compatibility
         let milestones = [];
         if (data.success && data.data && data.data.milestones) {
@@ -489,7 +476,6 @@ function loadMilestones(projectId) {
         } else if (data.milestones) {
             milestones = data.milestones;
         } else {
-            console.log('No milestones found in response');
             milestoneSelect.innerHTML = '<option value="">No milestones available</option>';
             return;
         }
@@ -501,7 +487,6 @@ function loadMilestones(projectId) {
             option.value = milestone.milestone_id;
             option.textContent = milestone.milestone_name || 'Unnamed Milestone';
             milestoneSelect.appendChild(option);
-            console.log('Added milestone:', milestone.milestone_name, 'with ID:', milestone.milestone_id);
         });
 
         // Check if there's a milestone to pre-select from URL params
@@ -529,7 +514,6 @@ function loadMilestoneItems(milestoneId) {
     const milestoneItemSelect = document.getElementById('milestone_item_id');
 
     if (!milestoneItemSelect) {
-        console.warn('Milestone item select element not found');
         return;
     }
 
@@ -547,8 +531,6 @@ function loadMilestoneItems(milestoneId) {
     })
     .then(response => response.json())
     .then(data => {
-        console.log('Milestone items response:', data);
-
         // Try different response structures for compatibility
         let milestoneItems = [];
         if (data.success && data.data && data.data.milestone_items) {
@@ -556,7 +538,6 @@ function loadMilestoneItems(milestoneId) {
         } else if (data.milestone_items) {
             milestoneItems = data.milestone_items;
         } else {
-            console.log('No milestone items found in response');
             milestoneItemSelect.innerHTML = '<option value="">No milestone items available</option>';
             return;
         }
@@ -568,7 +549,6 @@ function loadMilestoneItems(milestoneId) {
             option.value = item.milestone_item_id;
             option.textContent = item.milestone_item_title || 'Unnamed Item';
             milestoneItemSelect.appendChild(option);
-            console.log('Added milestone item:', item.milestone_item_title, 'with ID:', item.milestone_item_id);
         });
 
         // Check if there's a milestone item to pre-select from URL params
@@ -576,7 +556,7 @@ function loadMilestoneItems(milestoneId) {
         const milestoneItemIdParam = urlParams.get('milestone_item_id');
         if (milestoneItemIdParam && milestoneItems.find(mi => mi.milestone_item_id == milestoneItemIdParam)) {
             milestoneItemSelect.value = milestoneItemIdParam;
-            console.log('Pre-selected milestone item:', milestoneItemIdParam);
+
         }
     })
     .catch(error => {

@@ -3,7 +3,7 @@ let selectedPaymentMode = '';
 let startDateLimit = null;
 let endDateLimit = null;
 let milestoneItems = [];
-let projectDetailsMap = {};
+const projectDetailsMap = {};
 let step1State = null;
 let step2State = null;
 let editingIndex = null; // Track which item is being edited
@@ -121,7 +121,7 @@ if (typeof window.modalClickHandlers === 'undefined') {
     window.modalClickHandlers = [];
 }
 window.modalClickHandlers.push(function(event) {
-    const deleteMilestoneModal = document.getElementById('deleteMilestoneModal');
+const deleteMilestoneModal = document.getElementById('deleteMilestoneModal');
     if (event.target == deleteMilestoneModal) {
         closeDeleteMilestoneModal();
     }
@@ -137,28 +137,28 @@ if (window.contractorProjects && Array.isArray(window.contractorProjects)) {
 
 // MILESTONE SETUP FUNCTIONS
 function showMilestoneError(message) {
-    let errorDiv = document.getElementById('milestoneErrorMessages');
+    const errorDiv = document.getElementById('milestoneErrorMessages');
     errorDiv.innerHTML = '<p>' + message + '</p>';
     errorDiv.style.display = 'block';
     document.getElementById('milestoneSuccessMessages').style.display = 'none';
 }
 
 function showMilestoneSuccess(message) {
-    let successDiv = document.getElementById('milestoneSuccessMessages');
+    const successDiv = document.getElementById('milestoneSuccessMessages');
     successDiv.innerHTML = '<p>' + message + '</p>';
     successDiv.style.display = 'block';
     document.getElementById('milestoneErrorMessages').style.display = 'none';
 }
 
 function hideAllSteps() {
-    let steps = document.querySelectorAll('.step-container');
+    const steps = document.querySelectorAll('.step-container');
     steps.forEach(function(step) {
         step.style.display = 'none';
     });
 }
 
 function showStep(stepId) {
-    let targetStep = document.getElementById(stepId);
+    const targetStep = document.getElementById(stepId);
     if (!targetStep) {
         return;
     }
@@ -219,22 +219,22 @@ function editMilestoneItem(index) {
     if (index < 0 || index >= milestoneItems.length) {
         return;
     }
-    
+
     const item = milestoneItems[index];
     editingIndex = index;
-    
+
     // Populate form fields
     document.getElementById('item_percentage').value = item.percentage;
     document.getElementById('item_title').value = item.title;
     document.getElementById('item_description').value = item.description;
     document.getElementById('item_date').value = item.date_to_finish;
-    
+
     // Change button text
     const addButton = document.getElementById('addMilestoneItemButton');
     if (addButton) {
         addButton.textContent = 'Update Milestone Item';
     }
-    
+
     // Scroll to form
     const form = document.getElementById('milestoneItemForm');
     if (form) {
@@ -247,20 +247,20 @@ function resetMilestoneItemForm() {
     document.getElementById('item_title').value = '';
     document.getElementById('item_description').value = '';
     document.getElementById('item_date').value = '';
-    
+
     const addButton = document.getElementById('addMilestoneItemButton');
     if (addButton) {
         addButton.textContent = 'Add Milestone Item';
     }
-    
+
     editingIndex = null;
 }
 
 function populateEditForm() {
     if (!window.existingMilestone) return;
-    
+
     const milestone = window.existingMilestone;
-    
+
     // Populate Step 1 fields
     const projectSelect = document.getElementById('project_id');
     if (projectSelect && milestone.project_id) {
@@ -271,20 +271,20 @@ function populateEditForm() {
         // Also manually update project description
         updateProjectDescription(milestone.project_id);
     }
-    
+
     if (document.getElementById('milestone_name')) {
         document.getElementById('milestone_name').value = milestone.milestone_name || '';
     }
-    
+
     if (document.getElementById('payment_mode')) {
         document.getElementById('payment_mode').value = milestone.payment_mode || '';
         // Update downpayment container visibility
-        const downpaymentContainer = document.getElementById('downpaymentContainer');
+const downpaymentContainer = document.getElementById('downpaymentContainer');
         if (downpaymentContainer) {
             downpaymentContainer.style.display = milestone.payment_mode === 'downpayment' ? 'block' : 'none';
         }
     }
-    
+
     // Populate Step 2 fields (will be populated when step 2 is shown)
     if (milestone.start_date && document.getElementById('start_date')) {
         const startDate = new Date(milestone.start_date);
@@ -300,7 +300,7 @@ function populateEditForm() {
     if (milestone.downpayment_amount && document.getElementById('downpayment_amount')) {
         document.getElementById('downpayment_amount').value = milestone.downpayment_amount;
     }
-    
+
     // Populate Step 3 items (will be populated when step 3 is shown)
     if (window.existingItems && window.existingItems.length > 0) {
         milestoneItems = window.existingItems.map(function(item) {
@@ -340,14 +340,14 @@ document.addEventListener('DOMContentLoaded', function() {
     const submitMilestoneButton = document.getElementById('submitMilestoneButton');
     const downpaymentContainer = document.getElementById('downpaymentContainer');
     const projectSelect = document.getElementById('project_id');
-    
+
     // Build project details map for updateProjectDescription
     if (window.contractorProjects && Array.isArray(window.contractorProjects)) {
         window.contractorProjects.forEach(function(project) {
             projectDetailsMap[String(project.project_id)] = project;
         });
     }
-    
+
     // If editing, populate form on page load
     if (window.isEditingMilestone && window.existingMilestone) {
         populateEditForm();
@@ -366,17 +366,18 @@ document.addEventListener('DOMContentLoaded', function() {
     if (step1Form) {
         step1Form.addEventListener('submit', function(e) {
             e.preventDefault();
-            const projectId = document.getElementById('project_id').value;
-            const milestoneName = document.getElementById('milestone_name').value.trim();
-            const paymentMode = document.getElementById('payment_mode').value;
+const projectId = document.getElementById('project_id').value;
+const milestoneName = document.getElementById('milestone_name').value.trim();
+const paymentMode = document.getElementById('payment_mode').value;
 
             if (!projectId || !milestoneName || !paymentMode) {
                 showMilestoneError('Please complete all required fields.');
                 return;
             }
 
-            const formData = new FormData(step1Form);
-            
+const formData = new FormData(step1Form);
+            formData.append('_token', csrfToken);
+
             // If editing, include milestone_id
             if (window.isEditingMilestone && window.existingMilestone && window.existingMilestone.milestone_id) {
                 formData.append('milestone_id', window.existingMilestone.milestone_id);
@@ -385,21 +386,22 @@ document.addEventListener('DOMContentLoaded', function() {
             fetch('/contractor/milestone/setup/step1', {
                 method: 'POST',
                 headers: {
-                    'X-CSRF-TOKEN': csrfToken
+                    'X-CSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest'
                 },
                 body: formData
             })
             .then(function(response) { return response.json(); })
             .then(function(data) {
                 if (data.success) {
-                    const newStep1State = {
+const newStep1State = {
                         project_id: projectId,
                         milestone_name: milestoneName,
                         payment_mode: paymentMode
                     };
 
-                    const projectChanged = !step1State || step1State.project_id !== newStep1State.project_id;
-                    const paymentModeChanged = !step1State || step1State.payment_mode !== newStep1State.payment_mode;
+const projectChanged = !step1State || step1State.project_id !== newStep1State.project_id;
+const paymentModeChanged = !step1State || step1State.payment_mode !== newStep1State.payment_mode;
 
                     if (projectChanged || paymentModeChanged) {
                         milestoneItems = [];
@@ -412,16 +414,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     step2State = null;
                     selectedPaymentMode = data.payment_mode;
                     downpaymentContainer.style.display = selectedPaymentMode === 'downpayment' ? 'block' : 'none';
-                    
+
                     // If editing, populate step 2 fields
                     if (window.isEditingMilestone && window.existingMilestone) {
-                        const milestone = window.existingMilestone;
+const milestone = window.existingMilestone;
                         if (milestone.start_date && document.getElementById('start_date')) {
-                            const startDate = new Date(milestone.start_date);
+const startDate = new Date(milestone.start_date);
                             document.getElementById('start_date').value = startDate.toISOString().split('T')[0];
                         }
                         if (milestone.end_date && document.getElementById('end_date')) {
-                            const endDate = new Date(milestone.end_date);
+const endDate = new Date(milestone.end_date);
                             document.getElementById('end_date').value = endDate.toISOString().split('T')[0];
                         }
                         if (milestone.total_project_cost && document.getElementById('total_project_cost')) {
@@ -431,14 +433,18 @@ document.addEventListener('DOMContentLoaded', function() {
                             document.getElementById('downpayment_amount').value = milestone.downpayment_amount;
                         }
                     }
-                    
+
                     showStep('milestoneStep2');
                 } else {
-                    const errorMessage = Array.isArray(data.errors) ? data.errors.join(', ') : 'An error occurred.';
+                    let errorMessage = data.message || 'An error occurred.';
+                    if (data.errors && typeof data.errors === 'object') {
+                        const errorList = Object.values(data.errors).flat();
+                        errorMessage = errorList.join(', ');
+                    }
                     showMilestoneError(errorMessage);
                 }
             })
-            .catch(function() {
+            .catch(function(error) {
                 showMilestoneError('Network error. Please try again.');
             });
         });
@@ -447,10 +453,10 @@ document.addEventListener('DOMContentLoaded', function() {
     if (step2Form) {
         step2Form.addEventListener('submit', function(e) {
             e.preventDefault();
-            const startDate = document.getElementById('start_date').value;
-            const endDate = document.getElementById('end_date').value;
-            const totalCost = document.getElementById('total_project_cost').value;
-            const downpaymentInput = document.getElementById('downpayment_amount');
+const startDate = document.getElementById('start_date').value;
+const endDate = document.getElementById('end_date').value;
+const totalCost = document.getElementById('total_project_cost').value;
+const downpaymentInput = document.getElementById('downpayment_amount');
 
             if (!startDate || !endDate || !totalCost) {
                 showMilestoneError('Please fill in the required fields.');
@@ -468,32 +474,34 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
 
-            const formData = new FormData(step2Form);
+const formData = new FormData(step2Form);
+            formData.append('_token', csrfToken);
 
             fetch('/contractor/milestone/setup/step2', {
                 method: 'POST',
                 headers: {
-                    'X-CSRF-TOKEN': csrfToken
+                    'X-CSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest'
                 },
                 body: formData
             })
             .then(function(response) { return response.json(); })
             .then(function(data) {
                 if (data.success) {
-                    const downpaymentValue = downpaymentInput ? downpaymentInput.value : '';
-                    const parsedDownpayment = selectedPaymentMode === 'downpayment' ? parseFloat(downpaymentValue) : null;
+const downpaymentValue = downpaymentInput ? downpaymentInput.value : '';
+const parsedDownpayment = selectedPaymentMode === 'downpayment' ? parseFloat(downpaymentValue) : null;
                     if (selectedPaymentMode === 'downpayment' && isNaN(parsedDownpayment)) {
                         parsedDownpayment = null;
                     }
 
-                    const newStep2State = {
+const newStep2State = {
                         start_date: data.start_date,
                         end_date: data.end_date,
                         total_cost: parseFloat(totalCost),
                         downpayment: parsedDownpayment
                     };
 
-                    const shouldResetItems = true;
+const shouldResetItems = true;
                     if (step2State &&
                         step2State.start_date === newStep2State.start_date &&
                         step2State.end_date === newStep2State.end_date &&
@@ -512,11 +520,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         editingIndex = null;
                         resetMilestoneItemForm();
                     }
-                    
+
                     // If editing and items haven't been loaded yet, populate them
                     if (window.isEditingMilestone && window.existingItems && window.existingItems.length > 0 && milestoneItems.length === 0) {
                         milestoneItems = window.existingItems.map(function(item) {
-                            const dateStr = item.date_to_finish ? item.date_to_finish.split(' ')[0] : '';
+const dateStr = item.date_to_finish ? item.date_to_finish.split(' ')[0] : '';
                             return {
                                 percentage: parseFloat(item.percentage_progress),
                                 title: item.milestone_item_title,
@@ -529,11 +537,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     renderMilestoneItems();
                     showStep('milestoneStep3');
                 } else {
-                    const errorMessage = Array.isArray(data.errors) ? data.errors.join(', ') : 'An error occurred.';
+                    let errorMessage = data.message || 'An error occurred.';
+                    if (data.errors && typeof data.errors === 'object') {
+                        const errorList = Object.values(data.errors).flat();
+                        errorMessage = errorList.join(', ');
+                    }
                     showMilestoneError(errorMessage);
                 }
             })
-            .catch(function() {
+            .catch(function(error) {
                 showMilestoneError('Network error. Please try again.');
             });
         });
@@ -541,15 +553,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (addItemButton) {
         addItemButton.addEventListener('click', function() {
-            const percentageField = document.getElementById('item_percentage');
-            const titleField = document.getElementById('item_title');
-            const descriptionField = document.getElementById('item_description');
-            const dateField = document.getElementById('item_date');
+const percentageField = document.getElementById('item_percentage');
+const titleField = document.getElementById('item_title');
+const descriptionField = document.getElementById('item_description');
+const dateField = document.getElementById('item_date');
 
-            const percentage = parseFloat(percentageField.value);
-            const title = titleField.value.trim();
-            const description = descriptionField.value.trim();
-            const dateValue = dateField.value;
+const percentage = parseFloat(percentageField.value);
+const title = titleField.value.trim();
+const description = descriptionField.value.trim();
+const dateValue = dateField.value;
 
             if (!percentage || !title || !description || !dateValue) {
                 showMilestoneError('Please complete all milestone item fields before adding.');
@@ -562,7 +574,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             // Calculate current total, excluding the item being edited
-            const currentTotal = milestoneItems.reduce(function(total, item, index) {
+const currentTotal = milestoneItems.reduce(function(total, item, index) {
                 if (editingIndex !== null && index === editingIndex) {
                     return total; // Exclude the item being edited
                 }
@@ -617,7 +629,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
-            const total = milestoneItems.reduce(function(total, item) {
+const total = milestoneItems.reduce(function(total, item) {
                 return total + item.percentage;
             }, 0);
 
@@ -626,15 +638,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
-            const lastItem = milestoneItems[milestoneItems.length - 1];
+const lastItem = milestoneItems[milestoneItems.length - 1];
             if (endDateLimit && lastItem.date_to_finish !== endDateLimit) {
                 showMilestoneError('The last milestone item must finish on the project end date.');
                 return;
             }
 
-            const formData = new FormData();
+const formData = new FormData();
+            formData.append('_token', csrfToken);
             formData.append('items', JSON.stringify(milestoneItems));
-            
+
             // If editing, include milestone_id
             if (window.isEditingMilestone && window.existingMilestone && window.existingMilestone.milestone_id) {
                 formData.append('milestone_id', window.existingMilestone.milestone_id);
@@ -643,7 +656,8 @@ document.addEventListener('DOMContentLoaded', function() {
             fetch('/contractor/milestone/setup/submit', {
                 method: 'POST',
                 headers: {
-                    'X-CSRF-TOKEN': csrfToken
+                    'X-CSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest'
                 },
                 body: formData
             })
@@ -655,11 +669,15 @@ document.addEventListener('DOMContentLoaded', function() {
                         window.location.href = data.redirect || '/dashboard';
                     }, 1500);
                 } else {
-                    const errorMessage = Array.isArray(data.errors) ? data.errors.join(', ') : 'An error occurred.';
+                    let errorMessage = data.message || 'An error occurred.';
+                    if (data.errors && typeof data.errors === 'object') {
+                        const errorList = Object.values(data.errors).flat();
+                        errorMessage = errorList.join(', ');
+                    }
                     showMilestoneError(errorMessage);
                 }
             })
-            .catch(function() {
+            .catch(function(error) {
                 showMilestoneError('Network error. Please try again.');
             });
         });
@@ -669,21 +687,21 @@ document.addEventListener('DOMContentLoaded', function() {
 // Disputes page functionality
 // Pre-fill form from URL parameters (when coming from project details page)
 function initializeDisputeForm() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const projectId = urlParams.get('project_id');
+const urlParams = new URLSearchParams(window.location.search);
+const projectId = urlParams.get('project_id');
 
     if (projectId) {
-        const projectSelect = document.getElementById('project_id');
+const projectSelect = document.getElementById('project_id');
         if (projectSelect) {
             projectSelect.value = projectId;
 
             // Trigger change event to load milestones
             // The milestone and milestone item will be auto-selected by both.js
-            const event = new Event('change');
+const event = new Event('change');
             projectSelect.dispatchEvent(event);
 
             // Scroll to the form
-            const disputeForm = document.getElementById('fileDisputeForm');
+const disputeForm = document.getElementById('fileDisputeForm');
             if (disputeForm) {
                 setTimeout(() => {
                     disputeForm.scrollIntoView({ behavior: 'smooth' });
@@ -695,15 +713,15 @@ function initializeDisputeForm() {
 
 // Multiple file upload functionality
 function handleFileSelection(input) {
-    const addMoreBtn = document.getElementById('add-more-files');
-    const container = document.getElementById('file-upload-container');
+const addMoreBtn = document.getElementById('add-more-files');
+const container = document.getElementById('file-upload-container');
 
     if (!addMoreBtn || !container) return;
 
-    const fileInputs = container.querySelectorAll('.evidence-file-input');
+const fileInputs = container.querySelectorAll('.evidence-file-input');
 
     // Check if any file is selected in any input
-    let hasFiles = false;
+const hasFiles = false;
     fileInputs.forEach(fileInput => {
         if (fileInput.files.length > 0) {
             hasFiles = true;
@@ -721,10 +739,10 @@ function handleFileSelection(input) {
 }
 
 function addMoreFiles() {
-    const container = document.getElementById('file-upload-container');
+const container = document.getElementById('file-upload-container');
     if (!container) return;
 
-    const fileInputs = container.querySelectorAll('.file-input-group');
+const fileInputs = container.querySelectorAll('.file-input-group');
 
     // Limit to 10 files
     if (fileInputs.length >= 10) {
@@ -733,7 +751,7 @@ function addMoreFiles() {
     }
 
     // Create a hidden file input to trigger file selection
-    const hiddenFileInput = document.createElement('input');
+const hiddenFileInput = document.createElement('input');
     hiddenFileInput.type = 'file';
     hiddenFileInput.accept = '.jpg,.jpeg,.png,.pdf,.doc,.docx';
     hiddenFileInput.style.display = 'none';
@@ -741,13 +759,13 @@ function addMoreFiles() {
     // When file is selected, create the actual file input group
     hiddenFileInput.onchange = function() {
         if (this.files.length > 0) {
-            const selectedFile = this.files[0];
+const selectedFile = this.files[0];
 
-            const newFileGroup = document.createElement('div');
+const newFileGroup = document.createElement('div');
             newFileGroup.className = 'file-input-group';
 
             // Create file input and set the selected file
-            const newInput = document.createElement('input');
+const newInput = document.createElement('input');
             newInput.type = 'file';
             newInput.name = 'evidence_files[]';
             newInput.accept = '.jpg,.jpeg,.png,.pdf,.doc,.docx';
@@ -755,12 +773,12 @@ function addMoreFiles() {
             newInput.onchange = function() { handleFileSelection(this); };
 
             // Use DataTransfer to set the file
-            const dt = new DataTransfer();
+const dt = new DataTransfer();
             dt.items.add(selectedFile);
             newInput.files = dt.files;
 
             // Create remove button
-            const removeBtn = document.createElement('button');
+const removeBtn = document.createElement('button');
             removeBtn.type = 'button';
             removeBtn.className = 'remove-file-btn';
             removeBtn.textContent = 'Remove';
@@ -781,16 +799,16 @@ function addMoreFiles() {
 }
 
 function removeFileInput(button) {
-    const container = document.getElementById('file-upload-container');
+const container = document.getElementById('file-upload-container');
     if (!container) return;
 
-    const fileGroup = button.parentElement;
-    const fileGroups = container.querySelectorAll('.file-input-group');
-    const isFirstInput = Array.from(fileGroups).indexOf(fileGroup) === 0;
+const fileGroup = button.parentElement;
+const fileGroups = container.querySelectorAll('.file-input-group');
+const isFirstInput = Array.from(fileGroups).indexOf(fileGroup) === 0;
 
     if (isFirstInput && fileGroups.length === 1) {
         // If this is the only (first) input, just clear it instead of removing
-        const fileInput = fileGroup.querySelector('.evidence-file-input');
+const fileInput = fileGroup.querySelector('.evidence-file-input');
         fileInput.value = '';
     } else {
         // Remove the file group if it's not the first or there are multiple inputs
@@ -798,8 +816,8 @@ function removeFileInput(button) {
     }
 
     // Check if we still have files selected after removal
-    const fileInputs = container.querySelectorAll('.evidence-file-input');
-    let hasFiles = false;
+const fileInputs = container.querySelectorAll('.evidence-file-input');
+const hasFiles = false;
     fileInputs.forEach(fileInput => {
         if (fileInput.files.length > 0) {
             hasFiles = true;
@@ -807,7 +825,7 @@ function removeFileInput(button) {
     });
 
     // Hide Add More Files button if no files are selected
-    const addMoreBtn = document.getElementById('add-more-files');
+const addMoreBtn = document.getElementById('add-more-files');
     if (addMoreBtn && !hasFiles) {
         addMoreBtn.style.display = 'none';
     }
@@ -816,23 +834,23 @@ function removeFileInput(button) {
 }
 
 function updateRemoveButtons() {
-    const container = document.getElementById('file-upload-container');
+const container = document.getElementById('file-upload-container');
     if (!container) return;
 
-    const fileGroups = container.querySelectorAll('.file-input-group');
+const fileGroups = container.querySelectorAll('.file-input-group');
 
     fileGroups.forEach((group, index) => {
-        const removeBtn = group.querySelector('.remove-file-btn');
-        const fileInput = group.querySelector('.evidence-file-input');
+const removeBtn = group.querySelector('.remove-file-btn');
+const fileInput = group.querySelector('.evidence-file-input');
 
         if (!removeBtn || !fileInput) return;
 
         // Show remove button if:
         // 1. There's more than one file input, OR
         // 2. This is the first input and it has a file selected
-        const hasFile = fileInput.files.length > 0;
-        const isFirstInput = index === 0;
-        const shouldShowRemove = fileGroups.length > 1 || (isFirstInput && hasFile);
+const hasFile = fileInput.files.length > 0;
+const isFirstInput = index === 0;
+const shouldShowRemove = fileGroups.length > 1 || (isFirstInput && hasFile);
 
         removeBtn.style.display = shouldShowRemove ? 'inline-block' : 'none';
     });
@@ -866,11 +884,11 @@ if (typeof window.ApprovePaymentModal === 'undefined') {
                 return;
             }
 
-            const confirmBtn = document.getElementById('confirmApprovePaymentBtn');
+const confirmBtn = document.getElementById('confirmApprovePaymentBtn');
             confirmBtn.disabled = true;
             confirmBtn.textContent = 'Approving...';
 
-            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
             if (!csrfToken) {
                 document.getElementById('approvePaymentErrorMessage').textContent = 'CSRF token not found. Please refresh the page.';
                 document.getElementById('approvePaymentErrorMessage').style.display = 'block';
@@ -880,7 +898,7 @@ if (typeof window.ApprovePaymentModal === 'undefined') {
             }
 
             try {
-                const response = await fetch(`/contractor/payments/${this.paymentId}/approve`, {
+const response = await fetch(`/contractor/payments/${this.paymentId}/approve`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -890,7 +908,7 @@ if (typeof window.ApprovePaymentModal === 'undefined') {
                     }
                 });
 
-                const data = await response.json();
+const data = await response.json();
 
                 if (data.success) {
                     document.getElementById('approvePaymentSuccessMessage').textContent = data.message;
@@ -944,14 +962,14 @@ if (typeof window.CancelBidModal === 'undefined') {
             if (window.existingBid && window.existingBid.bid_id) {
                 this.bidId = window.existingBid.bid_id;
             } else {
-                const bidIdInput = document.getElementById('bid_id');
+const bidIdInput = document.getElementById('bid_id');
                 if (bidIdInput && bidIdInput.value) {
                     this.bidId = parseInt(bidIdInput.value);
                 }
             }
 
             if (!this.bidId) {
-                const errorMsg = document.getElementById('cancelBidErrorMessage');
+const errorMsg = document.getElementById('cancelBidErrorMessage');
                 if (errorMsg) {
                     errorMsg.textContent = 'Bid ID not found.';
                     errorMsg.style.display = 'block';
@@ -959,35 +977,35 @@ if (typeof window.CancelBidModal === 'undefined') {
                 return;
             }
 
-            const modal = document.getElementById('cancelBidModal');
+const modal = document.getElementById('cancelBidModal');
             if (modal) {
                 modal.style.display = 'flex';
                 document.body.style.overflow = 'hidden';
             }
 
-            const errorMsg = document.getElementById('cancelBidErrorMessage');
-            const successMsg = document.getElementById('cancelBidSuccessMessage');
+const errorMsg = document.getElementById('cancelBidErrorMessage');
+const successMsg = document.getElementById('cancelBidSuccessMessage');
             if (errorMsg) errorMsg.style.display = 'none';
             if (successMsg) successMsg.style.display = 'none';
         },
 
         close: function() {
-            const modal = document.getElementById('cancelBidModal');
+const modal = document.getElementById('cancelBidModal');
             if (modal) {
                 modal.style.display = 'none';
                 document.body.style.overflow = '';
             }
             this.bidId = null;
 
-            const errorMsg = document.getElementById('cancelBidErrorMessage');
-            const successMsg = document.getElementById('cancelBidSuccessMessage');
+const errorMsg = document.getElementById('cancelBidErrorMessage');
+const successMsg = document.getElementById('cancelBidSuccessMessage');
             if (errorMsg) errorMsg.style.display = 'none';
             if (successMsg) successMsg.style.display = 'none';
         },
 
         confirm: async function() {
             if (!this.bidId) {
-                const errorMsg = document.getElementById('cancelBidErrorMessage');
+const errorMsg = document.getElementById('cancelBidErrorMessage');
                 if (errorMsg) {
                     errorMsg.textContent = 'Bid ID not found.';
                     errorMsg.style.display = 'block';
@@ -995,15 +1013,15 @@ if (typeof window.CancelBidModal === 'undefined') {
                 return;
             }
 
-            const confirmBtn = document.getElementById('confirmCancelBtn');
+const confirmBtn = document.getElementById('confirmCancelBtn');
             if (confirmBtn) {
                 confirmBtn.disabled = true;
                 confirmBtn.textContent = 'Canceling...';
             }
 
-            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
             if (!csrfToken) {
-                const errorMsg = document.getElementById('cancelBidErrorMessage');
+const errorMsg = document.getElementById('cancelBidErrorMessage');
                 if (errorMsg) {
                     errorMsg.textContent = 'CSRF token not found. Please refresh the page.';
                     errorMsg.style.display = 'block';
@@ -1016,7 +1034,7 @@ if (typeof window.CancelBidModal === 'undefined') {
             }
 
             try {
-                const response = await fetch(`/contractor/bids/${this.bidId}/cancel`, {
+const response = await fetch(`/contractor/bids/${this.bidId}/cancel`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1026,10 +1044,10 @@ if (typeof window.CancelBidModal === 'undefined') {
                     }
                 });
 
-                const data = await response.json();
+const data = await response.json();
 
                 if (data.success) {
-                    const successMsg = document.getElementById('cancelBidSuccessMessage');
+const successMsg = document.getElementById('cancelBidSuccessMessage');
                     if (successMsg) {
                         successMsg.textContent = data.message;
                         successMsg.style.display = 'block';
@@ -1038,7 +1056,7 @@ if (typeof window.CancelBidModal === 'undefined') {
                         window.location.reload();
                     }, 1500);
                 } else {
-                    const errorMsg = document.getElementById('cancelBidErrorMessage');
+const errorMsg = document.getElementById('cancelBidErrorMessage');
                     if (errorMsg) {
                         errorMsg.textContent = data.message || 'An error occurred while canceling the bid.';
                         errorMsg.style.display = 'block';
@@ -1050,7 +1068,7 @@ if (typeof window.CancelBidModal === 'undefined') {
                 }
             } catch (error) {
                 console.error('Error:', error);
-                const errorMsg = document.getElementById('cancelBidErrorMessage');
+const errorMsg = document.getElementById('cancelBidErrorMessage');
                 if (errorMsg) {
                     errorMsg.textContent = 'An error occurred while canceling the bid. Please try again.';
                     errorMsg.style.display = 'block';
@@ -1087,7 +1105,7 @@ if (typeof window.CancelBidModal === 'undefined') {
         window.modalClickHandlers = [];
     }
     window.modalClickHandlers.push(function(event) {
-        const cancelBidModal = document.getElementById('cancelBidModal');
+const cancelBidModal = document.getElementById('cancelBidModal');
         if (event.target === cancelBidModal) {
             closeCancelBidModal();
         }
@@ -1128,9 +1146,9 @@ function editProgress(progressId) {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                const progressData = data.data;
+const progressData = data.data;
                 // Transform data to match modal expectations
-                const modalData = {
+const modalData = {
                     progress_id: progressData.progress_id || progressId,
                     item_id: progressData.item_id,
                     project_id: progressData.project_id,
@@ -1154,5 +1172,232 @@ function editProgress(progressId) {
 function deleteProgress(progressId) {
     if (typeof ProgressDelete !== 'undefined') {
         ProgressDelete.open(progressId);
+    }
+}
+
+// ============================================================================
+// BIDDING FUNCTIONS
+// ============================================================================
+
+let deletedBidFiles = [];
+let selectedBidFiles = [];
+
+function openBidModal(mode) {
+    const modal = document.getElementById('bidModal');
+    const modalTitle = document.getElementById('modalTitle');
+    const formMethod = document.getElementById('form_method');
+    const submitBtn = document.getElementById('submitBtn');
+    const bidIdInput = document.getElementById('bid_id');
+
+    if (mode === 'edit') {
+        modalTitle.textContent = 'Edit Bid';
+        formMethod.value = 'PUT';
+        submitBtn.textContent = 'Update Bid';
+
+        if (window.existingBid && window.existingBid.bid_id) {
+            bidIdInput.value = window.existingBid.bid_id;
+
+            const proposedCost = document.getElementById('proposed_cost');
+            const estimatedTimeline = document.getElementById('estimated_timeline');
+            const contractorNotes = document.getElementById('contractor_notes');
+
+            if (proposedCost && !proposedCost.value && window.existingBid.proposed_cost) {
+                proposedCost.value = window.existingBid.proposed_cost;
+            }
+            if (estimatedTimeline && !estimatedTimeline.value && window.existingBid.estimated_timeline) {
+                estimatedTimeline.value = window.existingBid.estimated_timeline;
+            }
+            if (contractorNotes && !contractorNotes.value.trim() && window.existingBid.contractor_notes) {
+                contractorNotes.value = window.existingBid.contractor_notes;
+            }
+        }
+    } else {
+        modalTitle.textContent = 'Apply for Bid';
+        formMethod.value = 'POST';
+        submitBtn.textContent = 'Submit Bid';
+        bidIdInput.value = '';
+    }
+
+    document.getElementById('errorMessage').style.display = 'none';
+    document.getElementById('successMessage').style.display = 'none';
+
+    modal.style.display = 'block';
+}
+
+function closeBidModal() {
+    document.getElementById('bidModal').style.display = 'none';
+    document.getElementById('errorMessage').style.display = 'none';
+    document.getElementById('successMessage').style.display = 'none';
+    deletedBidFiles = [];
+    selectedBidFiles = [];
+    document.getElementById('fileList').innerHTML = '';
+    document.getElementById('bid_files').value = '';
+}
+
+function handleBidFiles(files) {
+    for (const file of files) {
+        selectedBidFiles.push(file);
+        const li = document.createElement('li');
+        li.innerHTML = `
+            ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)
+            <span class="remove-file" onclick="removeBidFile('${file.name}')">×</span>
+        `;
+        document.getElementById('fileList').appendChild(li);
+    }
+}
+
+function removeBidFile(fileName) {
+    selectedBidFiles = selectedBidFiles.filter(f => f.name !== fileName);
+    updateBidFileList();
+}
+
+function updateBidFileList() {
+    const fileList = document.getElementById('fileList');
+    fileList.innerHTML = '';
+    selectedBidFiles.forEach(file => {
+        const li = document.createElement('li');
+        li.innerHTML = `
+            ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)
+            <span class="remove-file" onclick="removeBidFile('${file.name}')">×</span>
+        `;
+        fileList.appendChild(li);
+    });
+}
+
+function deleteExistingFile(fileId) {
+    if (confirm('Are you sure you want to delete this file?')) {
+        deletedBidFiles.push(fileId);
+        document.getElementById('file-' + fileId).style.display = 'none';
+    }
+}
+
+// Initialize bidding form when DOM is ready
+if (typeof window !== 'undefined') {
+    function initBiddingIfPresent() {
+        const fileInput = document.getElementById('bid_files');
+        const fileUploadArea = document.getElementById('fileUploadArea');
+        const fileList = document.getElementById('fileList');
+
+        if (fileInput && fileUploadArea && fileList) {
+            fileInput.addEventListener('change', function(e) {
+                handleBidFiles(e.target.files);
+            });
+
+            fileUploadArea.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                fileUploadArea.classList.add('dragover');
+            });
+
+            fileUploadArea.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                fileUploadArea.classList.remove('dragover');
+            });
+
+            fileUploadArea.addEventListener('drop', function(e) {
+                e.preventDefault();
+                fileUploadArea.classList.remove('dragover');
+                handleBidFiles(e.dataTransfer.files);
+            });
+        }
+
+        const bidForm = document.getElementById('bidForm');
+        if (bidForm) {
+            bidForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+
+                const formData = new FormData();
+                const formMethod = document.getElementById('form_method').value;
+                const projectId = document.querySelector('input[name="project_id"]').value;
+                const bidId = document.getElementById('bid_id').value;
+
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
+                                 document.querySelector('input[name="_token"]')?.value;
+
+                if (!csrfToken) {
+                    alert('CSRF token not found. Please refresh the page.');
+                    return;
+                }
+
+                formData.append('_token', csrfToken);
+
+                const proposedCost = document.getElementById('proposed_cost').value.trim();
+                const estimatedTimeline = document.getElementById('estimated_timeline').value.trim();
+                const contractorNotes = document.getElementById('contractor_notes').value.trim();
+
+                if (!proposedCost || !estimatedTimeline) {
+                    document.getElementById('errorMessage').textContent = 'Please fill in all required fields.';
+                    document.getElementById('errorMessage').style.display = 'block';
+                    return;
+                }
+
+                formData.append('proposed_cost', proposedCost);
+                formData.append('estimated_timeline', estimatedTimeline);
+                formData.append('contractor_notes', contractorNotes);
+                formData.append('project_id', projectId);
+
+                selectedBidFiles.forEach(file => {
+                    formData.append('bid_files[]', file);
+                });
+
+                deletedBidFiles.forEach(fileId => {
+                    formData.append('delete_files[]', fileId);
+                });
+
+                if (formMethod === 'PUT') {
+                    if (!bidId) {
+                        document.getElementById('errorMessage').textContent = 'Bid ID is required for update.';
+                        document.getElementById('errorMessage').style.display = 'block';
+                        return;
+                    }
+                    formData.append('_method', 'PUT');
+                    formData.append('bid_id', bidId);
+                }
+
+                const submitBtn = document.getElementById('submitBtn');
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Processing...';
+
+                try {
+                    const url = formMethod === 'PUT'
+                        ? `/contractor/bids/${bidId}`
+                        : `/contractor/bids`;
+
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': csrfToken,
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: formData
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        document.getElementById('successMessage').textContent = data.message;
+                        document.getElementById('successMessage').style.display = 'block';
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1500);
+                    } else {
+                        document.getElementById('errorMessage').textContent = data.message || 'An error occurred.';
+                        document.getElementById('errorMessage').style.display = 'block';
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = formMethod === 'PUT' ? 'Update Bid' : 'Submit Bid';
+                    }
+                } catch (error) {
+                    document.getElementById('errorMessage').textContent = 'Network error. Please try again.';
+                    document.getElementById('errorMessage').style.display = 'block';
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = formMethod === 'PUT' ? 'Update Bid' : 'Submit Bid';
+                }
+            });
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initBiddingIfPresent);
+    } else {
+        initBiddingIfPresent();
     }
 }
