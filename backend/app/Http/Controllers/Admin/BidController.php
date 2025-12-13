@@ -1,19 +1,19 @@
 <?php
 
-namespace App\Http\Controllers\Admin;
+namespace App\Http\Controllers\admin;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\StoreBidRequest;
-use App\Http\Requests\UpdateBidRequest;
-use App\Models\Bid;
+use App\Http\Requests\admin\storeBidRequest;
+use App\Http\Requests\admin\updateBidRequest;
+use App\Models\admin\bid;
 use Illuminate\Http\Request;
 
-class BidController extends Controller
+class bidController extends Controller
 {
     public function index(Request $request)
     {
         $perPage = (int) $request->input('per_page', 15);
-        $q = Bid::with('contractor','project');
+        $q = bid::with('contractor','project');
         if ($search = $request->input('search')) {
             $q->whereHas('project', function($qr) use ($search) {
                 $qr->where('project_title', 'like', "%{$search}%");
@@ -24,20 +24,20 @@ class BidController extends Controller
 
     public function show($id)
     {
-        $bid = Bid::with('contractor','project')->find($id);
+        $bid = bid::with('contractor','project')->find($id);
         if (!$bid) return response()->json(['error'=>'Not found'],404);
         return response()->json($bid);
     }
 
-    public function store(StoreBidRequest $request)
+    public function store(storeBidRequest $request)
     {
-        $bid = Bid::create($request->validated());
+        $bid = bid::create($request->validated());
         return response()->json($bid,201);
     }
 
-    public function update(UpdateBidRequest $request, $id)
+    public function update(updateBidRequest $request, $id)
     {
-        $bid = Bid::find($id);
+        $bid = bid::find($id);
         if (!$bid) return response()->json(['error'=>'Not found'],404);
         $bid->update($request->validated());
         return response()->json($bid);
@@ -45,7 +45,7 @@ class BidController extends Controller
 
     public function destroy($id)
     {
-        $bid = Bid::find($id);
+        $bid = bid::find($id);
         if (!$bid) return response()->json(['error'=>'Not found'],404);
         $bid->delete();
         return response()->json(['deleted'=>true]);

@@ -4,6 +4,14 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\authController;
 use App\Http\Controllers\contractor\cprocessController;
 use App\Http\Controllers\both\disputeController;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\View;
+use App\Http\Controllers\admin\dashboardController;
+use App\Http\Controllers\admin\analyticsController;
+use App\Http\Controllers\admin\userManagementController;
+use App\Http\Controllers\admin\globalManagementController;
+use App\Http\Controllers\admin\ProjectAdminController;
+
 
 Route::get('/', function () {
     return view('startPoint');
@@ -45,9 +53,9 @@ Route::get('/api/psgc/provinces/{provinceCode}/cities', [authController::class, 
 Route::get('/api/psgc/cities/{cityCode}/barangays', [authController::class, 'getBarangaysByCity']);
 
 // Dashboard Routes
-Route::get('/admin/dashboard', function() {
-    return view('admin.dashboard');
-});
+// Route::get('/admin/dashboard', function() {
+//     return view('admin.dashboard');
+// });
 
 Route::get('/dashboard', [\App\Http\Controllers\Owner\projectsController::class, 'showDashboard']);
 
@@ -107,6 +115,143 @@ Route::post('/contractor/bids', [\App\Http\Controllers\contractor\biddingControl
 Route::put('/contractor/bids/{bidId}', [\App\Http\Controllers\contractor\biddingController::class, 'update']);
 Route::post('/contractor/bids/{bidId}/cancel', [\App\Http\Controllers\contractor\biddingController::class, 'cancel']);
 
+// START HERE ADMIN
 
+// Dashboard Routes
+Route::get('/admin/dashboard', [dashboardController::class, 'index'])->name('admin.dashboard');
+Route::get('/admin/dashboard/earnings', [dashboardController::class, 'getEarnings'])->name('admin.dashboard.earnings');
 
+// Analytics Routes
+Route::get('/admin/analytics', [analyticsController::class, 'analytics'])->name('admin.analytics');
+Route::get('/admin/analytics/timeline', [analyticsController::class, 'getProjectsTimelineData'])->name('admin.analytics.timeline');
+Route::get('/admin/analytics/subscription', [analyticsController::class, 'subscriptionAnalytics'])->name('admin.analytics.subscription');
+Route::get('/admin/analytics/subscription/revenue', [analyticsController::class, 'subscriptionRevenue'])->name('admin.analytics.subscription.revenue');
+Route::get('/admin/analytics/user-activity', [analyticsController::class, 'userActivityAnalytics'])->name('admin.analytics.userActivity');
+Route::get('/admin/analytics/project-performance', [analyticsController::class, 'projectPerformanceAnalytics'])->name('admin.analytics.projectPerformance');
+Route::get('/admin/analytics/bid-completion', [analyticsController::class, 'bidCompletionAnalytics'])->name('admin.analytics.bidCompletion');
+Route::get('/admin/analytics/reports', [analyticsController::class, 'reportsAnalytics'])->name('admin.analytics.reports');
 
+// User Management Routes
+Route::get('/admin/user-management/property-owners', [userManagementController::class, 'propertyOwners'])->name('admin.userManagement.propertyOwner');
+Route::get('/admin/user-management/property-owners/{id}', [userManagementController::class, 'viewPropertyOwner'])->name('admin.userManagement.propertyOwner.view');
+Route::get('/admin/user-management/contractors', [userManagementController::class, 'contractors'])->name('admin.userManagement.contractor');
+Route::get('/admin/user-management/contractor/view', [userManagementController::class, 'viewContractor'])->name('admin.userManagement.contractor.view');
+Route::get('/admin/user-management/verification-requests', [userManagementController::class, 'verificationRequest'])->name('admin.userManagement.verificationRequest');
+Route::get('/admin/user-management/suspended-accounts', [userManagementController::class, 'suspendedAccounts'])->name('admin.userManagement.suspendedAccounts');
+Route::post('/admin/user-management/suspended-accounts/reactivate', [userManagementController::class, 'reactivateSuspendedAccount'])->name('admin.userManagement.suspendedAccounts.reactivate');
+
+// Global Management Routes
+Route::get('/admin/global-management/bid-management', [globalManagementController::class, 'bidManagement'])->name('admin.globalManagement.bidManagement');
+Route::get('/admin/global-management/proof-of-payments', [globalManagementController::class, 'proofOfPayments'])->name('admin.globalManagement.proofOfpayments');
+Route::get('/admin/global-management/ai-management', [globalManagementController::class, 'aiManagement'])->name('admin.globalManagement.aiManagement');
+Route::get('/admin/global-management/posting-management', [globalManagementController::class, 'postingManagement'])->name('admin.globalManagement.postingManagement');
+
+// Project Management Routes
+Route::get('/admin/project-management/list-of-projects', [ProjectAdminController::class, 'listOfProjects'])->name('admin.projectManagement.listOfprojects');
+Route::get('/admin/project-management/subscriptions', [ProjectAdminController::class, 'subscriptions'])->name('admin.projectManagement.subscriptions');
+Route::get('/admin/project-management/disputes-reports', [ProjectAdminController::class, 'disputesReports'])->name('admin.projectManagement.disputesReports');
+Route::get('/admin/project-management/messages', [ProjectAdminController::class, 'messages'])->name('admin.projectManagement.messages');
+
+// Settings Routes
+Route::get('/admin/settings/notifications', function() {
+    return view('admin.settings.notifications');
+})->name('admin.settings.notifications');
+
+Route::get('/admin/settings/security', function() {
+    return view('admin.settings.security');
+})->name('admin.settings.security');
+
+// * REMOVED CONFLICTING ROUTE HERE *
+// The route '/dashboard' was overwriting your Controller logic.
+
+// Debug route
+Route::get('/debug/check-projects', function() {
+    $projects = DB::table('projects')
+        ->where('project_status', 'open')
+        ->whereNotNull('owner_id')
+        ->select('project_id', 'project_title', 'project_status', 'owner_id', 'created_at')
+        ->orderBy('created_at', 'desc')
+        ->get();
+
+    return response()->json([
+        'count' => $projects->count(),
+        'projects' => $projects
+    ]);
+})->name('debug.check.projects');
+
+// =============================================
+// ADMIN API ROUTES
+// =============================================
+
+Route::prefix('/api/admin/users')->group(function () {
+    Route::get('/property-owners', [userManagementController::class, 'getPropertyOwnersApi'])->name('api.admin.propertyOwners');
+    Route::get('/property-owners/{id}', [userManagementController::class, 'getPropertyOwnerApi'])->name('api.admin.propertyOwner');
+    Route::post('/property-owners/{id}/verify', [userManagementController::class, 'verifyPropertyOwner'])->name('api.admin.propertyOwner.verify');
+    Route::post('/property-owners/{id}/suspend', [userManagementController::class, 'suspendPropertyOwner'])->name('api.admin.propertyOwner.suspend');
+
+    Route::get('/contractors', [userManagementController::class, 'getContractorsApi'])->name('api.admin.contractors');
+    Route::get('/contractors/{id}', [userManagementController::class, 'getContractorApi'])->name('api.admin.contractor');
+    Route::post('/contractors/{id}/verify', [userManagementController::class, 'verifyContractor'])->name('api.admin.contractor.verify');
+    Route::post('/contractors/{id}/suspend', [userManagementController::class, 'suspendContractor'])->name('api.admin.contractor.suspend');
+
+    Route::get('/verification-requests', [userManagementController::class, 'getVerificationRequestsApi'])->name('api.admin.verificationRequests');
+    Route::post('/verification-requests/{id}/approve', [userManagementController::class, 'approveVerification'])->name('api.admin.verificationRequest.approve');
+    Route::post('/verification-requests/{id}/reject', [userManagementController::class, 'rejectVerification'])->name('api.admin.verificationRequest.reject');
+
+    Route::get('/suspended', [userManagementController::class, 'getSuspendedAccountsApi'])->name('api.admin.suspendedAccounts');
+    Route::post('/suspended/{id}/reactivate', [userManagementController::class, 'reactivateSuspendedAccount'])->name('api.admin.suspendedAccount.reactivate');
+});
+
+Route::prefix('/api/admin')->group(function () {
+    Route::get('/contractors', [userManagementController::class, 'getContractorsApi'])->name('api.admin.contractors.short');
+    Route::get('/contractors/{id}', [userManagementController::class, 'getContractorApi'])->name('api.admin.contractor.short');
+    Route::post('/contractors/{id}/verify', [userManagementController::class, 'verifyContractor'])->name('api.admin.contractor.verify.short');
+    Route::post('/contractors/{id}/suspend', [userManagementController::class, 'suspendContractor'])->name('api.admin.contractor.suspend.short');
+});
+
+Route::prefix('/api/admin/management')->group(function () {
+    Route::get('/bids', [globalManagementController::class, 'getBidsApi'])->name('api.admin.bids');
+    Route::post('/bids/{id}/approve', [globalManagementController::class, 'approveBid'])->name('api.admin.bid.approve');
+    Route::post('/bids/{id}/reject', [globalManagementController::class, 'rejectBid'])->name('api.admin.bid.reject');
+
+    Route::get('/payments', [globalManagementController::class, 'getPaymentsApi'])->name('api.admin.payments');
+    Route::post('/payments/{id}/verify', [globalManagementController::class, 'verifyPayment'])->name('api.admin.payment.verify');
+    Route::post('/payments/{id}/reject', [globalManagementController::class, 'rejectPayment'])->name('api.admin.payment.reject');
+
+    Route::get('/postings', [globalManagementController::class, 'getPostingsApi'])->name('api.admin.postings');
+    Route::post('/postings/{id}/approve', [globalManagementController::class, 'approvePosting'])->name('api.admin.posting.approve');
+    Route::post('/postings/{id}/reject', [globalManagementController::class, 'rejectPosting'])->name('api.admin.posting.reject');
+
+    Route::get('/ai-stats', [globalManagementController::class, 'getAiStatsApi'])->name('api.admin.aiStats');
+});
+
+Route::prefix('/api/admin/analytics')->group(function () {
+    Route::get('/projects', [analyticsController::class, 'getProjectsAnalyticsApi'])->name('api.admin.analytics.projects');
+    Route::get('/timeline', [analyticsController::class, 'getProjectsTimelineData'])->name('api.admin.analytics.timeline');
+    Route::get('/subscription', [analyticsController::class, 'subscriptionAnalytics'])->name('api.admin.analytics.subscription');
+    Route::get('/subscription/revenue', [analyticsController::class, 'subscriptionRevenue'])->name('api.admin.analytics.subscriptionRevenue');
+    Route::get('/user-activity', [analyticsController::class, 'userActivityAnalytics'])->name('api.admin.analytics.userActivity');
+    Route::get('/project-performance', [analyticsController::class, 'projectPerformanceAnalytics'])->name('api.admin.analytics.projectPerformance');
+    Route::get('/bid-completion', [analyticsController::class, 'bidCompletionAnalytics'])->name('api.admin.analytics.bidCompletion');
+});
+
+Route::prefix('/api/admin/projects')->group(function () {
+    Route::get('/', [ProjectAdminController::class, 'getProjectsApi'])->name('api.admin.projects');
+    Route::post('/{id}/assign-contractor', [ProjectAdminController::class, 'assignContractor'])->name('api.admin.project.assignContractor');
+    Route::post('/{id}/approve', [ProjectAdminController::class, 'approve'])->name('api.admin.project.approve');
+    Route::post('/{id}/reject', [ProjectAdminController::class, 'reject'])->name('api.admin.project.reject');
+
+    Route::get('/subscriptions', [ProjectAdminController::class, 'getSubscriptionsApi'])->name('api.admin.subscriptions');
+    Route::get('/messages', [ProjectAdminController::class, 'getMessagesApi'])->name('api.admin.messages');
+    Route::get('/disputes', [ProjectAdminController::class, 'getDisputesApi'])->name('api.admin.disputes');
+});
+
+// New admin resource API routes
+Route::prefix('/api/admin')->group(function () {
+    Route::apiResource('projects', App\Http\Controllers\Admin\ProjectController::class);
+    Route::apiResource('bids', App\Http\Controllers\Admin\BidController::class);
+    Route::apiResource('milestones', App\Http\Controllers\Admin\MilestoneController::class);
+    Route::apiResource('payments', App\Http\Controllers\Admin\PaymentController::class);
+});
+
+Route::get('/storage/{path}', [authController::class, 'serve'])->where('path', '.*')->name('storage.serve');

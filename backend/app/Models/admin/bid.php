@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class Bid extends Model
+class bid extends Model
 {
     protected $primaryKey = 'bid_id';
     public $incrementing = true;
@@ -25,11 +25,11 @@ class Bid extends Model
 
     public function project(): BelongsTo
     {
-        return $this->belongsTo(Project::class, 'project_id', 'project_id');
+        return $this->belongsTo(project::class, 'project_id', 'project_id');
     }
 
     public function contractor(): BelongsTo
     {
-        return $this->belongsTo(Contractor::class, 'contractor_id', 'contractor_id');
+        return $this->belongsTo(contractor::class, 'contractor_id', 'contractor_id');
     }
 }
