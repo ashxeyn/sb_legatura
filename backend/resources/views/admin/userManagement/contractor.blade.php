@@ -171,6 +171,7 @@
         <div class="flex items-center gap-6">
           <div class="relative w-64" style="width: 600px;">
             <input 
+              id="contractorSearchInput"
               type="text" 
               placeholder="Search..." 
               class="border border-gray-300 rounded-lg px-4 py-2 pr-10 focus:ring-2 focus:ring-indigo-400 focus:outline-none w-full"
@@ -242,7 +243,7 @@
           <div class="flex items-center gap-4">
             <!-- Ranking Dropdown -->
             <div class="relative">
-              <select id="rankingFilter" class="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-10 text-sm font-medium text-gray-700 hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition cursor-pointer">
+              <select id="contractorRankingFilter" class="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-10 text-sm font-medium text-gray-700 hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition cursor-pointer">
                 <option value="all">All Rankings</option>
                 <option value="top">Top Rated</option>
                 <option value="active">Most Active</option>
@@ -289,263 +290,12 @@
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-200" id="contractorsTable">
-                <!-- Contractor Row 1 -->
-                <tr class="hover:bg-gray-50 transition-all duration-200 group">
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold shadow-md group-hover:shadow-lg transition-all group-hover:scale-110">
-                        GB
-                      </div>
-                      <span class="font-medium text-gray-800 group-hover:text-indigo-600 transition">GTH Builders and Developers</span>
-                    </div>
-                  </td>
-                  <td class="px-6 py-4 text-center text-sm text-gray-600">10 Oct, 2025</td>
-                  <td class="px-6 py-4 text-center text-sm text-gray-600">10 years</td>
-                  <td class="px-6 py-4 text-center">
-                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 transition-all duration-200 hover:scale-110 hover:shadow-lg">
-                      General Contractor
-                    </span>
-                  </td>
-                  <td class="px-6 py-4 text-center">
-                    <span class="inline-flex items-center justify-center w-12 h-8 rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50 text-sm font-bold text-indigo-700 group-hover:from-blue-100 group-hover:to-indigo-100 transition-all duration-200 hover:scale-110 hover:shadow-lg">24</span>
-                  </td>
-                  <td class="px-6 py-4">
-                    <div class="flex items-center justify-center gap-2">
-                      <button class="action-btn view-btn w-10 h-10 rounded-full bg-blue-50 hover:bg-blue-100 flex items-center justify-center transition-all duration-200 hover:scale-110">
-                        <i class="fi fi-rr-eye text-blue-600"></i>
-                      </button>
-                      <button class="action-btn delete-btn w-10 h-10 rounded-full bg-red-50 hover:bg-red-100 flex items-center justify-center transition-all duration-200 hover:scale-110">
-                        <i class="fi fi-rr-trash text-red-600"></i>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-
-                <!-- Contractor Row 2 -->
-                <tr class="hover:bg-gray-50 transition-all duration-200 group">
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <div class="w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center text-white font-bold shadow-md group-hover:shadow-lg transition-all group-hover:scale-110">
-                        CA
-                      </div>
-                      <span class="font-medium text-gray-800 group-hover:text-indigo-600 transition">Cabanting Architects Design & Construction</span>
-                    </div>
-                  </td>
-                  <td class="px-6 py-4 text-center text-sm text-gray-600">09 Oct, 2025</td>
-                  <td class="px-6 py-4 text-center text-sm text-gray-600">4 years</td>
-                  <td class="px-6 py-4 text-center">
-                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 transition-all duration-200 hover:scale-110 hover:shadow-lg">
-                      Construction Contractor
-                    </span>
-                  </td>
-                  <td class="px-6 py-4 text-center">
-                    <span class="inline-flex items-center justify-center w-12 h-8 rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50 text-sm font-bold text-indigo-700 group-hover:from-blue-100 group-hover:to-indigo-100 transition-all duration-200 hover:scale-110 hover:shadow-lg">10</span>
-                  </td>
-                  <td class="px-6 py-4">
-                    <div class="flex items-center justify-center gap-2">
-                      <button class="action-btn view-btn w-10 h-10 rounded-full bg-blue-50 hover:bg-blue-100 flex items-center justify-center transition-all duration-200 hover:scale-110">
-                        <i class="fi fi-rr-eye text-blue-600"></i>
-                      </button>
-                      <button class="action-btn delete-btn w-10 h-10 rounded-full bg-red-50 hover:bg-red-100 flex items-center justify-center transition-all duration-200 hover:scale-110">
-                        <i class="fi fi-rr-trash text-red-600"></i>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-
-                <!-- Contractor Row 3 -->
-                <tr class="hover:bg-gray-50 transition-all duration-200 group">
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <div class="w-10 h-10 rounded-full bg-gradient-to-br from-red-400 to-red-600 flex items-center justify-center text-white font-bold shadow-md group-hover:shadow-lg transition-all group-hover:scale-110">
-                        RC
-                      </div>
-                      <span class="font-medium text-gray-800 group-hover:text-indigo-600 transition">RCDG Construction Corporation</span>
-                    </div>
-                  </td>
-                  <td class="px-6 py-4 text-center text-sm text-gray-600">08 Oct, 2025</td>
-                  <td class="px-6 py-4 text-center text-sm text-gray-600">10 years</td>
-                  <td class="px-6 py-4 text-center">
-                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 transition-all duration-200 hover:scale-110 hover:shadow-lg">
-                      General Contractor
-                    </span>
-                  </td>
-                  <td class="px-6 py-4 text-center">
-                    <span class="inline-flex items-center justify-center w-12 h-8 rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50 text-sm font-bold text-indigo-700 group-hover:from-blue-100 group-hover:to-indigo-100 transition-all duration-200 hover:scale-110 hover:shadow-lg">70</span>
-                  </td>
-                  <td class="px-6 py-4">
-                    <div class="flex items-center justify-center gap-2">
-                      <button class="action-btn view-btn w-10 h-10 rounded-full bg-blue-50 hover:bg-blue-100 flex items-center justify-center transition-all duration-200 hover:scale-110">
-                        <i class="fi fi-rr-eye text-blue-600"></i>
-                      </button>
-                      <button class="action-btn delete-btn w-10 h-10 rounded-full bg-red-50 hover:bg-red-100 flex items-center justify-center transition-all duration-200 hover:scale-110">
-                        <i class="fi fi-rr-trash text-red-600"></i>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-
-                <!-- Contractor Row 4 -->
-                <tr class="hover:bg-gray-50 transition-all duration-200 group">
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <div class="w-10 h-10 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center text-white font-bold shadow-md group-hover:shadow-lg transition-all group-hover:scale-110">
-                        JL
-                      </div>
-                      <span class="font-medium text-gray-800 group-hover:text-indigo-600 transition">J'Lois Construction</span>
-                    </div>
-                  </td>
-                  <td class="px-6 py-4 text-center text-sm text-gray-600">12 Jan, 2023</td>
-                  <td class="px-6 py-4 text-center text-sm text-gray-600">10 years</td>
-                  <td class="px-6 py-4 text-center">
-                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 transition-all duration-200 hover:scale-110 hover:shadow-lg">
-                      General Contractor
-                    </span>
-                  </td>
-                  <td class="px-6 py-4 text-center">
-                    <span class="inline-flex items-center justify-center w-12 h-8 rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50 text-sm font-bold text-indigo-700 group-hover:from-blue-100 group-hover:to-indigo-100 transition-all duration-200 hover:scale-110 hover:shadow-lg">20</span>
-                  </td>
-                  <td class="px-6 py-4">
-                    <div class="flex items-center justify-center gap-2">
-                      <button class="action-btn view-btn w-10 h-10 rounded-full bg-blue-50 hover:bg-blue-100 flex items-center justify-center transition-all duration-200 hover:scale-110">
-                        <i class="fi fi-rr-eye text-blue-600"></i>
-                      </button>
-                      <button class="action-btn delete-btn w-10 h-10 rounded-full bg-red-50 hover:bg-red-100 flex items-center justify-center transition-all duration-200 hover:scale-110">
-                        <i class="fi fi-rr-trash text-red-600"></i>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-
-                <!-- Contractor Row 5 -->
-                <tr class="hover:bg-gray-50 transition-all duration-200 group">
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <div class="w-10 h-10 rounded-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center text-white font-bold shadow-md group-hover:shadow-lg transition-all group-hover:scale-110">
-                        AB
-                      </div>
-                      <span class="font-medium text-gray-800 group-hover:text-indigo-600 transition">Apex Builders Inc.</span>
-                    </div>
-                  </td>
-                  <td class="px-6 py-4 text-center text-sm text-gray-600">15 Mar, 2024</td>
-                  <td class="px-6 py-4 text-center text-sm text-gray-600">8 years</td>
-                  <td class="px-6 py-4 text-center">
-                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700 transition-all duration-200 hover:scale-110 hover:shadow-lg">
-                      Specialty Contractor
-                    </span>
-                  </td>
-                  <td class="px-6 py-4 text-center">
-                    <span class="inline-flex items-center justify-center w-12 h-8 rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50 text-sm font-bold text-indigo-700 group-hover:from-blue-100 group-hover:to-indigo-100 transition-all duration-200 hover:scale-110 hover:shadow-lg">35</span>
-                  </td>
-                  <td class="px-6 py-4">
-                    <div class="flex items-center justify-center gap-2">
-                      <button class="action-btn view-btn w-10 h-10 rounded-full bg-blue-50 hover:bg-blue-100 flex items-center justify-center transition-all duration-200 hover:scale-110">
-                        <i class="fi fi-rr-eye text-blue-600"></i>
-                      </button>
-                      <button class="action-btn delete-btn w-10 h-10 rounded-full bg-red-50 hover:bg-red-100 flex items-center justify-center transition-all duration-200 hover:scale-110">
-                        <i class="fi fi-rr-trash text-red-600"></i>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-
-                <!-- Contractor Row 6 -->
-                <tr class="hover:bg-gray-50 transition-all duration-200 group">
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <div class="w-10 h-10 rounded-full bg-gradient-to-br from-pink-400 to-pink-600 flex items-center justify-center text-white font-bold shadow-md group-hover:shadow-lg transition-all group-hover:scale-110">
-                        SM
-                      </div>
-                      <span class="font-medium text-gray-800 group-hover:text-indigo-600 transition">Summit Master Contractors</span>
-                    </div>
-                  </td>
-                  <td class="px-6 py-4 text-center text-sm text-gray-600">22 May, 2023</td>
-                  <td class="px-6 py-4 text-center text-sm text-gray-600">12 years</td>
-                  <td class="px-6 py-4 text-center">
-                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 transition-all duration-200 hover:scale-110 hover:shadow-lg">
-                      Construction Contractor
-                    </span>
-                  </td>
-                  <td class="px-6 py-4 text-center">
-                    <span class="inline-flex items-center justify-center w-12 h-8 rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50 text-sm font-bold text-indigo-700 group-hover:from-blue-100 group-hover:to-indigo-100 transition-all duration-200 hover:scale-110 hover:shadow-lg">55</span>
-                  </td>
-                  <td class="px-6 py-4">
-                    <div class="flex items-center justify-center gap-2">
-                      <button class="action-btn view-btn w-10 h-10 rounded-full bg-blue-50 hover:bg-blue-100 flex items-center justify-center transition-all duration-200 hover:scale-110">
-                        <i class="fi fi-rr-eye text-blue-600"></i>
-                      </button>
-                      <button class="action-btn delete-btn w-10 h-10 rounded-full bg-red-50 hover:bg-red-100 flex items-center justify-center transition-all duration-200 hover:scale-110">
-                        <i class="fi fi-rr-trash text-red-600"></i>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-
-                <!-- Contractor Row 7 -->
-                <tr class="hover:bg-gray-50 transition-all duration-200 group">
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <div class="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center text-white font-bold shadow-md group-hover:shadow-lg transition-all group-hover:scale-110">
-                        PE
-                      </div>
-                      <span class="font-medium text-gray-800 group-hover:text-indigo-600 transition">Prime Engineering & Construction</span>
-                    </div>
-                  </td>
-                  <td class="px-6 py-4 text-center text-sm text-gray-600">18 Jul, 2022</td>
-                  <td class="px-6 py-4 text-center text-sm text-gray-600">15 years</td>
-                  <td class="px-6 py-4 text-center">
-                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 transition-all duration-200 hover:scale-110 hover:shadow-lg">
-                      General Contractor
-                    </span>
-                  </td>
-                  <td class="px-6 py-4 text-center">
-                    <span class="inline-flex items-center justify-center w-12 h-8 rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50 text-sm font-bold text-indigo-700 group-hover:from-blue-100 group-hover:to-indigo-100 transition-all duration-200 hover:scale-110 hover:shadow-lg">82</span>
-                  </td>
-                  <td class="px-6 py-4">
-                    <div class="flex items-center justify-center gap-2">
-                      <button class="action-btn view-btn w-10 h-10 rounded-full bg-blue-50 hover:bg-blue-100 flex items-center justify-center transition-all duration-200 hover:scale-110">
-                        <i class="fi fi-rr-eye text-blue-600"></i>
-                      </button>
-                      <button class="action-btn delete-btn w-10 h-10 rounded-full bg-red-50 hover:bg-red-100 flex items-center justify-center transition-all duration-200 hover:scale-110">
-                        <i class="fi fi-rr-trash text-red-600"></i>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-
-                <!-- Contractor Row 8 -->
-                <tr class="hover:bg-gray-50 transition-all duration-200 group">
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <div class="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white font-bold shadow-md group-hover:shadow-lg transition-all group-hover:scale-110">
-                        ED
-                      </div>
-                      <span class="font-medium text-gray-800 group-hover:text-indigo-600 transition">Elite Development Corp</span>
-                    </div>
-                  </td>
-                  <td class="px-6 py-4 text-center text-sm text-gray-600">05 Nov, 2024</td>
-                  <td class="px-6 py-4 text-center text-sm text-gray-600">6 years</td>
-                  <td class="px-6 py-4 text-center">
-                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700 transition-all duration-200 hover:scale-110 hover:shadow-lg">
-                      Specialty Contractor
-                    </span>
-                  </td>
-                  <td class="px-6 py-4 text-center">
-                    <span class="inline-flex items-center justify-center w-12 h-8 rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50 text-sm font-bold text-indigo-700 group-hover:from-blue-100 group-hover:to-indigo-100 transition-all duration-200 hover:scale-110 hover:shadow-lg">28</span>
-                  </td>
-                  <td class="px-6 py-4">
-                    <div class="flex items-center justify-center gap-2">
-                      <button class="action-btn view-btn w-10 h-10 rounded-full bg-blue-50 hover:bg-blue-100 flex items-center justify-center transition-all duration-200 hover:scale-110">
-                        <i class="fi fi-rr-eye text-blue-600"></i>
-                      </button>
-                      <button class="action-btn delete-btn w-10 h-10 rounded-full bg-red-50 hover:bg-red-100 flex items-center justify-center transition-all duration-200 hover:scale-110">
-                        <i class="fi fi-rr-trash text-red-600"></i>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
+                <!-- Data loaded from API -->
               </tbody>
             </table>
+          </div>
+          <div id="contractorsPagination" class="px-4 py-3 border-t border-gray-100">
+            <!-- Pagination rendered by JS -->
           </div>
         </div>
       </div>

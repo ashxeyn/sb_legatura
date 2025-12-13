@@ -4,6 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
   <title>Admin Dashboard - Legatura</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
@@ -18,6 +19,7 @@
   
 
   <script src="{{ asset('js/admin/home/mainComponents.js') }}" defer></script>
+  <script src="{{ asset('js/admin/globalManagement/bidManagement.api.js') }}" defer></script>
 
   
 </head>
@@ -238,108 +240,8 @@
 
       <div class="p-8">
         <!-- Statistics Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          
-          <!-- Total Bids Received Card -->
-          <div class="stat-card bg-white rounded-xl shadow-md p-6 hover:shadow-xl transition-all duration-300 border-l-4 border-blue-500">
-            <div class="flex justify-between items-start mb-4">
-              <div>
-                <p class="text-gray-500 text-sm font-medium">Total Bids Received</p>
-                <div class="flex items-baseline gap-2 mt-2">
-                  <h2 class="text-4xl font-bold text-gray-800">156k</h2>
-                  <span class="text-green-500 text-sm font-semibold flex items-center">
-                    <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                      <path fill-rule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
-                    </svg>
-                    10.0%
-                  </span>
-                </div>
-              </div>
-              <div class="bg-blue-100 p-3 rounded-lg">
-                <i class="fi fi-sr-inbox-in text-blue-600 text-2xl"></i>
-              </div>
-            </div>
-            <p class="text-xs text-gray-400">Weekly</p>
-            <div class="mt-4 h-1 bg-gray-200 rounded-full overflow-hidden">
-              <div class="h-full bg-blue-500 rounded-full animate-pulse" style="width: 75%"></div>
-            </div>
-          </div>
-
-          <!-- Pending Reviews Card -->
-          <div class="stat-card bg-white rounded-xl shadow-md p-6 hover:shadow-xl transition-all duration-300 border-l-4 border-orange-500">
-            <div class="flex justify-between items-start mb-4">
-              <div>
-                <p class="text-gray-500 text-sm font-medium">Pending Reviews</p>
-                <div class="flex items-baseline gap-2 mt-2">
-                  <h2 class="text-4xl font-bold text-gray-800">1k</h2>
-                  <span class="text-red-500 text-sm font-semibold flex items-center">
-                    <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                      <path fill-rule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                    </svg>
-                    5.0%
-                  </span>
-                </div>
-              </div>
-              <div class="bg-orange-100 p-3 rounded-lg">
-                <i class="fi fi-sr-hourglass-end text-orange-600 text-2xl"></i>
-              </div>
-            </div>
-            <p class="text-xs text-gray-400">Weekly</p>
-            <div class="mt-4 h-1 bg-gray-200 rounded-full overflow-hidden">
-              <div class="h-full bg-orange-500 rounded-full animate-pulse" style="width: 35%"></div>
-            </div>
-          </div>
-
-          <!-- Approved Bids Card -->
-          <div class="stat-card bg-white rounded-xl shadow-md p-6 hover:shadow-xl transition-all duration-300 border-l-4 border-green-500">
-            <div class="flex justify-between items-start mb-4">
-              <div>
-                <p class="text-gray-500 text-sm font-medium">Approved Bids</p>
-                <div class="flex items-baseline gap-2 mt-2">
-                  <h2 class="text-4xl font-bold text-gray-800">156k</h2>
-                  <span class="text-green-500 text-sm font-semibold flex items-center">
-                    <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                      <path fill-rule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
-                    </svg>
-                    3.2%
-                  </span>
-                </div>
-              </div>
-              <div class="bg-green-100 p-3 rounded-lg">
-                <i class="fi fi-sr-check-circle text-green-600 text-2xl"></i>
-              </div>
-            </div>
-            <p class="text-xs text-gray-400">Weekly</p>
-            <div class="mt-4 h-1 bg-gray-200 rounded-full overflow-hidden">
-              <div class="h-full bg-green-500 rounded-full animate-pulse" style="width: 90%"></div>
-            </div>
-          </div>
-
-          <!-- Rejected Bids Card -->
-          <div class="stat-card bg-white rounded-xl shadow-md p-6 hover:shadow-xl transition-all duration-300 border-l-4 border-red-500">
-            <div class="flex justify-between items-start mb-4">
-              <div>
-                <p class="text-gray-500 text-sm font-medium">Rejected Bids</p>
-                <div class="flex items-baseline gap-2 mt-2">
-                  <h2 class="text-4xl font-bold text-gray-800">3,422</h2>
-                  <span class="text-green-500 text-sm font-semibold flex items-center">
-                    <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                      <path fill-rule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
-                    </svg>
-                    8.3%
-                  </span>
-                </div>
-              </div>
-              <div class="bg-red-100 p-3 rounded-lg">
-                <i class="fi fi-sr-cross-circle text-red-600 text-2xl"></i>
-              </div>
-            </div>
-            <p class="text-xs text-gray-400">Weekly</p>
-            <div class="mt-4 h-1 bg-gray-200 rounded-full overflow-hidden">
-              <div class="h-full bg-red-500 rounded-full animate-pulse" style="width: 25%"></div>
-            </div>
-          </div>
-
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8" id="statsCardsContainer">
+          <!-- Stats loaded from API -->
         </div>
 
         <!-- Bids Table -->
@@ -358,339 +260,22 @@
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-200" id="bidsTable">
-                <!-- Row 1 -->
-                <tr class="hover:bg-indigo-50/60 transition-colors">
-                  <td class="px-6 py-4 whitespace-nowrap text-gray-700 font-medium">#10421</td>
-                  <td class="px-6 py-4 whitespace-nowrap text-gray-700">GreenBelt Building</td>
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-sm font-bold shadow">CA</div>
-                      <div>
-                        <div class="font-semibold text-gray-800 leading-5">Cabanting</div>
-                        <div class="text-gray-500 text-sm -mt-0.5">Architects</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-gray-700">Php. 10,000,000.00</td>
-                  <td class="px-6 py-4 whitespace-nowrap text-gray-700">03/12/2021</td>
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <span data-status="Approved" class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700 border border-green-200">Approved</span>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="flex items-center gap-2">
-                      <button class="action-btn action-btn--view rounded-2xl" title="View"
-                        data-bid-id="#10421"
-                        data-project="GreenBelt Building"
-                        data-contractor="Cabanting Architects"
-                        data-email="cabanting@example.com"
-                        data-proposed-cost="10000000"
-                        data-start-date="2021-12-20"
-                        data-end-date="2022-12-20"
-                        data-description="Approved scope covering architecture and structural deliverables; milestone billing and weekly progress updates."
-                        data-reviewed-by="Property Owner Name"
-                        data-date-action="2025-10-13"
-                        data-remarks="Looks good. Proceed as planned with agreed terms."
-                      >
-                        <i class="fi fi-rr-eye"></i>
-                      </button>
-                      <button class="action-btn action-btn--edit rounded-2xl" title="Edit"
-                        data-bid-id="#10421"
-                        data-project="GreenBelt Building"
-                        data-contractor="Cabanting Architects"
-                        data-email="cabanting@example.com"
-                        data-proposed-cost="10000000"
-                        data-start-date="2021-12-20"
-                        data-end-date="2022-12-20"
-                        data-description="Approved scope covering architecture and structural deliverables; milestone billing and weekly progress updates."
-                        data-status="Approved"
-                      >
-                        <i class="fi fi-rr-edit"></i>
-                      </button>
-                      <button class="action-btn action-btn--delete rounded-2xl" title="Delete"
-                        data-bid-id="#10421"
-                        data-project="GreenBelt Building"
-                        data-contractor="Cabanting Architects"
-                      >
-                        <i class="fi fi-rr-trash"></i>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-
-                <!-- Row 2 -->
-                <tr class="hover:bg-indigo-50/60 transition-colors">
-                  <td class="px-6 py-4 whitespace-nowrap text-gray-700 font-medium">#10422</td>
-                  <td class="px-6 py-4 whitespace-nowrap text-gray-700">GreenBelt Building</td>
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <div class="w-10 h-10 rounded-full bg-gradient-to-br from-gray-800 to-black flex items-center justify-center text-white text-sm font-bold shadow">ZEN</div>
-                      <div>
-                        <div class="font-semibold text-gray-800 leading-5">J’Lois</div>
-                        <div class="text-gray-500 text-sm -mt-0.5">Construction</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-gray-700">Php. 10,000,000.00</td>
-                  <td class="px-6 py-4 whitespace-nowrap text-gray-700">03/12/2021</td>
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <span data-status="Under Evaluation" class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200">Under Evaluation</span>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="flex items-center gap-2">
-                      <button class="action-btn action-btn--view rounded-2xl" title="View"
-                        data-bid-id="#10422"
-                        data-project="GreenBelt Building"
-                        data-contractor="J’Lois Construction"
-                        data-email="jlois@example.com"
-                        data-proposed-cost="10000000"
-                        data-start-date="2021-12-25"
-                        data-end-date="2022-12-23"
-                        data-description="We propose a robust plan with phased milestones, ensuring quality and on-time delivery with optimized costs and materials management."
-                      >
-                        <i class="fi fi-rr-eye"></i>
-                      </button>
-                      <button class="action-btn action-btn--edit rounded-2xl" title="Edit"
-                        data-bid-id="#10422"
-                        data-project="GreenBelt Building"
-                        data-contractor="J'Lois Construction"
-                        data-email="jlois@example.com"
-                        data-proposed-cost="10000000"
-                        data-start-date="2021-12-25"
-                        data-end-date="2022-12-23"
-                        data-description="We propose a robust plan with phased milestones, ensuring quality and on-time delivery with optimized costs and materials management."
-                        data-status="Under Evaluation"
-                      >
-                        <i class="fi fi-rr-edit"></i>
-                      </button>
-                      <button class="action-btn action-btn--delete rounded-2xl" title="Delete"
-                        data-bid-id="#10422"
-                        data-project="GreenBelt Building"
-                        data-contractor="J'Lois Construction"
-                      >
-                        <i class="fi fi-rr-trash"></i>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-
-                <!-- Row 3 -->
-                <tr class="hover:bg-indigo-50/60 transition-colors">
-                  <td class="px-6 py-4 whitespace-nowrap text-gray-700 font-medium">#10423</td>
-                  <td class="px-6 py-4 whitespace-nowrap text-gray-700">GreenBelt Building</td>
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <div class="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white text-sm font-bold shadow">GTH</div>
-                      <div>
-                        <div class="font-semibold text-gray-800 leading-5">GTH</div>
-                        <div class="text-gray-500 text-sm -mt-0.5">Builders</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-gray-700">Php. 10,000,000.00</td>
-                  <td class="px-6 py-4 whitespace-nowrap text-gray-700">03/12/2021</td>
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <span data-status="Rejected" class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700 border border-red-200">Rejected</span>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="flex items-center gap-2">
-                      <button class="action-btn action-btn--view rounded-2xl" title="View"
-                        data-bid-id="#10423"
-                        data-project="GreenBelt Building"
-                        data-contractor="GTH Builders"
-                        data-email="gth@example.com"
-                        data-proposed-cost="10000000"
-                        data-start-date="2021-12-15"
-                        data-end-date="2022-12-15"
-                        data-description="Proposal included comprehensive construction plan with detailed cost breakdown and timeline."
-                        data-reviewed-by="Property Owner: John Doe"
-                        data-date-action="October 15, 2025"
-                        data-remarks="The proposed budget exceeds our allocated funds. The timeline also doesn't align with our project requirements. We appreciate the effort but cannot proceed with this proposal."
-                      >
-                        <i class="fi fi-rr-eye"></i>
-                      </button>
-                      <button class="action-btn action-btn--edit rounded-2xl" title="Edit"
-                        data-bid-id="#10423"
-                        data-project="GreenBelt Building"
-                        data-contractor="GTH Builders"
-                        data-email="gth@example.com"
-                        data-proposed-cost="10000000"
-                        data-start-date="2021-12-15"
-                        data-end-date="2022-12-15"
-                        data-description="Proposal included comprehensive construction plan with detailed cost breakdown and timeline."
-                        data-status="Rejected"
-                      >
-                        <i class="fi fi-rr-edit"></i>
-                      </button>
-                      <button class="action-btn action-btn--delete rounded-2xl" title="Delete"
-                        data-bid-id="#10423"
-                        data-project="GreenBelt Building"
-                        data-contractor="GTH Builders"
-                      >
-                        <i class="fi fi-rr-trash"></i>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-
-                <!-- Row 4 -->
-                <tr class="hover:bg-indigo-50/60 transition-colors">
-                  <td class="px-6 py-4 whitespace-nowrap text-gray-700 font-medium">#10424</td>
-                  <td class="px-6 py-4 whitespace-nowrap text-gray-700">Harbor Point Mall</td>
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <div class="w-10 h-10 rounded-full bg-gradient-to-br from-fuchsia-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shadow">NBC</div>
-                      <div>
-                        <div class="font-semibold text-gray-800 leading-5">Nova Build</div>
-                        <div class="text-gray-500 text-sm -mt-0.5">Corp</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-gray-700">Php. 8,450,000.00</td>
-                  <td class="px-6 py-4 whitespace-nowrap text-gray-700">03/15/2021</td>
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <span data-status="Approved" class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700 border border-green-200">Approved</span>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="flex items-center gap-2">
-                      <button class="action-btn action-btn--view rounded-2xl" title="View"
-                        data-bid-id="#10424"
-                        data-project="Harbor Point Mall"
-                        data-contractor="Nova Build Corp"
-                        data-email="nova@example.com"
-                        data-proposed-cost="8450000"
-                        data-start-date="2021-12-28"
-                        data-end-date="2022-12-10"
-                        data-description="Approved mall renovation package. Coordinate with tenant schedule and nighttime work windows."
-                        data-reviewed-by="PO: Maria Gomez"
-                        data-date-action="2025-10-14"
-                        data-remarks="Ensure minimal downtime for tenants."
-                      ><i class="fi fi-rr-eye"></i></button>
-                      <button class="action-btn action-btn--edit rounded-2xl" title="Edit"><i class="fi fi-rr-edit"></i></button>
-                      <button class="action-btn action-btn--delete rounded-2xl" title="Delete"><i class="fi fi-rr-trash"></i></button>
-                    </div>
-                  </td>
-                </tr>
-
-                <!-- Row 5 -->
-                <tr class="hover:bg-indigo-50/60 transition-colors">
-                  <td class="px-6 py-4 whitespace-nowrap text-gray-700 font-medium">#10425</td>
-                  <td class="px-6 py-4 whitespace-nowrap text-gray-700">Riverside Residences</td>
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <div class="w-10 h-10 rounded-full bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center text-white text-xs font-bold shadow">APX</div>
-                      <div>
-                        <div class="font-semibold text-gray-800 leading-5">Apex</div>
-                        <div class="text-gray-500 text-sm -mt-0.5">Engineering</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-gray-700">Php. 5,900,000.00</td>
-                  <td class="px-6 py-4 whitespace-nowrap text-gray-700">03/18/2021</td>
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <span data-status="Under Evaluation" class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200">Under Evaluation</span>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="flex items-center gap-2">
-                      <button class="action-btn action-btn--view rounded-2xl" title="View"
-                        data-bid-id="#10425"
-                        data-project="Riverside Residences"
-                        data-contractor="Apex Engineering"
-                        data-email="apex@example.com"
-                        data-proposed-cost="5900000"
-                        data-start-date="2021-12-29"
-                        data-end-date="2022-11-22"
-                        data-description="Our team will deliver efficiently with a lean schedule, risk mitigation plan, and transparent reporting cadence."
-                      ><i class="fi fi-rr-eye"></i></button>
-                      <button class="action-btn action-btn--edit rounded-2xl" title="Edit"><i class="fi fi-rr-edit"></i></button>
-                      <button class="action-btn action-btn--delete rounded-2xl" title="Delete"><i class="fi fi-rr-trash"></i></button>
-                    </div>
-                  </td>
-                </tr>
-
-                <!-- Row 6 -->
-                <tr class="hover:bg-indigo-50/60 transition-colors">
-                  <td class="px-6 py-4 whitespace-nowrap text-gray-700 font-medium">#10426</td>
-                  <td class="px-6 py-4 whitespace-nowrap text-gray-700">Sky Tower</td>
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <div class="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500 to-teal-500 flex items-center justify-center text-white text-xs font-bold shadow">SKY</div>
-                      <div>
-                        <div class="font-semibold text-gray-800 leading-5">Skyline</div>
-                        <div class="text-gray-500 text-sm -mt-0.5">Developers</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-gray-700">Php. 12,300,000.00</td>
-                  <td class="px-6 py-4 whitespace-nowrap text-gray-700">03/20/2021</td>
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <span data-status="Rejected" class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700 border border-red-200">Rejected</span>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="flex items-center gap-2">
-                      <button class="action-btn action-btn--view rounded-2xl" title="View"
-                        data-bid-id="#10426"
-                        data-project="Sky Tower"
-                        data-contractor="Skyline Developers"
-                        data-email="skyline@example.com"
-                        data-proposed-cost="12300000"
-                        data-start-date="2021-12-18"
-                        data-end-date="2022-11-18"
-                        data-description="High-rise construction proposal with advanced engineering solutions and premium materials specification."
-                        data-reviewed-by="PO: Sarah Williams"
-                        data-date-action="October 18, 2025"
-                        data-remarks="After careful review, we found that the proposal lacks sufficient detail in the structural plan and safety measures. Additionally, the cost is significantly higher than market standards."
-                      ><i class="fi fi-rr-eye"></i></button>
-                      <button class="action-btn action-btn--edit rounded-2xl" title="Edit"><i class="fi fi-rr-edit"></i></button>
-                      <button class="action-btn action-btn--delete rounded-2xl" title="Delete"><i class="fi fi-rr-trash"></i></button>
-                    </div>
-                  </td>
-                </tr>
-
-                <!-- Row 7 -->
-                <tr class="hover:bg-indigo-50/60 transition-colors">
-                  <td class="px-6 py-4 whitespace-nowrap text-gray-700 font-medium">#10427</td>
-                  <td class="px-6 py-4 whitespace-nowrap text-gray-700">Pioneer Heights</td>
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <div class="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-rose-500 flex items-center justify-center text-white text-xs font-bold shadow">PNR</div>
-                      <div>
-                        <div class="font-semibold text-gray-800 leading-5">Pioneer</div>
-                        <div class="text-gray-500 text-sm -mt-0.5">Construction</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-gray-700">Php. 7,750,000.00</td>
-                  <td class="px-6 py-4 whitespace-nowrap text-gray-700">03/22/2021</td>
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <span data-status="Approved" class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700 border border-green-200">Approved</span>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="flex items-center gap-2">
-                      <button class="action-btn action-btn--view rounded-2xl" title="View"
-                        data-bid-id="#10427"
-                        data-project="Pioneer Heights"
-                        data-contractor="Pioneer Construction"
-                        data-email="pioneer@example.com"
-                        data-proposed-cost="7750000"
-                        data-start-date="2021-12-26"
-                        data-end-date="2022-11-30"
-                        data-description="Approved residential tower package including MEP coordination."
-                        data-reviewed-by="PO: Liam Cruz"
-                        data-date-action="2025-10-15"
-                        data-remarks="Proceed to mobilization next week."
-                      ><i class="fi fi-rr-eye"></i></button>
-                      <button class="action-btn action-btn--edit rounded-2xl" title="Edit"><i class="fi fi-rr-edit"></i></button>
-                      <button class="action-btn action-btn--delete rounded-2xl" title="Delete"><i class="fi fi-rr-trash"></i></button>
-                    </div>
-                  </td>
-                </tr>
+                <!-- Data will be loaded from API -->
               </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
+             </table>
+           </div>
+         </div>
+       </div>
 
-    </main>
+     </main>
+
+
+
+
+
+
+
+
   
   <!-- View Bid Modal (Under Evaluation) -->
   <div id="viewBidModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center z-50 p-4 view-modal-overlay">
@@ -1195,52 +780,8 @@
                     <th class="text-left px-6 py-3 text-sm font-semibold">Actions</th>
                   </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-200">
-                  <tr>
-                    <td class="px-6 py-3 text-gray-700">#234366</td>
-                    <td class="px-6 py-3 text-indigo-600 hover:underline cursor-pointer">UI Design</td>
-                    <td class="px-6 py-3 text-gray-700">03/12/2021</td>
-                    <td class="px-6 py-3 text-gray-700">Php. 10,000</td>
-                    <td class="px-6 py-3 text-gray-700">90 days</td>
-                    <td class="px-6 py-3"><span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700 border border-green-200">Approved</span></td>
-                    <td class="px-6 py-3">
-                      <div class="flex items-center gap-2">
-                        <button class="action-btn action-btn--view rounded-2xl" title="View"><i class="fi fi-rr-eye"></i></button>
-                        <button class="action-btn action-btn--edit rounded-2xl" title="Edit"><i class="fi fi-rr-edit"></i></button>
-                        <button class="action-btn action-btn--delete rounded-2xl" title="Delete"><i class="fi fi-rr-trash"></i></button>
-                      </div>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td class="px-6 py-3 text-gray-700">#234316</td>
-                    <td class="px-6 py-3 text-indigo-600 hover:underline cursor-pointer">UI Design</td>
-                    <td class="px-6 py-3 text-gray-700">03/12/2021</td>
-                    <td class="px-6 py-3 text-gray-700">Php. 10,000</td>
-                    <td class="px-6 py-3 text-gray-700">90 days</td>
-                    <td class="px-6 py-3"><span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700 border border-red-200">Rejected</span></td>
-                    <td class="px-6 py-3">
-                      <div class="flex items-center gap-2">
-                        <button class="action-btn action-btn--view rounded-2xl" title="View"><i class="fi fi-rr-eye"></i></button>
-                        <button class="action-btn action-btn--edit rounded-2xl" title="Edit"><i class="fi fi-rr-edit"></i></button>
-                        <button class="action-btn action-btn--delete rounded-2xl" title="Delete"><i class="fi fi-rr-trash"></i></button>
-                      </div>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td class="px-6 py-3 text-gray-700">#233446</td>
-                    <td class="px-6 py-3 text-indigo-600 hover:underline cursor-pointer">UI Design</td>
-                    <td class="px-6 py-3 text-gray-700">03/12/2021</td>
-                    <td class="px-6 py-3 text-gray-700">Php. 10,000</td>
-                    <td class="px-6 py-3 text-gray-700">90 days</td>
-                    <td class="px-6 py-3"><span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700 border border-red-200">Rejected</span></td>
-                    <td class="px-6 py-3">
-                      <div class="flex items-center gap-2">
-                        <button class="action-btn action-btn--view rounded-2xl" title="View"><i class="fi fi-rr-eye"></i></button>
-                        <button class="action-btn action-btn--edit rounded-2xl" title="Edit"><i class="fi fi-rr-edit"></i></button>
-                        <button class="action-btn action-btn--delete rounded-2xl" title="Delete"><i class="fi fi-rr-trash"></i></button>
-                      </div>
-                    </td>
-                  </tr>
+                <tbody id="approvedBidHistoryTable" class="divide-y divide-gray-200">
+                  <!-- Bid history loaded from API -->
                 </tbody>
               </table>
             </div>
@@ -1478,52 +1019,8 @@
                     <th class="text-left px-6 py-3 text-sm font-semibold">Actions</th>
                   </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-200">
-                  <tr class="hover:bg-red-50/30 transition-colors">
-                    <td class="px-6 py-3 text-gray-700 font-medium">#234366</td>
-                    <td class="px-6 py-3 text-indigo-600 hover:underline cursor-pointer font-medium">UI Design</td>
-                    <td class="px-6 py-3 text-gray-700">03/12/2021</td>
-                    <td class="px-6 py-3 text-gray-700 font-medium">Php. 10,000</td>
-                    <td class="px-6 py-3 text-gray-700">90 days</td>
-                    <td class="px-6 py-3"><span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700 border border-red-200">Rejected</span></td>
-                    <td class="px-6 py-3">
-                      <div class="flex items-center gap-2">
-                        <button class="action-btn action-btn--view rounded-2xl" title="View"><i class="fi fi-rr-eye"></i></button>
-                        <button class="action-btn action-btn--edit rounded-2xl" title="Edit"><i class="fi fi-rr-edit"></i></button>
-                        <button class="action-btn action-btn--delete rounded-2xl" title="Delete"><i class="fi fi-rr-trash"></i></button>
-                      </div>
-                    </td>
-                  </tr>
-                  <tr class="hover:bg-red-50/30 transition-colors">
-                    <td class="px-6 py-3 text-gray-700 font-medium">#234316</td>
-                    <td class="px-6 py-3 text-indigo-600 hover:underline cursor-pointer font-medium">UI Design</td>
-                    <td class="px-6 py-3 text-gray-700">03/12/2021</td>
-                    <td class="px-6 py-3 text-gray-700 font-medium">Php. 10,000</td>
-                    <td class="px-6 py-3 text-gray-700">90 days</td>
-                    <td class="px-6 py-3"><span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700 border border-green-200">Approved</span></td>
-                    <td class="px-6 py-3">
-                      <div class="flex items-center gap-2">
-                        <button class="action-btn action-btn--view rounded-2xl" title="View"><i class="fi fi-rr-eye"></i></button>
-                        <button class="action-btn action-btn--edit rounded-2xl" title="Edit"><i class="fi fi-rr-edit"></i></button>
-                        <button class="action-btn action-btn--delete rounded-2xl" title="Delete"><i class="fi fi-rr-trash"></i></button>
-                      </div>
-                    </td>
-                  </tr>
-                  <tr class="hover:bg-red-50/30 transition-colors">
-                    <td class="px-6 py-3 text-gray-700 font-medium">#233446</td>
-                    <td class="px-6 py-3 text-indigo-600 hover:underline cursor-pointer font-medium">UI Design</td>
-                    <td class="px-6 py-3 text-gray-700">03/12/2021</td>
-                    <td class="px-6 py-3 text-gray-700 font-medium">Php. 10,000</td>
-                    <td class="px-6 py-3 text-gray-700">90 days</td>
-                    <td class="px-6 py-3"><span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200">Under Review</span></td>
-                    <td class="px-6 py-3">
-                      <div class="flex items-center gap-2">
-                        <button class="action-btn action-btn--view rounded-2xl" title="View"><i class="fi fi-rr-eye"></i></button>
-                        <button class="action-btn action-btn--edit rounded-2xl" title="Edit"><i class="fi fi-rr-edit"></i></button>
-                        <button class="action-btn action-btn--delete rounded-2xl" title="Delete"><i class="fi fi-rr-trash"></i></button>
-                      </div>
-                    </td>
-                  </tr>
+                <tbody id="rejectedBidHistoryTable" class="divide-y divide-gray-200">
+                  <!-- Bid history loaded from API -->
                 </tbody>
               </table>
             </div>
@@ -1935,8 +1432,6 @@
       </div>
     </div>
   </div>
-
-  <script src="{{ asset('js/admin/globalManagement/bidManagement.js') }}" defer></script>
 
 </body>
 

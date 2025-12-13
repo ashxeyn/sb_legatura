@@ -1,3 +1,173 @@
+// --- API-driven loader for Property Owners ---
+let poCurrentPage = 1;
+let poCurrentSearch = '';
+let poCurrentRanking = '';
+let poCurrentPeriod = '';
+
+function poBuildUrl(page = 1, search = '', ranking = '', period = '') {
+  const params = new URLSearchParams();
+  if (search) params.set('search', search);
+  if (ranking) params.set('ranking', ranking);
+  if (period) params.set('period', period);
+  if (page && page > 1) params.set('page', page);
+  const qs = params.toString();
+  // Use the API route under /api/admin/users as defined in routes/web.php
+  return '/api/admin/users/property-owners' + (qs ? ('?' + qs) : '');
+}
+
+async function loadPropertyOwners(page = 1) {
+  const tableBody = document.getElementById('propertyOwnersTable');
+  const paginationContainer = document.getElementById('propertyOwnersPagination');
+  if (!tableBody) return;
+
+  poCurrentPage = page;
+
+  try {
+    const url = poBuildUrl(page, poCurrentSearch, poCurrentRanking, poCurrentPeriod);
+    const resp = await fetch(url, { credentials: 'same-origin' });
+    if (!resp.ok) throw new Error('Network response was not ok');
+    const json = await resp.json();
+    const items = Array.isArray(json) ? json : (json.data || json || []);
+    renderPropertyOwners(items, tableBody);
+
+    const current = json.current_page || json.currentPage || page;
+    const last = json.last_page || json.lastPage || (json.meta && json.meta.last_page) || 1;
+    renderPoPagination(paginationContainer, current, last);
+  } catch (err) {
+    console.error('Failed to load property owners', err);
+    tableBody.innerHTML = '<tr><td class="px-6 py-4" colspan="6">Failed to load property owners.</td></tr>';
+    if (paginationContainer) paginationContainer.innerHTML = '';
+  }
+}
+
+function renderPropertyOwners(items, tableBody) {
+  if (!tableBody) return;
+  if (!items || items.length === 0) {
+    tableBody.innerHTML = '<tr><td class="px-6 py-4" colspan="6">No property owners found.</td></tr>';
+    return;
+  }
+
+  const rows = items.map(item => {
+    const id = item.id || item.user_id || '';
+    const name = (item.name || (item.first_name ? `${item.first_name} ${item.last_name || ''}` : '—'));
+    const date = item.created_at || item.registered_at || item.date_registered || '';
+    const occupation = item.occupation || item.job || '—';
+    const projects = item.total_projects || item.projects_count || 0;
+    const ongoing = item.ongoing_projects || item.ongoing || 0;
+
+    return `
+      <tr data-id="${escapeHtml(id)}">
+        <td class="px-6 py-4">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-sm font-semibold text-gray-700">${getInitials(name)}</div>
+            <div class="text-sm font-medium text-gray-900">${escapeHtml(name)}</div>
+          </div>
+        </td>
+        <td class="px-6 py-4 text-center text-sm text-gray-600">${formatDate(date)}</td>
+        <td class="px-6 py-4 text-center text-sm text-gray-600">${escapeHtml(occupation)}</td>
+        <td class="px-6 py-4 text-center text-sm text-gray-600">${escapeHtml(String(projects))}</td>
+        <td class="px-6 py-4 text-center text-sm text-gray-600">${escapeHtml(String(ongoing))}</td>
+        <td class="px-6 py-4 text-center">
+          <div class="inline-flex items-center gap-2">
+            <button class="view-btn text-indigo-600 hover:underline text-sm" data-id="${escapeHtml(id)}">View</button>
+            <button class="edit-btn text-orange-600 hover:underline text-sm" data-id="${escapeHtml(id)}">Edit</button>
+            <button class="delete-btn text-red-600 hover:underline text-sm" data-id="${escapeHtml(id)}">Delete</button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('\n');
+
+  tableBody.innerHTML = rows;
+  attachPoRowListeners(tableBody);
+}
+
+function attachPoRowListeners(tableBody) {
+    tableBody.querySelectorAll('.view-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const id = this.getAttribute('data-id');
+      // Use plural route path as defined in web routes
+      window.location.href = `/admin/user-management/property-owners/${id}`;
+    });
+  });
+
+    tableBody.querySelectorAll('.edit-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const id = this.getAttribute('data-id');
+      const modal = document.getElementById('editPropertyOwnerModal');
+      if (modal) {
+        // Could fetch detail and populate modal here
+        modal.classList.remove('hidden');
+      } else {
+        window.location.href = `/admin/user-management/property-owners/${id}/edit`;
+      }
+    });
+  });
+
+    tableBody.querySelectorAll('.delete-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const id = this.getAttribute('data-id');
+      const confirmDelete = confirm('Delete this property owner?');
+      if (!confirmDelete) return;
+      // API delete endpoint is under /api/admin/users/property-owners
+      fetch(`/api/admin/users/property-owners/${id}`, { method: 'DELETE', credentials: 'same-origin' })
+        .then(r => { if (r.ok) loadPropertyOwners(poCurrentPage); else alert('Delete failed'); })
+        .catch(() => alert('Delete failed'));
+    });
+  });
+}
+
+function renderPoPagination(container, current, last) {
+  if (!container) return;
+  if (!last || last <= 1) {
+    container.innerHTML = '';
+    return;
+  }
+
+  const createBtn = (label, page, disabled = false) => {
+    return `<button class="px-3 py-1 rounded-md mx-1 ${disabled ? 'bg-gray-100 text-gray-400' : 'bg-white border'}" data-page="${page}" ${disabled ? 'disabled' : ''}>${label}</button>`;
+  };
+
+  let html = '';
+  html += createBtn('Prev', Math.max(1, current - 1), current === 1);
+
+  const start = Math.max(1, current - 2);
+  const end = Math.min(last, current + 2);
+  for (let p = start; p <= end; p++) {
+    const active = p === current ? 'bg-indigo-600 text-white' : 'bg-white';
+    html += `<button class="px-3 py-1 rounded-md mx-1 ${active}" data-page="${p}">${p}</button>`;
+  }
+
+  html += createBtn('Next', Math.min(last, current + 1), current === last);
+
+  container.innerHTML = `<div class="flex items-center justify-center">${html}</div>`;
+
+  container.querySelectorAll('button[data-page]').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const page = parseInt(this.getAttribute('data-page'), 10);
+      if (!isNaN(page)) loadPropertyOwners(page);
+    });
+  });
+}
+
+function escapeHtml(str) {
+  if (!str && str !== 0) return '';
+  return String(str).replace(/[&<>"]+/g, function(s) {
+    return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[s];
+  });
+}
+
+function getInitials(name) {
+  if (!name) return '';
+  return name.split(' ').map(s => s.charAt(0)).slice(0,2).join('').toUpperCase();
+}
+
+function formatDate(d) {
+  if (!d) return '—';
+  try { const dt = new Date(d); return dt.toLocaleDateString(); } catch(e) { return d; }
+}
+
+// Start of DOM ready handlers
 document.addEventListener('DOMContentLoaded', function() {
   // Period Dropdown Toggle
   const periodBtn = document.getElementById('periodBtn');
@@ -32,6 +202,22 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     });
   }
+
+  // Initialize API-driven list and wire search/ranking
+  const poSearchInput = document.getElementById('propertyOwnerSearchInput');
+  let poSearchTimer = null;
+  if (poSearchInput) {
+    poSearchInput.addEventListener('input', function() {
+      clearTimeout(poSearchTimer);
+      poSearchTimer = setTimeout(() => {
+        poCurrentSearch = this.value.trim();
+        loadPropertyOwners(1);
+      }, 400);
+    });
+  }
+
+  // Load initial data
+  loadPropertyOwners(1);
 
   // Action Buttons Interactivity
   const viewButtons = document.querySelectorAll('.view-btn');
@@ -102,7 +288,7 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   // Ranking Filter
-  const rankingFilter = document.getElementById('rankingFilter');
+  const rankingFilter = document.getElementById('propertyOwnerRankingFilter');
   if (rankingFilter) {
     rankingFilter.addEventListener('change', function() {
       const value = this.value;

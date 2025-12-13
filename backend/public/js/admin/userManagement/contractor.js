@@ -398,6 +398,265 @@ document.addEventListener('DOMContentLoaded', function() {
             window.location.href = '/admin/user-management/contractor/view';
         });
     });
+
+    // Load contractors from API and render into table
+    let currentPage = 1;
+    let currentSearch = '';
+    let currentRanking = 'all';
+    let currentPeriod = '';
+
+    function buildUrl(page = 1, search = '', ranking = '', period = '') {
+        const params = new URLSearchParams();
+        if (search) params.set('search', search);
+        if (ranking) params.set('ranking', ranking);
+        if (period) params.set('period', period);
+        if (page && page > 1) params.set('page', page);
+        const qs = params.toString();
+        return '/api/admin/contractors' + (qs ? ('?' + qs) : '');
+    }
+
+    async function loadContractors(page = 1) {
+        const tableBody = document.getElementById('contractorsTable');
+        const paginationContainer = document.getElementById('contractorsPagination');
+        if (!tableBody) return;
+
+        currentPage = page;
+
+        try {
+            const url = buildUrl(page, currentSearch, currentRanking, currentPeriod);
+            const resp = await fetch(url, { credentials: 'same-origin' });
+            if (!resp.ok) throw new Error('Network response was not ok');
+            const json = await resp.json();
+
+            // If paginated, json may be an object with data and meta fields
+            const items = Array.isArray(json) ? json : (json.data || json || []);
+            renderContractors(items, tableBody);
+
+            // Render pagination if available
+            const current = json.current_page || json.currentPage || page;
+            const last = json.last_page || json.lastPage || (json.meta && json.meta.last_page) || 1;
+            renderPagination(paginationContainer, current, last);
+        } catch (err) {
+            console.error('Failed to load contractors', err);
+            tableBody.innerHTML = '<tr><td class="px-6 py-4" colspan="6">Failed to load contractors.</td></tr>';
+            if (paginationContainer) paginationContainer.innerHTML = '';
+        }
+    }
+
+    function renderContractors(items, tableBody) {
+        if (!items || items.length === 0) {
+            tableBody.innerHTML = '<tr><td class="px-6 py-4 text-center text-sm text-gray-500" colspan="6">No contractors found.</td></tr>';
+            return;
+        }
+
+        tableBody.innerHTML = items.map(item => {
+            const id = item.id ?? '';
+            const name = escapeHtml(item.name || item.company_name || '—');
+            const initials = getInitials(name);
+            const dateRegistered = formatDate(item.created_at || item.date_registered || item.registration_date || '');
+            const years = item.years_of_operation || item.years || '';
+            const accountType = item.account_type || item.accountType || item.role || '';
+            const totalProjects = item.total_projects ?? item.projects_count ?? 0;
+
+            return `
+                <tr class="hover:bg-gray-50 transition-all duration-200 group" data-id="${id}">
+                  <td class="px-6 py-4">
+                    <div class="flex items-center gap-3">
+                      <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold shadow-md group-hover:shadow-lg transition-all group-hover:scale-110">${initials}</div>
+                      <span class="font-medium text-gray-800 group-hover:text-indigo-600 transition">${name}</span>
+                    </div>
+                  </td>
+                  <td class="px-6 py-4 text-center text-sm text-gray-600">${dateRegistered}</td>
+                  <td class="px-6 py-4 text-center text-sm text-gray-600">${years ? years + ' years' : ''}</td>
+                  <td class="px-6 py-4 text-center">
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 transition-all duration-200 hover:scale-110 hover:shadow-lg">${accountType}</span>
+                  </td>
+                  <td class="px-6 py-4 text-center">
+                    <span class="inline-flex items-center justify-center w-12 h-8 rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50 text-sm font-bold text-indigo-700">${totalProjects}</span>
+                  </td>
+                  <td class="px-6 py-4">
+                    <div class="flex items-center justify-center gap-2">
+                      <button class="action-btn view-btn w-10 h-10 rounded-full bg-blue-50 hover:bg-blue-100 flex items-center justify-center transition-all duration-200 hover:scale-110" data-id="${id}">
+                        <i class="fi fi-rr-eye text-blue-600"></i>
+                      </button>
+                      <button class="action-btn edit-btn w-10 h-10 rounded-full bg-yellow-50 hover:bg-yellow-100 flex items-center justify-center transition-all duration-200 hover:scale-110" data-id="${id}" data-name="${name}" data-initials="${initials}" data-date="${item.created_at || item.date_registered || ''}" data-years="${years}" data-account-type="${accountType}" data-contact="${item.contact || ''}" data-license="${item.license || ''}" data-email="${item.email || ''}" data-username="${item.username || ''}">
+                        <i class="fi fi-rr-edit text-yellow-600"></i>
+                      </button>
+                      <button class="action-btn delete-btn w-10 h-10 rounded-full bg-red-50 hover:bg-red-100 flex items-center justify-center transition-all duration-200 hover:scale-110" data-id="${id}" data-name="${name}">
+                        <i class="fi fi-rr-trash text-red-600"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>`;
+        }).join('');
+
+        // After rendering, attach event listeners to the new buttons
+        attachRowEventListeners();
+    }
+
+    function attachRowEventListeners() {
+        const editButtonsNew = document.querySelectorAll('#contractorsTable .edit-btn');
+        const deleteButtonsNew = document.querySelectorAll('#contractorsTable .delete-btn');
+        const viewButtonsNew = document.querySelectorAll('#contractorsTable .view-btn');
+
+        editButtonsNew.forEach(button => {
+            button.removeEventListener('click', onEditClick);
+            button.addEventListener('click', onEditClick);
+        });
+
+        deleteButtonsNew.forEach(button => {
+            button.removeEventListener('click', onDeleteClick);
+            button.addEventListener('click', onDeleteClick);
+        });
+
+        viewButtonsNew.forEach(button => {
+            button.removeEventListener('click', onViewClick);
+            button.addEventListener('click', onViewClick);
+        });
+    }
+
+    function renderPagination(container, current, last) {
+        if (!container) return;
+        if (!last || last <= 1) {
+            container.innerHTML = '';
+            return;
+        }
+
+        const createBtn = (label, page, disabled = false) => {
+            return `<button class="px-3 py-1 rounded-md mx-1 ${disabled ? 'bg-gray-100 text-gray-400' : 'bg-white border'}" data-page="${page}" ${disabled ? 'disabled' : ''}>${label}</button>`;
+        };
+
+        let html = '';
+        html += createBtn('Prev', Math.max(1, current - 1), current === 1);
+
+        // show a window of pages
+        const start = Math.max(1, current - 2);
+        const end = Math.min(last, current + 2);
+        for (let p = start; p <= end; p++) {
+            const active = p === current ? 'bg-indigo-600 text-white' : 'bg-white';
+            html += `<button class="px-3 py-1 rounded-md mx-1 ${active}" data-page="${p}">${p}</button>`;
+        }
+
+        html += createBtn('Next', Math.min(last, current + 1), current === last);
+
+        container.innerHTML = `<div class="flex items-center justify-center">${html}</div>`;
+
+        container.querySelectorAll('button[data-page]').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const page = parseInt(this.getAttribute('data-page'), 10);
+                if (!isNaN(page)) loadContractors(page);
+            });
+        });
+    }
+
+    function onEditClick(e) {
+        addRipple(this || e.currentTarget, e);
+        const btn = this || e.currentTarget;
+        const row = btn.closest('tr');
+        const data = {
+            name: btn.getAttribute('data-name') || row.querySelector('td:first-child span').textContent.trim(),
+            initials: btn.getAttribute('data-initials') || row.querySelector('.rounded-full').textContent.trim(),
+            dateRegistered: btn.getAttribute('data-date') || '',
+            years: btn.getAttribute('data-years') || '',
+            accountType: btn.getAttribute('data-account-type') || '',
+            contact: btn.getAttribute('data-contact') || '',
+            license: btn.getAttribute('data-license') || '',
+            email: btn.getAttribute('data-email') || '',
+            username: btn.getAttribute('data-username') || ''
+        };
+
+        // Normalize date to ISO if possible
+        const contractorData = {
+            name: data.name,
+            initials: data.initials,
+            dateRegistered: data.dateRegistered ? new Date(data.dateRegistered).toISOString().slice(0,10) : '',
+            years: data.years,
+            accountType: data.accountType,
+            contact: data.contact,
+            license: data.license,
+            email: data.email,
+            username: data.username
+        };
+
+        openEditModal(contractorData);
+    }
+
+    function onDeleteClick(e) {
+        addRipple(this || e.currentTarget, e);
+        const btn = this || e.currentTarget;
+        const row = btn.closest('tr');
+        const name = btn.getAttribute('data-name') || row.querySelector('td:first-child span').textContent.trim();
+        openDeleteModal(name, row);
+    }
+
+    function onViewClick(e) {
+        addRipple(this || e.currentTarget, e);
+        const btn = this || e.currentTarget;
+        const id = btn.getAttribute('data-id');
+        // Redirect to view page for the contractor id if endpoint exists
+        if (id) {
+            window.location.href = `/admin/user-management/contractor/${id}/view`;
+        } else {
+            window.location.href = '/admin/user-management/contractor/view';
+        }
+    }
+
+    function formatDate(dateStr) {
+        if (!dateStr) return '';
+        const d = new Date(dateStr);
+        if (isNaN(d)) return dateStr;
+        const opts = { year: 'numeric', month: 'short', day: '2-digit' };
+        return d.toLocaleDateString(undefined, opts);
+    }
+
+    function getInitials(name) {
+        if (!name) return '';
+        return name.split(' ').map(s => s.charAt(0)).slice(0,2).join('').toUpperCase();
+    }
+
+    function escapeHtml(unsafe) {
+        return String(unsafe)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    // Immediately load contractors on page open
+    loadContractors(1);
+
+    // Wire up search input with debounce
+    const searchInput = document.getElementById('contractorSearchInput');
+    let searchTimer = null;
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(() => {
+                currentSearch = this.value.trim();
+                loadContractors(1);
+            }, 400);
+        });
+    }
+
+    // Wire ranking filter to reload
+    const rankingFilter = document.getElementById('contractorRankingFilter');
+    if (rankingFilter) {
+        rankingFilter.addEventListener('change', function() {
+            currentRanking = this.value;
+            loadContractors(1);
+        });
+    }
+
+    // Wire period options to reload (some pages use different markup for period options)
+    document.querySelectorAll('.period-option').forEach(opt => {
+        opt.addEventListener('click', function(e) {
+            e.preventDefault();
+            const val = this.getAttribute('data-period') || this.textContent.trim();
+            currentPeriod = val;
+            loadContractors(1);
+        });
+    });
     
     // ========================================
     // HELPER FUNCTIONS
@@ -475,15 +734,17 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // ========================================
-    // RANKING FILTER
+    // RANKING FILTER (legacy id guard)
     // ========================================
     
-    const rankingFilter = document.getElementById('rankingFilter');
-    rankingFilter.addEventListener('change', function() {
-        const value = this.value;
-        // Placeholder for filter functionality
-        console.log('Filter by:', value);
-    });
+    const legacyRankingFilter = document.getElementById('rankingFilter');
+    if (legacyRankingFilter) {
+        legacyRankingFilter.addEventListener('change', function() {
+            const value = this.value;
+            // Placeholder for filter functionality
+            console.log('Filter by (legacy):', value);
+        });
+    }
 
     // ========================================
     // DTI/SEC DROPZONE UPLOAD
