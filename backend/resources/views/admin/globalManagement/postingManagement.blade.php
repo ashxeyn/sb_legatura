@@ -192,9 +192,125 @@
                 <span class="text-sm font-semibold text-gray-800">Notifications</span>
                 <button id="clearNotifications" class="text-xs text-indigo-600 hover:text-indigo-700">Clear all</button>
               </div>
+              <ul class="max-h-80 overflow-y-auto" id="notificationList">
+                <li class="px-4 py-3 hover:bg-gray-50 transition">
+                  <div class="flex items-start gap-3">
+                    <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center">
+                      <i class="fi fi-ss-bell"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <p class="text-sm text-gray-800 truncate">New bid submitted on “GreenBelt Building”.</p>
+                      <p class="text-xs text-gray-500">2 mins ago</p>
+                    </div>
+                    <span class="inline-block px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-700">New</span>
+                  </div>
+                </li>
+                <li class="px-4 py-3 hover:bg-gray-50 transition">
+                  <div class="flex items-start gap-3">
+                    <div class="w-8 h-8 rounded-full bg-green-100 text-green-700 flex items-center justify-center">
+                      <i class="fi fi-ss-check-circle"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <p class="text-sm text-gray-800 truncate">Verification request approved for Cabonting Architects.</p>
+                      <p class="text-xs text-gray-500">1 hour ago</p>
+                    </div>
+                  </div>
+                </li>
+                <li class="px-4 py-3 hover:bg-gray-50 transition">
+                  <div class="flex items-start gap-3">
+                    <div class="w-8 h-8 rounded-full bg-red-100 text-red-700 flex items-center justify-center">
+                      <i class="fi fi-ss-exclamation"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <p class="text-sm text-gray-800 truncate">High-risk flag: Duplex Housing requires review.</p>
+                      <p class="text-xs text-gray-500">Yesterday</p>
+                    </div>
+                  </div>
+                </li>
+              </ul>
+              <div class="px-4 py-3 border-t border-gray-100">
+                <a href="{{ route('admin.settings.notifications') }}" class="text-sm text-indigo-600 hover:text-indigo-700">Notification settings</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div class="p-8 space-y-6">
+        <!-- Filters Section -->
+        <div class="bg-white rounded-2xl shadow-lg p-6">
+          <div class="flex items-center justify-between flex-wrap gap-4">
+            <div class="flex items-center gap-4 flex-wrap">
+              <button class="flex items-center gap-2 px-4 py-2 border-2 border-gray-300 rounded-lg hover:border-indigo-400 hover:bg-indigo-50 transition-all duration-200 font-medium text-gray-700">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
+                </svg>
+                Filter By
+              </button>
+
+              <select class="px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 focus:outline-none bg-white font-medium text-gray-700" id="dateFilter">
+                <option value="">Date</option>
+                <option value="today">Today</option>
+                <option value="week">This Week</option>
+                <option value="month">This Month</option>
+                <option value="year">This Year</option>
+              </select>
+
+              <select class="px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 focus:outline-none bg-white font-medium text-gray-700" id="accountTypeFilter">
+                <option value="">Account Type</option>
+                <option value="contractor">Contractor</option>
+                <option value="property-owner">Property Owner</option>
+              </select>
+
+              <select class="px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 focus:outline-none bg-white font-medium text-gray-700" id="statusFilter">
+                <option value="">Status</option>
+                <option value="pending">Pending</option>
+                <option value="accepted">Accepted</option>
+                <option value="declined">Declined</option>
+              </select>
+            </div>
+
+            <button class="flex items-center gap-2 px-4 py-2 text-red-600 hover:text-red-700 font-medium transition-colors duration-200" id="resetFilters">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+              </svg>
+              Reset Filter
+            </button>
+          </div>
+        </div>
+
+        <!-- Tabs and Table Section -->
+        <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
+          <!-- Tabs -->
+          <div class="border-b border-gray-200">
+            <div class="flex">
+              <button class="tab-btn active px-8 py-4 font-semibold text-orange-600 border-b-2 border-orange-600 hover:bg-orange-50 transition-colors duration-200" data-tab="contractors">
+                Contractors
+              </button>
+              <button class="tab-btn px-8 py-4 font-semibold text-gray-600 border-b-2 border-transparent hover:bg-gray-50 transition-colors duration-200" data-tab="property-owners">
+                Property Owners
+              </button>
+            </div>
+          </div>
+
+          <!-- Table -->
+          <div class="overflow-x-auto">
+            <table class="w-full">
+              <thead class="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Name</th>
+                  <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Date Registered</th>
+                  <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Account Type</th>
+                  <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
+                  <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Action</th>
+                </tr>
+              </thead>
               <tbody class="divide-y divide-gray-200" id="contractorsTable">
-                <!-- Data loaded from API -->
-              </tbody>
+                <tr class="hover:bg-gray-50 transition-colors duration-150">
+                  <td class="px-6 py-4">
+                    <div class="flex items-center gap-3">
+                      <div class="w-12 h-12 bg-gradient-to-br from-cyan-400 to-cyan-600 rounded-full flex items-center justify-center text-white font-bold shadow">
+                        GD
                       </div>
                       <div>
                         <div class="font-semibold text-gray-800">GTH Builders and Developers</div>

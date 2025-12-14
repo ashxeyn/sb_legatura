@@ -10,16 +10,16 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
   <link rel="stylesheet" href="{{ asset('css/admin/home/mainComponents.css') }}">
   <link rel="stylesheet" href="{{ asset('css/admin/userManagement/contractor.css') }}">
-  
+
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-solid-straight/css/uicons-solid-straight.css'>
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-solid-rounded/css/uicons-solid-rounded.css'>
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-bold-rounded/css/uicons-bold-rounded.css'>
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-regular-rounded/css/uicons-regular-rounded.css'>
-  
+
 
   <script src="{{ asset('js/admin/home/mainComponents.js') }}" defer></script>
 
-  
+
 </head>
 
 <body class="bg-gray-50 text-gray-800 font-sans">
@@ -170,10 +170,9 @@
 
         <div class="flex items-center gap-6">
           <div class="relative w-64" style="width: 600px;">
-            <input 
-              id="contractorSearchInput"
-              type="text" 
-              placeholder="Search..." 
+            <input
+              type="text"
+              placeholder="Search..."
               class="border border-gray-300 rounded-lg px-4 py-2 pr-10 focus:ring-2 focus:ring-indigo-400 focus:outline-none w-full"
             >
             <i class="fi fi-rr-search absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
@@ -243,7 +242,7 @@
           <div class="flex items-center gap-4">
             <!-- Ranking Dropdown -->
             <div class="relative">
-              <select id="contractorRankingFilter" class="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-10 text-sm font-medium text-gray-700 hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition cursor-pointer">
+              <select id="rankingFilter" class="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-10 text-sm font-medium text-gray-700 hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition cursor-pointer">
                 <option value="all">All Rankings</option>
                 <option value="top">Top Rated</option>
                 <option value="active">Most Active</option>
@@ -290,12 +289,43 @@
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-200" id="contractorsTable">
-                <!-- Data loaded from API -->
+                @foreach($contractors as $contractor)
+                <tr class="hover:bg-gray-50 transition-all duration-200 group">
+                  <td class="px-6 py-4">
+                    <div class="flex items-center gap-3">
+                      <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold shadow-md group-hover:shadow-lg transition-all group-hover:scale-110">
+                        {{ substr($contractor->company_name, 0, 2) }}
+                      </div>
+                      <span class="font-medium text-gray-800 group-hover:text-indigo-600 transition">{{ $contractor->company_name }}</span>
+                    </div>
+                  </td>
+                  <td class="px-6 py-4 text-center text-sm text-gray-600">{{ \Carbon\Carbon::parse($contractor->created_at)->format('d M, Y') }}</td>
+                  <td class="px-6 py-4 text-center text-sm text-gray-600">{{ $contractor->years_of_experience }} years</td>
+                  <td class="px-6 py-4 text-center">
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 transition-all duration-200 hover:scale-110 hover:shadow-lg">
+                      {{ $contractor->contractor_type ?? 'Contractor' }}
+                    </span>
+                  </td>
+                  <td class="px-6 py-4 text-center">
+                    <span class="inline-flex items-center justify-center w-12 h-8 rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50 text-sm font-bold text-indigo-700 group-hover:from-blue-100 group-hover:to-indigo-100 transition-all duration-200 hover:scale-110 hover:shadow-lg">{{ $contractor->completed_projects }}</span>
+                  </td>
+                  <td class="px-6 py-4">
+                    <div class="flex items-center justify-center gap-2">
+                      <button class="action-btn view-btn w-10 h-10 rounded-full bg-blue-50 hover:bg-blue-100 flex items-center justify-center transition-all duration-200 hover:scale-110" data-id="{{ $contractor->contractor_id }}">
+                        <i class="fi fi-rr-eye text-blue-600"></i>
+                      </button>
+                      <button class="action-btn delete-btn w-10 h-10 rounded-full bg-red-50 hover:bg-red-100 flex items-center justify-center transition-all duration-200 hover:scale-110" data-id="{{ $contractor->contractor_id }}" data-name="{{ $contractor->company_name }}">
+                        <i class="fi fi-rr-trash text-red-600"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+                @endforeach
+
+
+
               </tbody>
             </table>
-          </div>
-          <div id="contractorsPagination" class="px-4 py-3 border-t border-gray-100">
-            <!-- Pagination rendered by JS -->
           </div>
         </div>
       </div>
@@ -726,7 +756,7 @@
       </div>
     </div>
   </div>
- 
+
 
   <script src="{{ asset('js/admin/userManagement/contractor.js') }}" defer></script>
 

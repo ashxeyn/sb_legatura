@@ -10,16 +10,16 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
   <link rel="stylesheet" href="{{ asset('css/admin/home/mainComponents.css') }}">
   <link rel="stylesheet" href="{{ asset('css/admin/userManagement/propertyOwner.css') }}">
-  
+
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-solid-straight/css/uicons-solid-straight.css'>
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-solid-rounded/css/uicons-solid-rounded.css'>
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-bold-rounded/css/uicons-bold-rounded.css'>
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-regular-rounded/css/uicons-regular-rounded.css'>
-  
+
 
   <script src="{{ asset('js/admin/home/mainComponents.js') }}" defer></script>
 
-  
+
 </head>
 
 <body class="bg-gray-50 text-gray-800 font-sans">
@@ -171,10 +171,9 @@
 
         <div class="flex items-center gap-6">
           <div class="relative w-64" style="width: 600px;">
-            <input 
-              id="propertyOwnerSearchInput"
-              type="text" 
-              placeholder="Search..." 
+            <input
+              type="text"
+              placeholder="Search..."
               class="border border-gray-300 rounded-lg px-4 py-2 pr-10 focus:ring-2 focus:ring-indigo-400 focus:outline-none w-full"
             >
             <i class="fi fi-rr-search absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
@@ -243,8 +242,8 @@
           <!-- Left Side - Dropdowns -->
           <div class="flex items-center gap-4">
             <!-- Ranking Dropdown -->
-              <div class="relative">
-              <select id="propertyOwnerRankingFilter" class="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-10 text-sm font-medium text-gray-700 hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition cursor-pointer">
+            <div class="relative">
+              <select id="rankingFilter" class="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-10 text-sm font-medium text-gray-700 hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition cursor-pointer">
                 <option value="ranking">Ranking</option>
                 <option value="name">Name</option>
                 <option value="projects">Projects</option>
@@ -291,12 +290,47 @@
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-200" id="propertyOwnersTable">
-                <!-- Data loaded from API -->
+                @foreach($propertyOwners as $propertyOwner)
+                <tr class="hover:bg-gray-50 transition duration-150 ease-in-out group">
+                  <td class="px-6 py-4">
+                    <div class="flex items-center gap-3">
+                      <div class="w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center text-white font-semibold shadow-md flex-shrink-0">
+                        {{ substr($propertyOwner->first_name, 0, 1) . substr($propertyOwner->last_name, 0, 1) }}
+                      </div>
+                      <span class="font-medium text-gray-900">{{ $propertyOwner->first_name }} {{ $propertyOwner->last_name }}</span>
+                    </div>
+                  </td>
+                  <td class="px-6 py-4 text-center">
+                    <div class="text-sm text-gray-600">{{ \Carbon\Carbon::parse($propertyOwner->created_at)->format('d M, Y') }}</div>
+                  </td>
+                  <td class="px-6 py-4 text-center">
+                    <span class="text-sm text-gray-700">{{ $propertyOwner->occupation ?? 'N/A' }}</span>
+                  </td>
+                  <td class="px-6 py-4 text-center">
+                    <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 font-semibold text-sm">0</span>
+                  </td>
+                  <td class="px-6 py-4 text-center">
+                    <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-green-100 text-green-700 font-semibold text-sm">0</span>
+                  </td>
+                  <td class="px-6 py-4">
+                    <div class="flex items-center justify-center gap-2">
+                      <button class="action-btn view-btn p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition" title="View" data-id="{{ $propertyOwner->owner_id }}">
+                        <i class="fi fi-rr-eye"></i>
+                      </button>
+                      <button class="action-btn edit-btn p-2 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 transition" title="Edit" data-id="{{ $propertyOwner->owner_id }}">
+                        <i class="fi fi-rr-pencil"></i>
+                      </button>
+                      <button class="action-btn delete-btn p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition" title="Delete" data-id="{{ $propertyOwner->owner_id }}">
+                        <i class="fi fi-rr-trash"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+                @endforeach
+
+
               </tbody>
             </table>
-          </div>
-          <div id="propertyOwnersPagination" class="px-4 py-3 border-t border-gray-100">
-            <!-- Pagination rendered by JS -->
           </div>
         </div>
       </div>

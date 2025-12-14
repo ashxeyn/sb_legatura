@@ -24,6 +24,19 @@ Route::get('/accounts/signup', [authController::class, 'showSignupForm']);
 Route::post('/accounts/logout', [authController::class, 'logout']);
 Route::get('/accounts/logout', [authController::class, 'logout']);
 
+// Admin Authentication Routes
+Route::get('/admin/login', function() {
+    return view('admin.logIn_signUp.logIn');
+})->name('admin.login');
+Route::post('/admin/login', [authController::class, 'login'])->name('admin.login.post');
+
+Route::get('/admin/signup', function() {
+    return view('admin.logIn_signUp.signUp');
+})->name('admin.signup');
+Route::post('/admin/signup', [authController::class, 'adminSignup'])->name('admin.signup.post');
+
+Route::post('/admin/logout', [authController::class, 'logout'])->name('admin.logout');
+
 // Contractor Signup Routes
 Route::post('/accounts/signup/contractor/step1', [authController::class, 'contractorStep1']);
 Route::post('/accounts/signup/contractor/step2', [authController::class, 'contractorStep2']);

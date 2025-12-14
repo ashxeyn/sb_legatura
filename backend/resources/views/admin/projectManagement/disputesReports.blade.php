@@ -238,16 +238,116 @@
 
       <!-- Content -->
       <section class="px-8 py-8 space-y-8">
-        <!-- Statistics Cards (loaded from API) -->
-        <div id="disputesStatsContainer">
-          <!-- Stats loaded from API -->
+        <!-- Statistics Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <!-- Total Reports -->
+          <div class="stat-card bg-white rounded-2xl shadow-md border border-gray-200 p-6 hover:shadow-xl transition-all duration-300">
+            <div class="flex items-start justify-between mb-4">
+              <div>
+                <p class="text-sm text-gray-500 font-medium mb-1">Total Reports</p>
+                <h3 class="text-4xl font-bold text-gray-800">156</h3>
+              </div>
+              <div class="w-14 h-14 rounded-full bg-gradient-to-br from-blue-100 to-indigo-200 flex items-center justify-center">
+                <i class="fi fi-sr-file-invoice text-2xl text-blue-600"></i>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 text-sm">
+              <span class="flex items-center gap-1 text-emerald-600 font-semibold">
+                <i class="fi fi-rr-arrow-trend-up"></i>
+                <span>10%</span>
+              </span>
+              <span class="text-gray-400">vs last week</span>
+            </div>
+          </div>
+
+          <!-- Pending Verifications -->
+          <div class="stat-card bg-white rounded-2xl shadow-md border border-gray-200 p-6 hover:shadow-xl transition-all duration-300">
+            <div class="flex items-start justify-between mb-4">
+              <div>
+                <p class="text-sm text-gray-500 font-medium mb-1">Pending Verifications</p>
+                <h3 class="text-4xl font-bold text-gray-800">42</h3>
+              </div>
+              <div class="w-14 h-14 rounded-full bg-gradient-to-br from-amber-100 to-orange-200 flex items-center justify-center">
+                <i class="fi fi-sr-hourglass-end text-2xl text-amber-600"></i>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 text-sm">
+              <span class="flex items-center gap-1 text-red-600 font-semibold">
+                <i class="fi fi-rr-arrow-trend-down"></i>
+                <span>3%</span>
+              </span>
+              <span class="text-gray-400">vs last week</span>
+            </div>
+          </div>
+
+          <!-- Active Disputes -->
+          <div class="stat-card bg-white rounded-2xl shadow-md border border-gray-200 p-6 hover:shadow-xl transition-all duration-300">
+            <div class="flex items-start justify-between mb-4">
+              <div>
+                <p class="text-sm text-gray-500 font-medium mb-1">Active Disputes</p>
+                <h3 class="text-4xl font-bold text-gray-800">28</h3>
+              </div>
+              <div class="w-14 h-14 rounded-full bg-gradient-to-br from-red-100 to-rose-200 flex items-center justify-center">
+                <i class="fi fi-sr-shield-exclamation text-2xl text-red-600"></i>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 text-sm">
+              <span class="flex items-center gap-1 text-emerald-600 font-semibold">
+                <i class="fi fi-rr-arrow-trend-up"></i>
+                <span>3.2%</span>
+              </span>
+              <span class="text-gray-400">vs last week</span>
+            </div>
+          </div>
+
+          <!-- Resolved Cases -->
+          <div class="stat-card bg-white rounded-2xl shadow-md border border-gray-200 p-6 hover:shadow-xl transition-all duration-300">
+            <div class="flex items-start justify-between mb-4">
+              <div>
+                <p class="text-sm text-gray-500 font-medium mb-1">Resolved Cases</p>
+                <h3 class="text-4xl font-bold text-gray-800">342</h3>
+              </div>
+              <div class="w-14 h-14 rounded-full bg-gradient-to-br from-emerald-100 to-teal-200 flex items-center justify-center">
+                <i class="fi fi-sr-check-circle text-2xl text-emerald-600"></i>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 text-sm">
+              <span class="flex items-center gap-1 text-emerald-600 font-semibold">
+                <i class="fi fi-rr-arrow-trend-up"></i>
+                <span>8.3%</span>
+              </span>
+              <span class="text-gray-400">vs last week</span>
+            </div>
+          </div>
         </div>
 
         <!-- Filter Tabs & Table -->
         <div class="bg-white rounded-2xl shadow-md border border-gray-200 overflow-hidden">
           <!-- Filter Tabs -->
-          <div id="disputesFilterTabs">
-            <!-- Filter tabs loaded from API -->
+          <div class="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-indigo-50 to-purple-50">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2 bg-white rounded-xl p-1 shadow-sm">
+                <button class="filter-tab active" data-filter="all">
+                  All <span class="ml-1 text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">156</span>
+                </button>
+                <button class="filter-tab" data-filter="pending">
+                  Pending <span class="ml-1 text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">42</span>
+                </button>
+                <button class="filter-tab" data-filter="disputes">
+                  Disputes <span class="ml-1 text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">28</span>
+                </button>
+                <button class="filter-tab" data-filter="resolved">
+                  Resolved <span class="ml-1 text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">86</span>
+                </button>
+              </div>
+              <div class="flex items-center gap-3">
+                <select id="sortBy" class="px-4 py-2 border-2 border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300">
+                  <option value="date">Sort by Date</option>
+                  <option value="priority">Sort by Priority</option>
+                  <option value="status">Sort by Status</option>
+                </select>
+              </div>
+            </div>
           </div>
 
           <!-- Table -->

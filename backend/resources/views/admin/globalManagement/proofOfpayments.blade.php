@@ -237,9 +237,109 @@
       </header>
 
       <div class="p-8">
-        <!-- Stats loaded from API -->
-        <div id="statsCardsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <!-- Stats loaded from API -->
+        <!-- Statistics Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          
+          <!-- Total Proof Collected Card -->
+          <div class="stat-card bg-white rounded-xl shadow-md p-6 hover:shadow-xl transition-all duration-300 border-l-4 border-blue-500">
+            <div class="flex justify-between items-start mb-4">
+              <div>
+                <p class="text-gray-500 text-sm font-medium mb-2">Total Proof Collected</p>
+                <div class="flex items-center gap-2 mb-1">
+                  <h2 class="text-4xl font-bold text-orange-500 stat-number">156k</h2>
+                </div>
+                <div class="flex items-center gap-1.5 mt-2">
+                  <div class="flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100">
+                    <i class="fi fi-sr-arrow-small-up text-green-600 text-xs"></i>
+                    <span class="text-green-600 text-xs font-semibold">10.0%</span>
+                  </div>
+                </div>
+              </div>
+              <div class="bg-blue-100 p-3 rounded-lg">
+                <i class="fi fi-sr-document text-blue-600 text-2xl"></i>
+              </div>
+            </div>
+            <p class="text-xs text-gray-400">Weekly</p>
+            <div class="mt-4 h-1 bg-gray-200 rounded-full overflow-hidden">
+              <div class="h-full bg-blue-500 rounded-full animate-pulse" style="width: 85%"></div>
+            </div>
+          </div>
+
+          <!-- Pending Verifications Card -->
+          <div class="stat-card bg-white rounded-xl shadow-md p-6 hover:shadow-xl transition-all duration-300 border-l-4 border-orange-500">
+            <div class="flex justify-between items-start mb-4">
+              <div>
+                <p class="text-gray-500 text-sm font-medium mb-2">Pending Verifications</p>
+                <div class="flex items-center gap-2 mb-1">
+                  <h2 class="text-4xl font-bold text-orange-500 stat-number">1k</h2>
+                </div>
+                <div class="flex items-center gap-1.5 mt-2">
+                  <div class="flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-100">
+                    <i class="fi fi-sr-arrow-small-down text-red-600 text-xs"></i>
+                    <span class="text-red-600 text-xs font-semibold">3.0%</span>
+                  </div>
+                </div>
+              </div>
+              <div class="bg-orange-100 p-3 rounded-lg">
+                <i class="fi fi-sr-time-check text-orange-600 text-2xl"></i>
+              </div>
+            </div>
+            <p class="text-xs text-gray-400">Weekly</p>
+            <div class="mt-4 h-1 bg-gray-200 rounded-full overflow-hidden">
+              <div class="h-full bg-orange-500 rounded-full animate-pulse" style="width: 15%"></div>
+            </div>
+          </div>
+
+          <!-- Failed Transaction Card -->
+          <div class="stat-card bg-white rounded-xl shadow-md p-6 hover:shadow-xl transition-all duration-300 border-l-4 border-red-500">
+            <div class="flex justify-between items-start mb-4">
+              <div>
+                <p class="text-gray-500 text-sm font-medium mb-2">Failed Transaction</p>
+                <div class="flex items-center gap-2 mb-1">
+                  <h2 class="text-4xl font-bold text-orange-500 stat-number">156k</h2>
+                </div>
+                <div class="flex items-center gap-1.5 mt-2">
+                  <div class="flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100">
+                    <i class="fi fi-sr-arrow-small-up text-green-600 text-xs"></i>
+                    <span class="text-green-600 text-xs font-semibold">3.2%</span>
+                  </div>
+                </div>
+              </div>
+              <div class="bg-red-100 p-3 rounded-lg">
+                <i class="fi fi-sr-cross-circle text-red-600 text-2xl"></i>
+              </div>
+            </div>
+            <p class="text-xs text-gray-400">Weekly</p>
+            <div class="mt-4 h-1 bg-gray-200 rounded-full overflow-hidden">
+              <div class="h-full bg-red-500 rounded-full animate-pulse" style="width: 20%"></div>
+            </div>
+          </div>
+
+          <!-- Completed Transactions Card -->
+          <div class="stat-card bg-white rounded-xl shadow-md p-6 hover:shadow-xl transition-all duration-300 border-l-4 border-green-500">
+            <div class="flex justify-between items-start mb-4">
+              <div>
+                <p class="text-gray-500 text-sm font-medium mb-2">Completed Transactions</p>
+                <div class="flex items-center gap-2 mb-1">
+                  <h2 class="text-4xl font-bold text-orange-500 stat-number">3,422</h2>
+                </div>
+                <div class="flex items-center gap-1.5 mt-2">
+                  <div class="flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100">
+                    <i class="fi fi-sr-arrow-small-up text-green-600 text-xs"></i>
+                    <span class="text-green-600 text-xs font-semibold">8.3%</span>
+                  </div>
+                </div>
+              </div>
+              <div class="bg-green-100 p-3 rounded-lg">
+                <i class="fi fi-sr-check-circle text-green-600 text-2xl"></i>
+              </div>
+            </div>
+            <p class="text-xs text-gray-400">Weekly</p>
+            <div class="mt-4 h-1 bg-gray-200 rounded-full overflow-hidden">
+              <div class="h-full bg-green-500 rounded-full animate-pulse" style="width: 95%"></div>
+            </div>
+          </div>
+
         </div>
 
         <!-- Payments Table -->
@@ -259,7 +359,139 @@
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-200" id="paymentsTable">
-                <!-- Data loaded from API -->
+                
+                <!-- Row 1 -->
+                <tr class="hover:bg-indigo-50/60 transition-colors">
+                  <td class="px-3 py-3 whitespace-nowrap text-gray-700 font-medium text-sm">#10421</td>
+                  <td class="px-3 py-3 text-gray-700 text-sm">GreenBelt Building</td>
+                  <td class="px-3 py-3">
+                    <div class="flex items-center gap-2">
+                      <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold shadow flex-shrink-0">CA</div>
+                      <div class="min-w-0">
+                        <div class="font-semibold text-gray-800 leading-tight text-sm truncate">Cabanting Architects</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-3 py-3 whitespace-nowrap text-gray-700 font-semibold text-sm">₱10M</td>
+                  <td class="px-3 py-3 whitespace-nowrap text-gray-700 text-xs">03/12/21</td>
+                  <td class="px-3 py-3 whitespace-nowrap text-gray-700 text-xs">Bank</td>
+                  <td class="px-3 py-3 whitespace-nowrap">
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700 border border-green-200">Completed</span>
+                  </td>
+                  <td class="px-3 py-3 whitespace-nowrap">
+                    <div class="flex items-center gap-1.5">
+                      <button class="action-btn action-btn--view rounded-2xl" title="View">
+                        <i class="fi fi-rr-eye"></i>
+                      </button>
+                      <button class="action-btn action-btn--edit rounded-2xl" title="Edit">
+                        <i class="fi fi-rr-edit"></i>
+                      </button>
+                      <button class="action-btn action-btn--delete rounded-2xl" title="Delete">
+                        <i class="fi fi-rr-trash"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- Row 2 -->
+                <tr class="hover:bg-indigo-50/60 transition-colors">
+                  <td class="px-3 py-3 whitespace-nowrap text-gray-700 font-medium text-sm">#10422</td>
+                  <td class="px-3 py-3 text-gray-700 text-sm">Camelia Holmes</td>
+                  <td class="px-3 py-3">
+                    <div class="flex items-center gap-2">
+                      <div class="w-8 h-8 rounded-full bg-gradient-to-br from-gray-800 to-black flex items-center justify-center text-white text-xs font-bold shadow flex-shrink-0">JL</div>
+                      <div class="min-w-0">
+                        <div class="font-semibold text-gray-800 leading-tight text-sm truncate">J'Lois Construction</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-3 py-3 whitespace-nowrap text-gray-700 font-semibold text-sm">₱30M</td>
+                  <td class="px-3 py-3 whitespace-nowrap text-gray-700 text-xs">03/12/21</td>
+                  <td class="px-3 py-3 whitespace-nowrap text-gray-700 text-xs">Bank</td>
+                  <td class="px-3 py-3 whitespace-nowrap">
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200">Pending</span>
+                  </td>
+                  <td class="px-3 py-3 whitespace-nowrap">
+                    <div class="flex items-center gap-1.5">
+                      <button class="action-btn action-btn--view rounded-2xl" title="View">
+                        <i class="fi fi-rr-eye"></i>
+                      </button>
+                      <button class="action-btn action-btn--edit rounded-2xl" title="Edit">
+                        <i class="fi fi-rr-edit"></i>
+                      </button>
+                      <button class="action-btn action-btn--delete rounded-2xl" title="Delete">
+                        <i class="fi fi-rr-trash"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- Row 3 -->
+                <tr class="hover:bg-indigo-50/60 transition-colors">
+                  <td class="px-3 py-3 whitespace-nowrap text-gray-700 font-medium text-sm">#10423</td>
+                  <td class="px-3 py-3 text-gray-700 text-sm">Mitsubishi Building</td>
+                  <td class="px-3 py-3">
+                    <div class="flex items-center gap-2">
+                      <div class="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white text-xs font-bold shadow flex-shrink-0">GT</div>
+                      <div class="min-w-0">
+                        <div class="font-semibold text-gray-800 leading-tight text-sm truncate">GTH Builders</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-3 py-3 whitespace-nowrap text-gray-700 font-semibold text-sm">₱50M</td>
+                  <td class="px-3 py-3 whitespace-nowrap text-gray-700 text-xs">03/12/21</td>
+                  <td class="px-3 py-3 whitespace-nowrap text-gray-700 text-xs">Bank</td>
+                  <td class="px-3 py-3 whitespace-nowrap">
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700 border border-red-200">Invalid</span>
+                  </td>
+                  <td class="px-3 py-3 whitespace-nowrap">
+                    <div class="flex items-center gap-1.5">
+                      <button class="action-btn action-btn--view rounded-2xl" title="View">
+                        <i class="fi fi-rr-eye"></i>
+                      </button>
+                      <button class="action-btn action-btn--edit rounded-2xl" title="Edit">
+                        <i class="fi fi-rr-edit"></i>
+                      </button>
+                      <button class="action-btn action-btn--delete rounded-2xl" title="Delete">
+                        <i class="fi fi-rr-trash"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- Row 4 -->
+                <tr class="hover:bg-indigo-50/60 transition-colors">
+                  <td class="px-3 py-3 whitespace-nowrap text-gray-700 font-medium text-sm">#10424</td>
+                  <td class="px-3 py-3 text-gray-700 text-sm">Harbor Point Mall</td>
+                  <td class="px-3 py-3">
+                    <div class="flex items-center gap-2">
+                      <div class="w-8 h-8 rounded-full bg-gradient-to-br from-fuchsia-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shadow flex-shrink-0">NB</div>
+                      <div class="min-w-0">
+                        <div class="font-semibold text-gray-800 leading-tight text-sm truncate">Nova Build Corp</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-3 py-3 whitespace-nowrap text-gray-700 font-semibold text-sm">₱8.45M</td>
+                  <td class="px-3 py-3 whitespace-nowrap text-gray-700 text-xs">03/15/21</td>
+                  <td class="px-3 py-3 whitespace-nowrap text-gray-700 text-xs">Bank</td>
+                  <td class="px-3 py-3 whitespace-nowrap">
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700 border border-green-200">Completed</span>
+                  </td>
+                  <td class="px-3 py-3 whitespace-nowrap">
+                    <div class="flex items-center gap-1.5">
+                      <button class="action-btn action-btn--view rounded-2xl" title="View">
+                        <i class="fi fi-rr-eye"></i>
+                      </button>
+                      <button class="action-btn action-btn--edit rounded-2xl" title="Edit">
+                        <i class="fi fi-rr-edit"></i>
+                      </button>
+                      <button class="action-btn action-btn--delete rounded-2xl" title="Delete">
+                        <i class="fi fi-rr-trash"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+
               </tbody>
             </table>
           </div>
@@ -301,10 +533,111 @@
                 <span id="pp-payment-id" class="font-semibold text-gray-800">#—</span>
               </div>
               <div class="flex items-start justify-between gap-6">
-                <!-- Stats loaded from API -->
-                <div id="statsCardsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                  <!-- Stats loaded from API -->
+                <span class="text-gray-500">Contractor</span>
+                <span id="pp-contractor" class="font-semibold text-gray-800 text-right truncate max-w-[240px]">—</span>
+              </div>
+              <div class="flex items-start justify-between gap-6">
+                <span class="text-gray-500">Milestone Paid</span>
+                <span class="text-gray-800">Milestone 3 • Rooftop Building</span>
+              </div>
+              <div class="flex items-start justify-between gap-6">
+                <span class="text-gray-500">Payment Reference No.</span>
+                <span class="text-gray-800">PAY_XXXX_cash</span>
+              </div>
+              <div class="flex items-start justify-between gap-6">
+                <span class="text-gray-500">Payment Date</span>
+                <span id="pp-date" class="text-gray-800">—</span>
+              </div>
+              <div class="flex items-start justify-between gap-6">
+                <span class="text-gray-500">Payment Method</span>
+                <span id="pp-method" class="text-gray-800">—</span>
+              </div>
+              <div class="flex items-start justify-between gap-6">
+                <span class="text-gray-500">Amount Paid</span>
+                <span id="pp-amount" class="text-gray-800 font-semibold">—</span>
+              </div>
+              <div class="flex items-start justify-between gap-6">
+                <span class="text-gray-500">Date Verified</span>
+                <span class="text-gray-400">—</span>
+              </div>
+            </div>
+
+            <!-- Right -->
+            <div class="space-y-3 text-sm">
+              <div class="flex items-start justify-between gap-6">
+                <span class="text-gray-500">Property Owner</span>
+                <span class="text-gray-800">—</span>
+              </div>
+              <div class="flex items-start justify-between gap-6">
+                <span class="text-gray-500">Project Title</span>
+                <span id="pp-project" class="text-gray-800 text-right truncate max-w-[260px]">—</span>
+              </div>
+              <div class="flex flex-col gap-2">
+                <span class="text-gray-500">Description</span>
+                <p class="text-gray-700 leading-relaxed text-justify">
+                  Construction of a 2-story commercial complex with parking space, electrical systems, and interior finishing. Includes compliance documentation and bank transaction proof for this milestone payment.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Uploaded Files -->
+          <div class="pt-2">
+            <div class="flex items-center justify-between">
+              <h4 class="font-semibold text-gray-800">Uploaded Files</h4>
+              <span class="text-xs text-gray-500">Preview or download</span>
+            </div>
+            <div class="mt-3 border-t"></div>
+
+            <div class="mt-4 space-y-3">
+              <div class="file-row">
+                <div class="flex items-center gap-3">
+                  <span class="file-type">PDF</span>
+                  <span class="text-gray-800">Progress Report</span>
                 </div>
+                <div class="hidden md:flex items-center gap-6 text-xs text-gray-600">
+                  <span>Date Submitted: Dec 23, 2022</span>
+                  <span>Uploaded By: Carl Saludo</span>
+                  <span>Position: Architect</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <button class="icon-btn" title="Preview"><i class="fi fi-rr-eye"></i></button>
+                  <button class="icon-btn pending-download" title="Download"><i class="fi fi-rr-download"></i></button>
+                </div>
+              </div>
+
+              <div class="file-row">
+                <div class="flex items-center gap-3">
+                  <span class="file-type">PDF</span>
+                  <span class="text-gray-800">Bank Deposit Slip</span>
+                </div>
+                <div class="hidden md:flex items-center gap-6 text-xs text-gray-600">
+                  <span>Date Submitted: Dec 23, 2022</span>
+                  <span>Uploaded By: Carl Saludo</span>
+                  <span>Position: Architect</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <button class="icon-btn" title="Preview"><i class="fi fi-rr-eye"></i></button>
+                  <button class="icon-btn pending-download" title="Download"><i class="fi fi-rr-download"></i></button>
+                </div>
+              </div>
+
+              <div class="file-row">
+                <div class="flex items-center gap-3">
+                  <span class="file-type">PDF</span>
+                  <span class="text-gray-800">Official Receipt</span>
+                </div>
+                <div class="hidden md:flex items-center gap-6 text-xs text-gray-600">
+                  <span>Date Submitted: Dec 23, 2022</span>
+                  <span>Uploaded By: Carl Saludo</span>
+                  <span>Position: Architect</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <button class="icon-btn" title="Preview"><i class="fi fi-rr-eye"></i></button>
+                  <button class="icon-btn" title="Download"><i class="fi fi-rr-download"></i></button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -522,7 +855,28 @@
           <div class="form-group">
             <label class="form-label">Uploaded Files</label>
             <div class="space-y-2" id="edit-files-list">
-              <!-- Files loaded from API -->
+              <div class="edit-file-item">
+                <div class="flex items-center gap-3">
+                  <i class="fi fi-rr-link text-amber-600 text-lg"></i>
+                  <span class="text-sm text-gray-800 font-medium">supporting_files_sample.pdf</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <button class="edit-file-btn" title="Preview"><i class="fi fi-rr-eye"></i></button>
+                  <button class="edit-file-btn" title="Download"><i class="fi fi-rr-download"></i></button>
+                  <button class="edit-file-btn text-red-600 hover:bg-red-50 hover:border-red-200" title="Delete"><i class="fi fi-rr-trash"></i></button>
+                </div>
+              </div>
+              <div class="edit-file-item">
+                <div class="flex items-center gap-3">
+                  <i class="fi fi-rr-link text-amber-600 text-lg"></i>
+                  <span class="text-sm text-gray-800 font-medium">supporting_files_sample.pdf</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <button class="edit-file-btn" title="Preview"><i class="fi fi-rr-eye"></i></button>
+                  <button class="edit-file-btn" title="Download"><i class="fi fi-rr-download"></i></button>
+                  <button class="edit-file-btn text-red-600 hover:bg-red-50 hover:border-red-200" title="Delete"><i class="fi fi-rr-trash"></i></button>
+                </div>
+              </div>
             </div>
           </div>
         </div>

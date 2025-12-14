@@ -65,7 +65,7 @@ class authController extends Controller
             // Set default current role for session-based role tracking
             $user = $result['user'];
             $userType = $result['userType'];
-            
+
             // Only set current_role for regular users, not admin
             if ($userType !== 'admin') {
                 if ($user->user_type === 'both') {
