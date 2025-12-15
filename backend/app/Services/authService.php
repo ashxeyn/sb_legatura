@@ -58,24 +58,89 @@ class authService
             ->first();
 
         if ($user && $this->verifyPassword($password, $user->password_hash)) {
-            if (!$user->is_verified) {
-                return [
-                    'success' => false,
-                    'message' => 'Your account is waiting for verification. Please wait for admin approval.'
-                ];
+
+            // Check verification status based on user type
+            $isVerified = false;
+            $rejectionReason = null;
+
+            if ($user->user_type === 'admin') {
+                $isVerified = true;
+            } elseif ($user->user_type === 'contractor') {
+                $contractor = DB::table('contractors')->where('user_id', $user->user_id)->first();
+                $contractorUser = DB::table('contractor_users')->where('user_id', $user->user_id)->first();
+
+                if ($contractor && $contractor->verification_status === 'approved' &&
+                    $contractorUser && $contractorUser->is_active == 1) {
+                    $isVerified = true;
+                } elseif ($contractor && $contractor->verification_status === 'rejected') {
+                    $rejectionReason = $contractor->rejection_reason;
+                }
+            } elseif ($user->user_type === 'property_owner') {
+                $owner = DB::table('property_owners')->where('user_id', $user->user_id)->first();
+                if ($owner && $owner->verification_status === 'approved' && $owner->is_active == 1) {
+                    $isVerified = true;
+                } elseif ($owner && $owner->verification_status === 'rejected') {
+                    $rejectionReason = $owner->rejection_reason;
+                }
+            } elseif ($user->user_type === 'both') {
+                $contractor = DB::table('contractors')->where('user_id', $user->user_id)->first();
+                $contractorUser = DB::table('contractor_users')->where('user_id', $user->user_id)->first();
+                $owner = DB::table('property_owners')->where('user_id', $user->user_id)->first();
+
+                $isContractorValid = $contractor &&
+                                     $contractor->verification_status === 'approved' &&
+                                     $contractorUser &&
+                                     $contractorUser->is_active == 1 &&
+                                     $contractorUser->role === 'owner';
+
+                $isOwnerValid = $owner &&
+                                $owner->verification_status === 'approved' &&
+                                $owner->is_active == 1;
+
+                if ($isContractorValid && !$isOwnerValid) {
+                    $isVerified = true;
+                    $determinedRole = 'contractor';
+                } elseif (!$isContractorValid && $isOwnerValid) {
+                    $isVerified = true;
+                    $determinedRole = 'property_owner';
+                } elseif ($isContractorValid && $isOwnerValid) {
+                    $isVerified = true;
+                    // Compare created_at (string comparison works for standard timestamps)
+                    if ($contractor->created_at < $owner->created_at) {
+                        $determinedRole = 'contractor';
+                    } else {
+                        $determinedRole = 'property_owner';
+                    }
+                } else {
+                    // Both invalid. Check for rejection.
+                    if ($contractor && $contractor->verification_status === 'rejected') {
+                         $rejectionReason = "Contractor Account: " . $contractor->rejection_reason;
+                    }
+                    if ($owner && $owner->verification_status === 'rejected') {
+                        $ownerReason = "Property Owner Account: " . $owner->rejection_reason;
+                        $rejectionReason = $rejectionReason ? $rejectionReason . " | " . $ownerReason : $ownerReason;
+                    }
+                }
             }
 
-            if (!$user->is_active) {
+            // Allow login if verified
+            if (!$isVerified) {
+                $message = 'Your account is waiting for verification or is inactive. Please contact support.';
+                if ($rejectionReason) {
+                    $message = "Your account has been rejected due to the reason: {$rejectionReason}. Please contact support.";
+                }
+
                 return [
                     'success' => false,
-                    'message' => 'Account is inactive. Please contact support.'
+                    'message' => $message
                 ];
             }
 
             return [
                 'success' => true,
                 'user' => $user,
-                'userType' => 'user'
+                'userType' => 'user',
+                'determinedRole' => $determinedRole ?? null
             ];
         }
 

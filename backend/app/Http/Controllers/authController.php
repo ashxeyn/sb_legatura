@@ -69,7 +69,8 @@ class authController extends Controller
             // Only set current_role for regular users, not admin
             if ($userType !== 'admin') {
                 if ($user->user_type === 'both') {
-                    Session::put('current_role', 'contractor');
+                    $role = $result['determinedRole'] ?? 'contractor';
+                    Session::put('current_role', $role === 'property_owner' ? 'owner' : 'contractor');
                 } elseif ($user->user_type === 'property_owner') {
                     Session::put('current_role', 'owner');
                 } else {
@@ -180,7 +181,7 @@ class authController extends Controller
         // Para istore lang to yung sa step 1 inputs
         // Only treat as switch mode if user is logged in na and verified signup na
         $user = Session::get('user');
-        if ($user && isset($user->is_verified) && $user->is_verified == 1) {
+        if ($user) {
             Session::put('switch_contractor_step1', $step1Data);
         }
 
@@ -421,7 +422,7 @@ class authController extends Controller
 
         // Only treat as switch mode if user is logged in and verified na ang signup (just like the contractor)
         $user = Session::get('user');
-        if ($user && isset($user->is_verified) && $user->is_verified == 1) {
+        if ($user) {
             Session::put('switch_owner_step1', $step1Data);
         }
 
@@ -1119,7 +1120,6 @@ class authController extends Controller
                 'password_hash' => bcrypt($request->password),
                 'OTP_hash' => $otpHash,
                 'user_type' => 'property_owner', // Default to property_owner for mobile registration
-                'is_verified' => 0, // Not verified initially
                 'is_active' => 1 // Active by default
             ]);
 

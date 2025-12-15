@@ -17,18 +17,18 @@ class dashboardController extends authController
         $topPropertyOwners = $this->getTopPropertyOwners();
         $activeUsersData = $this->getActiveUsersData();
         $dashboardStats = $this->getDashboardStats();
-        
+
         // Get chart data for all filters
         $totalUsersChartData = $this->getTotalUsersChartData();
         $newUsersChartData = $this->getNewUsersChartData();
         $activeUsersChartData = $this->getActiveUsersChartData();
         $pendingReviewsChartData = $this->getPendingReviewsChartData();
-        
+
         // New metric cards: projects, bids, revenue
         $projectsMetrics = $this->getProjectsMetrics();
         $activeBidsMetrics = $this->getActiveBidsMetrics();
         $revenueMetrics = $this->getRevenueMetrics();
-        
+
         // Get breakdown data for stat cards
         $totalUsersBreakdown = $this->getTotalUsersBreakdown();
         $newUsersBreakdown = $this->getNewUsersBreakdown();
@@ -75,7 +75,7 @@ class dashboardController extends authController
         }
 
         $earningsData = $this->getEarningsMetricsForRange($startDate, $endDate);
-        
+
         return response()->json($earningsData);
     }
 
@@ -298,7 +298,20 @@ class dashboardController extends authController
 
         // Active users (is_active = 1)
         $activeUsers = DB::table('users')
-            ->where('is_active', 1)
+            ->where(function ($query) {
+                $query->whereExists(function ($sub) {
+                    $sub->select(DB::raw(1))
+                        ->from('contractor_users')
+                        ->whereColumn('contractor_users.user_id', 'users.user_id')
+                        ->where('contractor_users.is_active', 1);
+                })
+                ->orWhereExists(function ($sub) {
+                    $sub->select(DB::raw(1))
+                        ->from('property_owners')
+                        ->whereColumn('property_owners.user_id', 'users.user_id')
+                        ->where('property_owners.is_active', 1);
+                });
+            })
             ->count();
 
         // Pending reviews (contractors with pending verification)
@@ -419,24 +432,47 @@ class dashboardController extends authController
     {
         // Get total active users
         $totalActiveUsers = DB::table('users')
-            ->where('is_active', 1)
+            ->where(function ($query) {
+                $query->whereExists(function ($sub) {
+                    $sub->select(DB::raw(1))
+                        ->from('contractor_users')
+                        ->whereColumn('contractor_users.user_id', 'users.user_id')
+                        ->where('contractor_users.is_active', 1);
+                })
+                ->orWhereExists(function ($sub) {
+                    $sub->select(DB::raw(1))
+                        ->from('property_owners')
+                        ->whereColumn('property_owners.user_id', 'users.user_id')
+                        ->where('property_owners.is_active', 1);
+                });
+            })
             ->count();
 
         // Get contractors count
         $contractorsCount = DB::table('users')
-            ->where('is_active', 1)
             ->where(function($query) {
                 $query->where('user_type', 'contractor')
                       ->orWhere('user_type', 'both');
+            })
+            ->whereExists(function ($sub) {
+                $sub->select(DB::raw(1))
+                    ->from('contractor_users')
+                    ->whereColumn('contractor_users.user_id', 'users.user_id')
+                    ->where('contractor_users.is_active', 1);
             })
             ->count();
 
         // Get property owners count
         $propertyOwnersCount = DB::table('users')
-            ->where('is_active', 1)
             ->where(function($query) {
                 $query->where('user_type', 'property_owner')
                       ->orWhere('user_type', 'both');
+            })
+            ->whereExists(function ($sub) {
+                $sub->select(DB::raw(1))
+                    ->from('property_owners')
+                    ->whereColumn('property_owners.user_id', 'users.user_id')
+                    ->where('property_owners.is_active', 1);
             })
             ->count();
 
@@ -536,7 +572,20 @@ class dashboardController extends authController
                 DB::raw('MONTH(created_at) as month'),
                 DB::raw('COUNT(*) as count')
             )
-            ->where('is_active', 1)
+            ->where(function ($query) {
+                $query->whereExists(function ($sub) {
+                    $sub->select(DB::raw(1))
+                        ->from('contractor_users')
+                        ->whereColumn('contractor_users.user_id', 'users.user_id')
+                        ->where('contractor_users.is_active', 1);
+                })
+                ->orWhereExists(function ($sub) {
+                    $sub->select(DB::raw(1))
+                        ->from('property_owners')
+                        ->whereColumn('property_owners.user_id', 'users.user_id')
+                        ->where('property_owners.is_active', 1);
+                });
+            })
             ->whereRaw('YEAR(created_at) = YEAR(CURRENT_DATE)')
             ->groupBy(DB::raw('MONTH(created_at)'))
             ->orderBy(DB::raw('MONTH(created_at)'))
@@ -592,7 +641,7 @@ class dashboardController extends authController
     private function getTotalUsersBreakdown()
     {
         $totalUsers = DB::table('users')->count();
-        
+
         $contractorsCount = DB::table('users')
             ->where(function($query) {
                 $query->where('user_type', 'contractor')
@@ -623,7 +672,7 @@ class dashboardController extends authController
         $totalNewUsers = DB::table('users')
             ->whereDate('created_at', DB::raw('CURDATE()'))
             ->count();
-        
+
         $contractorsCount = DB::table('users')
             ->whereDate('created_at', DB::raw('CURDATE()'))
             ->where(function($query) {
@@ -654,22 +703,45 @@ class dashboardController extends authController
     private function getActiveUsersBreakdownData()
     {
         $totalActiveUsers = DB::table('users')
-            ->where('is_active', 1)
+            ->where(function ($query) {
+                $query->whereExists(function ($sub) {
+                    $sub->select(DB::raw(1))
+                        ->from('contractor_users')
+                        ->whereColumn('contractor_users.user_id', 'users.user_id')
+                        ->where('contractor_users.is_active', 1);
+                })
+                ->orWhereExists(function ($sub) {
+                    $sub->select(DB::raw(1))
+                        ->from('property_owners')
+                        ->whereColumn('property_owners.user_id', 'users.user_id')
+                        ->where('property_owners.is_active', 1);
+                });
+            })
             ->count();
-        
+
         $contractorsCount = DB::table('users')
-            ->where('is_active', 1)
             ->where(function($query) {
                 $query->where('user_type', 'contractor')
                       ->orWhere('user_type', 'both');
             })
+            ->whereExists(function ($sub) {
+                $sub->select(DB::raw(1))
+                    ->from('contractor_users')
+                    ->whereColumn('contractor_users.user_id', 'users.user_id')
+                    ->where('contractor_users.is_active', 1);
+            })
             ->count();
 
         $propertyOwnersCount = DB::table('users')
-            ->where('is_active', 1)
             ->where(function($query) {
                 $query->where('user_type', 'property_owner')
                       ->orWhere('user_type', 'both');
+            })
+            ->whereExists(function ($sub) {
+                $sub->select(DB::raw(1))
+                    ->from('property_owners')
+                    ->whereColumn('property_owners.user_id', 'users.user_id')
+                    ->where('property_owners.is_active', 1);
             })
             ->count();
 

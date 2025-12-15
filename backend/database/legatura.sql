@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Dec 01, 2025 at 03:55 AM
+-- Generation Time: Dec 15, 2025 at 06:42 AM
 -- Server version: 11.4.5-MariaDB
 -- PHP Version: 8.2.12
 
@@ -65,17 +65,6 @@ CREATE TABLE `bids` (
   `decision_date` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data for table `bids`
---
-
-INSERT INTO `bids` (`bid_id`, `project_id`, `contractor_id`, `proposed_cost`, `estimated_timeline`, `contractor_notes`, `bid_status`, `reason`, `submitted_at`, `decision_date`) VALUES
-(1, 1, 1, 1000000.00, 12, 'SHEESH', 'accepted', '', '2025-11-05 12:17:23', NULL),
-(4, 7, 1, 10000.00, 23, 'adasdasdadasda', 'accepted', '', '2025-11-21 08:28:08', '2025-11-21 08:42:57'),
-(5, 8, 1, 1000.00, 10, 'dasdadqqqqqq', 'submitted', '', '2025-11-22 07:51:42', NULL),
-(6, 8, 3, 900.00, 2, 'ffsfaf', 'submitted', '', '2025-11-21 08:52:09', NULL),
-(13, 31, 1, 200.00, 2, 'dadas', 'cancelled', NULL, '2025-11-30 09:01:52', NULL);
-
 -- --------------------------------------------------------
 
 --
@@ -90,16 +79,6 @@ CREATE TABLE `bid_files` (
   `description` varchar(255) DEFAULT NULL,
   `uploaded_at` timestamp NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `bid_files`
---
-
-INSERT INTO `bid_files` (`file_id`, `bid_id`, `file_name`, `file_path`, `description`, `uploaded_at`) VALUES
-(3, 4, 'Adobe Express - file.png', 'bid_files/1763742488_Adobe Express - file.png', NULL, '2025-11-21 08:28:08'),
-(4, 6, 'theo 2x2 1x1.pdf', 'bid_files/1763743929_theo 2x2 1x1.pdf', NULL, '2025-11-21 08:52:09'),
-(5, 5, 'phase3.drawio.png', 'bid_files/1763826702_phase3.drawio.png', NULL, '2025-11-22 07:51:42'),
-(6, 13, 'slide2.png', 'bid_files/1764394893_slide2.png', NULL, '2025-11-28 21:41:33');
 
 -- --------------------------------------------------------
 
@@ -142,15 +121,126 @@ CREATE TABLE `contractors` (
 --
 
 INSERT INTO `contractors` (`contractor_id`, `user_id`, `company_name`, `years_of_experience`, `type_id`, `contractor_type_other`, `services_offered`, `business_address`, `company_email`, `company_phone`, `company_website`, `company_social_media`, `company_description`, `picab_number`, `picab_category`, `picab_expiration_date`, `business_permit_number`, `business_permit_city`, `business_permit_expiration`, `tin_business_reg_number`, `dti_sec_registration_photo`, `verification_status`, `verification_date`, `rejection_reason`, `completed_projects`, `created_at`, `updated_at`) VALUES
-(1, 2, 'Sandbox', 13, 5, NULL, 'SHEESH', 'Sheesh, Sagua, Margosatubig, Zamboanga Del Sur 7000', 'sandbox@gmail.com', '09926314079', 'https://chatgpt.com/c/6905fa96-08c0-8321-8a63-d13ae3fabea5', NULL, NULL, '123123', 'AAA', '2025-11-06', '123213', 'Abucay', '2025-11-06', '123123', 'DTI_SEC/9Fx1ys8wvaTxw6UsmqO2QyJufudjy4T1gXRIAqCY.jpg', 'approved', NULL, NULL, 0, '2025-11-01 05:30:31', '2025-11-21 15:47:25'),
-(2, 1, 'sad', 12, 5, NULL, 'dsd', 'asdasd, Minanga Sur, Iguig, Cagayan 1234', 'ashxeyn@gmail.com', '09926312271', NULL, NULL, NULL, 'ad12312', 'AAAA', '2025-11-08', '13231', 'Al-Barka', '2025-11-08', '13123123', 'contractor_documents/1762006595_dti_sec_557969314_2535718666804066_2236441680610974884_n.png', 'approved', NULL, NULL, 0, '2025-11-01 06:16:37', '2025-11-21 15:47:32'),
-(3, 11, 'Niggatura', 12, 9, 'naueg', 'afsf', 'asasda, Taloto, City of Tagbilaran, Bohol 2311', 'ahdbahsahdbahs@gmail.com', '09926314033', NULL, NULL, NULL, '12312312312', 'AA', '2025-11-07', '123123131', 'Abra De Ilog', '2025-11-06', '13123132131', 'DTI_SEC/ghZAar8qp7Uxv8pz82RX3JHN3CLHXJlNHVphoRIR.png', 'approved', NULL, NULL, 0, '2025-11-02 00:05:40', '2025-11-21 15:47:39'),
-(5, 10, 'adad', 23, 2, NULL, 'sdada', 'adad, Singi, Vinzons, Camarines Norte 2311', 'ahdbahs@gmal.com', '09926314072', NULL, NULL, NULL, '12312333', 'AAA', '2025-11-06', '12312312312313', 'Abra De Ilog', '2025-11-12', '13123124123', 'contractor_documents/1762074010_dti_sec_work diagram.drawio.png', 'approved', NULL, NULL, 0, '2025-11-02 01:00:12', '2025-11-21 15:47:56'),
-(6, 15, 'asdasd', 123, 8, NULL, 'adasd', 'asdasda, Catacdegan Nuevo, Manabo, Abra 2311', 'krystalbwerongow24@gmail.com', '09926314071', NULL, NULL, NULL, '123456', 'AAA', '2025-11-26', '1231231321', 'Abuyog', '2025-11-26', '123123', 'DTI_SEC/JbQ9fPQN2SI2lwi52Sxq1l1dQTZyHGn2nFHglcuD.png', 'approved', NULL, NULL, 0, '2025-11-11 06:51:26', '2025-11-21 15:48:03'),
-(7, 16, 'sdfsdfsdfs', 23, 1, NULL, 'asdasda', 'asda, Pedagan, Mahayag, Zamboanga Del Sur 2311', 'asdada@gmail.com', '09926314073', NULL, NULL, NULL, 'asdada', 'AAA', '2025-11-19', 'asdasd', 'Abuyog', '2025-11-28', 'adasda', 'DTI_SEC/IZKWiIa1uVBdBuwQV9EbDFxQqxpXOgA8aP1VyPQR.png', 'pending', NULL, NULL, 0, '2025-11-13 06:26:39', '2025-11-13 06:26:39'),
-(8, 19, 'ASASD', 12, 5, NULL, 'qsdas', 'zxcz, Rosario, Cortes, Bohol 2311', 'ashASxeyn@gmail.com', '09926314072', NULL, NULL, NULL, '12312313', 'AAA', '2025-11-21', 'asdsd', 'Abucay', '2025-11-14', '1231231', 'DTI_SEC/cAQh2ZkQqn7aEkmKIwFbwuyEFBawqswZ70oqdJWh.jpg', 'approved', NULL, NULL, 0, '2025-11-13 06:55:25', '2025-11-21 15:48:11'),
-(9, 22, 'asd', 2, 2, NULL, 'dsd', 'sdf, Magbangon (Pob.), Cabucgayan, Biliran 2311', 'sdfsssfd@wmsu.edu.ph', '09926314033', NULL, NULL, NULL, '234234', 'AAA', '2025-11-22', '23423234', 'Abuyog', '2025-11-22', '23432', 'contractor_documents/1763055635_dti_sec_19a87211-2771-468f-9af6-598e9e20c2f5-removebg-preview.png', 'pending', NULL, NULL, 0, '2025-11-13 09:40:37', '2025-11-13 09:40:37'),
-(10, 24, 'ad', 23, 5, NULL, '3df', 'sdf, Kitaihon, Kitaotao, Bukidnon 2311', 'sdfddddsssfd@wmsu.edu.ph', '09926314033', NULL, NULL, NULL, '231231', 'AA', '2025-12-06', '12313131', 'Agdangan', '2025-11-22', '132313', 'DTI_SEC/qLZOtzwcMNmHx8zu7c4FccXY3oi6qxNXnFqfcVto.jpg', 'approved', NULL, NULL, 0, '2025-11-13 09:48:08', '2025-11-21 15:48:18');
+(1052, 1, 'Construction Co 1', 19, 9, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company1@example.com', '09170000001', NULL, NULL, NULL, 'PCAB-25431', 'A', '2026-12-31', 'BP-1', 'Zamboanga', '2026-01-01', 'TIN-1', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 35, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1053, 2, 'Construction Co 2', 5, 8, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company2@example.com', '09170000002', NULL, NULL, NULL, 'PCAB-16264', 'AAA', '2026-12-31', 'BP-2', 'Zamboanga', '2026-01-01', 'TIN-2', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 39, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1054, 3, 'Construction Co 3', 20, 1, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company3@example.com', '09170000003', NULL, NULL, NULL, 'PCAB-89718', 'B', '2026-12-31', 'BP-3', 'Zamboanga', '2026-01-01', 'TIN-3', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 39, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1055, 4, 'Construction Co 4', 19, 5, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company4@example.com', '09170000004', NULL, NULL, NULL, 'PCAB-17545', 'C', '2026-12-31', 'BP-4', 'Zamboanga', '2026-01-01', 'TIN-4', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 46, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1056, 5, 'Construction Co 5', 3, 7, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company5@example.com', '09170000005', NULL, NULL, NULL, 'PCAB-15111', 'C', '2026-12-31', 'BP-5', 'Zamboanga', '2026-01-01', 'TIN-5', 'dti_cert.jpg', 'pending', NULL, NULL, 20, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1057, 6, 'Construction Co 6', 6, 1, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company6@example.com', '09170000006', NULL, NULL, NULL, 'PCAB-21615', 'C', '2026-12-31', 'BP-6', 'Zamboanga', '2026-01-01', 'TIN-6', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 10, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1058, 7, 'Construction Co 7', 6, 3, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company7@example.com', '09170000007', NULL, NULL, NULL, 'PCAB-63093', 'A', '2026-12-31', 'BP-7', 'Zamboanga', '2026-01-01', 'TIN-7', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 37, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1059, 8, 'Construction Co 8', 17, 5, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company8@example.com', '09170000008', NULL, NULL, NULL, 'PCAB-34872', 'A', '2026-12-31', 'BP-8', 'Zamboanga', '2026-01-01', 'TIN-8', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 17, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1060, 9, 'Construction Co 9', 10, 7, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company9@example.com', '09170000009', NULL, NULL, NULL, 'PCAB-24806', 'C', '2026-12-31', 'BP-9', 'Zamboanga', '2026-01-01', 'TIN-9', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 21, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1061, 10, 'Construction Co 10', 16, 1, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company10@example.com', '09170000010', NULL, NULL, NULL, 'PCAB-22590', 'AAA', '2026-12-31', 'BP-10', 'Zamboanga', '2026-01-01', 'TIN-10', 'dti_cert.jpg', 'rejected', NULL, 'Permit expired.', 48, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1062, 11, 'Construction Co 11', 12, 2, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company11@example.com', '09170000011', NULL, NULL, NULL, 'PCAB-74205', 'B', '2026-12-31', 'BP-11', 'Zamboanga', '2026-01-01', 'TIN-11', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 19, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1063, 12, 'Construction Co 12', 10, 6, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company12@example.com', '09170000012', NULL, NULL, NULL, 'PCAB-74664', 'B', '2026-12-31', 'BP-12', 'Zamboanga', '2026-01-01', 'TIN-12', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 20, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1064, 13, 'Construction Co 13', 19, 1, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company13@example.com', '09170000013', NULL, NULL, NULL, 'PCAB-56556', 'AAA', '2026-12-31', 'BP-13', 'Zamboanga', '2026-01-01', 'TIN-13', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 26, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1065, 14, 'Construction Co 14', 13, 1, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company14@example.com', '09170000014', NULL, NULL, NULL, 'PCAB-63231', 'A', '2026-12-31', 'BP-14', 'Zamboanga', '2026-01-01', 'TIN-14', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 0, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1066, 15, 'Construction Co 15', 20, 1, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company15@example.com', '09170000015', NULL, NULL, NULL, 'PCAB-30689', 'A', '2026-12-31', 'BP-15', 'Zamboanga', '2026-01-01', 'TIN-15', 'dti_cert.jpg', 'pending', NULL, NULL, 25, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1067, 16, 'Construction Co 16', 5, 1, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company16@example.com', '09170000016', NULL, NULL, NULL, 'PCAB-89774', 'AAA', '2026-12-31', 'BP-16', 'Zamboanga', '2026-01-01', 'TIN-16', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 43, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1068, 17, 'Construction Co 17', 1, 5, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company17@example.com', '09170000017', NULL, NULL, NULL, 'PCAB-10196', 'A', '2026-12-31', 'BP-17', 'Zamboanga', '2026-01-01', 'TIN-17', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 10, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1069, 18, 'Construction Co 18', 15, 6, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company18@example.com', '09170000018', NULL, NULL, NULL, 'PCAB-68856', 'C', '2026-12-31', 'BP-18', 'Zamboanga', '2026-01-01', 'TIN-18', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 47, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1070, 19, 'Construction Co 19', 16, 6, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company19@example.com', '09170000019', NULL, NULL, NULL, 'PCAB-65624', 'C', '2026-12-31', 'BP-19', 'Zamboanga', '2026-01-01', 'TIN-19', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 49, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1071, 20, 'Construction Co 20', 1, 7, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company20@example.com', '09170000020', NULL, NULL, NULL, 'PCAB-56783', 'A', '2026-12-31', 'BP-20', 'Zamboanga', '2026-01-01', 'TIN-20', 'dti_cert.jpg', 'rejected', NULL, 'Permit expired.', 44, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1072, 21, 'Construction Co 21', 12, 8, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company21@example.com', '09170000021', NULL, NULL, NULL, 'PCAB-69096', 'C', '2026-12-31', 'BP-21', 'Zamboanga', '2026-01-01', 'TIN-21', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 41, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1073, 22, 'Construction Co 22', 18, 5, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company22@example.com', '09170000022', NULL, NULL, NULL, 'PCAB-64758', 'C', '2026-12-31', 'BP-22', 'Zamboanga', '2026-01-01', 'TIN-22', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 5, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1074, 23, 'Construction Co 23', 12, 7, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company23@example.com', '09170000023', NULL, NULL, NULL, 'PCAB-58508', 'C', '2026-12-31', 'BP-23', 'Zamboanga', '2026-01-01', 'TIN-23', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 20, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1075, 24, 'Construction Co 24', 13, 4, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company24@example.com', '09170000024', NULL, NULL, NULL, 'PCAB-46742', 'B', '2026-12-31', 'BP-24', 'Zamboanga', '2026-01-01', 'TIN-24', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 19, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1076, 25, 'Construction Co 25', 17, 8, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company25@example.com', '09170000025', NULL, NULL, NULL, 'PCAB-78684', 'A', '2026-12-31', 'BP-25', 'Zamboanga', '2026-01-01', 'TIN-25', 'dti_cert.jpg', 'pending', NULL, NULL, 35, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1077, 26, 'Construction Co 26', 7, 9, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company26@example.com', '09170000026', NULL, NULL, NULL, 'PCAB-32655', 'AAA', '2026-12-31', 'BP-26', 'Zamboanga', '2026-01-01', 'TIN-26', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 24, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1078, 27, 'Construction Co 27', 7, 3, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company27@example.com', '09170000027', NULL, NULL, NULL, 'PCAB-29698', 'C', '2026-12-31', 'BP-27', 'Zamboanga', '2026-01-01', 'TIN-27', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 15, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1079, 28, 'Construction Co 28', 12, 7, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company28@example.com', '09170000028', NULL, NULL, NULL, 'PCAB-18989', 'C', '2026-12-31', 'BP-28', 'Zamboanga', '2026-01-01', 'TIN-28', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 44, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1080, 29, 'Construction Co 29', 19, 1, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company29@example.com', '09170000029', NULL, NULL, NULL, 'PCAB-94734', 'C', '2026-12-31', 'BP-29', 'Zamboanga', '2026-01-01', 'TIN-29', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 29, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1081, 30, 'Construction Co 30', 6, 5, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company30@example.com', '09170000030', NULL, NULL, NULL, 'PCAB-16767', 'B', '2026-12-31', 'BP-30', 'Zamboanga', '2026-01-01', 'TIN-30', 'dti_cert.jpg', 'rejected', NULL, 'Permit expired.', 41, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1082, 31, 'Construction Co 31', 7, 6, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company31@example.com', '09170000031', NULL, NULL, NULL, 'PCAB-72131', 'B', '2026-12-31', 'BP-31', 'Zamboanga', '2026-01-01', 'TIN-31', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 22, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1083, 32, 'Construction Co 32', 15, 5, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company32@example.com', '09170000032', NULL, NULL, NULL, 'PCAB-49236', 'A', '2026-12-31', 'BP-32', 'Zamboanga', '2026-01-01', 'TIN-32', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 35, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1084, 33, 'Construction Co 33', 7, 2, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company33@example.com', '09170000033', NULL, NULL, NULL, 'PCAB-98393', 'B', '2026-12-31', 'BP-33', 'Zamboanga', '2026-01-01', 'TIN-33', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 38, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1085, 34, 'Construction Co 34', 13, 1, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company34@example.com', '09170000034', NULL, NULL, NULL, 'PCAB-73142', 'AAA', '2026-12-31', 'BP-34', 'Zamboanga', '2026-01-01', 'TIN-34', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 48, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1086, 35, 'Construction Co 35', 17, 1, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company35@example.com', '09170000035', NULL, NULL, NULL, 'PCAB-86411', 'C', '2026-12-31', 'BP-35', 'Zamboanga', '2026-01-01', 'TIN-35', 'dti_cert.jpg', 'pending', NULL, NULL, 47, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1087, 36, 'Construction Co 36', 2, 2, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company36@example.com', '09170000036', NULL, NULL, NULL, 'PCAB-41937', 'AAA', '2026-12-31', 'BP-36', 'Zamboanga', '2026-01-01', 'TIN-36', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 39, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1088, 37, 'Construction Co 37', 10, 4, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company37@example.com', '09170000037', NULL, NULL, NULL, 'PCAB-26877', 'AAA', '2026-12-31', 'BP-37', 'Zamboanga', '2026-01-01', 'TIN-37', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 14, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1089, 38, 'Construction Co 38', 19, 3, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company38@example.com', '09170000038', NULL, NULL, NULL, 'PCAB-98117', 'C', '2026-12-31', 'BP-38', 'Zamboanga', '2026-01-01', 'TIN-38', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 0, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1090, 39, 'Construction Co 39', 15, 1, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company39@example.com', '09170000039', NULL, NULL, NULL, 'PCAB-47866', 'A', '2026-12-31', 'BP-39', 'Zamboanga', '2026-01-01', 'TIN-39', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 15, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1091, 40, 'Construction Co 40', 12, 9, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company40@example.com', '09170000040', NULL, NULL, NULL, 'PCAB-43698', 'C', '2026-12-31', 'BP-40', 'Zamboanga', '2026-01-01', 'TIN-40', 'dti_cert.jpg', 'rejected', NULL, 'Permit expired.', 40, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1092, 41, 'Construction Co 41', 3, 7, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company41@example.com', '09170000041', NULL, NULL, NULL, 'PCAB-69217', 'A', '2026-12-31', 'BP-41', 'Zamboanga', '2026-01-01', 'TIN-41', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 47, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1093, 42, 'Construction Co 42', 13, 4, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company42@example.com', '09170000042', NULL, NULL, NULL, 'PCAB-58822', 'AAA', '2026-12-31', 'BP-42', 'Zamboanga', '2026-01-01', 'TIN-42', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 48, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1094, 43, 'Construction Co 43', 11, 3, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company43@example.com', '09170000043', NULL, NULL, NULL, 'PCAB-40736', 'A', '2026-12-31', 'BP-43', 'Zamboanga', '2026-01-01', 'TIN-43', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 8, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1095, 44, 'Construction Co 44', 11, 8, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company44@example.com', '09170000044', NULL, NULL, NULL, 'PCAB-59591', 'AAA', '2026-12-31', 'BP-44', 'Zamboanga', '2026-01-01', 'TIN-44', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 3, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1096, 45, 'Construction Co 45', 18, 1, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company45@example.com', '09170000045', NULL, NULL, NULL, 'PCAB-13612', 'B', '2026-12-31', 'BP-45', 'Zamboanga', '2026-01-01', 'TIN-45', 'dti_cert.jpg', 'pending', NULL, NULL, 33, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1097, 46, 'Construction Co 46', 14, 9, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company46@example.com', '09170000046', NULL, NULL, NULL, 'PCAB-83520', 'C', '2026-12-31', 'BP-46', 'Zamboanga', '2026-01-01', 'TIN-46', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 6, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1098, 47, 'Construction Co 47', 19, 9, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company47@example.com', '09170000047', NULL, NULL, NULL, 'PCAB-19641', 'A', '2026-12-31', 'BP-47', 'Zamboanga', '2026-01-01', 'TIN-47', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 0, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1099, 48, 'Construction Co 48', 13, 6, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company48@example.com', '09170000048', NULL, NULL, NULL, 'PCAB-79811', 'AAA', '2026-12-31', 'BP-48', 'Zamboanga', '2026-01-01', 'TIN-48', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 46, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1100, 49, 'Construction Co 49', 10, 1, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company49@example.com', '09170000049', NULL, NULL, NULL, 'PCAB-70153', 'B', '2026-12-31', 'BP-49', 'Zamboanga', '2026-01-01', 'TIN-49', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 7, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1101, 50, 'Construction Co 50', 18, 3, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company50@example.com', '09170000050', NULL, NULL, NULL, 'PCAB-79708', 'B', '2026-12-31', 'BP-50', 'Zamboanga', '2026-01-01', 'TIN-50', 'dti_cert.jpg', 'rejected', NULL, 'Permit expired.', 36, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1102, 51, 'Construction Co 51', 16, 8, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company51@example.com', '09170000051', NULL, NULL, NULL, 'PCAB-74557', 'B', '2026-12-31', 'BP-51', 'Zamboanga', '2026-01-01', 'TIN-51', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 8, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1103, 52, 'Construction Co 52', 18, 9, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company52@example.com', '09170000052', NULL, NULL, NULL, 'PCAB-31253', 'B', '2026-12-31', 'BP-52', 'Zamboanga', '2026-01-01', 'TIN-52', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 16, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1104, 53, 'Construction Co 53', 18, 7, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company53@example.com', '09170000053', NULL, NULL, NULL, 'PCAB-81990', 'B', '2026-12-31', 'BP-53', 'Zamboanga', '2026-01-01', 'TIN-53', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 47, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1105, 54, 'Construction Co 54', 14, 7, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company54@example.com', '09170000054', NULL, NULL, NULL, 'PCAB-40544', 'B', '2026-12-31', 'BP-54', 'Zamboanga', '2026-01-01', 'TIN-54', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 33, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1106, 55, 'Construction Co 55', 15, 5, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company55@example.com', '09170000055', NULL, NULL, NULL, 'PCAB-11298', 'AAA', '2026-12-31', 'BP-55', 'Zamboanga', '2026-01-01', 'TIN-55', 'dti_cert.jpg', 'pending', NULL, NULL, 38, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1107, 56, 'Construction Co 56', 8, 4, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company56@example.com', '09170000056', NULL, NULL, NULL, 'PCAB-68394', 'C', '2026-12-31', 'BP-56', 'Zamboanga', '2026-01-01', 'TIN-56', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 20, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1108, 57, 'Construction Co 57', 10, 5, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company57@example.com', '09170000057', NULL, NULL, NULL, 'PCAB-29383', 'A', '2026-12-31', 'BP-57', 'Zamboanga', '2026-01-01', 'TIN-57', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 17, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1109, 58, 'Construction Co 58', 12, 9, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company58@example.com', '09170000058', NULL, NULL, NULL, 'PCAB-44485', 'AAA', '2026-12-31', 'BP-58', 'Zamboanga', '2026-01-01', 'TIN-58', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 41, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1110, 59, 'Construction Co 59', 12, 1, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company59@example.com', '09170000059', NULL, NULL, NULL, 'PCAB-92311', 'B', '2026-12-31', 'BP-59', 'Zamboanga', '2026-01-01', 'TIN-59', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 20, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1111, 60, 'Construction Co 60', 4, 5, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company60@example.com', '09170000060', NULL, NULL, NULL, 'PCAB-65776', 'AAA', '2026-12-31', 'BP-60', 'Zamboanga', '2026-01-01', 'TIN-60', 'dti_cert.jpg', 'rejected', NULL, 'Permit expired.', 17, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1112, 61, 'Construction Co 61', 20, 7, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company61@example.com', '09170000061', NULL, NULL, NULL, 'PCAB-97391', 'B', '2026-12-31', 'BP-61', 'Zamboanga', '2026-01-01', 'TIN-61', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 28, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1113, 62, 'Construction Co 62', 15, 6, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company62@example.com', '09170000062', NULL, NULL, NULL, 'PCAB-44997', 'B', '2026-12-31', 'BP-62', 'Zamboanga', '2026-01-01', 'TIN-62', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 11, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1114, 63, 'Construction Co 63', 3, 5, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company63@example.com', '09170000063', NULL, NULL, NULL, 'PCAB-54848', 'B', '2026-12-31', 'BP-63', 'Zamboanga', '2026-01-01', 'TIN-63', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 2, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1115, 64, 'Construction Co 64', 3, 5, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company64@example.com', '09170000064', NULL, NULL, NULL, 'PCAB-62682', 'B', '2026-12-31', 'BP-64', 'Zamboanga', '2026-01-01', 'TIN-64', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 47, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1116, 65, 'Construction Co 65', 11, 1, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company65@example.com', '09170000065', NULL, NULL, NULL, 'PCAB-28702', 'AAA', '2026-12-31', 'BP-65', 'Zamboanga', '2026-01-01', 'TIN-65', 'dti_cert.jpg', 'pending', NULL, NULL, 49, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1117, 66, 'Construction Co 66', 11, 1, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company66@example.com', '09170000066', NULL, NULL, NULL, 'PCAB-51063', 'C', '2026-12-31', 'BP-66', 'Zamboanga', '2026-01-01', 'TIN-66', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 22, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1118, 67, 'Construction Co 67', 19, 3, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company67@example.com', '09170000067', NULL, NULL, NULL, 'PCAB-44503', 'B', '2026-12-31', 'BP-67', 'Zamboanga', '2026-01-01', 'TIN-67', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 6, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1119, 68, 'Construction Co 68', 14, 1, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company68@example.com', '09170000068', NULL, NULL, NULL, 'PCAB-53289', 'C', '2026-12-31', 'BP-68', 'Zamboanga', '2026-01-01', 'TIN-68', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 22, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1120, 69, 'Construction Co 69', 18, 5, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company69@example.com', '09170000069', NULL, NULL, NULL, 'PCAB-54994', 'B', '2026-12-31', 'BP-69', 'Zamboanga', '2026-01-01', 'TIN-69', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 37, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1121, 70, 'Construction Co 70', 16, 7, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company70@example.com', '09170000070', NULL, NULL, NULL, 'PCAB-62865', 'AAA', '2026-12-31', 'BP-70', 'Zamboanga', '2026-01-01', 'TIN-70', 'dti_cert.jpg', 'rejected', NULL, 'Permit expired.', 9, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1122, 71, 'Construction Co 71', 9, 9, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company71@example.com', '09170000071', NULL, NULL, NULL, 'PCAB-17016', 'B', '2026-12-31', 'BP-71', 'Zamboanga', '2026-01-01', 'TIN-71', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 25, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1123, 72, 'Construction Co 72', 6, 9, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company72@example.com', '09170000072', NULL, NULL, NULL, 'PCAB-99453', 'C', '2026-12-31', 'BP-72', 'Zamboanga', '2026-01-01', 'TIN-72', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 47, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1124, 73, 'Construction Co 73', 16, 5, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company73@example.com', '09170000073', NULL, NULL, NULL, 'PCAB-43258', 'B', '2026-12-31', 'BP-73', 'Zamboanga', '2026-01-01', 'TIN-73', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 12, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1125, 74, 'Construction Co 74', 4, 6, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company74@example.com', '09170000074', NULL, NULL, NULL, 'PCAB-38869', 'AAA', '2026-12-31', 'BP-74', 'Zamboanga', '2026-01-01', 'TIN-74', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 6, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1126, 75, 'Construction Co 75', 12, 9, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company75@example.com', '09170000075', NULL, NULL, NULL, 'PCAB-71304', 'C', '2026-12-31', 'BP-75', 'Zamboanga', '2026-01-01', 'TIN-75', 'dti_cert.jpg', 'pending', NULL, NULL, 34, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1127, 76, 'Construction Co 76', 13, 5, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company76@example.com', '09170000076', NULL, NULL, NULL, 'PCAB-44726', 'B', '2026-12-31', 'BP-76', 'Zamboanga', '2026-01-01', 'TIN-76', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 17, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1128, 77, 'Construction Co 77', 14, 1, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company77@example.com', '09170000077', NULL, NULL, NULL, 'PCAB-90777', 'B', '2026-12-31', 'BP-77', 'Zamboanga', '2026-01-01', 'TIN-77', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 41, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1129, 78, 'Construction Co 78', 1, 4, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company78@example.com', '09170000078', NULL, NULL, NULL, 'PCAB-43670', 'AAA', '2026-12-31', 'BP-78', 'Zamboanga', '2026-01-01', 'TIN-78', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 19, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1130, 79, 'Construction Co 79', 13, 1, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company79@example.com', '09170000079', NULL, NULL, NULL, 'PCAB-89965', 'AAA', '2026-12-31', 'BP-79', 'Zamboanga', '2026-01-01', 'TIN-79', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 29, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1131, 80, 'Construction Co 80', 17, 6, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company80@example.com', '09170000080', NULL, NULL, NULL, 'PCAB-93812', 'B', '2026-12-31', 'BP-80', 'Zamboanga', '2026-01-01', 'TIN-80', 'dti_cert.jpg', 'rejected', NULL, 'Permit expired.', 0, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1132, 81, 'Construction Co 81', 9, 2, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company81@example.com', '09170000081', NULL, NULL, NULL, 'PCAB-55249', 'AAA', '2026-12-31', 'BP-81', 'Zamboanga', '2026-01-01', 'TIN-81', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 36, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1133, 82, 'Construction Co 82', 18, 3, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company82@example.com', '09170000082', NULL, NULL, NULL, 'PCAB-36064', 'A', '2026-12-31', 'BP-82', 'Zamboanga', '2026-01-01', 'TIN-82', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 40, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1134, 83, 'Construction Co 83', 2, 3, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company83@example.com', '09170000083', NULL, NULL, NULL, 'PCAB-18334', 'AAA', '2026-12-31', 'BP-83', 'Zamboanga', '2026-01-01', 'TIN-83', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 40, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1135, 84, 'Construction Co 84', 9, 5, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company84@example.com', '09170000084', NULL, NULL, NULL, 'PCAB-15708', 'A', '2026-12-31', 'BP-84', 'Zamboanga', '2026-01-01', 'TIN-84', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 7, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1136, 85, 'Construction Co 85', 20, 9, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company85@example.com', '09170000085', NULL, NULL, NULL, 'PCAB-24800', 'A', '2026-12-31', 'BP-85', 'Zamboanga', '2026-01-01', 'TIN-85', 'dti_cert.jpg', 'pending', NULL, NULL, 20, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1137, 86, 'Construction Co 86', 19, 1, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company86@example.com', '09170000086', NULL, NULL, NULL, 'PCAB-54030', 'C', '2026-12-31', 'BP-86', 'Zamboanga', '2026-01-01', 'TIN-86', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 18, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1138, 87, 'Construction Co 87', 19, 1, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company87@example.com', '09170000087', NULL, NULL, NULL, 'PCAB-41830', 'A', '2026-12-31', 'BP-87', 'Zamboanga', '2026-01-01', 'TIN-87', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 17, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1139, 88, 'Construction Co 88', 7, 2, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company88@example.com', '09170000088', NULL, NULL, NULL, 'PCAB-38364', 'A', '2026-12-31', 'BP-88', 'Zamboanga', '2026-01-01', 'TIN-88', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 30, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1140, 89, 'Construction Co 89', 2, 7, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company89@example.com', '09170000089', NULL, NULL, NULL, 'PCAB-10537', 'C', '2026-12-31', 'BP-89', 'Zamboanga', '2026-01-01', 'TIN-89', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 41, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1141, 90, 'Construction Co 90', 6, 3, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company90@example.com', '09170000090', NULL, NULL, NULL, 'PCAB-97953', 'B', '2026-12-31', 'BP-90', 'Zamboanga', '2026-01-01', 'TIN-90', 'dti_cert.jpg', 'rejected', NULL, 'Permit expired.', 7, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1142, 91, 'Construction Co 91', 18, 1, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company91@example.com', '09170000091', NULL, NULL, NULL, 'PCAB-10587', 'B', '2026-12-31', 'BP-91', 'Zamboanga', '2026-01-01', 'TIN-91', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 32, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1143, 92, 'Construction Co 92', 2, 1, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company92@example.com', '09170000092', NULL, NULL, NULL, 'PCAB-53029', 'B', '2026-12-31', 'BP-92', 'Zamboanga', '2026-01-01', 'TIN-92', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 9, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1144, 93, 'Construction Co 93', 7, 8, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company93@example.com', '09170000093', NULL, NULL, NULL, 'PCAB-94981', 'C', '2026-12-31', 'BP-93', 'Zamboanga', '2026-01-01', 'TIN-93', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 44, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1145, 94, 'Construction Co 94', 13, 9, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company94@example.com', '09170000094', NULL, NULL, NULL, 'PCAB-63706', 'B', '2026-12-31', 'BP-94', 'Zamboanga', '2026-01-01', 'TIN-94', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 16, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1146, 95, 'Construction Co 95', 16, 2, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company95@example.com', '09170000095', NULL, NULL, NULL, 'PCAB-90126', 'A', '2026-12-31', 'BP-95', 'Zamboanga', '2026-01-01', 'TIN-95', 'dti_cert.jpg', 'pending', NULL, NULL, 23, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1147, 96, 'Construction Co 96', 2, 4, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company96@example.com', '09170000096', NULL, NULL, NULL, 'PCAB-83118', 'A', '2026-12-31', 'BP-96', 'Zamboanga', '2026-01-01', 'TIN-96', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 41, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1148, 97, 'Construction Co 97', 16, 8, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company97@example.com', '09170000097', NULL, NULL, NULL, 'PCAB-25460', 'AAA', '2026-12-31', 'BP-97', 'Zamboanga', '2026-01-01', 'TIN-97', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 26, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1149, 98, 'Construction Co 98', 13, 8, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company98@example.com', '09170000098', NULL, NULL, NULL, 'PCAB-86062', 'AAA', '2026-12-31', 'BP-98', 'Zamboanga', '2026-01-01', 'TIN-98', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 32, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1150, 99, 'Construction Co 99', 11, 7, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company99@example.com', '09170000099', NULL, NULL, NULL, 'PCAB-69163', 'A', '2026-12-31', 'BP-99', 'Zamboanga', '2026-01-01', 'TIN-99', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 41, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1151, 100, 'Construction Co 100', 3, 6, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company100@example.com', '09170000100', NULL, NULL, NULL, 'PCAB-42726', 'B', '2026-12-31', 'BP-100', 'Zamboanga', '2026-01-01', 'TIN-100', 'dti_cert.jpg', 'rejected', NULL, 'Permit expired.', 24, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1152, 201, 'Construction Co 201', 18, 2, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company201@example.com', '09170000201', NULL, NULL, NULL, 'PCAB-18652', 'A', '2026-12-31', 'BP-201', 'Zamboanga', '2026-01-01', 'TIN-201', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 36, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1153, 202, 'Construction Co 202', 9, 1, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company202@example.com', '09170000202', NULL, NULL, NULL, 'PCAB-76126', 'A', '2026-12-31', 'BP-202', 'Zamboanga', '2026-01-01', 'TIN-202', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 6, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1154, 203, 'Construction Co 203', 18, 3, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company203@example.com', '09170000203', NULL, NULL, NULL, 'PCAB-80844', 'C', '2026-12-31', 'BP-203', 'Zamboanga', '2026-01-01', 'TIN-203', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 15, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1155, 204, 'Construction Co 204', 15, 1, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company204@example.com', '09170000204', NULL, NULL, NULL, 'PCAB-50885', 'B', '2026-12-31', 'BP-204', 'Zamboanga', '2026-01-01', 'TIN-204', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 35, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1156, 205, 'Construction Co 205', 15, 4, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company205@example.com', '09170000205', NULL, NULL, NULL, 'PCAB-40549', 'C', '2026-12-31', 'BP-205', 'Zamboanga', '2026-01-01', 'TIN-205', 'dti_cert.jpg', 'pending', NULL, NULL, 17, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1157, 206, 'Construction Co 206', 3, 1, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company206@example.com', '09170000206', NULL, NULL, NULL, 'PCAB-20758', 'A', '2026-12-31', 'BP-206', 'Zamboanga', '2026-01-01', 'TIN-206', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 2, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1158, 207, 'Construction Co 207', 8, 8, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company207@example.com', '09170000207', NULL, NULL, NULL, 'PCAB-13226', 'B', '2026-12-31', 'BP-207', 'Zamboanga', '2026-01-01', 'TIN-207', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 31, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1159, 208, 'Construction Co 208', 10, 5, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company208@example.com', '09170000208', NULL, NULL, NULL, 'PCAB-76634', 'AAA', '2026-12-31', 'BP-208', 'Zamboanga', '2026-01-01', 'TIN-208', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 40, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1160, 209, 'Construction Co 209', 1, 4, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company209@example.com', '09170000209', NULL, NULL, NULL, 'PCAB-71246', 'B', '2026-12-31', 'BP-209', 'Zamboanga', '2026-01-01', 'TIN-209', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 29, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1161, 210, 'Construction Co 210', 8, 9, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company210@example.com', '09170000210', NULL, NULL, NULL, 'PCAB-34077', 'C', '2026-12-31', 'BP-210', 'Zamboanga', '2026-01-01', 'TIN-210', 'dti_cert.jpg', 'rejected', NULL, 'Permit expired.', 2, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1162, 211, 'Construction Co 211', 8, 7, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company211@example.com', '09170000211', NULL, NULL, NULL, 'PCAB-84395', 'AAA', '2026-12-31', 'BP-211', 'Zamboanga', '2026-01-01', 'TIN-211', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 35, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1163, 212, 'Construction Co 212', 17, 1, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company212@example.com', '09170000212', NULL, NULL, NULL, 'PCAB-86231', 'C', '2026-12-31', 'BP-212', 'Zamboanga', '2026-01-01', 'TIN-212', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 36, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1164, 213, 'Construction Co 213', 3, 3, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company213@example.com', '09170000213', NULL, NULL, NULL, 'PCAB-42944', 'B', '2026-12-31', 'BP-213', 'Zamboanga', '2026-01-01', 'TIN-213', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 24, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1165, 214, 'Construction Co 214', 6, 2, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company214@example.com', '09170000214', NULL, NULL, NULL, 'PCAB-53739', 'A', '2026-12-31', 'BP-214', 'Zamboanga', '2026-01-01', 'TIN-214', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 22, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1166, 215, 'Construction Co 215', 2, 6, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company215@example.com', '09170000215', NULL, NULL, NULL, 'PCAB-79818', 'AAA', '2026-12-31', 'BP-215', 'Zamboanga', '2026-01-01', 'TIN-215', 'dti_cert.jpg', 'pending', NULL, NULL, 7, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1167, 216, 'Construction Co 216', 10, 2, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company216@example.com', '09170000216', NULL, NULL, NULL, 'PCAB-76301', 'AAA', '2026-12-31', 'BP-216', 'Zamboanga', '2026-01-01', 'TIN-216', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 48, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1168, 217, 'Construction Co 217', 3, 8, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company217@example.com', '09170000217', NULL, NULL, NULL, 'PCAB-78607', 'AAA', '2026-12-31', 'BP-217', 'Zamboanga', '2026-01-01', 'TIN-217', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 42, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1169, 218, 'Construction Co 218', 11, 8, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company218@example.com', '09170000218', NULL, NULL, NULL, 'PCAB-94154', 'C', '2026-12-31', 'BP-218', 'Zamboanga', '2026-01-01', 'TIN-218', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 47, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1170, 219, 'Construction Co 219', 18, 4, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company219@example.com', '09170000219', NULL, NULL, NULL, 'PCAB-88946', 'B', '2026-12-31', 'BP-219', 'Zamboanga', '2026-01-01', 'TIN-219', 'dti_cert.jpg', 'approved', '2025-12-15 05:39:51', NULL, 49, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1171, 220, 'Construction Co 220', 8, 9, NULL, 'General Construction, Renovation', 'Zamboanga City', 'company220@example.com', '09170000220', NULL, NULL, NULL, 'PCAB-10662', 'A', '2026-12-31', 'BP-220', 'Zamboanga', '2026-01-01', 'TIN-220', 'dti_cert.jpg', 'rejected', NULL, 'Permit expired.', 24, '2025-12-15 05:39:51', '2025-12-15 05:39:51');
 
 -- --------------------------------------------------------
 
@@ -202,15 +292,126 @@ CREATE TABLE `contractor_users` (
 --
 
 INSERT INTO `contractor_users` (`contractor_user_id`, `contractor_id`, `user_id`, `authorized_rep_lname`, `authorized_rep_mname`, `authorized_rep_fname`, `phone_number`, `role`, `is_active`, `created_at`) VALUES
-(1, 1, 2, 'Hart', NULL, 'Shane', '09926354567', 'owner', 1, '2025-11-01 05:30:31'),
-(2, 2, 1, 'Jimenez', NULL, 'Shane Hart', '09926314071', 'owner', 1, '2025-11-01 06:16:37'),
-(3, 3, 11, 'ahdbahsahdbahs', NULL, 'ahdbahahdbahss', '09926314033', 'owner', 1, '2025-11-02 00:05:40'),
-(5, 5, 10, 'ahdbahs', NULL, 'ahdbahs', '09926314071', 'owner', 1, '2025-11-02 01:00:12'),
-(6, 6, 15, 'Rwerwerwer', NULL, 'Werwerw', '09926314071', 'owner', 1, '2025-11-11 06:51:26'),
-(7, 7, 16, 'Asdada', NULL, 'Asdsda', '09926314073', 'owner', 0, '2025-11-13 06:26:39'),
-(8, 8, 19, 'Dfsdfs', NULL, 'Ewwe', '09926314072', 'owner', 0, '2025-11-13 06:55:25'),
-(9, 9, 22, 'Asda', NULL, 'Asda', '09923314071', 'owner', 0, '2025-11-13 09:40:37'),
-(10, 10, 24, 'Sdf', 'Sdf', 'Sdf', '09926314033', 'owner', 0, '2025-11-13 09:48:08');
+(1052, 1052, 1, 'RepLast1', NULL, 'RepFirst1', '09170000001', 'manager', 1, '2025-12-15 05:39:51'),
+(1053, 1053, 2, 'RepLast2', NULL, 'RepFirst2', '09170000002', 'manager', 1, '2025-12-15 05:39:51'),
+(1054, 1054, 3, 'RepLast3', NULL, 'RepFirst3', '09170000003', 'owner', 1, '2025-12-15 05:39:51'),
+(1055, 1055, 4, 'RepLast4', NULL, 'RepFirst4', '09170000004', 'manager', 1, '2025-12-15 05:39:51'),
+(1056, 1056, 5, 'RepLast5', NULL, 'RepFirst5', '09170000005', 'engineer', 1, '2025-12-15 05:39:51'),
+(1057, 1057, 6, 'RepLast6', NULL, 'RepFirst6', '09170000006', 'engineer', 1, '2025-12-15 05:39:51'),
+(1058, 1058, 7, 'RepLast7', NULL, 'RepFirst7', '09170000007', 'engineer', 1, '2025-12-15 05:39:51'),
+(1059, 1059, 8, 'RepLast8', NULL, 'RepFirst8', '09170000008', 'engineer', 1, '2025-12-15 05:39:51'),
+(1060, 1060, 9, 'RepLast9', NULL, 'RepFirst9', '09170000009', 'manager', 1, '2025-12-15 05:39:51'),
+(1061, 1061, 10, 'RepLast10', NULL, 'RepFirst10', '09170000010', 'owner', 1, '2025-12-15 05:39:51'),
+(1062, 1062, 11, 'RepLast11', NULL, 'RepFirst11', '09170000011', 'owner', 1, '2025-12-15 05:39:51'),
+(1063, 1063, 12, 'RepLast12', NULL, 'RepFirst12', '09170000012', 'manager', 1, '2025-12-15 05:39:51'),
+(1064, 1064, 13, 'RepLast13', NULL, 'RepFirst13', '09170000013', 'engineer', 1, '2025-12-15 05:39:51'),
+(1065, 1065, 14, 'RepLast14', NULL, 'RepFirst14', '09170000014', 'owner', 1, '2025-12-15 05:39:51'),
+(1066, 1066, 15, 'RepLast15', NULL, 'RepFirst15', '09170000015', 'manager', 1, '2025-12-15 05:39:51'),
+(1067, 1067, 16, 'RepLast16', NULL, 'RepFirst16', '09170000016', 'owner', 1, '2025-12-15 05:39:51'),
+(1068, 1068, 17, 'RepLast17', NULL, 'RepFirst17', '09170000017', 'engineer', 1, '2025-12-15 05:39:51'),
+(1069, 1069, 18, 'RepLast18', NULL, 'RepFirst18', '09170000018', 'owner', 1, '2025-12-15 05:39:51'),
+(1070, 1070, 19, 'RepLast19', NULL, 'RepFirst19', '09170000019', 'owner', 1, '2025-12-15 05:39:51'),
+(1071, 1071, 20, 'RepLast20', NULL, 'RepFirst20', '09170000020', 'manager', 1, '2025-12-15 05:39:51'),
+(1072, 1072, 21, 'RepLast21', NULL, 'RepFirst21', '09170000021', 'engineer', 1, '2025-12-15 05:39:51'),
+(1073, 1073, 22, 'RepLast22', NULL, 'RepFirst22', '09170000022', 'engineer', 1, '2025-12-15 05:39:51'),
+(1074, 1074, 23, 'RepLast23', NULL, 'RepFirst23', '09170000023', 'owner', 1, '2025-12-15 05:39:51'),
+(1075, 1075, 24, 'RepLast24', NULL, 'RepFirst24', '09170000024', 'engineer', 1, '2025-12-15 05:39:51'),
+(1076, 1076, 25, 'RepLast25', NULL, 'RepFirst25', '09170000025', 'manager', 1, '2025-12-15 05:39:51'),
+(1077, 1077, 26, 'RepLast26', NULL, 'RepFirst26', '09170000026', 'owner', 1, '2025-12-15 05:39:51'),
+(1078, 1078, 27, 'RepLast27', NULL, 'RepFirst27', '09170000027', 'manager', 1, '2025-12-15 05:39:51'),
+(1079, 1079, 28, 'RepLast28', NULL, 'RepFirst28', '09170000028', 'engineer', 1, '2025-12-15 05:39:51'),
+(1080, 1080, 29, 'RepLast29', NULL, 'RepFirst29', '09170000029', 'manager', 1, '2025-12-15 05:39:51'),
+(1081, 1081, 30, 'RepLast30', NULL, 'RepFirst30', '09170000030', 'engineer', 1, '2025-12-15 05:39:51'),
+(1082, 1082, 31, 'RepLast31', NULL, 'RepFirst31', '09170000031', 'owner', 1, '2025-12-15 05:39:51'),
+(1083, 1083, 32, 'RepLast32', NULL, 'RepFirst32', '09170000032', 'manager', 1, '2025-12-15 05:39:51'),
+(1084, 1084, 33, 'RepLast33', NULL, 'RepFirst33', '09170000033', 'manager', 1, '2025-12-15 05:39:51'),
+(1085, 1085, 34, 'RepLast34', NULL, 'RepFirst34', '09170000034', 'owner', 1, '2025-12-15 05:39:51'),
+(1086, 1086, 35, 'RepLast35', NULL, 'RepFirst35', '09170000035', 'manager', 1, '2025-12-15 05:39:51'),
+(1087, 1087, 36, 'RepLast36', NULL, 'RepFirst36', '09170000036', 'engineer', 1, '2025-12-15 05:39:51'),
+(1088, 1088, 37, 'RepLast37', NULL, 'RepFirst37', '09170000037', 'engineer', 1, '2025-12-15 05:39:51'),
+(1089, 1089, 38, 'RepLast38', NULL, 'RepFirst38', '09170000038', 'manager', 1, '2025-12-15 05:39:51'),
+(1090, 1090, 39, 'RepLast39', NULL, 'RepFirst39', '09170000039', 'owner', 1, '2025-12-15 05:39:51'),
+(1091, 1091, 40, 'RepLast40', NULL, 'RepFirst40', '09170000040', 'engineer', 1, '2025-12-15 05:39:51'),
+(1092, 1092, 41, 'RepLast41', NULL, 'RepFirst41', '09170000041', 'engineer', 1, '2025-12-15 05:39:51'),
+(1093, 1093, 42, 'RepLast42', NULL, 'RepFirst42', '09170000042', 'manager', 1, '2025-12-15 05:39:51'),
+(1094, 1094, 43, 'RepLast43', NULL, 'RepFirst43', '09170000043', 'manager', 1, '2025-12-15 05:39:51'),
+(1095, 1095, 44, 'RepLast44', NULL, 'RepFirst44', '09170000044', 'manager', 1, '2025-12-15 05:39:51'),
+(1096, 1096, 45, 'RepLast45', NULL, 'RepFirst45', '09170000045', 'owner', 1, '2025-12-15 05:39:51'),
+(1097, 1097, 46, 'RepLast46', NULL, 'RepFirst46', '09170000046', 'owner', 1, '2025-12-15 05:39:51'),
+(1098, 1098, 47, 'RepLast47', NULL, 'RepFirst47', '09170000047', 'engineer', 1, '2025-12-15 05:39:51'),
+(1099, 1099, 48, 'RepLast48', NULL, 'RepFirst48', '09170000048', 'engineer', 1, '2025-12-15 05:39:51'),
+(1100, 1100, 49, 'RepLast49', NULL, 'RepFirst49', '09170000049', 'engineer', 1, '2025-12-15 05:39:51'),
+(1101, 1101, 50, 'RepLast50', NULL, 'RepFirst50', '09170000050', 'owner', 1, '2025-12-15 05:39:51'),
+(1102, 1102, 51, 'RepLast51', NULL, 'RepFirst51', '09170000051', 'engineer', 1, '2025-12-15 05:39:51'),
+(1103, 1103, 52, 'RepLast52', NULL, 'RepFirst52', '09170000052', 'engineer', 1, '2025-12-15 05:39:51'),
+(1104, 1104, 53, 'RepLast53', NULL, 'RepFirst53', '09170000053', 'engineer', 1, '2025-12-15 05:39:51'),
+(1105, 1105, 54, 'RepLast54', NULL, 'RepFirst54', '09170000054', 'manager', 1, '2025-12-15 05:39:51'),
+(1106, 1106, 55, 'RepLast55', NULL, 'RepFirst55', '09170000055', 'owner', 1, '2025-12-15 05:39:51'),
+(1107, 1107, 56, 'RepLast56', NULL, 'RepFirst56', '09170000056', 'engineer', 1, '2025-12-15 05:39:51'),
+(1108, 1108, 57, 'RepLast57', NULL, 'RepFirst57', '09170000057', 'manager', 1, '2025-12-15 05:39:51'),
+(1109, 1109, 58, 'RepLast58', NULL, 'RepFirst58', '09170000058', 'owner', 1, '2025-12-15 05:39:51'),
+(1110, 1110, 59, 'RepLast59', NULL, 'RepFirst59', '09170000059', 'manager', 1, '2025-12-15 05:39:51'),
+(1111, 1111, 60, 'RepLast60', NULL, 'RepFirst60', '09170000060', 'engineer', 1, '2025-12-15 05:39:51'),
+(1112, 1112, 61, 'RepLast61', NULL, 'RepFirst61', '09170000061', 'owner', 1, '2025-12-15 05:39:51'),
+(1113, 1113, 62, 'RepLast62', NULL, 'RepFirst62', '09170000062', 'owner', 1, '2025-12-15 05:39:51'),
+(1114, 1114, 63, 'RepLast63', NULL, 'RepFirst63', '09170000063', 'owner', 1, '2025-12-15 05:39:51'),
+(1115, 1115, 64, 'RepLast64', NULL, 'RepFirst64', '09170000064', 'manager', 1, '2025-12-15 05:39:51'),
+(1116, 1116, 65, 'RepLast65', NULL, 'RepFirst65', '09170000065', 'owner', 1, '2025-12-15 05:39:51'),
+(1117, 1117, 66, 'RepLast66', NULL, 'RepFirst66', '09170000066', 'owner', 1, '2025-12-15 05:39:51'),
+(1118, 1118, 67, 'RepLast67', NULL, 'RepFirst67', '09170000067', 'engineer', 1, '2025-12-15 05:39:51'),
+(1119, 1119, 68, 'RepLast68', NULL, 'RepFirst68', '09170000068', 'owner', 1, '2025-12-15 05:39:51'),
+(1120, 1120, 69, 'RepLast69', NULL, 'RepFirst69', '09170000069', 'owner', 1, '2025-12-15 05:39:51'),
+(1121, 1121, 70, 'RepLast70', NULL, 'RepFirst70', '09170000070', 'owner', 1, '2025-12-15 05:39:51'),
+(1122, 1122, 71, 'RepLast71', NULL, 'RepFirst71', '09170000071', 'engineer', 1, '2025-12-15 05:39:51'),
+(1123, 1123, 72, 'RepLast72', NULL, 'RepFirst72', '09170000072', 'owner', 1, '2025-12-15 05:39:51'),
+(1124, 1124, 73, 'RepLast73', NULL, 'RepFirst73', '09170000073', 'engineer', 1, '2025-12-15 05:39:51'),
+(1125, 1125, 74, 'RepLast74', NULL, 'RepFirst74', '09170000074', 'manager', 1, '2025-12-15 05:39:51'),
+(1126, 1126, 75, 'RepLast75', NULL, 'RepFirst75', '09170000075', 'owner', 1, '2025-12-15 05:39:51'),
+(1127, 1127, 76, 'RepLast76', NULL, 'RepFirst76', '09170000076', 'manager', 1, '2025-12-15 05:39:51'),
+(1128, 1128, 77, 'RepLast77', NULL, 'RepFirst77', '09170000077', 'owner', 1, '2025-12-15 05:39:51'),
+(1129, 1129, 78, 'RepLast78', NULL, 'RepFirst78', '09170000078', 'manager', 1, '2025-12-15 05:39:51'),
+(1130, 1130, 79, 'RepLast79', NULL, 'RepFirst79', '09170000079', 'manager', 1, '2025-12-15 05:39:51'),
+(1131, 1131, 80, 'RepLast80', NULL, 'RepFirst80', '09170000080', 'manager', 1, '2025-12-15 05:39:51'),
+(1132, 1132, 81, 'RepLast81', NULL, 'RepFirst81', '09170000081', 'owner', 1, '2025-12-15 05:39:51'),
+(1133, 1133, 82, 'RepLast82', NULL, 'RepFirst82', '09170000082', 'manager', 1, '2025-12-15 05:39:51'),
+(1134, 1134, 83, 'RepLast83', NULL, 'RepFirst83', '09170000083', 'engineer', 1, '2025-12-15 05:39:51'),
+(1135, 1135, 84, 'RepLast84', NULL, 'RepFirst84', '09170000084', 'owner', 1, '2025-12-15 05:39:51'),
+(1136, 1136, 85, 'RepLast85', NULL, 'RepFirst85', '09170000085', 'manager', 1, '2025-12-15 05:39:51'),
+(1137, 1137, 86, 'RepLast86', NULL, 'RepFirst86', '09170000086', 'manager', 1, '2025-12-15 05:39:51'),
+(1138, 1138, 87, 'RepLast87', NULL, 'RepFirst87', '09170000087', 'engineer', 1, '2025-12-15 05:39:51'),
+(1139, 1139, 88, 'RepLast88', NULL, 'RepFirst88', '09170000088', 'owner', 1, '2025-12-15 05:39:51'),
+(1140, 1140, 89, 'RepLast89', NULL, 'RepFirst89', '09170000089', 'engineer', 1, '2025-12-15 05:39:51'),
+(1141, 1141, 90, 'RepLast90', NULL, 'RepFirst90', '09170000090', 'owner', 1, '2025-12-15 05:39:51'),
+(1142, 1142, 91, 'RepLast91', NULL, 'RepFirst91', '09170000091', 'manager', 1, '2025-12-15 05:39:51'),
+(1143, 1143, 92, 'RepLast92', NULL, 'RepFirst92', '09170000092', 'engineer', 1, '2025-12-15 05:39:51'),
+(1144, 1144, 93, 'RepLast93', NULL, 'RepFirst93', '09170000093', 'manager', 1, '2025-12-15 05:39:51'),
+(1145, 1145, 94, 'RepLast94', NULL, 'RepFirst94', '09170000094', 'engineer', 1, '2025-12-15 05:39:51'),
+(1146, 1146, 95, 'RepLast95', NULL, 'RepFirst95', '09170000095', 'owner', 1, '2025-12-15 05:39:51'),
+(1147, 1147, 96, 'RepLast96', NULL, 'RepFirst96', '09170000096', 'manager', 1, '2025-12-15 05:39:51'),
+(1148, 1148, 97, 'RepLast97', NULL, 'RepFirst97', '09170000097', 'owner', 1, '2025-12-15 05:39:51'),
+(1149, 1149, 98, 'RepLast98', NULL, 'RepFirst98', '09170000098', 'manager', 1, '2025-12-15 05:39:51'),
+(1150, 1150, 99, 'RepLast99', NULL, 'RepFirst99', '09170000099', 'owner', 1, '2025-12-15 05:39:51'),
+(1151, 1151, 100, 'RepLast100', NULL, 'RepFirst100', '09170000100', 'manager', 1, '2025-12-15 05:39:51'),
+(1152, 1152, 201, 'RepLast201', NULL, 'RepFirst201', '09170000201', 'owner', 1, '2025-12-15 05:39:51'),
+(1153, 1153, 202, 'RepLast202', NULL, 'RepFirst202', '09170000202', 'engineer', 1, '2025-12-15 05:39:51'),
+(1154, 1154, 203, 'RepLast203', NULL, 'RepFirst203', '09170000203', 'manager', 1, '2025-12-15 05:39:51'),
+(1155, 1155, 204, 'RepLast204', NULL, 'RepFirst204', '09170000204', 'manager', 1, '2025-12-15 05:39:51'),
+(1156, 1156, 205, 'RepLast205', NULL, 'RepFirst205', '09170000205', 'manager', 1, '2025-12-15 05:39:51'),
+(1157, 1157, 206, 'RepLast206', NULL, 'RepFirst206', '09170000206', 'owner', 1, '2025-12-15 05:39:51'),
+(1158, 1158, 207, 'RepLast207', NULL, 'RepFirst207', '09170000207', 'owner', 1, '2025-12-15 05:39:51'),
+(1159, 1159, 208, 'RepLast208', NULL, 'RepFirst208', '09170000208', 'owner', 1, '2025-12-15 05:39:51'),
+(1160, 1160, 209, 'RepLast209', NULL, 'RepFirst209', '09170000209', 'owner', 1, '2025-12-15 05:39:51'),
+(1161, 1161, 210, 'RepLast210', NULL, 'RepFirst210', '09170000210', 'engineer', 1, '2025-12-15 05:39:51'),
+(1162, 1162, 211, 'RepLast211', NULL, 'RepFirst211', '09170000211', 'engineer', 1, '2025-12-15 05:39:51'),
+(1163, 1163, 212, 'RepLast212', NULL, 'RepFirst212', '09170000212', 'engineer', 1, '2025-12-15 05:39:51'),
+(1164, 1164, 213, 'RepLast213', NULL, 'RepFirst213', '09170000213', 'engineer', 1, '2025-12-15 05:39:51'),
+(1165, 1165, 214, 'RepLast214', NULL, 'RepFirst214', '09170000214', 'manager', 1, '2025-12-15 05:39:51'),
+(1166, 1166, 215, 'RepLast215', NULL, 'RepFirst215', '09170000215', 'owner', 1, '2025-12-15 05:39:51'),
+(1167, 1167, 216, 'RepLast216', NULL, 'RepFirst216', '09170000216', 'manager', 1, '2025-12-15 05:39:51'),
+(1168, 1168, 217, 'RepLast217', NULL, 'RepFirst217', '09170000217', 'manager', 1, '2025-12-15 05:39:51'),
+(1169, 1169, 218, 'RepLast218', NULL, 'RepFirst218', '09170000218', 'owner', 1, '2025-12-15 05:39:51'),
+(1170, 1170, 219, 'RepLast219', NULL, 'RepFirst219', '09170000219', 'owner', 1, '2025-12-15 05:39:51'),
+(1171, 1171, 220, 'RepLast220', NULL, 'RepFirst220', '09170000220', 'owner', 1, '2025-12-15 05:39:51');
 
 -- --------------------------------------------------------
 
@@ -240,14 +441,11 @@ CREATE TABLE `disputes` (
 --
 
 INSERT INTO `disputes` (`dispute_id`, `project_id`, `raised_by_user_id`, `against_user_id`, `milestone_id`, `milestone_item_id`, `dispute_type`, `if_others_distype`, `dispute_desc`, `dispute_status`, `reason`, `admin_response`, `created_at`, `resolved_at`) VALUES
-(35, 3, 2, 10, 7, 17, 'Delay', NULL, 'asdasd', 'cancelled', '', NULL, '2025-11-14 08:35:33', '2025-11-19 19:54:33'),
-(36, 5, 2, 10, 8, 18, 'Payment', NULL, 'asdsd', 'cancelled', '', NULL, '2025-11-15 04:45:57', '2025-11-19 19:55:24'),
-(44, 3, 2, 10, 7, 16, 'Delay', NULL, 'asdasdsaxsxa', 'cancelled', '', NULL, '2025-11-18 16:20:06', '2025-11-19 19:55:29'),
-(45, 5, 2, 10, 8, 18, 'Delay', NULL, 'adsjuujj', 'open', '', NULL, '2025-11-19 19:55:43', NULL),
-(48, 29, 1, 1, 13, 27, 'Payment', NULL, 'Owner claims overbilling.', 'open', 'Pending admin review.', NULL, '2025-11-28 07:15:15', NULL),
-(49, 29, 1, 1, 13, 28, 'Delay', NULL, 'Contractor claims delay due to late payment.', 'under_review', 'Under admin review.', NULL, '2025-11-25 07:15:15', NULL),
-(50, 29, 1, 1, 13, 28, 'Quality', NULL, 'Owner unhappy with concrete quality.', 'resolved', 'Resolved by admin.', 'Contractor agreed to rework.', '2025-11-18 07:15:15', '2025-11-23 07:15:15'),
-(54, 7, 2, 12, 14, 39, 'Delay', NULL, 'asdasd', 'cancelled', NULL, NULL, '2025-11-30 08:51:31', '2025-11-30 08:53:17');
+(44, 697, 142, 4, NULL, NULL, 'Delay', NULL, 'Project is delayed by 2 weeks.', 'open', NULL, NULL, '2025-12-15 05:39:52', NULL),
+(45, 698, 158, 6, NULL, NULL, 'Delay', NULL, 'Project is delayed by 2 weeks.', 'open', NULL, NULL, '2025-12-15 05:39:52', NULL),
+(46, 699, 196, 14, NULL, NULL, 'Delay', NULL, 'Project is delayed by 2 weeks.', 'open', NULL, NULL, '2025-12-15 05:39:52', NULL),
+(47, 700, 195, 17, NULL, NULL, 'Delay', NULL, 'Project is delayed by 2 weeks.', 'open', NULL, NULL, '2025-12-15 05:39:52', NULL),
+(48, 701, 202, 28, NULL, NULL, 'Delay', NULL, 'Project is delayed by 2 weeks.', 'open', NULL, NULL, '2025-12-15 05:39:52', NULL);
 
 -- --------------------------------------------------------
 
@@ -265,17 +463,6 @@ CREATE TABLE `dispute_files` (
   `uploaded_at` timestamp NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data for table `dispute_files`
---
-
-INSERT INTO `dispute_files` (`file_id`, `dispute_id`, `storage_path`, `original_name`, `mime_type`, `size`, `uploaded_at`) VALUES
-(57, 36, 'disputes/evidence/1763507964_691cfefc9408c.jpg', '19a87211-2771-468f-9af6-598e9e20c2f5.jpg', 'image/jpeg', 445335, '2025-11-18 15:19:24'),
-(61, 44, 'disputes/evidence/1763511606_691d0d36ce335.png', '19a87211-2771-468f-9af6-598e9e20c2f5-removebg-preview.png', 'image/png', 240418, '2025-11-18 16:20:06'),
-(63, 44, 'disputes/evidence/1763511624_691d0d48d4c36.jpg', '19a87211-2771-468f-9af6-598e9e20c2f5.jpg', 'image/jpeg', 445335, '2025-11-18 16:20:24'),
-(64, 44, 'disputes/evidence/1763511624_691d0d48d6395.pdf', 'PROGRESS REPORT NI RON9.pdf', 'application/pdf', 260981, '2025-11-18 16:20:24'),
-(65, 45, 'disputes/evidence/1763610943_691e913f55e17.pdf', 'PROGRESS REPORT NI RON6.pdf', 'application/pdf', 256063, '2025-11-19 19:55:44');
-
 -- --------------------------------------------------------
 
 --
@@ -290,14 +477,6 @@ CREATE TABLE `messages` (
   `is_read` tinyint(1) DEFAULT 0,
   `created_at` timestamp NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `messages`
---
-
-INSERT INTO `messages` (`message_id`, `sender_id`, `receiver_id`, `content`, `is_read`, `created_at`) VALUES
-(1, 1, 1, 'Hello, can you provide an update on the current milestone?', 0, '2025-11-28 07:15:15'),
-(2, 1, 1, 'We have uploaded a new progress report for your review.', 1, '2025-11-28 06:15:15');
 
 -- --------------------------------------------------------
 
@@ -328,15 +507,105 @@ CREATE TABLE `milestones` (
 --
 
 INSERT INTO `milestones` (`milestone_id`, `project_id`, `contractor_id`, `plan_id`, `milestone_name`, `milestone_description`, `milestone_status`, `start_date`, `end_date`, `is_deleted`, `reason`, `setup_status`, `setup_rej_reason`, `created_at`, `updated_at`) VALUES
-(2, 1, 1, 2, 'nsah', 'nsah', 'not_started', '2025-11-01 00:00:00', '2026-11-05 23:59:59', NULL, '', 'submitted', '', '2025-11-05 05:13:10', '2025-11-28 21:40:49'),
-(7, 3, 1, 7, 'NIGGA', 'NIGGA', 'not_started', '2025-11-14 00:00:00', '2025-12-31 23:59:59', 1, '', 'submitted', '', '2025-11-14 00:20:50', '2025-11-21 23:31:37'),
-(8, 5, 1, 8, 'asdad', 'asdad', 'not_started', '2025-11-15 00:00:00', '2025-12-31 23:59:59', 1, 'sas', 'approved', '', '2025-11-15 04:45:04', '2025-11-28 21:38:19'),
-(9, 6, 1, 9, 'MNAMwwE SAMPLE', 'MNAMwwE SAMPLE', 'not_started', '2025-11-20 00:00:00', '2026-01-31 23:59:59', NULL, '', 'submitted', '', '2025-11-20 22:50:42', '2025-11-28 08:55:30'),
-(10, 7, 1, 10, 'DSDSFS', 'DSDSFS', 'not_started', '2025-11-30 00:00:00', '2026-01-31 23:59:59', 1, 'fsdfsdfsf', 'submitted', '', '2025-11-21 10:00:23', '2025-11-21 23:43:08'),
-(11, 7, 1, 13, 'SHEESHqdqd', 'SHEESHqdqd', 'not_started', '2025-11-30 00:00:00', '2025-12-31 23:59:59', 1, NULL, 'approved', '', '2025-11-21 10:31:26', '2025-11-21 23:34:46'),
-(12, 3, 1, 14, 'sfvsdfs', 'sfvsdfs', 'not_started', '2025-11-30 00:00:00', '2025-12-31 23:59:59', NULL, NULL, 'submitted', NULL, '2025-11-21 23:52:13', '2025-11-21 23:52:13'),
-(13, 29, 2, 15, 'Foundation Work', 'Excavation and foundation works.', 'in_progress', '2025-11-23 15:15:15', '2025-12-08 15:15:15', 0, NULL, 'approved', NULL, '2025-11-28 07:15:15', '2025-11-28 07:15:15'),
-(14, 7, 1, 16, 'MILESOTNE NI R', 'MILESOTNE NI R', 'not_started', '2025-11-30 00:00:00', '2026-11-30 23:59:59', 0, '', 'approved', NULL, '2025-11-28 21:42:36', '2025-11-30 14:31:12');
+(831, 697, 1055, 575, 'Milestone 1', 'Foundation', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(832, 697, 1055, 575, 'Milestone 2', 'Structure', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(833, 697, 1055, 575, 'Milestone 3', 'Finishing', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(834, 698, 1057, 576, 'Milestone 1', 'Foundation', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(835, 698, 1057, 576, 'Milestone 2', 'Structure', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(836, 698, 1057, 576, 'Milestone 3', 'Finishing', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(837, 699, 1065, 577, 'Milestone 1', 'Foundation', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(838, 699, 1065, 577, 'Milestone 2', 'Structure', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(839, 699, 1065, 577, 'Milestone 3', 'Finishing', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(840, 700, 1068, 578, 'Milestone 1', 'Foundation', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(841, 700, 1068, 578, 'Milestone 2', 'Structure', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(842, 700, 1068, 578, 'Milestone 3', 'Finishing', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(843, 701, 1079, 579, 'Milestone 1', 'Foundation', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(844, 701, 1079, 579, 'Milestone 2', 'Structure', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(845, 701, 1079, 579, 'Milestone 3', 'Finishing', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(846, 702, 1083, 580, 'Milestone 1', 'Foundation', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(847, 702, 1083, 580, 'Milestone 2', 'Structure', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(848, 702, 1083, 580, 'Milestone 3', 'Finishing', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(849, 703, 1083, 581, 'Milestone 1', 'Foundation', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(850, 703, 1083, 581, 'Milestone 2', 'Structure', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(851, 703, 1083, 581, 'Milestone 3', 'Finishing', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(852, 704, 1084, 582, 'Milestone 1', 'Foundation', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(853, 704, 1084, 582, 'Milestone 2', 'Structure', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(854, 704, 1084, 582, 'Milestone 3', 'Finishing', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(855, 705, 1089, 583, 'Milestone 1', 'Foundation', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(856, 705, 1089, 583, 'Milestone 2', 'Structure', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(857, 705, 1089, 583, 'Milestone 3', 'Finishing', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(858, 706, 1089, 584, 'Milestone 1', 'Foundation', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(859, 706, 1089, 584, 'Milestone 2', 'Structure', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(860, 706, 1089, 584, 'Milestone 3', 'Finishing', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(861, 707, 1089, 585, 'Milestone 1', 'Foundation', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(862, 707, 1089, 585, 'Milestone 2', 'Structure', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(863, 707, 1089, 585, 'Milestone 3', 'Finishing', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(864, 708, 1090, 586, 'Milestone 1', 'Foundation', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(865, 708, 1090, 586, 'Milestone 2', 'Structure', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(866, 708, 1090, 586, 'Milestone 3', 'Finishing', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(867, 709, 1094, 587, 'Milestone 1', 'Foundation', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(868, 709, 1094, 587, 'Milestone 2', 'Structure', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(869, 709, 1094, 587, 'Milestone 3', 'Finishing', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(870, 710, 1098, 588, 'Milestone 1', 'Foundation', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(871, 710, 1098, 588, 'Milestone 2', 'Structure', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(872, 710, 1098, 588, 'Milestone 3', 'Finishing', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(873, 711, 1100, 589, 'Milestone 1', 'Foundation', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(874, 711, 1100, 589, 'Milestone 2', 'Structure', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(875, 711, 1100, 589, 'Milestone 3', 'Finishing', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(876, 712, 1105, 590, 'Milestone 1', 'Foundation', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(877, 712, 1105, 590, 'Milestone 2', 'Structure', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(878, 712, 1105, 590, 'Milestone 3', 'Finishing', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(879, 713, 1107, 591, 'Milestone 1', 'Foundation', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(880, 713, 1107, 591, 'Milestone 2', 'Structure', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(881, 713, 1107, 591, 'Milestone 3', 'Finishing', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(882, 714, 1109, 592, 'Milestone 1', 'Foundation', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(883, 714, 1109, 592, 'Milestone 2', 'Structure', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(884, 714, 1109, 592, 'Milestone 3', 'Finishing', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(885, 715, 1123, 593, 'Milestone 1', 'Foundation', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(886, 715, 1123, 593, 'Milestone 2', 'Structure', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(887, 715, 1123, 593, 'Milestone 3', 'Finishing', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(888, 716, 1127, 594, 'Milestone 1', 'Foundation', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(889, 716, 1127, 594, 'Milestone 2', 'Structure', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(890, 716, 1127, 594, 'Milestone 3', 'Finishing', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(891, 717, 1132, 595, 'Milestone 1', 'Foundation', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(892, 717, 1132, 595, 'Milestone 2', 'Structure', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(893, 717, 1132, 595, 'Milestone 3', 'Finishing', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(894, 718, 1133, 596, 'Milestone 1', 'Foundation', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(895, 718, 1133, 596, 'Milestone 2', 'Structure', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(896, 718, 1133, 596, 'Milestone 3', 'Finishing', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(897, 719, 1133, 597, 'Milestone 1', 'Foundation', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(898, 719, 1133, 597, 'Milestone 2', 'Structure', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(899, 719, 1133, 597, 'Milestone 3', 'Finishing', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(900, 720, 1135, 598, 'Milestone 1', 'Foundation', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(901, 720, 1135, 598, 'Milestone 2', 'Structure', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(902, 720, 1135, 598, 'Milestone 3', 'Finishing', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(903, 721, 1145, 599, 'Milestone 1', 'Foundation', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(904, 721, 1145, 599, 'Milestone 2', 'Structure', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(905, 721, 1145, 599, 'Milestone 3', 'Finishing', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(906, 722, 1147, 600, 'Milestone 1', 'Foundation', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(907, 722, 1147, 600, 'Milestone 2', 'Structure', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(908, 722, 1147, 600, 'Milestone 3', 'Finishing', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(909, 723, 1149, 601, 'Milestone 1', 'Foundation', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(910, 723, 1149, 601, 'Milestone 2', 'Structure', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(911, 723, 1149, 601, 'Milestone 3', 'Finishing', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(912, 724, 1150, 602, 'Milestone 1', 'Foundation', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(913, 724, 1150, 602, 'Milestone 2', 'Structure', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(914, 724, 1150, 602, 'Milestone 3', 'Finishing', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(915, 725, 1159, 603, 'Milestone 1', 'Foundation', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(916, 725, 1159, 603, 'Milestone 2', 'Structure', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(917, 725, 1159, 603, 'Milestone 3', 'Finishing', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(918, 726, 1162, 604, 'Milestone 1', 'Foundation', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(919, 726, 1162, 604, 'Milestone 2', 'Structure', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(920, 726, 1162, 604, 'Milestone 3', 'Finishing', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(921, 727, 1163, 605, 'Milestone 1', 'Foundation', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(922, 727, 1163, 605, 'Milestone 2', 'Structure', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(923, 727, 1163, 605, 'Milestone 3', 'Finishing', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(924, 728, 1164, 606, 'Milestone 1', 'Foundation', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(925, 728, 1164, 606, 'Milestone 2', 'Structure', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(926, 728, 1164, 606, 'Milestone 3', 'Finishing', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(927, 729, 1167, 607, 'Milestone 1', 'Foundation', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(928, 729, 1167, 607, 'Milestone 2', 'Structure', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(929, 729, 1167, 607, 'Milestone 3', 'Finishing', 'in_progress', '2025-12-15 13:39:51', '2026-01-14 13:39:51', NULL, NULL, 'approved', NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51');
 
 -- --------------------------------------------------------
 
@@ -360,23 +629,204 @@ CREATE TABLE `milestone_items` (
 --
 
 INSERT INTO `milestone_items` (`item_id`, `milestone_id`, `sequence_order`, `percentage_progress`, `milestone_item_title`, `milestone_item_description`, `milestone_item_cost`, `date_to_finish`) VALUES
-(16, 7, 1, 90.00, 'NIGGA 1', 'ASDD', 8100.00, '2025-11-30 23:59:59'),
-(17, 7, 2, 10.00, 'NIGGA 2', 'ASD', 900.00, '2025-12-31 23:59:59'),
-(18, 8, 1, 90.00, 'NIGGA SI CARL', 'SDFSDF', 7200.00, '2025-11-30 23:59:59'),
-(19, 8, 2, 10.00, 'CARL WAYNE SUNTUKAN', 'SDFSDFSDF', 800.00, '2025-12-31 23:59:59'),
-(22, 10, 1, 50.00, 'MSJNSF', 'SDFSDF', 2000.00, '2025-11-30 23:59:59'),
-(23, 10, 2, 50.00, 'SFF', 'SDFSF', 2000.00, '2026-01-31 23:59:59'),
-(24, 11, 1, 100.00, 'asdas', 'asda', 1000.00, '2025-12-31 23:59:59'),
-(25, 12, 1, 50.00, 'adasda', 'dasda', 2500.00, '2025-11-30 23:59:59'),
-(26, 12, 2, 50.00, 'asfafasf', 'afaf', 2500.00, '2025-12-31 23:59:59'),
-(27, 13, 1, 30.00, 'Excavation', 'Excavation of footing area.', 300000.00, '2025-12-01 15:15:15'),
-(28, 13, 2, 20.00, 'Formworks', 'Formworks setup.', 200000.00, '2025-12-05 15:15:15'),
-(33, 9, 1, 10.00, 'first', 'hshahaha', 400.00, '2025-11-30 23:59:59'),
-(34, 9, 2, 90.00, 'zvz', 'vzvzvz', 3600.00, '2026-01-31 23:59:59'),
-(37, 2, 1, 50.00, 'M1', 'ASDASDA', 50000.00, '2026-07-05 23:59:59'),
-(38, 2, 2, 50.00, 'M2', 'ASDAD', 50000.00, '2026-11-05 23:59:59'),
-(39, 14, 1, 50.00, 'm1cc', 'ccc', 100000.00, '2026-06-30 23:59:59'),
-(40, 14, 2, 50.00, 'mcc', 'asd', 100000.00, '2026-11-30 23:59:59');
+(1152, 831, 1, 100.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1153, 832, 1, 50.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1154, 833, 1, 40.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1155, 834, 1, 100.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1156, 835, 1, 50.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1157, 836, 1, 40.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1158, 837, 1, 100.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1159, 838, 1, 50.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1160, 839, 1, 40.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1161, 840, 1, 100.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1162, 841, 1, 50.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1163, 842, 1, 40.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1164, 843, 1, 100.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1165, 844, 1, 50.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1166, 845, 1, 40.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1167, 846, 1, 100.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1168, 847, 1, 50.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1169, 848, 1, 40.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1170, 849, 1, 100.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1171, 850, 1, 50.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1172, 851, 1, 40.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1173, 852, 1, 100.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1174, 853, 1, 50.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1175, 854, 1, 40.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1176, 855, 1, 100.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1177, 856, 1, 50.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1178, 857, 1, 40.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1179, 858, 1, 100.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1180, 859, 1, 50.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1181, 860, 1, 40.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1182, 861, 1, 100.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1183, 862, 1, 50.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1184, 863, 1, 40.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1185, 864, 1, 100.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1186, 865, 1, 50.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1187, 866, 1, 40.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1188, 867, 1, 100.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1189, 868, 1, 50.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1190, 869, 1, 40.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1191, 870, 1, 100.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1192, 871, 1, 50.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1193, 872, 1, 40.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1194, 873, 1, 100.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1195, 874, 1, 50.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1196, 875, 1, 40.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1197, 876, 1, 100.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1198, 877, 1, 50.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1199, 878, 1, 40.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1200, 879, 1, 100.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1201, 880, 1, 50.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1202, 881, 1, 40.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1203, 882, 1, 100.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1204, 883, 1, 50.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1205, 884, 1, 40.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1206, 885, 1, 100.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1207, 886, 1, 50.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1208, 887, 1, 40.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1209, 888, 1, 100.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1210, 889, 1, 50.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1211, 890, 1, 40.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1212, 891, 1, 100.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1213, 892, 1, 50.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1214, 893, 1, 40.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1215, 894, 1, 100.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1216, 895, 1, 50.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1217, 896, 1, 40.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1218, 897, 1, 100.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1219, 898, 1, 50.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1220, 899, 1, 40.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1221, 900, 1, 100.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1222, 901, 1, 50.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1223, 902, 1, 40.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1224, 903, 1, 100.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1225, 904, 1, 50.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1226, 905, 1, 40.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1227, 906, 1, 100.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1228, 907, 1, 50.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1229, 908, 1, 40.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1230, 909, 1, 100.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1231, 910, 1, 50.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1232, 911, 1, 40.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1233, 912, 1, 100.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1234, 913, 1, 50.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1235, 914, 1, 40.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1236, 915, 1, 100.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1237, 916, 1, 50.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1238, 917, 1, 40.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1239, 918, 1, 100.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1240, 919, 1, 50.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1241, 920, 1, 40.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1242, 921, 1, 100.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1243, 922, 1, 50.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1244, 923, 1, 40.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1245, 924, 1, 100.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1246, 925, 1, 50.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1247, 926, 1, 40.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1248, 927, 1, 100.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1249, 928, 1, 50.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1250, 929, 1, 40.00, 'Primary Task', 'Main deliverable description.', 25000.00, '2025-12-25 13:39:51'),
+(1279, 832, 2, 50.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1280, 833, 2, 30.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1281, 835, 2, 50.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1282, 836, 2, 30.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1283, 838, 2, 50.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1284, 839, 2, 30.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1285, 841, 2, 50.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1286, 842, 2, 30.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1287, 844, 2, 50.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1288, 845, 2, 30.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1289, 847, 2, 50.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1290, 848, 2, 30.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1291, 850, 2, 50.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1292, 851, 2, 30.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1293, 853, 2, 50.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1294, 854, 2, 30.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1295, 856, 2, 50.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1296, 857, 2, 30.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1297, 859, 2, 50.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1298, 860, 2, 30.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1299, 862, 2, 50.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1300, 863, 2, 30.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1301, 865, 2, 50.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1302, 866, 2, 30.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1303, 868, 2, 50.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1304, 869, 2, 30.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1305, 871, 2, 50.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1306, 872, 2, 30.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1307, 874, 2, 50.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1308, 875, 2, 30.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1309, 877, 2, 50.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1310, 878, 2, 30.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1311, 880, 2, 50.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1312, 881, 2, 30.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1313, 883, 2, 50.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1314, 884, 2, 30.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1315, 886, 2, 50.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1316, 887, 2, 30.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1317, 889, 2, 50.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1318, 890, 2, 30.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1319, 892, 2, 50.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1320, 893, 2, 30.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1321, 895, 2, 50.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1322, 896, 2, 30.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1323, 898, 2, 50.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1324, 899, 2, 30.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1325, 901, 2, 50.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1326, 902, 2, 30.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1327, 904, 2, 50.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1328, 905, 2, 30.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1329, 907, 2, 50.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1330, 908, 2, 30.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1331, 910, 2, 50.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1332, 911, 2, 30.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1333, 913, 2, 50.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1334, 914, 2, 30.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1335, 916, 2, 50.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1336, 917, 2, 30.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1337, 919, 2, 50.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1338, 920, 2, 30.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1339, 922, 2, 50.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1340, 923, 2, 30.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1341, 925, 2, 50.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1342, 926, 2, 30.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1343, 928, 2, 50.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1344, 929, 2, 30.00, 'Secondary Task', 'Follow-up task description.', 15000.00, '2026-01-04 13:39:51'),
+(1406, 833, 3, 30.00, 'Final Task', 'Closing task description.', 10000.00, '2026-01-14 13:39:51'),
+(1407, 836, 3, 30.00, 'Final Task', 'Closing task description.', 10000.00, '2026-01-14 13:39:51'),
+(1408, 839, 3, 30.00, 'Final Task', 'Closing task description.', 10000.00, '2026-01-14 13:39:51'),
+(1409, 842, 3, 30.00, 'Final Task', 'Closing task description.', 10000.00, '2026-01-14 13:39:51'),
+(1410, 845, 3, 30.00, 'Final Task', 'Closing task description.', 10000.00, '2026-01-14 13:39:51'),
+(1411, 848, 3, 30.00, 'Final Task', 'Closing task description.', 10000.00, '2026-01-14 13:39:51'),
+(1412, 851, 3, 30.00, 'Final Task', 'Closing task description.', 10000.00, '2026-01-14 13:39:51'),
+(1413, 854, 3, 30.00, 'Final Task', 'Closing task description.', 10000.00, '2026-01-14 13:39:51'),
+(1414, 857, 3, 30.00, 'Final Task', 'Closing task description.', 10000.00, '2026-01-14 13:39:51'),
+(1415, 860, 3, 30.00, 'Final Task', 'Closing task description.', 10000.00, '2026-01-14 13:39:51'),
+(1416, 863, 3, 30.00, 'Final Task', 'Closing task description.', 10000.00, '2026-01-14 13:39:51'),
+(1417, 866, 3, 30.00, 'Final Task', 'Closing task description.', 10000.00, '2026-01-14 13:39:51'),
+(1418, 869, 3, 30.00, 'Final Task', 'Closing task description.', 10000.00, '2026-01-14 13:39:51'),
+(1419, 872, 3, 30.00, 'Final Task', 'Closing task description.', 10000.00, '2026-01-14 13:39:51'),
+(1420, 875, 3, 30.00, 'Final Task', 'Closing task description.', 10000.00, '2026-01-14 13:39:51'),
+(1421, 878, 3, 30.00, 'Final Task', 'Closing task description.', 10000.00, '2026-01-14 13:39:51'),
+(1422, 881, 3, 30.00, 'Final Task', 'Closing task description.', 10000.00, '2026-01-14 13:39:51'),
+(1423, 884, 3, 30.00, 'Final Task', 'Closing task description.', 10000.00, '2026-01-14 13:39:51'),
+(1424, 887, 3, 30.00, 'Final Task', 'Closing task description.', 10000.00, '2026-01-14 13:39:51'),
+(1425, 890, 3, 30.00, 'Final Task', 'Closing task description.', 10000.00, '2026-01-14 13:39:51'),
+(1426, 893, 3, 30.00, 'Final Task', 'Closing task description.', 10000.00, '2026-01-14 13:39:51'),
+(1427, 896, 3, 30.00, 'Final Task', 'Closing task description.', 10000.00, '2026-01-14 13:39:51'),
+(1428, 899, 3, 30.00, 'Final Task', 'Closing task description.', 10000.00, '2026-01-14 13:39:51'),
+(1429, 902, 3, 30.00, 'Final Task', 'Closing task description.', 10000.00, '2026-01-14 13:39:51'),
+(1430, 905, 3, 30.00, 'Final Task', 'Closing task description.', 10000.00, '2026-01-14 13:39:51'),
+(1431, 908, 3, 30.00, 'Final Task', 'Closing task description.', 10000.00, '2026-01-14 13:39:51'),
+(1432, 911, 3, 30.00, 'Final Task', 'Closing task description.', 10000.00, '2026-01-14 13:39:51'),
+(1433, 914, 3, 30.00, 'Final Task', 'Closing task description.', 10000.00, '2026-01-14 13:39:51'),
+(1434, 917, 3, 30.00, 'Final Task', 'Closing task description.', 10000.00, '2026-01-14 13:39:51'),
+(1435, 920, 3, 30.00, 'Final Task', 'Closing task description.', 10000.00, '2026-01-14 13:39:51'),
+(1436, 923, 3, 30.00, 'Final Task', 'Closing task description.', 10000.00, '2026-01-14 13:39:51'),
+(1437, 926, 3, 30.00, 'Final Task', 'Closing task description.', 10000.00, '2026-01-14 13:39:51'),
+(1438, 929, 3, 30.00, 'Final Task', 'Closing task description.', 10000.00, '2026-01-14 13:39:51');
 
 -- --------------------------------------------------------
 
@@ -405,14 +855,56 @@ CREATE TABLE `milestone_payments` (
 --
 
 INSERT INTO `milestone_payments` (`payment_id`, `item_id`, `project_id`, `owner_id`, `contractor_user_id`, `amount`, `payment_type`, `transaction_number`, `receipt_photo`, `transaction_date`, `payment_status`, `reason`, `updated_at`) VALUES
-(8, 18, 5, 10, 2, 20000.00, 'bank_transfer', 'AS123123', 'payments/receipts/1763694818_691fd8e2ece88.jpg', '2025-11-20', 'submitted', '', '2025-11-21 13:49:46'),
-(9, 19, 5, 10, 2, 10098.00, 'check', 'adad1231', 'payments/receipts/1763695141_691fda255e475.png', '2025-11-19', 'deleted', '', '2025-11-21 15:13:57'),
-(10, 18, 5, 10, 2, 3453.00, 'bank_transfer', 'dda', 'payments/receipts/1763731984_69206a103bd59.jpg', '2025-11-26', 'deleted', '', '2025-11-21 14:21:15'),
-(11, 24, 7, 12, 2, 20000.00, 'check', '23423123e', 'payments/receipts/1763752320_6920b980d192e.jpg', '2025-11-29', 'submitted', NULL, '2025-11-21 19:28:04'),
-(12, 27, 29, 1, 1, 150000.00, 'bank_transfer', 'TXN-APPROVED-001', 'payments/receipts/demo_approved.jpg', '2025-11-27', 'approved', NULL, '2025-11-28 15:15:15'),
-(13, 27, 29, 1, 1, 150000.00, 'online_payment', 'TXN-SUBMITTED-001', 'payments/receipts/demo_submitted.jpg', '2025-11-28', 'submitted', NULL, NULL),
-(14, 27, 29, 1, 1, 150000.00, 'cash', 'TXN-REJECTED-001', 'payments/receipts/demo_rejected.jpg', '2025-11-26', 'rejected', 'Invalid receipt.', '2025-11-28 15:15:15'),
-(15, 39, 7, 12, 2, 20000.00, 'check', 'AS123123q', 'payments/receipts/1764403894_692aaab6cb0b8.pdf', '2025-11-29', 'submitted', NULL, '2025-11-29 08:20:57');
+(449, 1152, 697, 1093, 1055, 25000.00, 'bank_transfer', 'TXN-13422', 'receipt.jpg', '2025-12-15', 'submitted', 'Receipt unclear', NULL),
+(450, 1153, 697, 1093, 1055, 25000.00, 'bank_transfer', 'TXN-85514', 'receipt.jpg', '2025-12-15', 'approved', 'Receipt unclear', NULL),
+(451, 1279, 697, 1093, 1055, 25000.00, 'bank_transfer', 'TXN-63965', 'receipt.jpg', '2025-12-15', 'submitted', 'Receipt unclear', NULL),
+(452, 1154, 697, 1093, 1055, 25000.00, 'bank_transfer', 'TXN-85713', 'receipt.jpg', '2025-12-15', 'rejected', 'Receipt unclear', NULL),
+(453, 1280, 697, 1093, 1055, 25000.00, 'bank_transfer', 'TXN-62869', 'receipt.jpg', '2025-12-15', 'approved', 'Receipt unclear', NULL),
+(454, 1406, 697, 1093, 1055, 25000.00, 'bank_transfer', 'TXN-63100', 'receipt.jpg', '2025-12-15', 'approved', 'Receipt unclear', NULL),
+(455, 1155, 698, 1109, 1057, 25000.00, 'bank_transfer', 'TXN-93073', 'receipt.jpg', '2025-12-15', 'rejected', 'Receipt unclear', NULL),
+(456, 1156, 698, 1109, 1057, 25000.00, 'bank_transfer', 'TXN-30502', 'receipt.jpg', '2025-12-15', 'submitted', 'Receipt unclear', NULL),
+(457, 1281, 698, 1109, 1057, 25000.00, 'bank_transfer', 'TXN-11888', 'receipt.jpg', '2025-12-15', 'rejected', 'Receipt unclear', NULL),
+(458, 1157, 698, 1109, 1057, 25000.00, 'bank_transfer', 'TXN-41362', 'receipt.jpg', '2025-12-15', 'rejected', 'Receipt unclear', NULL),
+(459, 1282, 698, 1109, 1057, 25000.00, 'bank_transfer', 'TXN-48880', 'receipt.jpg', '2025-12-15', 'submitted', 'Receipt unclear', NULL),
+(460, 1407, 698, 1109, 1057, 25000.00, 'bank_transfer', 'TXN-16473', 'receipt.jpg', '2025-12-15', 'submitted', 'Receipt unclear', NULL),
+(461, 1158, 699, 1147, 1065, 25000.00, 'bank_transfer', 'TXN-53078', 'receipt.jpg', '2025-12-15', 'rejected', 'Receipt unclear', NULL),
+(462, 1159, 699, 1147, 1065, 25000.00, 'bank_transfer', 'TXN-50219', 'receipt.jpg', '2025-12-15', 'submitted', 'Receipt unclear', NULL),
+(463, 1283, 699, 1147, 1065, 25000.00, 'bank_transfer', 'TXN-26467', 'receipt.jpg', '2025-12-15', 'submitted', 'Receipt unclear', NULL),
+(464, 1160, 699, 1147, 1065, 25000.00, 'bank_transfer', 'TXN-50906', 'receipt.jpg', '2025-12-15', 'submitted', 'Receipt unclear', NULL),
+(465, 1284, 699, 1147, 1065, 25000.00, 'bank_transfer', 'TXN-99007', 'receipt.jpg', '2025-12-15', 'submitted', 'Receipt unclear', NULL),
+(466, 1408, 699, 1147, 1065, 25000.00, 'bank_transfer', 'TXN-72990', 'receipt.jpg', '2025-12-15', 'submitted', 'Receipt unclear', NULL),
+(467, 1161, 700, 1146, 1068, 25000.00, 'bank_transfer', 'TXN-45760', 'receipt.jpg', '2025-12-15', 'rejected', 'Receipt unclear', NULL),
+(468, 1162, 700, 1146, 1068, 25000.00, 'bank_transfer', 'TXN-32522', 'receipt.jpg', '2025-12-15', 'submitted', 'Receipt unclear', NULL),
+(469, 1285, 700, 1146, 1068, 25000.00, 'bank_transfer', 'TXN-26083', 'receipt.jpg', '2025-12-15', 'approved', 'Receipt unclear', NULL),
+(470, 1163, 700, 1146, 1068, 25000.00, 'bank_transfer', 'TXN-22881', 'receipt.jpg', '2025-12-15', 'rejected', 'Receipt unclear', NULL),
+(471, 1286, 700, 1146, 1068, 25000.00, 'bank_transfer', 'TXN-19990', 'receipt.jpg', '2025-12-15', 'approved', 'Receipt unclear', NULL),
+(472, 1409, 700, 1146, 1068, 25000.00, 'bank_transfer', 'TXN-83891', 'receipt.jpg', '2025-12-15', 'rejected', 'Receipt unclear', NULL),
+(473, 1164, 701, 1153, 1079, 25000.00, 'bank_transfer', 'TXN-64021', 'receipt.jpg', '2025-12-15', 'approved', 'Receipt unclear', NULL),
+(474, 1165, 701, 1153, 1079, 25000.00, 'bank_transfer', 'TXN-11385', 'receipt.jpg', '2025-12-15', 'approved', 'Receipt unclear', NULL),
+(475, 1287, 701, 1153, 1079, 25000.00, 'bank_transfer', 'TXN-90135', 'receipt.jpg', '2025-12-15', 'submitted', 'Receipt unclear', NULL),
+(476, 1166, 701, 1153, 1079, 25000.00, 'bank_transfer', 'TXN-80094', 'receipt.jpg', '2025-12-15', 'submitted', 'Receipt unclear', NULL),
+(477, 1288, 701, 1153, 1079, 25000.00, 'bank_transfer', 'TXN-80574', 'receipt.jpg', '2025-12-15', 'rejected', 'Receipt unclear', NULL),
+(478, 1410, 701, 1153, 1079, 25000.00, 'bank_transfer', 'TXN-90058', 'receipt.jpg', '2025-12-15', 'rejected', 'Receipt unclear', NULL),
+(479, 1167, 702, 1064, 1083, 25000.00, 'bank_transfer', 'TXN-85945', 'receipt.jpg', '2025-12-15', 'approved', 'Receipt unclear', NULL),
+(480, 1168, 702, 1064, 1083, 25000.00, 'bank_transfer', 'TXN-12441', 'receipt.jpg', '2025-12-15', 'approved', 'Receipt unclear', NULL),
+(481, 1289, 702, 1064, 1083, 25000.00, 'bank_transfer', 'TXN-92879', 'receipt.jpg', '2025-12-15', 'rejected', 'Receipt unclear', NULL),
+(482, 1169, 702, 1064, 1083, 25000.00, 'bank_transfer', 'TXN-32730', 'receipt.jpg', '2025-12-15', 'rejected', 'Receipt unclear', NULL),
+(483, 1290, 702, 1064, 1083, 25000.00, 'bank_transfer', 'TXN-55974', 'receipt.jpg', '2025-12-15', 'rejected', 'Receipt unclear', NULL),
+(484, 1411, 702, 1064, 1083, 25000.00, 'bank_transfer', 'TXN-48936', 'receipt.jpg', '2025-12-15', 'submitted', 'Receipt unclear', NULL),
+(485, 1170, 703, 1125, 1083, 25000.00, 'bank_transfer', 'TXN-66014', 'receipt.jpg', '2025-12-15', 'approved', 'Receipt unclear', NULL),
+(486, 1171, 703, 1125, 1083, 25000.00, 'bank_transfer', 'TXN-93844', 'receipt.jpg', '2025-12-15', 'rejected', 'Receipt unclear', NULL),
+(487, 1291, 703, 1125, 1083, 25000.00, 'bank_transfer', 'TXN-18917', 'receipt.jpg', '2025-12-15', 'approved', 'Receipt unclear', NULL),
+(488, 1172, 703, 1125, 1083, 25000.00, 'bank_transfer', 'TXN-54823', 'receipt.jpg', '2025-12-15', 'rejected', 'Receipt unclear', NULL),
+(489, 1292, 703, 1125, 1083, 25000.00, 'bank_transfer', 'TXN-61390', 'receipt.jpg', '2025-12-15', 'approved', 'Receipt unclear', NULL),
+(490, 1412, 703, 1125, 1083, 25000.00, 'bank_transfer', 'TXN-43008', 'receipt.jpg', '2025-12-15', 'approved', 'Receipt unclear', NULL),
+(491, 1173, 704, 1088, 1084, 25000.00, 'bank_transfer', 'TXN-84652', 'receipt.jpg', '2025-12-15', 'approved', 'Receipt unclear', NULL),
+(492, 1174, 704, 1088, 1084, 25000.00, 'bank_transfer', 'TXN-51323', 'receipt.jpg', '2025-12-15', 'submitted', 'Receipt unclear', NULL),
+(493, 1293, 704, 1088, 1084, 25000.00, 'bank_transfer', 'TXN-33276', 'receipt.jpg', '2025-12-15', 'rejected', 'Receipt unclear', NULL),
+(494, 1175, 704, 1088, 1084, 25000.00, 'bank_transfer', 'TXN-80335', 'receipt.jpg', '2025-12-15', 'submitted', 'Receipt unclear', NULL),
+(495, 1294, 704, 1088, 1084, 25000.00, 'bank_transfer', 'TXN-56892', 'receipt.jpg', '2025-12-15', 'submitted', 'Receipt unclear', NULL),
+(496, 1413, 704, 1088, 1084, 25000.00, 'bank_transfer', 'TXN-87929', 'receipt.jpg', '2025-12-15', 'submitted', 'Receipt unclear', NULL),
+(497, 1176, 705, 1146, 1089, 25000.00, 'bank_transfer', 'TXN-78636', 'receipt.jpg', '2025-12-15', 'approved', 'Receipt unclear', NULL),
+(498, 1177, 705, 1146, 1089, 25000.00, 'bank_transfer', 'TXN-72731', 'receipt.jpg', '2025-12-15', 'rejected', 'Receipt unclear', NULL);
 
 -- --------------------------------------------------------
 
@@ -436,8 +928,226 @@ CREATE TABLE `notifications` (
 --
 
 INSERT INTO `notifications` (`notification_id`, `user_id`, `message`, `type`, `is_read`, `delivery_method`, `action_link`, `created_at`) VALUES
-(1, 1, 'Your project has been approved and is now visible to contractors.', 'Project Alert', 0, 'App', '/dashboard', '2025-11-28 07:15:15'),
-(2, 1, 'A new project is available for bidding.', 'Bid Status', 1, 'App', '/dashboard', '2025-11-28 05:15:15');
+(1375, 1, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1376, 10, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1377, 100, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1378, 101, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1379, 102, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1380, 103, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1381, 104, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1382, 105, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1383, 106, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1384, 107, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1385, 108, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1386, 109, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1387, 11, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1388, 110, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1389, 111, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1390, 112, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1391, 113, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1392, 114, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1393, 115, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1394, 116, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1395, 117, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1396, 118, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1397, 119, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1398, 12, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1399, 120, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1400, 121, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1401, 122, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1402, 123, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1403, 124, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1404, 125, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1405, 126, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1406, 127, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1407, 128, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1408, 129, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1409, 13, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1410, 130, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1411, 131, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1412, 132, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1413, 133, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1414, 134, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1415, 135, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1416, 136, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1417, 137, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1418, 138, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1419, 139, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1420, 14, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1421, 140, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1422, 141, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1423, 142, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1424, 143, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1425, 144, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1426, 145, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1427, 146, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1428, 147, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1429, 148, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1430, 149, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1431, 15, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1432, 150, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1433, 151, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1434, 152, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1435, 153, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1436, 154, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1437, 155, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1438, 156, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1439, 157, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1440, 158, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1441, 159, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1442, 16, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1443, 160, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1444, 161, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1445, 162, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1446, 163, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1447, 164, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1448, 165, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1449, 166, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1450, 167, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1451, 168, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1452, 169, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1453, 17, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1454, 170, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1455, 171, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1456, 172, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1457, 173, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1458, 174, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1459, 175, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1460, 176, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1461, 177, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1462, 178, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1463, 179, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1464, 18, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1465, 180, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1466, 181, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1467, 182, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1468, 183, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1469, 184, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1470, 185, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1471, 186, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1472, 187, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1473, 188, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1474, 189, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1475, 19, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1476, 190, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1477, 191, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1478, 192, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1479, 193, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1480, 194, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1481, 195, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1482, 196, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1483, 197, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1484, 198, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1485, 199, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1486, 2, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1487, 20, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1488, 200, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1489, 201, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1490, 202, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1491, 203, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1492, 204, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1493, 205, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1494, 206, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1495, 207, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1496, 208, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1497, 209, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1498, 21, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1499, 210, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1500, 211, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1501, 212, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1502, 213, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1503, 214, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1504, 215, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1505, 216, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1506, 217, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1507, 218, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1508, 219, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1509, 22, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1510, 220, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1511, 23, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1512, 24, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1513, 25, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1514, 26, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1515, 27, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1516, 28, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1517, 29, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1518, 3, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1519, 30, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1520, 31, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1521, 32, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1522, 33, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1523, 34, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1524, 35, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1525, 36, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1526, 37, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1527, 38, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1528, 39, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1529, 4, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1530, 40, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1531, 41, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1532, 42, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1533, 43, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1534, 44, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1535, 45, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1536, 46, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1537, 47, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1538, 48, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1539, 49, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1540, 5, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1541, 50, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1542, 51, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1543, 52, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1544, 53, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1545, 54, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1546, 55, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1547, 56, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1548, 57, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1549, 58, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1550, 59, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1551, 6, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1552, 60, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1553, 61, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1554, 62, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1555, 63, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1556, 64, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1557, 65, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1558, 66, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1559, 67, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1560, 68, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1561, 69, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1562, 7, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1563, 70, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1564, 71, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1565, 72, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1566, 73, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1567, 74, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1568, 75, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1569, 76, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1570, 77, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1571, 78, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1572, 79, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1573, 8, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1574, 80, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1575, 81, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1576, 82, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1577, 83, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1578, 84, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1579, 85, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1580, 86, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1581, 87, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1582, 88, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1583, 89, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1584, 9, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1585, 90, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1586, 91, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1587, 92, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1588, 93, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1589, 94, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1590, 95, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1591, 96, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1592, 97, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1593, 98, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51'),
+(1594, 99, 'Welcome to Legatura! Please verify your profile.', 'Project Alert', 0, 'App', NULL, '2025-12-15 05:39:51');
 
 -- --------------------------------------------------------
 
@@ -505,17 +1215,39 @@ CREATE TABLE `payment_plans` (
 --
 
 INSERT INTO `payment_plans` (`plan_id`, `project_id`, `contractor_id`, `payment_mode`, `total_project_cost`, `downpayment_amount`, `is_confirmed`, `created_at`, `updated_at`) VALUES
-(1, 1, 1, 'downpayment', 100000.00, 10000.00, 1, '2025-11-05 04:28:00', '2025-11-12 14:37:04'),
-(2, 1, 1, 'full_payment', 100000.00, 0.00, 0, '2025-11-05 05:13:10', '2025-11-28 21:40:49'),
-(6, 3, 1, 'downpayment', 20000.00, 1000.00, 0, '2025-11-14 00:12:32', '2025-11-14 00:12:32'),
-(7, 3, 1, 'downpayment', 10000.00, 1000.00, 0, '2025-11-14 00:20:50', '2025-11-14 00:20:50'),
-(8, 5, 1, 'downpayment', 9000.00, 1000.00, 0, '2025-11-15 04:45:04', '2025-11-15 04:45:04'),
-(9, 6, 1, 'downpayment', 5000.00, 1000.00, 0, '2025-11-20 22:50:42', '2025-11-28 08:55:30'),
-(10, 7, 1, 'downpayment', 5000.00, 1000.00, 0, '2025-11-21 10:00:23', '2025-11-21 10:00:23'),
-(13, 7, 1, 'full_payment', 1000.00, 0.00, 0, '2025-11-21 10:31:26', '2025-11-21 10:31:26'),
-(14, 3, 1, 'downpayment', 10000.00, 5000.00, 0, '2025-11-21 23:52:13', '2025-11-21 23:52:13'),
-(15, 29, 2, 'downpayment', 2000000.00, 400000.00, 1, '2025-11-28 07:15:15', '2025-11-28 07:15:15'),
-(16, 7, 1, 'full_payment', 200000.00, 0.00, 0, '2025-11-28 21:42:36', '2025-11-28 21:42:36');
+(575, 697, 1055, 'downpayment', 500000.00, 100000.00, 1, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(576, 698, 1057, 'downpayment', 500000.00, 100000.00, 1, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(577, 699, 1065, 'downpayment', 500000.00, 100000.00, 1, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(578, 700, 1068, 'downpayment', 500000.00, 100000.00, 1, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(579, 701, 1079, 'downpayment', 500000.00, 100000.00, 1, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(580, 702, 1083, 'downpayment', 500000.00, 100000.00, 1, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(581, 703, 1083, 'downpayment', 500000.00, 100000.00, 1, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(582, 704, 1084, 'downpayment', 500000.00, 100000.00, 1, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(583, 705, 1089, 'downpayment', 500000.00, 100000.00, 1, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(584, 706, 1089, 'downpayment', 500000.00, 100000.00, 1, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(585, 707, 1089, 'downpayment', 500000.00, 100000.00, 1, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(586, 708, 1090, 'downpayment', 500000.00, 100000.00, 1, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(587, 709, 1094, 'downpayment', 500000.00, 100000.00, 1, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(588, 710, 1098, 'downpayment', 500000.00, 100000.00, 1, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(589, 711, 1100, 'downpayment', 500000.00, 100000.00, 1, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(590, 712, 1105, 'downpayment', 500000.00, 100000.00, 1, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(591, 713, 1107, 'downpayment', 500000.00, 100000.00, 1, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(592, 714, 1109, 'downpayment', 500000.00, 100000.00, 1, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(593, 715, 1123, 'downpayment', 500000.00, 100000.00, 1, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(594, 716, 1127, 'downpayment', 500000.00, 100000.00, 1, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(595, 717, 1132, 'downpayment', 500000.00, 100000.00, 1, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(596, 718, 1133, 'downpayment', 500000.00, 100000.00, 1, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(597, 719, 1133, 'downpayment', 500000.00, 100000.00, 1, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(598, 720, 1135, 'downpayment', 500000.00, 100000.00, 1, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(599, 721, 1145, 'downpayment', 500000.00, 100000.00, 1, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(600, 722, 1147, 'downpayment', 500000.00, 100000.00, 1, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(601, 723, 1149, 'downpayment', 500000.00, 100000.00, 1, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(602, 724, 1150, 'downpayment', 500000.00, 100000.00, 1, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(603, 725, 1159, 'downpayment', 500000.00, 100000.00, 1, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(604, 726, 1162, 'downpayment', 500000.00, 100000.00, 1, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(605, 727, 1163, 'downpayment', 500000.00, 100000.00, 1, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(606, 728, 1164, 'downpayment', 500000.00, 100000.00, 1, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(607, 729, 1167, 'downpayment', 500000.00, 100000.00, 1, '2025-12-15 05:39:51', '2025-12-15 05:39:51');
 
 -- --------------------------------------------------------
 
@@ -538,13 +1270,6 @@ CREATE TABLE `platform_payments` (
   `approved_by` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data for table `platform_payments`
---
-
-INSERT INTO `platform_payments` (`platform_payment_id`, `project_id`, `contractor_id`, `owner_id`, `payment_for`, `percentage`, `amount`, `transaction_number`, `receipt_photo`, `transaction_date`, `is_approved`, `approved_by`) VALUES
-(1, NULL, 2, 1, 'commission', 2.00, 30000.00, 'PLATFORM-TXN-001', 'platform/receipts/demo_commission.jpg', '2025-11-28 07:15:15', 1, NULL);
-
 -- --------------------------------------------------------
 
 --
@@ -566,11 +1291,56 @@ CREATE TABLE `progress` (
 --
 
 INSERT INTO `progress` (`progress_id`, `milestone_item_id`, `purpose`, `progress_status`, `delete_reason`, `submitted_at`, `updated_at`) VALUES
-(7, 18, 'asdasdfssdfedsd', 'approved', NULL, '2025-11-20 04:07:46', NULL),
-(11, 27, 'Excavation completed', 'approved', NULL, '2025-11-27 07:15:15', '2025-11-28 07:15:15'),
-(12, 28, 'Formworks 50% done', 'submitted', NULL, '2025-11-28 07:15:15', NULL),
-(13, 28, 'Formworks need revision', 'rejected', NULL, '2025-11-28 02:15:15', '2025-11-28 07:15:15'),
-(14, 39, 'Itong progress na to mam kainin mo', 'approved', '', '2025-11-29 05:54:10', '2025-11-30 06:33:00');
+(449, 1152, 'Weekly Site Update', 'approved', 'Images too dark', '2025-12-15 05:39:51', NULL),
+(450, 1153, 'Weekly Site Update', 'rejected', 'Images too dark', '2025-12-15 05:39:51', NULL),
+(451, 1279, 'Weekly Site Update', 'rejected', 'Images too dark', '2025-12-15 05:39:51', NULL),
+(452, 1154, 'Weekly Site Update', 'submitted', 'Images too dark', '2025-12-15 05:39:51', NULL),
+(453, 1280, 'Weekly Site Update', 'approved', 'Images too dark', '2025-12-15 05:39:51', NULL),
+(454, 1406, 'Weekly Site Update', 'approved', 'Images too dark', '2025-12-15 05:39:51', NULL),
+(455, 1155, 'Weekly Site Update', 'approved', 'Images too dark', '2025-12-15 05:39:51', NULL),
+(456, 1156, 'Weekly Site Update', 'approved', 'Images too dark', '2025-12-15 05:39:51', NULL),
+(457, 1281, 'Weekly Site Update', 'rejected', 'Images too dark', '2025-12-15 05:39:51', NULL),
+(458, 1157, 'Weekly Site Update', 'submitted', 'Images too dark', '2025-12-15 05:39:51', NULL),
+(459, 1282, 'Weekly Site Update', 'approved', 'Images too dark', '2025-12-15 05:39:51', NULL),
+(460, 1407, 'Weekly Site Update', 'rejected', 'Images too dark', '2025-12-15 05:39:51', NULL),
+(461, 1158, 'Weekly Site Update', 'rejected', 'Images too dark', '2025-12-15 05:39:51', NULL),
+(462, 1159, 'Weekly Site Update', 'submitted', 'Images too dark', '2025-12-15 05:39:51', NULL),
+(463, 1283, 'Weekly Site Update', 'rejected', 'Images too dark', '2025-12-15 05:39:51', NULL),
+(464, 1160, 'Weekly Site Update', 'rejected', 'Images too dark', '2025-12-15 05:39:51', NULL),
+(465, 1284, 'Weekly Site Update', 'rejected', 'Images too dark', '2025-12-15 05:39:51', NULL),
+(466, 1408, 'Weekly Site Update', 'approved', 'Images too dark', '2025-12-15 05:39:51', NULL),
+(467, 1161, 'Weekly Site Update', 'approved', 'Images too dark', '2025-12-15 05:39:51', NULL),
+(468, 1162, 'Weekly Site Update', 'rejected', 'Images too dark', '2025-12-15 05:39:51', NULL),
+(469, 1285, 'Weekly Site Update', 'approved', 'Images too dark', '2025-12-15 05:39:51', NULL),
+(470, 1163, 'Weekly Site Update', 'submitted', 'Images too dark', '2025-12-15 05:39:51', NULL),
+(471, 1286, 'Weekly Site Update', 'rejected', 'Images too dark', '2025-12-15 05:39:51', NULL),
+(472, 1409, 'Weekly Site Update', 'rejected', 'Images too dark', '2025-12-15 05:39:51', NULL),
+(473, 1164, 'Weekly Site Update', 'rejected', 'Images too dark', '2025-12-15 05:39:51', NULL),
+(474, 1165, 'Weekly Site Update', 'rejected', 'Images too dark', '2025-12-15 05:39:51', NULL),
+(475, 1287, 'Weekly Site Update', 'submitted', 'Images too dark', '2025-12-15 05:39:51', NULL),
+(476, 1166, 'Weekly Site Update', 'approved', 'Images too dark', '2025-12-15 05:39:51', NULL),
+(477, 1288, 'Weekly Site Update', 'approved', 'Images too dark', '2025-12-15 05:39:51', NULL),
+(478, 1410, 'Weekly Site Update', 'rejected', 'Images too dark', '2025-12-15 05:39:51', NULL),
+(479, 1167, 'Weekly Site Update', 'rejected', 'Images too dark', '2025-12-15 05:39:51', NULL),
+(480, 1168, 'Weekly Site Update', 'approved', 'Images too dark', '2025-12-15 05:39:51', NULL),
+(481, 1289, 'Weekly Site Update', 'approved', 'Images too dark', '2025-12-15 05:39:51', NULL),
+(482, 1169, 'Weekly Site Update', 'submitted', 'Images too dark', '2025-12-15 05:39:51', NULL),
+(483, 1290, 'Weekly Site Update', 'approved', 'Images too dark', '2025-12-15 05:39:51', NULL),
+(484, 1411, 'Weekly Site Update', 'submitted', 'Images too dark', '2025-12-15 05:39:51', NULL),
+(485, 1170, 'Weekly Site Update', 'rejected', 'Images too dark', '2025-12-15 05:39:51', NULL),
+(486, 1171, 'Weekly Site Update', 'approved', 'Images too dark', '2025-12-15 05:39:51', NULL),
+(487, 1291, 'Weekly Site Update', 'approved', 'Images too dark', '2025-12-15 05:39:51', NULL),
+(488, 1172, 'Weekly Site Update', 'approved', 'Images too dark', '2025-12-15 05:39:51', NULL),
+(489, 1292, 'Weekly Site Update', 'rejected', 'Images too dark', '2025-12-15 05:39:51', NULL),
+(490, 1412, 'Weekly Site Update', 'submitted', 'Images too dark', '2025-12-15 05:39:51', NULL),
+(491, 1173, 'Weekly Site Update', 'submitted', 'Images too dark', '2025-12-15 05:39:51', NULL),
+(492, 1174, 'Weekly Site Update', 'rejected', 'Images too dark', '2025-12-15 05:39:51', NULL),
+(493, 1293, 'Weekly Site Update', 'approved', 'Images too dark', '2025-12-15 05:39:51', NULL),
+(494, 1175, 'Weekly Site Update', 'approved', 'Images too dark', '2025-12-15 05:39:51', NULL),
+(495, 1294, 'Weekly Site Update', 'rejected', 'Images too dark', '2025-12-15 05:39:51', NULL),
+(496, 1413, 'Weekly Site Update', 'approved', 'Images too dark', '2025-12-15 05:39:51', NULL),
+(497, 1176, 'Weekly Site Update', 'approved', 'Images too dark', '2025-12-15 05:39:51', NULL),
+(498, 1177, 'Weekly Site Update', 'submitted', 'Images too dark', '2025-12-15 05:39:51', NULL);
 
 -- --------------------------------------------------------
 
@@ -584,20 +1354,6 @@ CREATE TABLE `progress_files` (
   `file_path` varchar(500) NOT NULL,
   `original_name` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `progress_files`
---
-
-INSERT INTO `progress_files` (`file_id`, `progress_id`, `file_path`, `original_name`) VALUES
-(8, 7, 'progress_uploads/1763611666_691e9412e749d.jpg', '19a87211-2771-468f-9af6-598e9e20c2f5.jpg'),
-(10, 7, 'progress_uploads/1763643611_691f10dbc90ce.jpg', '19a87211-2771-468f-9af6-598e9e20c2f5.jpg'),
-(11, 7, 'progress_uploads/1763643611_691f10dbd100a.png', '8kjqosfqk.png'),
-(12, 7, 'progress_uploads/1763643611_691f10dbd1f8d.pdf', 'A Tool for Subscriptions Startups – Responses.pdf'),
-(19, 11, 'progress_uploads/demo_approved_photo.jpg', 'approved_photo.jpg'),
-(20, 12, 'progress_uploads/demo_submitted_photo.jpg', 'submitted_photo.jpg'),
-(21, 14, 'progress_uploads/1764395650_692a8a82489d2.png', 'slide2.png'),
-(24, 14, 'progress_uploads/1764509731_692c48236034a.pdf', 'ADS-Final-Project-Instructions-Individaul.pdf');
 
 -- --------------------------------------------------------
 
@@ -628,39 +1384,66 @@ CREATE TABLE `projects` (
 --
 
 INSERT INTO `projects` (`project_id`, `relationship_id`, `project_title`, `project_description`, `project_location`, `budget_range_min`, `budget_range_max`, `lot_size`, `floor_area`, `property_type`, `type_id`, `if_others_ctype`, `to_finish`, `project_status`, `selected_contractor_id`) VALUES
-(1, NULL, 'SAMPLE TITLE', 'SAMPLE TITLE DESC', 'TUMAGA', 1000000.00, 10000000.00, 235, 135, 'Residential', 1, NULL, 12, 'bidding_closed', 1),
-(3, NULL, 'EYY WASAP', 'WSSAP', 'ASDAS', 20000.00, 100000.00, 123, 123, 'Commercial', 1, NULL, 10, 'open', 0),
-(4, NULL, 'ASD', 'ASDASDAD', 'ASDSD', 1000.00, 2000.00, 23, 23, 'Residential', 7, NULL, 10, 'bidding_closed', 2),
-(5, 2, 'NIGGA CARL WAYNE ', 'SDSDVSDV', 'SDVSDV', 9000.00, 10000.00, 232, 212, 'Industrial', 2, NULL, 12, 'bidding_closed', 1),
-(6, NULL, 'PROJKSFSFCJAFCLAK', 'AFAFAWEFWEF', 'ASDweref', 1000.00, 2000.00, 10, 10, 'Commercial', 1, NULL, 2, 'bidding_closed', 1),
-(7, 2, 'PROJECT NI RONRON', 'DESCRIPTION', 'Lumbangan', 10000.00, 15000.00, 100, 90, 'Residential', 3, NULL, NULL, 'bidding_closed', 1),
-(8, 3, 'PROJECT NI SHANE', 'DESC', 'Paraiso Homes', 1000.00, 2000.00, 23, 20, 'Commercial', 5, NULL, NULL, 'bidding_closed', NULL),
-(9, 4, 'wgwg', 'wgwgwgw', 'gwwegwefw', 3000.00, 5000.00, 304, 234, 'Commercial', 4, NULL, NULL, 'bidding_closed', NULL),
-(10, 5, 'ggg', 'rgtrfgg', 'werwer', 42342.00, 234234.00, 234, 232, 'Commercial', 8, NULL, NULL, 'bidding_closed', NULL),
-(11, 6, 'Modern Residential House Construction', 'Looking for a contractor to build a modern 2-story residential house. Project includes foundation work, structural framing, roofing, electrical, plumbing, and finishing works.', 'Zamboanga City, Zamboanga del Sur', 2500000.00, 3500000.00, 300, 180, 'Residential', 1, NULL, 12, 'open', NULL),
-(12, 7, 'Commercial Building Renovation', 'Need contractor for complete renovation of a 3-story commercial building. Includes interior design, electrical rewiring, plumbing upgrade, and facade improvement.', 'Pagadian City, Zamboanga del Sur', 1500000.00, 2000000.00, 250, 450, 'Commercial', 1, NULL, 8, 'open', NULL),
-(13, 8, 'Warehouse Construction Project', 'Industrial warehouse construction project. Need experienced contractor for steel structure, concrete flooring, roofing, and basic electrical setup.', 'Dipolog City, Zamboanga del Norte', 5000000.00, 7000000.00, 1000, 800, 'Industrial', 1, NULL, 10, 'open', NULL),
-(14, 9, 'Single Family Home Construction', 'Building a cozy single-family home with 3 bedrooms, 2 bathrooms, living area, kitchen, and garage. Looking for reliable contractor with good track record.', 'Ipil, Zamboanga Sibugay', 1800000.00, 2500000.00, 200, 120, 'Residential', 1, NULL, 9, 'open', NULL),
-(15, 10, 'Agricultural Storage Facility', 'Construction of agricultural storage facility with proper ventilation, pest control features, and easy access roads. Must be durable and weather-resistant.', 'Molave, Zamboanga del Sur', 800000.00, 1200000.00, 500, 200, 'Agricultural', 1, NULL, 6, 'open', NULL),
-(16, 11, 'Modern Residential House Construction', 'Looking for a contractor to build a modern 2-story residential house. Project includes foundation work, structural framing, roofing, electrical, plumbing, and finishing works.', 'Zamboanga City, Zamboanga del Sur', 2500000.00, 3500000.00, 300, 180, 'Residential', 1, NULL, 12, 'open', NULL),
-(17, 12, 'Commercial Building Renovation', 'Need contractor for complete renovation of a 3-story commercial building. Includes interior design, electrical rewiring, plumbing upgrade, and facade improvement.', 'Pagadian City, Zamboanga del Sur', 1500000.00, 2000000.00, 250, 450, 'Commercial', 1, NULL, 8, 'open', NULL),
-(18, 13, 'Warehouse Construction Project', 'Industrial warehouse construction project. Need experienced contractor for steel structure, concrete flooring, roofing, and basic electrical setup.', 'Dipolog City, Zamboanga del Norte', 5000000.00, 7000000.00, 1000, 800, 'Industrial', 1, NULL, 10, 'open', NULL),
-(19, 14, 'Single Family Home Construction', 'Building a cozy single-family home with 3 bedrooms, 2 bathrooms, living area, kitchen, and garage. Looking for reliable contractor with good track record.', 'Ipil, Zamboanga Sibugay', 1800000.00, 2500000.00, 200, 120, 'Residential', 1, NULL, 9, 'open', NULL),
-(20, 15, 'Agricultural Storage Facility', 'Construction of agricultural storage facility with proper ventilation, pest control features, and easy access roads. Must be durable and weather-resistant.', 'Molave, Zamboanga del Sur', 800000.00, 1200000.00, 500, 200, 'Agricultural', 1, NULL, 6, 'open', NULL),
-(21, 16, 'Demo Project - Under Review', 'Owner just submitted, waiting for admin approval.', 'Demo City', 500000.00, 800000.00, 200, 120, 'Residential', 6, NULL, 6, 'open', NULL),
-(22, 17, 'Demo Project - Open For Bidding', 'Approved project, accepting bids.', 'Demo City', 1000000.00, 1500000.00, 300, 180, 'Residential', 6, NULL, 9, 'open', NULL),
-(23, 18, 'Demo Project - Bidding Closed', 'Bidding finished, contractor selected.', 'Demo City', 2000000.00, 2500000.00, 350, 220, 'Residential', 6, NULL, 12, 'bidding_closed', 2),
-(24, 19, 'Demo Project - Under Review', 'Owner just submitted, waiting for admin approval.', 'Demo City', 500000.00, 800000.00, 200, 120, 'Residential', 6, NULL, 6, 'open', NULL),
-(25, 20, 'Demo Project - Open For Bidding', 'Approved project, accepting bids.', 'Demo City', 1000000.00, 1500000.00, 300, 180, 'Residential', 6, NULL, 9, 'open', NULL),
-(26, 21, 'Demo Project - Bidding Closed', 'Bidding finished, contractor selected.', 'Demo City', 2000000.00, 2500000.00, 350, 220, 'Residential', 6, NULL, 12, 'bidding_closed', 2),
-(27, 22, 'Demo Project - Under Review', 'Owner just submitted, waiting for admin approval.', 'Demo City', 500000.00, 800000.00, 200, 120, 'Residential', 6, NULL, 6, 'open', NULL),
-(28, 23, 'Demo Project - Open For Bidding', 'Approved project, accepting bids.', 'Demo City', 1000000.00, 1500000.00, 300, 180, 'Residential', 6, NULL, 9, 'open', NULL),
-(29, 24, 'Demo Project - Bidding Closed', 'Bidding finished, contractor selected.', 'Demo City', 2000000.00, 2500000.00, 350, 220, 'Residential', 6, NULL, 12, 'bidding_closed', 2),
-(30, 25, 'asda', 'sdadada', 'asdasdasdadasdasdasd', 10000.00, 20000.00, 234, 211, 'Residential', 5, NULL, NULL, 'open', NULL),
-(31, 26, 'RONRONRONRON', 'RONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRONRON', 'Guiwan, RONRONRONRON, Zamboanga City, Zamboanga del Sur', 11000.00, 12000.00, 205, 100, 'Industrial', 5, NULL, NULL, 'open', NULL),
-(32, 27, 'SAMPLE TITLE NI ENOR', 'SAMPLE TITLE NI ENORSAMPLE TITLE NI ENORSAMPLE TITLE NI ENORSAMPLE TITLE NI ENORSAMPLE TITLE NI ENORSAMPLE TITLE NI ENORSAMPLE TITLE NI ENORSAMPLE TITLE NI ENORSAMPLE TITLE NI ENORSAMPLE TITLE NI ENOR', 'Cabaluay, SAMPLE TITLE NI ENOR, Zamboanga City, Zamboanga del Sur', 50000.00, 100000.00, 125, 100, 'Commercial', 4, NULL, NULL, 'open', NULL),
-(33, 28, 'Sample project ni shane hart jimenez', 'sample desc ni shane hart jmenez', 'Bunguiao, Bungiauooo, Zamboanga City, Zamboanga del Sur', 20000.00, 50000.00, 300, 200, 'Residential', 5, NULL, NULL, 'open', NULL),
-(34, 29, 'Sample sample', 'Sample sampleSample sampleSample sampleSample sampleSample sampleSample sample', 'Baliwasan, Sample sampleSample sample, Zamboanga City, Zamboanga del Sur', 10000.00, 20000.00, 200, 100, 'Commercial', 9, 'nigger', NULL, 'open', NULL);
+(670, 671, 'Project 671', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 8, NULL, NULL, 'open', NULL),
+(671, 674, 'Project 674', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL),
+(672, 676, 'Project 676', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 5, NULL, NULL, 'open', NULL),
+(673, 677, 'Project 677', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 9, NULL, NULL, 'open', NULL),
+(674, 679, 'Project 679', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 4, NULL, NULL, 'open', NULL),
+(675, 680, 'Project 680', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL),
+(676, 682, 'Project 682', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 4, NULL, NULL, 'open', NULL),
+(677, 684, 'Project 684', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 7, NULL, NULL, 'open', NULL),
+(678, 694, 'Project 694', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 8, NULL, NULL, 'open', NULL),
+(679, 695, 'Project 695', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 9, NULL, NULL, 'open', NULL),
+(680, 696, 'Project 696', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL),
+(681, 697, 'Project 697', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 7, NULL, NULL, 'open', NULL),
+(682, 698, 'Project 698', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 2, NULL, NULL, 'open', NULL),
+(683, 699, 'Project 699', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 5, NULL, NULL, 'open', NULL),
+(684, 704, 'Project 704', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL),
+(685, 705, 'Project 705', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 9, NULL, NULL, 'open', NULL),
+(686, 708, 'Project 708', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 5, NULL, NULL, 'open', NULL),
+(687, 713, 'Project 713', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 6, NULL, NULL, 'open', NULL),
+(688, 715, 'Project 715', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 4, NULL, NULL, 'open', NULL),
+(689, 718, 'Project 718', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 9, NULL, NULL, 'open', NULL),
+(690, 719, 'Project 719', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 4, NULL, NULL, 'open', NULL),
+(691, 720, 'Project 720', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 4, NULL, NULL, 'open', NULL),
+(692, 721, 'Project 721', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 3, NULL, NULL, 'open', NULL),
+(693, 722, 'Project 722', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 8, NULL, NULL, 'open', NULL),
+(694, 723, 'Project 723', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 7, NULL, NULL, 'open', NULL),
+(695, 726, 'Project 726', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 8, NULL, NULL, 'open', NULL),
+(696, 727, 'Project 727', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 3, NULL, NULL, 'open', NULL),
+(697, 724, 'Project 724', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', 1055),
+(698, 678, 'Project 678', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 4, NULL, NULL, 'in_progress', 1057),
+(699, 692, 'Project 692', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 4, NULL, NULL, 'in_progress', 1065),
+(700, 706, 'Project 706', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 6, NULL, NULL, 'in_progress', 1068),
+(701, 725, 'Project 725', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 3, NULL, NULL, 'in_progress', 1079),
+(702, 693, 'Project 693', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 4, NULL, NULL, 'in_progress', 1083),
+(703, 710, 'Project 710', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 7, NULL, NULL, 'in_progress', 1083),
+(704, 691, 'Project 691', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 5, NULL, NULL, 'in_progress', 1084),
+(705, 690, 'Project 690', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 9, NULL, NULL, 'in_progress', 1089),
+(706, 711, 'Project 711', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 7, NULL, NULL, 'in_progress', 1089),
+(707, 728, 'Project 728', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 4, NULL, NULL, 'in_progress', 1089),
+(708, 707, 'Project 707', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 2, NULL, NULL, 'in_progress', 1090),
+(709, 712, 'Project 712', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 2, NULL, NULL, 'in_progress', 1094),
+(710, 729, 'Project 729', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 3, NULL, NULL, 'in_progress', 1098),
+(711, 703, 'Project 703', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 2, NULL, NULL, 'in_progress', 1100),
+(712, 709, 'Project 709', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', 1105),
+(713, 686, 'Project 686', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', 1107),
+(714, 673, 'Project 673', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', 1109),
+(715, 685, 'Project 685', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 4, NULL, NULL, 'in_progress', 1123),
+(716, 717, 'Project 717', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 8, NULL, NULL, 'in_progress', 1127),
+(717, 672, 'Project 672', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 3, NULL, NULL, 'in_progress', 1132),
+(718, 687, 'Project 687', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 6, NULL, NULL, 'in_progress', 1133),
+(719, 716, 'Project 716', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 6, NULL, NULL, 'in_progress', 1133),
+(720, 675, 'Project 675', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 5, NULL, NULL, 'in_progress', 1135),
+(721, 714, 'Project 714', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 8, NULL, NULL, 'in_progress', 1145),
+(722, 689, 'Project 689', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 9, NULL, NULL, 'in_progress', 1147),
+(723, 701, 'Project 701', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 5, NULL, NULL, 'in_progress', 1149),
+(724, 670, 'Project 670', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 7, NULL, NULL, 'in_progress', 1150),
+(725, 700, 'Project 700', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', 1159),
+(726, 688, 'Project 688', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 3, NULL, NULL, 'in_progress', 1162),
+(727, 702, 'Project 702', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 9, NULL, NULL, 'in_progress', 1163),
+(728, 683, 'Project 683', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 6, NULL, NULL, 'in_progress', 1164),
+(729, 681, 'Project 681', 'Standard residential project description.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 6, NULL, NULL, 'in_progress', 1167);
 
 -- --------------------------------------------------------
 
@@ -675,33 +1458,6 @@ CREATE TABLE `project_files` (
   `file_path` varchar(255) NOT NULL,
   `uploaded_at` timestamp NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `project_files`
---
-
-INSERT INTO `project_files` (`file_id`, `project_id`, `file_type`, `file_path`, `uploaded_at`) VALUES
-(1, 7, 'building permit', 'projects/1763741088_69208da05048b.jpg', '2025-11-21 08:04:48'),
-(2, 7, 'title', 'projects/1763741088_69208da0516dc.png', '2025-11-21 08:04:48'),
-(3, 8, 'building permit', 'projects/1763743548_6920973ce2842.jpg', '2025-11-21 08:45:48'),
-(4, 8, 'title', 'projects/1763743548_6920973ce3b83.png', '2025-11-21 08:45:48'),
-(5, 9, 'building permit', 'projects/1763746344_6920a2282695c.jpg', '2025-11-21 09:32:24'),
-(6, 9, 'title', 'projects/1763746344_6920a228281c2.png', '2025-11-21 09:32:24'),
-(7, 9, 'blueprint', 'projects/1763746344_6920a22829262.pdf', '2025-11-21 09:32:24'),
-(8, 10, 'building permit', 'projects/1763826168_6921d9f8475b8.png', '2025-11-22 07:42:48'),
-(9, 10, 'title', 'projects/1763826168_6921d9f850e5f.png', '2025-11-22 07:42:48'),
-(10, 10, 'blueprint', 'projects/1763826168_6921d9f851eb1.pdf', '2025-11-22 07:42:48'),
-(11, 30, 'building permit', 'projects/1764349472_6929d6205b29c.png', '2025-11-28 09:04:32'),
-(12, 30, 'title', 'projects/1764349472_6929d62064905.png', '2025-11-28 09:04:32'),
-(13, 30, 'blueprint', 'projects/1764349472_6929d62065ca2.png', '2025-11-28 09:04:32'),
-(14, 31, 'building permit', 'projects/1764352378_6929e17aed051.png', '2025-11-28 09:52:58'),
-(15, 31, 'title', 'projects/1764352378_6929e17aeeb63.png', '2025-11-28 09:52:58'),
-(16, 32, 'building permit', 'projects/1764385898_692a646a89f0a.png', '2025-11-28 19:11:38'),
-(17, 32, 'title', 'projects/1764385898_692a646a9226b.png', '2025-11-28 19:11:38'),
-(18, 33, 'building permit', 'projects/1764386704_692a67906d747.png', '2025-11-28 19:25:04'),
-(19, 33, 'title', 'projects/1764386704_692a67906eaaa.png', '2025-11-28 19:25:04'),
-(20, 34, 'building permit', 'projects/1764386765_692a67cde05ce.png', '2025-11-28 19:26:05'),
-(21, 34, 'title', 'projects/1764386765_692a67cde1ba5.png', '2025-11-28 19:26:05');
 
 -- --------------------------------------------------------
 
@@ -726,34 +1482,66 @@ CREATE TABLE `project_relationships` (
 --
 
 INSERT INTO `project_relationships` (`rel_id`, `owner_id`, `selected_contractor_id`, `project_post_status`, `admin_reason`, `reason`, `bidding_due`, `created_at`, `updated_at`) VALUES
-(2, 6, 1, 'due', NULL, '', '2025-11-29', '2025-11-21 08:04:48', '2025-11-30 09:24:52'),
-(3, 6, NULL, 'due', NULL, '', '2025-11-23', '2025-11-21 08:45:48', '2025-11-30 09:24:52'),
-(4, 6, NULL, 'under_review', NULL, '', '2025-11-23', '2025-11-21 09:32:24', '2025-11-21 09:32:24'),
-(5, 6, NULL, 'under_review', NULL, NULL, '2025-11-24', '2025-11-22 07:42:47', '2025-11-22 07:42:47'),
-(6, 1, NULL, 'approved', NULL, NULL, '2025-12-28', '2025-11-28 07:00:06', '2025-11-28 07:00:06'),
-(7, 1, NULL, 'approved', NULL, NULL, '2025-12-28', '2025-11-28 07:00:06', '2025-11-28 07:00:06'),
-(8, 1, NULL, 'approved', NULL, NULL, '2025-12-28', '2025-11-28 07:00:06', '2025-11-28 07:00:06'),
-(9, 1, NULL, 'approved', NULL, NULL, '2025-12-28', '2025-11-28 07:00:06', '2025-11-28 07:00:06'),
-(10, 1, NULL, 'approved', NULL, NULL, '2025-12-28', '2025-11-28 07:00:06', '2025-11-28 07:00:06'),
-(11, 1, NULL, 'approved', NULL, NULL, '2025-12-28', '2025-11-28 07:14:11', '2025-11-28 07:14:11'),
-(12, 1, NULL, 'approved', NULL, NULL, '2025-12-28', '2025-11-28 07:14:11', '2025-11-28 07:14:11'),
-(13, 1, NULL, 'approved', NULL, NULL, '2025-12-28', '2025-11-28 07:14:11', '2025-11-28 07:14:11'),
-(14, 1, NULL, 'approved', NULL, NULL, '2025-12-28', '2025-11-28 07:14:11', '2025-11-28 07:14:11'),
-(15, 1, NULL, 'approved', NULL, NULL, '2025-12-28', '2025-11-28 07:14:11', '2025-11-28 07:14:11'),
-(16, 1, NULL, 'under_review', NULL, NULL, '2025-12-13', '2025-11-28 07:14:11', '2025-11-28 07:14:11'),
-(17, 1, NULL, 'approved', NULL, NULL, '2025-12-18', '2025-11-28 07:14:11', '2025-11-28 07:14:11'),
-(18, 1, 2, 'due', NULL, NULL, '2025-11-27', '2025-11-28 07:14:11', '2025-11-30 09:24:52'),
-(19, 1, NULL, 'under_review', NULL, NULL, '2025-12-13', '2025-11-28 07:14:46', '2025-11-28 07:14:46'),
-(20, 1, NULL, 'approved', NULL, NULL, '2025-12-18', '2025-11-28 07:14:46', '2025-11-28 07:14:46'),
-(21, 1, 2, 'due', NULL, NULL, '2025-11-27', '2025-11-28 07:14:46', '2025-11-30 09:24:52'),
-(22, 1, NULL, 'under_review', NULL, NULL, '2025-12-13', '2025-11-28 07:15:15', '2025-11-28 07:15:15'),
-(23, 1, NULL, 'approved', NULL, NULL, '2025-12-18', '2025-11-28 07:15:15', '2025-11-28 07:15:15'),
-(24, 1, 2, 'due', NULL, NULL, '2025-11-27', '2025-11-28 07:15:15', '2025-11-30 09:24:52'),
-(25, 2, NULL, 'due', NULL, NULL, '2025-11-30', '2025-11-28 09:04:31', '2025-11-30 17:26:28'),
-(26, 2, NULL, 'approved', NULL, NULL, '2025-12-01', '2025-11-28 09:52:58', '2025-11-28 17:53:25'),
-(27, 6, NULL, 'under_review', NULL, NULL, '2025-11-30', '2025-11-28 19:11:38', '2025-11-28 19:11:38'),
-(28, 6, NULL, 'under_review', NULL, NULL, '2025-11-30', '2025-11-28 19:25:04', '2025-11-28 19:25:04'),
-(29, 6, NULL, 'under_review', NULL, NULL, '2025-11-30', '2025-11-28 19:26:05', '2025-11-28 19:26:05');
+(670, 1114, 1150, 'rejected', NULL, NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(671, 1165, NULL, 'under_review', NULL, NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(672, 1139, 1132, 'approved', 'Violation of posting rules.', NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(673, 1110, 1109, 'rejected', NULL, NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(674, 1162, NULL, 'approved', 'Violation of posting rules.', NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(675, 1088, 1135, 'approved', NULL, NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(676, 1135, NULL, 'approved', NULL, NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(677, 1126, NULL, 'under_review', NULL, NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(678, 1109, 1057, 'rejected', NULL, NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(679, 1069, NULL, 'rejected', NULL, NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(680, 1080, NULL, 'approved', NULL, NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(681, 1079, 1167, 'approved', NULL, NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(682, 1088, NULL, 'under_review', NULL, NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(683, 1100, 1164, 'under_review', 'Violation of posting rules.', NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(684, 1169, NULL, 'rejected', NULL, NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(685, 1078, 1123, 'under_review', NULL, NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(686, 1150, 1107, 'approved', NULL, NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(687, 1160, 1133, 'rejected', NULL, NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(688, 1147, 1162, 'under_review', NULL, NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(689, 1088, 1147, 'approved', NULL, NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(690, 1146, 1089, 'approved', NULL, NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(691, 1088, 1084, 'under_review', NULL, NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(692, 1147, 1065, 'approved', NULL, NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(693, 1064, 1083, 'under_review', 'Violation of posting rules.', NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(694, 1058, NULL, 'approved', NULL, NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(695, 1117, NULL, 'rejected', 'Violation of posting rules.', NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(696, 1152, NULL, 'under_review', 'Violation of posting rules.', NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(697, 1085, NULL, 'under_review', NULL, NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(698, 1055, NULL, 'approved', NULL, NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(699, 1166, NULL, 'under_review', NULL, NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(700, 1103, 1159, 'approved', NULL, NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(701, 1089, 1149, 'rejected', NULL, NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(702, 1169, 1163, 'under_review', 'Violation of posting rules.', NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(703, 1124, 1100, 'rejected', 'Violation of posting rules.', NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(704, 1083, NULL, 'under_review', 'Violation of posting rules.', NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(705, 1127, NULL, 'rejected', 'Violation of posting rules.', NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(706, 1146, 1068, 'rejected', NULL, NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(707, 1106, 1090, 'rejected', NULL, NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(708, 1138, NULL, 'under_review', 'Violation of posting rules.', NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(709, 1144, 1105, 'under_review', NULL, NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(710, 1125, 1083, 'approved', 'Violation of posting rules.', NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(711, 1073, 1089, 'rejected', NULL, NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(712, 1056, 1094, 'rejected', NULL, NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(713, 1107, NULL, 'under_review', 'Violation of posting rules.', NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(714, 1083, 1145, 'approved', NULL, NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(715, 1053, NULL, 'approved', NULL, NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(716, 1108, 1133, 'rejected', NULL, NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(717, 1055, 1127, 'approved', NULL, NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(718, 1063, NULL, 'under_review', NULL, NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(719, 1136, NULL, 'under_review', NULL, NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(720, 1160, NULL, 'under_review', NULL, NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(721, 1128, NULL, 'approved', NULL, NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(722, 1120, NULL, 'approved', NULL, NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(723, 1116, NULL, 'under_review', NULL, NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(724, 1093, 1055, 'rejected', NULL, NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(725, 1153, 1079, 'rejected', NULL, NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(726, 1052, NULL, 'rejected', NULL, NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(727, 1053, NULL, 'under_review', NULL, NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(728, 1082, 1089, 'under_review', 'Violation of posting rules.', NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(729, 1108, 1098, 'under_review', NULL, NULL, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51');
 
 -- --------------------------------------------------------
 
@@ -777,7 +1565,9 @@ CREATE TABLE `property_owners` (
   `age` int(11) NOT NULL,
   `occupation_id` int(11) DEFAULT NULL,
   `occupation_other` varchar(200) DEFAULT NULL,
-  `verification_status` enum('pending','rejected','verified','') NOT NULL DEFAULT 'pending',
+  `verification_status` enum('pending','rejected','approved','') NOT NULL DEFAULT 'pending',
+  `is_active` tinyint(1) NOT NULL DEFAULT 0,
+  `rejection_reason` text DEFAULT NULL,
   `verification_date` timestamp NOT NULL,
   `created_at` timestamp NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -786,20 +1576,127 @@ CREATE TABLE `property_owners` (
 -- Dumping data for table `property_owners`
 --
 
-INSERT INTO `property_owners` (`owner_id`, `user_id`, `last_name`, `middle_name`, `first_name`, `phone_number`, `address`, `valid_id_id`, `valid_id_photo`, `valid_id_back_photo`, `police_clearance`, `date_of_birth`, `age`, `occupation_id`, `occupation_other`, `verification_status`, `verification_date`, `created_at`) VALUES
-(1, 1, 'Jimenez', NULL, 'Shane Hart', '09926314071', 'Sapphire, Tumaga, City of Zamboanga, Zamboanga Del Sur, 7000', 9, 'validID/KRZqUkJdJ5MNgo0sc8XJzv34JUAuwAWnyqiBNRUj.jpg', '', 'policeClearance/93cTyjFuXGYfruccxpqlLcB0PpEfVdqLA3U22nAA.jpg', '2004-10-01', 21, 19, NULL, 'pending', '0000-00-00 00:00:00', '2025-11-01 04:49:04'),
-(2, 2, 'Hart', NULL, 'Shane', '09926354567', 'aasdasd, Canangca-an, Corella, Bohol, 7000', 9, 'owner_documents/1762064843_valid_id_557969314_2535718666804066_2236441680610974884_n.png', '', 'owner_documents/1762064843_police_557969314_2535718666804066_2236441680610974884_n.png', '1997-10-15', 28, 20, NULL, 'pending', '0000-00-00 00:00:00', '2025-11-01 22:27:25'),
-(4, 10, 'ahdbahs', NULL, 'ahdbahs', '09926314071', 'sapphire, Pongol, Libona, Bukidnon, 7000', 18, 'validID/J2N7HRzSSqIZjj1aizDXhROD3JsHGhOxxM9TVTiR.png', '', 'policeClearance/S2Q5O9Oq7ZzYxeBXE9ZoIAQhHtXjeFVkKI0l9Rsz.png', '1985-06-11', 40, 23, NULL, 'pending', '2025-11-02 08:03:30', '2025-11-02 00:03:30'),
-(5, 11, 'ahdbahsahdbahs', NULL, 'ahdbahahdbahss', '09926314033', 'sapphire, District II (Pob.), Gainza, Camarines Sur, 7000', 18, 'owner_documents/1762072939_valid_id_566669930_786139620958735_7349053833120477730_n.jpg', '', 'owner_documents/1762072939_police_557432724_783418661334280_8030311886887135624_n.jpg', '2000-02-07', 25, 23, NULL, 'pending', '2025-11-02 08:42:25', '2025-11-02 00:42:25'),
-(6, 12, 'Kulong', 'Gellecania', 'Rone', '09926318765', 'Emerald, Tumaga, City of Zamboanga, Zamboanga Del Sur, 7000', 9, 'validID/pGZFZygIzYsijS3D520jq8Dka455HTdM9ph95jhX.png', '', 'policeClearance/VFBu06m9DcmkOifKVaUhRX7djn2X8wgQTiTMFJ5G.png', '2005-07-26', 20, 23, NULL, 'pending', '2025-11-02 09:05:44', '2025-11-02 01:05:44'),
-(7, 13, 'asds', NULL, 'asds', '09923456453', 'sdfdf, Lagundi, Rapu-Rapu, Albay, 7000', 2, 'validID/SvmYD784lHdtiJyolb6SxMfG9c694ofSwknfWET5.png', '', 'policeClearance/v7ZqxEClr4T9FAPw5uTPzd8ge37gNFV1aYGqTTND.jpg', '1992-06-08', 33, 8, NULL, 'pending', '2025-11-11 14:35:01', '2025-11-11 06:35:01'),
-(8, 14, 'asdasd', 'asdasdasdasd', 'asdasdasd', '09926314071', 'asdad, Carawisan II, San Remigio, Antique, 7000', 18, 'validID/hsi5cyN8e3cyBbWXLykWhVDNPIYhFO1WnjJ5I1sh.png', '', 'policeClearance/aKLC85CcoI9JbFv6xKzCVTruAyBF23khvJe2MoYr.pdf', '1995-10-24', 30, 8, NULL, 'pending', '2025-11-11 14:41:52', '2025-11-11 06:41:52'),
-(9, 22, 'Asda', NULL, 'Asda', '09923314071', 'aasdasd, Busali, Biliran, Biliran, 7000', 2, 'validID/SCnbV5G7WkgHUUBN8wmneIYHsJkCobW2GJxx5FWU.jpg', 'validID/kJd5srsT48ZirmlCwrJSOPuKF2PGINF20HG1nE9Z.jpg', 'policeClearance/FOSFoQpxmIYo2iXxESAfMSgZQcAbvySf0voB1c17.jpg', '1999-01-05', 26, 23, NULL, 'pending', '2025-11-13 15:20:42', '2025-11-13 07:20:42'),
-(10, 23, 'Sdsdf', 'Sdfsd', 'Sds', '09926314987', 'sdfsdfssd, Buahan, City of Lamitan, Basilan, 7000', 2, 'validID/OCFo8HJJwfaRRhguC1dIdczuhAs6K6TzMXhSRYqo.jpg', 'validID/Tjx0eFN8ftFmr7tAM9PkfMqWXqTGKmhfcOjmPhb5.jpg', 'policeClearance/FgOpbkfe0SEs3cbcVbG2o3sNEWFiunkNxXH4gJZU.jpg', '2003-06-10', 22, 23, NULL, 'pending', '2025-11-13 17:44:26', '2025-11-13 09:44:26'),
-(11, 25, 'Hart', NULL, 'Shane', '09926354567', 'aasdasd, Loo, Buguias, Benguet, 7000', 2, 'validID/dZBohE5Jfgx3Waz3PcygOoiir47FYrL6WgaA7pSl.jpg', 'validID/H9kN5gESlOAHUPpgDPS48ckbsWK6rkPkXGE2zrwz.jpg', 'policeClearance/ydazaxBY9v79UL7vtkTREyCI7c9BwCKSqMmXU9Jc.jpg', '1992-03-04', 33, 23, NULL, 'pending', '2025-11-15 13:36:42', '2025-11-15 05:36:42'),
-(12, 26, 'Yut7i6rifytk', 'Trytkfyit', 'Ljuguyguyl', '09926354987', 'aasdasd, Lengaoan, Buguias, Benguet, 7000', 18, 'validID/SUPYW6qWZbdHTjRfnXgUgwyZVshmGGE33XfElzkj.jpg', 'validID/fMv60QxefoLchPyXcmDcZWFc6tM95d5BelX37GVq.jpg', 'policeClearance/kSmRaUAvyQ1wCiJUkuUEpN4VEioBk3ZJkLJ7DRWk.jpg', '1999-02-02', 26, 17, NULL, 'pending', '2025-11-16 11:20:07', '2025-11-16 03:20:07'),
-(13, 27, 'Asdsa', NULL, 'Asda', '09926314071', 'aasdasd, Bunga, Cabucgayan, Biliran, 7000', 2, 'validID/ZHvs9fU7rFasEu2BvurDVaKjsWu4GB5059egIzQV.png', 'validID/ee64nJxOD8AM4DxJjeyIoArF7mGVD80jrmOKxRyx.png', 'policeClearance/KsLAb117HjwIMAqfQzwYkwnkCTxfCTx92NpO7MRj.png', '2001-02-08', 24, 22, NULL, 'pending', '2025-11-19 00:17:48', '2025-11-18 16:17:48'),
-(14, 28, 'Sld', 'Wyne', 'Crl', '09360211158', 'Porcentro, 097332094, 097332000, 097300000, 7000', 17, 'validID/wiUA5CzU1hJD8GbQPWOnaKNfiLHV451gAutR6iLq.jpg', 'validID/dhWEhBmtzT3KCEaW8SqiA8SWRrGgQxMIab12vJFf.jpg', 'policeClearance/iE8nDNfpRW3mfurX2KMLzxBPhD10OWdoXhcqizND.jpg', '1999-11-27', 26, 21, NULL, 'pending', '2025-11-27 14:34:25', '2025-11-27 06:34:25');
+INSERT INTO `property_owners` (`owner_id`, `user_id`, `last_name`, `middle_name`, `first_name`, `phone_number`, `address`, `valid_id_id`, `valid_id_photo`, `valid_id_back_photo`, `police_clearance`, `date_of_birth`, `age`, `occupation_id`, `occupation_other`, `verification_status`, `is_active`, `rejection_reason`, `verification_date`, `created_at`) VALUES
+(1052, 101, 'OwnerLast101', NULL, 'OwnerFirst101', '09990000101', 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 9, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1053, 102, 'OwnerLast102', NULL, 'OwnerFirst102', '09990000102', 'Tetuan, Zamboanga City', 5, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 5, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1054, 103, 'OwnerLast103', NULL, 'OwnerFirst103', '09990000103', 'Tetuan, Zamboanga City', 6, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 26, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1055, 104, 'OwnerLast104', NULL, 'OwnerFirst104', '09990000104', 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 9, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1056, 105, 'OwnerLast105', NULL, 'OwnerFirst105', '09990000105', 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 9, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1057, 106, 'OwnerLast106', NULL, 'OwnerFirst106', '09990000106', 'Tetuan, Zamboanga City', 2, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 14, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1058, 107, 'OwnerLast107', NULL, 'OwnerFirst107', '09990000107', 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 18, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1059, 108, 'OwnerLast108', NULL, 'OwnerFirst108', '09990000108', 'Tetuan, Zamboanga City', 2, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 15, NULL, 'pending', 1, NULL, '0000-00-00 00:00:00', '2025-12-15 05:39:51'),
+(1060, 109, 'OwnerLast109', NULL, 'OwnerFirst109', '09990000109', 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 3, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1061, 110, 'OwnerLast110', NULL, 'OwnerFirst110', '09990000110', 'Tetuan, Zamboanga City', 5, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 20, NULL, 'rejected', 1, 'Invalid ID.', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1062, 111, 'OwnerLast111', NULL, 'OwnerFirst111', '09990000111', 'Tetuan, Zamboanga City', 2, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 3, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1063, 112, 'OwnerLast112', NULL, 'OwnerFirst112', '09990000112', 'Tetuan, Zamboanga City', 5, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 25, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1064, 113, 'OwnerLast113', NULL, 'OwnerFirst113', '09990000113', 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 26, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1065, 114, 'OwnerLast114', NULL, 'OwnerFirst114', '09990000114', 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 24, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1066, 115, 'OwnerLast115', NULL, 'OwnerFirst115', '09990000115', 'Tetuan, Zamboanga City', 5, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 23, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1067, 116, 'OwnerLast116', NULL, 'OwnerFirst116', '09990000116', 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 2, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1068, 117, 'OwnerLast117', NULL, 'OwnerFirst117', '09990000117', 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 23, NULL, 'pending', 1, NULL, '0000-00-00 00:00:00', '2025-12-15 05:39:51'),
+(1069, 118, 'OwnerLast118', NULL, 'OwnerFirst118', '09990000118', 'Tetuan, Zamboanga City', 2, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 11, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1070, 119, 'OwnerLast119', NULL, 'OwnerFirst119', '09990000119', 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 12, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1071, 120, 'OwnerLast120', NULL, 'OwnerFirst120', '09990000120', 'Tetuan, Zamboanga City', 2, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 18, NULL, 'rejected', 0, 'Invalid ID.', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1072, 121, 'OwnerLast121', NULL, 'OwnerFirst121', '09990000121', 'Tetuan, Zamboanga City', 2, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 10, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1073, 122, 'OwnerLast122', NULL, 'OwnerFirst122', '09990000122', 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 14, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1074, 123, 'OwnerLast123', NULL, 'OwnerFirst123', '09990000123', 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 20, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1075, 124, 'OwnerLast124', NULL, 'OwnerFirst124', '09990000124', 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 2, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1076, 125, 'OwnerLast125', NULL, 'OwnerFirst125', '09990000125', 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 5, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1077, 126, 'OwnerLast126', NULL, 'OwnerFirst126', '09990000126', 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 25, NULL, 'pending', 1, NULL, '0000-00-00 00:00:00', '2025-12-15 05:39:51'),
+(1078, 127, 'OwnerLast127', NULL, 'OwnerFirst127', '09990000127', 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 21, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1079, 128, 'OwnerLast128', NULL, 'OwnerFirst128', '09990000128', 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 7, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1080, 129, 'OwnerLast129', NULL, 'OwnerFirst129', '09990000129', 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 25, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1081, 130, 'OwnerLast130', NULL, 'OwnerFirst130', '09990000130', 'Tetuan, Zamboanga City', 2, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 24, NULL, 'rejected', 1, 'Invalid ID.', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1082, 131, 'OwnerLast131', NULL, 'OwnerFirst131', '09990000131', 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 12, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1083, 132, 'OwnerLast132', NULL, 'OwnerFirst132', '09990000132', 'Tetuan, Zamboanga City', 6, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 4, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1084, 133, 'OwnerLast133', NULL, 'OwnerFirst133', '09990000133', 'Tetuan, Zamboanga City', 2, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 21, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1085, 134, 'OwnerLast134', NULL, 'OwnerFirst134', '09990000134', 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 9, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1086, 135, 'OwnerLast135', NULL, 'OwnerFirst135', '09990000135', 'Tetuan, Zamboanga City', 2, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 10, NULL, 'pending', 1, NULL, '0000-00-00 00:00:00', '2025-12-15 05:39:51'),
+(1087, 136, 'OwnerLast136', NULL, 'OwnerFirst136', '09990000136', 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 11, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1088, 137, 'OwnerLast137', NULL, 'OwnerFirst137', '09990000137', 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 16, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1089, 138, 'OwnerLast138', NULL, 'OwnerFirst138', '09990000138', 'Tetuan, Zamboanga City', 5, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 11, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1090, 139, 'OwnerLast139', NULL, 'OwnerFirst139', '09990000139', 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 23, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1091, 140, 'OwnerLast140', NULL, 'OwnerFirst140', '09990000140', 'Tetuan, Zamboanga City', 5, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 4, NULL, 'rejected', 0, 'Invalid ID.', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1092, 141, 'OwnerLast141', NULL, 'OwnerFirst141', '09990000141', 'Tetuan, Zamboanga City', 5, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 23, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1093, 142, 'OwnerLast142', NULL, 'OwnerFirst142', '09990000142', 'Tetuan, Zamboanga City', 6, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 10, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1094, 143, 'OwnerLast143', NULL, 'OwnerFirst143', '09990000143', 'Tetuan, Zamboanga City', 6, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 22, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1095, 144, 'OwnerLast144', NULL, 'OwnerFirst144', '09990000144', 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 2, NULL, 'pending', 1, NULL, '0000-00-00 00:00:00', '2025-12-15 05:39:51'),
+(1096, 145, 'OwnerLast145', NULL, 'OwnerFirst145', '09990000145', 'Tetuan, Zamboanga City', 6, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 25, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1097, 146, 'OwnerLast146', NULL, 'OwnerFirst146', '09990000146', 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 20, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1098, 147, 'OwnerLast147', NULL, 'OwnerFirst147', '09990000147', 'Tetuan, Zamboanga City', 6, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 18, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1099, 148, 'OwnerLast148', NULL, 'OwnerFirst148', '09990000148', 'Tetuan, Zamboanga City', 5, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 26, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1100, 149, 'OwnerLast149', NULL, 'OwnerFirst149', '09990000149', 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 5, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1101, 150, 'OwnerLast150', NULL, 'OwnerFirst150', '09990000150', 'Tetuan, Zamboanga City', 2, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 12, NULL, 'rejected', 1, 'Invalid ID.', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1102, 151, 'OwnerLast151', NULL, 'OwnerFirst151', '09990000151', 'Tetuan, Zamboanga City', 2, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 3, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1103, 152, 'OwnerLast152', NULL, 'OwnerFirst152', '09990000152', 'Tetuan, Zamboanga City', 5, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 10, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1104, 153, 'OwnerLast153', NULL, 'OwnerFirst153', '09990000153', 'Tetuan, Zamboanga City', 6, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 13, NULL, 'pending', 1, NULL, '0000-00-00 00:00:00', '2025-12-15 05:39:51'),
+(1105, 154, 'OwnerLast154', NULL, 'OwnerFirst154', '09990000154', 'Tetuan, Zamboanga City', 2, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 5, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1106, 155, 'OwnerLast155', NULL, 'OwnerFirst155', '09990000155', 'Tetuan, Zamboanga City', 2, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 22, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1107, 156, 'OwnerLast156', NULL, 'OwnerFirst156', '09990000156', 'Tetuan, Zamboanga City', 5, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 22, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1108, 157, 'OwnerLast157', NULL, 'OwnerFirst157', '09990000157', 'Tetuan, Zamboanga City', 6, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 15, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1109, 158, 'OwnerLast158', NULL, 'OwnerFirst158', '09990000158', 'Tetuan, Zamboanga City', 6, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 21, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1110, 159, 'OwnerLast159', NULL, 'OwnerFirst159', '09990000159', 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 11, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1111, 160, 'OwnerLast160', NULL, 'OwnerFirst160', '09990000160', 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 23, NULL, 'rejected', 0, 'Invalid ID.', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1112, 161, 'OwnerLast161', NULL, 'OwnerFirst161', '09990000161', 'Tetuan, Zamboanga City', 2, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 6, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1113, 162, 'OwnerLast162', NULL, 'OwnerFirst162', '09990000162', 'Tetuan, Zamboanga City', 5, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 21, NULL, 'pending', 1, NULL, '0000-00-00 00:00:00', '2025-12-15 05:39:51'),
+(1114, 163, 'OwnerLast163', NULL, 'OwnerFirst163', '09990000163', 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 20, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1115, 164, 'OwnerLast164', NULL, 'OwnerFirst164', '09990000164', 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 16, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1116, 165, 'OwnerLast165', NULL, 'OwnerFirst165', '09990000165', 'Tetuan, Zamboanga City', 2, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 26, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1117, 166, 'OwnerLast166', NULL, 'OwnerFirst166', '09990000166', 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 18, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1118, 167, 'OwnerLast167', NULL, 'OwnerFirst167', '09990000167', 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 4, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1119, 168, 'OwnerLast168', NULL, 'OwnerFirst168', '09990000168', 'Tetuan, Zamboanga City', 2, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 18, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1120, 169, 'OwnerLast169', NULL, 'OwnerFirst169', '09990000169', 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 1, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1121, 170, 'OwnerLast170', NULL, 'OwnerFirst170', '09990000170', 'Tetuan, Zamboanga City', 6, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 18, NULL, 'rejected', 1, 'Invalid ID.', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1122, 171, 'OwnerLast171', NULL, 'OwnerFirst171', '09990000171', 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 14, NULL, 'pending', 1, NULL, '0000-00-00 00:00:00', '2025-12-15 05:39:51'),
+(1123, 172, 'OwnerLast172', NULL, 'OwnerFirst172', '09990000172', 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 19, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1124, 173, 'OwnerLast173', NULL, 'OwnerFirst173', '09990000173', 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 15, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1125, 174, 'OwnerLast174', NULL, 'OwnerFirst174', '09990000174', 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 20, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1126, 175, 'OwnerLast175', NULL, 'OwnerFirst175', '09990000175', 'Tetuan, Zamboanga City', 6, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 20, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1127, 176, 'OwnerLast176', NULL, 'OwnerFirst176', '09990000176', 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 2, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1128, 177, 'OwnerLast177', NULL, 'OwnerFirst177', '09990000177', 'Tetuan, Zamboanga City', 2, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 12, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1129, 178, 'OwnerLast178', NULL, 'OwnerFirst178', '09990000178', 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 6, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1130, 179, 'OwnerLast179', NULL, 'OwnerFirst179', '09990000179', 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 1, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1131, 180, 'OwnerLast180', NULL, 'OwnerFirst180', '09990000180', 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 22, NULL, 'rejected', 0, 'Invalid ID.', '0000-00-00 00:00:00', '2025-12-15 05:39:51'),
+(1132, 181, 'OwnerLast181', NULL, 'OwnerFirst181', '09990000181', 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 25, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1133, 182, 'OwnerLast182', NULL, 'OwnerFirst182', '09990000182', 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 17, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1134, 183, 'OwnerLast183', NULL, 'OwnerFirst183', '09990000183', 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 7, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1135, 184, 'OwnerLast184', NULL, 'OwnerFirst184', '09990000184', 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 24, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1136, 185, 'OwnerLast185', NULL, 'OwnerFirst185', '09990000185', 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 9, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1137, 186, 'OwnerLast186', NULL, 'OwnerFirst186', '09990000186', 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 8, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1138, 187, 'OwnerLast187', NULL, 'OwnerFirst187', '09990000187', 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 10, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1139, 188, 'OwnerLast188', NULL, 'OwnerFirst188', '09990000188', 'Tetuan, Zamboanga City', 2, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 19, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1140, 189, 'OwnerLast189', NULL, 'OwnerFirst189', '09990000189', 'Tetuan, Zamboanga City', 2, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 23, NULL, 'pending', 1, NULL, '0000-00-00 00:00:00', '2025-12-15 05:39:51'),
+(1141, 190, 'OwnerLast190', NULL, 'OwnerFirst190', '09990000190', 'Tetuan, Zamboanga City', 2, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 3, NULL, 'rejected', 1, 'Invalid ID.', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1142, 191, 'OwnerLast191', NULL, 'OwnerFirst191', '09990000191', 'Tetuan, Zamboanga City', 2, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 19, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1143, 192, 'OwnerLast192', NULL, 'OwnerFirst192', '09990000192', 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 25, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1144, 193, 'OwnerLast193', NULL, 'OwnerFirst193', '09990000193', 'Tetuan, Zamboanga City', 5, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 22, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1145, 194, 'OwnerLast194', NULL, 'OwnerFirst194', '09990000194', 'Tetuan, Zamboanga City', 6, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 19, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1146, 195, 'OwnerLast195', NULL, 'OwnerFirst195', '09990000195', 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 10, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1147, 196, 'OwnerLast196', NULL, 'OwnerFirst196', '09990000196', 'Tetuan, Zamboanga City', 5, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 21, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1148, 197, 'OwnerLast197', NULL, 'OwnerFirst197', '09990000197', 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 13, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1149, 198, 'OwnerLast198', NULL, 'OwnerFirst198', '09990000198', 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 11, NULL, 'pending', 1, NULL, '0000-00-00 00:00:00', '2025-12-15 05:39:51'),
+(1150, 199, 'OwnerLast199', NULL, 'OwnerFirst199', '09990000199', 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 3, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1151, 200, 'OwnerLast200', NULL, 'OwnerFirst200', '09990000200', 'Tetuan, Zamboanga City', 2, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 21, NULL, 'rejected', 0, 'Invalid ID.', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1152, 201, 'OwnerLast201', NULL, 'OwnerFirst201', '09990000201', 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 6, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1153, 202, 'OwnerLast202', NULL, 'OwnerFirst202', '09990000202', 'Tetuan, Zamboanga City', 6, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 18, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1154, 203, 'OwnerLast203', NULL, 'OwnerFirst203', '09990000203', 'Tetuan, Zamboanga City', 2, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 25, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1155, 204, 'OwnerLast204', NULL, 'OwnerFirst204', '09990000204', 'Tetuan, Zamboanga City', 6, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 14, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1156, 205, 'OwnerLast205', NULL, 'OwnerFirst205', '09990000205', 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 25, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1157, 206, 'OwnerLast206', NULL, 'OwnerFirst206', '09990000206', 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 6, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1158, 207, 'OwnerLast207', NULL, 'OwnerFirst207', '09990000207', 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 18, NULL, 'pending', 1, NULL, '0000-00-00 00:00:00', '2025-12-15 05:39:51'),
+(1159, 208, 'OwnerLast208', NULL, 'OwnerFirst208', '09990000208', 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 18, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1160, 209, 'OwnerLast209', NULL, 'OwnerFirst209', '09990000209', 'Tetuan, Zamboanga City', 6, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 20, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1161, 210, 'OwnerLast210', NULL, 'OwnerFirst210', '09990000210', 'Tetuan, Zamboanga City', 6, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 10, NULL, 'rejected', 1, 'Invalid ID.', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1162, 211, 'OwnerLast211', NULL, 'OwnerFirst211', '09990000211', 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 17, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1163, 212, 'OwnerLast212', NULL, 'OwnerFirst212', '09990000212', 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 1, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1164, 213, 'OwnerLast213', NULL, 'OwnerFirst213', '09990000213', 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 22, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1165, 214, 'OwnerLast214', NULL, 'OwnerFirst214', '09990000214', 'Tetuan, Zamboanga City', 6, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 15, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1166, 215, 'OwnerLast215', NULL, 'OwnerFirst215', '09990000215', 'Tetuan, Zamboanga City', 2, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 5, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1167, 216, 'OwnerLast216', NULL, 'OwnerFirst216', '09990000216', 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 4, NULL, 'pending', 1, NULL, '0000-00-00 00:00:00', '2025-12-15 05:39:51'),
+(1168, 217, 'OwnerLast217', NULL, 'OwnerFirst217', '09990000217', 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 23, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1169, 218, 'OwnerLast218', NULL, 'OwnerFirst218', '09990000218', 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 26, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1170, 219, 'OwnerLast219', NULL, 'OwnerFirst219', '09990000219', 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 4, NULL, 'approved', 1, NULL, '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(1171, 220, 'OwnerLast220', NULL, 'OwnerFirst220', '09990000220', 'Tetuan, Zamboanga City', 5, 'id_front.jpg', 'id_back.jpg', 'police_clearance.jpg', '1990-01-01', 35, 22, NULL, 'rejected', 0, 'Invalid ID.', '2025-12-15 05:39:51', '2025-12-15 05:39:51');
 
 -- --------------------------------------------------------
 
@@ -831,13 +1728,6 @@ CREATE TABLE `reviews` (
   `created_at` timestamp NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data for table `reviews`
---
-
-INSERT INTO `reviews` (`review_id`, `project_id`, `reviewer_user_id`, `reviewee_user_id`, `rating`, `comment`, `created_at`) VALUES
-(1, 29, 1, 1, 5, 'Great work and very professional.', '2025-11-28 07:15:15');
-
 -- --------------------------------------------------------
 
 --
@@ -853,8 +1743,6 @@ CREATE TABLE `users` (
   `password_hash` varchar(255) NOT NULL,
   `OTP_hash` varchar(255) NOT NULL,
   `user_type` enum('contractor','property_owner','both') NOT NULL,
-  `is_verified` tinyint(1) DEFAULT 0,
-  `is_active` tinyint(1) DEFAULT 1,
   `created_at` timestamp NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -863,28 +1751,227 @@ CREATE TABLE `users` (
 -- Dumping data for table `users`
 --
 
-INSERT INTO `users` (`user_id`, `profile_pic`, `cover_photo`, `username`, `email`, `password_hash`, `OTP_hash`, `user_type`, `is_verified`, `is_active`, `created_at`, `updated_at`) VALUES
-(1, NULL, NULL, 'ashxeyn', 'ashjjxeyn@gmail.com', '$2y$12$fWskY6zbdZiOvj3bbVPJyOahwb1VSPonLaIJVqciJQZb2Ove3AzMW', '$2y$12$rp.IOsHrjuormElLiwz5bOeYjEZ/665JAXMCmy1qqMp3cbAAJBB0a', 'both', 1, 1, '2025-11-01 04:49:04', '2025-11-15 13:34:57'),
-(2, NULL, NULL, 'sandbox', 'sandbox@gmail.com', '$2y$12$7wRYH0dS2P/O9AKHmUUtR.zHkCE2gnDxGfrIV8z0.QbIX9kjMas8q', '$2y$12$ptwr5DjWPCTWSGVTgvdVJ.HufXk2iAp.Xr1wwG0qH.HyU/2Clnn9m', 'both', 1, 1, '2025-11-01 05:30:31', '2025-11-02 08:32:25'),
-(10, NULL, NULL, 'ahdbahs', 'ahdbahs@gmal.com', '$2y$12$t6Uvs0VsuVL3ofAtuwKc.Ojsxh9BYW6FbMP1qSurCYWhdZ8shFcsu', '$2y$12$BGvjcwo2.veK2UqFIlSww.7CKetz8KCvRye4RqfeJbftLZ4b5vD3a', 'both', 1, 1, '2025-11-02 00:03:30', '2025-11-02 01:00:12'),
-(11, 'profile_pictures/1762072945_profile_552180896_2235352176965283_3789601433528090852_n.jpg', NULL, 'ahdbahsahdbahs', 'ahdbahsahdbahs@gmail.com', '$2y$12$v6B4cZ6Zwx4vAnHsEeUYFe0MShzeHah20OxVo/gpw8ekgeQ2X23nK', '$2y$12$TuG8rquHKVRj9w8dNGqgCuOAyTt2uC5LdFZsGOySWQlgO5BKqoPhq', 'both', 1, 1, '2025-11-02 00:05:40', '2025-11-02 00:42:25'),
-(12, NULL, NULL, 'ronron', 'ronron@gmail.com', '$2y$12$039Xd8JzNUj9XDWfQXosEePFngCgXAXcg8Ca9hIdtrI3tOnmKnPZS', '$2y$12$sxa0MzGRsL2DbUSScb.T0eYjBOTo/onaLyRty8O5EFE840SSpU6y2', 'property_owner', 1, 1, '2025-11-02 01:05:44', '2025-11-12 16:05:18'),
-(13, NULL, NULL, 'Ronie', 'rone@gmail.com', '$2y$12$sgNYpj05G27xtZxpZhbBu.Rl8gpGzhVCft2JA18SaTamZV2Mz1J.a', '$2y$12$DCQDCvU8tZEtWMI1tbOFkubyIsG2zlVuGlIks4h7xiMvu/eSU1E0S', 'property_owner', 0, 1, '2025-11-11 06:35:01', '2025-11-11 06:35:01'),
-(14, NULL, NULL, 'asdas', 'daasdad@gmail.com', '$2y$12$cK8JLtzQ64vqkYOwZhesoeNP/VdfF8Ldt4V3y7zqvxAMOl59uob5y', '$2y$12$Ma9sbAx.P.Yj0xqUbtMTfeTiPS1gLzgw6Rs.erSXCRgns.SbHaYz.', 'property_owner', 0, 1, '2025-11-11 06:41:52', '2025-11-11 06:41:52'),
-(15, NULL, NULL, 'werwrwerwr', 'krystalbwerongow24@gmail.com', '$2y$12$chxZo.smd2kMDDp5sudBI.h6T69dSbiDHgetI7bM93LSynnud8Mo2', '$2y$12$2iFEJDBxObsUuT11/KT9He4GPA.SUYwkqLO96MSw1ZUC4tLK9wb7e', 'contractor', 1, 1, '2025-11-11 06:51:26', '2025-11-21 15:57:59'),
-(16, NULL, NULL, 'asdasd', 'asdada@gmail.com', '$2y$12$7pQfbTa/4jB7iGe19dme.u39zldsnv2W6LcZr2Kr3ai8vws3acmB.', '$2y$12$lNHrR94yYKjiH5l6.r0Up.Y28SGKlnpHwnNbH2yS8XPM3AHRzQLlm', 'contractor', 0, 0, '2025-11-13 06:26:39', '2025-11-13 06:26:39'),
-(17, NULL, NULL, 'adas', 'dasdaasd@gmail.com', '$2y$12$2I8xH1G.T869ppuheRHMc.f28tM.5C/XmCD1Iwe0DruyIDmq.wHpi', '$2y$12$9cfp.5hwS.wmHmAn0Srh5OBn8J3Z/Z59cy7KIA0ynOtUbqgwr7WjK', 'property_owner', 0, 0, '2025-11-13 06:40:49', '2025-11-13 06:40:49'),
-(18, NULL, NULL, '3rwer', 'wewerw@gmail.com', '$2y$12$GNb65rCw1nsra3qw3QnofO4VUdyOFwoFJGqfYp3KWcNnHX40s4zo6', '$2y$12$q7.7Yy0rzTYC8r31Kbq/LetK0WFNIcLU2Avhu.vQGGWpvJhU12RrK', 'property_owner', 0, 0, '2025-11-13 06:51:12', '2025-11-13 06:51:12'),
-(19, NULL, NULL, 'sds', 'ashASxeyn@gmail.com', '$2y$12$Q89JIrXTfe0Opqr6USgx9uEJNFcaqEyUWB4pvsaZ6P576L31w3HNu', '$2y$12$eFPZ9R8ZhS85z/3a.Rpr1ervgAoDpTZ0EXKusCH4Pc979gK1ILkFG', 'contractor', 0, 0, '2025-11-13 06:55:25', '2025-11-13 06:55:25'),
-(20, NULL, NULL, 'asddas', 'ashxaaeyn@gmail.com', '$2y$12$XlmIokVrxsdwh8HyioXIsOoX9nH3jlwCL2UAK2No0ixAC3lP7Mboq', '$2y$12$pvDtHTsmnE3EDtOCWythGe8OCfKa.FeEjC8Y6RUpOlrAX26gQD/ha', 'property_owner', 0, 0, '2025-11-13 06:57:08', '2025-11-13 06:57:08'),
-(21, NULL, NULL, 'asdassssd', 'asdsssas@wmsu.edu.ph', '$2y$12$AI36ZSkW7vYvh/Z/zejlKe4SpVWHJ/hXnytQUNVbsSrqs4WWeQJEC', '$2y$12$5QIwCGQSUVvwlzzhaH3Zu.JhAwFW4hhgpXvhNVpxnRLOEx7JUd6B2', 'property_owner', 0, 0, '2025-11-13 07:10:56', '2025-11-13 07:10:56'),
-(22, NULL, NULL, 'asdasqqqd', 'sdfsssfd@wmsu.edu.ph', '$2y$12$zBAqQhNTbUxSMt164YXB.O9ZEz5F6XASGENyVTLCbyhaP.F1DxuGG', '$2y$12$wOZfnp4Q4hzASzFN3NorFetAGpFx1fSNU1KQGNRFE0.enIdqIroWO', 'both', 1, 1, '2025-11-13 07:20:42', '2025-11-13 09:40:37'),
-(23, NULL, NULL, 'werwerwerw', 'sdwerwerfsfd@wmsu.edu.ph', '$2y$12$WCrGtbB1dF0qkolAZS0RUeMH8ayvKo8hUTf9fqyCdkTUUHWSJUuMW', '$2y$12$r7Kx3fca9wo9Hk5W.URmROIMQj9vBFcRvQgHpUF4.kCOVSuyCII.y', 'property_owner', 1, 0, '2025-11-13 09:44:26', '2025-11-14 03:26:51'),
-(24, NULL, NULL, 'sdfsfdf', 'sdfddddsssfd@wmsu.edu.ph', '$2y$12$XZy815mrT32eJHMMaiiAwO9G34GHAPbJopiaJ2GQzUsgt7suox65O', '$2y$12$VaSuKG68htUWLWM9KQweSOXJiVj5QKnjgrA7bggUVjBaPrmeQjC7a', 'contractor', 0, 0, '2025-11-13 09:48:08', '2025-11-13 09:48:08'),
-(25, NULL, NULL, 'qweqweeqweqwe', 'asjjhxeyn@gmail.com', '$2y$12$7hIhwmsJEQI9aw72O3mHCOlq5WRaZU.ACT4l73xXtA5Ph5WCYHUha', '$2y$12$6QbbV6rkmUtnprY4q91ukeLA9CPeCUDECsNQsYVtvWxCIwoPJCsv6', 'property_owner', 1, 1, '2025-11-15 05:36:42', '2025-11-21 06:41:36'),
-(26, 'profiles/UPo1lTDBB7eaVjd25vpz6IzmTk8EinlCwwQ3sKmq.jpg', NULL, 'niggaaa', 'shanehart1001@gmail.com', '$2y$12$D4HOGluctzfO6x33rBKDCeySWY12peVNOpBKsih4/9vD8IXX7vahq', '$2y$12$4FvvXevobxAA3DkG53HqD.zqameMzfqqL8G/eHjLc9SMS1VU5n78C', 'property_owner', 0, 0, '2025-11-16 03:20:07', '2025-11-16 03:20:07'),
-(27, NULL, NULL, 'wfsdf', 'ashxeyn@gmail.com', '$2y$12$tUuNd7bZlaCoi7as7o8AkOUtDCHYlYyUEr.keuH2PGDLf8tndzWMq', '$2y$12$ZtxNUGDlYljbJYMUbh8tpuVc2KfiN0c5sOA4Qo2F8AcO3FxUMZQgG', 'property_owner', 0, 0, '2025-11-18 16:17:48', '2025-11-18 16:17:48'),
-(28, 'profiles/S8t77YFFVlfdgtwIovdQIpi4dzUIpQtMADJc5B28.jpg', NULL, 'carl_saludo', 'carlwaynesaludo@gmail.com', '$2y$12$rg/LHSGXKVba8SS2BOv/BebiGKnU/vOXA86lv7wTbcUpfZS5L.Nsm', '$2y$12$ShuCmghNrHUPfbqEJz8LHe4qztk3WikX0qqlpvGRQ5aJl/uQHY316', 'property_owner', 1, 1, '2025-11-27 06:34:25', '2025-11-27 14:39:04');
+INSERT INTO `users` (`user_id`, `profile_pic`, `cover_photo`, `username`, `email`, `password_hash`, `OTP_hash`, `user_type`, `created_at`, `updated_at`) VALUES
+(1, NULL, NULL, 'user1', 'user1@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(2, NULL, NULL, 'user2', 'user2@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(3, NULL, NULL, 'user3', 'user3@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(4, NULL, NULL, 'user4', 'user4@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(5, NULL, NULL, 'user5', 'user5@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(6, NULL, NULL, 'user6', 'user6@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(7, NULL, NULL, 'user7', 'user7@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(8, NULL, NULL, 'user8', 'user8@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(9, NULL, NULL, 'user9', 'user9@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(10, NULL, NULL, 'user10', 'user10@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(11, NULL, NULL, 'user11', 'user11@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(12, NULL, NULL, 'user12', 'user12@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(13, NULL, NULL, 'user13', 'user13@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(14, NULL, NULL, 'user14', 'user14@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(15, NULL, NULL, 'user15', 'user15@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(16, NULL, NULL, 'user16', 'user16@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(17, NULL, NULL, 'user17', 'user17@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(18, NULL, NULL, 'user18', 'user18@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(19, NULL, NULL, 'user19', 'user19@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(20, NULL, NULL, 'user20', 'user20@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(21, NULL, NULL, 'user21', 'user21@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(22, NULL, NULL, 'user22', 'user22@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(23, NULL, NULL, 'user23', 'user23@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(24, NULL, NULL, 'user24', 'user24@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(25, NULL, NULL, 'user25', 'user25@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(26, NULL, NULL, 'user26', 'user26@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(27, NULL, NULL, 'user27', 'user27@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(28, NULL, NULL, 'user28', 'user28@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(29, NULL, NULL, 'user29', 'user29@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(30, NULL, NULL, 'user30', 'user30@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(31, NULL, NULL, 'user31', 'user31@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(32, NULL, NULL, 'user32', 'user32@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(33, NULL, NULL, 'user33', 'user33@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(34, NULL, NULL, 'user34', 'user34@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(35, NULL, NULL, 'user35', 'user35@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(36, NULL, NULL, 'user36', 'user36@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(37, NULL, NULL, 'user37', 'user37@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(38, NULL, NULL, 'user38', 'user38@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(39, NULL, NULL, 'user39', 'user39@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(40, NULL, NULL, 'user40', 'user40@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(41, NULL, NULL, 'user41', 'user41@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(42, NULL, NULL, 'user42', 'user42@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(43, NULL, NULL, 'user43', 'user43@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(44, NULL, NULL, 'user44', 'user44@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(45, NULL, NULL, 'user45', 'user45@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(46, NULL, NULL, 'user46', 'user46@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(47, NULL, NULL, 'user47', 'user47@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(48, NULL, NULL, 'user48', 'user48@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(49, NULL, NULL, 'user49', 'user49@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(50, NULL, NULL, 'user50', 'user50@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(51, NULL, NULL, 'user51', 'user51@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(52, NULL, NULL, 'user52', 'user52@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(53, NULL, NULL, 'user53', 'user53@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(54, NULL, NULL, 'user54', 'user54@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(55, NULL, NULL, 'user55', 'user55@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(56, NULL, NULL, 'user56', 'user56@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(57, NULL, NULL, 'user57', 'user57@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(58, NULL, NULL, 'user58', 'user58@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(59, NULL, NULL, 'user59', 'user59@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(60, NULL, NULL, 'user60', 'user60@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(61, NULL, NULL, 'user61', 'user61@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(62, NULL, NULL, 'user62', 'user62@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(63, NULL, NULL, 'user63', 'user63@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(64, NULL, NULL, 'user64', 'user64@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(65, NULL, NULL, 'user65', 'user65@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(66, NULL, NULL, 'user66', 'user66@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(67, NULL, NULL, 'user67', 'user67@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(68, NULL, NULL, 'user68', 'user68@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(69, NULL, NULL, 'user69', 'user69@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(70, NULL, NULL, 'user70', 'user70@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(71, NULL, NULL, 'user71', 'user71@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(72, NULL, NULL, 'user72', 'user72@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(73, NULL, NULL, 'user73', 'user73@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(74, NULL, NULL, 'user74', 'user74@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(75, NULL, NULL, 'user75', 'user75@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(76, NULL, NULL, 'user76', 'user76@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(77, NULL, NULL, 'user77', 'user77@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(78, NULL, NULL, 'user78', 'user78@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(79, NULL, NULL, 'user79', 'user79@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(80, NULL, NULL, 'user80', 'user80@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(81, NULL, NULL, 'user81', 'user81@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(82, NULL, NULL, 'user82', 'user82@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(83, NULL, NULL, 'user83', 'user83@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(84, NULL, NULL, 'user84', 'user84@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(85, NULL, NULL, 'user85', 'user85@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(86, NULL, NULL, 'user86', 'user86@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(87, NULL, NULL, 'user87', 'user87@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(88, NULL, NULL, 'user88', 'user88@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(89, NULL, NULL, 'user89', 'user89@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(90, NULL, NULL, 'user90', 'user90@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(91, NULL, NULL, 'user91', 'user91@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(92, NULL, NULL, 'user92', 'user92@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(93, NULL, NULL, 'user93', 'user93@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(94, NULL, NULL, 'user94', 'user94@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(95, NULL, NULL, 'user95', 'user95@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(96, NULL, NULL, 'user96', 'user96@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(97, NULL, NULL, 'user97', 'user97@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(98, NULL, NULL, 'user98', 'user98@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(99, NULL, NULL, 'user99', 'user99@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(100, NULL, NULL, 'user100', 'user100@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'contractor', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(101, NULL, NULL, 'user101', 'user101@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(102, NULL, NULL, 'user102', 'user102@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(103, NULL, NULL, 'user103', 'user103@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(104, NULL, NULL, 'user104', 'user104@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(105, NULL, NULL, 'user105', 'user105@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(106, NULL, NULL, 'user106', 'user106@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(107, NULL, NULL, 'user107', 'user107@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(108, NULL, NULL, 'user108', 'user108@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(109, NULL, NULL, 'user109', 'user109@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(110, NULL, NULL, 'user110', 'user110@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(111, NULL, NULL, 'user111', 'user111@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(112, NULL, NULL, 'user112', 'user112@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(113, NULL, NULL, 'user113', 'user113@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(114, NULL, NULL, 'user114', 'user114@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(115, NULL, NULL, 'user115', 'user115@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(116, NULL, NULL, 'user116', 'user116@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(117, NULL, NULL, 'user117', 'user117@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(118, NULL, NULL, 'user118', 'user118@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(119, NULL, NULL, 'user119', 'user119@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(120, NULL, NULL, 'user120', 'user120@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(121, NULL, NULL, 'user121', 'user121@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(122, NULL, NULL, 'user122', 'user122@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(123, NULL, NULL, 'user123', 'user123@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(124, NULL, NULL, 'user124', 'user124@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(125, NULL, NULL, 'user125', 'user125@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(126, NULL, NULL, 'user126', 'user126@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(127, NULL, NULL, 'user127', 'user127@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(128, NULL, NULL, 'user128', 'user128@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(129, NULL, NULL, 'user129', 'user129@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(130, NULL, NULL, 'user130', 'user130@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(131, NULL, NULL, 'user131', 'user131@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(132, NULL, NULL, 'user132', 'user132@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(133, NULL, NULL, 'user133', 'user133@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(134, NULL, NULL, 'user134', 'user134@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(135, NULL, NULL, 'user135', 'user135@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(136, NULL, NULL, 'user136', 'user136@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(137, NULL, NULL, 'user137', 'user137@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(138, NULL, NULL, 'user138', 'user138@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(139, NULL, NULL, 'user139', 'user139@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(140, NULL, NULL, 'user140', 'user140@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(141, NULL, NULL, 'user141', 'user141@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(142, NULL, NULL, 'user142', 'user142@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(143, NULL, NULL, 'user143', 'user143@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(144, NULL, NULL, 'user144', 'user144@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(145, NULL, NULL, 'user145', 'user145@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(146, NULL, NULL, 'user146', 'user146@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(147, NULL, NULL, 'user147', 'user147@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(148, NULL, NULL, 'user148', 'user148@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(149, NULL, NULL, 'user149', 'user149@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(150, NULL, NULL, 'user150', 'user150@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(151, NULL, NULL, 'user151', 'user151@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(152, NULL, NULL, 'user152', 'user152@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(153, NULL, NULL, 'user153', 'user153@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(154, NULL, NULL, 'user154', 'user154@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(155, NULL, NULL, 'user155', 'user155@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(156, NULL, NULL, 'user156', 'user156@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(157, NULL, NULL, 'user157', 'user157@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(158, NULL, NULL, 'user158', 'user158@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(159, NULL, NULL, 'user159', 'user159@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(160, NULL, NULL, 'user160', 'user160@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(161, NULL, NULL, 'user161', 'user161@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(162, NULL, NULL, 'user162', 'user162@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(163, NULL, NULL, 'user163', 'user163@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(164, NULL, NULL, 'user164', 'user164@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(165, NULL, NULL, 'user165', 'user165@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(166, NULL, NULL, 'user166', 'user166@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(167, NULL, NULL, 'user167', 'user167@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(168, NULL, NULL, 'user168', 'user168@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(169, NULL, NULL, 'user169', 'user169@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(170, NULL, NULL, 'user170', 'user170@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(171, NULL, NULL, 'user171', 'user171@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(172, NULL, NULL, 'user172', 'user172@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(173, NULL, NULL, 'user173', 'user173@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(174, NULL, NULL, 'user174', 'user174@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(175, NULL, NULL, 'user175', 'user175@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(176, NULL, NULL, 'user176', 'user176@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(177, NULL, NULL, 'user177', 'user177@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(178, NULL, NULL, 'user178', 'user178@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(179, NULL, NULL, 'user179', 'user179@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(180, NULL, NULL, 'user180', 'user180@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(181, NULL, NULL, 'user181', 'user181@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(182, NULL, NULL, 'user182', 'user182@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(183, NULL, NULL, 'user183', 'user183@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(184, NULL, NULL, 'user184', 'user184@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(185, NULL, NULL, 'user185', 'user185@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(186, NULL, NULL, 'user186', 'user186@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(187, NULL, NULL, 'user187', 'user187@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(188, NULL, NULL, 'user188', 'user188@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(189, NULL, NULL, 'user189', 'user189@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(190, NULL, NULL, 'user190', 'user190@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(191, NULL, NULL, 'user191', 'user191@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(192, NULL, NULL, 'user192', 'user192@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(193, NULL, NULL, 'user193', 'user193@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(194, NULL, NULL, 'user194', 'user194@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(195, NULL, NULL, 'user195', 'user195@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(196, NULL, NULL, 'user196', 'user196@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(197, NULL, NULL, 'user197', 'user197@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(198, NULL, NULL, 'user198', 'user198@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(199, NULL, NULL, 'user199', 'user199@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(200, NULL, NULL, 'user200', 'user200@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'property_owner', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(201, NULL, NULL, 'user201', 'user201@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'both', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(202, NULL, NULL, 'user202', 'user202@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'both', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(203, NULL, NULL, 'user203', 'user203@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'both', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(204, NULL, NULL, 'user204', 'user204@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'both', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(205, NULL, NULL, 'user205', 'user205@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'both', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(206, NULL, NULL, 'user206', 'user206@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'both', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(207, NULL, NULL, 'user207', 'user207@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'both', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(208, NULL, NULL, 'user208', 'user208@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'both', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(209, NULL, NULL, 'user209', 'user209@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'both', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(210, NULL, NULL, 'user210', 'user210@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'both', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(211, NULL, NULL, 'user211', 'user211@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'both', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(212, NULL, NULL, 'user212', 'user212@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'both', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(213, NULL, NULL, 'user213', 'user213@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'both', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(214, NULL, NULL, 'user214', 'user214@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'both', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(215, NULL, NULL, 'user215', 'user215@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'both', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(216, NULL, NULL, 'user216', 'user216@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'both', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(217, NULL, NULL, 'user217', 'user217@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'both', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(218, NULL, NULL, 'user218', 'user218@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'both', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(219, NULL, NULL, 'user219', 'user219@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'both', '2025-12-15 05:39:51', '2025-12-15 05:39:51'),
+(220, NULL, NULL, 'user220', 'user220@example.com', '$2y$12$YourPlaceholderHashHereToPreventErrors', 'otp_hash', 'both', '2025-12-15 05:39:51', '2025-12-15 05:39:51');
 
 -- --------------------------------------------------------
 
@@ -902,20 +1989,12 @@ CREATE TABLE `valid_ids` (
 --
 
 INSERT INTO `valid_ids` (`id`, `valid_id_name`) VALUES
-(1, 'Philippine Passport'),
-(2, 'Driver’s License'),
-(3, 'SSS ID/UMID'),
-(4, 'PhilHealth ID'),
-(6, 'Voter’s ID/Certification'),
-(7, 'Postal ID'),
-(8, 'PRC ID'),
-(9, 'National ID (PhilSys)'),
-(10, 'Senior Citizen ID'),
-(11, 'OFW/OWWA ID'),
-(12, 'PWD ID'),
-(14, 'NBI Clearance'),
-(17, 'Barangay ID'),
-(18, 'GSIS eCard');
+(1, 'Passport'),
+(2, 'Drivers License'),
+(3, 'UMID'),
+(4, 'National ID'),
+(5, 'PRC ID'),
+(6, 'Postal ID');
 
 --
 -- Indexes for dumped tables
@@ -1140,19 +2219,19 @@ ALTER TABLE `admin_users`
 -- AUTO_INCREMENT for table `bids`
 --
 ALTER TABLE `bids`
-  MODIFY `bid_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
+  MODIFY `bid_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=253;
 
 --
 -- AUTO_INCREMENT for table `bid_files`
 --
 ALTER TABLE `bid_files`
-  MODIFY `file_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `file_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `contractors`
 --
 ALTER TABLE `contractors`
-  MODIFY `contractor_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `contractor_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1179;
 
 --
 -- AUTO_INCREMENT for table `contractor_types`
@@ -1164,49 +2243,49 @@ ALTER TABLE `contractor_types`
 -- AUTO_INCREMENT for table `contractor_users`
 --
 ALTER TABLE `contractor_users`
-  MODIFY `contractor_user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `contractor_user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1179;
 
 --
 -- AUTO_INCREMENT for table `disputes`
 --
 ALTER TABLE `disputes`
-  MODIFY `dispute_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=55;
+  MODIFY `dispute_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=51;
 
 --
 -- AUTO_INCREMENT for table `dispute_files`
 --
 ALTER TABLE `dispute_files`
-  MODIFY `file_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=70;
+  MODIFY `file_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `messages`
 --
 ALTER TABLE `messages`
-  MODIFY `message_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `message_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=177;
 
 --
 -- AUTO_INCREMENT for table `milestones`
 --
 ALTER TABLE `milestones`
-  MODIFY `milestone_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
+  MODIFY `milestone_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=958;
 
 --
 -- AUTO_INCREMENT for table `milestone_items`
 --
 ALTER TABLE `milestone_items`
-  MODIFY `item_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=41;
+  MODIFY `item_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1469;
 
 --
 -- AUTO_INCREMENT for table `milestone_payments`
 --
 ALTER TABLE `milestone_payments`
-  MODIFY `payment_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
+  MODIFY `payment_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=512;
 
 --
 -- AUTO_INCREMENT for table `notifications`
 --
 ALTER TABLE `notifications`
-  MODIFY `notification_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `notification_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1630;
 
 --
 -- AUTO_INCREMENT for table `occupations`
@@ -1218,49 +2297,49 @@ ALTER TABLE `occupations`
 -- AUTO_INCREMENT for table `payment_plans`
 --
 ALTER TABLE `payment_plans`
-  MODIFY `plan_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
+  MODIFY `plan_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=638;
 
 --
 -- AUTO_INCREMENT for table `platform_payments`
 --
 ALTER TABLE `platform_payments`
-  MODIFY `platform_payment_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `platform_payment_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=83;
 
 --
 -- AUTO_INCREMENT for table `progress`
 --
 ALTER TABLE `progress`
-  MODIFY `progress_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
+  MODIFY `progress_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=512;
 
 --
 -- AUTO_INCREMENT for table `progress_files`
 --
 ALTER TABLE `progress_files`
-  MODIFY `file_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
+  MODIFY `file_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `projects`
 --
 ALTER TABLE `projects`
-  MODIFY `project_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=35;
+  MODIFY `project_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=733;
 
 --
 -- AUTO_INCREMENT for table `project_files`
 --
 ALTER TABLE `project_files`
-  MODIFY `file_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
+  MODIFY `file_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `project_relationships`
 --
 ALTER TABLE `project_relationships`
-  MODIFY `rel_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=30;
+  MODIFY `rel_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=733;
 
 --
 -- AUTO_INCREMENT for table `property_owners`
 --
 ALTER TABLE `property_owners`
-  MODIFY `owner_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
+  MODIFY `owner_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1179;
 
 --
 -- AUTO_INCREMENT for table `qr_codes`
@@ -1272,19 +2351,19 @@ ALTER TABLE `qr_codes`
 -- AUTO_INCREMENT for table `reviews`
 --
 ALTER TABLE `reviews`
-  MODIFY `review_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `review_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=40;
 
 --
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=29;
+  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=221;
 
 --
 -- AUTO_INCREMENT for table `valid_ids`
 --
 ALTER TABLE `valid_ids`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- Constraints for dumped tables

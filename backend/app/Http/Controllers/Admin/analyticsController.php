@@ -16,7 +16,7 @@ class analyticsController extends authController
         $projectsAnalytics = $this->getProjectsAnalytics();
         $projectsTimeline = $this->getProjectsTimeline();
         $projectSuccessRate = $this->getProjectSuccessRate();
-        
+
         return view('admin.home.projectAnalytics', [
             'projectsAnalytics' => $projectsAnalytics,
             'projectsTimeline' => $projectsTimeline,
@@ -32,7 +32,7 @@ class analyticsController extends authController
         $subscriptionMetrics = $this->getSubscriptionMetrics();
         $subscriptionTiers = $this->getSubscriptionTiers();
         $subscriptionRevenue = $this->getSubscriptionRevenue(); // default gold tier
-        
+
         return view('admin.home.subscriptionAnalytics', [
             'subscriptionMetrics' => $subscriptionMetrics,
             'subscriptionTiers' => $subscriptionTiers,
@@ -247,13 +247,13 @@ class analyticsController extends authController
             $count = DB::table('projects')
                 ->where('project_status', $status)
                 ->count();
-            
+
             $projectData[] = [
                 'status' => $status,
                 'label' => $label,
                 'count' => $count
             ];
-            
+
             $total += $count;
         }
 
@@ -282,7 +282,7 @@ class analyticsController extends authController
             $count = DB::table('projects')
                 ->where('project_status', $status)
                 ->count();
-            
+
             if ($count > 0) {
                 $successData[] = [
                     'status' => $status,
@@ -291,7 +291,7 @@ class analyticsController extends authController
                     'count' => $count
                 ];
             }
-            
+
             $total += $count;
         }
 
@@ -315,12 +315,12 @@ class analyticsController extends authController
         $months = [];
         $newProjects = [];
         $completedProjects = [];
-        
+
         for ($i = 5; $i >= 0; $i--) {
             $date = date('Y-m-01', strtotime("-$i months"));
             $monthLabel = date('M Y', strtotime($date));
             $months[] = $monthLabel;
-            
+
             // Count new projects created in this month. Use projects.created_at if present,
             // otherwise use project_relationships.created_at which exists in live schema.
             if (Schema::hasColumn('projects', 'created_at')) {
@@ -335,7 +335,7 @@ class analyticsController extends authController
                     ->count();
             }
             $newProjects[] = $newCount;
-            
+
             // Count projects completed in this month. Prefer `projects.updated_at` if present,
             // otherwise fall back to `project_relationships.created_at` as an approximation.
             if (Schema::hasColumn('projects', 'updated_at')) {
@@ -354,12 +354,12 @@ class analyticsController extends authController
             }
             $completedProjects[] = $completedCount;
         }
-        
+
         // Calculate date range for display
         $startDate = date('M d', strtotime('-5 months'));
         $endDate = date('d Y');
         $dateRange = $startDate . ' - ' . $endDate;
-        
+
         return [
             'months' => $months,
             'newProjects' => $newProjects,
@@ -374,12 +374,12 @@ class analyticsController extends authController
     public function getProjectsTimelineData(\Illuminate\Http\Request $request)
     {
         $range = $request->input('range', 'last6months');
-        
+
         $months = [];
         $newProjects = [];
         $completedProjects = [];
         $numMonths = 6;
-        
+
         switch ($range) {
             case 'last3months':
                 $numMonths = 3;
@@ -394,7 +394,7 @@ class analyticsController extends authController
                 $numMonths = 12;
                 break;
         }
-        
+
         for ($i = $numMonths - 1; $i >= 0; $i--) {
             if ($range === 'lastyear') {
                 // For last year, get previous year data
@@ -406,10 +406,10 @@ class analyticsController extends authController
             } else {
                 $date = date('Y-m-01', strtotime("-$i months"));
             }
-            
+
             $monthLabel = date('M Y', strtotime($date));
             $months[] = $monthLabel;
-            
+
             // Count new projects created in this month. Use projects.created_at if present,
             // otherwise use project_relationships.created_at.
             if (Schema::hasColumn('projects', 'created_at')) {
@@ -424,7 +424,7 @@ class analyticsController extends authController
                     ->count();
             }
             $newProjects[] = $newCount;
-            
+
             // Count projects completed in this month. Prefer `projects.updated_at` if present,
             // otherwise fall back to `project_relationships.created_at` as an approximation.
             if (Schema::hasColumn('projects', 'updated_at')) {
@@ -443,7 +443,7 @@ class analyticsController extends authController
             }
             $completedProjects[] = $completedCount;
         }
-        
+
         // Calculate date range for display
         if ($range === 'last3months') {
             $startDate = date('M d', strtotime('-2 months'));
@@ -459,7 +459,7 @@ class analyticsController extends authController
             $endDate = date('d Y', strtotime('December 31 last year'));
         }
         $dateRange = $startDate . ' - ' . $endDate;
-        
+
         return response()->json([
             'months' => $months,
             'newProjects' => $newProjects,
@@ -523,8 +523,38 @@ class analyticsController extends authController
             'new_users_this_month' => DB::table('users')
                 ->whereBetween('created_at', [now()->startOfMonth(), now()->endOfMonth()])
                 ->count(),
-            'active_users' => DB::table('users')->where('is_active', 1)->count(),
-            'suspended_users' => DB::table('users')->where('is_active', 0)->count(),
+            'active_users' => DB::table('users')
+                ->where(function ($query) {
+                    $query->whereExists(function ($sub) {
+                        $sub->select(DB::raw(1))
+                            ->from('contractor_users')
+                            ->whereColumn('contractor_users.user_id', 'users.user_id')
+                            ->where('contractor_users.is_active', 1);
+                    })
+                    ->orWhereExists(function ($sub) {
+                        $sub->select(DB::raw(1))
+                            ->from('property_owners')
+                            ->whereColumn('property_owners.user_id', 'users.user_id')
+                            ->where('property_owners.is_active', 1);
+                    });
+                })
+                ->count(),
+            'suspended_users' => DB::table('users')
+                ->where(function ($query) {
+                    $query->whereExists(function ($sub) {
+                        $sub->select(DB::raw(1))
+                            ->from('contractor_users')
+                            ->whereColumn('contractor_users.user_id', 'users.user_id')
+                            ->where('contractor_users.is_active', 0);
+                    })
+                    ->orWhereExists(function ($sub) {
+                        $sub->select(DB::raw(1))
+                            ->from('property_owners')
+                            ->whereColumn('property_owners.user_id', 'users.user_id')
+                            ->where('property_owners.is_active', 0);
+                    });
+                })
+                ->count(),
         ];
 
         return response()->json($userActivity);

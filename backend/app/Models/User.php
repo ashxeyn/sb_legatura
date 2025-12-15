@@ -30,7 +30,6 @@ class User extends Authenticatable
         'password_hash',
         'OTP_hash',
         'user_type',
-        'is_verified',
         'is_active'
     ];
 
@@ -52,7 +51,6 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
-            'is_verified' => 'boolean',
             'is_active' => 'boolean',
             'created_at' => 'datetime',
             'updated_at' => 'datetime',

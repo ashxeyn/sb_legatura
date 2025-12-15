@@ -71,7 +71,6 @@ class accountClass
             'password_hash' => $data['password_hash'],
             'OTP_hash' => $data['OTP_hash'],
             'user_type' => $data['user_type'],
-            'is_verified' => 0,
             'is_active' => 0,
             'created_at' => now(),
             'updated_at' => now()
@@ -182,12 +181,12 @@ class accountClass
             ->update(['OTP_hash' => $otpHash]);
     }
 
-    public function verifyUser($userId)
-    {
-        return DB::table('users')
-            ->where('user_id', $userId)
-            ->update(['is_verified' => 1]);
-    }
+    // public function verifyUser($userId)
+    // {
+    //     return DB::table('users')
+    //         ->where('user_id', $userId)
+    //         ->update(['is_verified' => 1]);
+    // }
 
     public function createAdminUser($data)
     {
