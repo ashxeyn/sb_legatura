@@ -9,16 +9,16 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="{{ asset('css/admin/home/mainComponents.css') }}">
   <link rel="stylesheet" href="{{ asset('css/admin/userManagement/propertyOwner_Views.css') }}">
-  
+
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-solid-straight/css/uicons-solid-straight.css'>
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-solid-rounded/css/uicons-solid-rounded.css'>
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-bold-rounded/css/uicons-bold-rounded.css'>
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-regular-rounded/css/uicons-regular-rounded.css'>
-  
+
 
   <script src="{{ asset('js/admin/home/mainComponents.js') }}" defer></script>
 
-  
+
 </head>
 
 <body class="bg-gray-50 text-gray-800 font-sans">
@@ -170,9 +170,9 @@
 
         <div class="flex items-center gap-6">
           <div class="relative w-64" style="width: 600px;">
-            <input 
-              type="text" 
-              placeholder="Search..." 
+            <input
+              type="text"
+              placeholder="Search..."
               class="border border-gray-300 rounded-lg px-4 py-2 pr-10 focus:ring-2 focus:ring-indigo-400 focus:outline-none w-full"
             >
             <i class="fi fi-rr-search absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
@@ -673,7 +673,7 @@
               </p>
             </div>
           </div>
-          
+
           <!-- User Info Card -->
           <div class="bg-white rounded-lg p-3 border border-red-200 space-y-2">
             <div class="flex items-center gap-3">
@@ -704,9 +704,9 @@
             <i class="fi fi-rr-edit text-red-500"></i>
             Reason for Suspension <span class="text-red-500">*</span>
           </label>
-          <textarea 
-            id="suspendReason" 
-            rows="3" 
+          <textarea
+            id="suspendReason"
+            rows="3"
             placeholder="Please provide a detailed reason for suspending this account..."
             class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-red-400 focus:border-red-400 transition-all hover:border-red-300 bg-white resize-none text-sm"
           ></textarea>

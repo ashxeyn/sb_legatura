@@ -208,6 +208,7 @@ Route::prefix('/api/admin/users')->group(function () {
     Route::post('/contractors/{id}/suspend', [userManagementController::class, 'suspendContractor'])->name('api.admin.contractor.suspend');
 
     Route::get('/verification-requests', [userManagementController::class, 'getVerificationRequestsApi'])->name('api.admin.verificationRequests');
+    Route::get('/verification-requests/{id}', [userManagementController::class, 'getVerificationRequestDetails'])->name('api.admin.verificationRequest.details');
     Route::post('/verification-requests/{id}/approve', [userManagementController::class, 'approveVerification'])->name('api.admin.verificationRequest.approve');
     Route::post('/verification-requests/{id}/reject', [userManagementController::class, 'rejectVerification'])->name('api.admin.verificationRequest.reject');
 

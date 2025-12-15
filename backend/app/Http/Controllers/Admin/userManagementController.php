@@ -6,6 +6,7 @@ use App\Http\Controllers\authController;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Http\Requests\Admin\rejectVerificationRequest;
 
 class userManagementController extends authController
 {
@@ -100,7 +101,10 @@ class userManagementController extends authController
         // Fetch pending contractors
         $contractorQuery = DB::table('contractors')
             ->join('users', 'contractors.user_id', '=', 'users.user_id')
-            ->leftJoin('contractor_users', 'contractors.contractor_id', '=', 'contractor_users.contractor_id')
+            ->leftJoin('contractor_users', function($join) {
+                $join->on('contractors.contractor_id', '=', 'contractor_users.contractor_id')
+                     ->where('contractor_users.role', '=', 'owner');
+            })
             ->where('contractors.verification_status', 'pending');
 
         if ($dateFrom) {
@@ -248,7 +252,7 @@ class userManagementController extends authController
         if ($user->user_type === 'contractor') {
             DB::table('contractors')->where('user_id', $id)->update(['verification_status' => 'approved']);
         } elseif ($user->user_type === 'property_owner') {
-            DB::table('property_owners')->where('user_id', $id)->update(['verification_status' => 'verified']);
+            DB::table('property_owners')->where('user_id', $id)->update(['verification_status' => 'approved']);
         }
 
         return response()->json(['success' => true, 'message' => 'User verified successfully']);
@@ -257,14 +261,14 @@ class userManagementController extends authController
     /**
      * Reject a verification request
      */
-    public function rejectVerification(Request $request, $id)
+    public function rejectVerification(RejectVerificationRequest $request, $id)
     {
         $user = User::find($id);
         if (!$user) {
             return response()->json(['success' => false, 'message' => 'User not found'], 404);
         }
 
-        $reason = $request->input('reason', 'Rejected by admin');
+        $reason = $request->validated()['reason'];
 
         // Update Profile table with rejection reason
         if ($user->user_type === 'contractor') {
