@@ -152,6 +152,10 @@ Route::put('/admin/user-management/property-owners/{id}', [userManagementControl
 Route::delete('/admin/user-management/property-owners/{id}', [userManagementController::class, 'deletePropertyOwner'])->name('admin.userManagement.propertyOwner.delete');
 Route::get('/admin/user-management/property-owners/{id}', [userManagementController::class, 'viewPropertyOwner'])->name('admin.userManagement.propertyOwner.view');
 Route::get('/admin/user-management/contractors', [userManagementController::class, 'contractors'])->name('admin.userManagement.contractor');
+Route::post('/admin/user-management/contractors/store', [userManagementController::class, 'addContractor'])->name('admin.userManagement.contractor.store');
+Route::get('/admin/user-management/contractors/{id}/edit', [userManagementController::class, 'fetchContractor'])->name('admin.userManagement.contractor.edit');
+Route::put('/admin/user-management/contractors/update/{user_id}', [userManagementController::class, 'updateContractor'])->name('admin.userManagement.contractor.update');
+Route::delete('/admin/user-management/contractors/{id}', [userManagementController::class, 'deleteContractor'])->name('admin.userManagement.contractor.delete');
 Route::get('/admin/user-management/contractor/view', [userManagementController::class, 'viewContractor'])->name('admin.userManagement.contractor.view');
 Route::get('/admin/user-management/verification-requests', [userManagementController::class, 'verificationRequest'])->name('admin.userManagement.verificationRequest');
 Route::get('/admin/user-management/suspended-accounts', [userManagementController::class, 'suspendedAccounts'])->name('admin.userManagement.suspendedAccounts');

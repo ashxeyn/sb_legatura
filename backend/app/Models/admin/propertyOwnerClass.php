@@ -67,7 +67,7 @@ class propertyOwnerClass
             $query->whereDate('property_owners.created_at', '<=', $dateTo);
         }
 
-        return $query->paginate($perPage, ['*'], 'page', $page);
+        return $query->orderBy('property_owners.created_at', 'desc')->paginate($perPage, ['*'], 'page', $page);
     }
 
     public function getPropertyOwnerById($id)

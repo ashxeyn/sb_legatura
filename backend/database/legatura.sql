@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Dec 16, 2025 at 09:41 AM
+-- Generation Time: Dec 16, 2025 at 05:11 PM
 -- Server version: 11.4.5-MariaDB
 -- PHP Version: 8.2.12
 
@@ -2108,7 +2108,7 @@ INSERT INTO `users` (`user_id`, `profile_pic`, `cover_photo`, `username`, `email
 (270, NULL, NULL, 'staff270', 'staff270@example.com', '$2y$12$LNVf9WaeRaphMyEtNf3i/OV5YvqGHeYmdJCnT5IEC7GzlKC4Fzota', 'otp_hash', 'staff', '2025-12-15 07:49:09', '2025-12-15 21:13:42'),
 (351, 'profiles/dkoe1C0vh4hIVqBZyaCStCPlkWz5xD5JgpXlMOGq.jpg', NULL, 'owner_9202', 'ashxeyn@gmail.com', '$2y$12$LNVf9WaeRaphMyEtNf3i/OV5YvqGHeYmdJCnT5IEC7GzlKC4Fzota', 'admin_created', 'property_owner', '2025-12-15 18:13:01', '2025-12-15 22:58:57'),
 (352, 'profiles/uzYGxzALdcUs45kPeM9T2vjyRhiOIhj1tDbfFDyo.jpg', NULL, 'owner_9302', 'HZ202300486@wmsu.edu.ph', '$2y$12$LNVf9WaeRaphMyEtNf3i/OV5YvqGHeYmdJCnT5IEC7GzlKC4Fzota', 'admin_created', 'property_owner', '2025-12-15 20:32:28', '2025-12-15 21:13:42'),
-(353, NULL, NULL, 'owner_4153', 'shanehart1001@gmail.com', '$2y$12$TcERXqXzMZfclAVNvDSL4eaom7Hj2TN00zoODHkbvfBh9VoGbHk4q', 'admin_created', 'property_owner', '2025-12-16 00:10:43', '2025-12-16 00:10:43');
+(353, NULL, NULL, 'owner_4153', 'shanehaWrt1001@gmail.com', '$2y$12$TcERXqXzMZfclAVNvDSL4eaom7Hj2TN00zoODHkbvfBh9VoGbHk4q', 'admin_created', 'property_owner', '2025-12-16 00:10:43', '2025-12-16 16:09:13');
 
 -- --------------------------------------------------------
 

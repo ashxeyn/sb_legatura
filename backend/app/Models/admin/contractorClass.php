@@ -18,10 +18,26 @@ class contractorClass extends Model
     protected $fillable = [
         'user_id',
         'company_name',
+        'company_start_date',
         'years_of_experience',
         'type_id',
         'contractor_type_other',
-        'verification_status'
+        'services_offered',
+        'business_address',
+        'company_email',
+        'company_phone',
+        'company_website',
+        'company_social_media',
+        'picab_number',
+        'picab_category',
+        'picab_expiration_date',
+        'business_permit_number',
+        'business_permit_city',
+        'business_permit_expiration',
+        'tin_business_reg_number',
+        'dti_sec_registration_photo',
+        'verification_status',
+        'verification_date'
     ];
 
     public function bids(): HasMany
@@ -120,46 +136,202 @@ class contractorClass extends Model
     }
 
     /**
+     * Get contractor by ID
+     */
+    public function getContractorById($id)
+    {
+        return DB::table('contractors')
+            ->leftJoin('users', 'contractors.user_id', '=', 'users.user_id')
+            ->leftJoin('contractor_users', function($join) {
+                $join->on('contractors.contractor_id', '=', 'contractor_users.contractor_id')
+                     ->where('contractor_users.role', '=', 'owner');
+            })
+            ->select(
+                'contractors.*',
+                'users.email',
+                'users.username',
+                'users.profile_pic',
+                'contractor_users.authorized_rep_fname',
+                'contractor_users.authorized_rep_lname',
+                'contractor_users.authorized_rep_mname'
+            )
+            ->where('contractors.contractor_id', $id)
+            ->first();
+    }
+
+    /**
      * Add a new contractor
      */
     public function addContractor($data)
     {
         return DB::transaction(function () use ($data) {
-            // Create User
-            $user = User::create([
-                'username' => $data['username'],
-                'email' => $data['email'],
-                'password_hash' => Hash::make($data['password']),
-                'OTP_hash' => '',
-                'user_type' => 'contractor',
-                'is_active' => 1,
-                'is_verified' => 1
-            ]);
+            // Generate Username
+            do {
+                $username = 'contractor_' . mt_rand(1000, 9999);
+            } while (DB::table('users')->where('username', $username)->exists());
 
-            // Create Contractor Profile
-            $contractor = self::create([
-                'user_id' => $user->user_id,
+            // Create User (use DB insert to align with propertyOwner flow and DB schema)
+            $userId = DB::table('users')->insertGetId(array(
+                'profile_pic' => $data['profile_pic'] ?? null,
+                'username' => $username,
+                'email' => $data['company_email'],
+                'password_hash' => bcrypt('contractor123@!'),
+                'OTP_hash' => 'admin_created',
+                'user_type' => 'contractor',
+                'created_at' => now(),
+                'updated_at' => now()
+            ));
+
+            // Create Contractor (align fields with legatura.sql)
+            $contractorId = DB::table('contractors')->insertGetId(array(
+                'user_id' => $userId,
                 'company_name' => $data['company_name'],
-                'years_of_experience' => $data['years_of_experience'],
+                'company_start_date' => $data['company_start_date'],
+                'years_of_experience' => $data['years_of_experience'] ?? 0,
                 'type_id' => $data['type_id'],
                 'contractor_type_other' => $data['contractor_type_other'] ?? null,
-                'verification_status' => 'approved'
-            ]);
+                'services_offered' => $data['services_offered'] ?? null,
+                'business_address' => $data['business_address'] ?? null,
+                'company_email' => $data['company_email'],
+                'company_phone' => $data['company_phone'] ?? null,
+                'company_website' => $data['company_website'] ?? null,
+                'company_social_media' => $data['company_social_media'] ?? null,
+                'company_description' => $data['company_description'] ?? null,
+                'picab_number' => $data['picab_number'] ?? null,
+                'picab_category' => $data['picab_category'] ?? null,
+                'picab_expiration_date' => $data['picab_expiration_date'] ?? null,
+                'business_permit_number' => $data['business_permit_number'] ?? null,
+                'business_permit_city' => $data['business_permit_city'] ?? null,
+                'business_permit_expiration' => $data['business_permit_expiration'] ?? null,
+                'tin_business_reg_number' => $data['tin_business_reg_number'] ?? null,
+                'dti_sec_registration_photo' => $data['dti_sec_registration_photo'] ?? null,
+                'verification_status' => 'approved',
+                'verification_date' => now(),
+                'created_at' => now(),
+                'updated_at' => now()
+            ));
 
             // Create Contractor User (Representative)
-            DB::table('contractor_users')->insert([
-                'contractor_id' => $contractor->contractor_id,
-                'user_id' => $user->user_id,
+            DB::table('contractor_users')->insert(array(
+                'contractor_id' => $contractorId,
+                'user_id' => $userId,
                 'authorized_rep_fname' => $data['first_name'],
                 'authorized_rep_lname' => $data['last_name'],
-                'authorized_rep_mname' => $data['middle_name'] ?? null,
-                'phone_number' => $data['contact_number'],
+                'authorized_rep_mname' => $data['middle_name'],
+                'phone_number' => $data['company_phone'] ?? null,
                 'role' => 'owner',
                 'is_active' => 1,
                 'created_at' => now()
-            ]);
+            ));
 
-            return $contractor;
+            return array(
+                'username' => $username,
+                'email' => $data['company_email']
+            );
+        });
+    }
+
+    /**
+     * Edit an existing contractor
+     */
+    public function editContractor($userId, $data)
+    {
+        return DB::transaction(function () use ($userId, $data) {
+            // Update User
+            $userUpdateData = [
+                'email' => $data['company_email'],
+                'updated_at' => $data['updated_at']
+            ];
+            if (isset($data['profile_pic'])) {
+                $userUpdateData['profile_pic'] = $data['profile_pic'];
+            }
+            if (isset($data['password_hash'])) {
+                $userUpdateData['password_hash'] = $data['password_hash'];
+            }
+
+            DB::table('users')
+                ->where('user_id', $userId)
+                ->update($userUpdateData);
+
+            // Update Contractor
+            $contractorUpdateData = [
+                'company_name' => $data['company_name'],
+                'company_start_date' => $data['company_start_date'],
+                'years_of_experience' => $data['years_of_experience'],
+                'type_id' => $data['type_id'],
+                'contractor_type_other' => $data['contractor_type_other'],
+                'services_offered' => $data['services_offered'],
+                'business_address' => $data['business_address'],
+                'company_email' => $data['company_email'],
+                'company_phone' => $data['company_phone'],
+                'company_website' => $data['company_website'],
+                'company_social_media' => $data['company_social_media'],
+                'picab_number' => $data['picab_number'],
+                'picab_category' => $data['picab_category'],
+                'picab_expiration_date' => $data['picab_expiration_date'],
+                'business_permit_number' => $data['business_permit_number'],
+                'business_permit_city' => $data['business_permit_city'],
+                'business_permit_expiration' => $data['business_permit_expiration'],
+                'tin_business_reg_number' => $data['tin_business_reg_number'],
+                'updated_at' => $data['updated_at']
+            ];
+
+            if (isset($data['dti_sec_registration_photo'])) {
+                $contractorUpdateData['dti_sec_registration_photo'] = $data['dti_sec_registration_photo'];
+            }
+
+            DB::table('contractors')
+                ->where('user_id', $userId)
+                ->update($contractorUpdateData);
+
+            // Update Contractor User (Representative)
+            DB::table('contractor_users')
+                ->where('user_id', $userId)
+                ->where('role', 'owner')
+                ->update([
+                    'authorized_rep_fname' => $data['authorized_rep_fname'],
+                    'authorized_rep_lname' => $data['authorized_rep_lname'],
+                    'authorized_rep_mname' => $data['authorized_rep_mname'],
+                    'phone_number' => $data['phone_number']
+                ]);
+
+            return true;
+        });
+    }
+
+    public function deleteContractor($contractorId, $reason)
+    {
+        return DB::transaction(function () use ($contractorId, $reason) {
+            // Get contractor to find user_id
+            $contractor = DB::table('contractors')->where('contractor_id', $contractorId)->first();
+
+            if ($contractor) {
+                // Update Contractors table
+                DB::table('contractors')
+                    ->where('contractor_id', $contractorId)
+                    ->update([
+                        'verification_status' => 'deleted'
+                    ]);
+
+                // Update Contractor Users table
+                DB::table('contractor_users')
+                    ->where('contractor_id', $contractorId)
+                    ->where('role', 'owner')
+                    ->update([
+                        'is_deleted' => 1,
+                        'is_active' => 0,
+                        'deletion_reason' => $reason
+                    ]);
+
+                // Update User
+                DB::table('users')
+                    ->where('user_id', $contractor->user_id)
+                    ->update([
+                        'updated_at' => now()
+                    ]);
+            }
+
+            return true;
         });
     }
 }

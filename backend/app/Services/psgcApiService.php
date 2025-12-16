@@ -32,6 +32,28 @@ class psgcApiService
         }
     }
 
+    // Get all cities/municipalities
+    public function getAllCities()
+    {
+        try {
+            return Cache::remember('psgc_all_cities', 86400, function () {
+                $response = Http::get($this->baseUrl . '/cities-municipalities/');
+
+                if ($response->successful()) {
+                    $cities = $response->json();
+                    usort($cities, function($a, $b) {
+                        return strcmp($a['name'], $b['name']);
+                    });
+                    return $cities;
+                }
+
+                return [];
+            });
+        } catch (\Exception $e) {
+            return [];
+        }
+    }
+
     // Get cities/municipalities by province code
     public function getCitiesByProvince($provinceCode)
     {

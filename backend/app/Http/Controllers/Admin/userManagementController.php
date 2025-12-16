@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Http\Requests\Admin\rejectVerificationRequest;
 use App\Http\Requests\admin\propertyOwnerRequest;
+use App\Http\Requests\admin\contractorRequest;
 use App\Services\psgcApiService;
 use Illuminate\Support\Facades\Mail;
 
@@ -118,6 +119,225 @@ class userManagementController extends authController
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
         }
+    }
+
+    public function addContractor(contractorRequest $request)
+    {
+        $validated = $request->validated();
+
+        try {
+            // Handle File Uploads
+            $dtiSecPath = $request->file('dti_sec_registration_photo')->store('DTI_SEC', 'public');
+
+            $profilePicPath = null;
+            if ($request->hasFile('profile_pic')) {
+                $profilePicPath = $request->file('profile_pic')->store('profile_pics', 'public');
+            }
+
+            // Construct Address
+            $address = $validated['business_address_street'] . ', ' .
+                       $validated['business_address_barangay'] . ', ' .
+                       $validated['business_address_city'] . ', ' .
+                       $validated['business_address_province'] . ' ' .
+                       $validated['business_address_postal'];
+
+            // Calculate Years of Experience
+            $startDate = new \DateTime($validated['company_start_date']);
+            $now = new \DateTime();
+            $yearsOfExperience = $now->diff($startDate)->y;
+
+            // Prepare Data for Model
+            $data = [
+                // Company Info
+                'profile_pic' => $profilePicPath,
+                'company_name' => $validated['company_name'],
+                'company_phone' => $validated['company_phone'],
+                'company_start_date' => $validated['company_start_date'],
+                'years_of_experience' => $yearsOfExperience,
+                'type_id' => $validated['contractor_type_id'],
+                'contractor_type_other' => $validated['contractor_type_id'] == 9 ? $validated['contractor_type_other_text'] : null,
+                'services_offered' => $validated['services_offered'],
+                'company_website' => $validated['company_website'],
+                'company_social_media' => $validated['company_social_media'],
+
+                // Address
+                'business_address' => $address,
+                'business_address_street' => $validated['business_address_street'],
+                'business_address_barangay' => $validated['business_address_barangay'],
+                'business_address_city' => $validated['business_address_city'],
+                'business_address_province' => $validated['business_address_province'],
+                'business_address_postal' => $validated['business_address_postal'],
+
+                // Representative
+                'first_name' => $validated['first_name'],
+                'middle_name' => $validated['middle_name'],
+                'last_name' => $validated['last_name'],
+                'company_email' => $validated['company_email'],
+
+                // Legal Docs
+                'dti_sec_registration_photo' => $dtiSecPath,
+                'picab_number' => $validated['picab_number'],
+                'picab_category' => $validated['picab_category'],
+                'picab_expiration_date' => $validated['picab_expiration_date'],
+                'business_permit_number' => $validated['business_permit_number'],
+                'business_permit_city' => $validated['business_permit_city'],
+                'business_permit_expiration' => $validated['business_permit_expiration'],
+                'tin_business_reg_number' => $validated['tin_business_reg_number'],
+            ];
+
+            // Call Model to Create User and Contractor
+            $contractorModel = new contractorClass();
+            $result = $contractorModel->addContractor($data);
+
+            // Send Email
+            try {
+                \Illuminate\Support\Facades\Mail::raw(
+                    "Your contractor account is successfully created by the admin.\n\n" .
+                    "Login with:\n" .
+                    "Username: " . $result['username'] . "\n" .
+                    "Password: contractor123@!\n\n" .
+                    "Please change your password after logging in.",
+                    function ($message) use ($result) {
+                        $message->to($result['email'])
+                                ->subject('Contractor Account Created - Legatura');
+                    }
+                );
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to send contractor account creation email: ' . $e->getMessage());
+            }
+
+            return response()->json(['success' => true, 'message' => 'Contractor added successfully']);
+
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function updateContractor(contractorRequest $request, $id)
+    {
+        $validated = $request->validated();
+
+        try {
+            // Handle File Uploads
+            if ($request->hasFile('dti_sec_registration_photo')) {
+                $validated['dti_sec_registration_photo'] = $request->file('dti_sec_registration_photo')->store('DTI_SEC', 'public');
+            }
+
+            if ($request->hasFile('profile_pic')) {
+                $validated['profile_pic'] = $request->file('profile_pic')->store('profile_pics', 'public');
+            }
+
+            // Construct Address
+            $address = $validated['business_address_street'] . ', ' .
+                       $validated['business_address_barangay'] . ', ' .
+                       $validated['business_address_city'] . ', ' .
+                       $validated['business_address_province'] . ' ' .
+                       $validated['business_address_postal'];
+
+            // Calculate Years of Experience
+            $startDate = new \DateTime($validated['company_start_date']);
+            $now = new \DateTime();
+            $yearsOfExperience = $now->diff($startDate)->y;
+
+            // Handle Contractor Type
+            $typeId = $validated['contractor_type_id'];
+            $typeOther = ($typeId == 9) ? ($validated['contractor_type_other_text'] ?? null) : null;
+
+            // Prepare Data Array
+            $data = [
+                // Users Table Fields
+                'company_email' => $validated['company_email'],
+                'updated_at' => now(),
+
+                // Contractors Table Fields
+                'company_name' => $validated['company_name'],
+                'company_start_date' => $validated['company_start_date'],
+                'years_of_experience' => $yearsOfExperience,
+                'type_id' => $typeId,
+                'contractor_type_other' => $typeOther,
+                'services_offered' => $validated['services_offered'] ?? null,
+                'business_address' => $address,
+                'company_phone' => $validated['company_phone'],
+                'company_website' => $validated['company_website'] ?? null,
+                'company_social_media' => $validated['company_social_media'] ?? null,
+                'picab_number' => $validated['picab_number'],
+                'picab_category' => $validated['picab_category'],
+                'picab_expiration_date' => $validated['picab_expiration_date'],
+                'business_permit_number' => $validated['business_permit_number'],
+                'business_permit_city' => $validated['business_permit_city'],
+                'business_permit_expiration' => $validated['business_permit_expiration'],
+                'tin_business_reg_number' => $validated['tin_business_reg_number'],
+
+                // Contractor Users (Representative) Fields
+                'authorized_rep_fname' => $validated['first_name'],
+                'authorized_rep_lname' => $validated['last_name'],
+                'authorized_rep_mname' => $validated['middle_name'] ?? null,
+                'phone_number' => $validated['company_phone'],
+            ];
+
+            // Add optional fields if present
+            if (isset($validated['profile_pic'])) {
+                $data['profile_pic'] = $validated['profile_pic'];
+            }
+            if (isset($validated['dti_sec_registration_photo'])) {
+                $data['dti_sec_registration_photo'] = $validated['dti_sec_registration_photo'];
+            }
+            if (!empty($request->input('password'))) {
+                $data['password_hash'] = bcrypt($request->input('password'));
+            }
+
+            // Call Model
+            $contractorModel = new contractorClass();
+            $contractorModel->editContractor($id, $data);
+
+            return response()->json(['success' => true, 'message' => 'Contractor updated successfully']);
+
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function fetchContractor($id)
+    {
+        $model = new contractorClass();
+        $contractor = $model->getContractorById($id);
+
+        if (!$contractor) {
+            return response()->json(['error' => 'Contractor not found'], 404);
+        }
+
+        // Parse Address
+        // Assuming format: Street, Barangay, City, Province Zip
+        // Note: The address might contain PSGC codes or names depending on when it was created
+        $addressParts = explode(', ', $contractor->business_address);
+        $street = $addressParts[0] ?? '';
+        $barangay = $addressParts[1] ?? '';
+        $city = $addressParts[2] ?? '';
+        $provinceZip = $addressParts[3] ?? '';
+
+        // Extract Zip from Province
+        $zip = '';
+        $province = $provinceZip;
+        if (preg_match('/(.*)\s+(\d+)$/', $provinceZip, $matches)) {
+            $province = $matches[1];
+            $zip = $matches[2];
+        }
+
+        // Check if province is a code (numeric) and try to convert to name if needed
+        // For now, we'll return what we have since the frontend should handle codes
+        // But if it's a pure numeric code without a name, we need to look it up
+        // This is a workaround for data that might have been saved with codes
+
+        $contractor->business_address_street = $street;
+        $contractor->business_address_barangay = $barangay;
+        $contractor->business_address_city = $city;
+        $contractor->business_address_province = $province;
+        $contractor->business_address_postal = $zip;
+
+        return response()->json([
+            'success' => true,
+            'data' => $contractor
+        ]);
     }
 
     public function fetchPropertyOwner($id)
@@ -229,6 +449,22 @@ class userManagementController extends authController
         }
     }
 
+    public function deleteContractor(Request $request, $id)
+    {
+        $request->validate([
+            'deletion_reason' => 'required|string|max:500',
+        ]);
+
+        try {
+            $model = new contractorClass();
+            $model->deleteContractor($id, $request->input('deletion_reason'));
+
+            return response()->json(['success' => true, 'message' => 'Contractor deleted successfully']);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
+        }
+    }
+
     /**
      * Show contractors list
      */
@@ -252,13 +488,19 @@ class userManagementController extends authController
 
         $occupations = $accountModel->getOccupations();
         $validIds = $accountModel->getValidIds();
+        $picabCategories = $accountModel->getPicabCategories();
         $provinces = $psgcService->getProvinces();
+        $allCities = $psgcService->getAllCities();
+        $contractorTypes = DB::table('contractor_types')->get();
 
         return view('admin.userManagement.contractor', [
             'contractors' => $contractors,
             'occupations' => $occupations,
             'validIds' => $validIds,
-            'provinces' => $provinces
+            'picabCategories' => $picabCategories,
+            'provinces' => $provinces,
+            'allCities' => $allCities,
+            'contractorTypes' => $contractorTypes
         ]);
     }
 
