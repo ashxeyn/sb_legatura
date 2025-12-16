@@ -271,12 +271,12 @@
 
           <!-- Contractors Table -->
           <div id="contractorsTableWrap" class="overflow-x-auto">
-            @include('admin.userManagement.partials.contractors_table')
+            @include('admin.userManagement.partials.vercontractorTable')
           </div>
 
           <!-- Property Owners Table -->
           <div id="ownersTableWrap" class="overflow-x-auto hidden">
-            @include('admin.userManagement.partials.owners_table')
+            @include('admin.userManagement.partials.verownerTable')
           </div>
         </div>
       </div>

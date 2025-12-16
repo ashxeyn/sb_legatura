@@ -146,6 +146,10 @@ Route::get('/admin/analytics/reports', [analyticsController::class, 'reportsAnal
 
 // User Management Routes
 Route::get('/admin/user-management/property-owners', [userManagementController::class, 'propertyOwners'])->name('admin.userManagement.propertyOwner');
+Route::post('/admin/user-management/property-owners/store', [userManagementController::class, 'addPropertyOwner'])->name('admin.userManagement.propertyOwner.store');
+Route::get('/admin/user-management/property-owners/{id}/edit', [userManagementController::class, 'fetchPropertyOwner'])->name('admin.userManagement.propertyOwner.edit');
+Route::put('/admin/user-management/property-owners/{id}', [userManagementController::class, 'updatePropertyOwner'])->name('admin.userManagement.propertyOwner.update');
+Route::delete('/admin/user-management/property-owners/{id}', [userManagementController::class, 'deletePropertyOwner'])->name('admin.userManagement.propertyOwner.delete');
 Route::get('/admin/user-management/property-owners/{id}', [userManagementController::class, 'viewPropertyOwner'])->name('admin.userManagement.propertyOwner.view');
 Route::get('/admin/user-management/contractors', [userManagementController::class, 'contractors'])->name('admin.userManagement.contractor');
 Route::get('/admin/user-management/contractor/view', [userManagementController::class, 'viewContractor'])->name('admin.userManagement.contractor.view');

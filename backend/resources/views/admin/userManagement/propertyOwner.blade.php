@@ -4,6 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
   <title>Admin Dashboard - Legatura</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
@@ -170,15 +171,16 @@
         <h1 class="text-2xl font-semibold text-gray-800">Property Owners</h1>
 
         <div class="flex items-center gap-6">
+        <div class="flex items-center gap-6">
           <div class="relative w-64" style="width: 600px;">
             <input
+              id="searchInput"
               type="text"
               placeholder="Search..."
               class="border border-gray-300 rounded-lg px-4 py-2 pr-10 focus:ring-2 focus:ring-indigo-400 focus:outline-none w-full"
             >
             <i class="fi fi-rr-search absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
           </div>
-
 
           <div class="relative">
             <button id="notificationBell" class="cursor-pointer w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition">
@@ -238,101 +240,40 @@
 
       <div class="p-8">
         <!-- Controls Section -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6 flex items-center justify-between gap-4">
-          <!-- Left Side - Dropdowns -->
-          <div class="flex items-center gap-4">
-            <!-- Ranking Dropdown -->
-            <div class="relative">
-              <select id="rankingFilter" class="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-10 text-sm font-medium text-gray-700 hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition cursor-pointer">
-                <option value="ranking">Ranking</option>
-                <option value="name">Name</option>
-                <option value="projects">Projects</option>
-                <option value="date">Date Registered</option>
-              </select>
-              <i class="fi fi-rr-angle-small-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 pointer-events-none"></i>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6 flex flex-wrap items-center justify-between gap-4">
+          <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700">
+              <i class="fi fi-rr-filter text-gray-500"></i>
+              <span>Filter By</span>
             </div>
 
-            <!-- Time Period Dropdown -->
-            <div class="relative">
-              <button id="periodBtn" class="flex items-center gap-2 bg-white border border-gray-300 rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition">
-                <i class="fi fi-rr-calendar text-gray-500"></i>
-                <span id="periodText">This Month</span>
-                <i class="fi fi-rr-angle-small-down text-gray-500"></i>
-              </button>
-              <div id="periodDropdown" class="absolute left-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50 hidden">
-                <button class="period-option w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition">This Week</button>
-                <button class="period-option w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition">This Month</button>
-                <button class="period-option w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition">This Year</button>
-                <button class="period-option w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition">All Time</button>
-              </div>
+            <!-- Date Range -->
+            <div class="flex items-center gap-2">
+              <label class="text-sm font-medium text-gray-700">From:</label>
+              <input type="date" id="dateFrom" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400">
+              <label class="text-sm font-medium text-gray-700">To:</label>
+              <input type="date" id="dateTo" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400">
             </div>
           </div>
 
-          <!-- Right Side - Add Button -->
-          <button id="addPropertyOwnerBtn" class="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-5 py-2 rounded-lg font-medium text-sm shadow-md hover:shadow-lg transition transform hover:scale-105">
-            <i class="fi fi-rr-plus text-lg"></i>
-            <span>Add Property Owner</span>
-          </button>
+          <div class="flex items-center gap-4">
+            <button id="resetFilterBtn" class="flex items-center gap-2 text-red-600 hover:text-red-700 text-sm font-semibold px-3 py-2 rounded-lg hover:bg-red-50 transition">
+                <i class="fi fi-rr-rotate-left"></i>
+                <span>Reset Filter</span>
+            </button>
+
+            <button id="addPropertyOwnerBtn" class="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-5 py-2 rounded-lg font-medium text-sm shadow-md hover:shadow-lg transition transform hover:scale-105">
+                <i class="fi fi-rr-plus text-lg"></i>
+                <span>Add Property Owner</span>
+            </button>
+          </div>
         </div>
 
         <!-- Table Section -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div class="overflow-x-auto">
-            <table class="w-full">
-              <thead>
-                <tr class="bg-gray-50 border-b border-gray-200">
-                  <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Name</th>
-                  <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Date Registered</th>
-                  <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Occupation</th>
-                  <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Number of<br>Project Posted</th>
-                  <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Ongoing<br>Projects</th>
-                  <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Action</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-gray-200" id="propertyOwnersTable">
-                @foreach($propertyOwners as $propertyOwner)
-                <tr class="hover:bg-gray-50 transition duration-150 ease-in-out group">
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <div class="w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center text-white font-semibold shadow-md flex-shrink-0">
-                        {{ substr($propertyOwner->first_name, 0, 1) . substr($propertyOwner->last_name, 0, 1) }}
-                      </div>
-                      <span class="font-medium text-gray-900">{{ $propertyOwner->first_name }} {{ $propertyOwner->last_name }}</span>
-                    </div>
-                  </td>
-                  <td class="px-6 py-4 text-center">
-                    <div class="text-sm text-gray-600">{{ \Carbon\Carbon::parse($propertyOwner->created_at)->format('d M, Y') }}</div>
-                  </td>
-                  <td class="px-6 py-4 text-center">
-                    <span class="text-sm text-gray-700">{{ $propertyOwner->occupation ?? 'N/A' }}</span>
-                  </td>
-                  <td class="px-6 py-4 text-center">
-                    <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 font-semibold text-sm">0</span>
-                  </td>
-                  <td class="px-6 py-4 text-center">
-                    <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-green-100 text-green-700 font-semibold text-sm">0</span>
-                  </td>
-                  <td class="px-6 py-4">
-                    <div class="flex items-center justify-center gap-2">
-                      <button class="action-btn view-btn p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition" title="View" data-id="{{ $propertyOwner->owner_id }}">
-                        <i class="fi fi-rr-eye"></i>
-                      </button>
-                      <button class="action-btn edit-btn p-2 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 transition" title="Edit" data-id="{{ $propertyOwner->owner_id }}">
-                        <i class="fi fi-rr-pencil"></i>
-                      </button>
-                      <button class="action-btn delete-btn p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition" title="Delete" data-id="{{ $propertyOwner->owner_id }}">
-                        <i class="fi fi-rr-trash"></i>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-                @endforeach
-
-
-              </tbody>
-            </table>
-          </div>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden" id="ownersTableWrap">
+            @include('admin.userManagement.partials.ownerTable')
         </div>
+      </div>
       </div>
 
     </main>
@@ -360,7 +301,7 @@
             </div>
             <label for="profileUpload" class="absolute bottom-0 right-0 bg-orange-500 hover:bg-orange-600 text-white p-2 rounded-full cursor-pointer shadow-lg transition transform hover:scale-110">
               <i class="fi fi-rr-pencil text-sm"></i>
-              <input type="file" id="profileUpload" class="hidden" accept="image/*">
+              <input type="file" id="profileUpload" name="profile_pic" class="hidden" accept="image/*">
             </label>
           </div>
           <div>
@@ -369,107 +310,169 @@
           </div>
         </div>
 
-        <!-- Company Information Section -->
+        <!-- Personal Information Section -->
         <div class="mb-6">
           <h3 class="text-lg font-semibold text-orange-500 mb-4 flex items-center gap-2">
-            <i class="fi fi-rr-building"></i>
-            Company Information
+            <i class="fi fi-rr-user"></i>
+            Personal Information
           </h3>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">First name</label>
-              <input type="text" placeholder="Enter first name" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+              <input type="text" name="first_name" placeholder="Enter first name" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">Occupation</label>
-              <input type="text" placeholder="Enter occupation" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+              <select name="occupation_id" id="occupationSelect" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+                <option value="">Select Occupation</option>
+                @foreach($occupations as $occupation)
+                    @if(strtolower($occupation->occupation_name) !== 'others')
+                        <option value="{{ $occupation->id }}">{{ $occupation->occupation_name }}</option>
+                    @endif
+                @endforeach
+                <option value="others">Others</option>
+              </select>
+              <input type="text" name="occupation_other" id="occupationOtherInput" placeholder="Please specify occupation" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition mt-2 hidden">
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">Middle name <span class="text-gray-400">(optional)</span></label>
-              <input type="text" placeholder="Enter middle name" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+              <input type="text" name="middle_name" placeholder="Enter middle name" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">Date of birth</label>
-              <input type="date" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+              <input type="date" name="date_of_birth" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">Last name</label>
-              <input type="text" placeholder="Enter last name" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+              <input type="text" name="last_name" placeholder="Enter last name" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">Contact no.</label>
-              <input type="tel" placeholder="Enter contact number" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+              <input type="tel" name="phone_number" placeholder="Enter contact number" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
             </div>
           </div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <!-- Account Setup Section -->
-          <div>
-            <h3 class="text-lg font-semibold text-orange-500 mb-4 flex items-center gap-2">
-              <i class="fi fi-rr-user-gear"></i>
-              Account Setup
-            </h3>
-            <div class="space-y-4">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Username</label>
-                <input type="text" placeholder="Enter username" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
-                <input type="email" placeholder="Enter email address" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Password</label>
-                <div class="relative">
-                  <input type="password" id="passwordInput" placeholder="Enter password" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition pr-10">
-                  <button type="button" id="togglePassword" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700">
-                    <i class="fi fi-rr-eye" id="eyeIcon"></i>
-                  </button>
+          <!-- Account Setup & Address Section -->
+          <div class="space-y-6">
+            <div>
+                <h3 class="text-lg font-semibold text-orange-500 mb-4 flex items-center gap-2">
+                <i class="fi fi-rr-user-gear"></i>
+                Account Setup
+                </h3>
+                <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                    <input type="email" name="email" placeholder="Enter email address" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
                 </div>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Confirm Password</label>
-                <div class="relative">
-                  <input type="password" id="confirmPasswordInput" placeholder="Confirm password" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition pr-10">
-                  <button type="button" id="toggleConfirmPassword" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700">
-                    <i class="fi fi-rr-eye" id="eyeIconConfirm"></i>
-                  </button>
+                <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg">
+                    <div class="flex items-start">
+                        <div class="flex-shrink-0">
+                            <i class="fi fi-rr-info text-blue-500 text-xl"></i>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm text-blue-700">
+                                <span class="font-bold">Note:</span> Username and Password are automatically generated.
+                            </p>
+                            <p class="text-sm text-blue-600 mt-1">
+                                Default Password: <span class="font-mono font-bold bg-blue-100 px-1 rounded">owner123@!</span>
+                            </p>
+                            <p class="text-sm text-blue-600 mt-1">
+                                The username will be <span class="font-mono font-bold bg-blue-100 px-1 rounded">owner_</span> followed by a random 4-digit number.
+                            </p>
+                        </div>
+                    </div>
                 </div>
-              </div>
+                </div>
+            </div>
+
+            <div>
+                <h3 class="text-lg font-semibold text-orange-500 mb-4 flex items-center gap-2">
+                <i class="fi fi-rr-map-marker"></i>
+                Address
+                </h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Province</label>
+                        <select id="owner_address_province" name="province" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+                            <option value="">Select Province</option>
+                            @foreach($provinces as $province)
+                                <option value="{{ $province['code'] }}" data-name="{{ $province['name'] }}">{{ $province['name'] }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">City/Municipality</label>
+                        <select id="owner_address_city" name="city" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition" disabled>
+                            <option value="">Select City/Municipality</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Barangay</label>
+                        <select id="owner_address_barangay" name="barangay" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition" disabled>
+                            <option value="">Select Barangay</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Street Address / Unit No.</label>
+                        <input type="text" name="street_address" placeholder="Enter street address" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Zip Code</label>
+                        <input type="text" name="zip_code" placeholder="Enter zip code" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+                    </div>
+                </div>
             </div>
           </div>
 
-          <!-- Business Address Section -->
+          <!-- Verification Documents Section -->
           <div>
             <h3 class="text-lg font-semibold text-orange-500 mb-4 flex items-center gap-2">
-              <i class="fi fi-rr-marker"></i>
-              Business Address
+              <i class="fi fi-rr-document"></i>
+              Verification Documents
             </h3>
             <div class="space-y-4">
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Type of Valid ID</label>
-                <select class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+                <select name="valid_id_id" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
                   <option value="">Select ID type</option>
-                  <option value="passport">Passport</option>
-                  <option value="drivers_license">Driver's License</option>
-                  <option value="national_id">National ID</option>
-                  <option value="sss">SSS ID</option>
-                  <option value="umid">UMID</option>
+                  @foreach($validIds as $validId)
+                    <option value="{{ $validId->id }}">{{ $validId->valid_id_name }}</option>
+                  @endforeach
                 </select>
               </div>
+
+              <!-- Valid ID Front -->
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Valid ID Number</label>
-                <input type="text" placeholder="Enter ID number" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Valid ID (Front)</label>
+                <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-orange-400 transition cursor-pointer bg-gray-50 hover:bg-orange-50" id="idFrontUploadArea">
+                  <input type="file" id="idFrontUpload" name="valid_id_photo" class="hidden" accept="image/*">
+                  <i class="fi fi-rr-id-card-clip-alt text-3xl text-gray-400 mb-2"></i>
+                  <p class="text-sm text-gray-600 font-medium">Upload Front Side</p>
+                  <div id="idFrontFileName" class="text-sm text-orange-500 mt-2 hidden font-medium"></div>
+                </div>
               </div>
+
+              <!-- Valid ID Back -->
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Valid ID</label>
-                <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-orange-400 transition cursor-pointer bg-gray-50 hover:bg-orange-50" id="idUploadArea">
-                  <input type="file" id="idUpload" class="hidden" accept="image/*">
-                  <i class="fi fi-rr-cloud-upload text-3xl text-gray-400 mb-2"></i>
-                  <p class="text-sm text-gray-600 font-medium">Upload Image of file</p>
-                  <p class="text-xs text-gray-400 mt-1">Click or drag file to upload</p>
-                  <div id="idFileName" class="text-sm text-orange-500 mt-2 hidden font-medium"></div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Valid ID (Back)</label>
+                <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-orange-400 transition cursor-pointer bg-gray-50 hover:bg-orange-50" id="idBackUploadArea">
+                  <input type="file" id="idBackUpload" name="valid_id_back_photo" class="hidden" accept="image/*">
+                  <i class="fi fi-rr-id-card-clip-alt text-3xl text-gray-400 mb-2"></i>
+                  <p class="text-sm text-gray-600 font-medium">Upload Back Side</p>
+                  <div id="idBackFileName" class="text-sm text-orange-500 mt-2 hidden font-medium"></div>
+                </div>
+              </div>
+
+              <!-- Police Clearance -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Police Clearance</label>
+                <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-orange-400 transition cursor-pointer bg-gray-50 hover:bg-orange-50" id="policeClearanceUploadArea">
+                  <input type="file" id="policeClearanceUpload" name="police_clearance" class="hidden" accept="image/*">
+                  <i class="fi fi-rr-shield-check text-3xl text-gray-400 mb-2"></i>
+                  <p class="text-sm text-gray-600 font-medium">Upload Police Clearance</p>
+                  <div id="policeClearanceFileName" class="text-sm text-orange-500 mt-2 hidden font-medium"></div>
                 </div>
               </div>
             </div>
@@ -491,113 +494,210 @@
 
   <!-- Edit Property Owner Modal -->
   <div id="editPropertyOwnerModal" class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden transform transition-all duration-300 scale-95 opacity-0 modal-content">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto modal-content">
       <!-- Modal Header -->
-      <div class="sticky top-0 bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-5 flex items-center justify-between rounded-t-2xl z-10 shadow-lg">
-        <h2 class="text-2xl font-bold text-white flex items-center gap-3">
-          <i class="fi fi-rr-edit"></i>
-          Edit Property Owner
-        </h2>
-        <button id="closeEditModalBtn" class="text-white hover:text-orange-100 transition-all p-2 rounded-lg hover:bg-white hover:bg-opacity-20 hover:rotate-90 duration-300">
+      <div class="sticky top-0 bg-white border-b border-gray-200 px-8 py-5 flex items-center justify-between rounded-t-2xl z-10">
+        <h2 class="text-2xl font-bold text-gray-800">Edit Property Owner</h2>
+        <button id="closeEditModalBtn" class="text-gray-400 hover:text-gray-600 transition p-2 rounded-lg hover:bg-gray-100">
           <i class="fi fi-rr-cross text-2xl"></i>
         </button>
       </div>
 
       <!-- Modal Body -->
-      <div class="overflow-y-auto max-h-[calc(90vh-80px)] p-6 md:p-8 space-y-6">
-        <!-- Profile Picture Section -->
-        <div class="flex items-center gap-6 p-6 bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl border-2 border-orange-200 hover:shadow-lg transition-all duration-300">
-          <div class="relative group">
-            <div class="w-24 h-24 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center overflow-hidden shadow-xl ring-4 ring-orange-200 hover:ring-orange-300 transition-all duration-300">
-              <span class="text-3xl text-white font-bold" id="editProfileInitials">CR</span>
-              <img id="editProfilePreview" class="w-full h-full object-cover hidden" alt="Profile Preview">
+      <div class="p-8">
+        <form id="editPropertyOwnerForm">
+            <input type="hidden" id="edit_user_id" name="user_id">
+            <!-- Profile Picture Section -->
+            <div class="flex items-center gap-6 mb-8">
+            <div class="relative group">
+                <div class="w-24 h-24 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center overflow-hidden shadow-lg">
+                <i class="fi fi-rr-user text-4xl text-gray-500" id="editProfileIcon"></i>
+                <img id="editProfilePreview" class="w-full h-full object-cover hidden" alt="Profile Preview">
+                </div>
+                <label for="editProfileUpload" class="absolute bottom-0 right-0 bg-orange-500 hover:bg-orange-600 text-white p-2 rounded-full cursor-pointer shadow-lg transition transform hover:scale-110">
+                <i class="fi fi-rr-pencil text-sm"></i>
+                <input type="file" id="editProfileUpload" name="profile_pic" class="hidden" accept="image/*">
+                </label>
             </div>
-            <label for="editProfileUpload" class="absolute -bottom-1 -right-1 bg-orange-500 hover:bg-orange-600 text-white p-2.5 rounded-full cursor-pointer shadow-lg transition-all transform hover:scale-110 hover:rotate-12">
-              <i class="fi fi-rr-camera text-sm"></i>
-              <input type="file" id="editProfileUpload" class="hidden" accept="image/*">
-            </label>
-          </div>
-          <div>
-            <h3 class="text-lg font-bold text-gray-800">Profile Picture</h3>
-            <p class="text-sm text-gray-600 mt-1">Click the camera icon to update photo</p>
-            <p class="text-xs text-orange-600 mt-1 font-medium">• JPG, PNG • Max 5MB</p>
-          </div>
-        </div>
+            <div>
+                <h3 class="text-lg font-semibold text-gray-800">Profile Picture</h3>
+                <p class="text-sm text-gray-500">Update profile photo for the property owner</p>
+            </div>
+            </div>
 
-        <!-- Personal Information Section -->
-        <div>
-          <h3 class="text-lg font-bold text-orange-600 mb-4 flex items-center gap-2 pb-2 border-b-2 border-orange-200">
-            <i class="fi fi-rr-user"></i>
-            Personal Information
-          </h3>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div class="form-group">
-              <label class="block text-sm font-semibold text-gray-700 mb-2">First Name</label>
-              <input type="text" id="editFirstName" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition-all hover:border-orange-300 bg-white">
+            <!-- Personal Information Section -->
+            <div class="mb-6">
+            <h3 class="text-lg font-semibold text-orange-500 mb-4 flex items-center gap-2">
+                <i class="fi fi-rr-user"></i>
+                Personal Information
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">First name</label>
+                <input type="text" id="edit_first_name" name="first_name" placeholder="Enter first name" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+                </div>
+                <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Occupation</label>
+                <select name="occupation_id" id="edit_occupationSelect" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+                    <option value="">Select Occupation</option>
+                    @foreach($occupations as $occupation)
+                        @if(strtolower($occupation->occupation_name) !== 'others')
+                            <option value="{{ $occupation->id }}">{{ $occupation->occupation_name }}</option>
+                        @endif
+                    @endforeach
+                    <option value="others">Others</option>
+                </select>
+                <input type="text" name="occupation_other" id="edit_occupationOtherInput" placeholder="Please specify occupation" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition mt-2 hidden">
+                </div>
+                <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Middle name <span class="text-gray-400">(optional)</span></label>
+                <input type="text" id="edit_middle_name" name="middle_name" placeholder="Enter middle name" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+                </div>
+                <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Date of birth</label>
+                <input type="date" id="edit_date_of_birth" name="date_of_birth" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+                </div>
+                <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Last name</label>
+                <input type="text" id="edit_last_name" name="last_name" placeholder="Enter last name" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+                </div>
+                <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Contact no.</label>
+                <input type="tel" id="edit_phone_number" name="phone_number" placeholder="Enter contact number" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+                </div>
             </div>
-            <div class="form-group">
-              <label class="block text-sm font-semibold text-gray-700 mb-2">Middle Name <span class="text-gray-400 font-normal">(optional)</span></label>
-              <input type="text" id="editMiddleName" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition-all hover:border-orange-300 bg-white">
             </div>
-            <div class="form-group">
-              <label class="block text-sm font-semibold text-gray-700 mb-2">Last Name</label>
-              <input type="text" id="editLastName" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition-all hover:border-orange-300 bg-white">
-            </div>
-            <div class="form-group">
-              <label class="block text-sm font-semibold text-gray-700 mb-2">Date of Birth</label>
-              <div class="relative">
-                <input type="date" id="editDateOfBirth" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition-all hover:border-orange-300 bg-white">
-                <i class="fi fi-rr-calendar absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"></i>
-              </div>
-            </div>
-            <div class="form-group">
-              <label class="block text-sm font-semibold text-gray-700 mb-2">Contact Number</label>
-              <div class="relative">
-                <i class="fi fi-rr-phone-call absolute left-4 top-1/2 -translate-y-1/2 text-orange-500"></i>
-                <input type="tel" id="editContactNumber" class="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition-all hover:border-orange-300 bg-white">
-              </div>
-            </div>
-            <div class="form-group">
-              <label class="block text-sm font-semibold text-gray-700 mb-2">Occupation</label>
-              <input type="text" id="editOccupation" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition-all hover:border-orange-300 bg-white">
-            </div>
-          </div>
-        </div>
 
-        <!-- Account Information Section -->
-        <div>
-          <h3 class="text-lg font-bold text-orange-600 mb-4 flex items-center gap-2 pb-2 border-b-2 border-orange-200">
-            <i class="fi fi-rr-at"></i>
-            Account Information
-          </h3>
-          <div class="grid grid-cols-1 gap-4">
-            <div class="form-group">
-              <label class="block text-sm font-semibold text-gray-700 mb-2">Email Address</label>
-              <div class="relative">
-                <i class="fi fi-rr-envelope absolute left-4 top-1/2 -translate-y-1/2 text-orange-500"></i>
-                <input type="email" id="editEmail" class="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition-all hover:border-orange-300 bg-white">
-              </div>
-            </div>
-            <div class="form-group">
-              <label class="block text-sm font-semibold text-gray-700 mb-2">Username</label>
-              <div class="relative">
-                <i class="fi fi-rr-user absolute left-4 top-1/2 -translate-y-1/2 text-orange-500"></i>
-                <input type="text" id="editUsername" class="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition-all hover:border-orange-300 bg-white">
-              </div>
-            </div>
-          </div>
-        </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Account Setup & Address Section -->
+            <div class="space-y-6">
+                <div>
+                    <h3 class="text-lg font-semibold text-orange-500 mb-4 flex items-center gap-2">
+                    <i class="fi fi-rr-user-gear"></i>
+                    Account Setup
+                    </h3>
+                    <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                        <input type="email" id="edit_email" name="email" placeholder="Enter email address" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Username</label>
+                        <input type="text" id="edit_username" name="username" placeholder="Enter username" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">New Password <span class="text-gray-400">(Optional)</span></label>
+                        <input type="password" id="edit_password" name="password" placeholder="Enter new password" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+                        <p class="text-xs text-gray-500 mt-1">Leave blank if you don't want to change the password.</p>
+                    </div>
+                    </div>
+                </div>
 
-        <!-- Action Buttons -->
-        <div class="flex items-center justify-end gap-3 pt-6 border-t-2 border-gray-200">
-          <button id="cancelEditBtn" class="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all font-semibold hover:shadow-md hover:scale-105 active:scale-95">
-            Cancel
-          </button>
-          <button id="saveEditBtn" class="px-8 py-3 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-lg transition-all font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95 flex items-center gap-2">
-            <i class="fi fi-rr-disk"></i>
-            Save Changes
-          </button>
-        </div>
+                <div>
+                    <h3 class="text-lg font-semibold text-orange-500 mb-4 flex items-center gap-2">
+                    <i class="fi fi-rr-map-marker"></i>
+                    Address
+                    </h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Province</label>
+                            <select id="edit_owner_address_province" name="province" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+                                <option value="">Select Province</option>
+                                @foreach($provinces as $province)
+                                    <option value="{{ $province['code'] }}" data-name="{{ $province['name'] }}">{{ $province['name'] }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">City/Municipality</label>
+                            <select id="edit_owner_address_city" name="city" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition" disabled>
+                                <option value="">Select City/Municipality</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Barangay</label>
+                            <select id="edit_owner_address_barangay" name="barangay" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition" disabled>
+                                <option value="">Select Barangay</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Street Address / Unit No.</label>
+                            <input type="text" id="edit_street_address" name="street_address" placeholder="Enter street address" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Zip Code</label>
+                            <input type="text" id="edit_zip_code" name="zip_code" placeholder="Enter zip code" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Verification Documents Section -->
+            <div>
+                <h3 class="text-lg font-semibold text-orange-500 mb-4 flex items-center gap-2">
+                <i class="fi fi-rr-document"></i>
+                Verification Documents
+                </h3>
+                <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Type of Valid ID</label>
+                    <select id="edit_valid_id_id" name="valid_id_id" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+                    <option value="">Select ID type</option>
+                    @foreach($validIds as $validId)
+                        <option value="{{ $validId->id }}">{{ $validId->valid_id_name }}</option>
+                    @endforeach
+                    </select>
+                </div>
+
+                <!-- Valid ID Front -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Valid ID (Front)</label>
+                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-orange-400 transition cursor-pointer bg-gray-50 hover:bg-orange-50" id="editIdFrontUploadArea">
+                    <input type="file" id="editIdFrontUpload" name="valid_id_photo" class="hidden" accept="image/*">
+                    <i class="fi fi-rr-id-card-clip-alt text-3xl text-gray-400 mb-2"></i>
+                    <p class="text-sm text-gray-600 font-medium">Upload Front Side</p>
+                    <div id="editIdFrontFileName" class="text-sm text-orange-500 mt-2 hidden font-medium"></div>
+                    </div>
+                    <div id="currentIdFront" class="mt-2 text-sm text-gray-500"></div>
+                </div>
+
+                <!-- Valid ID Back -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Valid ID (Back)</label>
+                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-orange-400 transition cursor-pointer bg-gray-50 hover:bg-orange-50" id="editIdBackUploadArea">
+                    <input type="file" id="editIdBackUpload" name="valid_id_back_photo" class="hidden" accept="image/*">
+                    <i class="fi fi-rr-id-card-clip-alt text-3xl text-gray-400 mb-2"></i>
+                    <p class="text-sm text-gray-600 font-medium">Upload Back Side</p>
+                    <div id="editIdBackFileName" class="text-sm text-orange-500 mt-2 hidden font-medium"></div>
+                    </div>
+                    <div id="currentIdBack" class="mt-2 text-sm text-gray-500"></div>
+                </div>
+
+                <!-- Police Clearance -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Police Clearance</label>
+                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-orange-400 transition cursor-pointer bg-gray-50 hover:bg-orange-50" id="editPoliceClearanceUploadArea">
+                    <input type="file" id="editPoliceClearanceUpload" name="police_clearance" class="hidden" accept="image/*">
+                    <i class="fi fi-rr-shield-check text-3xl text-gray-400 mb-2"></i>
+                    <p class="text-sm text-gray-600 font-medium">Upload Police Clearance</p>
+                    <div id="editPoliceClearanceFileName" class="text-sm text-orange-500 mt-2 hidden font-medium"></div>
+                    </div>
+                    <div id="currentPoliceClearance" class="mt-2 text-sm text-gray-500"></div>
+                </div>
+                </div>
+            </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="flex items-center justify-end gap-3 mt-8 pt-6 border-t border-gray-200">
+            <button type="button" id="cancelEditBtn" class="px-6 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition font-medium">
+                Cancel
+            </button>
+            <button type="submit" id="saveEditBtn" class="px-6 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-lg transition font-medium shadow-md hover:shadow-lg transform hover:scale-105">
+                Save Changes
+            </button>
+            </div>
+        </form>
       </div>
     </div>
   </div>
@@ -618,9 +718,15 @@
       <!-- Content Section -->
       <div class="px-8 pb-6 text-center">
         <h2 class="text-2xl font-bold text-gray-800 mb-3">Delete User</h2>
-        <p class="text-gray-600 leading-relaxed">
+        <p class="text-gray-600 leading-relaxed mb-4">
           Permanently delete <span class="font-bold text-gray-800" id="deleteUserName">Olivia Faith</span>? This action cannot be undone.
         </p>
+
+        <div class="text-left">
+            <label for="deletionReason" class="block text-sm font-medium text-gray-700 mb-2">Reason for Deletion <span class="text-red-500">*</span></label>
+            <textarea id="deletionReason" rows="3" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-400 focus:border-transparent transition resize-none" placeholder="Please provide a reason for deletion..."></textarea>
+            <p id="deletionReasonError" class="text-red-500 text-xs mt-1 hidden">Reason is required.</p>
+        </div>
       </div>
 
       <!-- Action Buttons -->
@@ -637,6 +743,7 @@
   </div>
 
   <script src="{{ asset('js/admin/userManagement/propertyOwner.js') }}" defer></script>
+  <script src="{{ asset('js/account.js') }}" defer></script>
 
 </body>
 

@@ -4,21 +4,228 @@ namespace App\Http\Controllers\admin;
 
 use App\Http\Controllers\authController;
 use App\Models\User;
+use App\Models\admin\propertyOwnerClass;
+use App\Models\accounts\accountClass;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Http\Requests\Admin\rejectVerificationRequest;
+use App\Http\Requests\admin\propertyOwnerRequest;
+use App\Services\psgcApiService;
+use Illuminate\Support\Facades\Mail;
 
 class userManagementController extends authController
 {
     /**
      * Show property owners list
      */
-    public function propertyOwners()
+    public function propertyOwners(Request $request)
     {
-        $propertyOwners = $this->getPropertyOwners();
+        $search = $request->query('search');
+        $dateFrom = $request->query('date_from');
+        $dateTo = $request->query('date_to');
+        $page = $request->query('page', 1);
+
+        $propertyOwners = $this->getPropertyOwners($search, null, $dateFrom, $dateTo, $page);
+
+        if ($request->ajax()) {
+            return response()->json([
+                'html' => view('admin.userManagement.partials.ownerTable', ['propertyOwners' => $propertyOwners])->render(),
+            ]);
+        }
+
+        $accountModel = new accountClass();
+        $psgcService = new psgcApiService();
+
+        $occupations = $accountModel->getOccupations();
+        $validIds = $accountModel->getValidIds();
+        $provinces = $psgcService->getProvinces();
+
         return view('admin.userManagement.propertyOwner', [
-            'propertyOwners' => $propertyOwners
+            'propertyOwners' => $propertyOwners,
+            'occupations' => $occupations,
+            'validIds' => $validIds,
+            'provinces' => $provinces
         ]);
+    }
+
+    public function addPropertyOwner(propertyOwnerRequest $request)
+    {
+        $validated = $request->validated();
+
+        try {
+            // Handle File Uploads
+            $profilePicPath = null;
+            if ($request->hasFile('profile_pic')) {
+                $profilePicPath = $request->file('profile_pic')->store('profiles', 'public');
+            }
+
+            $validIdFrontPath = $request->file('valid_id_photo')->store('validID/front', 'public');
+            $validIdBackPath = $request->file('valid_id_back_photo')->store('validID/back', 'public');
+            $policeClearancePath = $request->file('police_clearance')->store('policeClearance', 'public');
+
+            // Calculate Age
+            $dob = new \DateTime($validated['date_of_birth']);
+            $now = new \DateTime();
+            $age = $now->diff($dob)->y;
+
+            // Construct Address
+            $address = $validated['street_address'] . ', ' . $request->input('barangay_name') . ', ' . $request->input('city_name') . ', ' . $request->input('province_name') . ' ' . $validated['zip_code'];
+
+            // Prepare Data for Model
+            $data = [
+                'profile_pic' => $profilePicPath,
+                'email' => $validated['email'],
+                'last_name' => $validated['last_name'],
+                'middle_name' => $validated['middle_name'],
+                'first_name' => $validated['first_name'],
+                'phone_number' => $validated['phone_number'],
+                'valid_id_id' => $validated['valid_id_id'],
+                'valid_id_photo' => $validIdFrontPath,
+                'valid_id_back_photo' => $validIdBackPath,
+                'police_clearance' => $policeClearancePath,
+                'date_of_birth' => $validated['date_of_birth'],
+                'age' => $age,
+                'occupation_id' => $validated['occupation_id'] === 'others' ? null : $validated['occupation_id'],
+                'occupation_other' => $validated['occupation_id'] === 'others' ? $validated['occupation_other'] : null,
+                'address' => $address
+            ];
+
+            // Call Model to Create User and Property Owner
+            $propertyOwnerModel = new propertyOwnerClass();
+            $result = $propertyOwnerModel->addPropertyOwner($data);
+
+            // Send Email
+            try {
+                \Illuminate\Support\Facades\Mail::raw(
+                    "Your account is successfully created by the admin.\n\n" .
+                    "Login with:\n" .
+                    "Username: " . $result['username'] . "\n" .
+                    "Password: owner123@!\n\n" .
+                    "Please change your password after logging in.",
+                    function ($message) use ($result) {
+                        $message->to($result['email'])
+                                ->subject('Account Created - Legatura');
+                    }
+                );
+            } catch (\Exception $e) {
+                // Log email error but don't fail the request
+                \Illuminate\Support\Facades\Log::error('Failed to send account creation email: ' . $e->getMessage());
+            }
+
+            return response()->json(['success' => true, 'message' => 'Property Owner added successfully']);
+
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function fetchPropertyOwner($id)
+    {
+        $model = new propertyOwnerClass();
+        $propertyOwner = $model->getPropertyOwnerById($id);
+
+        if (!$propertyOwner) {
+            return response()->json(['error' => 'Property Owner not found'], 404);
+        }
+
+        // Parse Address
+        $addressParts = explode(', ', $propertyOwner->address);
+        $street = $addressParts[0] ?? '';
+        $barangay = $addressParts[1] ?? '';
+        $city = $addressParts[2] ?? '';
+        $provinceZip = $addressParts[3] ?? '';
+
+        // Extract Zip from Province
+        $zip = '';
+        $province = $provinceZip;
+        if (preg_match('/(.*)\s+(\d+)$/', $provinceZip, $matches)) {
+            $province = $matches[1];
+            $zip = $matches[2];
+        }
+
+        $propertyOwner->street_address = $street;
+        $propertyOwner->barangay = $barangay;
+        $propertyOwner->city = $city;
+        $propertyOwner->province = $province;
+        $propertyOwner->zip_code = $zip;
+
+        return response()->json([
+            'user' => [
+                'id' => $propertyOwner->user_id,
+                'email' => $propertyOwner->email,
+                'username' => $propertyOwner->username,
+                'profile_pic' => $propertyOwner->profile_pic
+            ],
+            'owner' => $propertyOwner
+        ]);
+    }
+
+    public function updatePropertyOwner(propertyOwnerRequest $request, $id)
+    {
+        $validated = $request->validated();
+
+        try {
+            // Handle File Uploads
+            $profilePicPath = null;
+            if ($request->hasFile('profile_pic')) {
+                $profilePicPath = $request->file('profile_pic')->store('profiles', 'public');
+                $validated['profile_pic'] = $profilePicPath;
+            }
+
+            if ($request->hasFile('valid_id_photo')) {
+                $validated['valid_id_photo'] = $request->file('valid_id_photo')->store('validID/front', 'public');
+            }
+
+            if ($request->hasFile('valid_id_back_photo')) {
+                $validated['valid_id_back_photo'] = $request->file('valid_id_back_photo')->store('validID/back', 'public');
+            }
+
+            if ($request->hasFile('police_clearance')) {
+                $validated['police_clearance'] = $request->file('police_clearance')->store('policeClearance', 'public');
+            }
+
+            // Calculate Age
+            $dob = new \DateTime($validated['date_of_birth']);
+            $now = new \DateTime();
+            $age = $now->diff($dob)->y;
+            $validated['age'] = $age;
+
+            // Construct Address
+            $address = $validated['street_address'] . ', ' . $request->input('barangay_name') . ', ' . $request->input('city_name') . ', ' . $request->input('province_name') . ' ' . $validated['zip_code'];
+            $validated['address'] = $address;
+
+            // Handle Occupation
+            if ($validated['occupation_id'] === 'others') {
+                $validated['occupation_id'] = null;
+            } else {
+                $validated['occupation_other'] = null;
+            }
+
+            // Call Model to Update
+            $propertyOwnerModel = new propertyOwnerClass();
+            $propertyOwnerModel->editPropertyOwner($validated['user_id'], $validated);
+
+            return response()->json(['success' => true, 'message' => 'Property Owner updated successfully']);
+
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function deletePropertyOwner(Request $request, $id)
+    {
+        $request->validate([
+            'deletion_reason' => 'required|string|max:500',
+        ]);
+
+        try {
+            $model = new propertyOwnerClass();
+            $model->deleteOwner($id, $request->input('deletion_reason'));
+
+            return response()->json(['success' => true, 'message' => 'Property Owner deleted successfully']);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
+        }
     }
 
     /**
@@ -37,31 +244,26 @@ class userManagementController extends authController
      */
     public function viewPropertyOwner($id)
     {
-        $propertyOwner = DB::table('property_owners')
-            ->join('users', 'property_owners.user_id', '=', 'users.user_id')
-            ->leftJoin('valid_ids', 'property_owners.valid_id_id', '=', 'valid_ids.id')
-            ->leftJoin('occupations', 'property_owners.occupation_id', '=', 'occupations.id')
-            ->where('property_owners.owner_id', $id)
-            ->select(
-                'property_owners.*',
-                'users.email',
-                'users.username',
-                'users.profile_pic',
-                'valid_ids.valid_id_name',
-                'occupations.occupation_name'
-            )
-            ->first();
+        $model = new propertyOwnerClass();
+        $propertyOwner = $model->fetchOwnerView($id);
 
         if (!$propertyOwner) {
             return redirect()->route('admin.userManagement.propertyOwner')
                 ->with('error', 'Property Owner not found');
         }
 
-        // Ensure occupation is populated
-        $propertyOwner->occupation = $propertyOwner->occupation_name ?? $propertyOwner->occupation_other;
+        $accountModel = new accountClass();
+        $psgcService = new psgcApiService();
+
+        $occupations = $accountModel->getOccupations();
+        $validIds = $accountModel->getValidIds();
+        $provinces = $psgcService->getProvinces();
 
         return view('admin.userManagement.propertyOwner_Views', [
-            'propertyOwner' => $propertyOwner
+            'propertyOwner' => $propertyOwner,
+            'occupations' => $occupations,
+            'validIds' => $validIds,
+            'provinces' => $provinces
         ]);
     }
 
@@ -168,8 +370,8 @@ class userManagementController extends authController
 
         if ($request->ajax()) {
             return response()->json([
-                'contractors_html' => view('admin.userManagement.partials.contractors_table', ['contractorRequests' => $contractorRequests, 'ownerRequests' => $ownerRequests])->render(),
-                'owners_html' => view('admin.userManagement.partials.owners_table', ['ownerRequests' => $ownerRequests, 'contractorRequests' => $contractorRequests])->render(),
+                'contractors_html' => view('admin.userManagement.partials.vercontractorTable', ['contractorRequests' => $contractorRequests, 'ownerRequests' => $ownerRequests])->render(),
+                'owners_html' => view('admin.userManagement.partials.verownerTable', ['ownerRequests' => $ownerRequests, 'contractorRequests' => $contractorRequests])->render(),
             ]);
         }
 
@@ -337,24 +539,10 @@ class userManagementController extends authController
     /**
      * Get all property owners with optional filters
      */
-    private function getPropertyOwners($search = null, $status = null, $page = 1)
+    private function getPropertyOwners($search = null, $status = null, $dateFrom = null, $dateTo = null, $page = 1)
     {
-        $query = DB::table('property_owners');
-
-        if ($search) {
-            $query->where(function ($q) use ($search) {
-                $q->where('first_name', 'like', "%{$search}%")
-                  ->orWhere('last_name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%")
-                  ->orWhere('phone_number', 'like', "%{$search}%");
-            });
-        }
-
-        if ($status) {
-            $query->where('verification_status', $status === 'verified' ? 'approved' : 'pending');
-        }
-
-        return $query->paginate(15, ['*'], 'page', $page);
+        $model = new propertyOwnerClass();
+        return $model->getPropertyOwners($search, $status, $dateFrom, $dateTo, 15, $page);
     }
 
     /**
@@ -434,7 +622,7 @@ class userManagementController extends authController
         $status = $request->input('status');
         $page = $request->input('page', 1);
 
-        $owners = $this->getPropertyOwners($search, $status, $page);
+        $owners = $this->getPropertyOwners($search, $status, null, null, $page);
 
         return response()->json($owners);
     }
@@ -444,9 +632,8 @@ class userManagementController extends authController
      */
     public function getPropertyOwnerApi($id)
     {
-        $owner = DB::table('property_owners')
-            ->where('owner_id', $id)
-            ->first();
+        $model = new propertyOwnerClass();
+        $owner = $model->getPropertyOwnerById($id);
 
         if (!$owner) {
             return response()->json(['error' => 'Property Owner not found'], 404);
@@ -474,21 +661,49 @@ class userManagementController extends authController
     /**
      * Suspend a property owner
      */
-    public function suspendPropertyOwner(Request $request, $id)
+    public function suspendPropertyOwner(propertyOwnerRequest $request, $id)
     {
-        $reason = $request->input('reason', 'Suspended by admin');
+        $validated = $request->validated();
 
-        $updated = DB::table('property_owners')
-            ->where('owner_id', $id)
-            ->update([
-                'verification_status' => 'rejected'
-            ]);
+        $reason = $validated['reason'];
+        $duration = $validated['duration'];
+        $suspensionUntil = $validated['suspension_until'] ?? null;
 
-        if ($updated) {
-            return response()->json(['success' => true, 'message' => 'Property owner suspended']);
+        if ($duration === 'permanent') {
+            $suspensionUntil = '9999-12-31';
         }
 
-        return response()->json(['success' => false, 'message' => 'Failed to suspend'], 400);
+        $propertyOwnerModel = new propertyOwnerClass();
+        $owner = $propertyOwnerModel->suspendOwner($id, $reason, $duration, $suspensionUntil);
+
+        if ($owner) {
+            // Get user email
+            $user = User::where('user_id', $owner->user_id)->first();
+
+            if ($user) {
+                // Send email notification
+                try {
+                    $emailData = [
+                        'name' => $owner->first_name,
+                        'reason' => $reason,
+                        'duration' => $duration,
+                        'until' => $suspensionUntil
+                    ];
+
+                    Mail::raw("Dear {$owner->first_name},\n\nYour account has been suspended.\n\nReason: {$reason}\nDuration: " . ucfirst($duration) . "\nSuspension Until: {$suspensionUntil}\n\nPlease contact support for more information.", function ($message) use ($user) {
+                        $message->to($user->email)
+                                ->subject('Account Suspension Notification');
+                    });
+                } catch (\Exception $e) {
+                    // Log email error but don't fail the request
+                    // Log::error('Failed to send suspension email: ' . $e->getMessage());
+                }
+            }
+
+            return response()->json(['success' => true, 'message' => 'Property owner suspended successfully']);
+        }
+
+        return response()->json(['success' => false, 'message' => 'Failed to suspend property owner'], 400);
     }
 
     /**
