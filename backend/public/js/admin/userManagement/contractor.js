@@ -3,11 +3,14 @@ document.addEventListener('DOMContentLoaded', function() {
     // ELEMENT REFERENCES
     // ========================================
 
-    // Period Dropdown
-    const periodBtn = document.getElementById('periodBtn');
-    const periodDropdown = document.getElementById('periodDropdown');
-    const periodText = document.getElementById('periodText');
-    const periodOptions = document.querySelectorAll('.period-option');
+    // Filters
+    const dateFromInput = document.getElementById('dateFrom');
+    const dateToInput = document.getElementById('dateTo');
+    const searchInput = document.getElementById('searchInput');
+    const resetBtn = document.getElementById('resetFilterBtn');
+    const contractorsWrap = document.getElementById('contractorsTableWrap');
+
+    let debounceTimer;
 
     // Add Contractor Modal
     const addContractorBtn = document.getElementById('addContractorBtn');
@@ -39,40 +42,103 @@ document.addEventListener('DOMContentLoaded', function() {
     const deleteContractorNameSpan = document.getElementById('deleteContractorName');
     let rowToDelete = null;
 
-    // Table Action Buttons
-    const editButtons = document.querySelectorAll('.edit-btn');
-    const deleteButtons = document.querySelectorAll('.delete-btn');
-    const viewButtons = document.querySelectorAll('.view-btn');
-
     // ========================================
-    // PERIOD DROPDOWN FUNCTIONALITY
+    // FILTER FUNCTIONALITY
     // ========================================
 
-    periodBtn.addEventListener('click', function() {
-        periodDropdown.classList.toggle('hidden');
-    });
+    // Function to fetch and update data
+    async function fetchAndUpdate(url) {
+        try {
+            const response = await fetch(url, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
 
-    periodOptions.forEach(option => {
-        option.addEventListener('click', function(e) {
-            e.preventDefault();
-            const period = this.getAttribute('data-period');
-            const periodMap = {
-                'today': 'Today',
-                'week': 'This Week',
-                'month': 'This Month',
-                'year': 'This Year'
-            };
-            periodText.textContent = periodMap[period];
-            periodDropdown.classList.add('hidden');
-        });
-    });
+            if (!response.ok) throw new Error('Network response was not ok');
 
-    // Close dropdown when clicking outside
-    document.addEventListener('click', function(e) {
-        if (!periodBtn.contains(e.target) && !periodDropdown.contains(e.target)) {
-            periodDropdown.classList.add('hidden');
+            const data = await response.json();
+
+            if (contractorsWrap && data.html) {
+                contractorsWrap.innerHTML = data.html;
+            }
+
+            // Update URL without reload
+            window.history.pushState({}, '', url);
+
+            // Re-attach listeners
+            attachActionListeners();
+
+        } catch (error) {
+            console.error('Error fetching data:', error);
         }
-    });
+    }
+
+    function buildUrl() {
+        const url = new URL(window.location.href);
+        const params = new URLSearchParams(url.search);
+
+        if (dateFromInput && dateFromInput.value) {
+            params.set('date_from', dateFromInput.value);
+        } else {
+            params.delete('date_from');
+        }
+
+        if (dateToInput && dateToInput.value) {
+            params.set('date_to', dateToInput.value);
+        } else {
+            params.delete('date_to');
+        }
+
+        if (searchInput && searchInput.value) {
+            params.set('search', searchInput.value);
+        } else {
+            params.delete('search');
+        }
+
+        // Reset pagination when filtering
+        params.delete('page');
+
+        return `${url.pathname}?${params.toString()}`;
+    }
+
+    function handleFilterChange() {
+        const url = buildUrl();
+        fetchAndUpdate(url);
+    }
+
+    function handleSearchInput() {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            handleFilterChange();
+        }, 300); // 300ms debounce
+    }
+
+    // Attach listeners
+    if (dateFromInput) dateFromInput.addEventListener('change', handleFilterChange);
+    if (dateToInput) dateToInput.addEventListener('change', handleFilterChange);
+    if (searchInput) searchInput.addEventListener('input', handleSearchInput);
+
+    if (resetBtn) {
+        resetBtn.addEventListener('click', function() {
+            if (dateFromInput) dateFromInput.value = '';
+            if (dateToInput) dateToInput.value = '';
+            if (searchInput) searchInput.value = '';
+            handleFilterChange();
+        });
+    }
+
+    // Populate inputs from URL on load
+    const urlParams = new URLSearchParams(window.location.search);
+    if (dateFromInput && urlParams.has('date_from')) {
+        dateFromInput.value = urlParams.get('date_from');
+    }
+    if (dateToInput && urlParams.has('date_to')) {
+        dateToInput.value = urlParams.get('date_to');
+    }
+    if (searchInput && urlParams.has('search')) {
+        searchInput.value = urlParams.get('search');
+    }
 
     // ========================================
     // ADD CONTRACTOR MODAL FUNCTIONALITY
@@ -107,23 +173,25 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 300);
     }
 
-    addContractorBtn.addEventListener('click', openAddModal);
-    closeModalBtn.addEventListener('click', closeAddModal);
-    cancelBtn.addEventListener('click', closeAddModal);
+    if (addContractorBtn) addContractorBtn.addEventListener('click', openAddModal);
+    if (closeModalBtn) closeModalBtn.addEventListener('click', closeAddModal);
+    if (cancelBtn) cancelBtn.addEventListener('click', closeAddModal);
 
     // Profile Upload Preview
-    profileUpload.addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                profilePreview.src = e.target.result;
-                profilePreview.classList.remove('hidden');
-                profileIcon.classList.add('hidden');
-            };
-            reader.readAsDataURL(file);
-        }
-    });
+    if (profileUpload) {
+        profileUpload.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    profilePreview.src = e.target.result;
+                    profilePreview.classList.remove('hidden');
+                    profileIcon.classList.add('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
 
     // Representative Profile Upload Preview
     if (repProfileUpload) {
@@ -144,37 +212,41 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Save Button with Loading State
-    saveBtn.addEventListener('click', function() {
-        const originalText = this.innerHTML;
-        this.innerHTML = '<i class="fi fi-rr-spinner animate-spin"></i> Saving...';
-        this.disabled = true;
+    if (saveBtn) {
+        saveBtn.addEventListener('click', function() {
+            const originalText = this.innerHTML;
+            this.innerHTML = '<i class="fi fi-rr-spinner animate-spin"></i> Saving...';
+            this.disabled = true;
 
-        // Simulate save
-        setTimeout(() => {
-            showNotification('Contractor added successfully!', 'success');
-            closeAddModal();
-            this.innerHTML = originalText;
-            this.disabled = false;
-        }, 1500);
-    });
+            // Simulate save
+            setTimeout(() => {
+                showNotification('Contractor added successfully!', 'success');
+                closeAddModal();
+                this.innerHTML = originalText;
+                this.disabled = false;
+            }, 1500);
+        });
+    }
 
     // Close modal on backdrop click
-    addContractorModal.addEventListener('click', function(e) {
-        if (e.target === addContractorModal) {
-            closeAddModal();
-        }
-    });
+    if (addContractorModal) {
+        addContractorModal.addEventListener('click', function(e) {
+            if (e.target === addContractorModal) {
+                closeAddModal();
+            }
+        });
+    }
 
     // Close modal on ESC key
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
-            if (!addContractorModal.classList.contains('hidden')) {
+            if (addContractorModal && !addContractorModal.classList.contains('hidden')) {
                 closeAddModal();
             }
-            if (!editContractorModal.classList.contains('hidden')) {
+            if (editContractorModal && !editContractorModal.classList.contains('hidden')) {
                 closeEditModal();
             }
-            if (!deleteContractorModal.classList.contains('hidden')) {
+            if (deleteContractorModal && !deleteContractorModal.classList.contains('hidden')) {
                 closeDeleteModal();
             }
         }
@@ -209,15 +281,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function openEditModal(contractorData) {
         // Populate form with contractor data
-        document.getElementById('editCompanyName').value = contractorData.name;
-        document.getElementById('editYearsOperation').value = contractorData.years;
-        document.getElementById('editAccountType').value = contractorData.accountType;
-        document.getElementById('editContactNumber').value = contractorData.contact || '+63 912 345 6789';
-        document.getElementById('editLicenseNumber').value = contractorData.license || 'LIC-2025-001';
-        document.getElementById('editRegistrationDate').value = contractorData.dateRegistered;
-        document.getElementById('editEmail').value = contractorData.email || 'contact@company.com';
-        document.getElementById('editUsername').value = contractorData.username || 'username';
-        editProfileInitials.textContent = contractorData.initials;
+        if (document.getElementById('editCompanyName')) document.getElementById('editCompanyName').value = contractorData.company_name || '';
+        if (document.getElementById('editYearsOperation')) document.getElementById('editYearsOperation').value = contractorData.years_of_experience || '';
+        // if (document.getElementById('editAccountType')) document.getElementById('editAccountType').value = contractorData.accountType; // Removed
+        if (document.getElementById('editContactNumber')) document.getElementById('editContactNumber').value = contractorData.contact_number || '';
+        if (document.getElementById('editLicenseNumber')) document.getElementById('editLicenseNumber').value = contractorData.license_number || '';
+        if (document.getElementById('editRegistrationDate')) document.getElementById('editRegistrationDate').value = contractorData.created_at ? contractorData.created_at.split('T')[0] : '';
+        if (document.getElementById('editEmail')) document.getElementById('editEmail').value = contractorData.email || ''; // Need to get from user relation
+        if (document.getElementById('editUsername')) document.getElementById('editUsername').value = contractorData.username || ''; // Need to get from user relation
+
+        if (editProfileInitials) editProfileInitials.textContent = contractorData.company_name ? contractorData.company_name.substring(0, 2).toUpperCase() : 'CO';
 
         editContractorModal.classList.remove('hidden');
         editContractorModal.classList.add('flex');
@@ -242,44 +315,50 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 300);
     }
 
-    closeEditModalBtn.addEventListener('click', closeEditModal);
-    cancelEditBtn.addEventListener('click', closeEditModal);
+    if (closeEditModalBtn) closeEditModalBtn.addEventListener('click', closeEditModal);
+    if (cancelEditBtn) cancelEditBtn.addEventListener('click', closeEditModal);
 
     // Edit Profile Upload Preview
-    editProfileUpload.addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                editProfilePreview.src = e.target.result;
-                editProfilePreview.classList.remove('hidden');
-                editProfileInitials.classList.add('hidden');
-            };
-            reader.readAsDataURL(file);
-        }
-    });
+    if (editProfileUpload) {
+        editProfileUpload.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    editProfilePreview.src = e.target.result;
+                    editProfilePreview.classList.remove('hidden');
+                    editProfileInitials.classList.add('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
 
     // Save Edit Button with Loading State
-    saveEditBtn.addEventListener('click', function() {
-        const originalText = this.innerHTML;
-        this.innerHTML = '<i class="fi fi-rr-spinner animate-spin"></i> Saving...';
-        this.disabled = true;
+    if (saveEditBtn) {
+        saveEditBtn.addEventListener('click', function() {
+            const originalText = this.innerHTML;
+            this.innerHTML = '<i class="fi fi-rr-spinner animate-spin"></i> Saving...';
+            this.disabled = true;
 
-        // Simulate save
-        setTimeout(() => {
-            showNotification('Contractor updated successfully!', 'success');
-            closeEditModal();
-            this.innerHTML = originalText;
-            this.disabled = false;
-        }, 1500);
-    });
+            // Simulate save
+            setTimeout(() => {
+                showNotification('Contractor updated successfully!', 'success');
+                closeEditModal();
+                this.innerHTML = originalText;
+                this.disabled = false;
+            }, 1500);
+        });
+    }
 
     // Close edit modal on backdrop click
-    editContractorModal.addEventListener('click', function(e) {
-        if (e.target === editContractorModal) {
-            closeEditModal();
-        }
-    });
+    if (editContractorModal) {
+        editContractorModal.addEventListener('click', function(e) {
+            if (e.target === editContractorModal) {
+                closeEditModal();
+            }
+        });
+    }
 
     // ========================================
     // DELETE CONTRACTOR MODAL FUNCTIONALITY
@@ -310,97 +389,105 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 300);
     }
 
-    confirmDeleteBtn.addEventListener('click', function() {
-        const originalText = this.innerHTML;
-        this.innerHTML = '<i class="fi fi-rr-spinner animate-spin"></i> Deleting...';
-        this.disabled = true;
+    if (confirmDeleteBtn) {
+        confirmDeleteBtn.addEventListener('click', function() {
+            const originalText = this.innerHTML;
+            this.innerHTML = '<i class="fi fi-rr-spinner animate-spin"></i> Deleting...';
+            this.disabled = true;
 
-        // Simulate deletion
-        setTimeout(() => {
-            if (rowToDelete) {
-                // Fade out animation
-                rowToDelete.style.transition = 'all 0.3s ease';
-                rowToDelete.style.opacity = '0';
-                rowToDelete.style.transform = 'translateX(-20px)';
+            // Simulate deletion
+            setTimeout(() => {
+                if (rowToDelete) {
+                    // Fade out animation
+                    rowToDelete.style.transition = 'all 0.3s ease';
+                    rowToDelete.style.opacity = '0';
+                    rowToDelete.style.transform = 'translateX(-20px)';
 
-                setTimeout(() => {
-                    rowToDelete.remove();
-                    showNotification('Contractor deleted successfully!', 'success');
-                }, 300);
-            }
+                    setTimeout(() => {
+                        rowToDelete.remove();
+                        showNotification('Contractor deleted successfully!', 'success');
+                    }, 300);
+                }
 
-            closeDeleteModal();
-            this.innerHTML = originalText;
-            this.disabled = false;
-        }, 1000);
-    });
+                closeDeleteModal();
+                this.innerHTML = originalText;
+                this.disabled = false;
+            }, 1000);
+        });
+    }
 
-    cancelDeleteBtn.addEventListener('click', closeDeleteModal);
+    if (cancelDeleteBtn) cancelDeleteBtn.addEventListener('click', closeDeleteModal);
 
     // Close delete modal on backdrop click
-    deleteContractorModal.addEventListener('click', function(e) {
-        if (e.target === deleteContractorModal) {
-            closeDeleteModal();
-        }
-    });
-
-    // ========================================
-    // TABLE ACTION BUTTONS
-    // ========================================
-
-    editButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            addRipple(this, event);
-            const row = this.closest('tr');
-            const nameCell = row.querySelector('td:first-child span');
-            const name = nameCell.textContent.trim();
-            const initials = row.querySelector('.rounded-full').textContent.trim();
-            const dateRegistered = row.querySelector('td:nth-child(2)').textContent.trim();
-            const years = row.querySelector('td:nth-child(3)').textContent.trim().replace(' years', '');
-            const accountTypeText = row.querySelector('td:nth-child(4) span').textContent.trim();
-
-            // Map account type display text to value
-            const accountTypeMap = {
-                'General Contractor': 'general',
-                'Construction Contractor': 'construction',
-                'Specialty Contractor': 'specialty'
-            };
-
-            const contractorData = {
-                name: name,
-                initials: initials,
-                dateRegistered: convertDateToISO(dateRegistered),
-                years: years,
-                accountType: accountTypeMap[accountTypeText] || 'general',
-                contact: '+63 912 345 6789',
-                license: 'LIC-2025-001',
-                email: 'contact@' + name.toLowerCase().replace(/\s+/g, '') + '.com',
-                username: name.toLowerCase().replace(/\s+/g, '')
-            };
-
-            openEditModal(contractorData);
-        });
-    });
-
-    deleteButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            addRipple(this, event);
-            const row = this.closest('tr');
-            const name = row.querySelector('td:first-child span').textContent.trim();
-            openDeleteModal(name, row);
-        });
-    });
-
-    viewButtons.forEach(button => {
-        button.addEventListener('click', function(e) {
-            addRipple(this, e);
-            const id = this.getAttribute('data-id');
-            if (id) {
-                // Redirect to contractor_Views page with ID
-                window.location.href = `/admin/user-management/contractor/view?id=${id}`;
+    if (deleteContractorModal) {
+        deleteContractorModal.addEventListener('click', function(e) {
+            if (e.target === deleteContractorModal) {
+                closeDeleteModal();
             }
         });
-    });
+    }
+
+    // ========================================
+    // TABLE ACTION BUTTONS & PAGINATION
+    // ========================================
+
+    function attachActionListeners() {
+        // Edit Buttons
+        const editButtons = document.querySelectorAll('.edit-btn');
+        editButtons.forEach(button => {
+            button.addEventListener('click', async function(e) {
+                addRipple(this, e);
+                const id = this.getAttribute('data-id');
+
+                // Fetch data from API
+                try {
+                    const response = await fetch(`/api/admin/users/contractors/${id}`);
+                    if (!response.ok) throw new Error('Failed to fetch contractor data');
+                    const data = await response.json();
+                    openEditModal(data);
+                } catch (error) {
+                    console.error(error);
+                    showNotification('Error fetching contractor details', 'error');
+                }
+            });
+        });
+
+        // Delete Buttons
+        const deleteButtons = document.querySelectorAll('.delete-btn');
+        deleteButtons.forEach(button => {
+            button.addEventListener('click', function(e) {
+                addRipple(this, e);
+                const row = this.closest('tr');
+                const name = row.querySelector('td:first-child .font-medium').textContent.trim();
+                openDeleteModal(name, row);
+            });
+        });
+
+        // View Buttons
+        const viewButtons = document.querySelectorAll('.view-btn');
+        viewButtons.forEach(button => {
+            button.addEventListener('click', function(e) {
+                addRipple(this, e);
+                const id = this.getAttribute('data-id');
+                if (id) {
+                    window.location.href = `/admin/user-management/contractor/view?id=${id}`;
+                }
+            });
+        });
+
+        // Pagination Links
+        const paginationLinks = document.querySelectorAll('.pagination a');
+        paginationLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const url = this.href;
+                fetchAndUpdate(url);
+            });
+        });
+    }
+
+    // Initial attachment
+    attachActionListeners();
 
     // ========================================
     // HELPER FUNCTIONS
@@ -446,22 +533,6 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(() => ripple.remove(), 600);
     }
 
-    function convertDateToISO(dateStr) {
-        // Convert "10 Oct, 2025" to "2025-10-10"
-        const months = {
-            'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04',
-            'May': '05', 'Jun': '06', 'Jul': '07', 'Aug': '08',
-            'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
-        };
-
-        const parts = dateStr.split(' ');
-        const day = parts[0].padStart(2, '0');
-        const month = months[parts[1].replace(',', '')];
-        const year = parts[2];
-
-        return `${year}-${month}-${day}`;
-    }
-
     // ========================================
     // INPUT FOCUS EFFECTS
     // ========================================
@@ -475,17 +546,6 @@ document.addEventListener('DOMContentLoaded', function() {
         input.addEventListener('blur', function() {
             this.parentElement.classList.remove('ring-2', 'ring-orange-400');
         });
-    });
-
-    // ========================================
-    // RANKING FILTER
-    // ========================================
-
-    const rankingFilter = document.getElementById('rankingFilter');
-    rankingFilter.addEventListener('change', function() {
-        const value = this.value;
-        // Placeholder for filter functionality
-        console.log('Filter by:', value);
     });
 
     // ========================================

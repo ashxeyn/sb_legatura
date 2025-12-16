@@ -5,6 +5,7 @@ namespace App\Http\Controllers\admin;
 use App\Http\Controllers\authController;
 use App\Models\User;
 use App\Models\admin\propertyOwnerClass;
+use App\Models\admin\contractorClass;
 use App\Models\accounts\accountClass;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -231,11 +232,33 @@ class userManagementController extends authController
     /**
      * Show contractors list
      */
-    public function contractors()
+    public function contractors(Request $request)
     {
-        $contractors = $this->getContractors();
+        $search = $request->query('search');
+        $dateFrom = $request->query('date_from');
+        $dateTo = $request->query('date_to');
+
+        $contractorModel = new contractorClass();
+        $contractors = $contractorModel->getContractors($search, null, $dateFrom, $dateTo);
+
+        if ($request->ajax()) {
+            return response()->json([
+                'html' => view('admin.userManagement.partials.contractorTable', compact('contractors'))->render()
+            ]);
+        }
+
+        $accountModel = new accountClass();
+        $psgcService = new psgcApiService();
+
+        $occupations = $accountModel->getOccupations();
+        $validIds = $accountModel->getValidIds();
+        $provinces = $psgcService->getProvinces();
+
         return view('admin.userManagement.contractor', [
-            'contractors' => $contractors
+            'contractors' => $contractors,
+            'occupations' => $occupations,
+            'validIds' => $validIds,
+            'provinces' => $provinces
         ]);
     }
 
@@ -545,29 +568,7 @@ class userManagementController extends authController
         return $model->getPropertyOwners($search, $status, $dateFrom, $dateTo, 15, $page);
     }
 
-    /**
-     * Get contractors with optional search and status filtering
-     */
-    private function getContractors($search = null, $status = null, $page = 1)
-    {
-        $query = DB::table('contractors');
 
-        if ($search) {
-            $query->where(function ($q) use ($search) {
-                $q->where('company_name', 'like', "%{$search}%")
-                  ->orWhere('first_name', 'like', "%{$search}%")
-                  ->orWhere('last_name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%")
-                  ->orWhere('phone_number', 'like', "%{$search}%");
-            });
-        }
-
-        if ($status) {
-            $query->where('verification_status', $status === 'verified' ? 'approved' : 'pending');
-        }
-
-        return $query->paginate(15, ['*'], 'page', $page);
-    }
 
     /**
      * Get pending verification contractors
@@ -713,9 +714,9 @@ class userManagementController extends authController
     {
         $search = $request->input('search');
         $status = $request->input('status');
-        $page = $request->input('page', 1);
 
-        $contractors = $this->getContractors($search, $status, $page);
+        $contractorModel = new contractorClass();
+        $contractors = $contractorModel->getContractors($search, $status);
 
         return response()->json($contractors);
     }
@@ -725,7 +726,7 @@ class userManagementController extends authController
      */
     public function getContractorApi($id)
     {
-        $contractor = DB::table('contractors')
+        $contractor = \App\Models\admin\contractorClass::with('user')
             ->where('contractor_id', $id)
             ->first();
 
@@ -733,7 +734,18 @@ class userManagementController extends authController
             return response()->json(['error' => 'Contractor not found'], 404);
         }
 
-        return response()->json($contractor);
+        // Flatten the response to include user details at the top level if needed,
+        // or just return the nested structure. The JS expects nested or I can map it.
+        // The JS expects: email, username (from user)
+
+        $response = $contractor->toArray();
+        if ($contractor->user) {
+            $response['email'] = $contractor->user->email;
+            $response['username'] = $contractor->user->username;
+            $response['contact_number'] = $contractor->user->phone_number; // Assuming phone is in user
+        }
+
+        return response()->json($response);
     }
 
     /**
