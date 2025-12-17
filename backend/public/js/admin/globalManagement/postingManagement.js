@@ -282,15 +282,11 @@ window.attachModalListeners = function () {
                                         <button type="button" onclick="window.openFileInViewer('${fileUrl}','${fileExtension}', ${
                                     isImage ? "true" : "false"
                                 })" class="ml-3 p-2 text-gray-600 hover:bg-gray-50 rounded-lg transition flex-shrink-0">
-                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12H9m6 4H9m6-8H9M4 6h16M4 18h16"></path>
                                             </svg>
                                         </button>
                                         <a href="${fileUrl}" target="_blank" download class="ml-3 p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition flex-shrink-0">
                                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-                                            </svg>
-                                        </a>
                                     </div>
                                 `;
                             });
@@ -583,7 +579,6 @@ document.addEventListener("DOMContentLoaded", function () {
                         approveModal.classList.remove("show");
                         approveModal.classList.add("hidden");
                         approveModal.style.animation = "";
-
                         // Reload page to refresh table
                         window.location.reload();
                     }, 300);
@@ -741,7 +736,6 @@ document.addEventListener("DOMContentLoaded", function () {
                         declineModal.classList.remove("show");
                         declineModal.classList.add("hidden");
                         declineModal.style.animation = "";
-
                         // Reload page to refresh table
                         window.location.reload();
                     }, 300);

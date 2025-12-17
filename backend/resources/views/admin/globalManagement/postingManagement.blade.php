@@ -381,7 +381,7 @@
                 <div id="fileViewer" class="mb-4"></div>
                 <div id="postFilesContainer">
                   <p class="text-sm text-gray-500 text-center py-4">Loading files...</p>
-                </div>
+                </div>  
               </div>
             </div>
 

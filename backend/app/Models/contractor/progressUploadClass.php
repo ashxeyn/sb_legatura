@@ -4,6 +4,7 @@ namespace App\Models\contractor;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class progressUploadClass
 {
@@ -66,15 +67,24 @@ class progressUploadClass
             $query->where('proj.selected_contractor_id', $contractorId);
         }
 
+        $select = [
+            'p.progress_id',
+            'p.milestone_item_id as item_id',
+            'p.purpose',
+            'p.progress_status',
+            'p.submitted_at',
+            'proj.selected_contractor_id as contractor_id'
+        ];
+
+        // Include delete/rejection reason if present in schema
+        if (Schema::hasColumn('progress', 'delete_reason')) {
+            $select[] = 'p.delete_reason';
+        } elseif (Schema::hasColumn('progress', 'rejection_reason')) {
+            $select[] = 'p.rejection_reason as delete_reason';
+        }
+
         return $query
-            ->select(
-                'p.progress_id',
-                'p.milestone_item_id as item_id',
-                'p.purpose',
-                'p.progress_status',
-                'p.submitted_at',
-                'proj.selected_contractor_id as contractor_id'
-            )
+            ->select($select)
             ->orderBy('p.submitted_at', 'desc')
             ->get();
     }
@@ -108,15 +118,23 @@ class progressUploadClass
 
     public function getProgressById($progressId)
     {
+        $select = [
+            'progress_id',
+            'milestone_item_id as item_id',
+            'purpose',
+            'progress_status',
+            'submitted_at'
+        ];
+
+        if (Schema::hasColumn('progress', 'delete_reason')) {
+            $select[] = 'delete_reason';
+        } elseif (Schema::hasColumn('progress', 'rejection_reason')) {
+            $select[] = 'rejection_reason as delete_reason';
+        }
+
         return DB::table('progress')
             ->where('progress_id', $progressId)
-            ->select(
-                'progress_id',
-                'milestone_item_id as item_id',
-                'purpose',
-                'progress_status',
-                'submitted_at'
-            )
+            ->select($select)
             ->first();
     }
 
@@ -158,8 +176,15 @@ class progressUploadClass
             'updated_at' => date('Y-m-d H:i:s')
         ];
 
+        // Only include reason fields if the corresponding column exists in the DB schema
         if ($reason !== null) {
-            $update['delete_reason'] = $reason;
+            // Prefer 'delete_reason' for legacy compatibility if it exists
+            if (Schema::hasColumn('progress', 'delete_reason')) {
+                $update['delete_reason'] = $reason;
+            } elseif (Schema::hasColumn('progress', 'rejection_reason')) {
+                // Some schemas may use 'rejection_reason'
+                $update['rejection_reason'] = $reason;
+            }
         }
 
         return DB::table('progress')

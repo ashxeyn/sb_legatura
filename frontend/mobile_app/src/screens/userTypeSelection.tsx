@@ -50,15 +50,11 @@ export default function UserTypeSelectionScreen({ onBackPress, onContinue }: Use
     if (!selectedType || isLoading || !formData) return;
 
     try {
+      // No backend call here — role selection is part of the client-side signup flow.
+      // The server-side role-switch endpoint requires an authenticated session
+      // so we should not call it during initial registration.
       setIsLoading(true);
-      const response = await auth_service.select_role(selectedType);
-
-      if (response.success) {
-        // Pass both user type and pre-loaded form data to next screen
-        onContinue(selectedType, formData);
-      } else {
-        Alert.alert('Error', response.message || 'Failed to select user type. Please try again.');
-      }
+      onContinue(selectedType, formData);
     } catch (error) {
       Alert.alert('Error', 'Something went wrong. Please check your connection and try again.');
     } finally {

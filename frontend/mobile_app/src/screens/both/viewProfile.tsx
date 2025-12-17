@@ -27,6 +27,16 @@ interface ViewProfileProps {
 export default function ViewProfileScreen({ onBack, userData }: ViewProfileProps) {
   const insets = useSafeAreaInsets();
 
+  // Debug: log incoming image URIs
+  console.log('ViewProfileScreen - profile_pic URI:', userData?.profile_pic);
+  console.log('ViewProfileScreen - cover_photo URI:', userData?.cover_photo);
+
+  // Ensure we always use an object for user data to avoid accidentally rendering
+  // a plain string as a child (which causes the "Text strings must be rendered within a <Text> component" error).
+  const ud: NonNullable<ViewProfileProps['userData']> = (userData && typeof userData === 'object')
+    ? userData
+    : { username: typeof userData === 'string' ? userData : undefined };
+
   const getInitials = (name: string) => {
     return name ? name.substring(0, 2).toUpperCase() : 'PO';
   };
@@ -46,9 +56,9 @@ export default function ViewProfileScreen({ onBack, userData }: ViewProfileProps
 
         {/* Cover Photo */}
         <View style={styles.coverPhotoContainer}>
-          {userData?.cover_photo ? (
+          {ud?.cover_photo ? (
             <Image
-              source={{ uri: userData.cover_photo }}
+              source={{ uri: ud.cover_photo }}
               style={styles.coverPhoto}
               resizeMode="cover"
             />
@@ -62,28 +72,26 @@ export default function ViewProfileScreen({ onBack, userData }: ViewProfileProps
         {/* Profile Info */}
         <View style={styles.profileInfoContainer}>
           <View style={styles.avatarContainer}>
-            {userData?.profile_pic ? (
+            {ud?.profile_pic ? (
               <Image
-                source={{ uri: userData.profile_pic }}
+                source={{ uri: ud.profile_pic }}
                 style={styles.avatar}
                 resizeMode="cover"
               />
             ) : (
               <View style={styles.avatarPlaceholder}>
-                <Text style={styles.avatarText}>{getInitials(userData?.username || 'U')}</Text>
+                <Text style={styles.avatarText}>{getInitials(ud?.username || 'U')}</Text>
               </View>
             )}
           </View>
 
-          <Text style={styles.username}>{userData?.username || 'Property Owner'}</Text>
-          <Text style={styles.email}>{userData?.email || 'user@example.com'}</Text>
+          <Text style={styles.username}>{ud?.username || 'Property Owner'}</Text>
+          <Text style={styles.email}>{ud?.email || 'user@example.com'}</Text>
 
           <View style={styles.userTypeBadge}>
             <MaterialIcons name="home" size={14} color="#EC7E00" />
             <Text style={styles.userTypeText}>
-              {userData?.user_type === 'contractor'
-                ? 'Contractor'
-                : 'Property Owner'}
+              {ud?.user_type === 'contractor' ? 'Contractor' : 'Property Owner'}
             </Text>
           </View>
         </View>
@@ -93,16 +101,16 @@ export default function ViewProfileScreen({ onBack, userData }: ViewProfileProps
           <Text style={styles.sectionTitle}>Account Details</Text>
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Username:</Text>
-            <Text style={styles.detailValue}>{userData?.username || 'N/A'}</Text>
+            <Text style={styles.detailValue}>{ud?.username || 'N/A'}</Text>
           </View>
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Email:</Text>
-            <Text style={styles.detailValue}>{userData?.email || 'N/A'}</Text>
+            <Text style={styles.detailValue}>{ud?.email || 'N/A'}</Text>
           </View>
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Account Type:</Text>
             <Text style={styles.detailValue}>
-              {userData?.user_type === 'contractor' ? 'Contractor' : 'Property Owner'}
+              {ud?.user_type === 'contractor' ? 'Contractor' : 'Property Owner'}
             </Text>
           </View>
         </View>

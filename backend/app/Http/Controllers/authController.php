@@ -71,6 +71,7 @@ class authController extends Controller
                 if ($user->user_type === 'both') {
                     $role = $result['determinedRole'] ?? 'contractor';
                     Session::put('current_role', $role === 'property_owner' ? 'owner' : 'contractor');
+                    Session::put('current_role', 'contractor');
                 } elseif ($user->user_type === 'property_owner') {
                     Session::put('current_role', 'owner');
                 } else {
@@ -79,14 +80,23 @@ class authController extends Controller
             }
 
             if ($request->expectsJson()) {
+                // Attempt to create a Sanctum personal access token for mobile clients
+                $token = null;
+                try {
+                    $eloquentUser = \App\Models\User::find($result['user']->user_id ?? null);
+                    if ($eloquentUser) {
+                        $token = $eloquentUser->createToken('mobile-app')->plainTextToken;
+                    }
+                } catch (\Exception $e) {
+                    \Log::warning('Failed to create personal access token: ' . $e->getMessage());
+                }
 
                 return response()->json([
                     'success' => true,
                     'message' => 'Login successful',
                     'user' => $result['user'],
                     'userType' => $result['userType'],
-                    // TODO: Add token here when Sanctum is installed
-                    // 'token' => $user->createToken('mobile-app')->plainTextToken
+                    'token' => $token
                 ], 200);
             } else {
 

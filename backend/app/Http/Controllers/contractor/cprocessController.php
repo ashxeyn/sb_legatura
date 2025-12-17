@@ -535,6 +535,152 @@ class cprocessController extends Controller
         }
     }
 
+    public function apiSubmitMilestones(Request $request, $projectId)
+    {
+        // Validate user_id from request
+        $userId = $request->input('user_id');
+        if (!$userId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User ID is required'
+            ], 400);
+        }
+
+        // Get contractor by user_id
+        $contractor = $this->contractorClass->getContractorByUserId($userId);
+        if (!$contractor) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Contractor not found for user_id: ' . $userId
+            ], 404);
+        }
+
+        // Log contractor data for debugging
+        Log::info('Contractor found:', ['contractor' => $contractor]);
+
+        // Validate the request data
+        $validated = $request->validate([
+            'milestone_name' => 'required|string|max:200',
+            'payment_mode' => 'required|in:downpayment,full_payment',
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after_or_equal:start_date',
+            'total_project_cost' => 'required|numeric|min:0',
+            'downpayment_amount' => 'nullable|numeric|min:0',
+            'items' => 'required|array|min:1',
+            'items.*.title' => 'required|string|max:255',
+            'items.*.description' => 'nullable|string',
+            'items.*.percentage' => 'required|numeric|min:0|max:100',
+            'items.*.date_to_finish' => 'required|date|after_or_equal:start_date|before_or_equal:end_date'
+        ]);
+
+        // Verify project exists and contractor has access (accepted bid)
+        $project = DB::table('projects as p')
+            ->join('bids as b', function($join) use ($contractor) {
+                $join->on('b.project_id', '=', 'p.project_id')
+                     ->where('b.contractor_id', '=', $contractor->contractor_id)
+                     ->where('b.bid_status', '=', 'accepted');
+            })
+            ->where('p.project_id', $projectId)
+            ->select('p.*')
+            ->first();
+
+        if (!$project) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Project not found or you do not have access to it'
+            ], 404);
+        }
+
+        // Validate items percentages sum to 100
+        $totalPercentage = array_sum(array_column($validated['items'], 'percentage'));
+        if (round($totalPercentage, 2) != 100) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Milestone percentages must add up to exactly 100%'
+            ], 400);
+        }
+
+        // Format dates for database
+        $startDate = date('Y-m-d 00:00:00', strtotime($validated['start_date']));
+        $endDate = date('Y-m-d 23:59:59', strtotime($validated['end_date']));
+
+        try {
+            DB::beginTransaction();
+
+            // Create payment plan
+            $planId = $this->contractorClass->createPaymentPlan([
+                'project_id' => $projectId,
+                'contractor_id' => $contractor->contractor_id,
+                'payment_mode' => $validated['payment_mode'],
+                'total_project_cost' => $validated['total_project_cost'],
+                'downpayment_amount' => $validated['downpayment_amount'] ?? 0,
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+
+            // Create milestone
+            $milestoneId = $this->contractorClass->createMilestone([
+                'project_id' => $projectId,
+                'contractor_id' => $contractor->contractor_id,
+                'plan_id' => $planId,
+                'milestone_name' => $validated['milestone_name'],
+                'milestone_description' => $validated['milestone_name'],
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+                'milestone_status' => 'not_started',
+                'setup_status' => 'submitted',
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+
+            // Calculate remaining amount after downpayment
+            $remainingAmount = $validated['total_project_cost'] - ($validated['downpayment_amount'] ?? 0);
+
+            // Create milestone items
+            foreach ($validated['items'] as $index => $item) {
+                $percentage = $item['percentage'];
+
+                // Calculate cost based on payment mode
+                $itemCostBase = $validated['payment_mode'] === 'downpayment'
+                    ? $remainingAmount
+                    : $validated['total_project_cost'];
+                $calculatedCost = $itemCostBase * ($percentage / 100);
+
+                $this->contractorClass->createMilestoneItem([
+                    'milestone_id' => $milestoneId,
+                    'sequence_order' => $index + 1,
+                    'percentage_progress' => $percentage,
+                    'milestone_item_title' => $item['title'],
+                    'milestone_item_description' => $item['description'] ?? '',
+                    'milestone_item_cost' => round($calculatedCost, 2),
+                    'date_to_finish' => date('Y-m-d 23:59:59', strtotime($item['date_to_finish']))
+                ]);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Milestone plan created successfully!',
+                'data' => [
+                    'milestone_id' => $milestoneId,
+                    'plan_id' => $planId
+                ]
+            ], 201);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error saving milestone (API): ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while saving the milestone. Please try again.',
+                'error' => config('app.debug') ? $e->getMessage() : null
+            ], 500);
+        }
+    }
+
     public function deleteMilestone(Request $request, $milestoneId)
     {
         $accessCheck = $this->checkContractorAccess($request);
@@ -619,5 +765,182 @@ class cprocessController extends Controller
                 'message' => 'An error occurred while deleting the milestone. Please try again.'
             ], 500);
         }
+    }
+
+    // API endpoint for contractor mobile app to get their assigned projects
+    public function apiGetContractorProjects(Request $request)
+    {
+        try {
+            $userId = $request->query('user_id');
+
+            if (!$userId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'user_id parameter is required'
+                ], 400);
+            }
+
+            // Get contractor info
+            $contractor = DB::table('contractors')
+                ->where('user_id', $userId)
+                ->first();
+
+            if (!$contractor) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'No contractor profile found',
+                    'data' => []
+                ], 200);
+            }
+
+            // Get projects where this contractor is the selected contractor
+            $projects = DB::table('projects as p')
+                ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
+                ->join('contractor_types as ct', 'p.type_id', '=', 'ct.type_id')
+                ->join('property_owners as po', 'pr.owner_id', '=', 'po.owner_id')
+                ->join('users as u', 'po.user_id', '=', 'u.user_id')
+                ->join('bids as b', function($join) use ($contractor) {
+                    $join->on('p.project_id', '=', 'b.project_id')
+                        ->where('b.contractor_id', '=', $contractor->contractor_id)
+                        ->where('b.bid_status', '=', 'accepted');
+                })
+                ->select(
+                    'p.project_id',
+                    'p.project_title',
+                    'p.project_description',
+                    'p.project_location',
+                    'p.budget_range_min',
+                    'p.budget_range_max',
+                    'p.lot_size',
+                    'p.floor_area',
+                    'p.property_type',
+                    'p.type_id',
+                    'ct.type_name',
+                    'p.project_status',
+                    'pr.project_post_status',
+                    DB::raw('DATE(pr.created_at) as created_at'),
+                    DB::raw("CONCAT(po.first_name, ' ', po.last_name) as owner_name"),
+                    'u.profile_pic as owner_profile_pic',
+                    'u.user_id as owner_user_id',
+                    'b.bid_id',
+                    'b.proposed_cost',
+                    'b.estimated_timeline',
+                    'b.contractor_notes',
+                    'b.bid_status'
+                )
+                ->orderBy('p.project_id', 'desc')
+                ->get();
+
+            // Add milestones info and owner info for each project
+            foreach ($projects as $project) {
+                // Get milestones with full details
+                $milestones = DB::table('milestones')
+                    ->where('project_id', $project->project_id)
+                    ->where('contractor_id', $contractor->contractor_id)
+                    ->where(function($query) {
+                        $query->whereNull('is_deleted')
+                              ->orWhere('is_deleted', 0);
+                    })
+                    ->get();
+
+                // Add items and payment plan for each milestone
+                foreach ($milestones as $milestone) {
+                    $milestone->items = DB::table('milestone_items')
+                        ->where('milestone_id', $milestone->milestone_id)
+                        ->orderBy('sequence_order', 'asc')
+                        ->get();
+
+                    $milestone->payment_plan = DB::table('payment_plans')
+                        ->where('plan_id', $milestone->plan_id)
+                        ->first();
+                }
+
+                $project->milestones = $milestones;
+                $project->milestones_count = count($milestones);
+
+                // Add owner_info for contractor view
+                $ownerInfo = DB::table('property_owners as po')
+                    ->join('users as u', 'po.user_id', '=', 'u.user_id')
+                    ->where('po.owner_id', function($query) use ($project) {
+                        $query->select('owner_id')
+                              ->from('project_relationships')
+                              ->join('projects', 'project_relationships.rel_id', '=', 'projects.relationship_id')
+                              ->where('projects.project_id', $project->project_id)
+                              ->limit(1);
+                    })
+                    ->select(
+                        'po.owner_id',
+                        'po.first_name',
+                        'po.last_name',
+                        'u.username',
+                        'u.profile_pic'
+                    )
+                    ->first();
+
+                $project->owner_info = $ownerInfo;
+
+                // Add accepted_bid for consistency with owner view
+                $project->accepted_bid = [
+                    'bid_id' => $project->bid_id,
+                    'proposed_cost' => $project->proposed_cost,
+                    'estimated_timeline' => $project->estimated_timeline . ' months',
+                    'contractor_notes' => $project->contractor_notes,
+                    'submitted_at' => null
+                ];
+
+                // Determine display status
+                if (count($milestones) === 0) {
+                    $project->display_status = 'waiting_milestone_setup';
+                } else {
+                    // Check if all milestones are approved/completed
+                    $pendingMilestones = DB::table('milestones')
+                        ->where('project_id', $project->project_id)
+                        ->where('contractor_id', $contractor->contractor_id)
+                        ->whereNotIn('milestone_status', ['approved', 'completed'])
+                        ->count();
+
+                    $project->display_status = $pendingMilestones > 0 ? 'in_progress' : 'completed';
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Projects retrieved successfully',
+                'data' => $projects
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::error('Error fetching contractor projects: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while fetching your projects. Please try again.'
+            ], 500);
+        }
+    }
+
+    public function showMilestonePage(Request $request, $projectId)
+    {
+        $accessCheck = $this->checkContractorAccess($request);
+        if ($accessCheck) {
+            return $accessCheck; // Return error response
+        }
+
+        $user = Session::get('user');
+        $contractor = $this->contractorClass->getContractorByUserId($user->user_id);
+
+        if (!$contractor) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Contractor profile not found.',
+            ], 404);
+        }
+
+        $milestones = $this->contractorClass->getProjectMilestones($projectId, $contractor->contractor_id);
+
+        return response()->json([
+            'success' => true,
+            'data' => $milestones,
+        ]);
     }
 }
