@@ -110,9 +110,10 @@ interface HomepageProps {
   onLogout?: () => void;
   onViewProfile?: () => void;
   onEditProfile?: () => void;
+  onOpenHelp?: () => void;
 }
 
-export default function HomepageScreen({ userType = 'property_owner', userData, onLogout, onViewProfile, onEditProfile }: HomepageProps) {
+export default function HomepageScreen({ userType = 'property_owner', userData, onLogout, onViewProfile, onEditProfile, onOpenHelp }: HomepageProps) {
   const insets = useSafeAreaInsets();
   const [popularContractors, setPopularContractors] = useState<ContractorType[]>([]);
   const [availableProjects, setAvailableProjects] = useState<Project[]>([]);
@@ -798,6 +799,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
         <ContractorProfile
           onLogout={handleLogout}
           onViewProfile={onViewProfile}
+          onOpenHelp={onOpenHelp}
           userData={{
             username: userData?.username,
             email: userData?.email,
@@ -818,6 +820,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
         onLogout={handleLogout}
         onViewProfile={onViewProfile}
         onEditProfile={onEditProfile}
+        onOpenHelp={onOpenHelp}
         userData={{
           username: userData?.username,
           email: userData?.email,
