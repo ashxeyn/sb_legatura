@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="{{ asset('css/admin/home/mainComponents.css') }}">
   <link rel="stylesheet" href="{{ asset('css/admin/userManagement/verificationRequest.css') }}">
 
+  
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-solid-straight/css/uicons-solid-straight.css'>
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-solid-rounded/css/uicons-solid-rounded.css'>
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-bold-rounded/css/uicons-bold-rounded.css'>
@@ -20,6 +21,11 @@
   <script src="{{ asset('js/admin/home/mainComponents.js') }}" defer></script>
   <meta name="csrf-token" content="{{ csrf_token() }}">
 
+  
+
+  <script src="{{ asset('js/admin/home/mainComponents.js') }}" defer></script>
+
+  
 </head>
 
 <body class="bg-gray-50 text-gray-800 font-sans">
@@ -175,6 +181,9 @@
               id="searchInput"
               type="text"
               placeholder="Search..."
+            <input 
+              type="text" 
+              placeholder="Search..." 
               class="border border-gray-300 rounded-lg px-4 py-2 pr-10 focus:ring-2 focus:ring-indigo-400 focus:outline-none w-full"
             >
             <i class="fi fi-rr-search absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
@@ -252,6 +261,23 @@
               <label class="text-sm font-medium text-gray-700">To:</label>
               <input type="date" id="dateTo" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400">
             </div>
+            <!-- Date -->
+            <button class="relative flex items-center gap-2 bg-white border border-gray-300 rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition">
+              <span>Date</span>
+              <i class="fi fi-rr-angle-small-down text-gray-500"></i>
+            </button>
+
+            <!-- Account Type -->
+            <button class="relative flex items-center gap-2 bg-white border border-gray-300 rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition">
+              <span>Account Type</span>
+              <i class="fi fi-rr-angle-small-down text-gray-500"></i>
+            </button>
+
+            <!-- Status -->
+            <button class="relative flex items-center gap-2 bg-white border border-gray-300 rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition">
+              <span>Status</span>
+              <i class="fi fi-rr-angle-small-down text-gray-500"></i>
+            </button>
           </div>
 
           <button id="resetFilterBtn" class="flex items-center gap-2 text-red-600 hover:text-red-700 text-sm font-semibold px-3 py-2 rounded-lg hover:bg-red-50 transition">
@@ -272,11 +298,185 @@
           <!-- Contractors Table -->
           <div id="contractorsTableWrap" class="overflow-x-auto">
             @include('admin.userManagement.partials.vercontractorTable')
+            <table class="w-full">
+              <thead>
+                <tr class="bg-gray-50 border-b border-gray-200">
+                  <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Name</th>
+                  <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Date Registered</th>
+                  <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Account Type</th>
+                  <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
+                  <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Action</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-200">
+                <!-- Row 1 -->
+                <tr class="hover:bg-gray-50 transition duration-150 ease-in-out group">
+                  <td class="px-6 py-4">
+                    <div class="flex items-center gap-3">
+                      <div class="w-10 h-10 rounded-full bg-gradient-to-br from-sky-400 to-sky-600 flex items-center justify-center text-white font-semibold shadow-md flex-shrink-0">GD</div>
+                      <span class="font-medium text-gray-900">GTH Builders and Developers</span>
+                    </div>
+                  </td>
+                  <td class="px-6 py-4 text-center"><div class="text-sm text-gray-600">10 Oct, 2025</div></td>
+                  <td class="px-6 py-4 text-center"><span class="text-sm text-gray-700">Contractor</span></td>
+                  <td class="px-6 py-4 text-center">
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">Pending</span>
+                  </td>
+                  <td class="px-6 py-4">
+                    <div class="flex items-center justify-center gap-2">
+                      <button class="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition vr-view-btn" data-key="gth" title="View">
+                        <i class="fi fi-rr-eye"></i>
+                      </button>
+                      <button class="p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition vr-del-btn action-btn" data-type="Contractor" data-name="GTH Builders and Developers" title="Delete">
+                        <i class="fi fi-rr-trash"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- Row 2 -->
+                <tr class="hover:bg-gray-50 transition duration-150 ease-in-out group">
+                  <td class="px-6 py-4">
+                    <div class="flex items-center gap-3">
+                      <div class="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center text-white font-semibold shadow-md flex-shrink-0">CA</div>
+                      <span class="font-medium text-gray-900">Cabanating Architects Design & Construction</span>
+                    </div>
+                  </td>
+                  <td class="px-6 py-4 text-center"><div class="text-sm text-gray-600">09 Oct, 2025</div></td>
+                  <td class="px-6 py-4 text-center"><span class="text-sm text-gray-700">Contractor</span></td>
+                  <td class="px-6 py-4 text-center">
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">Pending</span>
+                  </td>
+                  <td class="px-6 py-4">
+                    <div class="flex items-center justify-center gap-2">
+                      <button class="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition vr-view-btn" data-key="cab" title="View">
+                        <i class="fi fi-rr-eye"></i>
+                      </button>
+                      <button class="p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition vr-del-btn action-btn" data-type="Contractor" data-name="Cabanating Architects Design & Construction" title="Delete">
+                        <i class="fi fi-rr-trash"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- Row 3 Accepted -->
+                <tr class="hover:bg-gray-50 transition duration-150 ease-in-out group">
+                  <td class="px-6 py-4">
+                    <div class="flex items-center gap-3">
+                      <div class="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white font-semibold shadow-md flex-shrink-0">RC</div>
+                      <span class="font-medium text-gray-900">RCDG Construction Corporation</span>
+                    </div>
+                  </td>
+                  <td class="px-6 py-4 text-center"><div class="text-sm text-gray-600">08 Oct, 2025</div></td>
+                  <td class="px-6 py-4 text-center"><span class="text-sm text-gray-700">Contractor</span></td>
+                  <td class="px-6 py-4 text-center">
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">Accepted</span>
+                  </td>
+                  <td class="px-6 py-4">
+                    <div class="flex items-center justify-center gap-2">
+                      <button class="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition vr-view-btn" data-key="rcdg" title="View">
+                        <i class="fi fi-rr-eye"></i>
+                      </button>
+                      <button class="p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition vr-del-btn action-btn" data-type="Contractor" data-name="RCDG Construction Corporation" title="Delete">
+                        <i class="fi fi-rr-trash"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
 
           <!-- Property Owners Table -->
           <div id="ownersTableWrap" class="overflow-x-auto hidden">
             @include('admin.userManagement.partials.verownerTable')
+            <table class="w-full">
+              <thead>
+                <tr class="bg-gray-50 border-b border-gray-200">
+                  <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Name</th>
+                  <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Date Registered</th>
+                  <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Account Type</th>
+                  <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
+                  <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Action</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-200">
+                <!-- Row 1 -->
+                <tr class="hover:bg-gray-50 transition duration-150 ease-in-out group">
+                  <td class="px-6 py-4">
+                    <div class="flex items-center gap-3">
+                      <div class="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-white font-semibold shadow-md flex-shrink-0">MM</div>
+                      <span class="font-medium text-gray-900">Mar Manon-og</span>
+                    </div>
+                  </td>
+                  <td class="px-6 py-4 text-center"><div class="text-sm text-gray-600">21 Sep, 2025</div></td>
+                  <td class="px-6 py-4 text-center"><span class="text-sm text-gray-700">Property Owner</span></td>
+                  <td class="px-6 py-4 text-center">
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">Accepted</span>
+                  </td>
+                  <td class="px-6 py-4">
+                    <div class="flex items-center justify-center gap-2">
+                      <button class="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition po-view-btn" data-key="mm" title="View">
+                        <i class="fi fi-rr-eye"></i>
+                      </button>
+                      <button class="p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition po-del-btn action-btn" data-type="Property Owner" data-name="Mar Manon-og" title="Delete">
+                        <i class="fi fi-rr-trash"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- Row 2 -->
+                <tr class="hover:bg-gray-50 transition duration-150 ease-in-out group">
+                  <td class="px-6 py-4">
+                    <div class="flex items-center gap-3">
+                      <div class="w-10 h-10 rounded-full bg-gradient-to-br from-fuchsia-400 to-fuchsia-600 flex items-center justify-center text-white font-semibold shadow-md flex-shrink-0">CR</div>
+                      <span class="font-medium text-gray-900">Criscel Ann Delos Reyes</span>
+                    </div>
+                  </td>
+                  <td class="px-6 py-4 text-center"><div class="text-sm text-gray-600">09 Aug, 2025</div></td>
+                  <td class="px-6 py-4 text-center"><span class="text-sm text-gray-700">Property Owner</span></td>
+                  <td class="px-6 py-4 text-center">
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">Accepted</span>
+                  </td>
+                  <td class="px-6 py-4">
+                    <div class="flex items-center justify-center gap-2">
+                      <button class="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition po-view-btn" data-key="cr" title="View">
+                        <i class="fi fi-rr-eye"></i>
+                      </button>
+                      <button class="p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition po-del-btn action-btn" data-type="Property Owner" data-name="Criscel Ann Delos Reyes" title="Delete">
+                        <i class="fi fi-rr-trash"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- Row 3 Pending -->
+                <tr class="hover:bg-gray-50 transition duration-150 ease-in-out group">
+                  <td class="px-6 py-4">
+                    <div class="flex items-center gap-3">
+                      <div class="w-10 h-10 rounded-full bg-gradient-to-br from-slate-400 to-slate-600 flex items-center justify-center text-white font-semibold shadow-md flex-shrink-0">NO</div>
+                      <span class="font-medium text-gray-900">Nesty Omongos</span>
+                    </div>
+                  </td>
+                  <td class="px-6 py-4 text-center"><div class="text-sm text-gray-600">19 Oct, 2025</div></td>
+                  <td class="px-6 py-4 text-center"><span class="text-sm text-gray-700">Switch Account</span></td>
+                  <td class="px-6 py-4 text-center">
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">Pending</span>
+                  </td>
+                  <td class="px-6 py-4">
+                    <div class="flex items-center justify-center gap-2">
+                      <button class="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition po-view-btn" data-key="no" title="View">
+                        <i class="fi fi-rr-eye"></i>
+                      </button>
+                      <button class="p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition po-del-btn action-btn" data-type="Property Owner" data-name="Nesty Omongos" title="Delete">
+                        <i class="fi fi-rr-trash"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -314,6 +514,7 @@
 
                 <!-- Representative Card (Removed as per request) -->
                 <!--
+                <!-- Representative Card -->
                 <div class="bg-white rounded-xl border border-gray-200 p-4">
                   <div class="flex items-start gap-4">
                     <div class="w-14 h-14 rounded-full bg-gradient-to-br from-rose-400 to-rose-600 text-white font-bold flex items-center justify-center flex-shrink-0">
@@ -428,6 +629,8 @@
               </div>
               <h3 class="text-xl font-bold text-gray-800">Verify Account?</h3>
               <p class="text-gray-600">The user can use and access their accounts now.</p>
+              <h3 class="text-xl font-bold text-gray-800">Account Verified</h3>
+              <p class="text-gray-600">Account has been successfully verified. The user can now access and use their account.</p>
             </div>
             <div class="px-6 py-4 bg-white border-t border-gray-200 flex items-center justify-end gap-3">
               <button id="acceptCancelBtn" class="px-5 py-2.5 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition font-semibold">Cancel</button>
@@ -543,6 +746,7 @@
                   </h4>
                   <div class="grid grid-cols-1 gap-4 text-sm">
                     <div class="grid grid-cols-1 gap-3">
+                    <div class="grid grid-cols-2 gap-3">
                       <div>
                         <span class="block text-xs text-gray-500">Valid ID Type</span>
                         <div id="poValidIdType" class="px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg">Philippine Passport</div>
@@ -563,6 +767,18 @@
                           <span class="truncate">Back.jpg</span>
                         </a>
                       </div>
+                      <div>
+                        <span class="block text-xs text-gray-500">Valid ID Number</span>
+                        <div id="poValidIdNumber" class="px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg">P1234567</div>
+                      </div>
+                    </div>
+                    <div>
+                      <span class="block text-xs text-gray-500 mb-1">Valid ID Photo</span>
+                      <a id="poValidIdPhoto" href="#" class="inline-flex items-center gap-2 px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg font-medium transition">
+                        <i class="fi fi-rr-id-badge text-indigo-500"></i>
+                        <span>ValidID.jpg</span>
+                        <span class="text-xs text-gray-500">350 KB</span>
+                      </a>
                     </div>
                     <div>
                       <span class="block text-xs text-gray-500 mb-1">Police Clearance</span>
@@ -610,8 +826,13 @@
 
 
   <script src="{{ asset('js/admin/reusables/filters.js') }}" defer></script>
+      
+    </main>
+  
+
   <script src="{{ asset('js/admin/userManagement/verificationRequest.js') }}" defer></script>
 
 </body>
 
+</html>
 </html>

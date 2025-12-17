@@ -1,5 +1,18 @@
 // API configuration for connecting to Laravel backend
-const API_BASE_URL = 'http://192.168.100.27:8000';
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
+const API_BASE_URL = 'http://192.168.1.91:8083';
+=======
+const API_BASE_URL = 'http://192.168.1.91:8000';
+>>>>>>> Stashed changes
+=======
+const API_BASE_URL = 'http://192.168.1.91:8000';
+>>>>>>> Stashed changes
+=======
+const API_BASE_URL = 'http://192.168.1.91:8000';
+>>>>>>> Stashed changes
+import { storage_service } from '../utils/storage';
 
 export const api_config = {
     base_url: API_BASE_URL,
@@ -94,6 +107,20 @@ export const api_request = async (
 
     console.log(`Making API request to: ${url}`);
 
+    // Try to attach bearer token for API routes if available
+    try {
+        const savedToken = await storage_service.get_auth_token();
+        if (savedToken) {
+            // Attach to default headers below via options.headers merging
+            options.headers = {
+                ...(options.headers || {}),
+                'Authorization': `Bearer ${savedToken}`
+            } as any;
+        }
+    } catch (e) {
+        console.warn('Could not read auth token from storage:', e);
+    }
+
     // For web routes (non-API), get CSRF token if we don't have one
     // Don't refresh on every request to avoid interfering with session
     if (!endpoint.startsWith('/api/')) {
@@ -107,6 +134,9 @@ export const api_request = async (
     const default_headers: any = {
         'Accept': 'application/json',
         'X-Requested-With': 'XMLHttpRequest', // Laravel expects this for JSON responses
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
     };
 
     // Only set Content-Type for JSON requests (not for FormData)
@@ -129,7 +159,15 @@ export const api_request = async (
     };
 
     try {
-        const response = await fetch(url, config);
+        // Cache-bust GET requests so frontend reflects DB changes immediately
+        const method = (config.method || 'GET').toString().toUpperCase();
+        let fetchUrl = url;
+        if (method === 'GET') {
+            const sep = fetchUrl.includes('?') ? '&' : '?';
+            fetchUrl = `${fetchUrl}${sep}_cb=${Date.now()}`;
+        }
+
+        const response = await fetch(fetchUrl, config);
 
         console.log(`Response status: ${response.status}`);
 

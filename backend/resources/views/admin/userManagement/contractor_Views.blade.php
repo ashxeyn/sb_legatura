@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="{{ asset('css/admin/home/mainComponents.css') }}">
   <link rel="stylesheet" href="{{ asset('css/admin/userManagement/contractor_Views.css') }}">
 
+  
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-solid-straight/css/uicons-solid-straight.css'>
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-solid-rounded/css/uicons-solid-rounded.css'>
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-bold-rounded/css/uicons-bold-rounded.css'>
@@ -20,6 +21,11 @@
   <script src="{{ asset('js/admin/home/mainComponents.js') }}" defer></script>
 
 
+  
+
+  <script src="{{ asset('js/admin/home/mainComponents.js') }}" defer></script>
+
+  
 </head>
 
 <body class="bg-gray-50 text-gray-800 font-sans">
@@ -174,6 +180,9 @@
             <input
               type="text"
               placeholder="Search..."
+            <input 
+              type="text" 
+              placeholder="Search..." 
               class="border border-gray-300 rounded-lg px-4 py-2 pr-10 focus:ring-2 focus:ring-indigo-400 focus:outline-none w-full"
             >
             <i class="fi fi-rr-search absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
@@ -267,6 +276,17 @@
             <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
           </div>
           <div class="relative px-6 md:px-8 pb-8 pt-8">
+            <img src="" alt="Account Banner" class="w-full h-full object-cover opacity-40 group-hover:scale-105 transition-transform duration-500">
+            <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+          </div>
+          <div class="relative pt-20 px-6 md:px-8 pb-8">
+            <div class="absolute -top-16 left-8">
+              <div class="w-32 h-32 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 p-1 shadow-2xl ring-4 ring-white">
+                <div class="w-full h-full rounded-full bg-white flex items-center justify-center overflow-hidden">
+                  <span class="text-3xl font-bold text-orange-600">JL</span>
+                </div>
+              </div>
+            </div>
 
             <div class="mb-6">
               <h2 class="text-2xl md:text-3xl font-bold text-gray-800 mb-1">Account Profile</h2>
@@ -293,11 +313,25 @@
               <div>
                 <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Last Login</label>
                 <p class="text-base font-medium text-gray-800">N/A</p>
+                <p class="text-base font-medium text-gray-800">jlois_construction</p>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Account Status</label>
+                <span class="inline-block px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-semibold">Active</span>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Member Since</label>
+                <p class="text-base font-medium text-gray-800">January 15, 2023</p>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Last Login</label>
+                <p class="text-base font-medium text-gray-800">November 20, 2025 at 3:45 PM</p>
               </div>
               <div class="md:col-span-2">
                 <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Bio</label>
                 <p class="text-base text-gray-700 leading-relaxed">
                   {{ $contractor->company_description ?? 'No bio provided.' }}
+                  Leading construction company specializing in residential and commercial projects with over 98 years of excellence in the industry.
                 </p>
               </div>
             </div>
@@ -331,6 +365,13 @@
                       <h3 class="text-2xl font-bold text-gray-800">{{ $contractor->company_name ?? 'N/A' }}</h3>
                       <p class="text-sm text-gray-600 mt-1">{{ $contractor->company_email ?? 'N/A' }}</p>
                       <p class="text-sm text-orange-600 mt-1 font-semibold">Experience: {{ $contractor->years_of_experience ?? 'N/A' }} Years</p>
+                      <img id="companyLogoImg" src="" alt="Company Logo" class="w-full h-full object-cover hidden">
+                      <i id="companyLogoIcon" class="fi fi-sr-building text-white text-4xl"></i>
+                    </div>
+                    <div class="flex-1">
+                      <h3 class="text-2xl font-bold text-gray-800">J'Lois Construction</h3>
+                      <p class="text-sm text-gray-600 mt-1">URL: construction@gmail.com</p>
+                      <p class="text-sm text-orange-600 mt-1 font-semibold">Experience: 98 Years</p>
                     </div>
                   </div>
 
@@ -362,6 +403,27 @@
                   <div>
                     <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Registration Date</label>
                     <p class="text-base font-medium text-gray-800">{{ $contractor->created_at ? \Carbon\Carbon::parse($contractor->created_at)->format('F d, Y') : 'N/A' }}</p>
+                    <p class="text-base font-medium text-gray-800">J'Lois Construction</p>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Years of Operation</label>
+                    <p class="text-base font-medium text-gray-800">98 Years</p>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Account Type</label>
+                    <span class="inline-block px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-sm font-semibold">Construction</span>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Contact Number</label>
+                    <p class="text-base font-medium text-gray-800">+63 912 345 6789</p>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">License Number</label>
+                    <p class="text-base font-medium text-gray-800">LIC-2023-12345</p>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Registration Date</label>
+                    <p class="text-base font-medium text-gray-800">January 15, 2023</p>
                   </div>
 
                   <!-- Company Website / Socials -->
@@ -383,6 +445,18 @@
                       @if(!$contractor->company_website && !$contractor->company_social_media)
                         <p class="text-sm text-gray-500">No website or social media links provided</p>
                       @endif
+                      <div class="flex items-center gap-2 text-sm text-gray-700 hover:text-orange-600 transition-colors">
+                        <i class="fi fi-rr-globe text-orange-500"></i>
+                        <a href="https://jloisconstruction.com" target="_blank" class="hover:underline">https://jloisconstruction.com</a>
+                      </div>
+                      <div class="flex items-center gap-2 text-sm text-gray-700 hover:text-orange-600 transition-colors">
+                        <i class="fi fi-brands-facebook text-orange-500"></i>
+                        <a href="https://facebook.com/jloisconstruction" target="_blank" class="hover:underline">https://facebook.com/jloisconstruction</a>
+                      </div>
+                      <div class="flex items-center gap-2 text-sm text-gray-700 hover:text-orange-600 transition-colors">
+                        <i class="fi fi-brands-linkedin text-orange-500"></i>
+                        <a href="https://linkedin.com/company/jloisconstruction" target="_blank" class="hover:underline">https://linkedin.com/company/jloisconstruction</a>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -462,11 +536,59 @@
                     <p class="text-sm text-gray-500">Click "Add Representative" button above to assign a company representative.</p>
                   </div>
                 @endif
+                  <span>Change Representative</span>
+                </button>
+              </div>
+              <div class="p-6 md:p-8">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <!-- Representative Photo -->
+                  <div class="md:col-span-2 flex items-center gap-6 p-6 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl border-2 border-blue-200">
+                    <div class="w-20 h-20 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center overflow-hidden shadow-xl ring-4 ring-blue-200">
+                      <img id="repPhotoImg" src="" alt="Representative Photo" class="w-full h-full object-cover hidden">
+                      <i id="repPhotoIcon" class="fi fi-rr-user text-white text-3xl"></i>
+                    </div>
+                    <div class="flex-1">
+                      <h3 class="text-xl font-bold text-gray-800">John Michael Santos</h3>
+                      <p class="text-sm text-gray-600 mt-1">Project Manager</p>
+                    </div>
+                  </div>
+
+                  <!-- Representative Information Fields -->
+                  <div>
+                    <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">First Name</label>
+                    <p class="text-base font-medium text-gray-800">John</p>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Middle Name</label>
+                    <p class="text-base font-medium text-gray-800">Michael</p>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Last Name</label>
+                    <p class="text-base font-medium text-gray-800">Santos</p>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Position / Role</label>
+                    <p class="text-base font-medium text-gray-800">Project Manager</p>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Email Address</label>
+                    <p class="text-base font-medium text-gray-800">john.santos@jlois.com</p>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Contact Number</label>
+                    <p class="text-base font-medium text-gray-800">+63 918 765 4321</p>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Username</label>
+                    <p class="text-base font-medium text-gray-800">johnsantos</p>
+                  </div>
+                </div>
               </div>
             </section>
 
             <!-- Account Setup & Business Address -->
 
+            
           </div>
 
           <!-- Right 1/3: Documents & Services -->
@@ -497,6 +619,15 @@
                   <div>
                     <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Expiration Date</label>
                     <p class="text-sm font-medium text-gray-800">{{ $contractor->picab_expiration_date ? \Carbon\Carbon::parse($contractor->picab_expiration_date)->format('F d, Y') : 'N/A' }}</p>
+                    <p class="text-sm font-medium text-gray-800">23345-AB-2025</p>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Category</label>
+                    <span class="inline-block px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-semibold">Building</span>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Expiration Date</label>
+                    <p class="text-sm font-medium text-gray-800">December 31, 2025</p>
                   </div>
                 </div>
 
@@ -517,6 +648,15 @@
                   <div>
                     <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Expiration Date</label>
                     <p class="text-sm font-medium text-gray-800">{{ $contractor->business_permit_expiration ? \Carbon\Carbon::parse($contractor->business_permit_expiration)->format('F d, Y') : 'N/A' }}</p>
+                    <p class="text-sm font-medium text-gray-800">Zamboanga City</p>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Permit Number</label>
+                    <p class="text-sm font-medium text-gray-800">BP-2025-7907</p>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Expiration Date</label>
+                    <p class="text-sm font-medium text-gray-800">December 31, 2025</p>
                   </div>
                 </div>
 
@@ -537,6 +677,15 @@
                     @else
                       <p class="text-sm text-gray-500">No document uploaded</p>
                     @endif
+                    <p class="text-sm font-medium text-gray-800">123-456-789-000</p>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">DTI / SEC Registration</label>
+                    <a href="#" class="inline-flex items-center gap-2 px-3 py-2 bg-orange-50 hover:bg-orange-100 text-orange-600 rounded-lg text-sm font-medium transition-all hover:shadow-md group">
+                      <i class="fi fi-rr-file-pdf text-red-500"></i>
+                      <span>DTIRegistration.pdf</span>
+                      <span class="text-xs text-gray-500 group-hover:text-orange-500">• Approved</span>
+                    </a>
                   </div>
                 </div>
               </div>
@@ -556,6 +705,29 @@
                 @else
                   <p class="text-sm text-gray-500">No services listed</p>
                 @endif
+                <div class="flex flex-wrap gap-2">
+                  <span class="px-3 py-1.5 bg-gradient-to-r from-orange-100 to-orange-200 text-orange-700 rounded-full text-xs font-semibold shadow-sm hover:shadow-md transition-all cursor-default">
+                    Residential Building Construction
+                  </span>
+                  <span class="px-3 py-1.5 bg-gradient-to-r from-orange-100 to-orange-200 text-orange-700 rounded-full text-xs font-semibold shadow-sm hover:shadow-md transition-all cursor-default">
+                    Design and Build Services
+                  </span>
+                  <span class="px-3 py-1.5 bg-gradient-to-r from-blue-100 to-blue-200 text-blue-700 rounded-full text-xs font-semibold shadow-sm hover:shadow-md transition-all cursor-default">
+                    Modern
+                  </span>
+                  <span class="px-3 py-1.5 bg-gradient-to-r from-blue-100 to-blue-200 text-blue-700 rounded-full text-xs font-semibold shadow-sm hover:shadow-md transition-all cursor-default">
+                    Building
+                  </span>
+                  <span class="px-3 py-1.5 bg-gradient-to-r from-green-100 to-green-200 text-green-700 rounded-full text-xs font-semibold shadow-sm hover:shadow-md transition-all cursor-default">
+                    Warehouse
+                  </span>
+                  <span class="px-3 py-1.5 bg-gradient-to-r from-green-100 to-green-200 text-green-700 rounded-full text-xs font-semibold shadow-sm hover:shadow-md transition-all cursor-default">
+                    Facilities
+                  </span>
+                  <span class="px-3 py-1.5 bg-gradient-to-r from-purple-100 to-purple-200 text-purple-700 rounded-full text-xs font-semibold shadow-sm hover:shadow-md transition-all cursor-default">
+                    Large-scale
+                  </span>
+                </div>
               </div>
             </section>
 
@@ -572,6 +744,26 @@
                   <div>
                     <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Complete Address</label>
                     <p class="text-base text-gray-800">{{ $contractor->business_address ?? 'N/A' }}</p>
+                    <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Street Address</label>
+                    <p class="text-base text-gray-800">123 Construction Avenue, Building 5</p>
+                  </div>
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">City</label>
+                      <p class="text-base text-gray-800">Zamboanga City</p>
+                    </div>
+                    <div>
+                      <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Province</label>
+                      <p class="text-base text-gray-800">Zamboanga del Sur</p>
+                    </div>
+                    <div>
+                      <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Postal Code</label>
+                      <p class="text-base text-gray-800">7000</p>
+                    </div>
+                    <div>
+                      <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Country</label>
+                      <p class="text-base text-gray-800">Philippines</p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -687,6 +879,182 @@
                     </td>
                   </tr>
                 @endforelse
+                <!-- Team Member 1 -->
+                <tr class="hover:bg-gray-50 transition-all duration-200 group team-member-row" data-status="active" data-email="olive.podios@jlois.com" data-contact="+63 912 345 6789">
+                  <td class="px-6 py-4">
+                    <div class="flex items-center gap-3">
+                      <div class="w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center overflow-hidden shadow-md group-hover:shadow-lg transition-all group-hover:scale-110">
+                        <img src="" alt="Olive Faith Podios" class="w-full h-full object-cover hidden">
+                        <span class="text-white font-bold text-sm">OF</span>
+                      </div>
+                      <span class="font-medium text-gray-800 group-hover:text-orange-600 transition">Olive Faith Podios</span>
+                    </div>
+                  </td>
+                  <td class="px-6 py-4 text-center text-sm text-gray-600">Secretary</td>
+                  <td class="px-6 py-4 text-center text-sm text-gray-600">Aug 30, 2025</td>
+                  <td class="px-6 py-4 text-center">
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 transition-all duration-200 hover:scale-110 hover:shadow-md">
+                      Active
+                    </span>
+                  </td>
+                  <td class="px-6 py-4">
+                    <div class="flex items-center justify-center gap-2">
+                      <button class="team-edit-btn p-2 rounded-lg hover:bg-orange-50 transition-all group/btn" title="Edit Member">
+                        <i class="fi fi-rr-pencil text-orange-600 group-hover/btn:scale-110 transition-transform"></i>
+                      </button>
+                      <button class="team-deactivate-btn p-2 rounded-lg hover:bg-red-50 transition-all group/btn" title="Deactivate Account">
+                        <i class="fi fi-rr-ban text-red-600 group-hover/btn:scale-110 transition-transform"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- Team Member 2 -->
+                <tr class="hover:bg-gray-50 transition-all duration-200 group team-member-row" data-status="active" data-email="shane.jimenez@jlois.com" data-contact="+63 918 765 4321">
+                  <td class="px-6 py-4">
+                    <div class="flex items-center gap-3">
+                      <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center overflow-hidden shadow-md group-hover:shadow-lg transition-all group-hover:scale-110">
+                        <img src="" alt="Shane Hart Jimenez" class="w-full h-full object-cover hidden">
+                        <span class="text-white font-bold text-sm">SH</span>
+                      </div>
+                      <span class="font-medium text-gray-800 group-hover:text-orange-600 transition">Shane Hart Jimenez</span>
+                    </div>
+                  </td>
+                  <td class="px-6 py-4 text-center text-sm text-gray-600">Site Engineer</td>
+                  <td class="px-6 py-4 text-center text-sm text-gray-600">Aug 30, 2025</td>
+                  <td class="px-6 py-4 text-center">
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 transition-all duration-200 hover:scale-110 hover:shadow-md">
+                      Active
+                    </span>
+                  </td>
+                  <td class="px-6 py-4">
+                    <div class="flex items-center justify-center gap-2">
+                      <button class="team-edit-btn p-2 rounded-lg hover:bg-orange-50 transition-all group/btn" title="Edit Member">
+                        <i class="fi fi-rr-pencil text-orange-600 group-hover/btn:scale-110 transition-transform"></i>
+                      </button>
+                      <button class="team-deactivate-btn p-2 rounded-lg hover:bg-red-50 transition-all group/btn" title="Deactivate Account">
+                        <i class="fi fi-rr-ban text-red-600 group-hover/btn:scale-110 transition-transform"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- Team Member 3 -->
+                <tr class="hover:bg-gray-50 transition-all duration-200 group team-member-row" data-status="active" data-email="maria.santos@jlois.com" data-contact="+63 923 456 7890">
+                  <td class="px-6 py-4">
+                    <div class="flex items-center gap-3">
+                      <div class="w-10 h-10 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center overflow-hidden shadow-md group-hover:shadow-lg transition-all group-hover:scale-110">
+                        <img src="" alt="Maria Santos Cruz" class="w-full h-full object-cover hidden">
+                        <span class="text-white font-bold text-sm">MS</span>
+                      </div>
+                      <span class="font-medium text-gray-800 group-hover:text-orange-600 transition">Maria Santos Cruz</span>
+                    </div>
+                  </td>
+                  <td class="px-6 py-4 text-center text-sm text-gray-600">Project Coordinator</td>
+                  <td class="px-6 py-4 text-center text-sm text-gray-600">Sep 15, 2025</td>
+                  <td class="px-6 py-4 text-center">
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 transition-all duration-200 hover:scale-110 hover:shadow-md">
+                      Active
+                    </span>
+                  </td>
+                  <td class="px-6 py-4">
+                    <div class="flex items-center justify-center gap-2">
+                      <button class="team-edit-btn p-2 rounded-lg hover:bg-orange-50 transition-all group/btn" title="Edit Member">
+                        <i class="fi fi-rr-pencil text-orange-600 group-hover/btn:scale-110 transition-transform"></i>
+                      </button>
+                      <button class="team-deactivate-btn p-2 rounded-lg hover:bg-red-50 transition-all group/btn" title="Deactivate Account">
+                        <i class="fi fi-rr-ban text-red-600 group-hover/btn:scale-110 transition-transform"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- Team Member 4 -->
+                <tr class="hover:bg-gray-50 transition-all duration-200 group team-member-row" data-status="active" data-email="jason.reyes@jlois.com" data-contact="+63 917 234 5678">
+                  <td class="px-6 py-4">
+                    <div class="flex items-center gap-3">
+                      <div class="w-10 h-10 rounded-full bg-gradient-to-br from-red-400 to-red-600 flex items-center justify-center overflow-hidden shadow-md group-hover:shadow-lg transition-all group-hover:scale-110">
+                        <img src="" alt="Carlos Rivera Lopez" class="w-full h-full object-cover hidden">
+                        <span class="text-white font-bold text-sm">CR</span>
+                      </div>
+                      <span class="font-medium text-gray-800 group-hover:text-orange-600 transition">Carlos Rivera Lopez</span>
+                    </div>
+                  </td>
+                  <td class="px-6 py-4 text-center text-sm text-gray-600">Safety Officer</td>
+                  <td class="px-6 py-4 text-center text-sm text-gray-600">Oct 10, 2025</td>
+                  <td class="px-6 py-4 text-center">
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 transition-all duration-200 hover:scale-110 hover:shadow-md">
+                      Active
+                    </span>
+                  </td>
+                  <td class="px-6 py-4">
+                    <div class="flex items-center justify-center gap-2">
+                      <button class="team-edit-btn p-2 rounded-lg hover:bg-orange-50 transition-all group/btn" title="Edit Member">
+                        <i class="fi fi-rr-pencil text-orange-600 group-hover/btn:scale-110 transition-transform"></i>
+                      </button>
+                      <button class="team-deactivate-btn p-2 rounded-lg hover:bg-red-50 transition-all group/btn" title="Deactivate Account">
+                        <i class="fi fi-rr-ban text-red-600 group-hover/btn:scale-110 transition-transform"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- Team Member 5 -->
+                <tr class="hover:bg-gray-50 transition-all duration-200 group team-member-row" data-status="active" data-email="lisa.garcia@jlois.com" data-contact="+63 919 876 5432">
+                  <td class="px-6 py-4">
+                    <div class="flex items-center gap-3">
+                      <div class="w-10 h-10 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center overflow-hidden shadow-md group-hover:shadow-lg transition-all group-hover:scale-110">
+                        <img src="" alt="Anna Marie Reyes" class="w-full h-full object-cover hidden">
+                        <span class="text-white font-bold text-sm">AM</span>
+                      </div>
+                      <span class="font-medium text-gray-800 group-hover:text-orange-600 transition">Anna Marie Reyes</span>
+                    </div>
+                  </td>
+                  <td class="px-6 py-4 text-center text-sm text-gray-600">Architect</td>
+                  <td class="px-6 py-4 text-center text-sm text-gray-600">Nov 01, 2025</td>
+                  <td class="px-6 py-4 text-center">
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 transition-all duration-200 hover:scale-110 hover:shadow-md">
+                      Active
+                    </span>
+                  </td>
+                  <td class="px-6 py-4">
+                    <div class="flex items-center justify-center gap-2">
+                      <button class="team-edit-btn p-2 rounded-lg hover:bg-orange-50 transition-all group/btn" title="Edit Member">
+                        <i class="fi fi-rr-pencil text-orange-600 group-hover/btn:scale-110 transition-transform"></i>
+                      </button>
+                      <button class="team-deactivate-btn p-2 rounded-lg hover:bg-red-50 transition-all group/btn" title="Deactivate Account">
+                        <i class="fi fi-rr-ban text-red-600 group-hover/btn:scale-110 transition-transform"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- Team Member 6 - Deactivated -->
+                <tr class="hover:bg-gray-50 transition-all duration-200 group team-member-row hidden" data-status="deactivated" data-email="mark.lopez@jlois.com" data-contact="+63 920 111 2233">
+                  <td class="px-6 py-4">
+                    <div class="flex items-center gap-3 opacity-60">
+                      <div class="w-10 h-10 rounded-full bg-gradient-to-br from-gray-400 to-gray-600 flex items-center justify-center overflow-hidden shadow-md">
+                        <img src="" alt="Robert Garcia" class="w-full h-full object-cover hidden">
+                        <span class="text-white font-bold text-sm">RG</span>
+                      </div>
+                      <span class="font-medium text-gray-600">Robert Garcia</span>
+                    </div>
+                  </td>
+                  <td class="px-6 py-4 text-center text-sm text-gray-600">Foreman</td>
+                  <td class="px-6 py-4 text-center text-sm text-gray-600">Jul 20, 2025</td>
+                  <td class="px-6 py-4 text-center">
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                      Deactivated
+                    </span>
+                  </td>
+                  <td class="px-6 py-4">
+                    <div class="flex items-center justify-center gap-2">
+                      <button class="team-reactivate-btn p-2 rounded-lg hover:bg-green-50 transition-all group/btn" title="Reactivate Account">
+                        <i class="fi fi-rr-check-circle text-green-600 group-hover/btn:scale-110 transition-transform"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -728,6 +1096,7 @@
             </div>
           </div>
 
+          
           <!-- Contractor Info Card -->
           <div class="bg-white rounded-lg p-3 border border-red-200 space-y-2">
             <div class="flex items-center gap-3">
@@ -761,6 +1130,9 @@
           <textarea
             id="suspendReason"
             rows="3"
+          <textarea 
+            id="suspendReason" 
+            rows="3" 
             placeholder="Please provide a detailed reason for suspending this account..."
             class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-red-400 focus:border-red-400 transition-all hover:border-red-300 bg-white resize-none text-sm"
           ></textarea>
@@ -841,6 +1213,7 @@
       <!-- Modal Body -->
       <div class="overflow-y-auto max-h-[calc(90vh-80px)] p-6 md:p-8 space-y-6">
 
+        
         <!-- Edit Type Selector -->
         <div class="flex gap-3 p-4 bg-gray-50 rounded-xl border-2 border-gray-200">
           <button id="editCompanyTab" class="flex-1 px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg font-semibold shadow-md transition-all hover:shadow-lg flex items-center justify-center gap-2">
@@ -952,6 +1325,7 @@
             Company Representative Information
           </h3>
 
+          
           <!-- Representative Photo -->
           <div class="flex items-center gap-6 p-6 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl border-2 border-blue-200 hover:shadow-lg transition-all duration-300 mb-4">
             <div class="relative group">
@@ -1317,6 +1691,10 @@
             type="text"
             id="searchTeamMember"
             placeholder="Search team members by name or position..."
+          <input 
+            type="text" 
+            id="searchTeamMember"
+            placeholder="Search team members by name or position..." 
             class="w-full px-4 py-3 pl-11 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
           >
           <i class="fi fi-rr-search absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
@@ -1327,6 +1705,7 @@
           <h3 class="text-sm font-bold text-gray-600 uppercase tracking-wider mb-3">Select New Representative</h3>
           <div class="space-y-2 max-h-96 overflow-y-auto" id="teamMembersList">
 
+            
             <!-- Team Member Option 1 -->
             <div class="team-member-option flex items-center justify-between p-4 border-2 border-gray-200 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-all cursor-pointer group" data-member-id="1" data-member-name="Olive Faith Podios" data-member-position="Secretary" data-member-email="olive.podios@jlois.com">
               <div class="flex items-center gap-4">
@@ -1429,4 +1808,5 @@
 
 </body>
 
+</html>
 </html>

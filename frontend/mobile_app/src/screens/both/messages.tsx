@@ -58,77 +58,9 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [sending, setSending] = useState(false);
-  
+
   // Get status bar height (top inset)
   const statusBarHeight = insets.top || (Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 44);
-
-  // Mock conversations data
-  const mockConversations: Conversation[] = [
-    {
-      id: 1,
-      user_id: 2,
-      user_name: 'ABC Construction Co.',
-      user_avatar: undefined,
-      last_message: 'Thank you for considering our bid. We can start next week.',
-      last_message_time: '2 hours ago',
-      unread_count: 2,
-      user_type: 'contractor',
-      project_title: 'Modern House Construction',
-    },
-    {
-      id: 2,
-      user_id: 3,
-      user_name: 'Juan Dela Cruz',
-      user_avatar: undefined,
-      last_message: 'When can we schedule a site visit?',
-      last_message_time: '1 day ago',
-      unread_count: 0,
-      user_type: 'property_owner',
-      project_title: 'Kitchen Renovation',
-    },
-    {
-      id: 3,
-      user_id: 4,
-      user_name: 'XYZ Builders',
-      user_avatar: undefined,
-      last_message: 'We have completed the initial assessment.',
-      last_message_time: '3 days ago',
-      unread_count: 1,
-      user_type: 'contractor',
-      project_title: 'Garden Landscaping',
-    },
-  ];
-
-  // Mock messages for selected conversation
-  const mockMessages: Message[] = [
-    {
-      id: 1,
-      sender_id: 2,
-      sender_name: 'ABC Construction Co.',
-      message: 'Hello! Thank you for considering our bid for your Modern House Construction project.',
-      timestamp: '2025-11-20 10:30 AM',
-      is_read: true,
-      is_own: false,
-    },
-    {
-      id: 2,
-      sender_id: userData?.user_id || 1,
-      sender_name: userData?.username || 'You',
-      message: 'Hi! I received your proposal. Can you tell me more about your timeline?',
-      timestamp: '2025-11-20 11:15 AM',
-      is_read: true,
-      is_own: true,
-    },
-    {
-      id: 3,
-      sender_id: 2,
-      sender_name: 'ABC Construction Co.',
-      message: 'Thank you for considering our bid. We can start next week.',
-      timestamp: '2 hours ago',
-      is_read: false,
-      is_own: false,
-    },
-  ];
 
   useEffect(() => {
     fetchConversations();
@@ -144,11 +76,8 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
     try {
       setIsLoading(true);
       // TODO: Connect to API - /api/messages/conversations
-      // For now, use mock data
-      setTimeout(() => {
-        setConversations(mockConversations);
-        setIsLoading(false);
-      }, 1000);
+      setConversations([]);
+      setIsLoading(false);
     } catch (err) {
       setIsLoading(false);
     }
@@ -157,8 +86,7 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
   const fetchMessages = async (conversationId: number) => {
     try {
       // TODO: Connect to API - /api/messages/{conversationId}
-      // For now, use mock data
-      setMessages(mockMessages);
+      setMessages([]);
     } catch (err) {
       console.error('Error fetching messages:', err);
     }
@@ -210,7 +138,7 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
   const renderConversationItem = (conversation: Conversation) => {
     const hasUnread = conversation.unread_count > 0;
     const bgColor = ['#1877f2', '#42b883', '#e74c3c', '#f39c12', '#9b59b6', '#1abc9c', '#e67e22', '#3498db'][conversation.user_id % 8];
-    
+
     return (
       <TouchableOpacity
         key={conversation.id}
@@ -232,7 +160,7 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
           )}
           {hasUnread && <View style={styles.unreadBadge} />}
         </View>
-        
+
         <View style={styles.conversationContent}>
           <View style={styles.conversationHeader}>
             <Text style={[styles.conversationName, hasUnread && styles.conversationNameUnread]} numberOfLines={1}>
@@ -240,18 +168,18 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
             </Text>
             <Text style={styles.conversationTime}>{conversation.last_message_time}</Text>
           </View>
-          
+
           {conversation.project_title && (
             <Text style={styles.projectTitle} numberOfLines={1}>
               {conversation.project_title}
             </Text>
           )}
-          
+
           <Text style={[styles.lastMessage, hasUnread && styles.lastMessageUnread]} numberOfLines={1}>
             {conversation.last_message}
           </Text>
         </View>
-        
+
         {hasUnread && (
           <View style={styles.unreadCountBadge}>
             <Text style={styles.unreadCountText}>{conversation.unread_count}</Text>
@@ -263,7 +191,7 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
 
   const renderMessageBubble = (message: Message) => {
     const bgColor = ['#1877f2', '#42b883', '#e74c3c', '#f39c12', '#9b59b6', '#1abc9c', '#e67e22', '#3498db'][message.sender_id % 8];
-    
+
     return (
       <View
         key={message.id}
@@ -287,7 +215,7 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
             )}
           </View>
         )}
-        
+
         <View style={[
           styles.messageContent,
           message.is_own ? styles.messageContentOwn : styles.messageContentOther,
@@ -317,7 +245,7 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
     return (
       <View style={styles.container}>
         <StatusBar hidden={true} />
-        
+
         {/* Chat Header */}
         <View style={styles.chatHeader}>
           <TouchableOpacity
@@ -326,7 +254,7 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
           >
             <Ionicons name="arrow-back" size={24} color="#333333" />
           </TouchableOpacity>
-          
+
           <View style={styles.chatHeaderInfo}>
             {selectedConversation.user_avatar ? (
               <Image
@@ -348,7 +276,7 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
               )}
             </View>
           </View>
-          
+
           <TouchableOpacity style={styles.moreButton}>
             <Ionicons name="ellipsis-vertical" size={24} color="#333333" />
           </TouchableOpacity>
@@ -368,7 +296,7 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
           <TouchableOpacity style={styles.attachButton}>
             <Ionicons name="attach" size={24} color="#666666" />
           </TouchableOpacity>
-          
+
           <TextInput
             style={styles.messageInput}
             placeholder="Type a message..."
@@ -378,7 +306,7 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
             multiline
             maxLength={500}
           />
-          
+
           <TouchableOpacity
             style={[styles.sendButton, (!messageText.trim() || sending) && styles.sendButtonDisabled]}
             onPress={sendMessage}
@@ -411,7 +339,7 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
   return (
     <View style={styles.container}>
       <StatusBar hidden={true} />
-      
+
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Messages</Text>

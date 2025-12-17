@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="{{ asset('css/admin/home/mainComponents.css') }}">
   <link rel="stylesheet" href="{{ asset('css/admin/userManagement/propertyOwner_Views.css') }}">
 
+  
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-solid-straight/css/uicons-solid-straight.css'>
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-solid-rounded/css/uicons-solid-rounded.css'>
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-bold-rounded/css/uicons-bold-rounded.css'>
@@ -20,6 +21,11 @@
   <script src="{{ asset('js/admin/home/mainComponents.js') }}" defer></script>
 
 
+  
+
+  <script src="{{ asset('js/admin/home/mainComponents.js') }}" defer></script>
+
+  
 </head>
 
 <body class="bg-gray-50 text-gray-800 font-sans">
@@ -136,6 +142,11 @@
               <div class="flex-1 min-w-0">
                   <div class="font-semibold text-sm truncate">{{ session('user')?->first_name }} {{ session('user')?->last_name }}</div>
                   <div class="text-xs opacity-80 truncate">{{ session('user')?->email }}</div>
+                  ES
+              </div>
+              <div class="flex-1 min-w-0">
+                  <div class="font-semibold text-sm truncate">Emmanuelle Santos</div>
+                  <div class="text-xs opacity-80 truncate">santos@Legatura.com</div>
               </div>
               <div class="relative">
                 <button id="userMenuBtn" class="text-white opacity-80 hover:opacity-100 transition text-2xl w-8 h-8 flex items-center justify-center rounded-full">⋮</button>
@@ -143,6 +154,8 @@
                   <div class="px-4 py-3 border-b border-gray-100">
                     <div class="text-sm font-semibold truncate">{{ session('user')?->first_name }} {{ session('user')?->last_name }}</div>
                     <div class="text-xs text-gray-500 truncate">{{ session('user')?->email }}</div>
+                    <div class="text-sm font-semibold truncate">Emmanuelle Santos</div>
+                    <div class="text-xs text-gray-500 truncate">santos@Legatura.com</div>
                   </div>
                   <ul class="py-1">
                     <li>
@@ -174,6 +187,9 @@
             <input
               type="text"
               placeholder="Search..."
+            <input 
+              type="text" 
+              placeholder="Search..." 
               class="border border-gray-300 rounded-lg px-4 py-2 pr-10 focus:ring-2 focus:ring-indigo-400 focus:outline-none w-full"
             >
             <i class="fi fi-rr-search absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
@@ -260,6 +276,14 @@
                 <span>Suspended</span>
             </div>
             @endif
+            <button id="editPropertyOwnerBtn" class="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-all duration-300 text-gray-700 flex items-center gap-2 hover:shadow-md hover:scale-105">
+              <i class="fi fi-rr-edit"></i>
+              <span>Edit</span>
+            </button>
+            <button id="suspendPropertyOwnerBtn" class="px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white transition-all duration-300 flex items-center gap-2 hover:shadow-lg hover:scale-105">
+              <i class="fi fi-rr-ban"></i>
+              <span>Suspend</span>
+            </button>
           </div>
         </div>
 
@@ -282,6 +306,7 @@
                             {{ substr($propertyOwner->first_name, 0, 1) . substr($propertyOwner->last_name, 0, 1) }}
                         </div>
                     @endif
+                    <div class="w-28 h-28 md:w-32 md:h-32 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 text-white font-bold text-3xl md:text-4xl grid place-items-center shadow-xl ring-4 ring-blue-100 hover:ring-blue-200 hover:scale-110 transition-all duration-300 cursor-pointer">ES</div>
                   </div>
                   <div class="flex-1 w-full">
                     <div class="flex items-start justify-between gap-4">
@@ -292,6 +317,12 @@
                           <i class="fi fi-rr-star text-yellow-500"></i>
                           <span class="font-semibold text-gray-800">N/A Rating</span>
                           <span class="text-gray-500">• {{ Str::limit($propertyOwner->address, 30) }}</span>
+                        <h3 class="text-2xl md:text-3xl font-bold text-gray-800">Emmanuelle Santos</h3>
+                        <p class="text-gray-600 mt-1">Occupation: Civil Engineer</p>
+                        <div class="flex items-center gap-2 text-sm mt-2">
+                          <i class="fi fi-rr-star text-yellow-500"></i>
+                          <span class="font-semibold text-gray-800">4.7 Rating</span>
+                          <span class="text-gray-500">• Zamboanga City</span>
                         </div>
                       </div>
                       <button class="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 md:px-5 py-2.5 rounded-lg transition-all duration-300 shadow-md hover:shadow-xl hover:scale-105 active:scale-95">
@@ -309,6 +340,7 @@
                         <div>
                           <p class="text-xs text-gray-500">Registered Date</p>
                           <p class="font-semibold text-gray-800">{{ \Carbon\Carbon::parse($propertyOwner->created_at)->format('F d, Y') }}</p>
+                          <p class="font-semibold text-gray-800">January 12, 2023</p>
                         </div>
                       </div>
                       <div class="flex items-center gap-3 bg-gray-50 p-4 rounded-lg hover:bg-gradient-to-br hover:from-green-50 hover:to-green-100 transition-all duration-300 hover:shadow-md hover:-translate-y-1 cursor-pointer">
@@ -318,6 +350,7 @@
                         <div>
                           <p class="text-xs text-gray-500">Age</p>
                           <p class="font-semibold text-gray-800">{{ $propertyOwner->age }}</p>
+                          <p class="font-semibold text-gray-800">36</p>
                         </div>
                       </div>
                       <div class="flex items-center gap-3 bg-gray-50 p-4 rounded-lg hover:bg-gradient-to-br hover:from-blue-50 hover:to-blue-100 transition-all duration-300 hover:shadow-md hover:-translate-y-1 cursor-pointer">
@@ -327,6 +360,7 @@
                         <div>
                           <p class="text-xs text-gray-500">Contact No.</p>
                           <p class="font-semibold text-gray-800">{{ $propertyOwner->phone_number }}</p>
+                          <p class="font-semibold text-gray-800">0988 765 4321</p>
                         </div>
                       </div>
                       <div class="flex items-center gap-3 bg-gray-50 p-4 rounded-lg hover:bg-gradient-to-br hover:from-purple-50 hover:to-purple-100 transition-all duration-300 hover:shadow-md hover:-translate-y-1 cursor-pointer">
@@ -336,6 +370,7 @@
                         <div>
                           <p class="text-xs text-gray-500">Email</p>
                           <p class="font-semibold text-gray-800">{{ $propertyOwner->email }}</p>
+                          <p class="font-semibold text-gray-800">criscel@gmail.com</p>
                         </div>
                       </div>
                     </div>
@@ -357,6 +392,7 @@
                             {{ substr($propertyOwner->first_name, 0, 1) . substr($propertyOwner->last_name, 0, 1) }}
                         </div>
                     @endif
+                    <img src="https://images.unsplash.com/photo-1544006659-f0b21884ce1d?q=80&w=400&auto=format&fit=crop" alt="Avatar" class="w-full h-full object-cover hover:scale-110 transition-transform duration-300">
                   </div>
                 </div>
               </div>
@@ -366,6 +402,44 @@
                   <i class="fi fi-rr-star text-yellow-500"></i>
                   <span class="font-semibold">N/A Rating</span>
                   <span class="text-gray-500">• {{ Str::limit($propertyOwner->address, 30) }}</span>
+                <h3 class="text-2xl font-bold text-gray-800">Emmanuelle Santos</h3>
+                <div class="flex items-center gap-2 text-sm mt-1">
+                  <i class="fi fi-rr-star text-yellow-500"></i>
+                  <span class="font-semibold">4.7 Rating</span>
+                  <span class="text-gray-500">• Zamboanga City</span>
+                </div>
+                <p class="text-gray-700 mt-4 leading-relaxed">
+                  Dedicated property owner committed to building sustainable, modern, and cost-efficient spaces. Open to bids from trusted professionals in construction and design.
+                </p>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+                  <div class="bg-orange-50 border border-orange-200 rounded-lg p-4 flex items-center gap-3 hover:bg-orange-100 hover:shadow-md hover:-translate-y-1 transition-all duration-300 cursor-pointer">
+                    <div class="w-10 h-10 rounded-full bg-orange-500 grid place-items-center text-white hover:scale-110 transition-transform">
+                      <i class="fi fi-rr-phone-call"></i>
+                    </div>
+                    <div>
+                      <p class="text-xs text-orange-600">Contact No.</p>
+                      <p class="font-bold">0988 765 4321</p>
+                    </div>
+                  </div>
+                  <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center gap-3 hover:bg-blue-100 hover:shadow-md hover:-translate-y-1 transition-all duration-300 cursor-pointer">
+                    <div class="w-10 h-10 rounded-full bg-blue-500 grid place-items-center text-white hover:scale-110 transition-transform">
+                      <i class="fi fi-rr-envelope"></i>
+                    </div>
+                    <div>
+                      <p class="text-xs text-blue-600">Email</p>
+                      <p class="font-bold text-sm truncate">Santos@gmail.com</p>
+                    </div>
+                  </div>
+                  <div class="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center gap-3 hover:bg-green-100 hover:shadow-md hover:-translate-y-1 transition-all duration-300 cursor-pointer">
+                    <div class="w-10 h-10 rounded-full bg-green-500 grid place-items-center text-white hover:scale-110 transition-transform">
+                      <i class="fi fi-rr-briefcase"></i>
+                    </div>
+                    <div>
+                      <p class="text-xs text-green-600">Occupation</p>
+                      <p class="font-bold">Civil Engineer</p>
+                    </div>
+                  </div>
                 </div>
 
                 <div class="grid grid-cols-2 gap-4 mt-6">
@@ -375,6 +449,11 @@
                   </div>
                   <div class="text-center p-6 bg-green-50 rounded-lg border border-green-200 hover:bg-green-100 hover:shadow-lg hover:-translate-y-2 transition-all duration-300 cursor-pointer group">
                     <p class="text-3xl md:text-4xl font-bold text-green-600 group-hover:scale-110 transition-transform">{{ $propertyOwner->ongoing_projects_count }}</p>
+                    <p class="text-3xl md:text-4xl font-bold text-indigo-600 group-hover:scale-110 transition-transform">48</p>
+                    <p class="text-sm text-gray-600 mt-2">Projects done</p>
+                  </div>
+                  <div class="text-center p-6 bg-green-50 rounded-lg border border-green-200 hover:bg-green-100 hover:shadow-lg hover:-translate-y-2 transition-all duration-300 cursor-pointer group">
+                    <p class="text-3xl md:text-4xl font-bold text-green-600 group-hover:scale-110 transition-transform">5</p>
                     <p class="text-sm text-gray-600 mt-2">Ongoing projects</p>
                   </div>
                 </div>
@@ -440,6 +519,41 @@
                             {{ substr($project->contractor_first_name, 0, 1) . substr($project->contractor_last_name, 0, 1) }}
                           </div>
                           <span class="text-sm font-medium text-gray-700">{{ $project->contractor_first_name }} {{ $project->contractor_last_name }}</span>
+                  <select class="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-400 focus:outline-none hover:border-indigo-400 transition cursor-pointer">
+                    <option value="all">All</option>
+                    <option value="ongoing">Ongoing</option>
+                    <option value="completed">Completed</option>
+                    <option value="pending">Pending</option>
+                  </select>
+                </div>
+              </div>
+              <div class="p-6 space-y-4">
+                <!-- Project 1 -->
+                <div class="border border-gray-200 rounded-xl overflow-hidden hover:border-indigo-300 hover:shadow-lg transition-all duration-300 group">
+                  <div class="flex flex-col sm:flex-row gap-4">
+                    <div class="sm:w-32 h-32 sm:h-auto overflow-hidden flex-shrink-0">
+                      <img src="https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=400&auto=format&fit=crop" alt="Project" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                    </div>
+                    <div class="flex-1 p-4 space-y-2">
+                      <div class="flex items-start justify-between gap-2">
+                        <h3 class="font-bold text-gray-800 group-hover:text-indigo-600 transition-colors">Residential House Construction</h3>
+                        <span class="px-2.5 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold whitespace-nowrap">100% Complete</span>
+                      </div>
+                      <p class="text-sm text-gray-600 line-clamp-2">A complete residential building project featuring modern architecture, quality materials, and sustainable design for family living.</p>
+                      <div class="flex flex-wrap items-center gap-4 text-xs text-gray-500 pt-1">
+                        <span class="flex items-center gap-1">
+                          <i class="fi fi-rr-marker text-indigo-600"></i>
+                          Zamboanga City
+                        </span>
+                        <span class="flex items-center gap-1">
+                          <i class="fi fi-rr-calendar text-green-600"></i>
+                          August 2024
+                        </span>
+                      </div>
+                      <div class="flex items-center justify-between pt-2">
+                        <div class="flex items-center gap-2">
+                          <div class="w-8 h-8 rounded-full bg-orange-500 text-white text-xs font-bold grid place-items-center">JL</div>
+                          <span class="text-sm font-medium text-gray-700">JL Homes</span>
                         </div>
                         <button class="px-4 py-1.5 bg-indigo-500 hover:bg-indigo-600 text-white text-sm rounded-lg transition-all hover:shadow-md hover:scale-105 active:scale-95">
                           View
@@ -454,6 +568,120 @@
                     No projects found.
                 </div>
                 @endforelse
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Project 2 -->
+                <div class="border border-gray-200 rounded-xl overflow-hidden hover:border-orange-300 hover:shadow-lg transition-all duration-300 group">
+                  <div class="flex flex-col sm:flex-row gap-4">
+                    <div class="sm:w-32 h-32 sm:h-auto overflow-hidden flex-shrink-0">
+                      <img src="https://images.unsplash.com/photo-1582268611958-ebfd161ef9cf?q=80&w=400&auto=format&fit=crop" alt="Project" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                    </div>
+                    <div class="flex-1 p-4 space-y-2">
+                      <div class="flex items-start justify-between gap-2">
+                        <h3 class="font-bold text-gray-800 group-hover:text-orange-600 transition-colors">Retail Store Fit-Out and Renovation</h3>
+                        <span class="px-2.5 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-semibold whitespace-nowrap">50% Complete</span>
+                      </div>
+                      <p class="text-sm text-gray-600 line-clamp-2">Complete interior fit-out for a retail space including flooring, electrical, HVAC, and custom fixtures for an upscale shopping experience.</p>
+                      <div class="flex flex-wrap items-center gap-4 text-xs text-gray-500 pt-1">
+                        <span class="flex items-center gap-1">
+                          <i class="fi fi-rr-marker text-indigo-600"></i>
+                          Manila City
+                        </span>
+                        <span class="flex items-center gap-1">
+                          <i class="fi fi-rr-calendar text-orange-600"></i>
+                          In Progress
+                        </span>
+                      </div>
+                      <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
+                        <div class="bg-orange-500 h-2 rounded-full transition-all duration-500" style="width: 50%"></div>
+                      </div>
+                      <div class="flex items-center justify-between pt-2">
+                        <div class="flex items-center gap-2">
+                          <div class="w-8 h-8 rounded-full bg-blue-500 text-white text-xs font-bold grid place-items-center">AB</div>
+                          <span class="text-sm font-medium text-gray-700">ABC Builders</span>
+                        </div>
+                        <button class="px-4 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-sm rounded-lg transition-all hover:shadow-md hover:scale-105 active:scale-95">
+                          View
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Project 3 -->
+                <div class="border border-gray-200 rounded-xl overflow-hidden hover:border-blue-300 hover:shadow-lg transition-all duration-300 group">
+                  <div class="flex flex-col sm:flex-row gap-4">
+                    <div class="sm:w-32 h-32 sm:h-auto overflow-hidden flex-shrink-0">
+                      <img src="https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?q=80&w=400&auto=format&fit=crop" alt="Project" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                    </div>
+                    <div class="flex-1 p-4 space-y-2">
+                      <div class="flex items-start justify-between gap-2">
+                        <h3 class="font-bold text-gray-800 group-hover:text-blue-600 transition-colors">Residential Swimming Pool & Landscaping</h3>
+                        <span class="px-2.5 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold whitespace-nowrap">25% Complete</span>
+                      </div>
+                      <p class="text-sm text-gray-600 line-clamp-2">Luxury swimming pool installation with complete landscaping, outdoor lighting, and premium finishing materials for a modern residential property.</p>
+                      <div class="flex flex-wrap items-center gap-4 text-xs text-gray-500 pt-1">
+                        <span class="flex items-center gap-1">
+                          <i class="fi fi-rr-marker text-indigo-600"></i>
+                          Cebu City
+                        </span>
+                        <span class="flex items-center gap-1">
+                          <i class="fi fi-rr-calendar text-blue-600"></i>
+                          April 2025
+                        </span>
+                      </div>
+                      <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
+                        <div class="bg-blue-500 h-2 rounded-full transition-all duration-500" style="width: 25%"></div>
+                      </div>
+                      <div class="flex items-center justify-between pt-2">
+                        <div class="flex items-center gap-2">
+                          <div class="w-8 h-8 rounded-full bg-green-500 text-white text-xs font-bold grid place-items-center">PL</div>
+                          <span class="text-sm font-medium text-gray-700">Prime Landscape</span>
+                        </div>
+                        <button class="px-4 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded-lg transition-all hover:shadow-md hover:scale-105 active:scale-95">
+                          View
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Project 4 -->
+                <div class="border border-gray-200 rounded-xl overflow-hidden hover:border-purple-300 hover:shadow-lg transition-all duration-300 group">
+                  <div class="flex flex-col sm:flex-row gap-4">
+                    <div class="sm:w-32 h-32 sm:h-auto overflow-hidden flex-shrink-0">
+                      <img src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=400&auto=format&fit=crop" alt="Project" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                    </div>
+                    <div class="flex-1 p-4 space-y-2">
+                      <div class="flex items-start justify-between gap-2">
+                        <h3 class="font-bold text-gray-800 group-hover:text-purple-600 transition-colors">Commercial Office Renovation</h3>
+                        <span class="px-2.5 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-semibold whitespace-nowrap">Pending</span>
+                      </div>
+                      <p class="text-sm text-gray-600 line-clamp-2">Full office renovation including partitioning, electrical upgrades, modern lighting fixtures, and contemporary interior design for a professional workspace.</p>
+                      <div class="flex flex-wrap items-center gap-4 text-xs text-gray-500 pt-1">
+                        <span class="flex items-center gap-1">
+                          <i class="fi fi-rr-marker text-indigo-600"></i>
+                          Davao City
+                        </span>
+                        <span class="flex items-center gap-1">
+                          <i class="fi fi-rr-calendar text-yellow-600"></i>
+                          Jan 2025
+                        </span>
+                      </div>
+                      <div class="flex items-center justify-between pt-2">
+                        <div class="flex items-center gap-2">
+                          <div class="w-8 h-8 rounded-full bg-purple-500 text-white text-xs font-bold grid place-items-center">MC</div>
+                          <span class="text-sm font-medium text-gray-700">Modern Co.</span>
+                        </div>
+                        <button class="px-4 py-1.5 bg-purple-500 hover:bg-purple-600 text-white text-sm rounded-lg transition-all hover:shadow-md hover:scale-105 active:scale-95">
+                          View
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </section>
           </div>
@@ -486,12 +714,21 @@
                     <span class="mt-2 inline-flex items-center gap-2 px-3 py-1.5 bg-orange-100 text-orange-700 rounded-full text-sm">
                       <i class="fi fi-rr-briefcase"></i>
                       {{ $propertyOwner->contractor_details->contractor_type }}
+                    <img src="https://images.unsplash.com/photo-1496307653780-42ee777d4833?q=80&w=800&auto=format&fit=crop" alt="Company" class="w-full h-36 object-cover group-hover:scale-110 transition-transform duration-500 cursor-pointer" loading="lazy">
+                  </div>
+                  <div>
+                    <h4 class="font-semibold text-gray-800">J Lois Construction</h4>
+                    <p class="text-sm text-gray-600">Position: Site Engineer</p>
+                    <span class="mt-2 inline-flex items-center gap-2 px-3 py-1.5 bg-orange-100 text-orange-700 rounded-full text-sm">
+                      <i class="fi fi-rr-briefcase"></i>
+                      General Contractor
                     </span>
                   </div>
                 </div>
               </div>
             </section>
             @endif
+
             <!-- Documents -->
             <section class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm sticky top-24 hover:shadow-xl transition-all duration-300">
               <div class="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
@@ -504,6 +741,7 @@
                 <!-- Police clearance -->
                 @if($propertyOwner->police_clearance)
                 <div onclick="openImageModal('{{ asset('storage/' . $propertyOwner->police_clearance) }}', 'Police Clearance')" class="p-4 bg-gray-50 rounded-lg hover:bg-purple-50 transition-all duration-300 hover:shadow-md hover:-translate-y-1 group cursor-pointer">
+                <div class="p-4 bg-gray-50 rounded-lg hover:bg-purple-50 transition-all duration-300 hover:shadow-md hover:-translate-y-1 group cursor-pointer">
                   <div class="flex items-start gap-3 mb-3">
                     <div class="w-12 h-12 bg-purple-100 rounded-lg grid place-items-center group-hover:scale-110 group-hover:rotate-6 transition-all">
                       <i class="fi fi-rr-file text-purple-600 text-xl"></i>
@@ -525,6 +763,19 @@
                 <!-- Valid ID -->
                 @if($propertyOwner->valid_id_photo)
                 <div onclick="openImageModal('{{ asset('storage/' . $propertyOwner->valid_id_photo) }}', 'Valid ID (Front)')" class="p-4 bg-gray-50 rounded-lg hover:bg-blue-50 transition-all duration-300 hover:shadow-md hover:-translate-y-1 group cursor-pointer">
+                      <p class="text-sm text-gray-500">PRC.jpg <span class="text-xs text-gray-400">• 200 KB</span></p>
+                    </div>
+                    <button class="p-2 hover:bg-purple-200 rounded-lg transition-all hover:scale-110" aria-label="Download Police Clearance">
+                      <i class="fi fi-rr-download text-gray-600 hover:text-purple-600"></i>
+                    </button>
+                  </div>
+                  <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium inline-flex items-center gap-1 group-hover:bg-green-200 transition-colors">
+                    <i class="fi fi-rr-check-circle"></i> Approved
+                  </span>
+                </div>
+
+                <!-- Valid ID -->
+                <div class="p-4 bg-gray-50 rounded-lg hover:bg-blue-50 transition-all duration-300 hover:shadow-md hover:-translate-y-1 group cursor-pointer">
                   <div class="flex items-start gap-3 mb-3">
                     <div class="w-12 h-12 bg-blue-100 rounded-lg grid place-items-center group-hover:scale-110 group-hover:rotate-6 transition-all">
                       <i class="fi fi-rr-id-badge text-blue-600 text-xl"></i>
@@ -563,6 +814,17 @@
                   </span>
                 </div>
                 @endif
+                      <p class="font-semibold text-gray-800 group-hover:text-blue-700 transition-colors">Valid ID</p>
+                      <p class="text-sm text-gray-500">National_ID.jpg <span class="text-xs text-gray-400">• 350 KB</span></p>
+                    </div>
+                    <button class="p-2 hover:bg-blue-200 rounded-lg transition-all hover:scale-110" aria-label="Download Valid ID">
+                      <i class="fi fi-rr-download text-gray-600 hover:text-blue-600"></i>
+                    </button>
+                  </div>
+                  <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium inline-flex items-center gap-1 group-hover:bg-green-200 transition-colors">
+                    <i class="fi fi-rr-check-circle"></i> Approved
+                  </span>
+                </div>
               </div>
             </section>
           </div>
@@ -604,6 +866,11 @@
             </div>
           </div>
 
+                Are you sure you want to suspend <span class="font-bold text-red-600">Emmanuelle Santos</span>?
+              </p>
+            </div>
+          </div>
+          
           <!-- User Info Card -->
           <div class="bg-white rounded-lg p-3 border border-red-200 space-y-2">
             <div class="flex items-center gap-3">
@@ -613,6 +880,11 @@
               <div>
                 <p class="font-semibold text-gray-800 text-sm">{{ $propertyOwner->first_name }} {{ $propertyOwner->last_name }}</p>
                 <p class="text-xs text-gray-600">{{ $propertyOwner->occupation ?? 'N/A' }}</p>
+                ES
+              </div>
+              <div>
+                <p class="font-semibold text-gray-800 text-sm">Emmanuelle Santos</p>
+                <p class="text-xs text-gray-600">Civil Engineer</p>
               </div>
             </div>
             <div class="grid grid-cols-2 gap-2 pt-2 border-t border-gray-200">
@@ -622,6 +894,11 @@
               </div>
               <div class="text-center">
                 <p class="text-xl font-bold text-green-600">{{ $propertyOwner->ongoing_projects_count }}</p>
+                <p class="text-xl font-bold text-indigo-600">48</p>
+                <p class="text-xs text-gray-600">Projects Done</p>
+              </div>
+              <div class="text-center">
+                <p class="text-xl font-bold text-green-600">5</p>
                 <p class="text-xs text-gray-600">Ongoing Projects</p>
               </div>
             </div>
@@ -641,6 +918,12 @@
             class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-red-400 focus:border-red-400 transition-all hover:border-red-300 bg-white resize-none text-sm"
           ></textarea>
           <p id="suspendReasonError" class="text-red-500 text-xs mt-1 hidden"></p>
+          <textarea 
+            id="suspendReason" 
+            rows="3" 
+            placeholder="Please provide a detailed reason for suspending this account..."
+            class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-red-400 focus:border-red-400 transition-all hover:border-red-300 bg-white resize-none text-sm"
+          ></textarea>
           <p class="text-xs text-gray-500 mt-1 flex items-center gap-1">
             <i class="fi fi-rr-info"></i>
             This reason will be recorded and may be shared with the user.
@@ -654,12 +937,14 @@
             Suspension Duration
           </label>
           <div class="grid grid-cols-2 gap-4">
+          <div class="grid grid-cols-2 gap-2">
             <label class="relative cursor-pointer group">
               <input type="radio" name="suspensionDuration" value="temporary" class="peer sr-only" checked>
               <div class="border-2 border-gray-300 rounded-lg p-3 text-center transition-all peer-checked:border-red-500 peer-checked:bg-red-50 hover:border-red-300 hover:shadow-md">
                 <i class="fi fi-rr-clock text-xl text-gray-400 peer-checked:text-red-500 transition-colors mb-1"></i>
                 <p class="font-semibold text-gray-700 text-sm peer-checked:text-red-600">Temporary</p>
                 <p class="text-xs text-gray-500 mt-1">Select Date</p>
+                <p class="text-xs text-gray-500 mt-1">30 days</p>
               </div>
             </label>
             <label class="relative cursor-pointer group">
@@ -718,6 +1003,14 @@
       <div class="sticky top-0 bg-white border-b border-gray-200 px-8 py-5 flex items-center justify-between rounded-t-2xl z-10">
         <h2 class="text-2xl font-bold text-gray-800">Edit Property Owner</h2>
         <button id="closeEditModalBtn" class="text-gray-400 hover:text-gray-600 transition p-2 rounded-lg hover:bg-gray-100">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden transform transition-all duration-300 scale-95 opacity-0 modal-content">
+      <!-- Modal Header -->
+      <div class="sticky top-0 bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-5 flex items-center justify-between rounded-t-2xl z-10 shadow-lg">
+        <h2 class="text-2xl font-bold text-white flex items-center gap-3">
+          <i class="fi fi-rr-edit"></i>
+          Edit Property Owner
+        </h2>
+        <button id="closeEditModalBtn" class="text-white hover:text-orange-100 transition-all p-2 rounded-lg hover:bg-white hover:bg-opacity-20 hover:rotate-90 duration-300">
           <i class="fi fi-rr-cross text-2xl"></i>
         </button>
       </div>
@@ -917,6 +1210,100 @@
             </button>
             </div>
         </form>
+      <div class="overflow-y-auto max-h-[calc(90vh-80px)] p-6 md:p-8 space-y-6">
+        <!-- Profile Picture Section -->
+        <div class="flex items-center gap-6 p-6 bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl border-2 border-orange-200 hover:shadow-lg transition-all duration-300">
+          <div class="relative group">
+            <div class="w-24 h-24 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center overflow-hidden shadow-xl ring-4 ring-orange-200 hover:ring-orange-300 transition-all duration-300">
+              <i class="fi fi-rr-user text-4xl text-white" id="editProfileIcon"></i>
+              <img id="editProfilePreview" src="https://images.unsplash.com/photo-1544006659-f0b21884ce1d?q=80&w=400&auto=format&fit=crop" class="w-full h-full object-cover" alt="Profile Preview">
+            </div>
+            <label for="editProfileUpload" class="absolute -bottom-1 -right-1 bg-orange-500 hover:bg-orange-600 text-white p-2.5 rounded-full cursor-pointer shadow-lg transition-all transform hover:scale-110 hover:rotate-12">
+              <i class="fi fi-rr-camera text-sm"></i>
+              <input type="file" id="editProfileUpload" class="hidden" accept="image/*">
+            </label>
+          </div>
+          <div>
+            <h3 class="text-lg font-bold text-gray-800">Profile Picture</h3>
+            <p class="text-sm text-gray-600 mt-1">Click the camera icon to update photo</p>
+            <p class="text-xs text-orange-600 mt-1 font-medium">• JPG, PNG • Max 5MB</p>
+          </div>
+        </div>
+
+        <!-- Personal Information Section -->
+        <div>
+          <h3 class="text-lg font-bold text-orange-600 mb-4 flex items-center gap-2 pb-2 border-b-2 border-orange-200">
+            <i class="fi fi-rr-user"></i>
+            Personal Information
+          </h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="form-group">
+              <label class="block text-sm font-semibold text-gray-700 mb-2">First Name</label>
+              <input type="text" value="Emmanuelle" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition-all hover:border-orange-300 bg-white">
+            </div>
+            <div class="form-group">
+              <label class="block text-sm font-semibold text-gray-700 mb-2">Middle Name <span class="text-gray-400 font-normal">(optional)</span></label>
+              <input type="text" value="Delgado" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition-all hover:border-orange-300 bg-white">
+            </div>
+            <div class="form-group">
+              <label class="block text-sm font-semibold text-gray-700 mb-2">Last Name</label>
+              <input type="text" value="Santos" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition-all hover:border-orange-300 bg-white">
+            </div>
+            <div class="form-group">
+              <label class="block text-sm font-semibold text-gray-700 mb-2">Date of Birth</label>
+              <div class="relative">
+                <input type="date" value="1989-02-16" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition-all hover:border-orange-300 bg-white">
+                <i class="fi fi-rr-calendar absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"></i>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="block text-sm font-semibold text-gray-700 mb-2">Contact Number</label>
+              <div class="relative">
+                <i class="fi fi-rr-phone-call absolute left-4 top-1/2 -translate-y-1/2 text-orange-500"></i>
+                <input type="tel" value="0998 765 4321" class="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition-all hover:border-orange-300 bg-white">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="block text-sm font-semibold text-gray-700 mb-2">Occupation</label>
+              <input type="text" value="Civil Engineer" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition-all hover:border-orange-300 bg-white">
+            </div>
+          </div>
+        </div>
+
+        <!-- Account Information Section -->
+        <div>
+          <h3 class="text-lg font-bold text-orange-600 mb-4 flex items-center gap-2 pb-2 border-b-2 border-orange-200">
+            <i class="fi fi-rr-at"></i>
+            Account Information
+          </h3>
+          <div class="grid grid-cols-1 gap-4">
+            <div class="form-group">
+              <label class="block text-sm font-semibold text-gray-700 mb-2">Email Address</label>
+              <div class="relative">
+                <i class="fi fi-rr-envelope absolute left-4 top-1/2 -translate-y-1/2 text-orange-500"></i>
+                <input type="email" value="Santos@gmail.com" class="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition-all hover:border-orange-300 bg-white">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="block text-sm font-semibold text-gray-700 mb-2">Username</label>
+              <div class="relative">
+                <i class="fi fi-rr-user absolute left-4 top-1/2 -translate-y-1/2 text-orange-500"></i>
+                <input type="text" value="emmanuelleSantos" class="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition-all hover:border-orange-300 bg-white">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex items-center justify-end gap-3 pt-6 border-t-2 border-gray-200">
+          <button id="cancelEditBtn" class="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all font-semibold hover:shadow-md hover:scale-105 active:scale-95">
+            Cancel
+          </button>
+          <button id="saveEditBtn" class="px-8 py-3 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-lg transition-all font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95 flex items-center gap-2">
+            <i class="fi fi-rr-disk"></i>
+            Save Changes
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -975,4 +1362,5 @@
 
 </body>
 
+</html>
 </html>

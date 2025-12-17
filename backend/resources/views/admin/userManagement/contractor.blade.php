@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="{{ asset('css/admin/home/mainComponents.css') }}">
   <link rel="stylesheet" href="{{ asset('css/admin/userManagement/contractor.css') }}">
 
+  
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-solid-straight/css/uicons-solid-straight.css'>
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-solid-rounded/css/uicons-solid-rounded.css'>
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-bold-rounded/css/uicons-bold-rounded.css'>
@@ -21,6 +22,11 @@
   <script src="{{ asset('js/admin/home/mainComponents.js') }}" defer></script>
 
 
+  
+
+  <script src="{{ asset('js/admin/home/mainComponents.js') }}" defer></script>
+
+  
 </head>
 
 <body class="bg-gray-50 text-gray-800 font-sans">
@@ -175,6 +181,9 @@
               type="text"
               id="searchInput"
               placeholder="Search..."
+            <input 
+              type="text" 
+              placeholder="Search..." 
               class="border border-gray-300 rounded-lg px-4 py-2 pr-10 focus:ring-2 focus:ring-indigo-400 focus:outline-none w-full"
             >
             <i class="fi fi-rr-search absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
@@ -272,6 +281,316 @@
         <!-- Table Section -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden" id="contractorsTableWrap">
             @include('admin.userManagement.partials.contractorTable')
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6 flex items-center justify-between gap-4">
+          <!-- Left Side - Dropdowns -->
+          <div class="flex items-center gap-4">
+            <!-- Ranking Dropdown -->
+            <div class="relative">
+              <select id="rankingFilter" class="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-10 text-sm font-medium text-gray-700 hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition cursor-pointer">
+                <option value="all">All Rankings</option>
+                <option value="top">Top Rated</option>
+                <option value="active">Most Active</option>
+                <option value="recent">Recent</option>
+              </select>
+              <i class="fi fi-rr-angle-small-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 pointer-events-none"></i>
+            </div>
+
+            <!-- Time Period Dropdown -->
+            <div class="relative">
+              <button id="periodBtn" class="flex items-center gap-2 bg-white border border-gray-300 rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition">
+                <i class="fi fi-rr-calendar"></i>
+                <span id="periodText">This Month</span>
+                <i class="fi fi-rr-angle-small-down"></i>
+              </button>
+              <div id="periodDropdown" class="absolute left-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50 hidden">
+                <a href="#" class="period-option block px-4 py-2 text-sm text-gray-700 hover:bg-indigo-50 transition" data-period="today">Today</a>
+                <a href="#" class="period-option block px-4 py-2 text-sm text-gray-700 hover:bg-indigo-50 transition" data-period="week">This Week</a>
+                <a href="#" class="period-option block px-4 py-2 text-sm text-gray-700 hover:bg-indigo-50 transition" data-period="month">This Month</a>
+                <a href="#" class="period-option block px-4 py-2 text-sm text-gray-700 hover:bg-indigo-50 transition" data-period="year">This Year</a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Side - Add Button -->
+          <button id="addContractorBtn" class="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-5 py-2 rounded-lg font-medium text-sm shadow-md hover:shadow-lg transition transform hover:scale-105">
+            <i class="fi fi-rr-plus text-lg"></i>
+            <span>Add Contractor</span>
+          </button>
+        </div>
+
+        <!-- Table Section -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full">
+              <thead>
+                <tr class="bg-gray-50 border-b border-gray-200">
+                  <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Name</th>
+                  <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Date Registered</th>
+                  <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Years of Operation</th>
+                  <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Account Type</th>
+                  <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Total Projects</th>
+                  <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Action</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-200" id="contractorsTable">
+                <!-- Contractor Row 1 -->
+                <tr class="hover:bg-gray-50 transition-all duration-200 group">
+                  <td class="px-6 py-4">
+                    <div class="flex items-center gap-3">
+                      <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold shadow-md group-hover:shadow-lg transition-all group-hover:scale-110">
+                        GB
+                      </div>
+                      <span class="font-medium text-gray-800 group-hover:text-indigo-600 transition">GTH Builders and Developers</span>
+                    </div>
+                  </td>
+                  <td class="px-6 py-4 text-center text-sm text-gray-600">10 Oct, 2025</td>
+                  <td class="px-6 py-4 text-center text-sm text-gray-600">10 years</td>
+                  <td class="px-6 py-4 text-center">
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 transition-all duration-200 hover:scale-110 hover:shadow-lg">
+                      General Contractor
+                    </span>
+                  </td>
+                  <td class="px-6 py-4 text-center">
+                    <span class="inline-flex items-center justify-center w-12 h-8 rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50 text-sm font-bold text-indigo-700 group-hover:from-blue-100 group-hover:to-indigo-100 transition-all duration-200 hover:scale-110 hover:shadow-lg">24</span>
+                  </td>
+                  <td class="px-6 py-4">
+                    <div class="flex items-center justify-center gap-2">
+                      <button class="action-btn view-btn w-10 h-10 rounded-full bg-blue-50 hover:bg-blue-100 flex items-center justify-center transition-all duration-200 hover:scale-110">
+                        <i class="fi fi-rr-eye text-blue-600"></i>
+                      </button>
+                      <button class="action-btn delete-btn w-10 h-10 rounded-full bg-red-50 hover:bg-red-100 flex items-center justify-center transition-all duration-200 hover:scale-110">
+                        <i class="fi fi-rr-trash text-red-600"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- Contractor Row 2 -->
+                <tr class="hover:bg-gray-50 transition-all duration-200 group">
+                  <td class="px-6 py-4">
+                    <div class="flex items-center gap-3">
+                      <div class="w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center text-white font-bold shadow-md group-hover:shadow-lg transition-all group-hover:scale-110">
+                        CA
+                      </div>
+                      <span class="font-medium text-gray-800 group-hover:text-indigo-600 transition">Cabanting Architects Design & Construction</span>
+                    </div>
+                  </td>
+                  <td class="px-6 py-4 text-center text-sm text-gray-600">09 Oct, 2025</td>
+                  <td class="px-6 py-4 text-center text-sm text-gray-600">4 years</td>
+                  <td class="px-6 py-4 text-center">
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 transition-all duration-200 hover:scale-110 hover:shadow-lg">
+                      Construction Contractor
+                    </span>
+                  </td>
+                  <td class="px-6 py-4 text-center">
+                    <span class="inline-flex items-center justify-center w-12 h-8 rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50 text-sm font-bold text-indigo-700 group-hover:from-blue-100 group-hover:to-indigo-100 transition-all duration-200 hover:scale-110 hover:shadow-lg">10</span>
+                  </td>
+                  <td class="px-6 py-4">
+                    <div class="flex items-center justify-center gap-2">
+                      <button class="action-btn view-btn w-10 h-10 rounded-full bg-blue-50 hover:bg-blue-100 flex items-center justify-center transition-all duration-200 hover:scale-110">
+                        <i class="fi fi-rr-eye text-blue-600"></i>
+                      </button>
+                      <button class="action-btn delete-btn w-10 h-10 rounded-full bg-red-50 hover:bg-red-100 flex items-center justify-center transition-all duration-200 hover:scale-110">
+                        <i class="fi fi-rr-trash text-red-600"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- Contractor Row 3 -->
+                <tr class="hover:bg-gray-50 transition-all duration-200 group">
+                  <td class="px-6 py-4">
+                    <div class="flex items-center gap-3">
+                      <div class="w-10 h-10 rounded-full bg-gradient-to-br from-red-400 to-red-600 flex items-center justify-center text-white font-bold shadow-md group-hover:shadow-lg transition-all group-hover:scale-110">
+                        RC
+                      </div>
+                      <span class="font-medium text-gray-800 group-hover:text-indigo-600 transition">RCDG Construction Corporation</span>
+                    </div>
+                  </td>
+                  <td class="px-6 py-4 text-center text-sm text-gray-600">08 Oct, 2025</td>
+                  <td class="px-6 py-4 text-center text-sm text-gray-600">10 years</td>
+                  <td class="px-6 py-4 text-center">
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 transition-all duration-200 hover:scale-110 hover:shadow-lg">
+                      General Contractor
+                    </span>
+                  </td>
+                  <td class="px-6 py-4 text-center">
+                    <span class="inline-flex items-center justify-center w-12 h-8 rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50 text-sm font-bold text-indigo-700 group-hover:from-blue-100 group-hover:to-indigo-100 transition-all duration-200 hover:scale-110 hover:shadow-lg">70</span>
+                  </td>
+                  <td class="px-6 py-4">
+                    <div class="flex items-center justify-center gap-2">
+                      <button class="action-btn view-btn w-10 h-10 rounded-full bg-blue-50 hover:bg-blue-100 flex items-center justify-center transition-all duration-200 hover:scale-110">
+                        <i class="fi fi-rr-eye text-blue-600"></i>
+                      </button>
+                      <button class="action-btn delete-btn w-10 h-10 rounded-full bg-red-50 hover:bg-red-100 flex items-center justify-center transition-all duration-200 hover:scale-110">
+                        <i class="fi fi-rr-trash text-red-600"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- Contractor Row 4 -->
+                <tr class="hover:bg-gray-50 transition-all duration-200 group">
+                  <td class="px-6 py-4">
+                    <div class="flex items-center gap-3">
+                      <div class="w-10 h-10 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center text-white font-bold shadow-md group-hover:shadow-lg transition-all group-hover:scale-110">
+                        JL
+                      </div>
+                      <span class="font-medium text-gray-800 group-hover:text-indigo-600 transition">J'Lois Construction</span>
+                    </div>
+                  </td>
+                  <td class="px-6 py-4 text-center text-sm text-gray-600">12 Jan, 2023</td>
+                  <td class="px-6 py-4 text-center text-sm text-gray-600">10 years</td>
+                  <td class="px-6 py-4 text-center">
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 transition-all duration-200 hover:scale-110 hover:shadow-lg">
+                      General Contractor
+                    </span>
+                  </td>
+                  <td class="px-6 py-4 text-center">
+                    <span class="inline-flex items-center justify-center w-12 h-8 rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50 text-sm font-bold text-indigo-700 group-hover:from-blue-100 group-hover:to-indigo-100 transition-all duration-200 hover:scale-110 hover:shadow-lg">20</span>
+                  </td>
+                  <td class="px-6 py-4">
+                    <div class="flex items-center justify-center gap-2">
+                      <button class="action-btn view-btn w-10 h-10 rounded-full bg-blue-50 hover:bg-blue-100 flex items-center justify-center transition-all duration-200 hover:scale-110">
+                        <i class="fi fi-rr-eye text-blue-600"></i>
+                      </button>
+                      <button class="action-btn delete-btn w-10 h-10 rounded-full bg-red-50 hover:bg-red-100 flex items-center justify-center transition-all duration-200 hover:scale-110">
+                        <i class="fi fi-rr-trash text-red-600"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- Contractor Row 5 -->
+                <tr class="hover:bg-gray-50 transition-all duration-200 group">
+                  <td class="px-6 py-4">
+                    <div class="flex items-center gap-3">
+                      <div class="w-10 h-10 rounded-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center text-white font-bold shadow-md group-hover:shadow-lg transition-all group-hover:scale-110">
+                        AB
+                      </div>
+                      <span class="font-medium text-gray-800 group-hover:text-indigo-600 transition">Apex Builders Inc.</span>
+                    </div>
+                  </td>
+                  <td class="px-6 py-4 text-center text-sm text-gray-600">15 Mar, 2024</td>
+                  <td class="px-6 py-4 text-center text-sm text-gray-600">8 years</td>
+                  <td class="px-6 py-4 text-center">
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700 transition-all duration-200 hover:scale-110 hover:shadow-lg">
+                      Specialty Contractor
+                    </span>
+                  </td>
+                  <td class="px-6 py-4 text-center">
+                    <span class="inline-flex items-center justify-center w-12 h-8 rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50 text-sm font-bold text-indigo-700 group-hover:from-blue-100 group-hover:to-indigo-100 transition-all duration-200 hover:scale-110 hover:shadow-lg">35</span>
+                  </td>
+                  <td class="px-6 py-4">
+                    <div class="flex items-center justify-center gap-2">
+                      <button class="action-btn view-btn w-10 h-10 rounded-full bg-blue-50 hover:bg-blue-100 flex items-center justify-center transition-all duration-200 hover:scale-110">
+                        <i class="fi fi-rr-eye text-blue-600"></i>
+                      </button>
+                      <button class="action-btn delete-btn w-10 h-10 rounded-full bg-red-50 hover:bg-red-100 flex items-center justify-center transition-all duration-200 hover:scale-110">
+                        <i class="fi fi-rr-trash text-red-600"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- Contractor Row 6 -->
+                <tr class="hover:bg-gray-50 transition-all duration-200 group">
+                  <td class="px-6 py-4">
+                    <div class="flex items-center gap-3">
+                      <div class="w-10 h-10 rounded-full bg-gradient-to-br from-pink-400 to-pink-600 flex items-center justify-center text-white font-bold shadow-md group-hover:shadow-lg transition-all group-hover:scale-110">
+                        SM
+                      </div>
+                      <span class="font-medium text-gray-800 group-hover:text-indigo-600 transition">Summit Master Contractors</span>
+                    </div>
+                  </td>
+                  <td class="px-6 py-4 text-center text-sm text-gray-600">22 May, 2023</td>
+                  <td class="px-6 py-4 text-center text-sm text-gray-600">12 years</td>
+                  <td class="px-6 py-4 text-center">
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 transition-all duration-200 hover:scale-110 hover:shadow-lg">
+                      Construction Contractor
+                    </span>
+                  </td>
+                  <td class="px-6 py-4 text-center">
+                    <span class="inline-flex items-center justify-center w-12 h-8 rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50 text-sm font-bold text-indigo-700 group-hover:from-blue-100 group-hover:to-indigo-100 transition-all duration-200 hover:scale-110 hover:shadow-lg">55</span>
+                  </td>
+                  <td class="px-6 py-4">
+                    <div class="flex items-center justify-center gap-2">
+                      <button class="action-btn view-btn w-10 h-10 rounded-full bg-blue-50 hover:bg-blue-100 flex items-center justify-center transition-all duration-200 hover:scale-110">
+                        <i class="fi fi-rr-eye text-blue-600"></i>
+                      </button>
+                      <button class="action-btn delete-btn w-10 h-10 rounded-full bg-red-50 hover:bg-red-100 flex items-center justify-center transition-all duration-200 hover:scale-110">
+                        <i class="fi fi-rr-trash text-red-600"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- Contractor Row 7 -->
+                <tr class="hover:bg-gray-50 transition-all duration-200 group">
+                  <td class="px-6 py-4">
+                    <div class="flex items-center gap-3">
+                      <div class="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center text-white font-bold shadow-md group-hover:shadow-lg transition-all group-hover:scale-110">
+                        PE
+                      </div>
+                      <span class="font-medium text-gray-800 group-hover:text-indigo-600 transition">Prime Engineering & Construction</span>
+                    </div>
+                  </td>
+                  <td class="px-6 py-4 text-center text-sm text-gray-600">18 Jul, 2022</td>
+                  <td class="px-6 py-4 text-center text-sm text-gray-600">15 years</td>
+                  <td class="px-6 py-4 text-center">
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 transition-all duration-200 hover:scale-110 hover:shadow-lg">
+                      General Contractor
+                    </span>
+                  </td>
+                  <td class="px-6 py-4 text-center">
+                    <span class="inline-flex items-center justify-center w-12 h-8 rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50 text-sm font-bold text-indigo-700 group-hover:from-blue-100 group-hover:to-indigo-100 transition-all duration-200 hover:scale-110 hover:shadow-lg">82</span>
+                  </td>
+                  <td class="px-6 py-4">
+                    <div class="flex items-center justify-center gap-2">
+                      <button class="action-btn view-btn w-10 h-10 rounded-full bg-blue-50 hover:bg-blue-100 flex items-center justify-center transition-all duration-200 hover:scale-110">
+                        <i class="fi fi-rr-eye text-blue-600"></i>
+                      </button>
+                      <button class="action-btn delete-btn w-10 h-10 rounded-full bg-red-50 hover:bg-red-100 flex items-center justify-center transition-all duration-200 hover:scale-110">
+                        <i class="fi fi-rr-trash text-red-600"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- Contractor Row 8 -->
+                <tr class="hover:bg-gray-50 transition-all duration-200 group">
+                  <td class="px-6 py-4">
+                    <div class="flex items-center gap-3">
+                      <div class="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white font-bold shadow-md group-hover:shadow-lg transition-all group-hover:scale-110">
+                        ED
+                      </div>
+                      <span class="font-medium text-gray-800 group-hover:text-indigo-600 transition">Elite Development Corp</span>
+                    </div>
+                  </td>
+                  <td class="px-6 py-4 text-center text-sm text-gray-600">05 Nov, 2024</td>
+                  <td class="px-6 py-4 text-center text-sm text-gray-600">6 years</td>
+                  <td class="px-6 py-4 text-center">
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700 transition-all duration-200 hover:scale-110 hover:shadow-lg">
+                      Specialty Contractor
+                    </span>
+                  </td>
+                  <td class="px-6 py-4 text-center">
+                    <span class="inline-flex items-center justify-center w-12 h-8 rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50 text-sm font-bold text-indigo-700 group-hover:from-blue-100 group-hover:to-indigo-100 transition-all duration-200 hover:scale-110 hover:shadow-lg">28</span>
+                  </td>
+                  <td class="px-6 py-4">
+                    <div class="flex items-center justify-center gap-2">
+                      <button class="action-btn view-btn w-10 h-10 rounded-full bg-blue-50 hover:bg-blue-100 flex items-center justify-center transition-all duration-200 hover:scale-110">
+                        <i class="fi fi-rr-eye text-blue-600"></i>
+                      </button>
+                      <button class="action-btn delete-btn w-10 h-10 rounded-full bg-red-50 hover:bg-red-100 flex items-center justify-center transition-all duration-200 hover:scale-110">
+                        <i class="fi fi-rr-trash text-red-600"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -301,6 +620,7 @@
             <label for="profileUpload" class="absolute bottom-0 right-0 bg-orange-500 hover:bg-orange-600 text-white p-2 rounded-full cursor-pointer shadow-lg transition transform hover:scale-110">
               <i class="fi fi-rr-pencil text-sm"></i>
               <input type="file" id="profileUpload" name="profile_pic" class="hidden" accept="image/*">
+              <input type="file" id="profileUpload" class="hidden" accept="image/*">
             </label>
           </div>
           <div>
@@ -308,6 +628,8 @@
             <p class="text-sm text-gray-500">Upload a logo for the contractor company</p>
           </div>
         </div>
+
+        <!-- Company Representative Information moved below Company Information -->
 
         <!-- Company Information Section -->
         <div class="mb-6">
@@ -349,6 +671,33 @@
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">Social Media <span class="text-gray-400">(optional)</span></label>
               <input type="url" name="company_social_media" placeholder="https://" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Company name</label>
+              <input type="text" placeholder="Enter company name" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Years of operation</label>
+              <input type="number" placeholder="Enter years" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Account type</label>
+              <select class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+                <option value="">Select account type</option>
+                <option value="general">General Contractor</option>
+                <option value="construction">Construction Contractor</option>
+                <option value="specialty">Specialty Contractor</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Contact number</label>
+              <input type="tel" placeholder="Enter contact number" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">License number</label>
+              <input type="text" placeholder="Enter license number" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Registration date</label>
+              <input type="date" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
             </div>
           </div>
         </div>
@@ -375,6 +724,90 @@
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">Company Email</label>
               <input type="email" name="company_email" placeholder="Enter email address" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+        <!-- Company Website / Socials Section -->
+        <div class="mb-6">
+          <h3 class="text-lg font-semibold text-orange-500 mb-4 flex items-center gap-2">
+            <i class="fi fi-rr-globe"></i>
+            Company Website / Socials <span class="text-xs text-gray-400 font-normal ml-2">(optional)</span>
+          </h3>
+          <div class="space-y-3">
+            <div>
+              <input type="url" id="companyWebsite1" placeholder="https://" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+            </div>
+            <div>
+              <input type="url" id="companyWebsite2" placeholder="https://" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+            </div>
+            <div>
+              <input type="url" id="companyWebsite3" placeholder="https://" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+            </div>
+          </div>
+        </div>
+
+        <!-- Company Representative Information -->
+        <div class="mb-8">
+          <h3 class="text-lg font-semibold text-orange-500 mb-4 flex items-center gap-2">
+            <i class="fi fi-rr-id-badge"></i>
+            Company Representative Information
+          </h3>
+          <!-- Representative Photo Upload -->
+          <div class="flex items-center gap-6 mb-4">
+            <div class="relative group">
+              <div class="w-20 h-20 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center overflow-hidden shadow-md">
+                <i class="fi fi-rr-user text-3xl text-gray-500" id="repProfileIcon"></i>
+                <img id="repProfilePreview" class="w-full h-full object-cover hidden" alt="Representative Preview">
+              </div>
+              <label for="repProfileUpload" class="absolute -bottom-1 -right-1 bg-orange-500 hover:bg-orange-600 text-white p-2 rounded-full cursor-pointer shadow-lg transition transform hover:scale-110">
+                <i class="fi fi-rr-camera text-sm"></i>
+                <input type="file" id="repProfileUpload" class="hidden" accept="image/*">
+              </label>
+            </div>
+            <div>
+              <h4 class="text-sm font-semibold text-gray-800">Representative Photo</h4>
+              <p class="text-xs text-gray-500">Optional • JPG/PNG • 400x400 recommended</p>
+            </div>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">First Name</label>
+              <input type="text" id="repFirstName" placeholder="Enter first name" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Position/Role</label>
+              <input type="text" id="repPosition" placeholder="e.g., Project Manager" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Middle Name <span class="text-gray-400 text-xs">(optional)</span></label>
+              <input type="text" id="repMiddleName" placeholder="Enter middle name" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+              <input type="email" id="repEmail" placeholder="name@company.com" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Last Name</label>
+              <input type="text" id="repLastName" placeholder="Enter last name" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Contact no.</label>
+              <input type="tel" id="repContact" placeholder="e.g., +63 9xx xxx xxxx" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Username</label>
+              <input type="text" id="repUsername" placeholder="Enter username" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+            </div>
+            <div class="relative">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Password</label>
+              <input type="password" id="repPassword" placeholder="Enter password" class="w-full pr-12 px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+              <button type="button" class="absolute right-3 top-9 text-gray-500 hover:text-gray-700" data-toggle-password data-target="#repPassword">
+                <i class="fi fi-rr-eye"></i>
+              </button>
+            </div>
+            <div class="relative">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Confirm password</label>
+              <input type="password" id="repConfirmPassword" placeholder="Re-enter password" class="w-full pr-12 px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+              <button type="button" class="absolute right-3 top-9 text-gray-500 hover:text-gray-700" data-toggle-password data-target="#repConfirmPassword">
+                <i class="fi fi-rr-eye"></i>
+              </button>
             </div>
           </div>
         </div>
@@ -445,6 +878,59 @@
                         <input type="text" name="business_address_postal" placeholder="Enter zip code" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
                     </div>
                 </div>
+          <!-- Account Set-up Section -->
+          <div>
+            <h3 class="text-lg font-semibold text-orange-500 mb-4 flex items-center gap-2">
+              <i class="fi fi-rr-shield-check"></i>
+              Account Set-up
+            </h3>
+            <div class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Username</label>
+                <input type="text" id="accountUsername" placeholder="Enter username" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+              </div>
+              <div class="relative">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                <input type="password" id="accountPassword" placeholder="Enter password" class="w-full pr-12 px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+                <button type="button" class="absolute right-3 top-9 text-gray-500 hover:text-gray-700" data-toggle-password data-target="#accountPassword">
+                  <i class="fi fi-rr-eye"></i>
+                </button>
+              </div>
+              <div class="relative">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Confirm password</label>
+                <input type="password" id="accountConfirmPassword" placeholder="Re-enter password" class="w-full pr-12 px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+                <button type="button" class="absolute right-3 top-9 text-gray-500 hover:text-gray-700" data-toggle-password data-target="#accountConfirmPassword">
+                  <i class="fi fi-rr-eye"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Business Address Section -->
+          <div>
+            <h3 class="text-lg font-semibold text-orange-500 mb-4 flex items-center gap-2">
+              <i class="fi fi-rr-marker"></i>
+              Business Address
+            </h3>
+            <div class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Street address</label>
+                <input type="text" placeholder="Enter street address" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">City</label>
+                <input type="text" placeholder="Enter city" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+              </div>
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Province</label>
+                  <input type="text" placeholder="Province" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Postal code</label>
+                  <input type="text" placeholder="Postal code" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -498,11 +984,47 @@
               <label class="block text-sm font-medium text-gray-700 mb-2">DTI / SEC Registration <span class="text-red-500">*</span></label>
               <div id="dtiDropzone" class="flex items-center justify-center w-full h-[110px] rounded-xl border-2 border-dashed border-orange-300 bg-orange-50 text-orange-600 hover:bg-orange-100 transition-all relative cursor-pointer">
                 <input id="dtiUpload" name="dti_sec_registration_photo" type="file" accept="image/*,application/pdf" class="hidden">
+            Documents
+          </h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">PCAB Number</label>
+              <input type="text" id="pcabNumber" placeholder="Enter PCAB number" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Business Permit City</label>
+              <input type="text" id="businessPermitCity" placeholder="Enter city" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">PCAB Category</label>
+              <input type="text" id="pcabCategory" placeholder="Enter PCAB category" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Business Permit Expiration</label>
+              <input type="date" id="businessPermitExpiration" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">PCAB Expiration Date</label>
+              <input type="date" id="pcabExpiration" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">TIN Business Registration Number</label>
+              <input type="text" id="tinNumber" placeholder="Enter TIN/Business Reg. number" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Business Permit Number</label>
+              <input type="text" id="businessPermitNumber" placeholder="Enter permit number" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">DTI / SEC Registration</label>
+              <div id="dtiDropzone" class="flex items-center justify-center w-full h-[110px] rounded-xl border-2 border-dashed border-orange-300 bg-orange-50 text-orange-600 hover:bg-orange-100 transition-all relative">
+                <input id="dtiUpload" type="file" accept="image/*,application/pdf" class="hidden">
                 <div class="text-center pointer-events-none">
                   <i class="fi fi-rr-upload text-2xl"></i>
                   <div class="text-sm font-medium mt-1">Upload image or file</div>
                   <div id="dtiFileName" class="text-xs text-orange-500 mt-1"></div>
                 </div>
+                <label for="dtiUpload" class="absolute inset-0"></label>
               </div>
             </div>
           </div>
@@ -528,6 +1050,14 @@
       <div class="sticky top-0 bg-white border-b border-gray-200 px-8 py-5 flex items-center justify-between rounded-t-2xl z-10">
         <h2 class="text-2xl font-bold text-gray-800">Edit Contractor</h2>
         <button id="closeEditModalBtn" class="text-gray-400 hover:text-gray-600 transition p-2 rounded-lg hover:bg-gray-100">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden transform transition-all duration-300 scale-95 opacity-0 modal-content">
+      <!-- Modal Header -->
+      <div class="sticky top-0 bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-5 flex items-center justify-between rounded-t-2xl z-10 shadow-lg">
+        <h2 class="text-2xl font-bold text-white flex items-center gap-3">
+          <i class="fi fi-rr-edit"></i>
+          Edit Contractor
+        </h2>
+        <button id="closeEditModalBtn" class="text-white hover:text-orange-100 transition-all p-2 rounded-lg hover:bg-white hover:bg-opacity-20 hover:rotate-90 duration-300">
           <i class="fi fi-rr-cross text-2xl"></i>
         </button>
       </div>
@@ -551,12 +1081,31 @@
           <div>
             <h3 class="text-lg font-semibold text-gray-800">Company Logo</h3>
             <p class="text-sm text-gray-500">Update logo for the contractor company</p>
+      <div class="overflow-y-auto max-h-[calc(90vh-80px)] p-6 md:p-8 space-y-6">
+        <!-- Profile Picture Section -->
+        <div class="flex items-center gap-6 p-6 bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl border-2 border-orange-200 hover:shadow-lg transition-all duration-300">
+          <div class="relative group">
+            <div class="w-24 h-24 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center overflow-hidden shadow-xl ring-4 ring-orange-200 hover:ring-orange-300 transition-all duration-300">
+              <span class="text-2xl font-bold text-white" id="editProfileInitials">GB</span>
+              <img id="editProfilePreview" class="w-full h-full object-cover hidden" alt="Profile Preview">
+            </div>
+            <label for="editProfileUpload" class="absolute -bottom-1 -right-1 bg-orange-500 hover:bg-orange-600 text-white p-2.5 rounded-full cursor-pointer shadow-lg transition-all transform hover:scale-110 hover:rotate-12">
+              <i class="fi fi-rr-camera text-sm"></i>
+              <input type="file" id="editProfileUpload" class="hidden" accept="image/*">
+            </label>
+          </div>
+          <div>
+            <h3 class="text-lg font-bold text-gray-800">Company Logo</h3>
+            <p class="text-sm text-gray-600 mt-1">Click the camera icon to update logo</p>
+            <p class="text-xs text-orange-600 mt-1 font-medium">• JPG, PNG • Max 5MB</p>
           </div>
         </div>
 
         <!-- Company Information Section -->
         <div class="mb-6">
           <h3 class="text-lg font-semibold text-orange-500 mb-4 flex items-center gap-2">
+        <div>
+          <h3 class="text-lg font-bold text-orange-600 mb-4 flex items-center gap-2 pb-2 border-b-2 border-orange-200">
             <i class="fi fi-rr-building"></i>
             Company Information
           </h3>
@@ -594,6 +1143,33 @@
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">Social Media <span class="text-gray-400">(optional)</span></label>
               <input type="url" id="edit_company_social_media" name="company_social_media" placeholder="https://" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+            <div class="form-group">
+              <label class="block text-sm font-semibold text-gray-700 mb-2">Company name</label>
+              <input type="text" id="editCompanyName" value="GTH Builders and Developers" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition-all">
+            </div>
+            <div class="form-group">
+              <label class="block text-sm font-semibold text-gray-700 mb-2">Years of operation</label>
+              <input type="number" id="editYearsOperation" value="10" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition-all">
+            </div>
+            <div class="form-group">
+              <label class="block text-sm font-semibold text-gray-700 mb-2">Account type</label>
+              <select id="editAccountType" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition-all">
+                <option value="general" selected>General Contractor</option>
+                <option value="construction">Construction Contractor</option>
+                <option value="specialty">Specialty Contractor</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="block text-sm font-semibold text-gray-700 mb-2">Contact number</label>
+              <input type="tel" id="editContactNumber" value="+63 912 345 6789" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition-all">
+            </div>
+            <div class="form-group">
+              <label class="block text-sm font-semibold text-gray-700 mb-2">License number</label>
+              <input type="text" id="editLicenseNumber" value="LIC-2025-001" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition-all">
+            </div>
+            <div class="form-group">
+              <label class="block text-sm font-semibold text-gray-700 mb-2">Registration date</label>
+              <input type="date" id="editRegistrationDate" value="2025-10-10" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition-all">
             </div>
           </div>
         </div>
@@ -620,6 +1196,24 @@
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">Company Email</label>
               <input type="email" id="edit_company_email" name="company_email" placeholder="Enter email address" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+        <!-- Account Information Section -->
+        <div>
+          <h3 class="text-lg font-bold text-orange-600 mb-4 flex items-center gap-2 pb-2 border-b-2 border-orange-200">
+            <i class="fi fi-rr-at"></i>
+            Account Information
+          </h3>
+          <div class="grid grid-cols-1 gap-4">
+            <div class="form-group">
+              <label class="block text-sm font-semibold text-gray-700 mb-2">
+                <i class="fi fi-rr-envelope text-orange-500"></i> Email address
+              </label>
+              <input type="email" id="editEmail" value="contact@gthbuilders.com" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition-all">
+            </div>
+            <div class="form-group">
+              <label class="block text-sm font-semibold text-gray-700 mb-2">
+                <i class="fi fi-rr-user text-orange-500"></i> Username
+              </label>
+              <input type="text" id="editUsername" value="gthbuilders" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition-all">
             </div>
           </div>
         </div>
@@ -757,6 +1351,16 @@
           </button>
         </div>
         </form>
+        <!-- Action Buttons -->
+        <div class="flex items-center justify-end gap-3 pt-6 border-t-2 border-gray-200">
+          <button id="cancelEditBtn" class="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all font-semibold hover:shadow-md hover:scale-105 active:scale-95">
+            Cancel
+          </button>
+          <button id="saveEditBtn" class="px-8 py-3 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-lg transition-all font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95 flex items-center gap-2">
+            <i class="fi fi-rr-disk"></i>
+            Save Changes
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -786,6 +1390,9 @@
             <textarea id="deletionReason" rows="3" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-400 focus:border-transparent transition resize-none" placeholder="Please provide a reason for deletion..."></textarea>
             <p id="deletionReasonError" class="text-red-500 text-xs mt-1 hidden">Reason is required.</p>
         </div>
+        <p class="text-gray-600 leading-relaxed">
+          Permanently delete <span class="font-bold text-gray-800" id="deleteContractorName">GTH Builders and Developers</span>? This action cannot be undone.
+        </p>
       </div>
 
       <!-- Action Buttons -->
@@ -801,9 +1408,11 @@
     </div>
   </div>
 
+ 
 
   <script src="{{ asset('js/admin/userManagement/contractor.js') }}" defer></script>
 
 </body>
 
+</html>
 </html>

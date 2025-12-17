@@ -199,6 +199,11 @@ export default function CompanyInfoScreen({ onBackPress, onNext, formData, initi
 
         setIsLoading(true);
 
+        // Get actual names from the codes
+        const provinceName = provinces.find(p => p.code === businessAddressProvince)?.name || businessAddressProvince;
+        const cityName = cities.find(c => c.code === businessAddressCity)?.name || businessAddressCity;
+        const barangayName = barangays.find(b => b.code === businessAddressBarangay)?.name || businessAddressBarangay;
+
         const companyInfo: CompanyInfo = {
             companyName: companyName.trim(),
             companyPhone: companyPhone.trim(),
@@ -207,9 +212,9 @@ export default function CompanyInfoScreen({ onBackPress, onNext, formData, initi
             contractorTypeOtherText: contractorTypeOtherText.trim(),
             servicesOffered: servicesOffered.trim(),
             businessAddressStreet: businessAddressStreet.trim(),
-            businessAddressProvince,
-            businessAddressCity,
-            businessAddressBarangay,
+            businessAddressProvince: provinceName,
+            businessAddressCity: cityName,
+            businessAddressBarangay: barangayName,
             businessAddressPostal: businessAddressPostal.trim(),
             companyWebsite: companyWebsite.trim(),
             companySocialMedia: companySocialMedia.trim(),

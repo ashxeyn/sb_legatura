@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,10 +9,20 @@ import {
   Image,
   ActivityIndicator,
   RefreshControl,
+  Animated,
+  Dimensions,
+  Modal,
+  FlatList,
 } from 'react-native';
 import { View as SafeAreaView, StatusBar, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { MaterialIcons, Ionicons } from '@expo/vector-icons';
+import { MaterialIcons, Ionicons, Feather } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { projects_service } from '../../services/projects_service';
+import MyProjects from './myProjects';
+import MyBids from './myBids';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface Project {
   project_id: number;
@@ -25,18 +35,21 @@ interface Project {
   type_name: string;
   project_status: string;
   bidding_deadline?: string;
-  owner_name: string;
+  owner_name?: string;
   owner_profile_pic?: string;
   created_at: string;
+  display_status?: string;
 }
 
 interface Bid {
   bid_id: number;
   project_id: number;
   project_title: string;
+  project_location?: string;
   proposed_cost: number;
-  estimated_timeline: string;
-  bid_status: 'pending' | 'accepted' | 'rejected' | 'withdrawn';
+  estimated_timeline: number;
+  contractor_notes?: string;
+  bid_status: 'pending' | 'accepted' | 'rejected' | 'withdrawn' | 'cancelled' | 'submitted';
   submitted_at: string;
 }
 
@@ -50,114 +63,114 @@ interface DashboardProps {
     contractor_type?: string;
     years_of_experience?: number;
   };
+  onNotificationsPress?: () => void;
+  onNavigateToMessages?: () => void;
+  onBrowseProjects?: () => void;
+  onFullScreenChange?: (isFullScreen: boolean) => void;
 }
 
-export default function ContractorDashboard({ userData }: DashboardProps) {
+// Color palette - modern and professional (matching owner dashboard)
+const COLORS = {
+  primary: '#EC7E00',
+  primaryLight: '#FFF3E6',
+  primaryDark: '#C96A00',
+  primaryDeep: '#B35E00',
+  secondary: '#1A1A2E',
+  accent: '#16213E',
+  success: '#10B981',
+  successLight: '#D1FAE5',
+  warning: '#F59E0B',
+  warningLight: '#FEF3C7',
+  error: '#EF4444',
+  info: '#3B82F6',
+  infoLight: '#DBEAFE',
+  background: '#F8FAFC',
+  surface: '#FFFFFF',
+  surfaceHover: '#F1F5F9',
+  text: '#0F172A',
+  textSecondary: '#64748B',
+  textMuted: '#94A3B8',
+  border: '#E2E8F0',
+  borderLight: '#F1F5F9',
+};
+
+export default function ContractorDashboard({
+  userData,
+  onNotificationsPress,
+  onNavigateToMessages,
+  onBrowseProjects,
+  onFullScreenChange
+}: DashboardProps) {
   const insets = useSafeAreaInsets();
-  const [availableProjects, setAvailableProjects] = useState<Project[]>([]);
   const [myBids, setMyBids] = useState<Bid[]>([]);
+  const [myProjects, setMyProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [activeTab, setActiveTab] = useState<'projects' | 'bids'>('projects');
   const [error, setError] = useState<string | null>(null);
-  
+  const [pinnedBid, setPinnedBid] = useState<Bid | null>(null);
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [showPinOptions, setShowPinOptions] = useState(false);
+  const [avatarError, setAvatarError] = useState(false);
+  const [showMyProjects, setShowMyProjects] = useState(false);
+  const [showMyBids, setShowMyBids] = useState(false);
+  const scrollY = useRef(new Animated.Value(0)).current;
+
   // Get status bar height (top inset)
   const statusBarHeight = insets.top || (Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 44);
 
-  // Mock data for available projects
-  const mockProjects: Project[] = [
-    {
-      project_id: 1,
-      project_title: 'Commercial Building Construction',
-      project_description: 'Looking for experienced contractor for a 3-story commercial building project',
-      project_location: 'Cebu City, Cebu',
-      budget_range_min: 5000000,
-      budget_range_max: 8000000,
-      property_type: 'Commercial',
-      type_name: 'General Contractor',
-      project_status: 'open',
-      bidding_deadline: '2025-12-20',
-      owner_name: 'Juan Dela Cruz',
-      created_at: '2025-11-15',
-    },
-    {
-      project_id: 2,
-      project_title: 'Office Renovation',
-      project_description: 'Complete renovation of 200sqm office space with modern interiors',
-      project_location: 'Mandaue City, Cebu',
-      budget_range_min: 800000,
-      budget_range_max: 1200000,
-      property_type: 'Commercial',
-      type_name: 'Interior Designer',
-      project_status: 'open',
-      bidding_deadline: '2025-12-10',
-      owner_name: 'Maria Santos',
-      created_at: '2025-11-18',
-    },
-    {
-      project_id: 3,
-      project_title: 'Residential House - Architectural Design',
-      project_description: 'Need architect for modern minimalist house design, 150sqm lot',
-      project_location: 'Talisay City, Cebu',
-      budget_range_min: 100000,
-      budget_range_max: 200000,
-      property_type: 'Residential',
-      type_name: 'Architect',
-      project_status: 'open',
-      bidding_deadline: '2025-12-05',
-      owner_name: 'Pedro Reyes',
-      created_at: '2025-11-20',
-    },
-  ];
-
-  // Mock data for bids
-  const mockBids: Bid[] = [
-    {
-      bid_id: 1,
-      project_id: 5,
-      project_title: 'Warehouse Construction',
-      proposed_cost: 4500000,
-      estimated_timeline: '8 months',
-      bid_status: 'pending',
-      submitted_at: '2025-11-22',
-    },
-    {
-      bid_id: 2,
-      project_id: 6,
-      project_title: 'Pool Installation',
-      proposed_cost: 850000,
-      estimated_timeline: '3 months',
-      bid_status: 'accepted',
-      submitted_at: '2025-11-10',
-    },
-    {
-      bid_id: 3,
-      project_id: 7,
-      project_title: 'Fence Construction',
-      proposed_cost: 120000,
-      estimated_timeline: '2 weeks',
-      bid_status: 'rejected',
-      submitted_at: '2025-11-05',
-    },
-  ];
+  // Notify parent when entering/exiting full-screen mode
+  useEffect(() => {
+    const isFullScreen = showMyProjects || showMyBids;
+    onFullScreenChange?.(isFullScreen);
+  }, [showMyProjects, showMyBids, onFullScreenChange]);
 
   useEffect(() => {
+    setAvatarError(false);
     fetchData();
-  }, []);
+  }, [userData?.user_id]);
 
   const fetchData = async () => {
+    if (!userData?.user_id) {
+      setIsLoading(false);
+      return;
+    }
+
     try {
       setIsLoading(true);
       setError(null);
-      // TODO: Connect to API - /api/contractor/available-projects and /api/contractor/bids
-      // For now, use mock data
-      setTimeout(() => {
-        setAvailableProjects(mockProjects);
-        setMyBids(mockBids);
-        setIsLoading(false);
-      }, 1000);
+
+      // Fetch contractor projects
+      const projectsResponse = await projects_service.get_contractor_projects(userData.user_id);
+      if (projectsResponse.success) {
+        const projectsData = projectsResponse.data?.data || projectsResponse.data || [];
+        const projectsArray = Array.isArray(projectsData) ? projectsData : [];
+        setMyProjects(projectsArray);
+      } else {
+        setMyProjects([]);
+      }
+
+      // Fetch contractor bids
+      const bidsResponse = await projects_service.get_my_bids(userData.user_id);
+      console.log('Bids response:', JSON.stringify(bidsResponse, null, 2));
+      if (bidsResponse.success) {
+        // The API returns data wrapped, so we need to extract it properly
+        const apiData = bidsResponse.data;
+        const bidsData = apiData?.data || apiData || [];
+        const bidsArray = Array.isArray(bidsData) ? bidsData : [];
+        console.log('Bids array length:', bidsArray.length);
+        console.log('Bids array:', bidsArray);
+        setMyBids(bidsArray);
+      } else {
+        console.log('Bids fetch failed:', bidsResponse.message);
+        setMyBids([]);
+      }
+
+      setIsLoading(false);
     } catch (err) {
+      console.error('Error fetching dashboard data:', err);
       setError('Failed to load data');
+      setMyProjects([]);
+      setMyBids([]);
       setIsLoading(false);
     }
   };
@@ -170,10 +183,10 @@ export default function ContractorDashboard({ userData }: DashboardProps) {
 
   // Calculate stats
   const stats = {
-    availableProjects: availableProjects.length,
-    submittedBids: myBids.filter(b => b.bid_status === 'pending').length,
-    wonProjects: myBids.filter(b => b.bid_status === 'accepted').length,
     totalBids: myBids.length,
+    pendingBids: myBids.filter(b => b.bid_status === 'pending' || b.bid_status === 'submitted').length,
+    acceptedBids: myBids.filter(b => b.bid_status === 'accepted').length,
+    activeProjects: myProjects.length, // Count all projects (in progress + waiting milestone setup)
   };
 
   const formatBudget = (min: number, max: number) => {
@@ -188,266 +201,505 @@ export default function ContractorDashboard({ userData }: DashboardProps) {
   const formatCost = (cost: number) => {
     if (cost >= 1000000) return `₱${(cost / 1000000).toFixed(2)}M`;
     if (cost >= 1000) return `₱${(cost / 1000).toFixed(0)}K`;
-    return `₱${cost}`;
+    return `₱${cost.toLocaleString()}`;
   };
 
-  const getBidStatusColor = (status: string) => {
+  const getBidStatusConfig = (status: string) => {
     switch (status) {
-      case 'pending': return '#F39C12';
-      case 'accepted': return '#42B883';
-      case 'rejected': return '#E74C3C';
-      case 'withdrawn': return '#999999';
-      default: return '#666666';
+      case 'pending':
+      case 'submitted':
+        return { color: COLORS.warning, bg: COLORS.warningLight, label: 'Pending', icon: 'clock' };
+      case 'accepted':
+        return { color: COLORS.success, bg: COLORS.successLight, label: 'Accepted', icon: 'check-circle' };
+      case 'rejected':
+        return { color: COLORS.error, bg: '#FEE2E2', label: 'Rejected', icon: 'x-circle' };
+      case 'withdrawn':
+      case 'cancelled':
+        return { color: COLORS.textMuted, bg: COLORS.borderLight, label: 'Cancelled', icon: 'minus-circle' };
+      default:
+        return { color: COLORS.textMuted, bg: COLORS.borderLight, label: status, icon: 'circle' };
     }
   };
 
-  const getDaysRemaining = (deadline: string) => {
-    const today = new Date();
-    const deadlineDate = new Date(deadline);
-    const diffTime = deadlineDate.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays;
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good Morning';
+    if (hour < 17) return 'Good Afternoon';
+    return 'Good Evening';
   };
 
-  const renderStatCard = (icon: string, value: number, label: string, color: string) => (
-    <View style={[styles.statCard, { borderLeftColor: color }]}>
-      <View style={[styles.statIconContainer, { backgroundColor: `${color}15` }]}>
-        <MaterialIcons name={icon as any} size={24} color={color} />
-      </View>
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
-    </View>
-  );
-
-  const renderProjectCard = (project: Project) => {
-    const daysRemaining = project.bidding_deadline ? getDaysRemaining(project.bidding_deadline) : null;
-    
-    return (
-      <TouchableOpacity key={project.project_id} style={styles.projectCard} activeOpacity={0.7}>
-        <View style={styles.projectHeader}>
-          <View style={styles.ownerInfo}>
-            <View style={styles.ownerAvatar}>
-              <Text style={styles.ownerInitials}>
-                {project.owner_name.split(' ').map(n => n[0]).join('').substring(0, 2)}
-              </Text>
-            </View>
-            <View>
-              <Text style={styles.ownerName}>{project.owner_name}</Text>
-              <Text style={styles.postDate}>Posted {project.created_at}</Text>
-            </View>
-          </View>
-          {daysRemaining !== null && (
-            <View style={[styles.deadlineBadge, daysRemaining <= 3 && styles.deadlineUrgent]}>
-              <MaterialIcons name="access-time" size={14} color={daysRemaining <= 3 ? '#E74C3C' : '#F39C12'} />
-              <Text style={[styles.deadlineText, daysRemaining <= 3 && styles.deadlineTextUrgent]}>
-                {daysRemaining > 0 ? `${daysRemaining}d left` : 'Due today'}
-              </Text>
-            </View>
-          )}
-        </View>
-
-        <Text style={styles.projectTitle}>{project.project_title}</Text>
-        <View style={styles.projectTypeBadge}>
-          <MaterialIcons name="business" size={14} color="#1877F2" />
-          <Text style={styles.projectTypeText}>{project.type_name}</Text>
-        </View>
-        
-        <Text style={styles.projectDescription} numberOfLines={2}>
-          {project.project_description}
-        </Text>
-
-        <View style={styles.projectDetails}>
-          <View style={styles.detailRow}>
-            <MaterialIcons name="location-on" size={16} color="#666666" />
-            <Text style={styles.detailText}>{project.project_location}</Text>
-          </View>
-          <View style={styles.detailRow}>
-            <MaterialIcons name="account-balance-wallet" size={16} color="#666666" />
-            <Text style={styles.detailText}>{formatBudget(project.budget_range_min, project.budget_range_max)}</Text>
-          </View>
-        </View>
-
-        <View style={styles.projectFooter}>
-          <TouchableOpacity style={styles.bidButton}>
-            <MaterialIcons name="gavel" size={18} color="#FFFFFF" />
-            <Text style={styles.bidButtonText}>Place Bid</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.viewDetailsButton}>
-            <Text style={styles.viewDetailsText}>View Details</Text>
-          </TouchableOpacity>
-        </View>
-      </TouchableOpacity>
-    );
-  };
-
-  const renderBidCard = (bid: Bid) => (
-    <TouchableOpacity key={bid.bid_id} style={styles.bidCard} activeOpacity={0.7}>
-      <View style={styles.bidHeader}>
-        <Text style={styles.bidProjectTitle} numberOfLines={1}>{bid.project_title}</Text>
-        <View style={[styles.bidStatusBadge, { backgroundColor: `${getBidStatusColor(bid.bid_status)}15` }]}>
-          <View style={[styles.statusDot, { backgroundColor: getBidStatusColor(bid.bid_status) }]} />
-          <Text style={[styles.bidStatusText, { color: getBidStatusColor(bid.bid_status) }]}>
-            {bid.bid_status.charAt(0).toUpperCase() + bid.bid_status.slice(1)}
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.bidDetails}>
-        <View style={styles.bidDetailItem}>
-          <Text style={styles.bidDetailLabel}>Proposed Cost</Text>
-          <Text style={styles.bidDetailValue}>{formatCost(bid.proposed_cost)}</Text>
-        </View>
-        <View style={styles.bidDetailItem}>
-          <Text style={styles.bidDetailLabel}>Timeline</Text>
-          <Text style={styles.bidDetailValue}>{bid.estimated_timeline}</Text>
-        </View>
-        <View style={styles.bidDetailItem}>
-          <Text style={styles.bidDetailLabel}>Submitted</Text>
-          <Text style={styles.bidDetailValue}>{bid.submitted_at}</Text>
-        </View>
-      </View>
-
-      {bid.bid_status === 'accepted' && (
-        <TouchableOpacity style={styles.startProjectButton}>
-          <MaterialIcons name="play-arrow" size={18} color="#FFFFFF" />
-          <Text style={styles.startProjectText}>Start Project</Text>
-        </TouchableOpacity>
-      )}
-    </TouchableOpacity>
-  );
+  // Header animation
+  const headerOpacity = scrollY.interpolate({
+    inputRange: [0, 100],
+    outputRange: [1, 0.9],
+    extrapolate: 'clamp',
+  });
 
   if (isLoading && !refreshing) {
     return (
-      <SafeAreaView style={[styles.container, { paddingTop: statusBarHeight }]}>
+      <SafeAreaView style={styles.container}>
         <StatusBar hidden={true} />
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#1877F2" />
-          <Text style={styles.loadingText}>Loading dashboard...</Text>
+          <View style={styles.loadingSpinner}>
+            <ActivityIndicator size="large" color={COLORS.primary} />
+          </View>
+          <Text style={styles.loadingText}>Loading your dashboard...</Text>
         </View>
       </SafeAreaView>
     );
   }
 
+  // Show My Projects screen if selected
+  if (showMyProjects) {
+    return (
+      <MyProjects
+        userData={userData}
+        onClose={() => setShowMyProjects(false)}
+      />
+    );
+  }
+
+  // Show My Bids screen if selected
+  if (showMyBids) {
+    return (
+      <MyBids
+        userData={userData}
+        onClose={() => setShowMyBids(false)}
+      />
+    );
+  }
+
   return (
-    <SafeAreaView style={[styles.container, { paddingTop: statusBarHeight }]}>
+    <SafeAreaView style={styles.container}>
       <StatusBar hidden={true} />
-      <ScrollView
+
+      <Animated.ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: true }
+        )}
+        scrollEventThrottle={16}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#1877F2']} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[COLORS.primary]}
+            tintColor={COLORS.primary}
+          />
         }
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.greeting}>Welcome back,</Text>
-            <Text style={styles.companyName}>{userData?.company_name || 'Contractor'}</Text>
-            {userData?.contractor_type && (
-              <Text style={styles.contractorType}>{userData.contractor_type}</Text>
-            )}
-          </View>
-          <TouchableOpacity style={styles.notificationButton}>
-            <Ionicons name="notifications-outline" size={24} color="#333333" />
-            <View style={styles.notificationBadge}>
-              <Text style={styles.badgeText}>5</Text>
+        {/* Hero Header */}
+        <Animated.View style={[styles.heroHeader, { opacity: headerOpacity }]}>
+          <LinearGradient
+            colors={[COLORS.primary, COLORS.primaryDeep]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.heroGradient}
+          >
+            <View style={styles.heroContent}>
+              <View style={styles.heroTop}>
+                <View style={styles.userInfo}>
+                  <View style={styles.avatarContainer}>
+                    {userData?.profile_pic && !avatarError ? (
+                      <Image
+                        source={{ uri: userData.profile_pic }}
+                        style={styles.avatar}
+                        onError={() => setAvatarError(true)}
+                      />
+                    ) : (
+                      <View style={styles.avatarPlaceholder}>
+                        <Text style={styles.avatarText}>
+                          {userData?.company_name?.charAt(0).toUpperCase() ||
+                            userData?.username?.charAt(0).toUpperCase() || 'C'}
+                        </Text>
+                      </View>
+                    )}
+                    <View style={styles.onlineIndicator} />
+                  </View>
+                  <View style={styles.greetingContainer}>
+                    <Text style={styles.greeting}>{getGreeting()}</Text>
+                    <Text style={styles.userName}>{userData?.company_name || userData?.username || 'Contractor'}</Text>
+                    {userData?.contractor_type && (
+                      <Text style={styles.userType}>{userData.contractor_type}</Text>
+                    )}
+                  </View>
+                </View>
+              </View>
+
+              {/* Quick Summary */}
+              <View style={styles.quickSummary}>
+                <View style={styles.summaryItem}>
+                  <Text style={styles.summaryValue}>{stats.totalBids}</Text>
+                  <Text style={styles.summaryLabel}>Total Bids</Text>
+                </View>
+                <View style={styles.summaryDivider} />
+                <View style={styles.summaryItem}>
+                  <Text style={styles.summaryValue}>{stats.pendingBids}</Text>
+                  <Text style={styles.summaryLabel}>Pending</Text>
+                </View>
+                <View style={styles.summaryDivider} />
+                <View style={styles.summaryItem}>
+                  <Text style={styles.summaryValue}>{stats.acceptedBids}</Text>
+                  <Text style={styles.summaryLabel}>Won</Text>
+                </View>
+                <View style={styles.summaryDivider} />
+                <View style={styles.summaryItem}>
+                  <Text style={styles.summaryValue}>{stats.activeProjects}</Text>
+                  <Text style={styles.summaryLabel}>Active</Text>
+                </View>
+              </View>
             </View>
-          </TouchableOpacity>
+          </LinearGradient>
+        </Animated.View>
+
+        {/* Pinned Bid Section */}
+        <View style={styles.pinnedSection}>
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionTitleRow}>
+              <Feather name="bookmark" size={18} color={COLORS.primary} />
+              <Text style={styles.sectionTitle}>Pinned Bid</Text>
+            </View>
+          </View>
+
+          {pinnedBid ? (
+            <TouchableOpacity
+              style={styles.pinnedCard}
+              activeOpacity={0.7}
+              onPress={() => {
+                // Navigate to bid details
+              }}
+            >
+              <View style={styles.pinnedProjectContent}>
+                <View style={styles.pinnedProjectInfo}>
+                  <Text style={styles.pinnedProjectTitle} numberOfLines={1}>
+                    {pinnedBid.project_title}
+                  </Text>
+                  {pinnedBid.project_location && (
+                    <Text style={styles.pinnedProjectLocation} numberOfLines={1}>
+                      <Feather name="map-pin" size={12} color={COLORS.textMuted} /> {pinnedBid.project_location}
+                    </Text>
+                  )}
+                  <View style={styles.pinnedProjectMeta}>
+                    <View style={[styles.pinnedStatusBadge, { backgroundColor: getBidStatusConfig(pinnedBid.bid_status).bg }]}>
+                      <Text style={[styles.pinnedStatusText, { color: getBidStatusConfig(pinnedBid.bid_status).color }]}>
+                        {getBidStatusConfig(pinnedBid.bid_status).label}
+                      </Text>
+                    </View>
+                    <Text style={styles.pinnedBudget}>
+                      {formatCost(pinnedBid.proposed_cost)}
+                    </Text>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  style={styles.pinnedOptionsButton}
+                  onPress={() => setShowPinOptions(true)}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Feather name="more-vertical" size={20} color={COLORS.textSecondary} />
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={styles.pinnedCard}
+              activeOpacity={0.7}
+              onPress={() => setShowPinModal(true)}
+            >
+              <View style={styles.pinnedEmpty}>
+                <Feather name="bookmark" size={32} color={COLORS.border} />
+                <Text style={styles.pinnedEmptyText}>No pinned bid</Text>
+                <Text style={styles.pinnedEmptySubtext}>Tap to pin a bid for quick access</Text>
+              </View>
+            </TouchableOpacity>
+          )}
         </View>
 
-        {/* Stats Grid */}
-        <View style={styles.statsContainer}>
-          <Text style={styles.sectionTitle}>Overview</Text>
-          <View style={styles.statsGrid}>
-            {renderStatCard('work', stats.availableProjects, 'Available', '#1877F2')}
-            {renderStatCard('gavel', stats.submittedBids, 'Pending Bids', '#F39C12')}
-            {renderStatCard('emoji-events', stats.wonProjects, 'Won', '#42B883')}
-            {renderStatCard('history', stats.totalBids, 'Total Bids', '#333333')}
+        {/* My Projects & My Bids Navigation Section */}
+        <View style={styles.projectsNavSection}>
+          <Text style={styles.sectionTitle}>My Work</Text>
+
+          <View style={styles.navButtonsContainer}>
+            <TouchableOpacity
+              style={styles.navButton}
+              activeOpacity={0.7}
+              onPress={() => setShowMyProjects(true)}
+            >
+              <View style={[styles.navButtonIcon, { backgroundColor: COLORS.successLight }]}>
+                <Feather name="briefcase" size={24} color={COLORS.success} />
+              </View>
+              <View style={styles.navButtonContent}>
+                <Text style={styles.navButtonTitle}>My Projects</Text>
+                <Text style={styles.navButtonSubtitle}>{stats.activeProjects} active projects</Text>
+              </View>
+              <Feather name="chevron-right" size={22} color={COLORS.textMuted} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.navButton}
+              activeOpacity={0.7}
+              onPress={() => setShowMyBids(true)}
+            >
+              <View style={[styles.navButtonIcon, { backgroundColor: COLORS.primaryLight }]}>
+                <Feather name="file-text" size={24} color={COLORS.primary} />
+              </View>
+              <View style={styles.navButtonContent}>
+                <Text style={styles.navButtonTitle}>My Bids</Text>
+                <Text style={styles.navButtonSubtitle}>{stats.totalBids} bids submitted</Text>
+              </View>
+              <Feather name="chevron-right" size={22} color={COLORS.textMuted} />
+            </TouchableOpacity>
           </View>
         </View>
 
         {/* Quick Actions */}
-        <View style={styles.quickActionsContainer}>
+        <View style={styles.quickActionsSection}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <View style={styles.quickActionsRow}>
-            <TouchableOpacity style={styles.quickActionButton}>
-              <View style={[styles.quickActionIcon, { backgroundColor: '#1877F215' }]}>
-                <MaterialIcons name="search" size={28} color="#1877F2" />
-              </View>
-              <Text style={styles.quickActionText}>Browse Projects</Text>
+          <View style={styles.quickActionsGrid}>
+            <TouchableOpacity
+              style={styles.quickActionCard}
+              activeOpacity={0.7}
+              onPress={onBrowseProjects}
+            >
+              <LinearGradient
+                colors={[COLORS.primary, COLORS.primaryDark]}
+                style={styles.quickActionGradient}
+              >
+                <Feather name="search" size={22} color="#FFFFFF" />
+              </LinearGradient>
+              <Text style={styles.quickActionLabel}>Browse{"\n"}Projects</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.quickActionButton}>
-              <View style={[styles.quickActionIcon, { backgroundColor: '#F39C1215' }]}>
-                <MaterialIcons name="list-alt" size={28} color="#F39C12" />
+
+            <TouchableOpacity
+              style={styles.quickActionCard}
+              activeOpacity={0.7}
+              onPress={() => {
+                // Navigate to pending bids
+              }}
+            >
+              <View style={[styles.quickActionIcon, { backgroundColor: COLORS.warningLight }]}>
+                <Feather name="clock" size={22} color={COLORS.warning} />
               </View>
-              <Text style={styles.quickActionText}>My Bids</Text>
+              <Text style={styles.quickActionLabel}>Pending{"\n"}Bids</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.quickActionButton}>
-              <View style={[styles.quickActionIcon, { backgroundColor: '#42B88315' }]}>
-                <MaterialIcons name="assignment" size={28} color="#42B883" />
+
+            <TouchableOpacity
+              style={styles.quickActionCard}
+              activeOpacity={0.7}
+              onPress={onNavigateToMessages}
+            >
+              <View style={[styles.quickActionIcon, { backgroundColor: COLORS.infoLight }]}>
+                <Feather name="message-circle" size={22} color={COLORS.info} />
               </View>
-              <Text style={styles.quickActionText}>Active Projects</Text>
+              <Text style={styles.quickActionLabel}>Messages</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Tabs */}
-        <View style={styles.tabsContainer}>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'projects' && styles.tabActive]}
-            onPress={() => setActiveTab('projects')}
-          >
-            <Text style={[styles.tabText, activeTab === 'projects' && styles.tabTextActive]}>
-              Available Projects
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'bids' && styles.tabActive]}
-            onPress={() => setActiveTab('bids')}
-          >
-            <Text style={[styles.tabText, activeTab === 'bids' && styles.tabTextActive]}>
-              My Bids
-            </Text>
-          </TouchableOpacity>
-        </View>
+        {/* Recent Bids Section */}
+        <View style={styles.recentSection}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Recent Bids</Text>
+            <TouchableOpacity style={styles.seeAllBtn}>
+              <Text style={styles.seeAllText}>See All</Text>
+              <Feather name="chevron-right" size={16} color={COLORS.primary} />
+            </TouchableOpacity>
+          </View>
 
-        {/* Content based on active tab */}
-        <View style={styles.contentContainer}>
-          {error ? (
-            <View style={styles.errorContainer}>
-              <MaterialIcons name="error-outline" size={48} color="#E74C3C" />
-              <Text style={styles.errorText}>{error}</Text>
-              <TouchableOpacity style={styles.retryButton} onPress={fetchData}>
-                <Text style={styles.retryButtonText}>Retry</Text>
+          {myBids.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <View style={styles.emptyIllustration}>
+                <Feather name="file-text" size={48} color={COLORS.border} />
+              </View>
+              <Text style={styles.emptyTitle}>No Bids Yet</Text>
+              <Text style={styles.emptyText}>
+                Browse available projects and submit your first bid to get started.
+              </Text>
+              <TouchableOpacity style={styles.createButton} onPress={onBrowseProjects}>
+                <LinearGradient
+                  colors={[COLORS.primary, COLORS.primaryDark]}
+                  style={styles.createButtonGradient}
+                >
+                  <Feather name="search" size={18} color="#FFFFFF" />
+                  <Text style={styles.createButtonText}>Browse Projects</Text>
+                </LinearGradient>
               </TouchableOpacity>
             </View>
-          ) : activeTab === 'projects' ? (
-            availableProjects.length === 0 ? (
-              <View style={styles.emptyContainer}>
-                <MaterialIcons name="work-off" size={64} color="#CCCCCC" />
-                <Text style={styles.emptyTitle}>No Projects Available</Text>
-                <Text style={styles.emptyText}>Check back later for new project opportunities</Text>
-              </View>
-            ) : (
-              availableProjects.map(project => renderProjectCard(project))
-            )
           ) : (
-            myBids.length === 0 ? (
-              <View style={styles.emptyContainer}>
-                <MaterialIcons name="gavel" size={64} color="#CCCCCC" />
-                <Text style={styles.emptyTitle}>No Bids Yet</Text>
-                <Text style={styles.emptyText}>Browse available projects and submit your first bid</Text>
-                <TouchableOpacity style={styles.browseButton} onPress={() => setActiveTab('projects')}>
-                  <Text style={styles.browseButtonText}>Browse Projects</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              myBids.map(bid => renderBidCard(bid))
-            )
+            <View style={styles.bidsList}>
+              {myBids.slice(0, 3).map((bid) => {
+                const statusConfig = getBidStatusConfig(bid.bid_status);
+                return (
+                  <TouchableOpacity
+                    key={bid.bid_id}
+                    style={styles.bidCard}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.bidCardHeader}>
+                      <View style={styles.bidTypeTag}>
+                        <Feather name="file-text" size={12} color={COLORS.primary} />
+                        <Text style={styles.bidTypeText}>Bid #{bid.bid_id}</Text>
+                      </View>
+                      <View style={[styles.statusBadge, { backgroundColor: statusConfig.bg }]}>
+                        <Feather name={statusConfig.icon as any} size={12} color={statusConfig.color} />
+                        <Text style={[styles.statusText, { color: statusConfig.color }]}>
+                          {statusConfig.label}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <Text style={styles.bidTitle}>{bid.project_title}</Text>
+
+                    <View style={styles.bidMeta}>
+                      {bid.project_location && (
+                        <View style={styles.metaItem}>
+                          <Feather name="map-pin" size={14} color={COLORS.textMuted} />
+                          <Text style={styles.metaText} numberOfLines={1}>{bid.project_location}</Text>
+                        </View>
+                      )}
+                      <View style={styles.metaItem}>
+                        <Feather name="dollar-sign" size={14} color={COLORS.textMuted} />
+                        <Text style={styles.metaText}>{formatCost(bid.proposed_cost)}</Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.bidCardFooter}>
+                      <View style={styles.footerLeft}>
+                        <View style={styles.timelineInfo}>
+                          <Feather name="calendar" size={14} color={COLORS.textMuted} />
+                          <Text style={styles.timelineText}>
+                            {bid.estimated_timeline} {bid.estimated_timeline === 1 ? 'month' : 'months'}
+                          </Text>
+                        </View>
+                      </View>
+                      <TouchableOpacity style={styles.viewDetailsBtn}>
+                        <Text style={styles.viewDetailsText}>View Details</Text>
+                        <Feather name="arrow-right" size={16} color={COLORS.primary} />
+                      </TouchableOpacity>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           )}
         </View>
-      </ScrollView>
+      </Animated.ScrollView>
+
+      {/* Pin Bid Modal */}
+      <Modal
+        visible={showPinModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowPinModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.pinModalContainer}>
+            <View style={styles.pinModalHeader}>
+              <Text style={styles.pinModalTitle}>Select Bid to Pin</Text>
+              <TouchableOpacity
+                onPress={() => setShowPinModal(false)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Feather name="x" size={24} color={COLORS.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            {myBids.length === 0 ? (
+              <View style={styles.pinModalEmpty}>
+                <Feather name="file-text" size={48} color={COLORS.border} />
+                <Text style={styles.pinModalEmptyText}>No bids available</Text>
+                <Text style={styles.pinModalEmptySubtext}>Submit a bid first to pin it</Text>
+              </View>
+            ) : (
+              <FlatList
+                data={myBids}
+                keyExtractor={(item) => item.bid_id.toString()}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.pinModalList}
+                renderItem={({ item }) => {
+                  const statusConfig = getBidStatusConfig(item.bid_status);
+                  return (
+                    <TouchableOpacity
+                      style={[
+                        styles.pinModalItem,
+                        pinnedBid?.bid_id === item.bid_id && styles.pinModalItemSelected
+                      ]}
+                      activeOpacity={0.7}
+                      onPress={() => {
+                        setPinnedBid(item);
+                        setShowPinModal(false);
+                      }}
+                    >
+                      <View style={styles.pinModalItemContent}>
+                        <Text style={styles.pinModalItemTitle} numberOfLines={1}>
+                          {item.project_title}
+                        </Text>
+                        <Text style={styles.pinModalItemLocation} numberOfLines={1}>
+                          {formatCost(item.proposed_cost)} • {item.estimated_timeline} {item.estimated_timeline === 1 ? 'month' : 'months'}
+                        </Text>
+                        <View style={[styles.pinModalItemStatus, { backgroundColor: statusConfig.bg }]}>
+                          <Text style={[styles.pinModalItemStatusText, { color: statusConfig.color }]}>
+                            {statusConfig.label}
+                          </Text>
+                        </View>
+                      </View>
+                      <View style={styles.pinModalItemAction}>
+                        <Feather
+                          name={pinnedBid?.bid_id === item.bid_id ? "check-circle" : "circle"}
+                          size={22}
+                          color={pinnedBid?.bid_id === item.bid_id ? COLORS.primary : COLORS.border}
+                        />
+                      </View>
+                    </TouchableOpacity>
+                  );
+                }}
+              />
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Pin Options Modal */}
+      <Modal
+        visible={showPinOptions}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setShowPinOptions(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowPinOptions(false)}
+        >
+          <View style={styles.pinOptionsContainer}>
+            <TouchableOpacity
+              style={styles.pinOptionItem}
+              activeOpacity={0.7}
+              onPress={() => {
+                setShowPinOptions(false);
+                setShowPinModal(true);
+              }}
+            >
+              <Feather name="repeat" size={20} color={COLORS.text} />
+              <Text style={styles.pinOptionText}>Change Pinned Bid</Text>
+            </TouchableOpacity>
+            <View style={styles.pinOptionDivider} />
+            <TouchableOpacity
+              style={styles.pinOptionItem}
+              activeOpacity={0.7}
+              onPress={() => {
+                setPinnedBid(null);
+                setShowPinOptions(false);
+              }}
+            >
+              <Feather name="bookmark" size={20} color={COLORS.error} />
+              <Text style={[styles.pinOptionText, { color: COLORS.error }]}>Unpin Bid</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -455,7 +707,7 @@ export default function ContractorDashboard({ userData }: DashboardProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: COLORS.background,
   },
   scrollView: {
     flex: 1,
@@ -463,429 +715,596 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 100,
   },
+
+  // Loading State
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: '#666666',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-    backgroundColor: '#FFFFFF',
-  },
-  greeting: {
-    fontSize: 14,
-    color: '#666666',
-  },
-  companyName: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333333',
-    marginTop: 2,
-  },
-  contractorType: {
-    fontSize: 13,
-    color: '#1877F2',
-    marginTop: 4,
-  },
-  notificationButton: {
-    position: 'relative',
-    padding: 8,
-  },
-  notificationBadge: {
-    position: 'absolute',
-    top: 4,
-    right: 4,
-    backgroundColor: '#E74C3C',
-    borderRadius: 10,
-    width: 18,
-    height: 18,
+  loadingSpinner: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: COLORS.surface,
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 5,
   },
-  badgeText: {
+  loadingText: {
+    marginTop: 16,
+    fontSize: 15,
+    color: COLORS.textSecondary,
+    fontWeight: '500',
+  },
+
+  // Hero Header
+  heroHeader: {
+    marginTop: -1,
+  },
+  heroGradient: {
+    paddingTop: 12,
+    paddingBottom: 24,
+    paddingHorizontal: 20,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+  },
+  heroContent: {
+    gap: 20,
+  },
+  heroTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  userInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  avatarContainer: {
+    position: 'relative',
+  },
+  avatar: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  avatarPlaceholder: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.4)',
+  },
+  avatarText: {
     color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: 'bold',
+    fontSize: 18,
+    fontWeight: '700',
   },
-  statsContainer: {
+  onlineIndicator: {
+    position: 'absolute',
+    bottom: 1,
+    right: 1,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#4ADE80',
+    borderWidth: 2,
+    borderColor: COLORS.primary,
+  },
+  greetingContainer: {
+    gap: 1,
+  },
+  greeting: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.9)',
+    fontWeight: '500',
+  },
+  userName: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  userType: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.8)',
+    fontWeight: '500',
+    marginTop: 2,
+  },
+
+  // Quick Summary
+  quickSummary: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+  },
+  summaryItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  summaryValue: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  summaryLabel: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.85)',
+    marginTop: 2,
+    fontWeight: '500',
+  },
+  summaryDivider: {
+    width: 1,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    marginVertical: 4,
+  },
+
+  // Section Headers
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 2,
+  },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  sectionTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: 14,
+  },
+  seeAllBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  seeAllText: {
+    fontSize: 14,
+    color: COLORS.primary,
+    fontWeight: '600',
+  },
+
+  // Pinned Section
+  pinnedSection: {
+    paddingTop: 24,
+    paddingHorizontal: 20,
+  },
+  pinnedCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 12,
+    marginTop: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  pinnedEmpty: {
+    alignItems: 'center',
+    paddingVertical: 32,
+    paddingHorizontal: 20,
+  },
+  pinnedEmptyText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+    marginTop: 12,
+  },
+  pinnedEmptySubtext: {
+    fontSize: 13,
+    color: COLORS.textMuted,
+    marginTop: 4,
+  },
+  pinnedProjectContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+  },
+  pinnedProjectInfo: {
+    flex: 1,
+  },
+  pinnedProjectTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: 4,
+  },
+  pinnedProjectLocation: {
+    fontSize: 13,
+    color: COLORS.textMuted,
+    marginBottom: 8,
+  },
+  pinnedProjectMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  pinnedStatusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginRight: 10,
+  },
+  pinnedStatusText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  pinnedBudget: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.primary,
+  },
+  pinnedOptionsButton: {
+    padding: 8,
+  },
+
+  // Projects Navigation Section
+  projectsNavSection: {
+    paddingTop: 24,
+    paddingHorizontal: 20,
+  },
+  navButtonsContainer: {
+    marginTop: 0,
+  },
+  navButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  navButtonIcon: {
+    width: 50,
+    height: 50,
+    borderRadius: 14,
+    backgroundColor: COLORS.primaryLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  navButtonContent: {
+    flex: 1,
+  },
+  navButtonTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  navButtonSubtitle: {
+    fontSize: 13,
+    color: COLORS.textMuted,
+    marginTop: 3,
+  },
+
+  // Quick Actions Section
+  quickActionsSection: {
     paddingHorizontal: 20,
     paddingTop: 20,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333333',
-    marginBottom: 12,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  statCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    width: '47%',
-    borderLeftWidth: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  statIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  statValue: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#333333',
-  },
-  statLabel: {
-    fontSize: 13,
-    color: '#666666',
-    marginTop: 4,
-  },
-  quickActionsContainer: {
-    paddingHorizontal: 20,
-    paddingTop: 24,
-  },
-  quickActionsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  quickActionButton: {
-    alignItems: 'center',
-    width: '30%',
-  },
-  quickActionIcon: {
-    width: 60,
-    height: 60,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  quickActionText: {
-    fontSize: 12,
-    color: '#666666',
-    textAlign: 'center',
-  },
-  tabsContainer: {
-    flexDirection: 'row',
-    marginHorizontal: 20,
-    marginTop: 24,
-    backgroundColor: '#E5E5E5',
-    borderRadius: 12,
-    padding: 4,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 12,
-    alignItems: 'center',
-    borderRadius: 10,
-  },
-  tabActive: {
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  tabText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#666666',
-  },
-  tabTextActive: {
-    color: '#1877F2',
-    fontWeight: '600',
-  },
-  contentContainer: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-  },
-  projectCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  projectHeader: {
+  quickActionsGrid: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 12,
   },
-  ownerInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  quickActionCard: {
     flex: 1,
+    alignItems: 'center',
+    paddingHorizontal: 4,
   },
-  ownerAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#1877F2',
+  quickActionGradient: {
+    width: 52,
+    height: 52,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 10,
-  },
-  ownerInitials: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  ownerName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333333',
-  },
-  postDate: {
-    fontSize: 12,
-    color: '#999999',
-  },
-  deadlineBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFF5E5',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    gap: 4,
-  },
-  deadlineUrgent: {
-    backgroundColor: '#FFEBE5',
-  },
-  deadlineText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#F39C12',
-  },
-  deadlineTextUrgent: {
-    color: '#E74C3C',
-  },
-  projectTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333333',
     marginBottom: 8,
   },
-  projectTypeBadge: {
-    flexDirection: 'row',
+  quickActionIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+    justifyContent: 'center',
     alignItems: 'center',
-    alignSelf: 'flex-start',
-    backgroundColor: '#EBF5FF',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    gap: 6,
-    marginBottom: 12,
+    marginBottom: 8,
   },
-  projectTypeText: {
-    fontSize: 12,
+  quickActionLabel: {
+    fontSize: 11,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
     fontWeight: '500',
-    color: '#1877F2',
+    lineHeight: 14,
   },
-  projectDescription: {
-    fontSize: 14,
-    color: '#666666',
-    lineHeight: 20,
-    marginBottom: 12,
+
+  // Recent Bids Section
+  recentSection: {
+    paddingTop: 24,
+    paddingHorizontal: 20,
   },
-  projectDetails: {
-    gap: 8,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  detailText: {
-    fontSize: 13,
-    color: '#666666',
-  },
-  projectFooter: {
-    flexDirection: 'row',
-    marginTop: 16,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
+  bidsList: {
     gap: 12,
   },
-  bidButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#1877F2',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-    gap: 6,
-    flex: 1,
-  },
-  bidButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  viewDetailsButton: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-  },
-  viewDetailsText: {
-    color: '#1877F2',
-    fontSize: 14,
-    fontWeight: '500',
-  },
   bidCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.surface,
     borderRadius: 16,
     padding: 16,
-    marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 2,
   },
-  bidHeader: {
+  bidCardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 10,
   },
-  bidProjectTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333333',
-    flex: 1,
-    marginRight: 12,
-  },
-  bidStatusBadge: {
+  bidTypeTag: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    gap: 6,
+    gap: 5,
+    backgroundColor: COLORS.primaryLight,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 6,
   },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  bidStatusText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  bidDetails: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  bidDetailItem: {
-    alignItems: 'center',
-  },
-  bidDetailLabel: {
+  bidTypeText: {
     fontSize: 11,
-    color: '#999999',
-    marginBottom: 4,
-  },
-  bidDetailValue: {
-    fontSize: 14,
+    color: COLORS.primary,
     fontWeight: '600',
-    color: '#333333',
   },
-  startProjectButton: {
+  statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#42B883',
-    paddingVertical: 12,
-    borderRadius: 8,
-    marginTop: 16,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 6,
+    gap: 4,
+  },
+  statusText: {
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  bidTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: 6,
+    lineHeight: 21,
+  },
+  bidMeta: {
+    gap: 8,
+    marginBottom: 12,
+  },
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 6,
   },
-  startProjectText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
+  metaText: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    flex: 1,
   },
-  errorContainer: {
+  bidCardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 40,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.borderLight,
   },
-  errorText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: '#E74C3C',
-    textAlign: 'center',
+  footerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
-  retryButton: {
-    marginTop: 16,
-    paddingHorizontal: 24,
-    paddingVertical: 10,
-    backgroundColor: '#1877F2',
-    borderRadius: 8,
+  timelineInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
   },
-  retryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
+  timelineText: {
+    fontSize: 12,
+    color: COLORS.textMuted,
+    fontWeight: '500',
+  },
+  viewDetailsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  viewDetailsText: {
+    fontSize: 13,
+    color: COLORS.primary,
     fontWeight: '600',
   },
+
+  // Empty State
   emptyContainer: {
     alignItems: 'center',
-    paddingVertical: 40,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    paddingVertical: 48,
+    paddingHorizontal: 20,
+    backgroundColor: COLORS.surface,
+    borderRadius: 20,
+  },
+  emptyIllustration: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: COLORS.borderLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
   },
   emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333333',
-    marginTop: 16,
+    fontSize: 20,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: 8,
   },
   emptyText: {
     fontSize: 14,
-    color: '#666666',
+    color: COLORS.textSecondary,
     textAlign: 'center',
-    marginTop: 8,
+    lineHeight: 21,
+    marginBottom: 24,
+  },
+  createButton: {
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  createButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    gap: 8,
+  },
+  createButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  pinModalContainer: {
+    backgroundColor: COLORS.surface,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '70%',
+    paddingBottom: 30,
+  },
+  pinModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  pinModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  pinModalEmpty: {
+    alignItems: 'center',
+    paddingVertical: 50,
     paddingHorizontal: 20,
   },
-  browseButton: {
-    backgroundColor: '#1877F2',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-    marginTop: 20,
-  },
-  browseButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
+  pinModalEmptyText: {
+    fontSize: 16,
     fontWeight: '600',
+    color: COLORS.textSecondary,
+    marginTop: 16,
+  },
+  pinModalEmptySubtext: {
+    fontSize: 14,
+    color: COLORS.textMuted,
+    marginTop: 6,
+  },
+  pinModalList: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+  },
+  pinModalItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 10,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  pinModalItemSelected: {
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.primaryLight,
+  },
+  pinModalItemContent: {
+    flex: 1,
+  },
+  pinModalItemTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginBottom: 3,
+  },
+  pinModalItemLocation: {
+    fontSize: 12,
+    color: COLORS.textMuted,
+    marginBottom: 6,
+  },
+  pinModalItemStatus: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  pinModalItemStatusText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  pinModalItemAction: {
+    marginLeft: 12,
+  },
+  pinOptionsContainer: {
+    position: 'absolute',
+    bottom: 50,
+    left: 20,
+    right: 20,
+    backgroundColor: COLORS.surface,
+    borderRadius: 16,
+    paddingVertical: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  pinOptionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+  },
+  pinOptionText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: COLORS.text,
+    marginLeft: 14,
+  },
+  pinOptionDivider: {
+    height: 1,
+    backgroundColor: COLORS.border,
+    marginHorizontal: 16,
   },
 });
 

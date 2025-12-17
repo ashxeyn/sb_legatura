@@ -367,8 +367,8 @@ export default function PersonalInfoScreen({ onBackPress, onNext, formData, init
           )}
 
           <View style={styles.inputContainer}>
-            <TouchableOpacity 
-              style={styles.dropdownContainer} 
+            <TouchableOpacity
+              style={styles.dropdownContainer}
               onPress={() => setShowDatePicker(true)}
             >
               <View style={styles.dropdownInputWrapper}>
@@ -379,7 +379,7 @@ export default function PersonalInfoScreen({ onBackPress, onNext, formData, init
               </View>
             </TouchableOpacity>
             <Text style={styles.fieldHint}>Must be 18+ years old</Text>
-            
+
             {showDatePicker && (
               <DateTimePicker
                 value={selectedDate || getMaxDate()}

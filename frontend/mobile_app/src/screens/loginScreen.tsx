@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { auth_service, login_data } from '../services/auth_service';
+import { storage_service } from '../utils/storage';
 
 interface LoginScreenProps {
   on_back: () => void;
@@ -51,6 +52,16 @@ export default function LoginScreen({ on_back, on_login_success, on_signup }: Lo
       if (response.success) {
         // Extract user data from response
         const userData = response.data?.user || response.data;
+        // Save token if provided
+        const token = response.data?.token || null;
+        if (token) {
+          try {
+            await storage_service.save_auth_token(token);
+            console.log('Auth token saved');
+          } catch (e) {
+            console.warn('Failed to save auth token:', e);
+          }
+        }
         console.log('Extracted userData:', userData);
         console.log('userData.profile_pic:', userData?.profile_pic);
         Alert.alert('Success', 'Login successful!', [
