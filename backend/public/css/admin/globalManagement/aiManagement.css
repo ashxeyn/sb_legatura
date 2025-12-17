@@ -1,0 +1,187 @@
+.ai-risk-table {
+	border-radius: 1.25rem;
+	box-shadow: 0 4px 24px rgba(30,30,60,0.10);
+	overflow: hidden;
+}
+.ai-risk-table th {
+	background: #f8fafc;
+	font-weight: 600;
+	color: #6b7280;
+	font-size: 0.85rem;
+	letter-spacing: 0.04em;
+}
+.ai-risk-table td {
+	font-size: 0.97rem;
+	color: #374151;
+}
+
+.ai-risk-table .risk-high {
+	background: #fee2e2;
+	color: #b91c1c;
+}
+.ai-risk-table .risk-medium {
+	background: #fef3c7;
+	color: #b45309;
+}
+.ai-risk-table .risk-low {
+	background: #d1fae5;
+	color: #047857;
+}
+.ai-risk-table .status-pending {
+	background: #fef3c7;
+	color: #b45309;
+}
+.ai-risk-table .status-ack {
+	background: #dbeafe;
+	color: #1e40af;
+}
+/* AI Management Stats Cards Custom Styles */
+.ai-card {
+	position: relative;
+	overflow: hidden;
+	transition: box-shadow 0.2s, transform 0.2s;
+}
+.ai-card:hover {
+	box-shadow: 0 8px 32px rgba(60, 60, 120, 0.12), 0 1.5px 6px rgba(0,0,0,0.04);
+	transform: translateY(-4px) scale(1.02);
+}
+.ai-card-underline {
+	transition: opacity 0.3s;
+	height: 4px;
+	border-radius: 0 0 12px 12px;
+}
+@media (max-width: 768px) {
+	.ai-card {
+		padding: 1.25rem;
+		font-size: 0.95rem;
+	}
+}
+
+/* Charts Section Custom Styles */
+.ai-charts-row {
+	display: flex;
+	gap: 1.5rem;
+	flex-wrap: wrap;
+}
+.ai-chart-card {
+	background: #23263a;
+	border-radius: 1.25rem;
+	box-shadow: 0 4px 24px rgba(30,30,60,0.10);
+	padding: 2rem;
+	min-width: 0;
+}
+.ai-chart-card canvas {
+	border-radius: 1rem;
+}
+.ai-donut-legend {
+	margin-top: 0.75rem;
+	display: flex;
+	gap: 1rem;
+}
+.ai-donut-legend span {
+	display: inline-block;
+	width: 0.75rem;
+	height: 0.75rem;
+	border-radius: 9999px;
+}
+
+/* Activity Table Custom Styles */
+.ai-activity-table {
+	border-radius: 1.25rem;
+	box-shadow: 0 4px 24px rgba(30,30,60,0.10);
+	overflow: hidden;
+}
+.ai-activity-table th {
+	background: #f8fafc;
+	font-weight: 600;
+	color: #6b7280;
+	font-size: 0.85rem;
+	letter-spacing: 0.04em;
+}
+.ai-activity-table td {
+	font-size: 0.97rem;
+	color: #374151;
+}
+.ai-activity-table .delete-btn {
+	transition: background 0.2s, color 0.2s, transform 0.2s;
+}
+.ai-activity-table .delete-btn:hover {
+	background: #fee2e2;
+	color: #b91c1c;
+	transform: scale(1.1);
+}
+.ai-activity-table .status-success {
+	background: #d1fae5;
+	color: #047857;
+}
+.ai-activity-table .status-delay {
+	background: #fef3c7;
+	color: #b45309;
+}
+
+/* AI Analysis Modal Custom Styles */
+.modal-overlay {
+	transition: opacity 0.3s ease;
+}
+.modal-content {
+	animation: modalFadeIn 0.3s ease;
+}
+@keyframes modalFadeIn {
+	from {
+		opacity: 0;
+		transform: scale(0.95) translateY(-20px);
+	}
+	to {
+		opacity: 1;
+		transform: scale(1) translateY(0);
+	}
+}
+.animate-modal-entrance {
+	animation: modalBounce 0.4s ease;
+}
+@keyframes modalBounce {
+	0% {
+		opacity: 0;
+		transform: scale(0.8);
+	}
+	50% {
+		transform: scale(1.05);
+	}
+	100% {
+		opacity: 1;
+		transform: scale(1);
+	}
+}
+.loader {
+	border: 2px solid rgba(255,255,255,0.3);
+	border-top: 2px solid #fff;
+	border-radius: 50%;
+	width: 16px;
+	height: 16px;
+	animation: spin 0.6s linear infinite;
+}
+@keyframes spin {
+	0% { transform: rotate(0deg); }
+	100% { transform: rotate(360deg); }
+}
+@keyframes slide-up {
+	from {
+		opacity: 0;
+		transform: translateY(20px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+.animate-slide-up {
+	animation: slide-up 0.3s ease;
+}
+@keyframes shake {
+	0%, 100% { transform: translateX(0); }
+	10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+	20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+.animate-shake {
+	animation: shake 0.5s ease;
+}

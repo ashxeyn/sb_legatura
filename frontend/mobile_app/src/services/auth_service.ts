@@ -149,12 +149,12 @@ export class auth_service {
   static async property_owner_step1(personalInfo: any): Promise<api_response> {
     console.log('🔥 STEP 1 CALLED - Personal Info:', personalInfo);
     console.log('🔥 STEP 1 ENDPOINT:', api_config.endpoints.property_owner.step1);
-    
+
     const result = await api_request(api_config.endpoints.property_owner.step1, {
       method: 'POST',
       body: JSON.stringify(personalInfo),
     });
-    
+
     console.log('🔥 STEP 1 RESULT:', result);
     return result;
   }
@@ -167,7 +167,7 @@ export class auth_service {
     };
     // Remove the confirmPassword field since Laravel expects password_confirmation
     delete requestData.confirmPassword;
-    
+
     return await api_request(api_config.endpoints.property_owner.step2, {
       method: 'POST',
       body: JSON.stringify(requestData),
@@ -184,7 +184,7 @@ export class auth_service {
   static async property_owner_step4(verificationInfo: any): Promise<api_response> {
     // Create FormData for file uploads
     const formData = new FormData();
-    
+
     // Map idType string to valid_id_id based on the database valid_ids table
     const idTypeMapping: { [key: string]: number } = {
       "Philippine Passport": 1,
@@ -216,10 +216,10 @@ export class auth_service {
       "School ID": 17,
       "Company ID": 17,
     };
-    
+
     const validIdId = idTypeMapping[verificationInfo.idType] || 9;
     formData.append('valid_id_id', validIdId.toString());
-    
+
     // Add image files with proper React Native format
     if (verificationInfo.idFrontImage) {
       formData.append('valid_id_photo', {
@@ -228,7 +228,7 @@ export class auth_service {
         name: 'id_front.jpg',
       } as any);
     }
-    
+
     if (verificationInfo.idBackImage) {
       formData.append('valid_id_back_photo', {
         uri: verificationInfo.idBackImage,
@@ -236,7 +236,7 @@ export class auth_service {
         name: 'id_back.jpg',
       } as any);
     }
-    
+
     if (verificationInfo.policeClearanceImage) {
       formData.append('police_clearance', {
         uri: verificationInfo.policeClearanceImage,
@@ -244,7 +244,7 @@ export class auth_service {
         name: 'police_clearance.jpg',
       } as any);
     }
-    
+
     return await api_request(api_config.endpoints.property_owner.step4, {
       method: 'POST',
       body: formData,
@@ -253,15 +253,15 @@ export class auth_service {
 
   static async property_owner_final(profileInfo: any = {}): Promise<api_response> {
     console.log('🔥 PROPERTY OWNER FINAL - Profile Info:', profileInfo);
-    
+
     try {
       // Don't refresh CSRF token here - we should already have it from previous steps
       // Refreshing might create a new session and lose the session data
       console.log('🔥 Using existing CSRF token for final step');
-      
+
       // Create FormData for file upload if profile picture exists
       const formData = new FormData();
-      
+
       if (profileInfo.profileImageUri) {
         console.log('🔥 Adding profile picture to FormData');
         formData.append('profile_pic', {
@@ -276,14 +276,14 @@ export class auth_service {
       }
 
       console.log('🔥 Calling endpoint:', api_config.endpoints.property_owner.final);
-      
+
       // If no profile picture, just send empty form data
       const result = await api_request(api_config.endpoints.property_owner.final, {
         method: 'POST',
         body: formData,
         // Don't set Content-Type for FormData - let the browser set it with boundary
       });
-      
+
       console.log('🔥 PROPERTY OWNER FINAL RESULT:', result);
       return result;
     } catch (error) {
@@ -302,7 +302,7 @@ export class auth_service {
     // Transform camelCase to snake_case to match Laravel backend expectations
     // Clean phone number: remove spaces, dashes, and ensure it's exactly 11 digits starting with 09
     let cleanedPhone = companyInfo.companyPhone.replace(/\s+/g, '').replace(/-/g, '');
-    
+
     const requestData: any = {
       company_name: companyInfo.companyName,
       company_phone: cleanedPhone,
@@ -316,7 +316,7 @@ export class auth_service {
       business_address_barangay: companyInfo.businessAddressBarangay,
       business_address_postal: companyInfo.businessAddressPostal,
     };
-    
+
     // Only include company_website if it's a valid URL or empty (backend expects nullable|url)
     if (companyInfo.companyWebsite && companyInfo.companyWebsite.trim() !== '') {
       // Ensure URL has protocol
@@ -326,12 +326,12 @@ export class auth_service {
       }
       requestData.company_website = websiteUrl;
     }
-    
+
     // Only include company_social_media if it has a value
     if (companyInfo.companySocialMedia && companyInfo.companySocialMedia.trim() !== '') {
       requestData.company_social_media = companyInfo.companySocialMedia.trim();
     }
-    
+
     return await api_request(api_config.endpoints.contractor.step1, {
       method: 'POST',
       body: JSON.stringify(requestData),
@@ -349,7 +349,7 @@ export class auth_service {
       password: accountInfo.password,
       password_confirmation: accountInfo.confirmPassword, // Laravel expects password_confirmation for 'confirmed' validation
     };
-    
+
     return await api_request(api_config.endpoints.contractor.step2, {
       method: 'POST',
       body: JSON.stringify(requestData),
@@ -366,7 +366,7 @@ export class auth_service {
   static async contractor_step4(documentsInfo: any): Promise<api_response> {
     // Create FormData for file upload
     const formData = new FormData();
-    
+
     // Add all the business document fields based on backend requirements
     formData.append('picab_number', documentsInfo.picabNumber || '');
     formData.append('picab_category', documentsInfo.picabCategory || '');
@@ -375,7 +375,7 @@ export class auth_service {
     formData.append('business_permit_city', documentsInfo.businessPermitCity || '');
     formData.append('business_permit_expiration', documentsInfo.businessPermitExpiration || '');
     formData.append('tin_business_reg_number', documentsInfo.tinBusinessRegNumber || '');
-    
+
     // Add DTI/SEC registration photo (required file upload)
     if (documentsInfo.dtiSecRegistrationPhoto) {
       formData.append('dti_sec_registration_photo', {
@@ -384,7 +384,7 @@ export class auth_service {
         name: 'dti_sec_registration.jpg',
       } as any);
     }
-    
+
     return await api_request(api_config.endpoints.contractor.step4, {
       method: 'POST',
       body: formData,
@@ -393,15 +393,15 @@ export class auth_service {
 
   static async contractor_final(profileInfo: any = {}): Promise<api_response> {
     console.log('🔥 CONTRACTOR FINAL - Profile Info:', profileInfo);
-    
+
     try {
       // Don't refresh CSRF token here - we should already have it from previous steps
       // Refreshing might create a new session and lose the session data
       console.log('🔥 Using existing CSRF token for final step');
-      
+
       // Create FormData for file upload if profile picture exists
       const formData = new FormData();
-      
+
       if (profileInfo.profileImageUri) {
         console.log('🔥 Adding profile picture to FormData');
         formData.append('profile_pic', {
@@ -416,13 +416,13 @@ export class auth_service {
       }
 
       console.log('🔥 Calling endpoint:', api_config.endpoints.contractor.final);
-      
+
       const result = await api_request(api_config.endpoints.contractor.final, {
         method: 'POST',
         body: formData,
         // Don't set Content-Type for FormData - let the browser set it with boundary
       });
-      
+
       console.log('🔥 CONTRACTOR FINAL RESULT:', result);
       return result;
     } catch (error) {

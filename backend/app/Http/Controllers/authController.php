@@ -1080,7 +1080,7 @@ class authController extends Controller
                 $user = $result['user'];
                 // Create Sanctum token for mobile app
                 $token = $user->createToken('mobile-app')->plainTextToken;
-                
+
                 return response()->json([
                     'success' => true,
                     'message' => 'Login successful',

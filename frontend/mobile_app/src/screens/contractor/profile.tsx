@@ -41,7 +41,7 @@ interface MenuItem {
 export default function ContractorProfileScreen({ onLogout, userData }: ContractorProfileScreenProps) {
   const insets = useSafeAreaInsets();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  
+
   // Get status bar height (top inset)
   const statusBarHeight = insets.top || (Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 44);
 
@@ -211,7 +211,7 @@ export default function ContractorProfileScreen({ onLogout, userData }: Contract
   return (
     <SafeAreaView style={[styles.container, { paddingTop: statusBarHeight }]}>
       <StatusBar hidden={true} />
-      <ScrollView 
+      <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
@@ -262,13 +262,13 @@ export default function ContractorProfileScreen({ onLogout, userData }: Contract
             <Text style={styles.companyName}>{userData?.company_name || 'Company Name'}</Text>
             <Text style={styles.userName}>@{userData?.username || 'contractor'}</Text>
             <Text style={styles.userEmail}>{userData?.email || 'contractor@example.com'}</Text>
-            
+
             <View style={styles.badgeRow}>
               <View style={styles.userTypeBadge}>
                 <MaterialIcons name="business" size={14} color="#1877F2" />
                 <Text style={styles.userTypeText}>Contractor</Text>
               </View>
-              
+
               {userData?.contractor_type && (
                 <View style={styles.contractorTypeBadge}>
                   <MaterialIcons name="build" size={14} color="#42B883" />

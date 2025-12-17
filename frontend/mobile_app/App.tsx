@@ -24,6 +24,7 @@ import EmailVerificationScreen from './src/screens/both/emailVerification';
 import ProfilePictureScreen from './src/screens/both/profilePic';
 import HomepageScreen from './src/screens/both/homepage';
 import { auth_service } from './src/services/auth_service';
+import { storage_service } from './src/utils/storage';
 import { Alert } from 'react-native';
 
 type AppState = 'loading' | 'onboarding' | 'auth_choice' | 'login' | 'signup' | 'user_type_selection' |
@@ -35,6 +36,43 @@ type AppState = 'loading' | 'onboarding' | 'auth_choice' | 'login' | 'signup' | 
 
 export default function App() {
     const [app_state, set_app_state] = useState<AppState>('loading');
+    const [checking_auth, set_checking_auth] = useState(true);
+
+    // Check for stored authentication on app startup
+    useEffect(() => {
+        check_stored_auth();
+    }, []);
+
+    const check_stored_auth = async () => {
+        try {
+            const is_authenticated = await storage_service.is_authenticated();
+            const stored_user_data = await storage_service.get_user_data();
+
+            if (is_authenticated && stored_user_data) {
+                // User was logged in, restore their session
+                console.log('Restoring user session:', stored_user_data.username);
+                set_user_data(stored_user_data);
+
+                // Set user type based on stored data
+                if (stored_user_data.user_type === 'contractor') {
+                    set_selected_user_type('contractor');
+                } else if (stored_user_data.user_type === 'property_owner' || stored_user_data.user_type === 'both') {
+                    set_selected_user_type('property_owner');
+                }
+
+                set_app_state('main');
+            } else {
+                // No stored auth, proceed with normal flow
+                console.log('No stored authentication found');
+                set_app_state('loading');
+            }
+        } catch (error) {
+            console.error('Error checking stored auth:', error);
+            set_app_state('loading');
+        } finally {
+            set_checking_auth(false);
+        }
+    };
 
     // Hide status bar globally whenever app state changes
     useEffect(() => {
@@ -63,7 +101,10 @@ export default function App() {
     const [contractor_documents_info, set_contractor_documents_info] = useState<any>(null);
 
     const handle_loading_complete = () => {
-        set_app_state('onboarding');
+        // Only show onboarding if we're not already authenticated
+        if (!checking_auth && app_state !== 'main') {
+            set_app_state('onboarding');
+        }
     };
 
     const handle_onboarding_next = () => {
@@ -151,10 +192,14 @@ export default function App() {
         set_app_state('main'); // Complete signup
     };
 
-    const handle_login_success = (userData?: any) => {
+    const handle_login_success = async (userData?: any) => {
         // Store user data from login response
         if (userData) {
             set_user_data(userData);
+            // Save to persistent storage
+            await storage_service.save_user_data(userData);
+            console.log('User data saved to storage on login');
+
             // Set user type based on user data
             if (userData.user_type === 'contractor') {
                 set_selected_user_type('contractor');
@@ -165,7 +210,11 @@ export default function App() {
         set_app_state('main');
     };
 
-    const handle_logout = () => {
+    const handle_logout = async () => {
+        // Clear persistent storage
+        await storage_service.clear_user_data();
+        console.log('User logged out, storage cleared');
+
         // Clear all user data and state
         set_user_data(null);
         set_selected_user_type(null);
@@ -180,6 +229,15 @@ export default function App() {
         // Navigate to auth choice screen
         set_app_state('auth_choice');
     };
+
+    // Show loading screen while checking stored authentication
+    if (checking_auth) {
+        return (
+            <SafeAreaProvider>
+                <LoadingScreen onLoadingComplete={() => { }} />
+            </SafeAreaProvider>
+        );
+    }
 
     if (app_state === 'loading') {
         return (
@@ -380,9 +438,9 @@ export default function App() {
                     userType={selected_user_type || 'property_owner'}
                     userData={user_data}
                     onLogout={handle_logout}
-                    onViewProfile={() => set_app_state('view_profile')} 
-                    onEditProfile={() => set_app_state('edit_profile')} 
-                    initialTab={initial_home_tab} 
+                    onViewProfile={() => set_app_state('view_profile')}
+                    onEditProfile={() => set_app_state('edit_profile')}
+                    initialTab={initial_home_tab}
                 />
             </SafeAreaProvider>
         );
@@ -395,12 +453,12 @@ export default function App() {
                 <EditProfileScreen
                     userData={user_data}
                     onBackPress={() => {
-                        set_initial_home_tab('profile'); 
+                        set_initial_home_tab('profile');
                         set_app_state('main');
                     }}
                     onSaveSuccess={(updatedUser) => {
                         set_user_data(updatedUser);
-                        set_initial_home_tab('profile'); 
+                        set_initial_home_tab('profile');
                         set_app_state('main');
                     }}
                 />
