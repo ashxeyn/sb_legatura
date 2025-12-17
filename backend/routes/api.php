@@ -60,6 +60,8 @@ Route::get('/contractor/my-projects', [\App\Http\Controllers\contractor\cprocess
 Route::get('/contractor/projects/{projectId}/milestone-form', [\App\Http\Controllers\contractor\cprocessController::class, 'apiGetMilestoneFormData']);
 Route::post('/contractor/projects/{projectId}/milestones', [\App\Http\Controllers\contractor\cprocessController::class, 'apiSubmitMilestones']);
 
+// Note: profile update registered below inside sanctum-protected group
+
 // Protected routes (require authentication via Sanctum)
 Route::middleware('auth:sanctum')->group(function () {
 
@@ -81,6 +83,9 @@ Route::middleware('auth:sanctum')->group(function () {
             'message' => 'Logged out successfully'
         ]);
     });
+
+    // Update profile (profile picture / cover photo)
+    Route::post('/user/update-profile', [authController::class, 'updateProfile']);
 
     // Role management
     Route::post('/role/switch', [cprocessController::class, 'switchRole']);

@@ -62,6 +62,28 @@ export class auth_service {
     });
   }
 
+  /**
+   * Update current user's profile (username, email, profile_pic, cover_photo)
+   * Expects a FormData object when uploading files
+   */
+  static async updateProfile(formData: FormData): Promise<api_response> {
+    try {
+      const response = await api_request('/api/user/profile', {
+        method: 'POST',
+        body: formData,
+      });
+
+      return response;
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to update profile',
+        status: 0,
+      };
+    }
+  }
+
   // Login functionality
   static async login(credentials: login_data): Promise<api_response> {
     return await api_request(api_config.endpoints.auth.login, {

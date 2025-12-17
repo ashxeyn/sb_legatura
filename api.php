@@ -47,6 +47,10 @@ Route::middleware('auth:sanctum')->group(function () {
         ]);
     });
 
+Route::middleware('auth:sanctum')->group(function () {
+    // Other routes...
+    Route::post('/user/update-profile', [authController::class, 'updateProfile']);
+});    
     // Role management
     Route::post('/role/switch', [cprocessController::class, 'switchRole']);
     Route::get('/role/current', [cprocessController::class, 'getCurrentRole']);

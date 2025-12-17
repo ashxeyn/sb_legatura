@@ -1,10 +1,13 @@
 if (typeof window.DisputeModal === 'undefined') {
     window.DisputeModal = {
         // Add more files function
+<<<<<<< HEAD
+        addMoreFiles: function(containerId, buttonId) {
+const container = document.getElementById(containerId);
+=======
         addMoreFiles: function (containerId, buttonId) {
             const container = document.getElementById(containerId);
-        addMoreFiles: function (containerId, buttonId) {
-            const container = document.getElementById(containerId);
+>>>>>>> origin/carl
             if (!container) return;
 
 const fileInputs = container.querySelectorAll('.file-input-group');
@@ -73,13 +76,17 @@ const addMoreBtn = document.getElementById(buttonId);
         // Handle file selection
         handleFileSelection: function (input, containerId, buttonId) {
             if (input.files && input.files.length > 0) {
-                const fileGroup = input.parentElement;
+const fileGroup = input.parentElement;
 
                 // Hide the file input and show file name instead
                 input.classList.add('has-file');
 
                 // Check if file name display already exists
+<<<<<<< HEAD
+const fileNameDisplay = fileGroup.querySelector('.file-name-display');
+=======
                 const fileNameDisplay = fileGroup.querySelector('.file-name-display');
+>>>>>>> origin/carl
                 if (!fileNameDisplay) {
                     fileNameDisplay = document.createElement('div');
                     fileNameDisplay.className = 'file-name-display';
@@ -109,10 +116,13 @@ const fileInputs = container.querySelectorAll('.file-input-group');
         },
 
         // Remove file input
+<<<<<<< HEAD
+        removeFileInput: function(button, containerId, buttonId) {
+const container = document.getElementById(containerId);
+=======
         removeFileInput: function (button, containerId, buttonId) {
             const container = document.getElementById(containerId);
-        removeFileInput: function (button, containerId, buttonId) {
-            const container = document.getElementById(containerId);
+>>>>>>> origin/carl
             if (!container) return;
 
 const fileGroup = button.parentElement;
@@ -149,16 +159,19 @@ const addMoreBtn = document.getElementById(buttonId);
         // ========== MODAL OPERATIONS ==========
 
         // Open dispute modal
+<<<<<<< HEAD
+        open: function(mode = 'add', disputeData = null) {
+const modal = document.getElementById('addEditDisputeModal');
+const title = document.getElementById('disputeModalTitle');
+const submitBtn = document.getElementById('modalSubmitBtn');
+const isEditInput = document.getElementById('modal_is_edit');
+=======
         open: function (mode = 'add', disputeData = null) {
             const modal = document.getElementById('addEditDisputeModal');
             const title = document.getElementById('disputeModalTitle');
             const submitBtn = document.getElementById('modalSubmitBtn');
             const isEditInput = document.getElementById('modal_is_edit');
-        open: function (mode = 'add', disputeData = null) {
-            const modal = document.getElementById('addEditDisputeModal');
-            const title = document.getElementById('disputeModalTitle');
-            const submitBtn = document.getElementById('modalSubmitBtn');
-            const isEditInput = document.getElementById('modal_is_edit');
+>>>>>>> origin/carl
 
             // Reset form
             document.getElementById('disputeModalForm').reset();
@@ -403,17 +416,23 @@ const fileContainer = document.getElementById('modal-file-upload-container');
         },
 
         // Close dispute modal
+<<<<<<< HEAD
         close: function() {
 const modal = document.getElementById('addEditDisputeModal');
+=======
         close: function () {
             const modal = document.getElementById('addEditDisputeModal');
+>>>>>>> origin/carl
             modal.style.display = 'none';
             document.body.style.overflow = 'auto';
         },
 
         // Mark file for removal (only removed from UI, actual deletion on form submit)
+<<<<<<< HEAD
         markFileForRemoval: function(fileId) {
+=======
         markFileForRemoval: function (fileId) {
+>>>>>>> origin/carl
 
 
             // Remove from UI
@@ -424,8 +443,11 @@ const fileElement = document.getElementById('modal-file-' + fileId);
             }
 
             // Add to hidden input for deletion tracking
+<<<<<<< HEAD
 const deletedFilesInput = document.getElementById('deleted_file_ids');
+=======
             const deletedFilesInput = document.getElementById('deleted_file_ids');
+>>>>>>> origin/carl
             if (!deletedFilesInput) {
                 deletedFilesInput = document.createElement('input');
                 deletedFilesInput.type = 'hidden';
@@ -464,6 +486,7 @@ const filesList = document.getElementById('modalExistingFilesList');
                     'X-Requested-With': 'XMLHttpRequest'
                 }
             })
+<<<<<<< HEAD
             .then(response => response.json())
             .then(result => {
                 if (result.success) {
@@ -475,6 +498,7 @@ const fileElement = document.getElementById('modal-file-' + fileId);
 const filesList = document.getElementById('modalExistingFilesList');
                     if (filesList.children.length === 0) {
                         document.getElementById('modalExistingFilesSection').style.display = 'none';
+=======
                 .then(response => response.json())
                 .then(result => {
                     if (result.success) {
@@ -489,6 +513,7 @@ const filesList = document.getElementById('modalExistingFilesList');
                         }
                     } else {
                         alert(result.message || 'Error deleting file');
+>>>>>>> origin/carl
                     }
                 })
                 .catch(error => {
@@ -498,12 +523,15 @@ const filesList = document.getElementById('modalExistingFilesList');
         },
 
         // Load milestones for a project
+<<<<<<< HEAD
         loadMilestones: function(projectId, preselectMilestoneId = null) {
 const milestoneSelect = document.getElementById('modal_milestone_id');
 const milestoneItemSelect = document.getElementById('modal_milestone_item_id');
+=======
         loadMilestones: function (projectId, preselectMilestoneId = null) {
             const milestoneSelect = document.getElementById('modal_milestone_id');
             const milestoneItemSelect = document.getElementById('modal_milestone_item_id');
+>>>>>>> origin/carl
 
             if (!milestoneSelect) return;
 
@@ -514,6 +542,7 @@ const milestoneItemSelect = document.getElementById('modal_milestone_item_id');
                     'Content-Type': 'application/json'
                 }
             })
+<<<<<<< HEAD
             .then(response => response.json())
             .then(data => {
 const milestones = [];
@@ -522,6 +551,7 @@ const milestones = [];
                 } else if (data.milestones) {
                     milestones = data.milestones;
                 }
+=======
                 .then(response => response.json())
                 .then(data => {
                     const milestones = [];
@@ -530,14 +560,17 @@ const milestones = [];
                     } else if (data.milestones) {
                         milestones = data.milestones;
                     }
+>>>>>>> origin/carl
 
                     milestoneSelect.innerHTML = '<option value="">Select Milestone</option>';
 
+<<<<<<< HEAD
                 milestones.forEach(milestone => {
 const option = document.createElement('option');
                     option.value = milestone.milestone_id;
                     option.textContent = milestone.milestone_name || 'Unnamed Milestone';
                     milestoneSelect.appendChild(option);
+=======
                     milestones.forEach(milestone => {
                         const option = document.createElement('option');
                         option.value = milestone.milestone_id;
@@ -552,6 +585,7 @@ const option = document.createElement('option');
                 })
                 .catch(error => {
                     console.error('Error loading milestones:', error);
+>>>>>>> origin/carl
                 });
 
             if (milestoneItemSelect) {
@@ -560,10 +594,13 @@ const option = document.createElement('option');
         },
 
         // Load milestone items for a milestone
+<<<<<<< HEAD
         loadMilestoneItems: function(milestoneId, preselectItemId = null) {
 const milestoneItemSelect = document.getElementById('modal_milestone_item_id');
+=======
         loadMilestoneItems: function (milestoneId, preselectItemId = null) {
             const milestoneItemSelect = document.getElementById('modal_milestone_item_id');
+>>>>>>> origin/carl
 
             if (!milestoneItemSelect || !milestoneId) {
                 if (milestoneItemSelect) {
@@ -579,6 +616,7 @@ const milestoneItemSelect = document.getElementById('modal_milestone_item_id');
                     'Content-Type': 'application/json'
                 }
             })
+<<<<<<< HEAD
             .then(response => response.json())
             .then(data => {
 const milestoneItems = [];
@@ -587,6 +625,7 @@ const milestoneItems = [];
                 } else if (data.milestone_items) {
                     milestoneItems = data.milestone_items;
                 }
+=======
                 .then(response => response.json())
                 .then(data => {
                     const milestoneItems = [];
@@ -595,14 +634,17 @@ const milestoneItems = [];
                     } else if (data.milestone_items) {
                         milestoneItems = data.milestone_items;
                     }
+>>>>>>> origin/carl
 
                     milestoneItemSelect.innerHTML = '<option value="">Select Milestone Item</option>';
 
+<<<<<<< HEAD
                 milestoneItems.forEach(item => {
 const option = document.createElement('option');
                     option.value = item.milestone_item_id;
                     option.textContent = item.milestone_item_title || 'Unnamed Item';
                     milestoneItemSelect.appendChild(option);
+=======
                     milestoneItems.forEach(item => {
                         const option = document.createElement('option');
                         option.value = item.milestone_item_id;
@@ -617,20 +659,24 @@ const option = document.createElement('option');
                 .catch(error => {
                     console.error('Error loading milestone items:', error);
                     milestoneItemSelect.innerHTML = '<option value="">Error loading milestone items</option>';
+>>>>>>> origin/carl
                 });
         },
 
         // Initialize modal event listeners
+<<<<<<< HEAD
         init: function() {
 const modalDescTextarea = document.getElementById('modal_dispute_desc');
             if (modalDescTextarea) {
                 modalDescTextarea.addEventListener('input', function() {
 const count = this.value.length;
+=======
         init: function () {
             const modalDescTextarea = document.getElementById('modal_dispute_desc');
             if (modalDescTextarea) {
                 modalDescTextarea.addEventListener('input', function () {
                     const count = this.value.length;
+>>>>>>> origin/carl
                     document.getElementById('modalCharCount').textContent = count + ' / 2000 characters';
                 });
             }
@@ -638,10 +684,13 @@ const count = this.value.length;
             // Project selection change
 const modalProjectSelect = document.getElementById('modal_project_id');
             if (modalProjectSelect) {
+<<<<<<< HEAD
                 modalProjectSelect.addEventListener('change', function() {
 const projectId = this.value;
+=======
                 modalProjectSelect.addEventListener('change', function () {
                     const projectId = this.value;
+>>>>>>> origin/carl
                     if (projectId) {
                         window.DisputeModal.loadMilestones(projectId);
                     } else {
@@ -674,10 +723,13 @@ const modalIfOthersInput = document.getElementById('modal_if_others_distype');
             // Milestone selection change
 const modalMilestoneSelect = document.getElementById('modal_milestone_id');
             if (modalMilestoneSelect) {
+<<<<<<< HEAD
                 modalMilestoneSelect.addEventListener('change', function() {
 const milestoneId = this.value;
+=======
                 modalMilestoneSelect.addEventListener('change', function () {
                     const milestoneId = this.value;
+>>>>>>> origin/carl
                     if (milestoneId) {
                         window.DisputeModal.loadMilestoneItems(milestoneId);
                     }
@@ -716,10 +768,13 @@ const modalCancelBtn = document.getElementById('modalCancelBtn');
 
 const progressTextarea = document.getElementById('progress_purpose');
             if (progressTextarea) {
+<<<<<<< HEAD
                 progressTextarea.addEventListener('input', function() {
 const count = this.value.length;
+=======
                 progressTextarea.addEventListener('input', function () {
                     const count = this.value.length;
+>>>>>>> origin/carl
                     document.getElementById('progressCharCount').textContent = count + ' / 1000 characters';
                 });
             }
@@ -768,12 +823,15 @@ const successDiv = document.getElementById('progressModalSuccessMessages');
                     errorDiv.style.display = 'none';
                     successDiv.style.display = 'none';
 
+<<<<<<< HEAD
 const url = '/contractor/progress/upload';
 const method = 'POST';
 const headers = {
+=======
                     const url = '/contractor/progress/upload';
                     const method = 'POST';
                     const headers = {
+>>>>>>> origin/carl
                         'X-CSRF-TOKEN': getCsrfToken(),
                         'Accept': 'application/json',
                         'X-Requested-With': 'XMLHttpRequest'
@@ -795,6 +853,7 @@ const headers = {
                                 successDiv.innerHTML = '<p>' + (result.message || 'Progress uploaded successfully!') + '</p>';
                                 successDiv.style.display = 'block';
 
+<<<<<<< HEAD
                             setTimeout(() => {
                                 window.ProgressModal.close();
                                 location.reload();
@@ -810,6 +869,7 @@ const errorMessage = result.message || 'An error occurred';
                                         });
                                     } else {
                                         errorMessage += '<li>' + result.errors[field] + '</li>';
+=======
                                 setTimeout(() => {
                                     window.ProgressModal.close();
                                     location.reload();
@@ -826,6 +886,7 @@ const errorMessage = result.message || 'An error occurred';
                                         } else {
                                             errorMessage += '<li>' + result.errors[field] + '</li>';
                                         }
+>>>>>>> origin/carl
                                     }
                                     errorMessage += '</ul>';
                                 }
@@ -862,12 +923,15 @@ const successDiv = document.getElementById('modalSuccessMessages');
                     errorDiv.style.display = 'none';
                     successDiv.style.display = 'none';
 
+<<<<<<< HEAD
 const url = '/both/disputes/file';
 const method = 'POST';
 const headers = {
+=======
                     const url = '/both/disputes/file';
                     const method = 'POST';
                     const headers = {
+>>>>>>> origin/carl
                         'X-CSRF-TOKEN': getCsrfToken(),
                         'Accept': 'application/json',
                         'X-Requested-With': 'XMLHttpRequest'
@@ -889,6 +953,7 @@ const headers = {
                                 successDiv.innerHTML = result.message;
                                 successDiv.style.display = 'block';
 
+<<<<<<< HEAD
                             setTimeout(() => {
                                 window.DisputeModal.close();
                                 location.reload();
@@ -905,10 +970,12 @@ const errorHtml = '<ul>';
                                 }
                                 errorHtml += '</ul>';
                                 errorDiv.innerHTML = errorHtml;
+=======
                                 setTimeout(() => {
                                     window.DisputeModal.close();
                                     location.reload();
                                 }, 1500);
+>>>>>>> origin/carl
                             } else {
                                 if (result.errors) {
                                     const errorHtml = '<ul>';
@@ -960,10 +1027,13 @@ const modal = document.getElementById('cancelDisputeModal');
         },
 
         // Close cancel modal
+<<<<<<< HEAD
         close: function() {
 const modal = document.getElementById('cancelDisputeModal');
+=======
         close: function () {
             const modal = document.getElementById('cancelDisputeModal');
+>>>>>>> origin/carl
             if (modal) {
                 modal.style.display = 'none';
                 document.body.style.overflow = 'auto';
@@ -1023,16 +1093,19 @@ if (typeof window.PaymentModal === 'undefined') {
     window.PaymentModal = {
         paymentId: null,
 
+<<<<<<< HEAD
         open: function(mode = 'add', paymentData = null) {
 const modal = document.getElementById('paymentModal');
 const title = document.getElementById('paymentModalTitle');
 const form = document.getElementById('paymentModalForm');
 const isEditInput = document.getElementById('payment_is_edit');
+=======
         open: function (mode = 'add', paymentData = null) {
             const modal = document.getElementById('paymentModal');
             const title = document.getElementById('paymentModalTitle');
             const form = document.getElementById('paymentModalForm');
             const isEditInput = document.getElementById('payment_is_edit');
+>>>>>>> origin/carl
 
             // reset
             form.reset();
@@ -1053,8 +1126,11 @@ const isEditInput = document.getElementById('payment_is_edit');
                 document.getElementById('transaction_number').value = paymentData.transaction_number || '';
                 if (paymentData.transaction_date) {
                     // set date-only (YYYY-MM-DD)
+<<<<<<< HEAD
 const dateVal = paymentData.transaction_date.toString().slice(0,10);
+=======
                     const dateVal = paymentData.transaction_date.toString().slice(0, 10);
+>>>>>>> origin/carl
                     document.getElementById('transaction_date').value = dateVal;
                 }
                 if (paymentData.receipt_photo) {
@@ -1134,16 +1210,19 @@ const cancelBtn = document.getElementById('paymentCancelBtn');
             if (!form._payment_handler_attached) {
                 form.addEventListener('submit', function (e) {
                     e.preventDefault();
+<<<<<<< HEAD
 const fd = new FormData(form);
 const isEdit = document.getElementById('payment_is_edit').value === '1';
 const url = '/owner/payment/upload';
 const method = 'POST';
 const headers = {
+=======
                     const fd = new FormData(form);
                     const isEdit = document.getElementById('payment_is_edit').value === '1';
                     const url = '/owner/payment/upload';
                     const method = 'POST';
                     const headers = {
+>>>>>>> origin/carl
                         'X-CSRF-TOKEN': getCsrfToken(),
                         'X-Requested-With': 'XMLHttpRequest'
                     };
@@ -1161,6 +1240,7 @@ const pid = document.getElementById('payment_id').value;
                         headers: headers,
                         body: fd
                     })
+<<<<<<< HEAD
                     .then(r => r.json())
                     .then(res => {
 const errDiv = document.getElementById('paymentModalErrorMessages');
@@ -1181,6 +1261,7 @@ const errDiv = document.getElementById('paymentModalErrorMessages');
                         errDiv.style.display = 'block';
                         console.error('Payment submit error', err);
                     });
+=======
                         .then(r => r.json())
                         .then(res => {
                             const errDiv = document.getElementById('paymentModalErrorMessages');
@@ -1201,6 +1282,7 @@ const errDiv = document.getElementById('paymentModalErrorMessages');
                             errDiv.style.display = 'block';
                             console.error('Payment submit error', err);
                         });
+>>>>>>> origin/carl
                 });
                 form._payment_handler_attached = true;
             }
@@ -1209,10 +1291,13 @@ const errDiv = document.getElementById('paymentModalErrorMessages');
             document.body.style.overflow = 'hidden';
         },
 
+<<<<<<< HEAD
         close: function() {
 const modal = document.getElementById('paymentModal');
+=======
         close: function () {
             const modal = document.getElementById('paymentModal');
+>>>>>>> origin/carl
             if (modal) {
                 modal.style.display = 'none';
                 document.body.style.overflow = 'auto';
@@ -1243,10 +1328,13 @@ const reasonTextarea = document.getElementById('delete_payment_reason');
             }
         },
 
+<<<<<<< HEAD
         close: function() {
 const modal = document.getElementById('deletePaymentModal');
+=======
         close: function () {
             const modal = document.getElementById('deletePaymentModal');
+>>>>>>> origin/carl
             if (modal) {
                 modal.style.display = 'none';
                 document.body.style.overflow = 'auto';
@@ -1422,10 +1510,13 @@ const successDiv = document.getElementById('deleteProgressSuccessMessage');
         },
 
         // Close delete modal
+<<<<<<< HEAD
         close: function() {
 const modal = document.getElementById('deleteProgressModal');
+=======
         close: function () {
             const modal = document.getElementById('deleteProgressModal');
+>>>>>>> origin/carl
             if (modal) {
                 modal.style.display = 'none';
                 document.body.style.overflow = 'auto';
@@ -1464,14 +1555,17 @@ const errDiv = document.getElementById('deleteProgressErrorMessage');
                 },
                 body: JSON.stringify({ reason: reason })
             })
+<<<<<<< HEAD
             .then(response => response.json())
             .then(result => {
 const errDiv = document.getElementById('deleteProgressErrorMessage');
 const successDiv = document.getElementById('deleteProgressSuccessMessage');
+=======
                 .then(response => response.json())
                 .then(result => {
                     const errDiv = document.getElementById('deleteProgressErrorMessage');
                     const successDiv = document.getElementById('deleteProgressSuccessMessage');
+>>>>>>> origin/carl
 
                     if (result.success) {
                         if (errDiv) { errDiv.style.display = 'none'; errDiv.innerHTML = ''; }
@@ -1504,6 +1598,7 @@ const successDiv = document.getElementById('deleteProgressSuccessMessage');
                             alert('Error: ' + result.message);
                         }
                     }
+<<<<<<< HEAD
 
                     // disable confirm button to prevent duplicate submits
 const confirmBtn = document.querySelector('#deleteProgressModal .modal-actions .btn-danger');
@@ -1518,10 +1613,12 @@ const modal = document.getElementById('deleteProgressModal');
                     }, 1000);
                 } else {
                     if (successDiv) { successDiv.style.display = 'none'; successDiv.innerHTML = ''; }
+=======
                 })
                 .catch(error => {
                     console.error('Delete error:', error);
                     const errDiv = document.getElementById('deleteProgressErrorMessage');
+>>>>>>> origin/carl
                     if (errDiv) {
                         errDiv.innerHTML = 'An error occurred while deleting the progress report.';
                         errDiv.style.display = 'block';
@@ -1530,6 +1627,7 @@ const modal = document.getElementById('deleteProgressModal');
                     } else {
                         alert('An error occurred while deleting the progress report.');
                     }
+<<<<<<< HEAD
                 }
             })
             .catch(error => {
@@ -1544,7 +1642,9 @@ const errDiv = document.getElementById('deleteProgressErrorMessage');
                     alert('An error occurred while deleting the progress report.');
                 }
             });
+=======
                 });
+>>>>>>> origin/carl
         }
     };
 }
@@ -1554,18 +1654,21 @@ const errDiv = document.getElementById('deleteProgressErrorMessage');
 if (typeof window.ProgressModal === 'undefined') {
     window.ProgressModal = {
         // Open progress modal
+<<<<<<< HEAD
         open: function(mode = 'add', progressData = null) {
 const modal = document.getElementById('progressModal');
 const title = document.getElementById('progressModalTitle');
 const form = document.getElementById('progressModalForm');
 const submitBtn = document.getElementById('progressSubmitBtnText');
 const isEditInput = document.getElementById('progress_is_edit');
+=======
         open: function (mode = 'add', progressData = null) {
             const modal = document.getElementById('progressModal');
             const title = document.getElementById('progressModalTitle');
             const form = document.getElementById('progressModalForm');
             const submitBtn = document.getElementById('progressSubmitBtnText');
             const isEditInput = document.getElementById('progress_is_edit');
+>>>>>>> origin/carl
 
             form.reset();
             document.getElementById('progressModalErrorMessages').style.display = 'none';
@@ -1663,17 +1766,23 @@ const newRemoveBtn = fileContainer.querySelector('.remove-file-btn');
             document.body.style.overflow = 'hidden';
         },
 
+<<<<<<< HEAD
         close: function() {
 const modal = document.getElementById('progressModal');
+=======
         close: function () {
             const modal = document.getElementById('progressModal');
+>>>>>>> origin/carl
             modal.style.display = 'none';
             document.body.style.overflow = 'auto';
         },
 
         // Mark file for removal
+<<<<<<< HEAD
         markFileForRemoval: function(fileId) {
+=======
         markFileForRemoval: function (fileId) {
+>>>>>>> origin/carl
 
 
             // Remove from UI
@@ -1684,8 +1793,11 @@ const fileElement = document.getElementById('progress-file-' + fileId);
             }
 
             // Add to hidden input for deletion tracking
+<<<<<<< HEAD
 const deletedFilesInput = document.getElementById('progress_deleted_file_ids');
+=======
             const deletedFilesInput = document.getElementById('progress_deleted_file_ids');
+>>>>>>> origin/carl
             if (!deletedFilesInput) {
                 deletedFilesInput = document.createElement('input');
                 deletedFilesInput.type = 'hidden';
@@ -1741,10 +1853,13 @@ const modal = document.getElementById('approveProgressModal');
         },
 
         // Close approve modal
+<<<<<<< HEAD
         close: function() {
 const modal = document.getElementById('approveProgressModal');
+=======
         close: function () {
             const modal = document.getElementById('approveProgressModal');
+>>>>>>> origin/carl
             if (modal) {
                 modal.style.display = 'none';
                 document.body.style.overflow = 'auto';
