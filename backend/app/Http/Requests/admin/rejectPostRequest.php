@@ -1,17 +1,17 @@
 <?php
 
-namespace App\Http\Requests\Admin;
+namespace App\Http\Requests\admin;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class rejectVerificationRequest extends FormRequest
+class rejectPostRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
      */
     public function authorize(): bool
     {
-        return true; // Admin middleware handles auth
+        return true;
     }
 
     /**
@@ -22,20 +22,22 @@ class rejectVerificationRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'reason' => 'required|string|min:5|max:500',
+            'reason' => 'required|string|min:10|max:500',
         ];
     }
 
     /**
-     * Get custom messages for validator errors.
+     * Get custom error messages for validator errors.
      *
-     * @return array
+     * @return array<string, string>
      */
     public function messages(): array
     {
         return [
-            'reason.required' => 'A rejection reason is required.',
-            'reason.min' => 'The rejection reason must be at least 5 characters.',
+            'reason.required' => 'A reason for rejection is required.',
+            'reason.min' => 'The reason must be at least 10 characters.',
+            'reason.max' => 'The reason must not exceed 500 characters.',
         ];
     }
 }
+

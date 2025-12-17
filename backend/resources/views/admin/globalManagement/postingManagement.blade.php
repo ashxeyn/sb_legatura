@@ -4,6 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
   <title>Admin Dashboard - Legatura</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
@@ -172,6 +173,7 @@
         <div class="flex items-center gap-6">
           <div class="relative w-64" style="width: 600px;">
             <input 
+              id="searchInput"
               type="text" 
               placeholder="Search..." 
               class="border border-gray-300 rounded-lg px-4 py-2 pr-10 focus:ring-2 focus:ring-indigo-400 focus:outline-none w-full"
@@ -238,821 +240,61 @@
 
       <div class="p-8 space-y-6">
         <!-- Filters Section -->
-        <div class="bg-white rounded-2xl shadow-lg p-6">
-          <div class="flex items-center justify-between flex-wrap gap-4">
-            <div class="flex items-center gap-4 flex-wrap">
-              <button class="flex items-center gap-2 px-4 py-2 border-2 border-gray-300 rounded-lg hover:border-indigo-400 hover:bg-indigo-50 transition-all duration-200 font-medium text-gray-700">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
-                </svg>
-                Filter By
-              </button>
-
-              <select class="px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 focus:outline-none bg-white font-medium text-gray-700" id="dateFilter">
-                <option value="">Date</option>
-                <option value="today">Today</option>
-                <option value="week">This Week</option>
-                <option value="month">This Month</option>
-                <option value="year">This Year</option>
-              </select>
-
-              <select class="px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 focus:outline-none bg-white font-medium text-gray-700" id="accountTypeFilter">
-                <option value="">Account Type</option>
-                <option value="contractor">Contractor</option>
-                <option value="property-owner">Property Owner</option>
-              </select>
-
-              <select class="px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 focus:outline-none bg-white font-medium text-gray-700" id="statusFilter">
-                <option value="">Status</option>
-                <option value="pending">Pending</option>
-                <option value="accepted">Accepted</option>
-                <option value="declined">Declined</option>
-              </select>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6 flex flex-wrap items-center justify-between gap-4">
+          <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700">
+              <i class="fi fi-rr-filter text-gray-500"></i>
+              <span>Filter By</span>
             </div>
 
-            <button class="flex items-center gap-2 px-4 py-2 text-red-600 hover:text-red-700 font-medium transition-colors duration-200" id="resetFilters">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-              </svg>
-              Reset Filter
+            <!-- Date Range -->
+            <div class="flex items-center gap-2">
+              <label class="text-sm font-medium text-gray-700">From:</label>
+              <input type="date" id="dateFrom" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400">
+              <label class="text-sm font-medium text-gray-700">To:</label>
+              <input type="date" id="dateTo" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400">
+            </div>
+
+            <select class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 focus:outline-none bg-white font-medium text-gray-700" id="statusFilter">
+                <option value="">Status</option>
+                <option value="under_review">Under Review</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+                <option value="deleted">Deleted</option>
+                <option value="due">Due</option>
+            </select>
+          </div>
+
+          <div class="flex items-center gap-4">
+            <button id="resetFilters" class="flex items-center gap-2 text-red-600 hover:text-red-700 text-sm font-semibold px-3 py-2 rounded-lg hover:bg-red-50 transition">
+                <i class="fi fi-rr-rotate-left"></i>
+                <span>Reset Filter</span>
             </button>
           </div>
         </div>
 
-        <!-- Tabs and Table Section -->
+        <!-- Table Section -->
         <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
-          <!-- Tabs -->
-          <div class="border-b border-gray-200">
-            <div class="flex">
-              <button class="tab-btn active px-8 py-4 font-semibold text-orange-600 border-b-2 border-orange-600 hover:bg-orange-50 transition-colors duration-200" data-tab="contractors">
-                Contractors
-              </button>
-              <button class="tab-btn px-8 py-4 font-semibold text-gray-600 border-b-2 border-transparent hover:bg-gray-50 transition-colors duration-200" data-tab="property-owners">
-                Property Owners
-              </button>
-            </div>
-          </div>
-
+          
           <!-- Table -->
           <div class="overflow-x-auto">
             <table class="w-full">
               <thead class="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Name</th>
-                  <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Date Registered</th>
-                  <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Account Type</th>
+                  <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Owner Name</th>
+                  <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Post Title</th>
+                  <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Date Posted</th>
                   <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
                   <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Action</th>
                 </tr>
               </thead>
-              <tbody class="divide-y divide-gray-200" id="contractorsTable">
-                <tr class="hover:bg-gray-50 transition-colors duration-150">
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <div class="w-12 h-12 bg-gradient-to-br from-cyan-400 to-cyan-600 rounded-full flex items-center justify-center text-white font-bold shadow">
-                        GD
-                      </div>
-                      <div>
-                        <div class="font-semibold text-gray-800">GTH Builders and Developers</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td class="px-6 py-4 text-sm text-gray-700">10 Oct, 2025</td>
-                  <td class="px-6 py-4 text-sm text-gray-700">Contractor</td>
-                  <td class="px-6 py-4">
-                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">
-                      Pending
-                    </span>
-                  </td>
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <button class="w-10 h-10 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 view-btn" data-name="GTH Builders and Developers" data-date="10 Oct, 2025" data-type="Contractor">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                        </svg>
-                      </button>
-                      <button class="w-10 h-10 bg-green-50 hover:bg-green-100 text-green-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 approve-btn" data-name="GTH Builders and Developers">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                        </svg>
-                      </button>
-                      <button class="w-10 h-10 bg-red-50 hover:bg-red-100 text-red-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 decline-btn" data-name="GTH Builders and Developers">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-                <tr class="hover:bg-gray-50 transition-colors duration-150">
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <div class="w-12 h-12 bg-gradient-to-br from-purple-400 to-purple-600 rounded-full flex items-center justify-center text-white font-bold shadow">
-                        CA
-                      </div>
-                      <div>
-                        <div class="font-semibold text-gray-800">Cabanating Architects Design & Construction</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td class="px-6 py-4 text-sm text-gray-700">09 Oct, 2025</td>
-                  <td class="px-6 py-4 text-sm text-gray-700">Contractor</td>
-                  <td class="px-6 py-4">
-                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">
-                      Pending
-                    </span>
-                  </td>
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <button class="w-10 h-10 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 view-btn" data-name="Cabanating Architects Design & Construction" data-date="09 Oct, 2025" data-type="Contractor">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                        </svg>
-                      </button>
-                      <button class="w-10 h-10 bg-green-50 hover:bg-green-100 text-green-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 approve-btn" data-name="Cabanating Architects Design & Construction">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                        </svg>
-                      </button>
-                      <button class="w-10 h-10 bg-red-50 hover:bg-red-100 text-red-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 decline-btn" data-name="Cabanating Architects Design & Construction">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-                <tr class="hover:bg-gray-50 transition-colors duration-150">
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <div class="w-12 h-12 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-full flex items-center justify-center text-white font-bold shadow">
-                        RC
-                      </div>
-                      <div>
-                        <div class="font-semibold text-gray-800">RCDG Construction Corporation</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td class="px-6 py-4 text-sm text-gray-700">08 Oct, 2025</td>
-                  <td class="px-6 py-4 text-sm text-gray-700">Contractor</td>
-                  <td class="px-6 py-4">
-                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">
-                      Pending
-                    </span>
-                  </td>
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <button class="w-10 h-10 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 view-btn" data-name="RCDG Construction Corporation" data-date="08 Oct, 2025" data-type="Contractor">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                        </svg>
-                      </button>
-                      <button class="w-10 h-10 bg-green-50 hover:bg-green-100 text-green-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 approve-btn" data-name="RCDG Construction Corporation">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                        </svg>
-                      </button>
-                      <button class="w-10 h-10 bg-red-50 hover:bg-red-100 text-red-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 decline-btn" data-name="RCDG Construction Corporation">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-                <tr class="hover:bg-gray-50 transition-colors duration-150">
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <div class="w-12 h-12 bg-gradient-to-br from-indigo-400 to-indigo-600 rounded-full flex items-center justify-center text-white font-bold shadow">
-                        SB
-                      </div>
-                      <div>
-                        <div class="font-semibold text-gray-800">Summit Builders Inc.</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td class="px-6 py-4 text-sm text-gray-700">07 Oct, 2025</td>
-                  <td class="px-6 py-4 text-sm text-gray-700">Contractor</td>
-                  <td class="px-6 py-4">
-                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">
-                      Pending
-                    </span>
-                  </td>
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <button class="w-10 h-10 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 view-btn" data-name="Summit Builders Inc." data-date="07 Oct, 2025" data-type="Contractor">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                        </svg>
-                      </button>
-                      <button class="w-10 h-10 bg-green-50 hover:bg-green-100 text-green-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 approve-btn" data-name="Summit Builders Inc.">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                        </svg>
-                      </button>
-                      <button class="w-10 h-10 bg-red-50 hover:bg-red-100 text-red-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 decline-btn" data-name="Summit Builders Inc.">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-                <tr class="hover:bg-gray-50 transition-colors duration-150">
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <div class="w-12 h-12 bg-gradient-to-br from-pink-400 to-pink-600 rounded-full flex items-center justify-center text-white font-bold shadow">
-                        PE
-                      </div>
-                      <div>
-                        <div class="font-semibold text-gray-800">Prime Engineering Solutions</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td class="px-6 py-4 text-sm text-gray-700">06 Oct, 2025</td>
-                  <td class="px-6 py-4 text-sm text-gray-700">Contractor</td>
-                  <td class="px-6 py-4">
-                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">
-                      Pending
-                    </span>
-                  </td>
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <button class="w-10 h-10 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 view-btn" data-name="Prime Engineering Solutions" data-date="06 Oct, 2025" data-type="Contractor">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                        </svg>
-                      </button>
-                      <button class="w-10 h-10 bg-green-50 hover:bg-green-100 text-green-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 approve-btn" data-name="Prime Engineering Solutions">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                        </svg>
-                      </button>
-                      <button class="w-10 h-10 bg-red-50 hover:bg-red-100 text-red-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 decline-btn" data-name="Prime Engineering Solutions">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-                <tr class="hover:bg-gray-50 transition-colors duration-150">
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <div class="w-12 h-12 bg-gradient-to-br from-amber-400 to-amber-600 rounded-full flex items-center justify-center text-white font-bold shadow">
-                        MC
-                      </div>
-                      <div>
-                        <div class="font-semibold text-gray-800">Metro Construction Group</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td class="px-6 py-4 text-sm text-gray-700">05 Oct, 2025</td>
-                  <td class="px-6 py-4 text-sm text-gray-700">Contractor</td>
-                  <td class="px-6 py-4">
-                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">
-                      Pending
-                    </span>
-                  </td>
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <button class="w-10 h-10 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 view-btn" data-name="Metro Construction Group" data-date="05 Oct, 2025" data-type="Contractor">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                        </svg>
-                      </button>
-                      <button class="w-10 h-10 bg-green-50 hover:bg-green-100 text-green-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 approve-btn" data-name="Metro Construction Group">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                        </svg>
-                      </button>
-                      <button class="w-10 h-10 bg-red-50 hover:bg-red-100 text-red-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 decline-btn" data-name="Metro Construction Group">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-                <tr class="hover:bg-gray-50 transition-colors duration-150">
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <div class="w-12 h-12 bg-gradient-to-br from-teal-400 to-teal-600 rounded-full flex items-center justify-center text-white font-bold shadow">
-                        AB
-                      </div>
-                      <div>
-                        <div class="font-semibold text-gray-800">Apex Building Contractors</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td class="px-6 py-4 text-sm text-gray-700">04 Oct, 2025</td>
-                  <td class="px-6 py-4 text-sm text-gray-700">Contractor</td>
-                  <td class="px-6 py-4">
-                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">
-                      Pending
-                    </span>
-                  </td>
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <button class="w-10 h-10 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 view-btn" data-name="Apex Building Contractors" data-date="04 Oct, 2025" data-type="Contractor">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                        </svg>
-                      </button>
-                      <button class="w-10 h-10 bg-green-50 hover:bg-green-100 text-green-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 approve-btn" data-name="Apex Building Contractors">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                        </svg>
-                      </button>
-                      <button class="w-10 h-10 bg-red-50 hover:bg-red-100 text-red-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 decline-btn" data-name="Apex Building Contractors">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-                <tr class="hover:bg-gray-50 transition-colors duration-150">
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <div class="w-12 h-12 bg-gradient-to-br from-rose-400 to-rose-600 rounded-full flex items-center justify-center text-white font-bold shadow">
-                        HD
-                      </div>
-                      <div>
-                        <div class="font-semibold text-gray-800">Horizon Development Corp</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td class="px-6 py-4 text-sm text-gray-700">03 Oct, 2025</td>
-                  <td class="px-6 py-4 text-sm text-gray-700">Contractor</td>
-                  <td class="px-6 py-4">
-                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">
-                      Pending
-                    </span>
-                  </td>
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <button class="w-10 h-10 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 view-btn" data-name="Horizon Development Corp" data-date="03 Oct, 2025" data-type="Contractor">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                        </svg>
-                      </button>
-                      <button class="w-10 h-10 bg-green-50 hover:bg-green-100 text-green-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 approve-btn" data-name="Horizon Development Corp">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                        </svg>
-                      </button>
-                      <button class="w-10 h-10 bg-red-50 hover:bg-red-100 text-red-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 decline-btn" data-name="Horizon Development Corp">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-                <tr class="hover:bg-gray-50 transition-colors duration-150">
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <div class="w-12 h-12 bg-gradient-to-br from-lime-400 to-lime-600 rounded-full flex items-center justify-center text-white font-bold shadow">
-                        VB
-                      </div>
-                      <div>
-                        <div class="font-semibold text-gray-800">Vertex Builders & Associates</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td class="px-6 py-4 text-sm text-gray-700">02 Oct, 2025</td>
-                  <td class="px-6 py-4 text-sm text-gray-700">Contractor</td>
-                  <td class="px-6 py-4">
-                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">
-                      Pending
-                    </span>
-                  </td>
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <button class="w-10 h-10 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 view-btn" data-name="Vertex Builders & Associates" data-date="02 Oct, 2025" data-type="Contractor">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                        </svg>
-                      </button>
-                      <button class="w-10 h-10 bg-green-50 hover:bg-green-100 text-green-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 approve-btn" data-name="Vertex Builders & Associates">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                        </svg>
-                      </button>
-                      <button class="w-10 h-10 bg-red-50 hover:bg-red-100 text-red-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 decline-btn" data-name="Vertex Builders & Associates">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-                <tr class="hover:bg-gray-50 transition-colors duration-150">
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <div class="w-12 h-12 bg-gradient-to-br from-sky-400 to-sky-600 rounded-full flex items-center justify-center text-white font-bold shadow">
-                        FC
-                      </div>
-                      <div>
-                        <div class="font-semibold text-gray-800">Foundation Concepts Ltd</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td class="px-6 py-4 text-sm text-gray-700">01 Oct, 2025</td>
-                  <td class="px-6 py-4 text-sm text-gray-700">Contractor</td>
-                  <td class="px-6 py-4">
-                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">
-                      Pending
-                    </span>
-                  </td>
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <button class="w-10 h-10 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 view-btn" data-name="Foundation Concepts Ltd" data-date="01 Oct, 2025" data-type="Contractor">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                        </svg>
-                      </button>
-                      <button class="w-10 h-10 bg-green-50 hover:bg-green-100 text-green-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 approve-btn" data-name="Foundation Concepts Ltd">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                        </svg>
-                      </button>
-                      <button class="w-10 h-10 bg-red-50 hover:bg-red-100 text-red-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 decline-btn" data-name="Foundation Concepts Ltd">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-              <tbody class="divide-y divide-gray-200 hidden" id="propertyOwnersTable">
-                <tr class="hover:bg-gray-50 transition-colors duration-150">
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <div class="w-12 h-12 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-white font-bold shadow">
-                        JD
-                      </div>
-                      <div>
-                        <div class="font-semibold text-gray-800">Juan Dela Cruz</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td class="px-6 py-4 text-sm text-gray-700">01 Nov, 2025</td>
-                  <td class="px-6 py-4 text-sm text-gray-700">Property Owner</td>
-                  <td class="px-6 py-4">
-                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">
-                      Pending
-                    </span>
-                  </td>
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <button class="w-10 h-10 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 view-btn" data-name="Juan Dela Cruz" data-date="01 Nov, 2025" data-type="Property Owner">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                        </svg>
-                      </button>
-                      <button class="w-10 h-10 bg-green-50 hover:bg-green-100 text-green-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 approve-btn" data-name="Juan Dela Cruz">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                        </svg>
-                      </button>
-                      <button class="w-10 h-10 bg-red-50 hover:bg-red-100 text-red-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 decline-btn" data-name="Juan Dela Cruz">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-                <tr class="hover:bg-gray-50 transition-colors duration-150">
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <div class="w-12 h-12 bg-gradient-to-br from-violet-400 to-violet-600 rounded-full flex items-center justify-center text-white font-bold shadow">
-                        MR
-                      </div>
-                      <div>
-                        <div class="font-semibold text-gray-800">Maria Rodriguez</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td class="px-6 py-4 text-sm text-gray-700">30 Oct, 2025</td>
-                  <td class="px-6 py-4 text-sm text-gray-700">Property Owner</td>
-                  <td class="px-6 py-4">
-                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">
-                      Pending
-                    </span>
-                  </td>
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <button class="w-10 h-10 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 view-btn" data-name="Maria Rodriguez" data-date="30 Oct, 2025" data-type="Property Owner">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                        </svg>
-                      </button>
-                      <button class="w-10 h-10 bg-green-50 hover:bg-green-100 text-green-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 approve-btn" data-name="Maria Rodriguez">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                        </svg>
-                      </button>
-                      <button class="w-10 h-10 bg-red-50 hover:bg-red-100 text-red-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 decline-btn" data-name="Maria Rodriguez">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-                <tr class="hover:bg-gray-50 transition-colors duration-150">
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <div class="w-12 h-12 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full flex items-center justify-center text-white font-bold shadow">
-                        RT
-                      </div>
-                      <div>
-                        <div class="font-semibold text-gray-800">Roberto Tan</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td class="px-6 py-4 text-sm text-gray-700">29 Oct, 2025</td>
-                  <td class="px-6 py-4 text-sm text-gray-700">Property Owner</td>
-                  <td class="px-6 py-4">
-                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">
-                      Pending
-                    </span>
-                  </td>
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <button class="w-10 h-10 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 view-btn" data-name="Roberto Tan" data-date="29 Oct, 2025" data-type="Property Owner">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                        </svg>
-                      </button>
-                      <button class="w-10 h-10 bg-green-50 hover:bg-green-100 text-green-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 approve-btn" data-name="Roberto Tan">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                        </svg>
-                      </button>
-                      <button class="w-10 h-10 bg-red-50 hover:bg-red-100 text-red-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 decline-btn" data-name="Roberto Tan">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-                <tr class="hover:bg-gray-50 transition-colors duration-150">
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <div class="w-12 h-12 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center text-white font-bold shadow">
-                        AS
-                      </div>
-                      <div>
-                        <div class="font-semibold text-gray-800">Anna Santos</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td class="px-6 py-4 text-sm text-gray-700">28 Oct, 2025</td>
-                  <td class="px-6 py-4 text-sm text-gray-700">Property Owner</td>
-                  <td class="px-6 py-4">
-                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">
-                      Pending
-                    </span>
-                  </td>
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <button class="w-10 h-10 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 view-btn" data-name="Anna Santos" data-date="28 Oct, 2025" data-type="Property Owner">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                        </svg>
-                      </button>
-                      <button class="w-10 h-10 bg-green-50 hover:bg-green-100 text-green-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 approve-btn" data-name="Anna Santos">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                        </svg>
-                      </button>
-                      <button class="w-10 h-10 bg-red-50 hover:bg-red-100 text-red-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 decline-btn" data-name="Anna Santos">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-                <tr class="hover:bg-gray-50 transition-colors duration-150">
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <div class="w-12 h-12 bg-gradient-to-br from-red-400 to-red-600 rounded-full flex items-center justify-center text-white font-bold shadow">
-                        DG
-                      </div>
-                      <div>
-                        <div class="font-semibold text-gray-800">David Garcia</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td class="px-6 py-4 text-sm text-gray-700">27 Oct, 2025</td>
-                  <td class="px-6 py-4 text-sm text-gray-700">Property Owner</td>
-                  <td class="px-6 py-4">
-                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">
-                      Pending
-                    </span>
-                  </td>
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <button class="w-10 h-10 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 view-btn" data-name="David Garcia" data-date="27 Oct, 2025" data-type="Property Owner">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                        </svg>
-                      </button>
-                      <button class="w-10 h-10 bg-green-50 hover:bg-green-100 text-green-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 approve-btn" data-name="David Garcia">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                        </svg>
-                      </button>
-                      <button class="w-10 h-10 bg-red-50 hover:bg-red-100 text-red-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 decline-btn" data-name="David Garcia">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-                <tr class="hover:bg-gray-50 transition-colors duration-150">
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <div class="w-12 h-12 bg-gradient-to-br from-fuchsia-400 to-fuchsia-600 rounded-full flex items-center justify-center text-white font-bold shadow">
-                        LC
-                      </div>
-                      <div>
-                        <div class="font-semibold text-gray-800">Linda Chen</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td class="px-6 py-4 text-sm text-gray-700">26 Oct, 2025</td>
-                  <td class="px-6 py-4 text-sm text-gray-700">Property Owner</td>
-                  <td class="px-6 py-4">
-                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">
-                      Pending
-                    </span>
-                  </td>
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <button class="w-10 h-10 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 view-btn" data-name="Linda Chen" data-date="26 Oct, 2025" data-type="Property Owner">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                        </svg>
-                      </button>
-                      <button class="w-10 h-10 bg-green-50 hover:bg-green-100 text-green-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 approve-btn" data-name="Linda Chen">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                        </svg>
-                      </button>
-                      <button class="w-10 h-10 bg-red-50 hover:bg-red-100 text-red-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 decline-btn" data-name="Linda Chen">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-                <tr class="hover:bg-gray-50 transition-colors duration-150">
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <div class="w-12 h-12 bg-gradient-to-br from-slate-400 to-slate-600 rounded-full flex items-center justify-center text-white font-bold shadow">
-                        PM
-                      </div>
-                      <div>
-                        <div class="font-semibold text-gray-800">Peter Martinez</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td class="px-6 py-4 text-sm text-gray-700">25 Oct, 2025</td>
-                  <td class="px-6 py-4 text-sm text-gray-700">Property Owner</td>
-                  <td class="px-6 py-4">
-                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">
-                      Pending
-                    </span>
-                  </td>
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <button class="w-10 h-10 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 view-btn" data-name="Peter Martinez" data-date="25 Oct, 2025" data-type="Property Owner">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                        </svg>
-                      </button>
-                      <button class="w-10 h-10 bg-green-50 hover:bg-green-100 text-green-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 approve-btn" data-name="Peter Martinez">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                        </svg>
-                      </button>
-                      <button class="w-10 h-10 bg-red-50 hover:bg-red-100 text-red-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 decline-btn" data-name="Peter Martinez">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-                <tr class="hover:bg-gray-50 transition-colors duration-150">
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <div class="w-12 h-12 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center text-white font-bold shadow">
-                        SL
-                      </div>
-                      <div>
-                        <div class="font-semibold text-gray-800">Sarah Lee</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td class="px-6 py-4 text-sm text-gray-700">24 Oct, 2025</td>
-                  <td class="px-6 py-4 text-sm text-gray-700">Property Owner</td>
-                  <td class="px-6 py-4">
-                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">
-                      Pending
-                    </span>
-                  </td>
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <button class="w-10 h-10 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 view-btn" data-name="Sarah Lee" data-date="24 Oct, 2025" data-type="Property Owner">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                        </svg>
-                      </button>
-                      <button class="w-10 h-10 bg-green-50 hover:bg-green-100 text-green-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 approve-btn" data-name="Sarah Lee">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                        </svg>
-                      </button>
-                      <button class="w-10 h-10 bg-red-50 hover:bg-red-100 text-red-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 decline-btn" data-name="Sarah Lee">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-                <tr class="hover:bg-gray-50 transition-colors duration-150">
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <div class="w-12 h-12 bg-gradient-to-br from-cyan-400 to-cyan-600 rounded-full flex items-center justify-center text-white font-bold shadow">
-                        JW
-                      </div>
-                      <div>
-                        <div class="font-semibold text-gray-800">James Wilson</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td class="px-6 py-4 text-sm text-gray-700">23 Oct, 2025</td>
-                  <td class="px-6 py-4 text-sm text-gray-700">Property Owner</td>
-                  <td class="px-6 py-4">
-                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">
-                      Pending
-                    </span>
-                  </td>
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <button class="w-10 h-10 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 view-btn" data-name="James Wilson" data-date="23 Oct, 2025" data-type="Property Owner">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                        </svg>
-                      </button>
-                      <button class="w-10 h-10 bg-green-50 hover:bg-green-100 text-green-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 approve-btn" data-name="James Wilson">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                        </svg>
-                      </button>
-                      <button class="w-10 h-10 bg-red-50 hover:bg-red-100 text-red-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 decline-btn" data-name="James Wilson">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
+              <tbody class="divide-y divide-gray-200" id="ownersTableWrap">
+                @include('admin.globalManagement.partials.postManagementTable')
               </tbody>
             </table>
           </div>
         </div>
+
       </div>
 
       <!-- View Modal -->
@@ -1069,14 +311,11 @@
           <div class="p-6 space-y-5">
             <!-- Header Info -->
             <div class="flex items-center gap-4 pb-4 border-b">
-              <div class="w-16 h-16 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-2xl shadow-lg" id="modalAvatar">GD</div>
+              <div class="w-16 h-16 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-2xl shadow-lg overflow-hidden" id="modalAvatar">GD</div>
               <div>
-                <h4 class="text-xl font-bold text-gray-800" id="modalName">Panda Construction Company</h4>
+                <h4 class="text-xl font-bold text-gray-800" id="modalName">Loading...</h4>
                 <div class="flex items-center gap-2">
-                  <p class="text-sm text-gray-500" id="modalType">Contractor</p>
-                  <span class="text-gray-300">•</span>
-                  <button id="copyHandleBtn" class="text-xs px-2 py-0.5 bg-white border border-gray-200 rounded-md hover:bg-gray-50 transition">Copy handle</button>
-                  <span id="copyHandleTip" class="text-xs text-green-600 hidden">Copied</span>
+                  <p class="text-sm text-gray-500" id="modalType">Loading...</p>
                 </div>
               </div>
             </div>
@@ -1085,44 +324,64 @@
             <div class="grid grid-cols-2 gap-4">
               <div>
                 <p class="text-sm text-gray-600 mb-1">Date Registered</p>
-                <p class="font-semibold text-gray-800" id="modalDate">10 Oct, 2025</p>
+                <p class="font-semibold text-gray-800" id="modalDate">Loading...</p>
               </div>
               <div>
                 <p class="text-sm text-gray-600 mb-1">Account Type</p>
-                <p class="font-semibold text-gray-800" id="modalAccountType">Contractor</p>
+                <p class="font-semibold text-gray-800" id="modalAccountType">Loading...</p>
               </div>
             </div>
 
-            <!-- Social-style preview card -->
+            <!-- Project Description -->
+            <div class="bg-gray-50 rounded-xl p-4">
+              <h5 class="text-sm font-semibold text-gray-700 mb-2">Project Description</h5>
+              <p class="text-lg font-bold text-gray-800 mb-2" id="modalProjectTitle">Loading title...</p>
+              <p class="text-sm text-gray-700" id="modalDescription">Loading...</p>
+            </div>
+
+            <!-- Project Details -->
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <p class="text-sm text-gray-600 mb-1">Location</p>
+                <p class="font-semibold text-gray-800" id="modalLocation">Loading...</p>
+              </div>
+              <div>
+                <p class="text-sm text-gray-600 mb-1">Property Type</p>
+                <p class="font-semibold text-gray-800" id="modalPropertyType">Loading...</p>
+              </div>
+              <div>
+                <p class="text-sm text-gray-600 mb-1">Budget Range</p>
+                <p class="font-semibold text-gray-800" id="modalBudget">Loading...</p>
+              </div>
+              <div>
+                <p class="text-sm text-gray-600 mb-1">Lot Size</p>
+                <p class="font-semibold text-gray-800" id="modalLotSize">Loading...</p>
+              </div>
+              <div>
+                <p class="text-sm text-gray-600 mb-1">Floor Area</p>
+                <p class="font-semibold text-gray-800" id="modalFloorArea">Loading...</p>
+              </div>
+              <div>
+                <p class="text-sm text-gray-600 mb-1">Timeline</p>
+                <p class="font-semibold text-gray-800" id="modalTimeline">Loading...</p>
+              </div>
+            </div>
+
+            <!-- Post Files Section -->
             <div class="rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-              <!-- Card header -->
-              <div class="px-5 pt-4 pb-3 flex items-center gap-3">
-                <div class="w-11 h-11 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center">
-                  <img id="viewCardAvatar" src="https://i.pravatar.cc/80?img=5" alt="avatar" class="w-full h-full object-cover"/>
-                </div>
-                <div class="flex-1 min-w-0">
-                  <p class="font-semibold text-gray-900 truncate" id="viewCardCompany">Panda Construction Company</p>
-                  <p class="text-sm text-gray-500 truncate"><span id="viewCardHandle">@pcc_official</span></p>
-                </div>
-                <div class="flex items-center gap-2">
-                  <button id="downloadImageBtn" class="p-2 rounded-full hover:bg-gray-100" title="Download image">
-                    <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M12 12v9m0-9l-3 3m3-3l3 3M12 3v9"/></svg>
-                  </button>
-                </div>
+              <div class="bg-gradient-to-r from-blue-50 to-indigo-50 px-5 py-3 border-b border-gray-200">
+                <h5 class="font-semibold text-gray-900 flex items-center gap-2">
+                  <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                  </svg>
+                  Post Files
+                </h5>
               </div>
-              <!-- Card image -->
-              <div id="viewImageWrapper" class="relative bg-gray-100">
-                <img id="viewCardImage" src="https://images.unsplash.com/photo-1600585154526-990dced4db0d?q=80&w=1600&auto=format&fit=crop" alt="project" class="view-image w-full max-h-80 object-cover select-none"/>
-                <div class="absolute bottom-3 right-3 text-xs bg-black bg-opacity-60 text-white px-2 py-1 rounded-md pointer-events-none">Click to zoom</div>
-              </div>
-              <!-- Card body -->
               <div class="px-5 py-4">
-                <p class="font-semibold text-gray-900 mb-1" id="viewCardTitle">Modern Two-Storey House Project</p>
-                <button id="viewMoreToggle" class="text-sky-600 hover:underline text-sm">More details...</button>
-                <div id="viewMoreContent" class="mt-3 hidden">
-                  <p class="text-sm text-gray-700">A contemporary residential build featuring open-plan living, floor-to-ceiling glazing, and energy-efficient materials. Includes 3 bedrooms, 2.5 baths, and a roof deck.</p>
+                <div id="fileViewer" class="mb-4"></div>
+                <div id="postFilesContainer">
+                  <p class="text-sm text-gray-500 text-center py-4">Loading files...</p>
                 </div>
-                <p class="text-xs text-gray-500 mt-4" id="viewCardTimestamp">1:12 PM • June 3, 2021</p>
               </div>
             </div>
 
@@ -1130,20 +389,22 @@
             <div class="grid grid-cols-2 gap-4">
               <div>
                 <p class="text-sm text-gray-600 mb-1">Email</p>
-                <p class="font-semibold text-gray-800">gth.builders@example.com</p>
+                <p class="font-semibold text-gray-800" id="modalEmail">Loading...</p>
               </div>
               <div>
                 <p class="text-sm text-gray-600 mb-1">Phone</p>
-                <p class="font-semibold text-gray-800">+63 912 345 6789</p>
+                <p class="font-semibold text-gray-800" id="modalPhone">Loading...</p>
               </div>
               <div class="col-span-2">
-                <p class="text-sm text-gray-600 mb-1">Address</p>
-                <p class="font-semibold text-gray-800">Tetuan District, Zamboanga City</p>
+                <p class="text-sm text-gray-600 mb-1">Post Status</p>
+                <p class="font-semibold text-gray-800" id="modalPostStatus">Loading...</p>
               </div>
             </div>
           </div>
-          <div class="px-6 py-4 bg-gray-50 rounded-b-2xl flex justify-end">
-            <button class="px-6 py-2 bg-gray-600 hover:bg-gray-700 text-white font-semibold rounded-lg transition-colors duration-200 close-modal">Close</button>
+          <div class="px-6 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
+            <button id="viewModalCloseBtn" class="px-6 py-2 bg-gray-600 hover:bg-gray-700 text-white font-semibold rounded-lg transition-colors duration-200 close-modal hidden">Close</button>
+            <button id="viewModalDeclineBtn" class="px-6 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors duration-200">Decline</button>
+            <button id="viewModalApproveBtn" class="px-6 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors duration-200">Approve</button>
           </div>
         </div>
       </div>
@@ -1239,11 +500,6 @@
               <div class="absolute bottom-0 right-0 w-40 h-40 bg-white rounded-full blur-3xl opacity-20 translate-x-1/2 translate-y-1/2"></div>
             </div>
             <div class="relative flex items-center gap-3">
-              <div class="w-10 h-10 bg-white bg-opacity-20 rounded-full flex items-center justify-center backdrop-blur-sm">
-                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                </svg>
-              </div>
               <h3 class="text-xl font-bold text-white">Decline Post</h3>
             </div>
             <button class="relative text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition-all duration-200 close-modal">
@@ -1293,17 +549,11 @@
           <div class="px-6 py-4 bg-gradient-to-b from-gray-50 to-gray-100 rounded-b-3xl flex justify-end gap-3">
             <button class="px-6 py-3 bg-white border-2 border-gray-300 hover:border-gray-400 hover:bg-gray-50 text-gray-700 font-semibold rounded-xl transition-all duration-200 hover:scale-105 close-modal">
               <span class="flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                </svg>
                 Cancel
               </span>
             </button>
             <button class="px-6 py-3 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-semibold rounded-xl transition-all duration-200 hover:scale-105 shadow-lg hover:shadow-xl" id="confirmDecline">
               <span class="flex items-center gap-2">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                </svg>
                 <span>Decline Post</span>
                 <svg class="w-4 h-4 decline-loading hidden animate-spin" fill="none" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -1317,6 +567,7 @@
     </main>
 
 
+  <script src="{{ asset('js/admin/reusables/filters.js') }}" defer></script>
   <script src="{{ asset('js/admin/globalManagement/postingManagement.js') }}" defer></script>
 
 </body>

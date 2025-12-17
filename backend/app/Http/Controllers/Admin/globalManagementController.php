@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use App\Http\Requests\admin\rejectPostRequest;
+use App\Models\admin\postingManagementClass;
 
 class globalManagementController extends Controller
 {
@@ -45,9 +47,24 @@ class globalManagementController extends Controller
     /**
      * Display the posting management page
      */
-    public function postingManagement()
+    public function postingManagement(Request $request)
     {
-        $postings = $this->getAllPostings();
+        $filters = [
+            'search' => $request->query('search'),
+            'date_from' => $request->query('date_from'),
+            'date_to' => $request->query('date_to'),
+            'status' => $request->query('status', 'under_review'),
+        ];
+
+        $model = new postingManagementClass();
+        $postings = $model->fetchPosts($filters);
+
+        if ($request->ajax()) {
+            return response()->json([
+                'owners_html' => view('admin.globalManagement.partials.postManagementTable', ['postings' => $postings])->render()
+            ]);
+        }
+
         return view('admin.globalManagement.postingManagement', [
             'postings' => $postings
         ]);
@@ -303,16 +320,32 @@ class globalManagementController extends Controller
         return response()->json($postings);
     }
 
+
+
+    /**
+     * Get full project details including files.
+     */
+    public function getPostDetails($id)
+    {
+        $model = new postingManagementClass();
+        $details = $model->getPostDetails($id);
+
+        if ($details) {
+            return response()->json(['success' => true, 'data' => $details]);
+        }
+
+        return response()->json(['success' => false, 'message' => 'Post not found'], 404);
+    }
+
     /**
      * Approve a posting
      */
     public function approvePosting($id)
     {
-        $updated = DB::table('projects')
-            ->where('project_id', $id)
-            ->update(['project_status' => 'open']);
+        $model = new postingManagementClass();
+        $approved = $model->approvePost($id);
 
-        if ($updated) {
+        if ($approved) {
             return response()->json(['success' => true, 'message' => 'Posting approved']);
         }
 
@@ -322,18 +355,14 @@ class globalManagementController extends Controller
     /**
      * Reject a posting
      */
-    public function rejectPosting(Request $request, $id)
+    public function rejectPosting(rejectPostRequest $request, $id)
     {
-        $reason = $request->input('reason', 'Rejected by admin');
+        $reason = $request->validated('reason');
 
-        $updated = DB::table('projects')
-            ->where('project_id', $id)
-            ->update([
-                'project_status' => 'terminated',
-                'rejection_reason' => $reason
-            ]);
+        $model = new postingManagementClass();
+        $rejected = $model->rejectPost($id, $reason);
 
-        if ($updated) {
+        if ($rejected) {
             return response()->json(['success' => true, 'message' => 'Posting rejected']);
         }
 
@@ -350,3 +379,4 @@ class globalManagementController extends Controller
         return response()->json($stats);
     }
 }
+               

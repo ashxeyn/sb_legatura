@@ -241,6 +241,7 @@ Route::prefix('/api/admin/management')->group(function () {
     Route::post('/payments/{id}/reject', [globalManagementController::class, 'rejectPayment'])->name('api.admin.payment.reject');
 
     Route::get('/postings', [globalManagementController::class, 'getPostingsApi'])->name('api.admin.postings');
+    Route::get('/postings/{id}', [globalManagementController::class, 'getPostDetails'])->name('api.admin.posting.details');
     Route::post('/postings/{id}/approve', [globalManagementController::class, 'approvePosting'])->name('api.admin.posting.approve');
     Route::post('/postings/{id}/reject', [globalManagementController::class, 'rejectPosting'])->name('api.admin.posting.reject');
 
