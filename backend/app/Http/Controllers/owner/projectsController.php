@@ -1357,12 +1357,10 @@ class projectsController extends Controller
                 ->whereNotIn('progress_status', ['approved', 'deleted'])
                 ->count();
 
+            $warning = null;
             if ($nonApprovedCount > 0) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Cannot mark as complete. There are unapproved progress reports for this milestone item.',
-                    'non_approved_count' => $nonApprovedCount
-                ], 400);
+                // Allow marking as complete but provide a warning to the caller
+                $warning = 'There are ' . $nonApprovedCount . ' unapproved or pending progress reports for this milestone item.';
             }
 
             $updated = DB::table('milestone_items')
@@ -1383,14 +1381,23 @@ class projectsController extends Controller
                 ->where('item_id', $milestoneItem->item_id)
                 ->first();
 
-            return response()->json([
+            $responsePayload = [
                 'success' => true,
                 'message' => 'Milestone item marked as complete successfully.',
                 'data' => [
                     'item_id' => $updatedItem->item_id,
                     'item_status' => $updatedItem->item_status ?? 'completed'
                 ]
-            ]);
+            ];
+
+            if ($warning) {
+                $responsePayload['warning'] = $warning;
+                $responsePayload['non_approved_count'] = $nonApprovedCount;
+                // include a friendly note for frontend display
+                $responsePayload['message'] = 'Milestone item marked as complete. Note: ' . $warning;
+            }
+
+            return response()->json($responsePayload);
         } catch (\Exception $e) {
             \Log::error('apiSetMilestoneItemComplete error', ['error' => $e->getMessage()]);
             return response()->json([

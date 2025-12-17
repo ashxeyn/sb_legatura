@@ -105,18 +105,11 @@ Route::post('/contractor/progress/upload', [\App\Http\Controllers\contractor\pro
 Route::get('/contractor/progress/files/{itemId}', [\App\Http\Controllers\contractor\progressUploadController::class, 'getProgressFiles']);
 Route::put('/contractor/progress/{progressId}', [\App\Http\Controllers\contractor\progressUploadController::class, 'updateProgress']);
 Route::delete('/contractor/progress/{progressId}', [\App\Http\Controllers\contractor\progressUploadController::class, 'deleteProgress']);
-// Owner reject via web route (used by mobile with CSRF/session)
-Route::post('/progress/{progressId}/reject', [\App\Http\Controllers\contractor\progressUploadController::class, 'rejectProgress']);
-
-// Both owner and contractor can view progress reports for a milestone item
-Route::get('/both/progress/files/{itemId}', [\App\Http\Controllers\contractor\progressUploadController::class, 'getProgressFilesForBoth']);
 // Owner payment validation routes
 Route::post('/owner/payment/upload', [\App\Http\Controllers\owner\paymentUploadController::class, 'uploadPayment']);
 Route::put('/owner/payment/{paymentId}', [\App\Http\Controllers\owner\paymentUploadController::class, 'updatePayment']);
 Route::delete('/owner/payment/{paymentId}', [\App\Http\Controllers\owner\paymentUploadController::class, 'deletePayment']);
 Route::post('/contractor/progress/approve/{progressId}', [\App\Http\Controllers\contractor\progressUploadController::class, 'approveProgress']);
-// Owner approve via web route (used by mobile with CSRF/session)
-Route::post('/progress/{progressId}/approve', [\App\Http\Controllers\contractor\progressUploadController::class, 'approveProgress']);
 
 // Owner Project Posting Routes
 Route::get('/owner/projects/create', [\App\Http\Controllers\Owner\projectsController::class, 'showCreatePostPage']);
@@ -248,6 +241,7 @@ Route::prefix('/api/admin/management')->group(function () {
     Route::post('/payments/{id}/reject', [globalManagementController::class, 'rejectPayment'])->name('api.admin.payment.reject');
 
     Route::get('/postings', [globalManagementController::class, 'getPostingsApi'])->name('api.admin.postings');
+    Route::get('/postings/{id}', [globalManagementController::class, 'getPostDetails'])->name('api.admin.posting.details');
     Route::post('/postings/{id}/approve', [globalManagementController::class, 'approvePosting'])->name('api.admin.posting.approve');
     Route::post('/postings/{id}/reject', [globalManagementController::class, 'rejectPosting'])->name('api.admin.posting.reject');
 

@@ -235,10 +235,61 @@
         </div>
       </header>
 
-      <!-- AI Management Stats (loaded from API) -->
+      <!-- AI Management Stats Cards Section -->
       <section class="px-8 py-8">
-        <div id="aiStatsContainer" class="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <!-- Stats loaded from API -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <!-- Card 1 -->
+          <div class="ai-card group bg-white shadow-lg rounded-xl p-6 flex flex-col items-start transition transform hover:-translate-y-1 hover:shadow-2xl cursor-pointer relative">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="text-gray-700 font-medium">Total Projects Analyzed</span>
+              <span class="ml-2 text-xs px-2 py-1 rounded-full bg-indigo-50 text-indigo-500 font-semibold flex items-center gap-1">
+                <svg class="w-3 h-3 inline" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12l5 5L20 7"/></svg>
+                10.0%
+              </span>
+            </div>
+            <div class="text-4xl font-bold text-orange-500 mb-1">156k</div>
+            <div class="text-sm text-gray-500">Number of projects AI reviewed</div>
+            <div class="ai-card-underline absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-orange-400 to-orange-200 opacity-0 group-hover:opacity-100 transition"></div>
+          </div>
+          <!-- Card 2 -->
+          <div class="ai-card group bg-white shadow-lg rounded-xl p-6 flex flex-col items-start transition transform hover:-translate-y-1 hover:shadow-2xl cursor-pointer relative">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="text-gray-700 font-medium">High Risk Projects</span>
+              <span class="ml-2 text-xs px-2 py-1 rounded-full bg-red-50 text-red-500 font-semibold flex items-center gap-1">
+                <svg class="w-3 h-3 inline" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 7l-7 7-7-7"/></svg>
+                3.0%
+              </span>
+            </div>
+            <div class="text-4xl font-bold text-red-500 mb-1">1k</div>
+            <div class="text-sm text-gray-500">Projects predicted to be delayed</div>
+            <div class="ai-card-underline absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-red-400 to-red-200 opacity-0 group-hover:opacity-100 transition"></div>
+          </div>
+          <!-- Card 3 -->
+          <div class="ai-card group bg-white shadow-lg rounded-xl p-6 flex flex-col items-start transition transform hover:-translate-y-1 hover:shadow-2xl cursor-pointer relative">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="text-gray-700 font-medium">On-time Projects</span>
+              <span class="ml-2 text-xs px-2 py-1 rounded-full bg-green-50 text-green-500 font-semibold flex items-center gap-1">
+                <svg class="w-3 h-3 inline" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12l5 5L20 7"/></svg>
+                3.2%
+              </span>
+            </div>
+            <div class="text-4xl font-bold text-green-500 mb-1">156k</div>
+            <div class="text-sm text-gray-500">Currently meeting milestones</div>
+            <div class="ai-card-underline absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-green-400 to-green-200 opacity-0 group-hover:opacity-100 transition"></div>
+          </div>
+          <!-- Card 4 -->
+          <div class="ai-card group bg-white shadow-lg rounded-xl p-6 flex flex-col items-start transition transform hover:-translate-y-1 hover:shadow-2xl cursor-pointer relative">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="text-gray-700 font-medium">AI Recommendations Issued</span>
+              <span class="ml-2 text-xs px-2 py-1 rounded-full bg-indigo-50 text-indigo-500 font-semibold flex items-center gap-1">
+                <svg class="w-3 h-3 inline" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12l5 5L20 7"/></svg>
+                8.3%
+              </span>
+            </div>
+            <div class="text-4xl font-bold text-orange-500 mb-1">3,422</div>
+            <div class="text-sm text-gray-500">How many advice messages were generated</div>
+            <div class="ai-card-underline absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-400 to-indigo-200 opacity-0 group-hover:opacity-100 transition"></div>
+          </div>
         </div>
       </section>
       <!-- End AI Management Stats Cards Section -->
@@ -287,8 +338,43 @@
                 <th class="px-6 py-4"></th>
               </tr>
             </thead>
-            <tbody id="aiActivityTable" class="divide-y divide-gray-100">
-              <!-- Data loaded from API -->
+            <tbody class="divide-y divide-gray-100">
+              <!-- Row 1 -->
+              <tr class="hover:bg-gray-50 transition">
+                <td class="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">October 15, 2025</td>
+                <td class="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">AI Scan Completed</td>
+                <td class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">42 projects analyzed</td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <span class="inline-block px-3 py-1 rounded-full bg-green-100 text-green-700 text-xs font-semibold">Success</span>
+                </td>
+                <td class="px-6 py-4 text-right">
+                  <div class="flex items-center gap-2 justify-end">
+                    <button class="delete-activity-btn w-10 h-10 flex items-center justify-center rounded-full bg-red-50 hover:bg-red-100 text-red-500 transition-all hover:shadow-md" title="Delete"
+                      data-activity-date="October 15, 2025"
+                      data-activity-action="AI Scan Completed">
+                      <i class="fi fi-rr-trash text-base"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              <!-- Row 2 -->
+              <tr class="hover:bg-gray-50 transition">
+                <td class="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">October 15, 2025</td>
+                <td class="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">AI Recommended Recovery Plan</td>
+                <td class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">Project: Duplex Housing</td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <span class="inline-block px-3 py-1 rounded-full bg-yellow-100 text-yellow-700 text-xs font-semibold">Delay Detected</span>
+                </td>
+                <td class="px-6 py-4 text-right">
+                  <div class="flex items-center gap-2 justify-end">
+                    <button class="delete-activity-btn w-10 h-10 flex items-center justify-center rounded-full bg-red-50 hover:bg-red-100 text-red-500 transition-all hover:shadow-md" title="Delete"
+                      data-activity-date="October 15, 2025"
+                      data-activity-action="AI Recommended Recovery Plan">
+                      <i class="fi fi-rr-trash text-base"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -310,8 +396,105 @@
                 <th class="px-6 py-4 text-center text-xs font-semibold text-gray-500 tracking-wider">Action</th>
               </tr>
             </thead>
-            <tbody id="aiProjectsTable" class="divide-y divide-gray-100">
-              <!-- Data loaded from API -->
+            <tbody class="divide-y divide-gray-100">
+              <!-- Row 1 -->
+              <tr class="hover:bg-gray-50 transition">
+                <td class="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">#10421</td>
+                <td class="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">GreenBelt Building</td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="flex items-center gap-2">
+                    <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="GTH Builders" class="w-7 h-7 rounded-full border border-gray-200 shadow-sm">
+                    <span class="text-gray-700 text-sm font-medium">GTH Builders</span>
+                  </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="flex items-center gap-2">
+                    <img src="https://randomuser.me/api/portraits/women/44.jpg" alt="Criscel Ann Delos Reyes" class="w-7 h-7 rounded-full border border-gray-200 shadow-sm">
+                    <div class="flex flex-col">
+                      <span class="text-gray-700 text-sm font-medium">Liana</span>
+                      <span class="text-gray-500 text-xs">Rodriguez</span>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <span class="inline-block px-3 py-1 rounded-full bg-red-100 text-red-700 text-xs font-semibold">High</span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <span class="inline-block px-3 py-1 rounded-full bg-yellow-100 text-yellow-700 text-xs font-semibold">Pending Review</span>
+                </td>
+                <td class="px-6 py-4 text-center whitespace-nowrap">
+                  <div class="flex items-center gap-2 justify-center">
+                    <button class="view-ai-btn w-10 h-10 flex items-center justify-center rounded-full bg-blue-50 hover:bg-blue-100 text-blue-500 transition-all hover:shadow-md" title="View" 
+                      data-project-id="#10421"
+                      data-title="GreenBelt Building"
+                      data-status="Pending Review"
+                      data-owner="Cori Homes"
+                      data-contractor="Saludo Construction"
+                      data-completion="70%"
+                      data-progress="50%"
+                      data-variance="20%"
+                      data-risk="High Risk of Delay"
+                      data-confidence="85%"
+                      data-recommendation="The project is behind schedule. Contractor should submit a recovery plan within 3 days. Owner should review milestone allocations and consider a progress meeting.">
+                      <i class="fi fi-rr-eye text-base"></i>
+                    </button>
+                    <button class="delete-ai-btn w-10 h-10 flex items-center justify-center rounded-full bg-red-50 hover:bg-red-100 text-red-500 transition-all hover:shadow-md" title="Delete"
+                      data-project-id="#10421"
+                      data-title="GreenBelt Building">
+                      <i class="fi fi-rr-trash text-base"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              <!-- Row 2 -->
+              <tr class="hover:bg-gray-50 transition">
+                <td class="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">#10422</td>
+                <td class="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">Duplex Housing Project</td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="flex items-center gap-2">
+                    <img src="https://randomuser.me/api/portraits/men/65.jpg" alt="Cabonting Architects" class="w-7 h-7 rounded-full border border-gray-200 shadow-sm">
+                    <span class="text-gray-700 text-sm font-medium">Cabonting Architects</span>
+                  </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="flex items-center gap-2">
+                    <img src="https://randomuser.me/api/portraits/men/66.jpg" alt="Nesty Omongos" class="w-7 h-7 rounded-full border border-gray-200 shadow-sm">
+                    <div class="flex flex-col">
+                      <span class="text-gray-700 text-sm font-medium">Janelle</span>
+                      <span class="text-gray-500 text-xs">Ramirez</span>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <span class="inline-block px-3 py-1 rounded-full bg-yellow-100 text-yellow-700 text-xs font-semibold">Medium</span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <span class="inline-block px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold">Acknowledge</span>
+                </td>
+                <td class="px-6 py-4 text-center whitespace-nowrap">
+                  <div class="flex items-center gap-2 justify-center">
+                    <button class="view-ai-btn w-10 h-10 flex items-center justify-center rounded-full bg-blue-50 hover:bg-blue-100 text-blue-500 transition-all hover:shadow-md" title="View"
+                      data-project-id="#10422"
+                      data-title="Duplex Housing Project"
+                      data-status="Acknowledge"
+                      data-owner="Nesty Omongos"
+                      data-contractor="Cabonting Architects"
+                      data-completion="85%"
+                      data-progress="75%"
+                      data-variance="10%"
+                      data-risk="Medium Risk"
+                      data-confidence="92%"
+                      data-recommendation="Project is progressing well but requires monitoring of milestone completion rates. Consider scheduling progress review meetings.">
+                      <i class="fi fi-rr-eye text-base"></i>
+                    </button>
+                    <button class="delete-ai-btn w-10 h-10 flex items-center justify-center rounded-full bg-red-50 hover:bg-red-100 text-red-500 transition-all hover:shadow-md" title="Delete"
+                      data-project-id="#10422"
+                      data-title="Duplex Housing Project">
+                      <i class="fi fi-rr-trash text-base"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>

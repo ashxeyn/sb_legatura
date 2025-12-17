@@ -1,51 +1,53 @@
 if (typeof window.DisputeModal === 'undefined') {
     window.DisputeModal = {
         // Add more files function
-        addMoreFiles: function(containerId, buttonId) {
+        addMoreFiles: function (containerId, buttonId) {
+            const container = document.getElementById(containerId);
+        addMoreFiles: function (containerId, buttonId) {
             const container = document.getElementById(containerId);
             if (!container) return;
 
-            const fileInputs = container.querySelectorAll('.file-input-group');
+const fileInputs = container.querySelectorAll('.file-input-group');
             if (fileInputs.length >= 10) {
                 alert('Maximum of 10 files allowed');
                 return;
             }
 
-            const tempInput = document.createElement('input');
+const tempInput = document.createElement('input');
             tempInput.type = 'file';
             tempInput.style.display = 'none';
 
-            const existingInput = container.querySelector('input[type="file"]');
+const existingInput = container.querySelector('input[type="file"]');
             tempInput.name = existingInput.getAttribute('name');
             tempInput.accept = existingInput.getAttribute('accept');
             tempInput.className = existingInput.getAttribute('class');
 
-            tempInput.onchange = function() {
+            tempInput.onchange = function () {
                 if (this.files && this.files.length > 0) {
-                    const newFileGroup = document.createElement('div');
+const newFileGroup = document.createElement('div');
                     newFileGroup.className = 'file-input-group';
 
                     // Create file name display div
-                    const fileNameDisplay = document.createElement('div');
+const fileNameDisplay = document.createElement('div');
                     fileNameDisplay.className = 'file-name-display visible';
                     fileNameDisplay.textContent = tempInput.files[0].name;
 
-                    const newInput = document.createElement('input');
+const newInput = document.createElement('input');
                     newInput.type = 'file';
                     newInput.name = this.name;
                     newInput.accept = this.accept;
                     newInput.className = this.className + ' has-file';
-                    newInput.onchange = function() { window.DisputeModal.handleFileSelection(this, containerId, buttonId); };
+                    newInput.onchange = function () { window.DisputeModal.handleFileSelection(this, containerId, buttonId); };
 
-                    const dataTransfer = new DataTransfer();
+const dataTransfer = new DataTransfer();
                     Array.from(tempInput.files).forEach(file => dataTransfer.items.add(file));
                     newInput.files = dataTransfer.files;
 
-                    const removeBtn = document.createElement('button');
+const removeBtn = document.createElement('button');
                     removeBtn.type = 'button';
                     removeBtn.className = 'remove-file-btn';
                     removeBtn.textContent = 'Remove';
-                    removeBtn.onclick = function() { window.DisputeModal.removeFileInput(this, containerId, buttonId); };
+                    removeBtn.onclick = function () { window.DisputeModal.removeFileInput(this, containerId, buttonId); };
                     removeBtn.style.display = 'inline-block';
 
                     newFileGroup.appendChild(fileNameDisplay);
@@ -53,8 +55,8 @@ if (typeof window.DisputeModal === 'undefined') {
                     newFileGroup.appendChild(removeBtn);
                     container.appendChild(newFileGroup);
 
-                    const updatedFileInputs = container.querySelectorAll('.file-input-group');
-                    const addMoreBtn = document.getElementById(buttonId);
+const updatedFileInputs = container.querySelectorAll('.file-input-group');
+const addMoreBtn = document.getElementById(buttonId);
                     if (updatedFileInputs.length >= 10) {
                         if (addMoreBtn) addMoreBtn.style.display = 'none';
                     } else {
@@ -69,7 +71,7 @@ if (typeof window.DisputeModal === 'undefined') {
         },
 
         // Handle file selection
-        handleFileSelection: function(input, containerId, buttonId) {
+        handleFileSelection: function (input, containerId, buttonId) {
             if (input.files && input.files.length > 0) {
                 const fileGroup = input.parentElement;
 
@@ -77,7 +79,7 @@ if (typeof window.DisputeModal === 'undefined') {
                 input.classList.add('has-file');
 
                 // Check if file name display already exists
-                let fileNameDisplay = fileGroup.querySelector('.file-name-display');
+                const fileNameDisplay = fileGroup.querySelector('.file-name-display');
                 if (!fileNameDisplay) {
                     fileNameDisplay = document.createElement('div');
                     fileNameDisplay.className = 'file-name-display';
@@ -87,17 +89,17 @@ if (typeof window.DisputeModal === 'undefined') {
                 fileNameDisplay.textContent = input.files[0].name;
                 fileNameDisplay.classList.add('visible');
 
-                const removeBtn = fileGroup.querySelector('.remove-file-btn');
+const removeBtn = fileGroup.querySelector('.remove-file-btn');
                 if (removeBtn) {
                     removeBtn.style.display = 'inline-block';
                 }
 
                 // Show the Add More Files button
-                const addMoreBtn = document.getElementById(buttonId);
+const addMoreBtn = document.getElementById(buttonId);
                 if (addMoreBtn) {
-                    const container = document.getElementById(containerId);
+const container = document.getElementById(containerId);
                     if (container) {
-                        const fileInputs = container.querySelectorAll('.file-input-group');
+const fileInputs = container.querySelectorAll('.file-input-group');
                         if (fileInputs.length < 10) {
                             addMoreBtn.style.display = 'inline-block';
                         }
@@ -107,23 +109,25 @@ if (typeof window.DisputeModal === 'undefined') {
         },
 
         // Remove file input
-        removeFileInput: function(button, containerId, buttonId) {
+        removeFileInput: function (button, containerId, buttonId) {
+            const container = document.getElementById(containerId);
+        removeFileInput: function (button, containerId, buttonId) {
             const container = document.getElementById(containerId);
             if (!container) return;
 
-            const fileGroup = button.parentElement;
-            const fileInputs = container.querySelectorAll('.file-input-group');
+const fileGroup = button.parentElement;
+const fileInputs = container.querySelectorAll('.file-input-group');
 
             if (fileInputs.length > 1) {
                 fileGroup.remove();
 
-                const addMoreBtn = document.getElementById(buttonId);
+const addMoreBtn = document.getElementById(buttonId);
                 if (addMoreBtn && fileInputs.length - 1 < 10) {
                     addMoreBtn.style.display = 'inline-block';
                 }
             } else {
-                const input = fileGroup.querySelector('input[type="file"]');
-                const fileNameDisplay = fileGroup.querySelector('.file-name-display');
+const input = fileGroup.querySelector('input[type="file"]');
+const fileNameDisplay = fileGroup.querySelector('.file-name-display');
 
                 if (input) {
                     input.value = '';
@@ -135,7 +139,7 @@ if (typeof window.DisputeModal === 'undefined') {
                     fileNameDisplay.classList.remove('visible');
                 }
 
-                const addMoreBtn = document.getElementById(buttonId);
+const addMoreBtn = document.getElementById(buttonId);
                 if (addMoreBtn) {
                     addMoreBtn.style.display = 'none';
                 }
@@ -145,7 +149,12 @@ if (typeof window.DisputeModal === 'undefined') {
         // ========== MODAL OPERATIONS ==========
 
         // Open dispute modal
-        open: function(mode = 'add', disputeData = null) {
+        open: function (mode = 'add', disputeData = null) {
+            const modal = document.getElementById('addEditDisputeModal');
+            const title = document.getElementById('disputeModalTitle');
+            const submitBtn = document.getElementById('modalSubmitBtn');
+            const isEditInput = document.getElementById('modal_is_edit');
+        open: function (mode = 'add', disputeData = null) {
             const modal = document.getElementById('addEditDisputeModal');
             const title = document.getElementById('disputeModalTitle');
             const submitBtn = document.getElementById('modalSubmitBtn');
@@ -158,7 +167,7 @@ if (typeof window.DisputeModal === 'undefined') {
             document.getElementById('modalSuccessMessages').style.display = 'none';
 
             // Reset deleted files tracking
-            const deletedFilesInput = document.getElementById('deleted_file_ids');
+const deletedFilesInput = document.getElementById('deleted_file_ids');
             if (deletedFilesInput) {
                 deletedFilesInput.remove();
             }
@@ -175,8 +184,8 @@ if (typeof window.DisputeModal === 'undefined') {
 
                 // If dispute type is Others, show the modal 'If Others' input and prefill
                 try {
-                    const modalIfOthersGroup = document.getElementById('modal_if_others_group');
-                    const modalIfOthersInput = document.getElementById('modal_if_others_distype');
+const modalIfOthersGroup = document.getElementById('modal_if_others_group');
+const modalIfOthersInput = document.getElementById('modal_if_others_distype');
                     if (disputeData.dispute_type === 'Others') {
                         if (modalIfOthersGroup) modalIfOthersGroup.style.display = 'block';
                         if (modalIfOthersInput) {
@@ -190,7 +199,7 @@ if (typeof window.DisputeModal === 'undefined') {
                             modalIfOthersInput.value = '';
                         }
                     }
-                } catch (e) {}
+                } catch (e) { }
 
                 // Hide project selection fields in edit mode and remove required attribute
                 document.getElementById('modalProjectGroup').style.display = 'none';
@@ -203,33 +212,33 @@ if (typeof window.DisputeModal === 'undefined') {
 
                 // Show existing files
                 if (disputeData.files && disputeData.files.length > 0) {
-                    const filesList = document.getElementById('modalExistingFilesList');
+const filesList = document.getElementById('modalExistingFilesList');
                     filesList.innerHTML = '';
 
                     disputeData.files.forEach(file => {
-                        const li = document.createElement('li');
+const li = document.createElement('li');
                         li.style.display = 'flex';
                         li.style.alignItems = 'center';
                         li.style.gap = '10px';
                         li.style.marginBottom = '8px';
                         li.id = 'modal-file-' + file.file_id;
 
-                        const link = document.createElement('a');
+const link = document.createElement('a');
                         link.href = '/storage/' + file.storage_path;
                         link.target = '_blank';
                         link.textContent = file.original_name;
                         link.style.flex = '1';
 
-                        const size = document.createElement('small');
+const size = document.createElement('small');
                         size.textContent = '(' + (file.size / 1024).toFixed(1) + ' KB)';
                         size.style.marginRight = '10px';
 
-                        const deleteBtn = document.createElement('button');
+const deleteBtn = document.createElement('button');
                         deleteBtn.type = 'button';
                         deleteBtn.className = 'remove-file-btn';
                         deleteBtn.textContent = 'Remove';
                         deleteBtn.style.display = 'inline-block';
-                        deleteBtn.onclick = function() { window.DisputeModal.markFileForRemoval(file.file_id); };
+                        deleteBtn.onclick = function () { window.DisputeModal.markFileForRemoval(file.file_id); };
 
                         li.appendChild(link);
                         li.appendChild(size);
@@ -257,8 +266,8 @@ if (typeof window.DisputeModal === 'undefined') {
                 document.getElementById('modalExistingFilesSection').style.display = 'none';
 
                 // Ensure 'If Others' is hidden in add mode
-                const modalIfOthersGroup = document.getElementById('modal_if_others_group');
-                const modalIfOthersInput = document.getElementById('modal_if_others_distype');
+const modalIfOthersGroup = document.getElementById('modal_if_others_group');
+const modalIfOthersInput = document.getElementById('modal_if_others_distype');
                 if (modalIfOthersGroup) modalIfOthersGroup.style.display = 'none';
                 if (modalIfOthersInput) { modalIfOthersInput.removeAttribute('required'); modalIfOthersInput.value = ''; }
 
@@ -278,10 +287,109 @@ if (typeof window.DisputeModal === 'undefined') {
                         }
                     }
                 }
+
+                if (typeof window.ProgressReject === 'undefined') {
+                    window.ProgressReject = {
+                        progressToReject: null,
+
+                        open: function (progressId) {
+                            this.progressToReject = progressId;
+                            const modal = document.getElementById('rejectProgressModal');
+                            if (modal) {
+                                modal.style.display = 'flex';
+                                document.body.style.overflow = 'hidden';
+                            }
+                        },
+
+                        close: function () {
+                            const modal = document.getElementById('rejectProgressModal');
+                            if (modal) {
+                                modal.style.display = 'none';
+                                document.body.style.overflow = 'auto';
+                            }
+                            this.progressToReject = null;
+                            const reasonEl = document.getElementById('rejectProgressReason');
+                            if (reasonEl) reasonEl.value = '';
+                            const errDiv = document.getElementById('rejectProgressErrorMessage');
+                            const successDiv = document.getElementById('rejectProgressSuccessMessage');
+                            if (errDiv) { errDiv.style.display = 'none'; errDiv.innerHTML = ''; }
+                            if (successDiv) { successDiv.style.display = 'none'; successDiv.innerHTML = ''; }
+                        },
+
+                        confirm: function () {
+                            if (!this.progressToReject) return;
+                            const progressId = this.progressToReject;
+                            const modal = document.getElementById('rejectProgressModal');
+                            const errDiv = document.getElementById('rejectProgressErrorMessage');
+                            const successDiv = document.getElementById('rejectProgressSuccessMessage');
+                            const reasonEl = document.getElementById('rejectProgressReason');
+
+                            if (errDiv) { errDiv.style.display = 'none'; errDiv.innerHTML = ''; }
+                            if (successDiv) { successDiv.style.display = 'none'; successDiv.innerHTML = ''; }
+
+                            const reason = reasonEl ? reasonEl.value.trim() : '';
+                            if (!reason) {
+                                if (errDiv) { errDiv.innerHTML = 'Rejection reason is required.'; errDiv.style.display = 'block'; }
+                                return;
+                            }
+
+                            // disable buttons
+                            const confirmBtn = modal ? modal.querySelector('.modal-actions .btn-danger') : null;
+                            const cancelBtn = modal ? modal.querySelector('.modal-actions .btn-secondary') : null;
+                            if (confirmBtn) confirmBtn.disabled = true;
+                            if (cancelBtn) cancelBtn.disabled = true;
+
+                            fetch(`/contractor/progress/reject/${progressId}`, {
+                                method: 'POST',
+                                credentials: 'same-origin',
+                                headers: {
+                                    'X-CSRF-TOKEN': getCsrfToken(),
+                                    'Accept': 'application/json',
+                                    'X-Requested-With': 'XMLHttpRequest',
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({ reason: reason })
+                            })
+                                .then(response => response.json())
+                                .then(result => {
+                                    if (confirmBtn) confirmBtn.disabled = false;
+                                    if (cancelBtn) cancelBtn.disabled = false;
+
+                                    if (result.success) {
+                                        if (successDiv) {
+                                            successDiv.innerHTML = '<p>' + (result.message || 'Progress report rejected successfully') + '</p>';
+                                            successDiv.style.display = 'block';
+                                        } else {
+                                            alert(result.message || 'Progress report rejected successfully');
+                                        }
+                                        setTimeout(() => { this.close(); location.reload(); }, 1200);
+                                    } else {
+                                        if (errDiv) {
+                                            errDiv.innerHTML = result.message || 'Error rejecting progress report';
+                                            errDiv.style.display = 'block';
+                                        } else {
+                                            alert(result.message || 'Error rejecting progress report');
+                                        }
+                                    }
+                                })
+                                .catch(error => {
+                                    if (confirmBtn) confirmBtn.disabled = false;
+                                    if (cancelBtn) cancelBtn.disabled = false;
+                                    console.error('Reject error:', error);
+                                    if (errDiv) {
+                                        errDiv.innerHTML = 'An error occurred while rejecting the progress report.';
+                                        errDiv.style.display = 'block';
+                                    } else {
+                                        alert('An error occurred while rejecting the progress report.');
+                                    }
+                                });
+                        }
+                    };
+                }
             }
 
             // Reset file upload container
-            const fileContainer = document.getElementById('modal-file-upload-container');
+const fileContainer = document.getElementById('modal-file-upload-container');
             fileContainer.innerHTML = `
                 <div class="file-input-group">
                     <input type="file" name="evidence_files[]" accept=".jpg,.jpeg,.png,.pdf,.doc,.docx" class="evidence-file-input" onchange="DisputeModal.handleFileSelection(this, 'modal-file-upload-container', 'modal-add-more-files')">
@@ -296,6 +404,8 @@ if (typeof window.DisputeModal === 'undefined') {
 
         // Close dispute modal
         close: function() {
+const modal = document.getElementById('addEditDisputeModal');
+        close: function () {
             const modal = document.getElementById('addEditDisputeModal');
             modal.style.display = 'none';
             document.body.style.overflow = 'auto';
@@ -303,17 +413,19 @@ if (typeof window.DisputeModal === 'undefined') {
 
         // Mark file for removal (only removed from UI, actual deletion on form submit)
         markFileForRemoval: function(fileId) {
-            console.log('markFileForRemoval called for file ID:', fileId);
+        markFileForRemoval: function (fileId) {
+
 
             // Remove from UI
-            const fileElement = document.getElementById('modal-file-' + fileId);
+const fileElement = document.getElementById('modal-file-' + fileId);
             if (fileElement) {
                 fileElement.remove();
-                console.log('File element removed from UI');
+
             }
 
             // Add to hidden input for deletion tracking
-            let deletedFilesInput = document.getElementById('deleted_file_ids');
+const deletedFilesInput = document.getElementById('deleted_file_ids');
+            const deletedFilesInput = document.getElementById('deleted_file_ids');
             if (!deletedFilesInput) {
                 deletedFilesInput = document.createElement('input');
                 deletedFilesInput.type = 'hidden';
@@ -321,25 +433,25 @@ if (typeof window.DisputeModal === 'undefined') {
                 deletedFilesInput.name = 'deleted_file_ids';
                 deletedFilesInput.value = '';
                 document.getElementById('disputeModalForm').appendChild(deletedFilesInput);
-                console.log('Created hidden input for deleted files');
+
             }
 
             // Add file ID to deletion list
-            const deletedIds = deletedFilesInput.value ? deletedFilesInput.value.split(',').filter(id => id) : [];
+const deletedIds = deletedFilesInput.value ? deletedFilesInput.value.split(',').filter(id => id) : [];
             if (!deletedIds.includes(fileId.toString())) {
                 deletedIds.push(fileId);
                 deletedFilesInput.value = deletedIds.join(',');
-                console.log('Updated deleted files list:', deletedFilesInput.value);
+
             }
 
             // Hide section if no files left
-            const filesList = document.getElementById('modalExistingFilesList');
+const filesList = document.getElementById('modalExistingFilesList');
             if (filesList.children.length === 0) {
                 document.getElementById('modalExistingFilesSection').style.display = 'none';
             }
         },
 
-        deleteEvidenceFile: function(fileId) {
+        deleteEvidenceFile: function (fileId) {
             if (!confirm('Are you sure you want to delete this file?')) {
                 return;
             }
@@ -355,27 +467,41 @@ if (typeof window.DisputeModal === 'undefined') {
             .then(response => response.json())
             .then(result => {
                 if (result.success) {
-                    const fileElement = document.getElementById('modal-file-' + fileId);
+const fileElement = document.getElementById('modal-file-' + fileId);
                     if (fileElement) {
                         fileElement.remove();
                     }
 
-                    const filesList = document.getElementById('modalExistingFilesList');
+const filesList = document.getElementById('modalExistingFilesList');
                     if (filesList.children.length === 0) {
                         document.getElementById('modalExistingFilesSection').style.display = 'none';
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        const fileElement = document.getElementById('modal-file-' + fileId);
+                        if (fileElement) {
+                            fileElement.remove();
+                        }
+
+                        const filesList = document.getElementById('modalExistingFilesList');
+                        if (filesList.children.length === 0) {
+                            document.getElementById('modalExistingFilesSection').style.display = 'none';
+                        }
+                    } else {
+                        alert(result.message || 'Error deleting file');
                     }
-                } else {
-                    alert(result.message || 'Error deleting file');
-                }
-            })
-            .catch(error => {
-                console.error('Delete error:', error);
-                alert('An error occurred while deleting the file.');
-            });
+                })
+                .catch(error => {
+                    console.error('Delete error:', error);
+                    alert('An error occurred while deleting the file.');
+                });
         },
 
         // Load milestones for a project
         loadMilestones: function(projectId, preselectMilestoneId = null) {
+const milestoneSelect = document.getElementById('modal_milestone_id');
+const milestoneItemSelect = document.getElementById('modal_milestone_item_id');
+        loadMilestones: function (projectId, preselectMilestoneId = null) {
             const milestoneSelect = document.getElementById('modal_milestone_id');
             const milestoneItemSelect = document.getElementById('modal_milestone_item_id');
 
@@ -390,30 +516,43 @@ if (typeof window.DisputeModal === 'undefined') {
             })
             .then(response => response.json())
             .then(data => {
-                let milestones = [];
+const milestones = [];
                 if (data.success && data.data && data.data.milestones) {
                     milestones = data.data.milestones;
                 } else if (data.milestones) {
                     milestones = data.milestones;
                 }
+                .then(response => response.json())
+                .then(data => {
+                    const milestones = [];
+                    if (data.success && data.data && data.data.milestones) {
+                        milestones = data.data.milestones;
+                    } else if (data.milestones) {
+                        milestones = data.milestones;
+                    }
 
-                milestoneSelect.innerHTML = '<option value="">Select Milestone</option>';
+                    milestoneSelect.innerHTML = '<option value="">Select Milestone</option>';
 
                 milestones.forEach(milestone => {
-                    const option = document.createElement('option');
+const option = document.createElement('option');
                     option.value = milestone.milestone_id;
                     option.textContent = milestone.milestone_name || 'Unnamed Milestone';
                     milestoneSelect.appendChild(option);
-                });
+                    milestones.forEach(milestone => {
+                        const option = document.createElement('option');
+                        option.value = milestone.milestone_id;
+                        option.textContent = milestone.milestone_name || 'Unnamed Milestone';
+                        milestoneSelect.appendChild(option);
+                    });
 
-                if (preselectMilestoneId) {
-                    milestoneSelect.value = preselectMilestoneId;
-                    window.DisputeModal.loadMilestoneItems(preselectMilestoneId);
-                }
-            })
-            .catch(error => {
-                console.error('Error loading milestones:', error);
-            });
+                    if (preselectMilestoneId) {
+                        milestoneSelect.value = preselectMilestoneId;
+                        window.DisputeModal.loadMilestoneItems(preselectMilestoneId);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading milestones:', error);
+                });
 
             if (milestoneItemSelect) {
                 milestoneItemSelect.innerHTML = '<option value="">Select Milestone Item</option>';
@@ -422,6 +561,8 @@ if (typeof window.DisputeModal === 'undefined') {
 
         // Load milestone items for a milestone
         loadMilestoneItems: function(milestoneId, preselectItemId = null) {
+const milestoneItemSelect = document.getElementById('modal_milestone_item_id');
+        loadMilestoneItems: function (milestoneId, preselectItemId = null) {
             const milestoneItemSelect = document.getElementById('modal_milestone_item_id');
 
             if (!milestoneItemSelect || !milestoneId) {
@@ -440,46 +581,66 @@ if (typeof window.DisputeModal === 'undefined') {
             })
             .then(response => response.json())
             .then(data => {
-                let milestoneItems = [];
+const milestoneItems = [];
                 if (data.success && data.data && data.data.milestone_items) {
                     milestoneItems = data.data.milestone_items;
                 } else if (data.milestone_items) {
                     milestoneItems = data.milestone_items;
                 }
+                .then(response => response.json())
+                .then(data => {
+                    const milestoneItems = [];
+                    if (data.success && data.data && data.data.milestone_items) {
+                        milestoneItems = data.data.milestone_items;
+                    } else if (data.milestone_items) {
+                        milestoneItems = data.milestone_items;
+                    }
 
-                milestoneItemSelect.innerHTML = '<option value="">Select Milestone Item</option>';
+                    milestoneItemSelect.innerHTML = '<option value="">Select Milestone Item</option>';
 
                 milestoneItems.forEach(item => {
-                    const option = document.createElement('option');
+const option = document.createElement('option');
                     option.value = item.milestone_item_id;
                     option.textContent = item.milestone_item_title || 'Unnamed Item';
                     milestoneItemSelect.appendChild(option);
-                });
+                    milestoneItems.forEach(item => {
+                        const option = document.createElement('option');
+                        option.value = item.milestone_item_id;
+                        option.textContent = item.milestone_item_title || 'Unnamed Item';
+                        milestoneItemSelect.appendChild(option);
+                    });
 
-                if (preselectItemId) {
-                    milestoneItemSelect.value = preselectItemId;
-                }
-            })
-            .catch(error => {
-                console.error('Error loading milestone items:', error);
-                milestoneItemSelect.innerHTML = '<option value="">Error loading milestone items</option>';
-            });
+                    if (preselectItemId) {
+                        milestoneItemSelect.value = preselectItemId;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading milestone items:', error);
+                    milestoneItemSelect.innerHTML = '<option value="">Error loading milestone items</option>';
+                });
         },
 
         // Initialize modal event listeners
         init: function() {
-            const modalDescTextarea = document.getElementById('modal_dispute_desc');
+const modalDescTextarea = document.getElementById('modal_dispute_desc');
             if (modalDescTextarea) {
                 modalDescTextarea.addEventListener('input', function() {
+const count = this.value.length;
+        init: function () {
+            const modalDescTextarea = document.getElementById('modal_dispute_desc');
+            if (modalDescTextarea) {
+                modalDescTextarea.addEventListener('input', function () {
                     const count = this.value.length;
                     document.getElementById('modalCharCount').textContent = count + ' / 2000 characters';
                 });
             }
 
             // Project selection change
-            const modalProjectSelect = document.getElementById('modal_project_id');
+const modalProjectSelect = document.getElementById('modal_project_id');
             if (modalProjectSelect) {
                 modalProjectSelect.addEventListener('change', function() {
+const projectId = this.value;
+                modalProjectSelect.addEventListener('change', function () {
                     const projectId = this.value;
                     if (projectId) {
                         window.DisputeModal.loadMilestones(projectId);
@@ -491,12 +652,12 @@ if (typeof window.DisputeModal === 'undefined') {
             }
 
             // Modal dispute type toggle for 'Others'
-            const modalDisputeType = document.getElementById('modal_dispute_type');
-            const modalIfOthersGroup = document.getElementById('modal_if_others_group');
-            const modalIfOthersInput = document.getElementById('modal_if_others_distype');
+const modalDisputeType = document.getElementById('modal_dispute_type');
+const modalIfOthersGroup = document.getElementById('modal_if_others_group');
+const modalIfOthersInput = document.getElementById('modal_if_others_distype');
 
             if (modalDisputeType) {
-                modalDisputeType.addEventListener('change', function() {
+                modalDisputeType.addEventListener('change', function () {
                     if (this.value === 'Others') {
                         if (modalIfOthersGroup) modalIfOthersGroup.style.display = 'block';
                         if (modalIfOthersInput) modalIfOthersInput.setAttribute('required', 'required');
@@ -511,9 +672,11 @@ if (typeof window.DisputeModal === 'undefined') {
             }
 
             // Milestone selection change
-            const modalMilestoneSelect = document.getElementById('modal_milestone_id');
+const modalMilestoneSelect = document.getElementById('modal_milestone_id');
             if (modalMilestoneSelect) {
                 modalMilestoneSelect.addEventListener('change', function() {
+const milestoneId = this.value;
+                modalMilestoneSelect.addEventListener('change', function () {
                     const milestoneId = this.value;
                     if (milestoneId) {
                         window.DisputeModal.loadMilestoneItems(milestoneId);
@@ -521,91 +684,96 @@ if (typeof window.DisputeModal === 'undefined') {
                 });
             }
             // handler attachment to guys na galing sa both.js
-            const initialFileInput = document.querySelector('#modal-file-upload-container .evidence-file-input');
+const initialFileInput = document.querySelector('#modal-file-upload-container .evidence-file-input');
             if (initialFileInput) {
-                initialFileInput.addEventListener('change', function() {
+                initialFileInput.addEventListener('change', function () {
                     window.DisputeModal.handleFileSelection(this, 'modal-file-upload-container', 'modal-add-more-files');
                 });
             }
 
-            const initialRemoveBtn = document.querySelector('#modal-file-upload-container .remove-file-btn');
+const initialRemoveBtn = document.querySelector('#modal-file-upload-container .remove-file-btn');
             if (initialRemoveBtn) {
-                initialRemoveBtn.addEventListener('click', function() {
+                initialRemoveBtn.addEventListener('click', function () {
                     window.DisputeModal.removeFileInput(this, 'modal-file-upload-container', 'modal-add-more-files');
                 });
             }
 
-            const addMoreBtn = document.getElementById('modal-add-more-files');
+const addMoreBtn = document.getElementById('modal-add-more-files');
             if (addMoreBtn) {
-                addMoreBtn.addEventListener('click', function() {
+                addMoreBtn.addEventListener('click', function () {
                     window.DisputeModal.addMoreFiles('modal-file-upload-container', 'modal-add-more-files');
                 });
             }
 
-            const modalCancelBtn = document.getElementById('modalCancelBtn');
+const modalCancelBtn = document.getElementById('modalCancelBtn');
             if (modalCancelBtn) {
-                modalCancelBtn.addEventListener('click', function() {
+                modalCancelBtn.addEventListener('click', function () {
                     window.DisputeModal.close();
                 });
             }
 
             // ========== PROGRESS MODAL INITIALIZATION ==========
 
-            const progressTextarea = document.getElementById('progress_purpose');
+const progressTextarea = document.getElementById('progress_purpose');
             if (progressTextarea) {
                 progressTextarea.addEventListener('input', function() {
+const count = this.value.length;
+                progressTextarea.addEventListener('input', function () {
                     const count = this.value.length;
                     document.getElementById('progressCharCount').textContent = count + ' / 1000 characters';
                 });
             }
 
             // Attach handler to initial file input in progress modal
-            const initialProgressFileInput = document.querySelector('#progress-file-upload-container .evidence-file-input');
+const initialProgressFileInput = document.querySelector('#progress-file-upload-container .evidence-file-input');
             if (initialProgressFileInput) {
-                initialProgressFileInput.addEventListener('change', function() {
+                initialProgressFileInput.addEventListener('change', function () {
                     window.ProgressModal.handleFileSelection(this);
                 });
             }
 
-            const initialProgressRemoveBtn = document.querySelector('#progress-file-upload-container .remove-file-btn');
+const initialProgressRemoveBtn = document.querySelector('#progress-file-upload-container .remove-file-btn');
             if (initialProgressRemoveBtn) {
-                initialProgressRemoveBtn.addEventListener('click', function() {
+                initialProgressRemoveBtn.addEventListener('click', function () {
                     window.ProgressModal.removeFileInput(this);
                 });
             }
 
-            const progressAddMoreBtn = document.getElementById('progress-add-more-files');
+const progressAddMoreBtn = document.getElementById('progress-add-more-files');
             if (progressAddMoreBtn) {
-                progressAddMoreBtn.addEventListener('click', function() {
+                progressAddMoreBtn.addEventListener('click', function () {
                     window.ProgressModal.addMoreFiles();
                 });
             }
 
-            const progressCancelBtn = document.getElementById('progressCancelBtn');
+const progressCancelBtn = document.getElementById('progressCancelBtn');
             if (progressCancelBtn) {
-                progressCancelBtn.addEventListener('click', function() {
+                progressCancelBtn.addEventListener('click', function () {
                     window.ProgressModal.close();
                 });
             }
 
             // Progress form submission
-            const progressForm = document.getElementById('progressModalForm');
+const progressForm = document.getElementById('progressModalForm');
             if (progressForm) {
-                progressForm.addEventListener('submit', function(e) {
+                progressForm.addEventListener('submit', function (e) {
                     e.preventDefault();
 
-                    const formData = new FormData(this);
-                    const isEdit = document.getElementById('progress_is_edit').value === '1';
-                    const progressId = document.getElementById('progress_id').value;
-                    const errorDiv = document.getElementById('progressModalErrorMessages');
-                    const successDiv = document.getElementById('progressModalSuccessMessages');
+const formData = new FormData(this);
+const isEdit = document.getElementById('progress_is_edit').value === '1';
+const progressId = document.getElementById('progress_id').value;
+const errorDiv = document.getElementById('progressModalErrorMessages');
+const successDiv = document.getElementById('progressModalSuccessMessages');
 
                     errorDiv.style.display = 'none';
                     successDiv.style.display = 'none';
 
-                    let url = '/contractor/progress/upload';
-                    let method = 'POST';
-                    let headers = {
+const url = '/contractor/progress/upload';
+const method = 'POST';
+const headers = {
+                    const url = '/contractor/progress/upload';
+                    const method = 'POST';
+                    const headers = {
                         'X-CSRF-TOKEN': getCsrfToken(),
                         'Accept': 'application/json',
                         'X-Requested-With': 'XMLHttpRequest'
@@ -621,18 +789,18 @@ if (typeof window.DisputeModal === 'undefined') {
                         headers: headers,
                         body: formData
                     })
-                    .then(response => response.json())
-                    .then(result => {
-                        if (result.success) {
-                            successDiv.innerHTML = '<p>' + (result.message || 'Progress uploaded successfully!') + '</p>';
-                            successDiv.style.display = 'block';
+                        .then(response => response.json())
+                        .then(result => {
+                            if (result.success) {
+                                successDiv.innerHTML = '<p>' + (result.message || 'Progress uploaded successfully!') + '</p>';
+                                successDiv.style.display = 'block';
 
                             setTimeout(() => {
                                 window.ProgressModal.close();
                                 location.reload();
                             }, 1500);
                         } else {
-                            let errorMessage = result.message || 'An error occurred';
+const errorMessage = result.message || 'An error occurred';
                             if (result.errors) {
                                 errorMessage = '<ul>';
                                 for (let field in result.errors) {
@@ -642,46 +810,64 @@ if (typeof window.DisputeModal === 'undefined') {
                                         });
                                     } else {
                                         errorMessage += '<li>' + result.errors[field] + '</li>';
+                                setTimeout(() => {
+                                    window.ProgressModal.close();
+                                    location.reload();
+                                }, 1500);
+                            } else {
+                                const errorMessage = result.message || 'An error occurred';
+                                if (result.errors) {
+                                    errorMessage = '<ul>';
+                                    for (let field in result.errors) {
+                                        if (Array.isArray(result.errors[field])) {
+                                            result.errors[field].forEach(error => {
+                                                errorMessage += '<li>' + error + '</li>';
+                                            });
+                                        } else {
+                                            errorMessage += '<li>' + result.errors[field] + '</li>';
+                                        }
                                     }
+                                    errorMessage += '</ul>';
                                 }
-                                errorMessage += '</ul>';
+                                errorDiv.innerHTML = errorMessage;
+                                errorDiv.style.display = 'block';
                             }
-                            errorDiv.innerHTML = errorMessage;
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            errorDiv.innerHTML = '<p>An error occurred while uploading progress.</p>';
                             errorDiv.style.display = 'block';
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        errorDiv.innerHTML = '<p>An error occurred while uploading progress.</p>';
-                        errorDiv.style.display = 'block';
-                    });
+                        });
                 });
             }
 
             // Form submission
-            const modalForm = document.getElementById('disputeModalForm');
+const modalForm = document.getElementById('disputeModalForm');
             if (modalForm) {
-                modalForm.addEventListener('submit', function(e) {
+                modalForm.addEventListener('submit', function (e) {
                     e.preventDefault();
 
-                    const formData = new FormData(this);
-                    const isEdit = document.getElementById('modal_is_edit').value === '1';
-                    const disputeId = document.getElementById('modal_dispute_id').value;
-                    const errorDiv = document.getElementById('modalErrorMessages');
-                    const successDiv = document.getElementById('modalSuccessMessages');
+const formData = new FormData(this);
+const isEdit = document.getElementById('modal_is_edit').value === '1';
+const disputeId = document.getElementById('modal_dispute_id').value;
+const errorDiv = document.getElementById('modalErrorMessages');
+const successDiv = document.getElementById('modalSuccessMessages');
 
-                    // console.log('Form submission - isEdit:', isEdit);
-                    // console.log('Form data contents:');
+                    //
+                    //
                     for (let pair of formData.entries()) {
-                        console.log(pair[0] + ': ' + pair[1]);
+
                     }
 
                     errorDiv.style.display = 'none';
                     successDiv.style.display = 'none';
 
-                    let url = '/both/disputes/file';
-                    let method = 'POST';
-                    let headers = {
+const url = '/both/disputes/file';
+const method = 'POST';
+const headers = {
+                    const url = '/both/disputes/file';
+                    const method = 'POST';
+                    const headers = {
                         'X-CSRF-TOKEN': getCsrfToken(),
                         'Accept': 'application/json',
                         'X-Requested-With': 'XMLHttpRequest'
@@ -697,11 +883,11 @@ if (typeof window.DisputeModal === 'undefined') {
                         headers: headers,
                         body: formData
                     })
-                    .then(response => response.json())
-                    .then(result => {
-                        if (result.success) {
-                            successDiv.innerHTML = result.message;
-                            successDiv.style.display = 'block';
+                        .then(response => response.json())
+                        .then(result => {
+                            if (result.success) {
+                                successDiv.innerHTML = result.message;
+                                successDiv.style.display = 'block';
 
                             setTimeout(() => {
                                 window.DisputeModal.close();
@@ -709,7 +895,7 @@ if (typeof window.DisputeModal === 'undefined') {
                             }, 1500);
                         } else {
                             if (result.errors) {
-                                let errorHtml = '<ul>';
+const errorHtml = '<ul>';
                                 for (let field in result.errors) {
                                     if (Array.isArray(result.errors[field])) {
                                         result.errors[field].forEach(error => {
@@ -719,17 +905,33 @@ if (typeof window.DisputeModal === 'undefined') {
                                 }
                                 errorHtml += '</ul>';
                                 errorDiv.innerHTML = errorHtml;
+                                setTimeout(() => {
+                                    window.DisputeModal.close();
+                                    location.reload();
+                                }, 1500);
                             } else {
-                                errorDiv.innerHTML = result.message || 'Error processing dispute';
+                                if (result.errors) {
+                                    const errorHtml = '<ul>';
+                                    for (let field in result.errors) {
+                                        if (Array.isArray(result.errors[field])) {
+                                            result.errors[field].forEach(error => {
+                                                errorHtml += `<li>${error}</li>`;
+                                            });
+                                        }
+                                    }
+                                    errorHtml += '</ul>';
+                                    errorDiv.innerHTML = errorHtml;
+                                } else {
+                                    errorDiv.innerHTML = result.message || 'Error processing dispute';
+                                }
+                                errorDiv.style.display = 'block';
                             }
+                        })
+                        .catch(error => {
+                            console.error('Submit error:', error);
+                            errorDiv.innerHTML = 'An error occurred while processing the dispute.';
                             errorDiv.style.display = 'block';
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Submit error:', error);
-                        errorDiv.innerHTML = 'An error occurred while processing the dispute.';
-                        errorDiv.style.display = 'block';
-                    });
+                        });
                 });
             }
         }
@@ -748,9 +950,9 @@ if (typeof window.DisputeCancel === 'undefined') {
         disputeToCancel: null,
 
         // Open cancel modal
-        open: function(disputeId) {
+        open: function (disputeId) {
             this.disputeToCancel = disputeId;
-            const modal = document.getElementById('cancelDisputeModal');
+const modal = document.getElementById('cancelDisputeModal');
             if (modal) {
                 modal.style.display = 'flex';
                 document.body.style.overflow = 'hidden';
@@ -759,6 +961,8 @@ if (typeof window.DisputeCancel === 'undefined') {
 
         // Close cancel modal
         close: function() {
+const modal = document.getElementById('cancelDisputeModal');
+        close: function () {
             const modal = document.getElementById('cancelDisputeModal');
             if (modal) {
                 modal.style.display = 'none';
@@ -768,10 +972,10 @@ if (typeof window.DisputeCancel === 'undefined') {
         },
 
         // Confirm cancel dispute
-        confirm: function() {
+        confirm: function () {
             if (!this.disputeToCancel) return;
 
-            const disputeId = this.disputeToCancel;
+const disputeId = this.disputeToCancel;
             this.close();
 
             fetch(`/both/disputes/${disputeId}/cancel`, {
@@ -782,33 +986,33 @@ if (typeof window.DisputeCancel === 'undefined') {
                     'X-Requested-With': 'XMLHttpRequest'
                 }
             })
-            .then(response => response.json())
-            .then(result => {
-                if (result.success) {
-                    if (typeof showSuccess === 'function') {
-                        showSuccess(result.message);
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        if (typeof showSuccess === 'function') {
+                            showSuccess(result.message);
+                        } else {
+                            alert(result.message);
+                        }
+                        setTimeout(() => {
+                            location.reload();
+                        }, 1500);
                     } else {
-                        alert(result.message);
+                        if (typeof showErrors === 'function') {
+                            showErrors(result.message || 'Error cancelling dispute');
+                        } else {
+                            alert(result.message || 'Error cancelling dispute');
+                        }
                     }
-                    setTimeout(() => {
-                        location.reload();
-                    }, 1500);
-                } else {
+                })
+                .catch(error => {
+                    console.error('Cancel error:', error);
                     if (typeof showErrors === 'function') {
-                        showErrors(result.message || 'Error cancelling dispute');
+                        showErrors('An error occurred while cancelling the dispute.');
                     } else {
-                        alert(result.message || 'Error cancelling dispute');
+                        alert('An error occurred while cancelling the dispute.');
                     }
-                }
-            })
-            .catch(error => {
-                console.error('Cancel error:', error);
-                if (typeof showErrors === 'function') {
-                    showErrors('An error occurred while cancelling the dispute.');
-                } else {
-                    alert('An error occurred while cancelling the dispute.');
-                }
-            });
+                });
         }
     };
 }
@@ -820,6 +1024,11 @@ if (typeof window.PaymentModal === 'undefined') {
         paymentId: null,
 
         open: function(mode = 'add', paymentData = null) {
+const modal = document.getElementById('paymentModal');
+const title = document.getElementById('paymentModalTitle');
+const form = document.getElementById('paymentModalForm');
+const isEditInput = document.getElementById('payment_is_edit');
+        open: function (mode = 'add', paymentData = null) {
             const modal = document.getElementById('paymentModal');
             const title = document.getElementById('paymentModalTitle');
             const form = document.getElementById('paymentModalForm');
@@ -844,7 +1053,8 @@ if (typeof window.PaymentModal === 'undefined') {
                 document.getElementById('transaction_number').value = paymentData.transaction_number || '';
                 if (paymentData.transaction_date) {
                     // set date-only (YYYY-MM-DD)
-                    const dateVal = paymentData.transaction_date.toString().slice(0,10);
+const dateVal = paymentData.transaction_date.toString().slice(0,10);
+                    const dateVal = paymentData.transaction_date.toString().slice(0, 10);
                     document.getElementById('transaction_date').value = dateVal;
                 }
                 if (paymentData.receipt_photo) {
@@ -860,12 +1070,12 @@ if (typeof window.PaymentModal === 'undefined') {
             }
 
             // reset file input container; include existing receipt section and a single file input
-            const fileContainer = document.getElementById('payment-file-upload-container');
-            const existingSection = document.getElementById('existingReceiptSection');
-            const existingLink = document.getElementById('existingReceiptLink');
-            const fileInput = document.getElementById('payment_receipt_input');
-            const chooseAgainBtn = document.getElementById('chooseFileAgainBtn');
-            const fileInputGroup = fileContainer.querySelector('.file-input-group');
+const fileContainer = document.getElementById('payment-file-upload-container');
+const existingSection = document.getElementById('existingReceiptSection');
+const existingLink = document.getElementById('existingReceiptLink');
+const fileInput = document.getElementById('payment_receipt_input');
+const chooseAgainBtn = document.getElementById('chooseFileAgainBtn');
+const fileInputGroup = fileContainer.querySelector('.file-input-group');
 
             // Reset existing receipt section
             if (existingSection) existingSection.style.display = 'none';
@@ -880,8 +1090,8 @@ if (typeof window.PaymentModal === 'undefined') {
             // If we're in edit mode and paymentData has an existing receipt, show it
             if (isEditInput && isEditInput.value === '1' && typeof paymentData !== 'undefined' && paymentData && paymentData.receipt_photo) {
                 if (existingLink && existingSection && chooseAgainBtn && fileInput && fileInputGroup) {
-                    const filename = paymentData.receipt_photo.split('/').pop();
-                    const receiptUrl = window.location.origin + '/storage/' + paymentData.receipt_photo;
+const filename = paymentData.receipt_photo.split('/').pop();
+const receiptUrl = window.location.origin + '/storage/' + paymentData.receipt_photo;
                     existingLink.innerHTML = `
                         <strong>Current Receipt:</strong><br>
                         <a href="${receiptUrl}" target="_blank" style="color:#1877f2; text-decoration:none;">${filename}</a>
@@ -893,14 +1103,14 @@ if (typeof window.PaymentModal === 'undefined') {
                     fileInputGroup.style.display = 'none';
 
                     // Setup choose file again button
-                    chooseAgainBtn.onclick = function() {
+                    chooseAgainBtn.onclick = function () {
                         fileInput.click();
                     };
 
                     // When user selects a new file, show the file input group and update display
-                    fileInput.onchange = function() {
+                    fileInput.onchange = function () {
                         if (this.files && this.files.length > 0) {
-                            const newFilename = this.files[0].name;
+const newFilename = this.files[0].name;
                             existingLink.innerHTML = `
                                 <strong>New Receipt Selected:</strong><br>
                                 <span style="color:#28a745;">${newFilename}</span>
@@ -915,26 +1125,31 @@ if (typeof window.PaymentModal === 'undefined') {
             }
 
             // attach cancel
-            const cancelBtn = document.getElementById('paymentCancelBtn');
+const cancelBtn = document.getElementById('paymentCancelBtn');
             if (cancelBtn) {
-                cancelBtn.onclick = function() { window.PaymentModal.close(); };
+                cancelBtn.onclick = function () { window.PaymentModal.close(); };
             }
 
             // attach submit handler once
             if (!form._payment_handler_attached) {
-                form.addEventListener('submit', function(e) {
+                form.addEventListener('submit', function (e) {
                     e.preventDefault();
+const fd = new FormData(form);
+const isEdit = document.getElementById('payment_is_edit').value === '1';
+const url = '/owner/payment/upload';
+const method = 'POST';
+const headers = {
                     const fd = new FormData(form);
                     const isEdit = document.getElementById('payment_is_edit').value === '1';
-                    let url = '/owner/payment/upload';
-                    let method = 'POST';
+                    const url = '/owner/payment/upload';
+                    const method = 'POST';
                     const headers = {
                         'X-CSRF-TOKEN': getCsrfToken(),
                         'X-Requested-With': 'XMLHttpRequest'
                     };
 
                     if (isEdit) {
-                        const pid = document.getElementById('payment_id').value;
+const pid = document.getElementById('payment_id').value;
                         url = `/owner/payment/${pid}`;
                         // use POST with _method override or send PUT via fetch with FormData - using POST with override
                         fd.append('_method', 'PUT');
@@ -948,8 +1163,8 @@ if (typeof window.PaymentModal === 'undefined') {
                     })
                     .then(r => r.json())
                     .then(res => {
-                        const errDiv = document.getElementById('paymentModalErrorMessages');
-                        const successDiv = document.getElementById('paymentModalSuccessMessages');
+const errDiv = document.getElementById('paymentModalErrorMessages');
+const successDiv = document.getElementById('paymentModalSuccessMessages');
                         errDiv.style.display = 'none'; successDiv.style.display = 'none';
                         if (res.success) {
                             successDiv.innerHTML = '<p>' + (res.message || 'Payment saved') + '</p>';
@@ -961,11 +1176,31 @@ if (typeof window.PaymentModal === 'undefined') {
                         }
                     })
                     .catch(err => {
-                        const errDiv = document.getElementById('paymentModalErrorMessages');
+const errDiv = document.getElementById('paymentModalErrorMessages');
                         errDiv.innerHTML = 'An error occurred';
                         errDiv.style.display = 'block';
                         console.error('Payment submit error', err);
                     });
+                        .then(r => r.json())
+                        .then(res => {
+                            const errDiv = document.getElementById('paymentModalErrorMessages');
+                            const successDiv = document.getElementById('paymentModalSuccessMessages');
+                            errDiv.style.display = 'none'; successDiv.style.display = 'none';
+                            if (res.success) {
+                                successDiv.innerHTML = '<p>' + (res.message || 'Payment saved') + '</p>';
+                                successDiv.style.display = 'block';
+                                setTimeout(() => { window.PaymentModal.close(); location.reload(); }, 1000);
+                            } else {
+                                errDiv.innerHTML = res.message || 'Error saving payment';
+                                errDiv.style.display = 'block';
+                            }
+                        })
+                        .catch(err => {
+                            const errDiv = document.getElementById('paymentModalErrorMessages');
+                            errDiv.innerHTML = 'An error occurred';
+                            errDiv.style.display = 'block';
+                            console.error('Payment submit error', err);
+                        });
                 });
                 form._payment_handler_attached = true;
             }
@@ -975,6 +1210,8 @@ if (typeof window.PaymentModal === 'undefined') {
         },
 
         close: function() {
+const modal = document.getElementById('paymentModal');
+        close: function () {
             const modal = document.getElementById('paymentModal');
             if (modal) {
                 modal.style.display = 'none';
@@ -988,12 +1225,12 @@ if (typeof window.PaymentDelete === 'undefined') {
     window.PaymentDelete = {
         paymentToDelete: null,
 
-        open: function(paymentId) {
+        open: function (paymentId) {
             this.paymentToDelete = paymentId;
-            const modal = document.getElementById('deletePaymentModal');
-            const errorMsg = document.getElementById('deletePaymentErrorMessage');
-            const successMsg = document.getElementById('deletePaymentSuccessMessage');
-            const reasonTextarea = document.getElementById('delete_payment_reason');
+const modal = document.getElementById('deletePaymentModal');
+const errorMsg = document.getElementById('deletePaymentErrorMessage');
+const successMsg = document.getElementById('deletePaymentSuccessMessage');
+const reasonTextarea = document.getElementById('delete_payment_reason');
 
             // Reset messages and textarea
             if (errorMsg) errorMsg.style.display = 'none';
@@ -1007,6 +1244,8 @@ if (typeof window.PaymentDelete === 'undefined') {
         },
 
         close: function() {
+const modal = document.getElementById('deletePaymentModal');
+        close: function () {
             const modal = document.getElementById('deletePaymentModal');
             if (modal) {
                 modal.style.display = 'none';
@@ -1015,13 +1254,13 @@ if (typeof window.PaymentDelete === 'undefined') {
             this.paymentToDelete = null;
         },
 
-        confirm: function() {
+        confirm: function () {
             if (!this.paymentToDelete) return;
 
-            const reasonTextarea = document.getElementById('delete_payment_reason');
-            const reason = reasonTextarea ? reasonTextarea.value.trim() : '';
-            const errorMsg = document.getElementById('deletePaymentErrorMessage');
-            const successMsg = document.getElementById('deletePaymentSuccessMessage');
+const reasonTextarea = document.getElementById('delete_payment_reason');
+const reason = reasonTextarea ? reasonTextarea.value.trim() : '';
+const errorMsg = document.getElementById('deletePaymentErrorMessage');
+const successMsg = document.getElementById('deletePaymentSuccessMessage');
 
             // Hide previous messages
             if (errorMsg) errorMsg.style.display = 'none';
@@ -1044,8 +1283,8 @@ if (typeof window.PaymentDelete === 'undefined') {
                 return;
             }
 
-            const pid = this.paymentToDelete;
-            const formData = new FormData();
+const pid = this.paymentToDelete;
+const formData = new FormData();
             formData.append('_method', 'DELETE');
             formData.append('reason', reason);
 
@@ -1059,31 +1298,31 @@ if (typeof window.PaymentDelete === 'undefined') {
                 },
                 body: formData
             })
-            .then(r => r.json())
-            .then(res => {
-                if (res.success) {
-                    if (successMsg) {
-                        successMsg.textContent = res.message || 'Payment deleted successfully';
-                        successMsg.style.display = 'block';
+                .then(r => r.json())
+                .then(res => {
+                    if (res.success) {
+                        if (successMsg) {
+                            successMsg.textContent = res.message || 'Payment deleted successfully';
+                            successMsg.style.display = 'block';
+                        }
+                        setTimeout(() => {
+                            this.close();
+                            location.reload();
+                        }, 1000);
+                    } else {
+                        if (errorMsg) {
+                            errorMsg.textContent = res.message || 'Error deleting payment';
+                            errorMsg.style.display = 'block';
+                        }
                     }
-                    setTimeout(() => {
-                        this.close();
-                        location.reload();
-                    }, 1000);
-                } else {
+                })
+                .catch(err => {
+                    console.error(err);
                     if (errorMsg) {
-                        errorMsg.textContent = res.message || 'Error deleting payment';
+                        errorMsg.textContent = 'An error occurred while deleting the payment';
                         errorMsg.style.display = 'block';
                     }
-                }
-            })
-            .catch(err => {
-                console.error(err);
-                if (errorMsg) {
-                    errorMsg.textContent = 'An error occurred while deleting the payment';
-                    errorMsg.style.display = 'block';
-                }
-            });
+                });
         }
     };
 }
@@ -1092,67 +1331,67 @@ if (typeof window.PaymentDelete === 'undefined') {
 // For existing code that uses these function names
 
 if (typeof addMoreFilesWrapper === 'undefined') {
-    window.addMoreFilesWrapper = function(containerId, buttonId) {
+    window.addMoreFilesWrapper = function (containerId, buttonId) {
         window.DisputeModal.addMoreFiles(containerId, buttonId);
     };
 }
 
 if (typeof handleFileSelectionWrapper === 'undefined') {
-    window.handleFileSelectionWrapper = function(input, containerId, buttonId) {
+    window.handleFileSelectionWrapper = function (input, containerId, buttonId) {
         window.DisputeModal.handleFileSelection(input, containerId, buttonId);
     };
 }
 
 if (typeof removeFileInputWrapper === 'undefined') {
-    window.removeFileInputWrapper = function(button, containerId, buttonId) {
+    window.removeFileInputWrapper = function (button, containerId, buttonId) {
         window.DisputeModal.removeFileInput(button, containerId, buttonId);
     };
 }
 
 if (typeof openDisputeModal === 'undefined') {
-    window.openDisputeModal = function(mode, disputeData) {
+    window.openDisputeModal = function (mode, disputeData) {
         window.DisputeModal.open(mode, disputeData);
     };
 }
 
 if (typeof closeDisputeModal === 'undefined') {
-    window.closeDisputeModal = function() {
+    window.closeDisputeModal = function () {
         window.DisputeModal.close();
     };
 }
 
 if (typeof deleteDisputeEvidenceFile === 'undefined') {
-    window.deleteDisputeEvidenceFile = function(fileId) {
+    window.deleteDisputeEvidenceFile = function (fileId) {
         window.DisputeModal.deleteEvidenceFile(fileId);
     };
 }
 
 if (typeof loadModalMilestones === 'undefined') {
-    window.loadModalMilestones = function(projectId, preselectMilestoneId) {
+    window.loadModalMilestones = function (projectId, preselectMilestoneId) {
         window.DisputeModal.loadMilestones(projectId, preselectMilestoneId);
     };
 }
 
 if (typeof loadModalMilestoneItems === 'undefined') {
-    window.loadModalMilestoneItems = function(milestoneId, preselectItemId) {
+    window.loadModalMilestoneItems = function (milestoneId, preselectItemId) {
         window.DisputeModal.loadMilestoneItems(milestoneId, preselectItemId);
     };
 }
 
 if (typeof cancelDispute === 'undefined') {
-    window.cancelDispute = function(disputeId) {
+    window.cancelDispute = function (disputeId) {
         window.DisputeCancel.open(disputeId);
     };
 }
 
 if (typeof closeCancelModal === 'undefined') {
-    window.closeCancelModal = function() {
+    window.closeCancelModal = function () {
         window.DisputeCancel.close();
     };
 }
 
 if (typeof confirmCancelDispute === 'undefined') {
-    window.confirmCancelDispute = function() {
+    window.confirmCancelDispute = function () {
         window.DisputeCancel.confirm();
     };
 }
@@ -1162,19 +1401,19 @@ if (typeof window.ProgressDelete === 'undefined') {
         progressToDelete: null,
 
         // Open delete modal
-        open: function(progressId) {
+        open: function (progressId) {
             this.progressToDelete = progressId;
-            const modal = document.getElementById('deleteProgressModal');
+const modal = document.getElementById('deleteProgressModal');
             if (modal) {
                 // reset reason and messages
-                const reasonInput = document.getElementById('delete_progress_reason');
+const reasonInput = document.getElementById('delete_progress_reason');
                 if (reasonInput) {
                     reasonInput.value = '';
                     reasonInput.focus();
                 }
-                const errDiv = document.getElementById('deleteProgressErrorMessage');
+const errDiv = document.getElementById('deleteProgressErrorMessage');
                 if (errDiv) { errDiv.style.display = 'none'; errDiv.innerHTML = ''; }
-                const successDiv = document.getElementById('deleteProgressSuccessMessage');
+const successDiv = document.getElementById('deleteProgressSuccessMessage');
                 if (successDiv) { successDiv.style.display = 'none'; successDiv.innerHTML = ''; }
 
                 modal.style.display = 'flex';
@@ -1184,6 +1423,8 @@ if (typeof window.ProgressDelete === 'undefined') {
 
         // Close delete modal
         close: function() {
+const modal = document.getElementById('deleteProgressModal');
+        close: function () {
             const modal = document.getElementById('deleteProgressModal');
             if (modal) {
                 modal.style.display = 'none';
@@ -1193,16 +1434,16 @@ if (typeof window.ProgressDelete === 'undefined') {
         },
 
         // Confirm delete progress
-        confirm: function() {
+        confirm: function () {
             if (!this.progressToDelete) return;
 
-            const progressId = this.progressToDelete;
+const progressId = this.progressToDelete;
             // read delete reason from modal textarea
-            const reasonInput = document.getElementById('delete_progress_reason');
-            const reason = reasonInput ? reasonInput.value.trim() : '';
+const reasonInput = document.getElementById('delete_progress_reason');
+const reason = reasonInput ? reasonInput.value.trim() : '';
 
             if (!reason) {
-                const errDiv = document.getElementById('deleteProgressErrorMessage');
+const errDiv = document.getElementById('deleteProgressErrorMessage');
                 if (errDiv) {
                     errDiv.innerHTML = 'Please provide a reason for deleting this progress report.';
                     errDiv.style.display = 'block';
@@ -1225,44 +1466,75 @@ if (typeof window.ProgressDelete === 'undefined') {
             })
             .then(response => response.json())
             .then(result => {
-                const errDiv = document.getElementById('deleteProgressErrorMessage');
-                const successDiv = document.getElementById('deleteProgressSuccessMessage');
+const errDiv = document.getElementById('deleteProgressErrorMessage');
+const successDiv = document.getElementById('deleteProgressSuccessMessage');
+                .then(response => response.json())
+                .then(result => {
+                    const errDiv = document.getElementById('deleteProgressErrorMessage');
+                    const successDiv = document.getElementById('deleteProgressSuccessMessage');
 
-                if (result.success) {
-                    if (errDiv) { errDiv.style.display = 'none'; errDiv.innerHTML = ''; }
-                    if (successDiv) {
-                        successDiv.innerHTML = result.message || 'Progress report deleted successfully';
-                        successDiv.style.display = 'block';
+                    if (result.success) {
+                        if (errDiv) { errDiv.style.display = 'none'; errDiv.innerHTML = ''; }
+                        if (successDiv) {
+                            successDiv.innerHTML = result.message || 'Progress report deleted successfully';
+                            successDiv.style.display = 'block';
+                        } else {
+                            if (typeof showSuccess === 'function') { showSuccess(result.message); }
+                        }
+
+                        // disable confirm button to prevent duplicate submits
+                        const confirmBtn = document.querySelector('#deleteProgressModal .modal-actions .btn-danger');
+                        if (confirmBtn) { confirmBtn.disabled = true; confirmBtn.textContent = 'Deleting...'; }
+
+                        setTimeout(() => {
+                            // close modal and reload after short delay
+                            const modal = document.getElementById('deleteProgressModal');
+                            if (modal) modal.style.display = 'none';
+                            document.body.style.overflow = 'auto';
+                            location.reload();
+                        }, 1000);
                     } else {
-                        if (typeof showSuccess === 'function') { showSuccess(result.message); }
+                        if (successDiv) { successDiv.style.display = 'none'; successDiv.innerHTML = ''; }
+                        if (errDiv) {
+                            errDiv.innerHTML = result.message || 'Error deleting progress report';
+                            errDiv.style.display = 'block';
+                        } else if (typeof showError === 'function') {
+                            showError(result.message || 'Error deleting progress report');
+                        } else {
+                            alert('Error: ' + result.message);
+                        }
                     }
 
                     // disable confirm button to prevent duplicate submits
-                    const confirmBtn = document.querySelector('#deleteProgressModal .modal-actions .btn-danger');
+const confirmBtn = document.querySelector('#deleteProgressModal .modal-actions .btn-danger');
                     if (confirmBtn) { confirmBtn.disabled = true; confirmBtn.textContent = 'Deleting...'; }
 
                     setTimeout(() => {
                         // close modal and reload after short delay
-                        const modal = document.getElementById('deleteProgressModal');
+const modal = document.getElementById('deleteProgressModal');
                         if (modal) modal.style.display = 'none';
                         document.body.style.overflow = 'auto';
                         location.reload();
                     }, 1000);
                 } else {
                     if (successDiv) { successDiv.style.display = 'none'; successDiv.innerHTML = ''; }
+                })
+                .catch(error => {
+                    console.error('Delete error:', error);
+                    const errDiv = document.getElementById('deleteProgressErrorMessage');
                     if (errDiv) {
-                        errDiv.innerHTML = result.message || 'Error deleting progress report';
+                        errDiv.innerHTML = 'An error occurred while deleting the progress report.';
                         errDiv.style.display = 'block';
                     } else if (typeof showError === 'function') {
-                        showError(result.message || 'Error deleting progress report');
+                        showError('An error occurred while deleting the progress report.');
                     } else {
-                        alert('Error: ' + result.message);
+                        alert('An error occurred while deleting the progress report.');
                     }
                 }
             })
             .catch(error => {
                 console.error('Delete error:', error);
-                const errDiv = document.getElementById('deleteProgressErrorMessage');
+const errDiv = document.getElementById('deleteProgressErrorMessage');
                 if (errDiv) {
                     errDiv.innerHTML = 'An error occurred while deleting the progress report.';
                     errDiv.style.display = 'block';
@@ -1272,6 +1544,7 @@ if (typeof window.ProgressDelete === 'undefined') {
                     alert('An error occurred while deleting the progress report.');
                 }
             });
+                });
         }
     };
 }
@@ -1282,6 +1555,12 @@ if (typeof window.ProgressModal === 'undefined') {
     window.ProgressModal = {
         // Open progress modal
         open: function(mode = 'add', progressData = null) {
+const modal = document.getElementById('progressModal');
+const title = document.getElementById('progressModalTitle');
+const form = document.getElementById('progressModalForm');
+const submitBtn = document.getElementById('progressSubmitBtnText');
+const isEditInput = document.getElementById('progress_is_edit');
+        open: function (mode = 'add', progressData = null) {
             const modal = document.getElementById('progressModal');
             const title = document.getElementById('progressModalTitle');
             const form = document.getElementById('progressModalForm');
@@ -1292,7 +1571,7 @@ if (typeof window.ProgressModal === 'undefined') {
             document.getElementById('progressModalErrorMessages').style.display = 'none';
             document.getElementById('progressModalSuccessMessages').style.display = 'none';
 
-            const deletedFilesInput = document.getElementById('progress_deleted_file_ids');
+const deletedFilesInput = document.getElementById('progress_deleted_file_ids');
             if (deletedFilesInput) {
                 deletedFilesInput.remove();
             }
@@ -1308,16 +1587,16 @@ if (typeof window.ProgressModal === 'undefined') {
                 document.getElementById('progress_item_title').textContent = progressData.item_title || '';
                 document.getElementById('progress_purpose').value = progressData.purpose || '';
 
-                const charCount = (progressData.purpose || '').length;
+const charCount = (progressData.purpose || '').length;
                 document.getElementById('progressCharCount').textContent = charCount + ' / 1000 characters';
 
                 if (progressData.files && progressData.files.length > 0) {
-                    const filesSection = document.getElementById('existingProgressFilesSection');
-                    const filesList = document.getElementById('existingProgressFilesList');
+const filesSection = document.getElementById('existingProgressFilesSection');
+const filesList = document.getElementById('existingProgressFilesList');
                     filesList.innerHTML = '';
 
                     progressData.files.forEach(file => {
-                        const li = document.createElement('li');
+const li = document.createElement('li');
                         li.id = 'progress-file-' + file.file_id;
                         li.innerHTML = `
                             <span>📄 ${file.original_name || file.file_path.split('/').pop()}</span>
@@ -1331,7 +1610,7 @@ if (typeof window.ProgressModal === 'undefined') {
 
                 // Change file label to optional
                 document.getElementById('progressFilesLabel').textContent = 'Progress Files (Optional)';
-                const fileInput = document.querySelector('#progress-file-upload-container input[type="file"]');
+const fileInput = document.querySelector('#progress-file-upload-container input[type="file"]');
                 if (fileInput) {
                     fileInput.removeAttribute('required');
                 }
@@ -1351,13 +1630,13 @@ if (typeof window.ProgressModal === 'undefined') {
 
                 // Make file input required
                 document.getElementById('progressFilesLabel').textContent = 'Progress Files *';
-                const fileInput = document.querySelector('#progress-file-upload-container input[type="file"]');
+const fileInput = document.querySelector('#progress-file-upload-container input[type="file"]');
                 if (fileInput) {
                     fileInput.setAttribute('required', 'required');
                 }
             }
 
-            const fileContainer = document.getElementById('progress-file-upload-container');
+const fileContainer = document.getElementById('progress-file-upload-container');
             fileContainer.innerHTML = `
                 <div class="file-input-group">
                     <input type="file" name="progress_files[]" accept=".jpg,.jpeg,.png,.pdf,.doc,.docx" class="progress-file-input evidence-file-input">
@@ -1366,16 +1645,16 @@ if (typeof window.ProgressModal === 'undefined') {
             `;
             document.getElementById('progress-add-more-files').style.display = 'none';
 
-            const newFileInput = fileContainer.querySelector('.evidence-file-input');
+const newFileInput = fileContainer.querySelector('.evidence-file-input');
             if (newFileInput) {
-                newFileInput.addEventListener('change', function() {
+                newFileInput.addEventListener('change', function () {
                     window.ProgressModal.handleFileSelection(this);
                 });
             }
 
-            const newRemoveBtn = fileContainer.querySelector('.remove-file-btn');
+const newRemoveBtn = fileContainer.querySelector('.remove-file-btn');
             if (newRemoveBtn) {
-                newRemoveBtn.addEventListener('click', function() {
+                newRemoveBtn.addEventListener('click', function () {
                     window.ProgressModal.removeFileInput(this);
                 });
             }
@@ -1385,6 +1664,8 @@ if (typeof window.ProgressModal === 'undefined') {
         },
 
         close: function() {
+const modal = document.getElementById('progressModal');
+        close: function () {
             const modal = document.getElementById('progressModal');
             modal.style.display = 'none';
             document.body.style.overflow = 'auto';
@@ -1392,17 +1673,19 @@ if (typeof window.ProgressModal === 'undefined') {
 
         // Mark file for removal
         markFileForRemoval: function(fileId) {
-            console.log('markFileForRemoval called for progress file ID:', fileId);
+        markFileForRemoval: function (fileId) {
+
 
             // Remove from UI
-            const fileElement = document.getElementById('progress-file-' + fileId);
+const fileElement = document.getElementById('progress-file-' + fileId);
             if (fileElement) {
                 fileElement.remove();
-                console.log('Progress file element removed from UI');
+
             }
 
             // Add to hidden input for deletion tracking
-            let deletedFilesInput = document.getElementById('progress_deleted_file_ids');
+const deletedFilesInput = document.getElementById('progress_deleted_file_ids');
+            const deletedFilesInput = document.getElementById('progress_deleted_file_ids');
             if (!deletedFilesInput) {
                 deletedFilesInput = document.createElement('input');
                 deletedFilesInput.type = 'hidden';
@@ -1410,34 +1693,34 @@ if (typeof window.ProgressModal === 'undefined') {
                 deletedFilesInput.name = 'deleted_file_ids';
                 deletedFilesInput.value = '';
                 document.getElementById('progressModalForm').appendChild(deletedFilesInput);
-                console.log('Created hidden input for deleted progress files');
+
             }
 
             // Add file ID to deletion list
-            const deletedIds = deletedFilesInput.value ? deletedFilesInput.value.split(',').filter(id => id) : [];
+const deletedIds = deletedFilesInput.value ? deletedFilesInput.value.split(',').filter(id => id) : [];
             if (!deletedIds.includes(fileId.toString())) {
                 deletedIds.push(fileId);
                 deletedFilesInput.value = deletedIds.join(',');
-                console.log('Updated deleted progress files list:', deletedFilesInput.value);
+
             }
 
             // Hide section if no files left
-            const filesList = document.getElementById('existingProgressFilesList');
+const filesList = document.getElementById('existingProgressFilesList');
             if (filesList && filesList.children.length === 0) {
                 document.getElementById('existingProgressFilesSection').style.display = 'none';
             }
         },
 
         // Reuse DisputeModal file upload functions
-        handleFileSelection: function(input) {
+        handleFileSelection: function (input) {
             window.DisputeModal.handleFileSelection(input, 'progress-file-upload-container', 'progress-add-more-files');
         },
 
-        removeFileInput: function(button) {
+        removeFileInput: function (button) {
             window.DisputeModal.removeFileInput(button, 'progress-file-upload-container', 'progress-add-more-files');
         },
 
-        addMoreFiles: function() {
+        addMoreFiles: function () {
             window.DisputeModal.addMoreFiles('progress-file-upload-container', 'progress-add-more-files');
         }
     };
@@ -1448,9 +1731,9 @@ if (typeof window.ProgressApprove === 'undefined') {
         progressToApprove: null,
 
         // Open approve modal
-        open: function(progressId) {
+        open: function (progressId) {
             this.progressToApprove = progressId;
-            const modal = document.getElementById('approveProgressModal');
+const modal = document.getElementById('approveProgressModal');
             if (modal) {
                 modal.style.display = 'flex';
                 document.body.style.overflow = 'hidden';
@@ -1459,6 +1742,8 @@ if (typeof window.ProgressApprove === 'undefined') {
 
         // Close approve modal
         close: function() {
+const modal = document.getElementById('approveProgressModal');
+        close: function () {
             const modal = document.getElementById('approveProgressModal');
             if (modal) {
                 modal.style.display = 'none';
@@ -1468,21 +1753,21 @@ if (typeof window.ProgressApprove === 'undefined') {
         },
 
         // Confirm approve progress
-        confirm: function() {
+        confirm: function () {
             if (!this.progressToApprove) return;
 
-            const progressId = this.progressToApprove;
+const progressId = this.progressToApprove;
 
-            const modal = document.getElementById('approveProgressModal');
-            const errDiv = document.getElementById('approveProgressErrorMessage');
-            const successDiv = document.getElementById('approveProgressSuccessMessage');
+const modal = document.getElementById('approveProgressModal');
+const errDiv = document.getElementById('approveProgressErrorMessage');
+const successDiv = document.getElementById('approveProgressSuccessMessage');
 
             if (errDiv) { errDiv.style.display = 'none'; errDiv.innerHTML = ''; }
             if (successDiv) { successDiv.style.display = 'none'; successDiv.innerHTML = ''; }
 
             // Show a simple loading state in the modal (disable buttons)
-            const confirmBtn = modal ? modal.querySelector('.modal-actions .btn-primary') : null;
-            const cancelBtn = modal ? modal.querySelector('.modal-actions .btn-secondary') : null;
+const confirmBtn = modal ? modal.querySelector('.modal-actions .btn-primary') : null;
+const cancelBtn = modal ? modal.querySelector('.modal-actions .btn-secondary') : null;
             if (confirmBtn) confirmBtn.disabled = true;
             if (cancelBtn) cancelBtn.disabled = true;
 
@@ -1497,42 +1782,43 @@ if (typeof window.ProgressApprove === 'undefined') {
                 },
                 body: JSON.stringify({ progress_id: progressId })
             })
-            .then(response => response.json())
-            .then(result => {
-                if (confirmBtn) confirmBtn.disabled = false;
-                if (cancelBtn) cancelBtn.disabled = false;
+                .then(response => response.json())
+                .then(result => {
+                    if (confirmBtn) confirmBtn.disabled = false;
+                    if (cancelBtn) cancelBtn.disabled = false;
 
-                if (result.success) {
-                    if (successDiv) {
-                        successDiv.innerHTML = '<p>' + (result.message || 'Progress report approved successfully') + '</p>';
-                        successDiv.style.display = 'block';
+                    if (result.success) {
+                        if (successDiv) {
+                            successDiv.innerHTML = '<p>' + (result.message || 'Progress report approved successfully') + '</p>';
+                            successDiv.style.display = 'block';
+                        } else {
+                            // fallback to alert if modal elements missing
+                            alert(result.message || 'Progress report approved successfully');
+                        }
+
+                        // Close modal after a brief delay to show message
+                        setTimeout(() => { this.close(); location.reload(); }, 1200);
                     } else {
-                        // fallback to alert if modal elements missing
-                        alert(result.message || 'Progress report approved successfully');
+                        if (errDiv) {
+                            errDiv.innerHTML = result.message || 'Error approving progress report';
+                            errDiv.style.display = 'block';
+                        } else {
+                            alert(result.message || 'Error approving progress report');
+                        }
                     }
-
-                    // Close modal after a brief delay to show message
-                    setTimeout(() => { this.close(); location.reload(); }, 1200);
-                } else {
+                })
+                .catch(error => {
+                    if (confirmBtn) confirmBtn.disabled = false;
+                    if (cancelBtn) cancelBtn.disabled = false;
+                    console.error('Approve error:', error);
                     if (errDiv) {
-                        errDiv.innerHTML = result.message || 'Error approving progress report';
+                        errDiv.innerHTML = 'An error occurred while approving the progress report.';
                         errDiv.style.display = 'block';
                     } else {
-                        alert(result.message || 'Error approving progress report');
+                        alert('An error occurred while approving the progress report.');
                     }
-                }
-            })
-            .catch(error => {
-                if (confirmBtn) confirmBtn.disabled = false;
-                if (cancelBtn) cancelBtn.disabled = false;
-                console.error('Approve error:', error);
-                if (errDiv) {
-                    errDiv.innerHTML = 'An error occurred while approving the progress report.';
-                    errDiv.style.display = 'block';
-                } else {
-                    alert('An error occurred while approving the progress report.');
-                }
-            });
+                });
         }
     };
 }
+

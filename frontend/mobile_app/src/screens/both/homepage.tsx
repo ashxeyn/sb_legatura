@@ -22,6 +22,23 @@ import { contractors_service, Contractor as ContractorType } from '../../service
 import { projects_service, ContractorType as ContractorTypeOption } from '../../services/projects_service';
 import { api_config } from '../../config/api';
 
+// Helper to build full storage URL for profile/cover images
+const getStorageUrl = (filePath?: string, defaultSubfolder = 'profiles') => {
+  if (!filePath) return undefined;
+  // If it's already a full URL, return as-is
+  if (filePath.startsWith('http://') || filePath.startsWith('https://')) return filePath;
+  // If it already contains /storage, prepend base_url if missing
+  if (filePath.includes('/storage/')) {
+    return filePath.startsWith('/') ? `${api_config.base_url}${filePath}` : `${api_config.base_url}/${filePath}`;
+  }
+  // If path already contains the subfolder, use it directly
+  if (filePath.startsWith(`${defaultSubfolder}/`) || filePath.includes(`/${defaultSubfolder}/`)) {
+    return `${api_config.base_url}/storage/${filePath}`;
+  }
+  // Otherwise assume file lives under storage/<defaultSubfolder>/
+  return `${api_config.base_url}/storage/${defaultSubfolder}/${filePath}`;
+};
+
 // Import profile screens
 import PropertyOwnerProfile from '../owner/profile';
 import ContractorProfile from '../contractor/profile';
@@ -91,9 +108,11 @@ interface HomepageProps {
   userType?: 'property_owner' | 'contractor';
   userData?: UserData;
   onLogout?: () => void;
+  onViewProfile?: () => void;
+  onEditProfile?: () => void;
 }
 
-export default function HomepageScreen({ userType = 'property_owner', userData, onLogout }: HomepageProps) {
+export default function HomepageScreen({ userType = 'property_owner', userData, onLogout, onViewProfile, onEditProfile }: HomepageProps) {
   const insets = useSafeAreaInsets();
   const [popularContractors, setPopularContractors] = useState<ContractorType[]>([]);
   const [availableProjects, setAvailableProjects] = useState<Project[]>([]);
@@ -778,15 +797,12 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
       return (
         <ContractorProfile
           onLogout={handleLogout}
+          onViewProfile={onViewProfile}
           userData={{
             username: userData?.username,
             email: userData?.email,
-            profile_pic: userData?.profile_pic
-              ? `${api_config.base_url}/storage/${userData.profile_pic}`
-              : undefined,
-            cover_photo: userData?.cover_photo
-              ? `${api_config.base_url}/storage/${userData.cover_photo}`
-              : undefined,
+            profile_pic: userData?.profile_pic ? getStorageUrl(userData.profile_pic) : undefined,
+            cover_photo: userData?.cover_photo ? getStorageUrl(userData.cover_photo) : undefined,
             user_type: userData?.user_type,
             company_name: userData?.company_name,
             contractor_type: userData?.contractor_type,
@@ -800,15 +816,13 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
     return (
       <PropertyOwnerProfile
         onLogout={handleLogout}
+        onViewProfile={onViewProfile}
+        onEditProfile={onEditProfile}
         userData={{
           username: userData?.username,
           email: userData?.email,
-          profile_pic: userData?.profile_pic
-            ? `${api_config.base_url}/storage/${userData.profile_pic}`
-            : undefined,
-          cover_photo: userData?.cover_photo
-            ? `${api_config.base_url}/storage/${userData.cover_photo}`
-            : undefined,
+          profile_pic: userData?.profile_pic ? getStorageUrl(userData.profile_pic) : undefined,
+          cover_photo: userData?.cover_photo ? getStorageUrl(userData.cover_photo) : undefined,
           user_type: userData?.user_type,
         }}
       />

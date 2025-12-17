@@ -389,6 +389,7 @@ class progressUploadController extends Controller
                         'item_title' => $milestoneItem->item_title,
                         'purpose' => $progress->purpose,
                         'progress_status' => $progress->progress_status,
+                        'delete_reason' => isset($progress->delete_reason) ? $progress->delete_reason : null,
                         'submitted_at' => $progress->submitted_at,
                         'files' => $files
                     ]

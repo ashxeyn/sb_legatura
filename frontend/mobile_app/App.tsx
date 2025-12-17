@@ -20,6 +20,7 @@ import ContractorBusinessDocumentsScreen from './src/screens/contractor/business
 // Shared Screens
 import EditProfileScreen from './src/screens/both/editProfile';
 import ViewProfileScreen from './src/screens/both/viewProfile';
+import { api_config } from './src/config/api';
 import EmailVerificationScreen from './src/screens/both/emailVerification';
 import ProfilePictureScreen from './src/screens/both/profilePic';
 import HomepageScreen from './src/screens/both/homepage';
@@ -473,7 +474,11 @@ export default function App() {
             <SafeAreaProvider>
                 <ViewProfileScreen
                     onBack={() => set_app_state('main')}
-                    userData={user_data}
+                    userData={{
+                        ...user_data,
+                        profile_pic: user_data?.profile_pic ? `${api_config.base_url}/storage/${user_data.profile_pic}` : undefined,
+                        cover_photo: user_data?.cover_photo ? `${api_config.base_url}/storage/${user_data.cover_photo}` : undefined,
+                    }}
                 />
             </SafeAreaProvider>
         );

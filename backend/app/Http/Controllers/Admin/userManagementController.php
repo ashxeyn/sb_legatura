@@ -734,7 +734,7 @@ class userManagementController extends authController
     /**
      * Reject a verification request
      */
-    public function rejectVerification(RejectVerificationRequest $request, $id)
+    public function rejectVerification(rejectVerificationRequest $request, $id)
     {
         $user = User::find($id);
         if (!$user) {

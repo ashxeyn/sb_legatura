@@ -1,17 +1,7 @@
 // API configuration for connecting to Laravel backend
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-const API_BASE_URL = 'http://192.168.1.91:8083';
-=======
-const API_BASE_URL = 'http://192.168.1.91:8000';
->>>>>>> Stashed changes
-=======
-const API_BASE_URL = 'http://192.168.1.91:8000';
->>>>>>> Stashed changes
-=======
-const API_BASE_URL = 'http://192.168.1.91:8000';
->>>>>>> Stashed changes
+
+const API_BASE_URL = 'http://192.168.1.62:8000';
+
 import { storage_service } from '../utils/storage';
 
 export const api_config = {
