@@ -124,6 +124,14 @@ class contractorClass extends Model
             $query->where('contractors.verification_status', 'approved');
         }
 
+        // Filter by owner status: active, not deleted, not suspended
+        $query->where('contractor_users.is_active', 1)
+              ->where('contractor_users.is_deleted', 0)
+              ->where(function($q) {
+                  $q->whereNull('contractor_users.suspension_until')
+                    ->orWhere('contractor_users.suspension_until', 0);
+              });
+
         if ($dateFrom) {
             $query->whereDate('contractors.created_at', '>=', $dateFrom);
         }
@@ -333,5 +341,94 @@ class contractorClass extends Model
 
             return true;
         });
+    }
+
+    /**
+     * Fetch contractor view with all related data
+     */
+    public function fetchContractorView($contractorId)
+    {
+        // Get main contractor data
+        $contractor = DB::table('contractors')
+            ->join('users', 'contractors.user_id', '=', 'users.user_id')
+            ->leftJoin('contractor_types', 'contractors.type_id', '=', 'contractor_types.type_id')
+            ->where('contractors.contractor_id', $contractorId)
+            ->select(
+                'contractors.*',
+                'users.email',
+                'users.username',
+                'users.profile_pic',
+                'users.cover_photo',
+                'users.user_type',
+                'users.created_at as member_since',
+                DB::raw("CASE WHEN contractors.verification_status = 'approved' THEN 1 ELSE 0 END as is_active"),
+                DB::raw("CASE WHEN contractor_types.type_name = 'Others' OR contractor_types.type_name IS NULL THEN contractors.contractor_type_other ELSE contractor_types.type_name END as contractor_type_name")
+            )
+            ->first();
+
+        if (!$contractor) return null;
+
+        // Get Representative (representative role from contractor_users)
+        $representative = DB::table('contractor_users')
+            ->join('users', 'contractor_users.user_id', '=', 'users.user_id')
+            ->where('contractor_users.contractor_id', $contractorId)
+            ->where('contractor_users.role', 'representative')
+            ->select(
+                'contractor_users.authorized_rep_fname',
+                'contractor_users.authorized_rep_lname',
+                'contractor_users.authorized_rep_mname',
+                'contractor_users.phone_number',
+                'contractor_users.role',
+                'users.profile_pic as rep_profile_pic',
+                'users.email as rep_email',
+                'users.username as rep_username'
+            )
+            ->first();
+
+        $contractor->representative = $representative;
+
+        // Get Projects where this contractor is selected
+        $projects = DB::table('projects')
+            ->join('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
+            ->leftJoin('property_owners', 'project_relationships.owner_id', '=', 'property_owners.owner_id')
+            ->leftJoin('users as owner_users', 'property_owners.user_id', '=', 'owner_users.user_id')
+            ->where('projects.selected_contractor_id', $contractorId)
+            ->select(
+                'projects.*',
+                'project_relationships.created_at',
+                'property_owners.first_name as owner_first_name',
+                'property_owners.last_name as owner_last_name',
+                'owner_users.profile_pic as owner_profile_pic'
+            )
+            ->orderBy('project_relationships.created_at', 'desc')
+            ->get();
+
+        // Calculate project counts
+        $completedCount = $projects->where('project_status', 'completed')->count();
+        $ongoingCount = $projects->where('project_status', 'in_progress')->count();
+        $totalProjects = $projects->count();
+
+        // Attach to contractor object
+        $contractor->projects = $projects;
+        $contractor->completed_projects_count = $completedCount;
+        $contractor->ongoing_projects_count = $ongoingCount;
+        $contractor->total_projects_count = $totalProjects;
+
+        // Get Team Members (all contractor_users for this contractor)
+        $teamMembers = DB::table('contractor_users')
+            ->join('users', 'contractor_users.user_id', '=', 'users.user_id')
+            ->where('contractor_users.contractor_id', $contractorId)
+            ->select(
+                'contractor_users.*',
+                'users.email',
+                'users.username',
+                'users.profile_pic'
+            )
+            ->orderByRaw("FIELD(contractor_users.role, 'owner', 'manager', 'engineer', 'architect', 'representative', 'others')")
+            ->get();
+
+        $contractor->team_members = $teamMembers;
+
+        return $contractor;
     }
 }

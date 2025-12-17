@@ -932,7 +932,7 @@
     </div>
   </div>
 
-  <script>
+  {{-- <script>
     function openImageModal(src, title) {
       const modal = document.getElementById('imageViewerModal');
       const img = document.getElementById('imageModalPreview');
@@ -967,7 +967,7 @@
         img.src = ''; // Clear src to stop loading/playing
       }, 300);
     }
-  </script>
+  </script> --}}
 
   <script src="{{ asset('js/admin/userManagement/propertyOwner.js') }}" defer></script>
   <script src="{{ asset('js/account.js') }}" defer></script>

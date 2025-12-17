@@ -539,20 +539,26 @@ class userManagementController extends authController
     {
         $contractorId = $request->query('id');
 
-        $contractor = DB::table('contractors')
-            ->join('users', 'contractors.user_id', '=', 'users.user_id')
-            ->leftJoin('contractor_types', 'contractors.type_id', '=', 'contractor_types.type_id')
-            ->where('contractors.contractor_id', $contractorId)
-            ->select('contractors.*', 'users.email', 'users.username', 'users.profile_pic', 'contractor_types.type_name')
-            ->first();
+        $contractorModel = new contractorClass();
+        $contractor = $contractorModel->fetchContractorView($contractorId);
 
         if (!$contractor) {
             return redirect()->route('admin.userManagement.contractor')
                 ->with('error', 'Contractor not found');
         }
 
+        $accountModel = new accountClass();
+        $psgcService = new psgcApiService();
+
+        $picabCategories = $accountModel->getPicabCategories();
+        $provinces = $psgcService->getProvinces();
+        $contractorTypes = DB::table('contractor_types')->get();
+
         return view('admin.userManagement.contractor_Views', [
-            'contractor' => $contractor
+            'contractor' => $contractor,
+            'picabCategories' => $picabCategories,
+            'provinces' => $provinces,
+            'contractorTypes' => $contractorTypes
         ]);
     }
 
