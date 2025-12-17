@@ -338,6 +338,7 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
                     style={({ pressed }) => [styles.reportItem, pressed && styles.reportItemPressed]}
                     onPress={async () => {
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                       try {
                         setSelectedProgressLoading(true);
                         let prog = null;
@@ -345,6 +346,8 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
                         if (userRole === 'contractor') {
                           const res = await progress_service.get_progress(userId, report.progress_id);
 =======
+=======
+>>>>>>> Stashed changes
                       // Owners already have the progress list (with files) from get_progress_by_item;
                       // only contractors should call the contractor-specific detail endpoint.
                       if (isContractor) {
@@ -352,6 +355,9 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
                           setSelectedProgressLoading(true);
                           const res = await progress_service.get_progress(userId, report.progress_id);
                           let prog = null;
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                           if (res && res.data) {
                             prog = res.data?.data || res.data || null;
@@ -359,6 +365,7 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
                           if (prog && prog.progress_id === undefined && prog.progress) {
                             prog = prog.progress;
                           }
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
                         } else {
                           // owner: avoid hitting contractor-only endpoint; fetch list for the item and find the progress
@@ -384,6 +391,8 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
                       } finally {
                         setSelectedProgressLoading(false);
 =======
+=======
+>>>>>>> Stashed changes
                           if (!prog) prog = report;
                           setSelectedProgressReport(prog);
                         } catch (e) {
@@ -396,6 +405,9 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
                       } else {
                         // Owner: use the already-fetched report object which includes files
                         setSelectedProgressReport(report);
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                       }
                     }}
@@ -405,12 +417,15 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
                       <View style={[
                         styles.reportDot,
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                         report.progress_status === 'approved' && styles.reportDotCompleted
                       ]}>
                         {report.progress_status === 'approved' && (
                           <Feather name="check" size={14} color={COLORS.surface} />
                         )}
 =======
+=======
+>>>>>>> Stashed changes
                         report.progress_status === 'approved' && styles.reportDotCompleted,
                         report.progress_status === 'rejected' && styles.reportDotRejected
                       ]}>
@@ -419,6 +434,9 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
                         ) : report.progress_status === 'rejected' ? (
                           <Feather name="x" size={14} color={COLORS.surface} />
                         ) : null}
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                       </View>
                       {!isLast && (() => {
@@ -556,7 +574,10 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
             projectTitle={projectTitle}
             userRole={userRole}
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
             userId={userId}
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
             onClose={() => setSelectedProgressReport(null)}
@@ -693,11 +714,17 @@ const styles = StyleSheet.create({
     borderColor: COLORS.success,
   },
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
   reportDotRejected: {
     backgroundColor: COLORS.error,
     borderColor: COLORS.error,
   },
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
   reportLine: {
     width: 3,
