@@ -337,18 +337,29 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
                     key={report.progress_id}
                     style={({ pressed }) => [styles.reportItem, pressed && styles.reportItemPressed]}
                     onPress={async () => {
+<<<<<<< Updated upstream
                       try {
                         setSelectedProgressLoading(true);
                         let prog = null;
 
                         if (userRole === 'contractor') {
                           const res = await progress_service.get_progress(userId, report.progress_id);
+=======
+                      // Owners already have the progress list (with files) from get_progress_by_item;
+                      // only contractors should call the contractor-specific detail endpoint.
+                      if (isContractor) {
+                        try {
+                          setSelectedProgressLoading(true);
+                          const res = await progress_service.get_progress(userId, report.progress_id);
+                          let prog = null;
+>>>>>>> Stashed changes
                           if (res && res.data) {
                             prog = res.data?.data || res.data || null;
                           }
                           if (prog && prog.progress_id === undefined && prog.progress) {
                             prog = prog.progress;
                           }
+<<<<<<< Updated upstream
                         } else {
                           // owner: avoid hitting contractor-only endpoint; fetch list for the item and find the progress
                           const res = await progress_service.get_progress_by_item(userId, milestoneItem.item_id);
@@ -372,6 +383,20 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
                         setSelectedProgressReport(fallback);
                       } finally {
                         setSelectedProgressLoading(false);
+=======
+                          if (!prog) prog = report;
+                          setSelectedProgressReport(prog);
+                        } catch (e) {
+                          console.error('Failed to load progress details', e);
+                          Alert.alert('Error', 'Failed to load progress details');
+                          setSelectedProgressReport(report);
+                        } finally {
+                          setSelectedProgressLoading(false);
+                        }
+                      } else {
+                        // Owner: use the already-fetched report object which includes files
+                        setSelectedProgressReport(report);
+>>>>>>> Stashed changes
                       }
                     }}
                   >
@@ -379,11 +404,22 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
                     <View style={styles.reportTimelineLeft}>
                       <View style={[
                         styles.reportDot,
+<<<<<<< Updated upstream
                         report.progress_status === 'approved' && styles.reportDotCompleted
                       ]}>
                         {report.progress_status === 'approved' && (
                           <Feather name="check" size={14} color={COLORS.surface} />
                         )}
+=======
+                        report.progress_status === 'approved' && styles.reportDotCompleted,
+                        report.progress_status === 'rejected' && styles.reportDotRejected
+                      ]}>
+                        {report.progress_status === 'approved' ? (
+                          <Feather name="check" size={14} color={COLORS.surface} />
+                        ) : report.progress_status === 'rejected' ? (
+                          <Feather name="x" size={14} color={COLORS.surface} />
+                        ) : null}
+>>>>>>> Stashed changes
                       </View>
                       {!isLast && (() => {
                         const next = progressReports[index + 1];
@@ -519,7 +555,10 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
             milestoneTitle={`Milestone ${milestoneNumber}: ${milestoneItem.milestone_item_title}`}
             projectTitle={projectTitle}
             userRole={userRole}
+<<<<<<< Updated upstream
             userId={userId}
+=======
+>>>>>>> Stashed changes
             onClose={() => setSelectedProgressReport(null)}
           />
         </Modal>
@@ -653,6 +692,13 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.success,
     borderColor: COLORS.success,
   },
+<<<<<<< Updated upstream
+=======
+  reportDotRejected: {
+    backgroundColor: COLORS.error,
+    borderColor: COLORS.error,
+  },
+>>>>>>> Stashed changes
   reportLine: {
     width: 3,
     flex: 1,

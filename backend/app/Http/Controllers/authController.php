@@ -64,23 +64,37 @@ class authController extends Controller
             Session::put('userType', $result['userType']);
             // Set default current role for session-based role tracking
             $user = $result['user'];
-            if ($user->user_type === 'both') {
-                Session::put('current_role', 'contractor');
-            } elseif ($user->user_type === 'property_owner') {
-                Session::put('current_role', 'owner');
-            } else {
-                Session::put('current_role', $user->user_type); // 'contractor'
+            $userType = $result['userType'];
+
+            // Only set current_role for regular users, not admin
+            if ($userType !== 'admin') {
+                if ($user->user_type === 'both') {
+                    Session::put('current_role', 'contractor');
+                } elseif ($user->user_type === 'property_owner') {
+                    Session::put('current_role', 'owner');
+                } else {
+                    Session::put('current_role', $user->user_type); // 'contractor'
+                }
             }
 
             if ($request->expectsJson()) {
+                // Attempt to create a Sanctum personal access token for mobile clients
+                $token = null;
+                try {
+                    $eloquentUser = \App\Models\User::find($result['user']->user_id ?? null);
+                    if ($eloquentUser) {
+                        $token = $eloquentUser->createToken('mobile-app')->plainTextToken;
+                    }
+                } catch (\Exception $e) {
+                    \Log::warning('Failed to create personal access token: ' . $e->getMessage());
+                }
 
                 return response()->json([
                     'success' => true,
                     'message' => 'Login successful',
                     'user' => $result['user'],
                     'userType' => $result['userType'],
-                    // TODO: Add token here when Sanctum is installed
-                    // 'token' => $user->createToken('mobile-app')->plainTextToken
+                    'token' => $token
                 ], 200);
             } else {
 
@@ -299,11 +313,6 @@ class authController extends Controller
         $step1 = Session::get('contractor_step1');
         $step2 = Session::get('contractor_step2');
         $step4 = Session::get('contractor_step4');
-
-        // \Log::info('Contractor Final - Step1: ' . ($step1 ? 'EXISTS' : 'NULL'));
-        // \Log::info('Contractor Final - Step2: ' . ($step2 ? 'EXISTS' : 'NULL'));
-        // \Log::info('Contractor Final - Step4: ' . ($step4 ? 'EXISTS' : 'NULL'));
-        // \Log::info('All Session Keys: ' . json_encode(Session::all()));
 
         // Check if all required session data exists
         if (!$step1 || !$step2 || !$step4) {
@@ -774,24 +783,15 @@ class authController extends Controller
     // Switch to Contractor Final
     public function switchContractorFinal(accountRequest $request)
     {
-        // \Log::info('Switch Contractor Final - Started');
-        // \Log::info('Has user session: ' . (Session::has('user') ? 'YES' : 'NO'));
-        // \Log::info('Has step1 session: ' . (Session::has('switch_contractor_step1') ? 'YES' : 'NO'));
-        // \Log::info('Has step2 session: ' . (Session::has('switch_contractor_step2') ? 'YES' : 'NO'));
-
-        // if (!Session::has('user') || !Session::has('switch_contractor_step1') || !Session::has('switch_contractor_step2')) {
-        //     \Log::error('Switch Contractor Final - Session check failed');
-        //     return response()->json(['success' => false, 'errors' => ['Session expired or previous steps not completed']], 401);
-        // }
+        if (!Session::has('user') || !Session::has('switch_contractor_step1') || !Session::has('switch_contractor_step2')) {
+            return response()->json(['success' => false, 'errors' => ['Session expired or previous steps not completed']], 401);
+        }
 
         $validated = $request->validated();
 
         $user = Session::get('user');
         $step1 = Session::get('switch_contractor_step1');
         $step2 = Session::get('switch_contractor_step2');
-
-        \Log::info('Step1 Data: ' . json_encode($step1));
-        \Log::info('Step2 Data: ' . json_encode($step2));
 
         try {
             DB::beginTransaction();
@@ -1112,9 +1112,6 @@ class authController extends Controller
     public function apiRegister(Request $request)
     {
         try {
-            // First, let's see what data we're receiving
-            \Illuminate\Support\Facades\Log::info('Registration attempt with data: ', $request->all());
-
             $request->validate([
                 'name' => 'required|string|max:255',
                 'email' => 'required|email|unique:users,email',

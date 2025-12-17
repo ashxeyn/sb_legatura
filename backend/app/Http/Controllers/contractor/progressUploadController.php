@@ -137,20 +137,9 @@ class progressUploadController extends Controller
 
             $validated = $request->validated();
 
-            // Check for existing progress for this item
-            $existingProgress = $this->progressUploadClass->getProgressByItem(
-                $validated['item_id'],
-                $contractor->contractor_id
-            );
-
-            foreach ($existingProgress as $existing) {
-                if (!in_array($existing->progress_status, ['needs_revision', 'deleted'])) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'You already have a progress report for this milestone item. You can only upload a new report if the previous one needs revision.'
-                    ], 400);
-                }
-            }
+            // Previously we prevented creating a new progress when an existing one
+            // existed unless its status was 'needs_revision' or 'deleted'.
+            // Allow contractors to submit progress reports regardless of previous statuses.
 
             // Verify that the milestone item belongs to a project assigned to a specific contractor
             $milestoneItem = DB::table('milestone_items as mi')
@@ -197,7 +186,7 @@ class progressUploadController extends Controller
 
             // Ensure the progress_uploads directory exists
             if (!Storage::disk('public')->exists('progress_uploads')) {
-                Storage::disk('public')->makeDirectory('progress_uploads', 0755, true);
+                Storage::disk('public')->makeDirectory('progress_uploads');
             }
 
             // Handle multiple progress files
@@ -428,6 +417,83 @@ class progressUploadController extends Controller
             \Log::error('getProgressFiles error: ' . $e->getMessage(), [
                 'item_id' => $itemId,
                 'progress_id' => $request->input('progress_id'),
+                'user_id' => $user->user_id ?? null,
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error retrieving progress files: ' . $e->getMessage(),
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get progress files for both owners and contractors
+     * This endpoint allows either role to view progress reports for a milestone item
+     */
+    public function getProgressFilesForBoth(Request $request, $itemId)
+    {
+        try {
+            \Log::info('getProgressFilesForBoth called', ['item_id' => $itemId]);
+
+            $user = Session::get('user');
+            if (!$user) {
+                \Log::warning('getProgressFilesForBoth: No user in session');
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Authentication required',
+                        'redirect_url' => '/accounts/login'
+                    ], 401);
+                }
+                return redirect('/accounts/login')->with('error', 'Please login to continue');
+            }
+
+            \Log::info('getProgressFilesForBoth user found', ['user_id' => $user->user_id]);
+
+            // Check if user has access to this milestone item (either as owner or contractor)
+            // projects -> relationship_id -> project_relationships -> owner_id -> property_owners
+            $milestoneItem = DB::table('milestone_items as mi')
+                ->join('milestones as m', 'mi.milestone_id', '=', 'm.milestone_id')
+                ->join('projects as p', 'm.project_id', '=', 'p.project_id')
+                ->leftJoin('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
+                ->leftJoin('property_owners as po', 'pr.owner_id', '=', 'po.owner_id')
+                ->leftJoin('contractors as c', 'p.selected_contractor_id', '=', 'c.contractor_id')
+                ->where('mi.item_id', $itemId)
+                ->where(function ($query) use ($user) {
+                    $query->where('po.user_id', $user->user_id)
+                          ->orWhere('c.user_id', $user->user_id);
+                })
+                ->select('mi.item_id', 'p.project_id', 'p.project_title')
+                ->first();
+
+            \Log::info('getProgressFilesForBoth milestone item check', ['found' => $milestoneItem ? 'yes' : 'no']);
+
+            if (!$milestoneItem) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Milestone item not found or access denied'
+                ], 403);
+            }
+
+            // Get progress reports for this item (no contractor filter - both can see)
+            $progressList = $this->progressUploadClass->getProgressFilesByItem($itemId, null);
+
+            \Log::info('getProgressFilesForBoth progress list', ['count' => count($progressList), 'data' => $progressList]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Progress files retrieved successfully',
+                'data' => [
+                    'progress_list' => $progressList,
+                    'total_count' => count($progressList)
+                ]
+            ], 200);
+        } catch (\Exception $e) {
+            \Log::error('getProgressFilesForBoth error: ' . $e->getMessage(), [
+                'item_id' => $itemId,
                 'user_id' => $user->user_id ?? null,
                 'trace' => $e->getTraceAsString()
             ]);
@@ -730,6 +796,88 @@ class progressUploadController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Progress report approved successfully.'
+        ]);
+    }
+
+    /**
+     * Reject a progress report (Owner)
+     */
+    public function rejectProgress(Request $request, $progressId)
+    {
+        $user = Session::get('user');
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Authentication required',
+                'redirect_url' => '/accounts/login'
+            ], 401);
+        }
+
+        // Only owner can reject
+        if (!in_array($user->user_type, ['property_owner', 'both'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Access denied. Only owners can reject progress.'
+            ], 403);
+        }
+        if ($user->user_type === 'both') {
+            $currentRole = Session::get('current_role', 'owner');
+            if ($currentRole !== 'owner') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Access denied. Please switch to owner role to reject progress.'
+                ], 403);
+            }
+        }
+
+        // Find progress and verify owner
+        $progress = DB::table('progress')
+            ->join('milestone_items as mi', 'progress.milestone_item_id', '=', 'mi.item_id')
+            ->join('milestones as m', 'mi.milestone_id', '=', 'm.milestone_id')
+            ->join('projects as p', 'm.project_id', '=', 'p.project_id')
+            ->leftJoin('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
+            ->where('progress.progress_id', $progressId)
+            ->select('progress.*', 'pr.owner_id')
+            ->first();
+
+        if (!$progress) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Progress report not found.'
+            ], 404);
+        }
+
+        // Get owner_id from property_owners table
+        $owner = DB::table('property_owners')->where('user_id', $user->user_id)->first();
+        $ownerId = $owner ? $owner->owner_id : null;
+
+        $hasPermission = false;
+        if ($ownerId && $progress->owner_id) {
+            $hasPermission = ($progress->owner_id == $ownerId);
+        } else {
+            $hasPermission = ($progress->owner_id == $user->user_id);
+        }
+
+        if (!$hasPermission) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You do not have permission to reject this progress.'
+            ], 403);
+        }
+
+        // Optional rejection reason
+        $reason = $request->input('reason', null);
+
+        DB::table('progress')
+            ->where('progress_id', $progressId)
+            ->update([
+                'progress_status' => 'rejected',
+                'delete_reason' => $reason
+            ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Progress report rejected successfully.'
         ]);
     }
 }

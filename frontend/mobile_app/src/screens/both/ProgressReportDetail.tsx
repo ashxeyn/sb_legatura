@@ -63,7 +63,10 @@ interface ProgressReportDetailProps {
   milestoneTitle: string;
   projectTitle: string;
   userRole: 'owner' | 'contractor';
+<<<<<<< Updated upstream
   userId?: number;
+=======
+>>>>>>> Stashed changes
   onClose: () => void;
 }
 
@@ -72,11 +75,15 @@ export default function ProgressReportDetail({
   milestoneTitle,
   projectTitle,
   userRole,
+<<<<<<< Updated upstream
   userId,
+=======
+>>>>>>> Stashed changes
   onClose,
 }: ProgressReportDetailProps) {
   const insets = useSafeAreaInsets();
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+<<<<<<< Updated upstream
   const [localFiles, setLocalFiles] = useState<ProgressFile[]>(progressReport.files || []);
   const [localSubmittedAt, setLocalSubmittedAt] = useState<string | null>(progressReport.submitted_at || null);
 
@@ -84,6 +91,11 @@ export default function ProgressReportDetail({
     if (!dateString) return 'Invalid Date';
     const date = new Date(dateString);
     if (isNaN(date.getTime())) return 'Invalid Date';
+=======
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+>>>>>>> Stashed changes
     return date.toLocaleDateString('en-US', {
       weekday: 'long',
       day: 'numeric',
@@ -176,7 +188,11 @@ export default function ProgressReportDetail({
   };
 
   const statusColors = getStatusColor(progressReport.progress_status);
+<<<<<<< Updated upstream
   const files = localFiles.length > 0 ? localFiles : (progressReport.files || []);
+=======
+  const files = progressReport.files || [];
+>>>>>>> Stashed changes
   const imageFiles = files.filter(f => isImageFile(f.original_name));
   const otherFiles = files.filter(f => !isImageFile(f.original_name));
   const [localStatus, setLocalStatus] = useState(progressReport.progress_status);
@@ -186,6 +202,7 @@ export default function ProgressReportDetail({
   const [approveBlockedModal, setApproveBlockedModal] = useState<{ visible: boolean; message: string }>({ visible: false, message: '' });
   const [deleteReason, setDeleteReason] = useState(progressReport.delete_reason || '');
 
+<<<<<<< Updated upstream
   // If files or submitted_at are missing, try to fetch more details based on role
   React.useEffect(() => {
     let mounted = true;
@@ -226,6 +243,8 @@ export default function ProgressReportDetail({
     return () => { mounted = false; };
   }, []);
 
+=======
+>>>>>>> Stashed changes
   // Image preview modal
   if (selectedImage) {
     return (
@@ -272,6 +291,19 @@ export default function ProgressReportDetail({
         {/* Status Badge */}
         <View style={[styles.statusBadge, { backgroundColor: statusColors.bg }]}>
           <View style={[styles.statusDot, { backgroundColor: statusColors.text }]} />
+<<<<<<< Updated upstream
+=======
+          {/* Icon to make status explicit */}
+          <View style={{ marginRight: 8 }}>
+            {progressReport.progress_status === 'approved' ? (
+              <Feather name="check" size={14} color={statusColors.text} />
+            ) : progressReport.progress_status === 'rejected' ? (
+              <Feather name="x" size={14} color={statusColors.text} />
+            ) : (
+              <Feather name="clock" size={14} color={statusColors.text} />
+            )}
+          </View>
+>>>>>>> Stashed changes
           <Text style={[styles.statusText, { color: statusColors.text }]}>
             {getStatusLabel(progressReport.progress_status)}
           </Text>
@@ -283,7 +315,11 @@ export default function ProgressReportDetail({
           <Text style={styles.heroMilestoneTitle} numberOfLines={2}>{milestoneTitle}</Text>
           <View style={styles.heroMetaRow}>
             <Feather name="calendar" size={12} color={COLORS.textMuted} style={{ marginRight: 6 }} />
+<<<<<<< Updated upstream
             <Text style={styles.heroMetaText}>{formatDate(localSubmittedAt || progressReport.submitted_at)}</Text>
+=======
+            <Text style={styles.heroMetaText}>{formatDate(progressReport.submitted_at)}</Text>
+>>>>>>> Stashed changes
           </View>
         </View>
 

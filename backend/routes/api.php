@@ -5,10 +5,11 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\authController;
 use App\Http\Controllers\owner\projectsController;
 use App\Http\Controllers\contractor\cprocessController;
-use App\Http\Controllers\contractor\progressUploadController;
 use App\Http\Controllers\contractor\biddingController;
-use App\Http\Controllers\both\disputeController;
+use App\Http\Controllers\contractor\progressUploadController;
 use App\Http\Controllers\owner\paymentUploadController;
+use App\Http\Controllers\both\disputeController;
+
 // Test endpoint for mobile app
 Route::get('/test', [authController::class, 'apiTest']);
 
@@ -18,9 +19,6 @@ Route::get('/signup-form', [authController::class, 'showSignupForm']);
 // Public routes (no authentication required)
 Route::post('/login', [authController::class, 'apiLogin']);
 Route::post('/register', [authController::class, 'apiRegister']);
-
-// Role selection
-Route::post('/role-select', [authController::class, 'selectRole']);
 
 // PSGC API Routes (public)
 Route::get('/psgc/provinces', [authController::class, 'getProvinces']);

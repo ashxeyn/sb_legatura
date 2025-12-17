@@ -4,9 +4,7 @@ const csrfToken = document.querySelector('meta[name="csrf-token"]') ? document.q
 
 // Role Switching Function for Dashboard
 function switchRole(role, buttonElement) {
-    console.log('switchRole called with role:', role);
-
-    const target = buttonElement || (window.event ? window.event.target : null);
+        const target = buttonElement || (window.event ? window.event.target : null);
 
     // Show loading state if target exists
     if (target) {
@@ -15,12 +13,10 @@ function switchRole(role, buttonElement) {
     }
 
     // Get CSRF token
-    let csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
-    let csrfTokenValue = csrfTokenMeta ? csrfTokenMeta.getAttribute('content') : '';
+    const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+    const csrfTokenValue = csrfTokenMeta ? csrfTokenMeta.getAttribute('content') : '';
 
-    console.log('CSRF token found:', !!csrfTokenValue);
-
-    if (!csrfTokenValue) {
+        if (!csrfTokenValue) {
         console.error('CSRF token not found');
         alert('Security token not found. Please refresh the page.');
         // Reset button state
@@ -31,9 +27,7 @@ function switchRole(role, buttonElement) {
         return;
     }
 
-    console.log('Making API call to /api/role/switch');
-
-    // Make API call to switch role
+        // Make API call to switch role
     fetch('/api/role/switch', {
         method: 'POST',
         headers: {
@@ -46,12 +40,10 @@ function switchRole(role, buttonElement) {
         })
     })
     .then(response => {
-        console.log('Response status:', response.status);
-        return response.json();
+                return response.json();
     })
     .then(data => {
-        console.log('Response data:', data);
-        if (data.success) {
+                if (data.success) {
             // Reload the page to update the role display
             window.location.reload();
         } else {
@@ -76,8 +68,7 @@ function switchRole(role, buttonElement) {
 
 // Debug function to test if script is loaded
 function testScriptLoaded() {
-    console.log('account.js script loaded successfully');
-    return true;
+        return true;
 }
 
 // Call debug function when script loads
@@ -85,7 +76,7 @@ testScriptLoaded();
 
 // Utility Functions
 function showError(message) {
-    let errorDiv = document.getElementById('errorMessages');
+    const errorDiv = document.getElementById('errorMessages');
     errorDiv.innerHTML = '<p>' + message + '</p>';
     errorDiv.style.display = 'block';
     document.getElementById('successMessages').style.display = 'none';
@@ -93,7 +84,7 @@ function showError(message) {
 }
 
 function showSuccess(message) {
-    let successDiv = document.getElementById('successMessages');
+    const successDiv = document.getElementById('successMessages');
     successDiv.innerHTML = '<p>' + message + '</p>';
     successDiv.style.display = 'block';
     document.getElementById('errorMessages').style.display = 'none';
@@ -101,14 +92,14 @@ function showSuccess(message) {
 }
 
 function hideAllSteps() {
-    let steps = document.querySelectorAll('.step-container');
+    const steps = document.querySelectorAll('.step-container');
     steps.forEach(function(step) {
         step.style.display = 'none';
     });
 }
 
 function showStep(stepId) {
-    let targetStep = document.getElementById(stepId);
+    const targetStep = document.getElementById(stepId);
     if (!targetStep) {
         console.error('Step not found: ' + stepId);
         return;
@@ -145,8 +136,8 @@ function validatePassword(password) {
 }
 
 function validateDateInFuture(dateString) {
-    let inputDate = new Date(dateString);
-    let today = new Date();
+    const inputDate = new Date(dateString);
+    const today = new Date();
     today.setHours(0, 0, 0, 0);
     return inputDate > today;
 }
@@ -895,3 +886,4 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
