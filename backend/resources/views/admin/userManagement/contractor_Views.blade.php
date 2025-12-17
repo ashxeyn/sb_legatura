@@ -10,17 +10,11 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
   <link rel="stylesheet" href="{{ asset('css/admin/home/mainComponents.css') }}">
   <link rel="stylesheet" href="{{ asset('css/admin/userManagement/contractor_Views.css') }}">
-
   
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-solid-straight/css/uicons-solid-straight.css'>
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-solid-rounded/css/uicons-solid-rounded.css'>
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-bold-rounded/css/uicons-bold-rounded.css'>
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-regular-rounded/css/uicons-regular-rounded.css'>
-
-
-  <script src="{{ asset('js/admin/home/mainComponents.js') }}" defer></script>
-
-
   
 
   <script src="{{ asset('js/admin/home/mainComponents.js') }}" defer></script>
@@ -177,9 +171,6 @@
 
         <div class="flex items-center gap-6">
           <div class="relative w-64" style="width: 600px;">
-            <input
-              type="text"
-              placeholder="Search..."
             <input 
               type="text" 
               placeholder="Search..." 
@@ -268,14 +259,6 @@
         <!-- Account Profile Section (Full Width) -->
         <section class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
           <div class="relative h-44 md:h-56 bg-gradient-to-r from-slate-700 via-slate-800 to-slate-900 overflow-hidden group">
-            @if(isset($contractor->cover_photo) && $contractor->cover_photo)
-              <img src="{{ asset('storage/' . $contractor->cover_photo) }}" alt="Account Banner" class="w-full h-full object-cover opacity-40 group-hover:scale-105 transition-transform duration-500">
-            @else
-              <img src="" alt="Account Banner" class="w-full h-full object-cover opacity-40 group-hover:scale-105 transition-transform duration-500">
-            @endif
-            <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-          </div>
-          <div class="relative px-6 md:px-8 pb-8 pt-8">
             <img src="" alt="Account Banner" class="w-full h-full object-cover opacity-40 group-hover:scale-105 transition-transform duration-500">
             <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
           </div>
@@ -296,23 +279,6 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Username</label>
-                <p class="text-base font-medium text-gray-800">{{ $contractor->username ?? 'N/A' }}</p>
-              </div>
-              <div>
-                <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Account Status</label>
-                @if($contractor->is_active)
-                  <span class="inline-block px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-semibold">Active</span>
-                @else
-                  <span class="inline-block px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm font-semibold">Inactive</span>
-                @endif
-              </div>
-              <div>
-                <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Member Since</label>
-                <p class="text-base font-medium text-gray-800">{{ $contractor->created_at ? \Carbon\Carbon::parse($contractor->created_at)->format('F d, Y') : 'N/A' }}</p>
-              </div>
-              <div>
-                <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Last Login</label>
-                <p class="text-base font-medium text-gray-800">N/A</p>
                 <p class="text-base font-medium text-gray-800">jlois_construction</p>
               </div>
               <div>
@@ -330,7 +296,6 @@
               <div class="md:col-span-2">
                 <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Bio</label>
                 <p class="text-base text-gray-700 leading-relaxed">
-                  {{ $contractor->company_description ?? 'No bio provided.' }}
                   Leading construction company specializing in residential and commercial projects with over 98 years of excellence in the industry.
                 </p>
               </div>
@@ -355,16 +320,6 @@
                   <!-- Company Logo -->
                   <div class="md:col-span-2 flex items-center gap-6 p-6 bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl border-2 border-orange-200">
                     <div class="w-24 h-24 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center overflow-hidden shadow-xl ring-4 ring-orange-200">
-                      @if(isset($contractor->profile_pic) && $contractor->profile_pic)
-                        <img id="companyLogoImg" src="{{ asset('storage/' . $contractor->profile_pic) }}" alt="{{ $contractor->company_name }}" class="w-full h-full object-cover">
-                      @else
-                        <i id="companyLogoIcon" class="fi fi-sr-building text-white text-4xl"></i>
-                      @endif
-                    </div>
-                    <div class="flex-1">
-                      <h3 class="text-2xl font-bold text-gray-800">{{ $contractor->company_name ?? 'N/A' }}</h3>
-                      <p class="text-sm text-gray-600 mt-1">{{ $contractor->company_email ?? 'N/A' }}</p>
-                      <p class="text-sm text-orange-600 mt-1 font-semibold">Experience: {{ $contractor->years_of_experience ?? 'N/A' }} Years</p>
                       <img id="companyLogoImg" src="" alt="Company Logo" class="w-full h-full object-cover hidden">
                       <i id="companyLogoIcon" class="fi fi-sr-building text-white text-4xl"></i>
                     </div>
@@ -378,31 +333,6 @@
                   <!-- Company Information Fields -->
                   <div>
                     <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Company Name</label>
-                    <p class="text-base font-medium text-gray-800">{{ $contractor->company_name ?? 'N/A' }}</p>
-                  </div>
-                  <div>
-                    <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Owner Name</label>
-                    @php
-                      $owner = collect($contractor->team_members ?? [])->firstWhere('role', 'owner');
-                      $ownerName = $owner ? trim(($owner->authorized_rep_fname ?? '') . ' ' . ($owner->authorized_rep_mname ?? '') . ' ' . ($owner->authorized_rep_lname ?? '')) : 'N/A';
-                    @endphp
-                    <p class="text-base font-medium text-gray-800">{{ $ownerName }}</p>
-                  </div>
-                  <div>
-                    <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Years of Operation</label>
-                    <p class="text-base font-medium text-gray-800">{{ $contractor->years_of_experience ?? 'N/A' }} Years</p>
-                  </div>
-                  <div>
-                    <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Account Type</label>
-                    <span class="inline-block px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-sm font-semibold">{{ $contractor->contractor_type_name ?? 'N/A' }}</span>
-                  </div>
-                  <div>
-                    <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Contact Number</label>
-                    <p class="text-base font-medium text-gray-800">{{ $contractor->company_phone ?? 'N/A' }}</p>
-                  </div>
-                  <div>
-                    <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Registration Date</label>
-                    <p class="text-base font-medium text-gray-800">{{ $contractor->created_at ? \Carbon\Carbon::parse($contractor->created_at)->format('F d, Y') : 'N/A' }}</p>
                     <p class="text-base font-medium text-gray-800">J'Lois Construction</p>
                   </div>
                   <div>
@@ -430,21 +360,6 @@
                   <div class="md:col-span-2">
                     <label class="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wider">Company Website / Socials</label>
                     <div class="space-y-2">
-                      @if($contractor->company_website)
-                        <div class="flex items-center gap-2 text-sm text-gray-700 hover:text-orange-600 transition-colors">
-                          <i class="fi fi-rr-globe text-orange-500"></i>
-                          <a href="{{ $contractor->company_website }}" target="_blank" class="hover:underline">{{ $contractor->company_website }}</a>
-                        </div>
-                      @endif
-                      @if($contractor->company_social_media)
-                        <div class="flex items-center gap-2 text-sm text-gray-700 hover:text-orange-600 transition-colors">
-                          <i class="fi fi-brands-facebook text-orange-500"></i>
-                          <a href="{{ $contractor->company_social_media }}" target="_blank" class="hover:underline">{{ $contractor->company_social_media }}</a>
-                        </div>
-                      @endif
-                      @if(!$contractor->company_website && !$contractor->company_social_media)
-                        <p class="text-sm text-gray-500">No website or social media links provided</p>
-                      @endif
                       <div class="flex items-center gap-2 text-sm text-gray-700 hover:text-orange-600 transition-colors">
                         <i class="fi fi-rr-globe text-orange-500"></i>
                         <a href="https://jloisconstruction.com" target="_blank" class="hover:underline">https://jloisconstruction.com</a>
@@ -472,70 +387,6 @@
                 </h2>
                 <button id="changeRepresentativeBtn" class="px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg font-medium text-sm shadow-md hover:shadow-lg transition-all flex items-center gap-2 hover:scale-105">
                   <i class="fi fi-rr-refresh"></i>
-                  <span>{{ $contractor->representative ? 'Change Representative' : 'Add Representative' }}</span>
-                </button>
-              </div>
-              <div class="p-6 md:p-8">
-                @if($contractor->representative)
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <!-- Representative Photo -->
-                    <div class="md:col-span-2 flex items-center gap-6 p-6 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl border-2 border-blue-200">
-                      <div class="w-20 h-20 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center overflow-hidden shadow-xl ring-4 ring-blue-200">
-                        @if($contractor->representative->rep_profile_pic)
-                          <img id="repPhotoImg" src="{{ asset('storage/' . $contractor->representative->rep_profile_pic) }}" alt="Representative Photo" class="w-full h-full object-cover">
-                        @else
-                          <i id="repPhotoIcon" class="fi fi-rr-user text-white text-3xl"></i>
-                        @endif
-                      </div>
-                      <div class="flex-1">
-                        <h3 class="text-xl font-bold text-gray-800">
-                          {{ ($contractor->representative->authorized_rep_fname ?? '') . ' ' .
-                             ($contractor->representative->authorized_rep_mname ?? '') . ' ' .
-                             ($contractor->representative->authorized_rep_lname ?? '') }}
-                        </h3>
-                        <p class="text-sm text-gray-600 mt-1">{{ ucfirst($contractor->representative->role ?? 'N/A') }}</p>
-                      </div>
-                    </div>
-
-                    <!-- Representative Information Fields -->
-                    <div>
-                      <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">First Name</label>
-                      <p class="text-base font-medium text-gray-800">{{ $contractor->representative->authorized_rep_fname ?? 'N/A' }}</p>
-                    </div>
-                    <div>
-                      <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Middle Name</label>
-                      <p class="text-base font-medium text-gray-800">{{ $contractor->representative->authorized_rep_mname ?? 'N/A' }}</p>
-                    </div>
-                    <div>
-                      <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Last Name</label>
-                      <p class="text-base font-medium text-gray-800">{{ $contractor->representative->authorized_rep_lname ?? 'N/A' }}</p>
-                    </div>
-                    <div>
-                      <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Position / Role</label>
-                      <p class="text-base font-medium text-gray-800">{{ ucfirst($contractor->representative->role ?? 'N/A') }}</p>
-                    </div>
-                    <div>
-                      <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Email Address</label>
-                      <p class="text-base font-medium text-gray-800">{{ $contractor->representative->rep_email ?? 'N/A' }}</p>
-                    </div>
-                    <div>
-                      <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Contact Number</label>
-                      <p class="text-base font-medium text-gray-800">{{ $contractor->representative->phone_number ?? 'N/A' }}</p>
-                    </div>
-                    <div>
-                      <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Username</label>
-                      <p class="text-base font-medium text-gray-800">{{ $contractor->representative->rep_username ?? 'N/A' }}</p>
-                    </div>
-                  </div>
-                @else
-                  <div class="text-center py-12">
-                    <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
-                      <i class="fi fi-rr-user text-gray-500 text-3xl"></i>
-                    </div>
-                    <h3 class="text-xl font-semibold text-gray-700 mb-2">No Representative Assigned</h3>
-                    <p class="text-sm text-gray-500">Click "Add Representative" button above to assign a company representative.</p>
-                  </div>
-                @endif
                   <span>Change Representative</span>
                 </button>
               </div>
@@ -587,7 +438,6 @@
             </section>
 
             <!-- Account Setup & Business Address -->
-
             
           </div>
 
@@ -610,15 +460,6 @@
                   </h3>
                   <div>
                     <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">PCAB No.</label>
-                    <p class="text-sm font-medium text-gray-800">{{ $contractor->picab_number ?? 'N/A' }}</p>
-                  </div>
-                  <div>
-                    <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Category</label>
-                    <span class="inline-block px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-semibold">{{ $contractor->picab_category ?? 'N/A' }}</span>
-                  </div>
-                  <div>
-                    <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Expiration Date</label>
-                    <p class="text-sm font-medium text-gray-800">{{ $contractor->picab_expiration_date ? \Carbon\Carbon::parse($contractor->picab_expiration_date)->format('F d, Y') : 'N/A' }}</p>
                     <p class="text-sm font-medium text-gray-800">23345-AB-2025</p>
                   </div>
                   <div>
@@ -639,15 +480,6 @@
                   </h3>
                   <div>
                     <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Permit City</label>
-                    <p class="text-sm font-medium text-gray-800">{{ $contractor->business_permit_city ?? 'N/A' }}</p>
-                  </div>
-                  <div>
-                    <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Permit Number</label>
-                    <p class="text-sm font-medium text-gray-800">{{ $contractor->business_permit_number ?? 'N/A' }}</p>
-                  </div>
-                  <div>
-                    <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Expiration Date</label>
-                    <p class="text-sm font-medium text-gray-800">{{ $contractor->business_permit_expiration ? \Carbon\Carbon::parse($contractor->business_permit_expiration)->format('F d, Y') : 'N/A' }}</p>
                     <p class="text-sm font-medium text-gray-800">Zamboanga City</p>
                   </div>
                   <div>
@@ -664,19 +496,6 @@
                 <div class="space-y-3">
                   <div>
                     <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">TIN Business Registration No.</label>
-                    <p class="text-sm font-medium text-gray-800">{{ $contractor->tin_business_reg_number ?? 'N/A' }}</p>
-                  </div>
-                  <div>
-                    <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">DTI / SEC Registration</label>
-                    @if($contractor->dti_sec_registration_photo)
-                      <a href="{{ asset('storage/' . $contractor->dti_sec_registration_photo) }}" target="_blank" class="inline-flex items-center gap-2 px-3 py-2 bg-orange-50 hover:bg-orange-100 text-orange-600 rounded-lg text-sm font-medium transition-all hover:shadow-md group">
-                        <i class="fi fi-rr-file-pdf text-red-500"></i>
-                        <span>View Document</span>
-                        <span class="text-xs text-gray-500 group-hover:text-orange-500">• {{ $contractor->verification_status ?? 'Pending' }}</span>
-                      </a>
-                    @else
-                      <p class="text-sm text-gray-500">No document uploaded</p>
-                    @endif
                     <p class="text-sm font-medium text-gray-800">123-456-789-000</p>
                   </div>
                   <div>
@@ -700,11 +519,6 @@
                 </h2>
               </div>
               <div class="p-6">
-                @if($contractor->services_offered)
-                  <p class="text-sm text-gray-700 leading-relaxed">{{ $contractor->services_offered }}</p>
-                @else
-                  <p class="text-sm text-gray-500">No services listed</p>
-                @endif
                 <div class="flex flex-wrap gap-2">
                   <span class="px-3 py-1.5 bg-gradient-to-r from-orange-100 to-orange-200 text-orange-700 rounded-full text-xs font-semibold shadow-sm hover:shadow-md transition-all cursor-default">
                     Residential Building Construction
@@ -742,8 +556,6 @@
               <div class="p-6">
                 <div class="space-y-4">
                   <div>
-                    <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Complete Address</label>
-                    <p class="text-base text-gray-800">{{ $contractor->business_address ?? 'N/A' }}</p>
                     <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Street Address</label>
                     <p class="text-base text-gray-800">123 Construction Avenue, Building 5</p>
                   </div>
@@ -809,76 +621,6 @@
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-200" id="teamMembersTable">
-                @forelse($contractor->team_members ?? [] as $index => $member)
-                  <?php
-                    // Generate color based on index
-                    $colors = ['purple', 'blue', 'green', 'red', 'yellow', 'pink', 'indigo', 'orange'];
-                    $color = $colors[$index % count($colors)];
-
-                    // Generate initials
-                    $fname = $member->authorized_rep_fname ?? '';
-                    $lname = $member->authorized_rep_lname ?? '';
-                    $initials = strtoupper(substr($fname, 0, 1) . substr($lname, 0, 1));
-
-                    // Determine status visibility
-                    $statusClass = $member->is_active ? 'team-member-row' : 'team-member-row hidden';
-                    $dataStatus = $member->is_active ? 'active' : 'deactivated';
-                  ?>
-                  <tr class="hover:bg-gray-50 transition-all duration-200 group {{ $statusClass }}"
-                      data-status="{{ $dataStatus }}"
-                      data-email="{{ $member->email ?? '' }}"
-                      data-contact="{{ $member->phone_number ?? '' }}">
-                    <td class="px-6 py-4">
-                      <div class="flex items-center gap-3 {{ !$member->is_active ? 'opacity-60' : '' }}">
-                        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-{{ $color }}-400 to-{{ $color }}-600 flex items-center justify-center overflow-hidden shadow-md group-hover:shadow-lg transition-all group-hover:scale-110">
-                          @if($member->profile_pic)
-                            <img src="{{ asset('storage/' . $member->profile_pic) }}" alt="{{ $fname . ' ' . $lname }}" class="w-full h-full object-cover">
-                          @else
-                            <span class="text-white font-bold text-sm">{{ $initials }}</span>
-                          @endif
-                        </div>
-                        <span class="font-medium {{ $member->is_active ? 'text-gray-800 group-hover:text-orange-600' : 'text-gray-600' }} transition">
-                          {{ $fname . ' ' . ($member->authorized_rep_mname ?? '') . ' ' . $lname }}
-                        </span>
-                      </div>
-                    </td>
-                    <td class="px-6 py-4 text-center text-sm text-gray-600">{{ ucfirst($member->role ?? 'N/A') }}</td>
-                    <td class="px-6 py-4 text-center text-sm text-gray-600">{{ $member->created_at ? \Carbon\Carbon::parse($member->created_at)->format('M d, Y') : 'N/A' }}</td>
-                    <td class="px-6 py-4 text-center">
-                      @if($member->is_active)
-                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 transition-all duration-200 hover:scale-110 hover:shadow-md">
-                          Active
-                        </span>
-                      @else
-                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
-                          Deactivated
-                        </span>
-                      @endif
-                    </td>
-                    <td class="px-6 py-4">
-                      <div class="flex items-center justify-center gap-2">
-                        @if($member->is_active)
-                          <button class="team-edit-btn p-2 rounded-lg hover:bg-orange-50 transition-all group/btn" title="Edit Member">
-                            <i class="fi fi-rr-pencil text-orange-600 group-hover/btn:scale-110 transition-transform"></i>
-                          </button>
-                          <button class="team-deactivate-btn p-2 rounded-lg hover:bg-red-50 transition-all group/btn" title="Deactivate Account">
-                            <i class="fi fi-rr-ban text-red-600 group-hover/btn:scale-110 transition-transform"></i>
-                          </button>
-                        @else
-                          <button class="team-reactivate-btn p-2 rounded-lg hover:bg-green-50 transition-all group/btn" title="Reactivate Account">
-                            <i class="fi fi-rr-check-circle text-green-600 group-hover/btn:scale-110 transition-transform"></i>
-                          </button>
-                        @endif
-                      </div>
-                    </td>
-                  </tr>
-                @empty
-                  <tr>
-                    <td colspan="5" class="px-6 py-8 text-center text-gray-500">
-                      No team members found
-                    </td>
-                  </tr>
-                @endforelse
                 <!-- Team Member 1 -->
                 <tr class="hover:bg-gray-50 transition-all duration-200 group team-member-row" data-status="active" data-email="olive.podios@jlois.com" data-contact="+63 912 345 6789">
                   <td class="px-6 py-4">
@@ -1095,7 +837,6 @@
               </p>
             </div>
           </div>
-
           
           <!-- Contractor Info Card -->
           <div class="bg-white rounded-lg p-3 border border-red-200 space-y-2">
@@ -1127,9 +868,6 @@
             <i class="fi fi-rr-edit text-red-500"></i>
             Reason for Suspension <span class="text-red-500">*</span>
           </label>
-          <textarea
-            id="suspendReason"
-            rows="3"
           <textarea 
             id="suspendReason" 
             rows="3" 
@@ -1212,7 +950,6 @@
 
       <!-- Modal Body -->
       <div class="overflow-y-auto max-h-[calc(90vh-80px)] p-6 md:p-8 space-y-6">
-
         
         <!-- Edit Type Selector -->
         <div class="flex gap-3 p-4 bg-gray-50 rounded-xl border-2 border-gray-200">
@@ -1324,7 +1061,6 @@
             <i class="fi fi-rr-id-badge"></i>
             Company Representative Information
           </h3>
-
           
           <!-- Representative Photo -->
           <div class="flex items-center gap-6 p-6 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl border-2 border-blue-200 hover:shadow-lg transition-all duration-300 mb-4">
@@ -1687,10 +1423,6 @@
 
         <!-- Search Bar -->
         <div class="relative">
-          <input
-            type="text"
-            id="searchTeamMember"
-            placeholder="Search team members by name or position..."
           <input 
             type="text" 
             id="searchTeamMember"
@@ -1704,7 +1436,6 @@
         <div>
           <h3 class="text-sm font-bold text-gray-600 uppercase tracking-wider mb-3">Select New Representative</h3>
           <div class="space-y-2 max-h-96 overflow-y-auto" id="teamMembersList">
-
             
             <!-- Team Member Option 1 -->
             <div class="team-member-option flex items-center justify-between p-4 border-2 border-gray-200 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-all cursor-pointer group" data-member-id="1" data-member-name="Olive Faith Podios" data-member-position="Secretary" data-member-email="olive.podios@jlois.com">
@@ -1808,5 +1539,4 @@
 
 </body>
 
-</html>
 </html>

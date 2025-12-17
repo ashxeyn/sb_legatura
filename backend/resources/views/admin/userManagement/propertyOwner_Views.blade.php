@@ -4,23 +4,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="csrf-token" content="{{ csrf_token() }}">
   <title>Admin Dashboard - Legatura</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="{{ asset('css/admin/home/mainComponents.css') }}">
   <link rel="stylesheet" href="{{ asset('css/admin/userManagement/propertyOwner_Views.css') }}">
-
   
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-solid-straight/css/uicons-solid-straight.css'>
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-solid-rounded/css/uicons-solid-rounded.css'>
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-bold-rounded/css/uicons-bold-rounded.css'>
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-regular-rounded/css/uicons-regular-rounded.css'>
-
-
-  <script src="{{ asset('js/admin/home/mainComponents.js') }}" defer></script>
-
-
   
 
   <script src="{{ asset('js/admin/home/mainComponents.js') }}" defer></script>
@@ -137,11 +130,6 @@
      <div class="mt-auto p-4">
           <div class="user-card flex items-center gap-3 p-3 rounded-lg shadow-md text-white">
               <div class="w-10 h-10 rounded-full bg-white text-indigo-900 flex items-center justify-center font-bold shadow flex-shrink-0">
-                  {{ substr(session('user')?->first_name, 0, 1) . substr(session('user')?->last_name, 0, 1) }}
-              </div>
-              <div class="flex-1 min-w-0">
-                  <div class="font-semibold text-sm truncate">{{ session('user')?->first_name }} {{ session('user')?->last_name }}</div>
-                  <div class="text-xs opacity-80 truncate">{{ session('user')?->email }}</div>
                   ES
               </div>
               <div class="flex-1 min-w-0">
@@ -152,8 +140,6 @@
                 <button id="userMenuBtn" class="text-white opacity-80 hover:opacity-100 transition text-2xl w-8 h-8 flex items-center justify-center rounded-full">⋮</button>
                 <div id="userMenuDropdown" class="absolute right-0 bottom-full mb-2 w-44 bg-white text-gray-800 rounded-xl shadow-2xl border border-gray-200 hidden">
                   <div class="px-4 py-3 border-b border-gray-100">
-                    <div class="text-sm font-semibold truncate">{{ session('user')?->first_name }} {{ session('user')?->last_name }}</div>
-                    <div class="text-xs text-gray-500 truncate">{{ session('user')?->email }}</div>
                     <div class="text-sm font-semibold truncate">Emmanuelle Santos</div>
                     <div class="text-xs text-gray-500 truncate">santos@Legatura.com</div>
                   </div>
@@ -184,9 +170,6 @@
 
         <div class="flex items-center gap-6">
           <div class="relative w-64" style="width: 600px;">
-            <input
-              type="text"
-              placeholder="Search..."
             <input 
               type="text" 
               placeholder="Search..." 
@@ -261,21 +244,6 @@
             <span>Back</span>
           </a>
           <div class="flex items-center gap-3">
-            <button onclick="openEditModal({{ $propertyOwner->owner_id }})" class="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-all duration-300 text-gray-700 flex items-center gap-2 hover:shadow-md hover:scale-105">
-              <i class="fi fi-rr-edit"></i>
-              <span>Edit</span>
-            </button>
-            @if($propertyOwner->is_active == 1)
-            <button id="suspendPropertyOwnerBtn" data-id="{{ $propertyOwner->owner_id }}" class="px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white transition-all duration-300 flex items-center gap-2 hover:shadow-lg hover:scale-105">
-              <i class="fi fi-rr-ban"></i>
-              <span>Suspend</span>
-            </button>
-            @else
-            <div class="px-4 py-2 rounded-lg bg-red-100 text-red-600 font-medium flex items-center gap-2 cursor-default">
-                <i class="fi fi-rr-ban"></i>
-                <span>Suspended</span>
-            </div>
-            @endif
             <button id="editPropertyOwnerBtn" class="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-all duration-300 text-gray-700 flex items-center gap-2 hover:shadow-md hover:scale-105">
               <i class="fi fi-rr-edit"></i>
               <span>Edit</span>
@@ -299,24 +267,11 @@
               <div class="p-6 md:p-8">
                 <div class="flex flex-col md:flex-row items-start gap-6">
                   <div class="flex-shrink-0">
-                    @if($propertyOwner->profile_pic)
-                        <img src="{{ asset('storage/' . $propertyOwner->profile_pic) }}" alt="Profile" class="w-28 h-28 md:w-32 md:h-32 rounded-full object-cover shadow-xl ring-4 ring-blue-100 hover:ring-blue-200 hover:scale-110 transition-all duration-300 cursor-pointer">
-                    @else
-                        <div class="w-28 h-28 md:w-32 md:h-32 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 text-white font-bold text-3xl md:text-4xl grid place-items-center shadow-xl ring-4 ring-blue-100 hover:ring-blue-200 hover:scale-110 transition-all duration-300 cursor-pointer">
-                            {{ substr($propertyOwner->first_name, 0, 1) . substr($propertyOwner->last_name, 0, 1) }}
-                        </div>
-                    @endif
                     <div class="w-28 h-28 md:w-32 md:h-32 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 text-white font-bold text-3xl md:text-4xl grid place-items-center shadow-xl ring-4 ring-blue-100 hover:ring-blue-200 hover:scale-110 transition-all duration-300 cursor-pointer">ES</div>
                   </div>
                   <div class="flex-1 w-full">
                     <div class="flex items-start justify-between gap-4">
                       <div>
-                        <h3 class="text-2xl md:text-3xl font-bold text-gray-800">{{ $propertyOwner->first_name }} {{ $propertyOwner->last_name }}</h3>
-                        <p class="text-gray-600 mt-1">Occupation: {{ $propertyOwner->occupation ?? 'N/A' }}</p>
-                        <div class="flex items-center gap-2 text-sm mt-2">
-                          <i class="fi fi-rr-star text-yellow-500"></i>
-                          <span class="font-semibold text-gray-800">N/A Rating</span>
-                          <span class="text-gray-500">• {{ Str::limit($propertyOwner->address, 30) }}</span>
                         <h3 class="text-2xl md:text-3xl font-bold text-gray-800">Emmanuelle Santos</h3>
                         <p class="text-gray-600 mt-1">Occupation: Civil Engineer</p>
                         <div class="flex items-center gap-2 text-sm mt-2">
@@ -339,7 +294,6 @@
                         </div>
                         <div>
                           <p class="text-xs text-gray-500">Registered Date</p>
-                          <p class="font-semibold text-gray-800">{{ \Carbon\Carbon::parse($propertyOwner->created_at)->format('F d, Y') }}</p>
                           <p class="font-semibold text-gray-800">January 12, 2023</p>
                         </div>
                       </div>
@@ -349,7 +303,6 @@
                         </div>
                         <div>
                           <p class="text-xs text-gray-500">Age</p>
-                          <p class="font-semibold text-gray-800">{{ $propertyOwner->age }}</p>
                           <p class="font-semibold text-gray-800">36</p>
                         </div>
                       </div>
@@ -359,7 +312,6 @@
                         </div>
                         <div>
                           <p class="text-xs text-gray-500">Contact No.</p>
-                          <p class="font-semibold text-gray-800">{{ $propertyOwner->phone_number }}</p>
                           <p class="font-semibold text-gray-800">0988 765 4321</p>
                         </div>
                       </div>
@@ -369,7 +321,6 @@
                         </div>
                         <div>
                           <p class="text-xs text-gray-500">Email</p>
-                          <p class="font-semibold text-gray-800">{{ $propertyOwner->email }}</p>
                           <p class="font-semibold text-gray-800">criscel@gmail.com</p>
                         </div>
                       </div>
@@ -385,23 +336,11 @@
                 <img src="https://images.unsplash.com/photo-1503387762-592deb58ef4e?q=80&w=1200&auto=format&fit=crop" alt="Cover" class="w-full h-full object-cover opacity-90 group-hover:scale-110 transition-transform duration-500" loading="lazy">
                 <div class="absolute -bottom-10 left-6">
                   <div class="w-20 h-20 md:w-24 md:h-24 rounded-full bg-white grid place-items-center shadow-xl ring-4 ring-white overflow-hidden hover:ring-8 hover:ring-indigo-100 hover:scale-110 transition-all duration-300 cursor-pointer">
-                    @if($propertyOwner->profile_pic)
-                        <img src="{{ asset('storage/' . $propertyOwner->profile_pic) }}" alt="Avatar" class="w-full h-full object-cover hover:scale-110 transition-transform duration-300">
-                    @else
-                        <div class="w-full h-full bg-gradient-to-br from-blue-400 to-blue-600 text-white font-bold text-2xl grid place-items-center">
-                            {{ substr($propertyOwner->first_name, 0, 1) . substr($propertyOwner->last_name, 0, 1) }}
-                        </div>
-                    @endif
                     <img src="https://images.unsplash.com/photo-1544006659-f0b21884ce1d?q=80&w=400&auto=format&fit=crop" alt="Avatar" class="w-full h-full object-cover hover:scale-110 transition-transform duration-300">
                   </div>
                 </div>
               </div>
               <div class="pt-14 px-6 md:px-8 pb-8">
-                <h3 class="text-2xl font-bold text-gray-800">{{ $propertyOwner->first_name }} {{ $propertyOwner->last_name }}</h3>
-                <div class="flex items-center gap-2 text-sm mt-1">
-                  <i class="fi fi-rr-star text-yellow-500"></i>
-                  <span class="font-semibold">N/A Rating</span>
-                  <span class="text-gray-500">• {{ Str::limit($propertyOwner->address, 30) }}</span>
                 <h3 class="text-2xl font-bold text-gray-800">Emmanuelle Santos</h3>
                 <div class="flex items-center gap-2 text-sm mt-1">
                   <i class="fi fi-rr-star text-yellow-500"></i>
@@ -444,11 +383,6 @@
 
                 <div class="grid grid-cols-2 gap-4 mt-6">
                   <div class="text-center p-6 bg-indigo-50 rounded-lg border border-indigo-200 hover:bg-indigo-100 hover:shadow-lg hover:-translate-y-2 transition-all duration-300 cursor-pointer group">
-                    <p class="text-3xl md:text-4xl font-bold text-indigo-600 group-hover:scale-110 transition-transform">{{ $propertyOwner->completed_projects_count }}</p>
-                    <p class="text-sm text-gray-600 mt-2">Projects done</p>
-                  </div>
-                  <div class="text-center p-6 bg-green-50 rounded-lg border border-green-200 hover:bg-green-100 hover:shadow-lg hover:-translate-y-2 transition-all duration-300 cursor-pointer group">
-                    <p class="text-3xl md:text-4xl font-bold text-green-600 group-hover:scale-110 transition-transform">{{ $propertyOwner->ongoing_projects_count }}</p>
                     <p class="text-3xl md:text-4xl font-bold text-indigo-600 group-hover:scale-110 transition-transform">48</p>
                     <p class="text-sm text-gray-600 mt-2">Projects done</p>
                   </div>
@@ -468,57 +402,6 @@
                     <i class="fi fi-rr-list text-indigo-600"></i>
                     List of Projects
                   </h2>
-                  <select id="projectFilter" class="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-400 focus:outline-none hover:border-indigo-400 transition cursor-pointer">
-                    <option value="all">All Projects</option>
-                    <option value="open">Open</option>
-                    <option value="in_progress">In Progress</option>
-                    <option value="halt">Halt</option>
-                    <option value="terminated">Terminated</option>
-                    <option value="completed">Completed</option>
-                    <option value="bidding_closed">Bidding Closed</option>
-                  </select>
-                </div>
-              </div>
-              <div class="p-6 space-y-4" id="projectsList">
-                @forelse($propertyOwner->projects as $project)
-                <div class="project-card border border-gray-200 rounded-xl overflow-hidden hover:border-indigo-300 hover:shadow-lg transition-all duration-300 group" data-status="{{ $project->project_status }}">
-                  <div class="flex flex-col sm:flex-row gap-4">
-                    <div class="sm:w-32 h-32 sm:h-auto overflow-hidden flex-shrink-0 bg-gray-100 grid place-items-center">
-                      <i class="fi fi-rr-building text-4xl text-gray-300"></i>
-                    </div>
-                    <div class="flex-1 p-4 space-y-2">
-                      <div class="flex items-start justify-between gap-2">
-                        <h3 class="font-bold text-gray-800 group-hover:text-indigo-600 transition-colors">{{ $project->project_title }}</h3>
-                        @php
-                            $statusColors = [
-                                'completed' => 'bg-green-100 text-green-700',
-                                'in_progress' => 'bg-blue-100 text-blue-700',
-                                'open' => 'bg-green-100 text-green-700',
-                                'bidding_closed' => 'bg-yellow-100 text-yellow-700',
-                                'terminated' => 'bg-red-100 text-red-700',
-                            ];
-                            $statusColor = $statusColors[$project->project_status] ?? 'bg-gray-100 text-gray-700';
-                        @endphp
-                        <span class="px-2.5 py-1 {{ $statusColor }} rounded-full text-xs font-semibold whitespace-nowrap">{{ ucfirst(str_replace('_', ' ', $project->project_status)) }}</span>
-                      </div>
-                      <p class="text-sm text-gray-600 line-clamp-2">{{ $project->project_description }}</p>
-                      <div class="flex flex-wrap items-center gap-4 text-xs text-gray-500 pt-1">
-                        <span class="flex items-center gap-1">
-                          <i class="fi fi-rr-marker text-indigo-600"></i>
-                          {{ $project->project_location }}
-                        </span>
-                        <span class="flex items-center gap-1">
-                          <i class="fi fi-rr-calendar text-green-600"></i>
-                          {{ \Carbon\Carbon::parse($project->created_at)->format('M Y') }}
-                        </span>
-                      </div>
-                      @if($project->contractor_first_name)
-                      <div class="flex items-center justify-between pt-2">
-                        <div class="flex items-center gap-2">
-                          <div class="w-8 h-8 rounded-full bg-orange-500 text-white text-xs font-bold grid place-items-center">
-                            {{ substr($project->contractor_first_name, 0, 1) . substr($project->contractor_last_name, 0, 1) }}
-                          </div>
-                          <span class="text-sm font-medium text-gray-700">{{ $project->contractor_first_name }} {{ $project->contractor_last_name }}</span>
                   <select class="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-400 focus:outline-none hover:border-indigo-400 transition cursor-pointer">
                     <option value="all">All</option>
                     <option value="ongoing">Ongoing</option>
@@ -559,15 +442,6 @@
                           View
                         </button>
                       </div>
-                      @endif
-                    </div>
-                  </div>
-                </div>
-                @empty
-                <div class="text-center py-8 text-gray-500">
-                    No projects found.
-                </div>
-                @endforelse
                     </div>
                   </div>
                 </div>
@@ -689,7 +563,6 @@
           <!-- Right 1/3: Company + Documents -->
           <div class="space-y-6">
             <!-- Company -->
-            @if($propertyOwner->user_type === 'both' && isset($propertyOwner->contractor_details))
             <section class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
               <div class="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
                 <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
@@ -700,20 +573,6 @@
               <div class="p-6">
                 <div class="space-y-3">
                   <div class="overflow-hidden rounded-lg shadow group">
-                    @if($propertyOwner->cover_photo)
-                        <img src="{{ asset('storage/cover/' . $propertyOwner->cover_photo) }}" alt="Company Cover" class="w-full h-36 object-cover group-hover:scale-110 transition-transform duration-500 cursor-pointer" loading="lazy" onclick="openImageModal('{{ asset('storage/cover/' . $propertyOwner->cover_photo) }}', 'Company Cover')">
-                    @else
-                        <div class="w-full h-36 bg-gray-200 flex items-center justify-center text-gray-400">
-                            <i class="fi fi-rr-picture text-4xl"></i>
-                        </div>
-                    @endif
-                  </div>
-                  <div>
-                    <h4 class="font-semibold text-gray-800">{{ $propertyOwner->contractor_details->company_name }}</h4>
-                    <p class="text-sm text-gray-600">Position: {{ ucfirst($propertyOwner->contractor_details->position) }}</p>
-                    <span class="mt-2 inline-flex items-center gap-2 px-3 py-1.5 bg-orange-100 text-orange-700 rounded-full text-sm">
-                      <i class="fi fi-rr-briefcase"></i>
-                      {{ $propertyOwner->contractor_details->contractor_type }}
                     <img src="https://images.unsplash.com/photo-1496307653780-42ee777d4833?q=80&w=800&auto=format&fit=crop" alt="Company" class="w-full h-36 object-cover group-hover:scale-110 transition-transform duration-500 cursor-pointer" loading="lazy">
                   </div>
                   <div>
@@ -727,7 +586,6 @@
                 </div>
               </div>
             </section>
-            @endif
 
             <!-- Documents -->
             <section class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm sticky top-24 hover:shadow-xl transition-all duration-300">
@@ -739,8 +597,6 @@
               </div>
               <div class="p-6 space-y-4">
                 <!-- Police clearance -->
-                @if($propertyOwner->police_clearance)
-                <div onclick="openImageModal('{{ asset('storage/' . $propertyOwner->police_clearance) }}', 'Police Clearance')" class="p-4 bg-gray-50 rounded-lg hover:bg-purple-50 transition-all duration-300 hover:shadow-md hover:-translate-y-1 group cursor-pointer">
                 <div class="p-4 bg-gray-50 rounded-lg hover:bg-purple-50 transition-all duration-300 hover:shadow-md hover:-translate-y-1 group cursor-pointer">
                   <div class="flex items-start gap-3 mb-3">
                     <div class="w-12 h-12 bg-purple-100 rounded-lg grid place-items-center group-hover:scale-110 group-hover:rotate-6 transition-all">
@@ -748,21 +604,6 @@
                     </div>
                     <div class="flex-1 min-w-0">
                       <p class="font-semibold text-gray-800 group-hover:text-purple-700 transition-colors">Police Clearance</p>
-                      <p class="text-sm text-gray-500">{{ basename($propertyOwner->police_clearance) }}</p>
-                    </div>
-                    <a href="{{ asset('storage/' . $propertyOwner->police_clearance) }}" download onclick="event.stopPropagation()" class="p-2 hover:bg-purple-200 rounded-lg transition-all hover:scale-110" aria-label="Download Police Clearance">
-                      <i class="fi fi-rr-download text-gray-600 hover:text-purple-600"></i>
-                    </a>
-                  </div>
-                  <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium inline-flex items-center gap-1 group-hover:bg-green-200 transition-colors">
-                    <i class="fi fi-rr-check-circle"></i> Uploaded
-                  </span>
-                </div>
-                @endif
-
-                <!-- Valid ID -->
-                @if($propertyOwner->valid_id_photo)
-                <div onclick="openImageModal('{{ asset('storage/' . $propertyOwner->valid_id_photo) }}', 'Valid ID (Front)')" class="p-4 bg-gray-50 rounded-lg hover:bg-blue-50 transition-all duration-300 hover:shadow-md hover:-translate-y-1 group cursor-pointer">
                       <p class="text-sm text-gray-500">PRC.jpg <span class="text-xs text-gray-400">• 200 KB</span></p>
                     </div>
                     <button class="p-2 hover:bg-purple-200 rounded-lg transition-all hover:scale-110" aria-label="Download Police Clearance">
@@ -781,39 +622,6 @@
                       <i class="fi fi-rr-id-badge text-blue-600 text-xl"></i>
                     </div>
                     <div class="flex-1 min-w-0">
-                      <p class="font-semibold text-gray-800 group-hover:text-blue-700 transition-colors">Valid ID ({{ $propertyOwner->valid_id_name }})</p>
-                      <p class="text-sm text-gray-500">{{ basename($propertyOwner->valid_id_photo) }}</p>
-                    </div>
-                    <a href="{{ asset('storage/' . $propertyOwner->valid_id_photo) }}" download onclick="event.stopPropagation()" class="p-2 hover:bg-blue-200 rounded-lg transition-all hover:scale-110" aria-label="Download Valid ID">
-                      <i class="fi fi-rr-download text-gray-600 hover:text-blue-600"></i>
-                    </a>
-                  </div>
-                  <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium inline-flex items-center gap-1 group-hover:bg-green-200 transition-colors">
-                    <i class="fi fi-rr-check-circle"></i> Uploaded
-                  </span>
-                </div>
-                @endif
-
-                <!-- Valid ID (Back) -->
-                @if($propertyOwner->valid_id_back_photo)
-                <div onclick="openImageModal('{{ asset('storage/' . $propertyOwner->valid_id_back_photo) }}', 'Valid ID (Back)')" class="p-4 bg-gray-50 rounded-lg hover:bg-blue-50 transition-all duration-300 hover:shadow-md hover:-translate-y-1 group cursor-pointer">
-                  <div class="flex items-start gap-3 mb-3">
-                    <div class="w-12 h-12 bg-blue-100 rounded-lg grid place-items-center group-hover:scale-110 group-hover:rotate-6 transition-all">
-                      <i class="fi fi-rr-id-badge text-blue-600 text-xl"></i>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                      <p class="font-semibold text-gray-800 group-hover:text-blue-700 transition-colors">Valid ID (Back)</p>
-                      <p class="text-sm text-gray-500">{{ basename($propertyOwner->valid_id_back_photo) }}</p>
-                    </div>
-                    <a href="{{ asset('storage/' . $propertyOwner->valid_id_back_photo) }}" download onclick="event.stopPropagation()" class="p-2 hover:bg-blue-200 rounded-lg transition-all hover:scale-110" aria-label="Download Valid ID Back">
-                      <i class="fi fi-rr-download text-gray-600 hover:text-blue-600"></i>
-                    </a>
-                  </div>
-                  <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium inline-flex items-center gap-1 group-hover:bg-green-200 transition-colors">
-                    <i class="fi fi-rr-check-circle"></i> Uploaded
-                  </span>
-                </div>
-                @endif
                       <p class="font-semibold text-gray-800 group-hover:text-blue-700 transition-colors">Valid ID</p>
                       <p class="text-sm text-gray-500">National_ID.jpg <span class="text-xs text-gray-400">• 350 KB</span></p>
                     </div>
@@ -861,11 +669,6 @@
             <div class="flex-1">
               <h3 class="font-bold text-gray-800 mb-1">Confirm Account Suspension</h3>
               <p class="text-gray-700 text-sm leading-relaxed">
-                Are you sure you want to suspend <span class="font-bold text-red-600">{{ $propertyOwner->first_name }} {{ $propertyOwner->last_name }}</span>?
-              </p>
-            </div>
-          </div>
-
                 Are you sure you want to suspend <span class="font-bold text-red-600">Emmanuelle Santos</span>?
               </p>
             </div>
@@ -875,11 +678,6 @@
           <div class="bg-white rounded-lg p-3 border border-red-200 space-y-2">
             <div class="flex items-center gap-3">
               <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 text-white font-bold flex items-center justify-center shadow-md">
-                {{ substr($propertyOwner->first_name, 0, 1) . substr($propertyOwner->last_name, 0, 1) }}
-              </div>
-              <div>
-                <p class="font-semibold text-gray-800 text-sm">{{ $propertyOwner->first_name }} {{ $propertyOwner->last_name }}</p>
-                <p class="text-xs text-gray-600">{{ $propertyOwner->occupation ?? 'N/A' }}</p>
                 ES
               </div>
               <div>
@@ -889,11 +687,6 @@
             </div>
             <div class="grid grid-cols-2 gap-2 pt-2 border-t border-gray-200">
               <div class="text-center">
-                <p class="text-xl font-bold text-indigo-600">{{ $propertyOwner->completed_projects_count }}</p>
-                <p class="text-xs text-gray-600">Projects Done</p>
-              </div>
-              <div class="text-center">
-                <p class="text-xl font-bold text-green-600">{{ $propertyOwner->ongoing_projects_count }}</p>
                 <p class="text-xl font-bold text-indigo-600">48</p>
                 <p class="text-xs text-gray-600">Projects Done</p>
               </div>
@@ -911,13 +704,6 @@
             <i class="fi fi-rr-edit text-red-500"></i>
             Reason for Suspension <span class="text-red-500">*</span>
           </label>
-          <textarea
-            id="suspendReason"
-            rows="3"
-            placeholder="Please provide a detailed reason for suspending this account..."
-            class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-red-400 focus:border-red-400 transition-all hover:border-red-300 bg-white resize-none text-sm"
-          ></textarea>
-          <p id="suspendReasonError" class="text-red-500 text-xs mt-1 hidden"></p>
           <textarea 
             id="suspendReason" 
             rows="3" 
@@ -936,14 +722,12 @@
             <i class="fi fi-rr-calendar text-red-500"></i>
             Suspension Duration
           </label>
-          <div class="grid grid-cols-2 gap-4">
           <div class="grid grid-cols-2 gap-2">
             <label class="relative cursor-pointer group">
               <input type="radio" name="suspensionDuration" value="temporary" class="peer sr-only" checked>
               <div class="border-2 border-gray-300 rounded-lg p-3 text-center transition-all peer-checked:border-red-500 peer-checked:bg-red-50 hover:border-red-300 hover:shadow-md">
                 <i class="fi fi-rr-clock text-xl text-gray-400 peer-checked:text-red-500 transition-colors mb-1"></i>
                 <p class="font-semibold text-gray-700 text-sm peer-checked:text-red-600">Temporary</p>
-                <p class="text-xs text-gray-500 mt-1">Select Date</p>
                 <p class="text-xs text-gray-500 mt-1">30 days</p>
               </div>
             </label>
@@ -955,14 +739,6 @@
                 <p class="text-xs text-gray-500 mt-1">Indefinite</p>
               </div>
             </label>
-          </div>
-
-          <!-- Date Picker for Temporary Suspension -->
-          <div id="suspensionDateContainer" class="mt-3 transition-all duration-300 overflow-hidden">
-            <label class="block text-sm font-medium text-gray-700 mb-1">Suspension Until</label>
-            <input type="date" id="suspensionDate" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-all text-sm" min="{{ date('Y-m-d', strtotime('+1 day')) }}">
-            <p id="suspensionDateError" class="text-red-500 text-xs mt-1 hidden"></p>
-            <p class="text-xs text-gray-500 mt-1">The account will be automatically reactivated after this date.</p>
           </div>
         </div>
 
@@ -998,11 +774,6 @@
 
   <!-- Edit Property Owner Modal -->
   <div id="editPropertyOwnerModal" class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto modal-content">
-      <!-- Modal Header -->
-      <div class="sticky top-0 bg-white border-b border-gray-200 px-8 py-5 flex items-center justify-between rounded-t-2xl z-10">
-        <h2 class="text-2xl font-bold text-gray-800">Edit Property Owner</h2>
-        <button id="closeEditModalBtn" class="text-gray-400 hover:text-gray-600 transition p-2 rounded-lg hover:bg-gray-100">
     <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden transform transition-all duration-300 scale-95 opacity-0 modal-content">
       <!-- Modal Header -->
       <div class="sticky top-0 bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-5 flex items-center justify-between rounded-t-2xl z-10 shadow-lg">
@@ -1016,200 +787,6 @@
       </div>
 
       <!-- Modal Body -->
-      <div class="p-8">
-        <form id="editPropertyOwnerForm">
-            <input type="hidden" id="edit_user_id" name="user_id">
-            <!-- Profile Picture Section -->
-            <div class="flex items-center gap-6 mb-8">
-            <div class="relative group">
-                <div class="w-24 h-24 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center overflow-hidden shadow-lg">
-                <i class="fi fi-rr-user text-4xl text-gray-500" id="editProfileIcon"></i>
-                <img id="editProfilePreview" class="w-full h-full object-cover hidden" alt="Profile Preview">
-                </div>
-                <label for="editProfileUpload" class="absolute bottom-0 right-0 bg-orange-500 hover:bg-orange-600 text-white p-2 rounded-full cursor-pointer shadow-lg transition transform hover:scale-110">
-                <i class="fi fi-rr-pencil text-sm"></i>
-                <input type="file" id="editProfileUpload" name="profile_pic" class="hidden" accept="image/*">
-                </label>
-            </div>
-            <div>
-                <h3 class="text-lg font-semibold text-gray-800">Profile Picture</h3>
-                <p class="text-sm text-gray-500">Update profile photo for the property owner</p>
-            </div>
-            </div>
-
-            <!-- Personal Information Section -->
-            <div class="mb-6">
-            <h3 class="text-lg font-semibold text-orange-500 mb-4 flex items-center gap-2">
-                <i class="fi fi-rr-user"></i>
-                Personal Information
-            </h3>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">First name</label>
-                <input type="text" id="edit_first_name" name="first_name" placeholder="Enter first name" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
-                </div>
-                <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Occupation</label>
-                <select name="occupation_id" id="edit_occupationSelect" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
-                    <option value="">Select Occupation</option>
-                    @foreach($occupations as $occupation)
-                        @if(strtolower($occupation->occupation_name) !== 'others')
-                            <option value="{{ $occupation->id }}">{{ $occupation->occupation_name }}</option>
-                        @endif
-                    @endforeach
-                    <option value="others">Others</option>
-                </select>
-                <input type="text" name="occupation_other" id="edit_occupationOtherInput" placeholder="Please specify occupation" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition mt-2 hidden">
-                </div>
-                <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Middle name <span class="text-gray-400">(optional)</span></label>
-                <input type="text" id="edit_middle_name" name="middle_name" placeholder="Enter middle name" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
-                </div>
-                <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Date of birth</label>
-                <input type="date" id="edit_date_of_birth" name="date_of_birth" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
-                </div>
-                <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Last name</label>
-                <input type="text" id="edit_last_name" name="last_name" placeholder="Enter last name" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
-                </div>
-                <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Contact no.</label>
-                <input type="tel" id="edit_phone_number" name="phone_number" placeholder="Enter contact number" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
-                </div>
-            </div>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <!-- Account Setup & Address Section -->
-            <div class="space-y-6">
-                <div>
-                    <h3 class="text-lg font-semibold text-orange-500 mb-4 flex items-center gap-2">
-                    <i class="fi fi-rr-user-gear"></i>
-                    Account Setup
-                    </h3>
-                    <div class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
-                        <input type="email" id="edit_email" name="email" placeholder="Enter email address" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Username</label>
-                        <input type="text" id="edit_username" name="username" placeholder="Enter username" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">New Password <span class="text-gray-400">(Optional)</span></label>
-                        <input type="password" id="edit_password" name="password" placeholder="Enter new password" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
-                        <p class="text-xs text-gray-500 mt-1">Leave blank if you don't want to change the password.</p>
-                    </div>
-                    </div>
-                </div>
-
-                <div>
-                    <h3 class="text-lg font-semibold text-orange-500 mb-4 flex items-center gap-2">
-                    <i class="fi fi-rr-map-marker"></i>
-                    Address
-                    </h3>
-                    <div class="space-y-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Province</label>
-                            <select id="edit_owner_address_province" name="province" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
-                                <option value="">Select Province</option>
-                                @foreach($provinces as $province)
-                                    <option value="{{ $province['code'] }}" data-name="{{ $province['name'] }}">{{ $province['name'] }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">City/Municipality</label>
-                            <select id="edit_owner_address_city" name="city" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition" disabled>
-                                <option value="">Select City/Municipality</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Barangay</label>
-                            <select id="edit_owner_address_barangay" name="barangay" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition" disabled>
-                                <option value="">Select Barangay</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Street Address / Unit No.</label>
-                            <input type="text" id="edit_street_address" name="street_address" placeholder="Enter street address" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Zip Code</label>
-                            <input type="text" id="edit_zip_code" name="zip_code" placeholder="Enter zip code" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Verification Documents Section -->
-            <div>
-                <h3 class="text-lg font-semibold text-orange-500 mb-4 flex items-center gap-2">
-                <i class="fi fi-rr-document"></i>
-                Verification Documents
-                </h3>
-                <div class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Type of Valid ID</label>
-                    <select id="edit_valid_id_id" name="valid_id_id" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
-                    <option value="">Select ID type</option>
-                    @foreach($validIds as $validId)
-                        <option value="{{ $validId->id }}">{{ $validId->valid_id_name }}</option>
-                    @endforeach
-                    </select>
-                </div>
-
-                <!-- Valid ID Front -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Valid ID (Front)</label>
-                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-orange-400 transition cursor-pointer bg-gray-50 hover:bg-orange-50" id="editIdFrontUploadArea">
-                    <input type="file" id="editIdFrontUpload" name="valid_id_photo" class="hidden" accept="image/*">
-                    <i class="fi fi-rr-id-card-clip-alt text-3xl text-gray-400 mb-2"></i>
-                    <p class="text-sm text-gray-600 font-medium">Upload Front Side</p>
-                    <div id="editIdFrontFileName" class="text-sm text-orange-500 mt-2 hidden font-medium"></div>
-                    </div>
-                    <div id="currentIdFront" class="mt-2 text-sm text-gray-500"></div>
-                </div>
-
-                <!-- Valid ID Back -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Valid ID (Back)</label>
-                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-orange-400 transition cursor-pointer bg-gray-50 hover:bg-orange-50" id="editIdBackUploadArea">
-                    <input type="file" id="editIdBackUpload" name="valid_id_back_photo" class="hidden" accept="image/*">
-                    <i class="fi fi-rr-id-card-clip-alt text-3xl text-gray-400 mb-2"></i>
-                    <p class="text-sm text-gray-600 font-medium">Upload Back Side</p>
-                    <div id="editIdBackFileName" class="text-sm text-orange-500 mt-2 hidden font-medium"></div>
-                    </div>
-                    <div id="currentIdBack" class="mt-2 text-sm text-gray-500"></div>
-                </div>
-
-                <!-- Police Clearance -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Police Clearance</label>
-                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-orange-400 transition cursor-pointer bg-gray-50 hover:bg-orange-50" id="editPoliceClearanceUploadArea">
-                    <input type="file" id="editPoliceClearanceUpload" name="police_clearance" class="hidden" accept="image/*">
-                    <i class="fi fi-rr-shield-check text-3xl text-gray-400 mb-2"></i>
-                    <p class="text-sm text-gray-600 font-medium">Upload Police Clearance</p>
-                    <div id="editPoliceClearanceFileName" class="text-sm text-orange-500 mt-2 hidden font-medium"></div>
-                    </div>
-                    <div id="currentPoliceClearance" class="mt-2 text-sm text-gray-500"></div>
-                </div>
-                </div>
-            </div>
-            </div>
-
-            <!-- Modal Footer -->
-            <div class="flex items-center justify-end gap-3 mt-8 pt-6 border-t border-gray-200">
-            <button type="button" id="cancelEditBtn" class="px-6 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition font-medium">
-                Cancel
-            </button>
-            <button type="submit" id="saveEditBtn" class="px-6 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-lg transition font-medium shadow-md hover:shadow-lg transform hover:scale-105">
-                Save Changes
-            </button>
-            </div>
-        </form>
       <div class="overflow-y-auto max-h-[calc(90vh-80px)] p-6 md:p-8 space-y-6">
         <!-- Profile Picture Section -->
         <div class="flex items-center gap-6 p-6 bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl border-2 border-orange-200 hover:shadow-lg transition-all duration-300">
@@ -1308,59 +885,8 @@
     </div>
   </div>
 
-  <!-- Image Viewer Modal -->
-  <div id="imageViewerModal" class="fixed inset-0 bg-black bg-opacity-90 backdrop-blur-sm z-[9999] hidden items-center justify-center p-4" onclick="closeImageModal()">
-    <div class="relative max-w-4xl w-full max-h-[90vh] flex flex-col items-center" onclick="event.stopPropagation()">
-      <button onclick="closeImageModal()" class="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors p-2">
-        <i class="fi fi-rr-cross text-2xl"></i>
-      </button>
-      <h3 id="imageModalTitle" class="text-white text-xl font-bold mb-4">Document Preview</h3>
-      <img id="imageModalPreview" src="" alt="Document Preview" class="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl transform transition-all duration-300 scale-95 opacity-0">
-    </div>
-  </div>
-
-  {{-- <script>
-    function openImageModal(src, title) {
-      const modal = document.getElementById('imageViewerModal');
-      const img = document.getElementById('imageModalPreview');
-      const titleEl = document.getElementById('imageModalTitle');
-
-      // Reset state first
-      img.classList.remove('scale-100', 'opacity-100');
-      img.classList.add('scale-95', 'opacity-0');
-
-      img.src = src;
-      titleEl.textContent = title;
-      modal.classList.remove('hidden');
-      modal.classList.add('flex');
-
-      // Animate in with a small delay
-      setTimeout(() => {
-        img.classList.remove('scale-95', 'opacity-0');
-        img.classList.add('scale-100', 'opacity-100');
-      }, 50);
-    }
-
-    function closeImageModal() {
-      const modal = document.getElementById('imageViewerModal');
-      const img = document.getElementById('imageModalPreview');
-
-      img.classList.remove('scale-100', 'opacity-100');
-      img.classList.add('scale-95', 'opacity-0');
-
-      setTimeout(() => {
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
-        img.src = ''; // Clear src to stop loading/playing
-      }, 300);
-    }
-  </script> --}}
-
-  <script src="{{ asset('js/admin/userManagement/propertyOwner.js') }}" defer></script>
-  <script src="{{ asset('js/account.js') }}" defer></script>
   <script src="{{ asset('js/admin/userManagement/propertyOwner_Views.js') }}" defer></script>
 
 </body>
 
-</html>
 </html>

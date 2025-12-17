@@ -10,17 +10,11 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
   <link rel="stylesheet" href="{{ asset('css/admin/home/mainComponents.css') }}">
   <link rel="stylesheet" href="{{ asset('css/admin/userManagement/verificationRequest.css') }}">
-
   
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-solid-straight/css/uicons-solid-straight.css'>
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-solid-rounded/css/uicons-solid-rounded.css'>
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-bold-rounded/css/uicons-bold-rounded.css'>
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-regular-rounded/css/uicons-regular-rounded.css'>
-
-
-  <script src="{{ asset('js/admin/home/mainComponents.js') }}" defer></script>
-  <meta name="csrf-token" content="{{ csrf_token() }}">
-
   
 
   <script src="{{ asset('js/admin/home/mainComponents.js') }}" defer></script>
@@ -177,10 +171,6 @@
 
         <div class="flex items-center gap-6">
           <div class="relative w-64" style="width: 600px;">
-            <input
-              id="searchInput"
-              type="text"
-              placeholder="Search..."
             <input 
               type="text" 
               placeholder="Search..." 
@@ -254,13 +244,6 @@
               <span>Filter By</span>
             </div>
 
-            <!-- Date Range -->
-            <div class="flex items-center gap-2">
-              <label class="text-sm font-medium text-gray-700">From:</label>
-              <input type="date" id="dateFrom" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400">
-              <label class="text-sm font-medium text-gray-700">To:</label>
-              <input type="date" id="dateTo" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400">
-            </div>
             <!-- Date -->
             <button class="relative flex items-center gap-2 bg-white border border-gray-300 rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition">
               <span>Date</span>
@@ -297,7 +280,6 @@
 
           <!-- Contractors Table -->
           <div id="contractorsTableWrap" class="overflow-x-auto">
-            @include('admin.userManagement.partials.vercontractorTable')
             <table class="w-full">
               <thead>
                 <tr class="bg-gray-50 border-b border-gray-200">
@@ -389,7 +371,6 @@
 
           <!-- Property Owners Table -->
           <div id="ownersTableWrap" class="overflow-x-auto hidden">
-            @include('admin.userManagement.partials.verownerTable')
             <table class="w-full">
               <thead>
                 <tr class="bg-gray-50 border-b border-gray-200">
@@ -512,8 +493,6 @@
                   </div>
                 </div>
 
-                <!-- Representative Card (Removed as per request) -->
-                <!--
                 <!-- Representative Card -->
                 <div class="bg-white rounded-xl border border-gray-200 p-4">
                   <div class="flex items-start gap-4">
@@ -531,7 +510,6 @@
                     </div>
                   </div>
                 </div>
-                -->
               </div>
 
               <!-- Bottom Grid -->
@@ -627,8 +605,6 @@
               <div class="w-12 h-12 rounded-full bg-green-100 text-green-600 flex items-center justify-center">
                 <i class="fi fi-rr-check-circle text-2xl"></i>
               </div>
-              <h3 class="text-xl font-bold text-gray-800">Verify Account?</h3>
-              <p class="text-gray-600">The user can use and access their accounts now.</p>
               <h3 class="text-xl font-bold text-gray-800">Account Verified</h3>
               <p class="text-gray-600">Account has been successfully verified. The user can now access and use their account.</p>
             </div>
@@ -745,27 +721,10 @@
                     Verification Documents
                   </h4>
                   <div class="grid grid-cols-1 gap-4 text-sm">
-                    <div class="grid grid-cols-1 gap-3">
                     <div class="grid grid-cols-2 gap-3">
                       <div>
                         <span class="block text-xs text-gray-500">Valid ID Type</span>
                         <div id="poValidIdType" class="px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg">Philippine Passport</div>
-                      </div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-3">
-                      <div>
-                        <span class="block text-xs text-gray-500 mb-1">Valid ID Photo (Front)</span>
-                        <a id="poValidIdPhoto" href="#" class="inline-flex items-center gap-2 px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg font-medium transition w-full">
-                          <i class="fi fi-rr-id-badge text-indigo-500"></i>
-                          <span class="truncate">Front.jpg</span>
-                        </a>
-                      </div>
-                      <div>
-                        <span class="block text-xs text-gray-500 mb-1">Valid ID Photo (Back)</span>
-                        <a id="poValidIdBackPhoto" href="#" class="inline-flex items-center gap-2 px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg font-medium transition w-full">
-                          <i class="fi fi-rr-id-badge text-indigo-500"></i>
-                          <span class="truncate">Back.jpg</span>
-                        </a>
                       </div>
                       <div>
                         <span class="block text-xs text-gray-500">Valid ID Number</span>
@@ -821,11 +780,6 @@
           </div>
         </div>
 
-
-    </main>
-
-
-  <script src="{{ asset('js/admin/reusables/filters.js') }}" defer></script>
       
     </main>
   
@@ -834,5 +788,4 @@
 
 </body>
 
-</html>
 </html>
