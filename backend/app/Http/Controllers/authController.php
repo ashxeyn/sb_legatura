@@ -340,6 +340,26 @@ class authController extends Controller
             $profilePicPath = $request->file('profile_pic')->store('profiles', 'public');
         }
 
+        // Validate valid_id_id to avoid FK constraint errors
+        $validIdCandidate = $step4['valid_id_id'] ?? null;
+        if (!empty($validIdCandidate)) {
+            $validIdExists = DB::table('valid_ids')->where('id', $validIdCandidate)->exists();
+            if (!$validIdExists) {
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Validation failed',
+                        'errors' => ['valid_id_id' => ['Invalid valid ID selected']]
+                    ], 422);
+                } else {
+                    return response()->json([
+                        'success' => false,
+                        'errors' => ['valid_id_id' => ['Invalid valid ID selected']]
+                    ], 422);
+                }
+            }
+        }
+
         // Create user
         $userId = $this->accountClass->createUser([
             'profile_pic' => $profilePicPath,
@@ -967,6 +987,23 @@ class authController extends Controller
             }
         }
 
+        // Validate valid_id_id from switchStep2 to avoid FK constraint failures
+        $switchValidId = $switchStep2['valid_id_id'] ?? null;
+        if (!empty($switchValidId)) {
+            $exists = DB::table('valid_ids')->where('id', $switchValidId)->exists();
+            if (!$exists) {
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Validation failed',
+                        'errors' => ['valid_id_id' => ['Invalid valid ID selected for owner switch']]
+                    ], 422);
+                } else {
+                    return response()->json(['success' => false, 'errors' => ['valid_id_id' => ['Invalid valid ID selected for owner switch']]], 422);
+                }
+            }
+        }
+
         try {
             DB::beginTransaction();
 
@@ -1129,8 +1166,7 @@ class authController extends Controller
                 'email' => $request->email,
                 'password_hash' => bcrypt($request->password),
                 'OTP_hash' => $otpHash,
-                'user_type' => 'property_owner', // Default to property_owner for mobile registration
-                'is_active' => 1 // Active by default
+                'user_type' => 'property_owner' // Default to property_owner for mobile registration
             ]);
 
             return response()->json([

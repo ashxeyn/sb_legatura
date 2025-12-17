@@ -71,7 +71,6 @@ class accountClass
             'password_hash' => $data['password_hash'],
             'OTP_hash' => $data['OTP_hash'],
             'user_type' => $data['user_type'],
-            'is_active' => 0,
             'created_at' => now(),
             'updated_at' => now()
         ]);
@@ -129,13 +128,22 @@ class accountClass
 
     public function createPropertyOwner($data)
     {
+        // Ensure provided valid_id_id exists in `valid_ids` table to avoid FK constraint failures.
+        $validIdId = null;
+        if (!empty($data['valid_id_id'])) {
+            $exists = DB::table('valid_ids')->where('id', $data['valid_id_id'])->exists();
+            if ($exists) {
+                $validIdId = $data['valid_id_id'];
+            }
+        }
+
         $ownerId = DB::table('property_owners')->insertGetId([
             'user_id' => $data['user_id'],
             'last_name' => $data['last_name'],
             'middle_name' => $data['middle_name'] ?? null,
             'first_name' => $data['first_name'],
             'phone_number' => $data['phone_number'],
-            'valid_id_id' => $data['valid_id_id'],
+            'valid_id_id' => $validIdId,
             'valid_id_photo' => $data['valid_id_photo'] ?? null,
             'valid_id_back_photo' => $data['valid_id_back_photo'] ?? null,
             'police_clearance' => $data['police_clearance'] ?? null,
