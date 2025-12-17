@@ -65,7 +65,10 @@ interface ProgressReportDetailProps {
   userRole: 'owner' | 'contractor';
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
   userId?: number;
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
 =======
@@ -80,7 +83,10 @@ export default function ProgressReportDetail({
   userRole,
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
   userId,
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
 =======
@@ -91,6 +97,7 @@ export default function ProgressReportDetail({
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
   const [localFiles, setLocalFiles] = useState<ProgressFile[]>(progressReport.files || []);
   const [localSubmittedAt, setLocalSubmittedAt] = useState<string | null>(progressReport.submitted_at || null);
 
@@ -98,6 +105,11 @@ export default function ProgressReportDetail({
     if (!dateString) return 'Invalid Date';
     const date = new Date(dateString);
     if (isNaN(date.getTime())) return 'Invalid Date';
+=======
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+>>>>>>> Stashed changes
 =======
 
   const formatDate = (dateString: string) => {
@@ -202,7 +214,11 @@ export default function ProgressReportDetail({
   const statusColors = getStatusColor(progressReport.progress_status);
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
   const files = localFiles.length > 0 ? localFiles : (progressReport.files || []);
+=======
+  const files = progressReport.files || [];
+>>>>>>> Stashed changes
 =======
   const files = progressReport.files || [];
 >>>>>>> Stashed changes
@@ -218,6 +234,7 @@ export default function ProgressReportDetail({
   const [approveBlockedModal, setApproveBlockedModal] = useState<{ visible: boolean; message: string }>({ visible: false, message: '' });
   const [deleteReason, setDeleteReason] = useState(progressReport.delete_reason || '');
 
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
   // If files or submitted_at are missing, try to fetch more details based on role
@@ -260,6 +277,8 @@ export default function ProgressReportDetail({
     return () => { mounted = false; };
   }, []);
 
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
 =======
@@ -312,7 +331,10 @@ export default function ProgressReportDetail({
           <View style={[styles.statusDot, { backgroundColor: statusColors.text }]} />
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
           {/* Icon to make status explicit */}
@@ -326,6 +348,9 @@ export default function ProgressReportDetail({
             )}
           </View>
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
@@ -342,7 +367,11 @@ export default function ProgressReportDetail({
             <Feather name="calendar" size={12} color={COLORS.textMuted} style={{ marginRight: 6 }} />
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
             <Text style={styles.heroMetaText}>{formatDate(localSubmittedAt || progressReport.submitted_at)}</Text>
+=======
+            <Text style={styles.heroMetaText}>{formatDate(progressReport.submitted_at)}</Text>
+>>>>>>> Stashed changes
 =======
             <Text style={styles.heroMetaText}>{formatDate(progressReport.submitted_at)}</Text>
 >>>>>>> Stashed changes

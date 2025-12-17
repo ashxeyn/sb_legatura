@@ -339,6 +339,7 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
                     onPress={async () => {
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                       try {
                         setSelectedProgressLoading(true);
                         let prog = null;
@@ -346,6 +347,8 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
                         if (userRole === 'contractor') {
                           const res = await progress_service.get_progress(userId, report.progress_id);
 =======
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
                       // Owners already have the progress list (with files) from get_progress_by_item;
@@ -356,6 +359,9 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
                           const res = await progress_service.get_progress(userId, report.progress_id);
                           let prog = null;
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
@@ -365,6 +371,7 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
                           if (prog && prog.progress_id === undefined && prog.progress) {
                             prog = prog.progress;
                           }
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
                         } else {
@@ -393,6 +400,8 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
 =======
 =======
 >>>>>>> Stashed changes
+=======
+>>>>>>> Stashed changes
                           if (!prog) prog = report;
                           setSelectedProgressReport(prog);
                         } catch (e) {
@@ -406,6 +415,9 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
                         // Owner: use the already-fetched report object which includes files
                         setSelectedProgressReport(report);
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
@@ -418,12 +430,15 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
                         styles.reportDot,
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                         report.progress_status === 'approved' && styles.reportDotCompleted
                       ]}>
                         {report.progress_status === 'approved' && (
                           <Feather name="check" size={14} color={COLORS.surface} />
                         )}
 =======
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
                         report.progress_status === 'approved' && styles.reportDotCompleted,
@@ -435,6 +450,9 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
                           <Feather name="x" size={14} color={COLORS.surface} />
                         ) : null}
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
@@ -575,7 +593,10 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
             userRole={userRole}
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
             userId={userId}
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
 =======
@@ -715,7 +736,10 @@ const styles = StyleSheet.create({
   },
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
   reportDotRejected: {
@@ -723,6 +747,9 @@ const styles = StyleSheet.create({
     borderColor: COLORS.error,
   },
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
