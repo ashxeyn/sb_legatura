@@ -77,6 +77,14 @@ interface Bid {
   profile_pic?: string;
   file_count?: number;
   files?: BidFile[];
+  // ✨ Ranking system properties
+  ranking_score?: number;
+  score_breakdown?: {
+    price_score: number;
+    experience_score: number;
+    reputation_score: number;
+    subscription_score: number;
+  };
 }
 
 interface Project {
@@ -170,6 +178,52 @@ export default function ProjectBids({ project, userId, onClose, onBidAccepted }:
       default:
         return { color: COLORS.textMuted, bg: COLORS.borderLight, label: status, icon: 'circle' };
     }
+  };
+
+  // ✨ Get rank styling based on position
+  const getRankConfig = (rank: number) => {
+    if (rank === 1) {
+      return { 
+        color: '#FFD700', 
+        bg: '#FFFEF7', 
+        label: 'Best Match', 
+        icon: '🥇',
+        borderColor: '#FFD700' 
+      };
+    }
+    if (rank === 2) {
+      return { 
+        color: '#C0C0C0', 
+        bg: '#F8F9FA', 
+        label: 'Great Match', 
+        icon: '🥈',
+        borderColor: '#C0C0C0' 
+      };
+    }
+    if (rank === 3) {
+      return { 
+        color: '#CD7F32', 
+        bg: '#FFF5EE', 
+        label: 'Good Match', 
+        icon: '🥉',
+        borderColor: '#CD7F32' 
+      };
+    }
+    return { 
+      color: COLORS.textMuted, 
+      bg: 'transparent', 
+      label: `#${rank}`, 
+      icon: null,
+      borderColor: 'transparent' 
+    };
+  };
+
+  // Get score bar color based on score value
+  const getScoreColor = (score: number) => {
+    if (score >= 80) return COLORS.success;
+    if (score >= 60) return COLORS.primary;
+    if (score >= 40) return COLORS.warning;
+    return COLORS.error;
   };
 
   const handleAcceptBid = (bid: Bid) => {
@@ -287,18 +341,43 @@ export default function ProjectBids({ project, userId, onClose, onBidAccepted }:
     Linking.openURL(url);
   };
 
-  const renderBidCard = (bid: Bid) => {
+  const getRankBadgeStyle = (index: number) => {
+    if (index === 0) return { bg: '#FFD700', icon: '🥇', label: 'Best Match' }; // Gold
+    if (index === 1) return { bg: '#C0C0C0', icon: '🥈', label: 'Great Match' }; // Silver
+    if (index === 2) return { bg: '#CD7F32', icon: '🥉', label: 'Good Match' }; // Bronze
+    return { bg: COLORS.textMuted, icon: `#${index + 1}`, label: '' };
+  };
+
+  const renderBidCard = (bid: Bid, index: number) => {
     const statusConfig = getStatusConfig(bid.bid_status);
     const isProcessing = processingBidId === bid.bid_id;
     const profilePicUrl = getProfilePicUrl(bid.profile_pic);
+    const rankBadge = getRankBadgeStyle(index);
+    const isTopThree = index < 3;
 
     return (
       <TouchableOpacity
         key={bid.bid_id}
-        style={styles.bidCard}
+        style={[
+          styles.bidCard,
+          isTopThree && index === 0 && styles.topBidCard, // Special style for #1
+        ]}
         activeOpacity={0.7}
         onPress={() => openBidDetails(bid)}
       >
+        {/* Rank Badge - Top Right Corner */}
+        <View style={[styles.rankBadge, { backgroundColor: rankBadge.bg }]}>
+          <Text style={styles.rankBadgeText}>{rankBadge.icon}</Text>
+        </View>
+
+        {/* Top Bid Recommended Label */}
+        {index === 0 && (
+          <View style={styles.recommendedBanner}>
+            <Feather name="award" size={14} color={COLORS.primary} />
+            <Text style={styles.recommendedText}>RECOMMENDED</Text>
+          </View>
+        )}
+
         {/* Contractor Info */}
         <View style={styles.contractorRow}>
           <View style={styles.contractorAvatar}>
@@ -324,6 +403,28 @@ export default function ProjectBids({ project, userId, onClose, onBidAccepted }:
             <Text style={[styles.statusText, { color: statusConfig.color }]}>{statusConfig.label}</Text>
           </View>
         </View>
+
+        {/* Match Score Progress Bar */}
+        {bid.ranking_score !== undefined && (
+          <View style={styles.matchScoreContainer}>
+            <View style={styles.matchScoreHeader}>
+              <Text style={styles.matchScoreLabel}>Match Score</Text>
+              <Text style={styles.matchScoreValue}>{Math.round(bid.ranking_score)}/100</Text>
+            </View>
+            <View style={styles.matchScoreBar}>
+              <View 
+                style={[
+                  styles.matchScoreBarFill, 
+                  { 
+                    width: `${bid.ranking_score}%`,
+                    backgroundColor: bid.ranking_score >= 80 ? COLORS.success : 
+                                   bid.ranking_score >= 60 ? COLORS.warning : COLORS.textMuted
+                  }
+                ]} 
+              />
+            </View>
+          </View>
+        )}
 
         {/* Bid Details */}
         <View style={styles.bidDetails}>
@@ -453,7 +554,7 @@ export default function ProjectBids({ project, userId, onClose, onBidAccepted }:
           {bids.length === 0 ? (
             renderEmptyState()
           ) : (
-            bids.map(renderBidCard)
+            bids.map((bid, index) => renderBidCard(bid, index))
           )}
           <View style={{ height: 40 }} />
         </ScrollView>
@@ -812,6 +913,79 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 3,
+    position: 'relative',
+  },
+  topBidCard: {
+    borderWidth: 2,
+    borderColor: '#FFD700',
+    backgroundColor: '#FFFEF7',
+  },
+  rankBadge: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 4,
+    zIndex: 10,
+  },
+  rankBadgeText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  recommendedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primaryLight,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+    marginBottom: 12,
+  },
+  recommendedText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: COLORS.primary,
+    marginLeft: 4,
+    letterSpacing: 0.5,
+  },
+  matchScoreContainer: {
+    marginTop: 12,
+    marginBottom: 12,
+  },
+  matchScoreHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  matchScoreLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+  },
+  matchScoreValue: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  matchScoreBar: {
+    height: 8,
+    backgroundColor: COLORS.borderLight,
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  matchScoreBarFill: {
+    height: '100%',
+    borderRadius: 4,
   },
   contractorRow: {
     flexDirection: 'row',
