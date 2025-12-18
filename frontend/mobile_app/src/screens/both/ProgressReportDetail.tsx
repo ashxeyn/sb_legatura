@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { api_config } from '../../config/api';
 import { progress_service } from '../../services/progress_service';
+import DisputeHistory from './disputeHistory';
 
 // Color palette
 const COLORS = {
@@ -56,6 +57,7 @@ interface ProgressReport {
   progress_status: 'submitted' | 'approved' | 'rejected' | 'deleted';
   submitted_at: string;
   files?: ProgressFile[];
+  delete_reason?: string;
 }
 
 interface ProgressReportDetailProps {
@@ -66,7 +68,7 @@ interface ProgressReportDetailProps {
   onClose: () => void;
 }
 
-export default function ProgressReportDetail({
+export default function progressReportDetail({
   progressReport,
   milestoneTitle,
   projectTitle,
@@ -75,6 +77,8 @@ export default function ProgressReportDetail({
 }: ProgressReportDetailProps) {
   const insets = useSafeAreaInsets();
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [showMenu, setShowMenu] = useState(false);
+  const [showDisputeHistory, setShowDisputeHistory] = useState(false);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -115,7 +119,7 @@ export default function ProgressReportDetail({
   };
 
   const getFileExtension = (filename: string) => {
-    return filename.split('.').pop()?.toLowerCase() || '';
+    return filename?.split('.').pop()?.toLowerCase() || '';
   };
 
   const getFileIcon = (filename: string) => {
@@ -132,27 +136,70 @@ export default function ProgressReportDetail({
     return ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext);
   };
 
+  const handleSendReport = () => {
+    setShowMenu(false);
+    Alert.alert(
+      'File a Dispute',
+      'Would you like to file a dispute or report an issue?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'File Dispute',
+          onPress: () => {
+            Alert.alert('Info', 'Please go to milestone detail to file a specific dispute');
+          }
+        }
+      ]
+    );
+  };
+
+  const handleReportHistory = () => {
+    setShowMenu(false);
+    setShowDisputeHistory(true);
+  };
+
   const getFileUrl = (filePath: string) => {
     // Normalize file path and construct full URL for the file
-    if (!filePath) return '';
+    if (!filePath) {
+      console.log('getFileUrl: empty filePath');
+      return '';
+    }
+    
     // If it's already a full URL, return as-is
-    if (filePath.startsWith('http://') || filePath.startsWith('https://')) return filePath;
+    if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
+      console.log('getFileUrl: already full URL ->', filePath);
+      return filePath;
+    }
 
     // Remove any leading slashes
     let path = filePath.replace(/^\/+/, '');
-    // If path already starts with 'storage/', avoid doubling
+    
+    // Handle various path formats from Laravel storage:
+    // - "progress_uploads/filename.jpg" (most common from storeAs)
+    // - "storage/progress_uploads/filename.jpg"
+    // - "/storage/progress_uploads/filename.jpg"
+    // - "public/progress_uploads/filename.jpg"
+    
+    // Remove 'storage/' prefix if present
     if (path.startsWith('storage/')) {
       path = path.replace(/^storage\//, '');
     }
+    
+    // Remove 'public/' prefix if present (Laravel internal path)
+    if (path.startsWith('public/')) {
+      path = path.replace(/^public\//, '');
+    }
 
-    const url = `${api_config.base_url}/storage/${path}`;
+    // Use the API file serving endpoint (bypasses CORS/symlink issues)
+    const url = `${api_config.base_url}/api/files/${path}`;
     console.log('getFileUrl ->', filePath, '=>', url);
     return url;
   };
 
   const handleFilePress = (file: ProgressFile) => {
     const fileUrl = getFileUrl(file.file_path);
-    console.log('handleFilePress url:', fileUrl, file);
+    console.log('handleFilePress url:', fileUrl, 'file:', JSON.stringify(file));
+    
     if (!fileUrl) {
       Alert.alert('Error', 'File URL is invalid');
       return;
@@ -179,6 +226,10 @@ export default function ProgressReportDetail({
   const [actionLoading, setActionLoading] = useState(false);
   const [approveBlockedModal, setApproveBlockedModal] = useState<{ visible: boolean; message: string }>({ visible: false, message: '' });
   const [deleteReason, setDeleteReason] = useState(progressReport.delete_reason || '');
+
+  // Debug: log files data
+  console.log('progressReportDetail - files:', JSON.stringify(files));
+  console.log('progressReportDetail - imageFiles:', imageFiles.length, 'otherFiles:', otherFiles.length);
 
   // Image preview modal
   if (selectedImage) {
@@ -215,7 +266,23 @@ export default function ProgressReportDetail({
           <Feather name="chevron-left" size={28} color={COLORS.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Progress Report</Text>
-        <View style={styles.headerSpacer} />
+        <TouchableOpacity style={styles.menuButton} onPress={() => setShowMenu(!showMenu)}>
+          <Feather name="more-vertical" size={24} color={COLORS.text} />
+        </TouchableOpacity>
+
+        {/* Menu Dropdown */}
+        {showMenu && (
+          <View style={styles.menuDropdown}>
+            <TouchableOpacity style={styles.menuItem} onPress={handleSendReport}>
+              <Feather name="file-text" size={18} color={COLORS.text} />
+              <Text style={styles.menuItemText}>Send Report</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.menuItem} onPress={handleReportHistory}>
+              <Feather name="clock" size={18} color={COLORS.text} />
+              <Text style={styles.menuItemText}>Report History</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
 
       <ScrollView
@@ -251,8 +318,6 @@ export default function ProgressReportDetail({
           </View>
         </View>
 
-        {/* Project & Milestone Info removed — hero card above replaces this section */}
-
         {/* Purpose/Description Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Description</Text>
@@ -281,22 +346,31 @@ export default function ProgressReportDetail({
               {/* Image Gallery */}
               {imageFiles.length > 0 && (
                 <View style={styles.imageGallery}>
-                  {imageFiles.map((file) => (
-                    <TouchableOpacity
-                      key={file.file_id}
-                      style={styles.imageThumbnail}
-                      onPress={() => handleFilePress(file)}
-                    >
-                      <Image
-                        source={{ uri: getFileUrl(file.file_path) }}
-                        style={styles.thumbnailImage}
-                        resizeMode="cover"
-                      />
-                      <View style={styles.imageOverlay}>
-                        <Feather name="maximize-2" size={16} color="#FFF" />
-                      </View>
-                    </TouchableOpacity>
-                  ))}
+                  {imageFiles.map((file) => {
+                    const imageUrl = getFileUrl(file.file_path);
+                    return (
+                      <TouchableOpacity
+                        key={file.file_id}
+                        style={styles.imageThumbnail}
+                        onPress={() => handleFilePress(file)}
+                      >
+                        <Image
+                          source={{ uri: imageUrl }}
+                          style={styles.thumbnailImage}
+                          resizeMode="cover"
+                          onError={(e) => {
+                            console.error('Thumbnail failed to load:', imageUrl, e.nativeEvent?.error);
+                          }}
+                          onLoad={() => {
+                            console.log('Thumbnail loaded successfully:', imageUrl);
+                          }}
+                        />
+                        <View style={styles.imageOverlay}>
+                          <Feather name="maximize-2" size={16} color="#FFF" />
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
                 </View>
               )}
 
@@ -396,8 +470,6 @@ export default function ProgressReportDetail({
           </View>
         )}
 
-        {/* After approval badge removed (status shown at top) */}
-
         {/* Reject reason modal */}
         <Modal
           visible={showRejectModal}
@@ -470,6 +542,16 @@ export default function ProgressReportDetail({
             </View>
           </View>
         </Modal>
+
+        {/* Dispute History Modal */}
+        <Modal
+          visible={showDisputeHistory}
+          animationType="slide"
+          presentationStyle="fullScreen"
+          onRequestClose={() => setShowDisputeHistory(false)}
+        >
+          <DisputeHistory onClose={() => setShowDisputeHistory(false)} />
+        </Modal>
       </ScrollView>
     </View>
   );
@@ -500,8 +582,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.text,
   },
-  headerSpacer: {
+  menuButton: {
     width: 44,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   scrollView: {
     flex: 1,
@@ -617,6 +702,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: 'hidden',
     position: 'relative',
+    backgroundColor: COLORS.borderLight,
   },
   thumbnailImage: {
     width: '100%',
@@ -895,5 +981,34 @@ const styles = StyleSheet.create({
   heroMetaText: {
     fontSize: 12,
     color: COLORS.textMuted,
+  },
+
+  // Menu Dropdown Styles
+  menuDropdown: {
+    position: 'absolute',
+    top: 50,
+    right: 8,
+    backgroundColor: COLORS.surface,
+    borderRadius: 12,
+    paddingVertical: 8,
+    minWidth: 180,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+    zIndex: 1000,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 12,
+  },
+  menuItemText: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: COLORS.text,
   },
 });

@@ -15,12 +15,17 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 
-import ProgressReportForm from './ProgressReportForm';
-import ProgressReportDetail from './ProgressReportDetail';
+import ProgressReportForm from './progressReportForm';
+import ProgressReportDetail from './progressReportDetail';
+import PaymentReceiptForm from './paymentReceiptForm';
+import DisputeForm from './disputeForm';
+import DisputeHistory from './disputeHistory';
 import { progress_service } from '../../services/progress_service';
 import { milestones_service } from '../../services/milestones_service';
+import { payment_service } from '../../services/payment_service';
 import { useEffect } from 'react';
 import { Alert } from 'react-native';
+import { api_config } from '../../config/api';
 
 // Color palette
 const COLORS = {
@@ -51,6 +56,7 @@ interface MilestoneDetailProps {
       milestoneNumber: number;
       cumulativePercentage: number;
       projectTitle: string;
+      projectId: number;
       totalMilestones: number;
       isApproved: boolean;
       isCompleted?: boolean;
@@ -68,6 +74,7 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
     milestoneNumber,
     cumulativePercentage,
     projectTitle,
+    projectId,
     totalMilestones,
     isApproved,
     isCompleted,
@@ -77,14 +84,19 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
 
   // Debug: log the milestone item to see its structure
   console.log('MilestoneDetail - milestoneItem:', JSON.stringify(milestoneItem));
-  console.log('MilestoneDetail - userId:', userId, 'userRole:', userRole);
+  console.log('MilestoneDetail - userId:', userId, 'userRole:', userRole, 'projectId:', projectId);
 
   const [expandedReports, setExpandedReports] = useState<{ [key: number]: boolean }>({});
   const [showFullDetail, setShowFullDetail] = useState(false);
   const [showProgressForm, setShowProgressForm] = useState(false);
+  const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [selectedProgressReport, setSelectedProgressReport] = useState<any | null>(null);
   const [selectedProgressLoading, setSelectedProgressLoading] = useState(false);
   const [itemStatus, setItemStatus] = useState<string | undefined>(milestoneItem.item_status);
+  const [showMenu, setShowMenu] = useState(false);
+  const [showFullDetailMenu, setShowFullDetailMenu] = useState(false);
+  const [showDisputeForm, setShowDisputeForm] = useState(false);
+  const [showDisputeHistory, setShowDisputeHistory] = useState(false);
 
   const isContractor = userRole === 'contractor';
   const isOwner = userRole === 'owner';
@@ -104,6 +116,10 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
   const [progressReports, setProgressReports] = useState<any[]>([]);
   const [loadingReports, setLoadingReports] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
+
+  // Payments
+  const [payments, setPayments] = useState<any[]>([]);
+  const [loadingPayments, setLoadingPayments] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
@@ -159,11 +175,70 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
     return () => { isMounted = false; };
   }, [userId, milestoneItem.item_id]);
 
+  // Fetch payments for this milestone item
+  useEffect(() => {
+    let isMounted = true;
+    setLoadingPayments(true);
+
+    console.log('Fetching payments for item_id:', milestoneItem.item_id);
+    payment_service.get_payments_by_item(milestoneItem.item_id)
+      .then(res => {
+        console.log('Payment API response:', JSON.stringify(res));
+        if (isMounted) {
+          if (res.success && res.data?.payments) {
+            setPayments(res.data.payments);
+          } else {
+            setPayments([]);
+          }
+        }
+      })
+      .catch(err => {
+        console.error('Payment fetch error:', err);
+        if (isMounted) setPayments([]);
+      })
+      .finally(() => {
+        if (isMounted) setLoadingPayments(false);
+      });
+
+    return () => { isMounted = false; };
+  }, [milestoneItem.item_id]);
+
   const toggleReportExpand = (reportId: number) => {
     setExpandedReports(prev => ({
       ...prev,
       [reportId]: !prev[reportId]
     }));
+  };
+
+  const handleSendReport = () => {
+    setShowMenu(false);
+    setShowFullDetailMenu(false);
+    
+    // Get milestone_id from either milestone_id or parentMilestoneId
+    const milestoneId = (milestoneItem as any).milestone_id || (milestoneItem as any).parentMilestoneId;
+    
+    // Validate required data before opening form
+    if (!projectId || !milestoneId || !milestoneItem?.item_id) {
+      console.error('Missing required data for dispute:', {
+        projectId,
+        milestoneId,
+        itemId: milestoneItem?.item_id,
+        milestoneItem,
+      });
+      Alert.alert(
+        'Error',
+        'Unable to file dispute: Missing required information. Please try again or contact support.'
+      );
+      return;
+    }
+    
+    setShowDisputeForm(true);
+  };
+
+  const handleReportHistory = () => {
+    setShowMenu(false);
+    setShowFullDetailMenu(false);
+    setShowDisputeHistory(true);
   };
 
   // Show milestone complete action when at least one progress report has been approved
@@ -195,9 +270,23 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
           <TouchableOpacity onPress={() => setShowFullDetail(false)} style={styles.backButton}>
             <Feather name="chevron-left" size={28} color={COLORS.text} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.menuButton}>
+          <TouchableOpacity style={styles.menuButton} onPress={() => setShowFullDetailMenu(!showFullDetailMenu)}>
             <Feather name="more-vertical" size={24} color={COLORS.text} />
           </TouchableOpacity>
+          
+          {/* Menu Dropdown for Full Detail */}
+          {showFullDetailMenu && (
+            <View style={styles.menuDropdown}>
+              <TouchableOpacity style={styles.menuItem} onPress={handleSendReport}>
+                <Feather name="file-text" size={18} color={COLORS.text} />
+                <Text style={styles.menuItemText}>Send Report</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.menuItem} onPress={handleReportHistory}>
+                <Feather name="clock" size={18} color={COLORS.text} />
+                <Text style={styles.menuItemText}>Report History</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
         <ScrollView
@@ -268,9 +357,23 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Feather name="chevron-left" size={28} color={COLORS.text} />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.menuButton}>
+        <TouchableOpacity style={styles.menuButton} onPress={() => setShowMenu(!showMenu)}>
           <Feather name="more-vertical" size={24} color={COLORS.text} />
         </TouchableOpacity>
+        
+        {/* Menu Dropdown */}
+        {showMenu && (
+          <View style={styles.menuDropdown}>
+            <TouchableOpacity style={styles.menuItem} onPress={handleSendReport}>
+              <Feather name="file-text" size={18} color={COLORS.text} />
+              <Text style={styles.menuItemText}>Send Report</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.menuItem} onPress={handleReportHistory}>
+              <Feather name="clock" size={18} color={COLORS.text} />
+              <Text style={styles.menuItemText}>Report History</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
 
       <ScrollView
@@ -381,8 +484,13 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
                       </View>
                       {!isLast && (() => {
                         const next = progressReports[index + 1];
-                        const nextApproved = next && next.progress_status === 'approved';
-                        return <View style={[styles.reportLine, nextApproved ? styles.reportLineApproved : styles.reportLinePending]} />;
+                        const nextStatus = next?.progress_status;
+                        const lineStyle = nextStatus === 'approved' 
+                          ? styles.reportLineApproved 
+                          : nextStatus === 'rejected' 
+                          ? styles.reportLineRejected 
+                          : styles.reportLinePending;
+                        return <View style={[styles.reportLine, lineStyle]} />;
                       })()}
                     </View>
 
@@ -408,6 +516,98 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
           )}
         </View>
 
+        {/* Payments Section */}
+        {payments.length > 0 && (
+          <>
+            {/* Divider */}
+            <View style={styles.divider} />
+
+            <View style={styles.paymentsSection}>
+              <Text style={styles.sectionTitle}>Payment Receipts</Text>
+
+              {payments.map((payment: any) => {
+                const statusColor = payment.payment_status === 'approved' ? COLORS.success :
+                                   payment.payment_status === 'rejected' ? COLORS.error :
+                                   payment.payment_status === 'submitted' ? COLORS.warning :
+                                   COLORS.textMuted;
+                
+                const statusBg = payment.payment_status === 'approved' ? COLORS.successLight :
+                                payment.payment_status === 'rejected' ? COLORS.errorLight :
+                                payment.payment_status === 'submitted' ? COLORS.warningLight :
+                                COLORS.borderLight;
+
+                return (
+                  <View key={payment.payment_id} style={styles.paymentCard}>
+                    {/* Payment Header */}
+                    <View style={styles.paymentHeader}>
+                      <View style={styles.paymentTitleRow}>
+                        <Feather name="credit-card" size={20} color={COLORS.accent} />
+                        <Text style={styles.paymentTitle}>Payment Receipt</Text>
+                      </View>
+                      <View style={[styles.paymentStatusBadge, { backgroundColor: statusBg }]}>
+                        <Text style={[styles.paymentStatusText, { color: statusColor }]}>
+                          {payment.payment_status.charAt(0).toUpperCase() + payment.payment_status.slice(1)}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* Payment Amount */}
+                    <View style={styles.paymentAmountContainer}>
+                      <Text style={styles.paymentAmountLabel}>Amount</Text>
+                      <Text style={styles.paymentAmountValue}>
+                        ₱{parseFloat(payment.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </Text>
+                    </View>
+
+                    {/* Payment Details */}
+                    <View style={styles.paymentDetails}>
+                      <View style={styles.paymentDetailRow}>
+                        <Text style={styles.paymentDetailLabel}>Date:</Text>
+                        <Text style={styles.paymentDetailValue}>{formatDate(payment.transaction_date)}</Text>
+                      </View>
+                      <View style={styles.paymentDetailRow}>
+                        <Text style={styles.paymentDetailLabel}>Method:</Text>
+                        <Text style={styles.paymentDetailValue}>
+                          {payment.payment_type.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
+                        </Text>
+                      </View>
+                      {payment.transaction_number && (
+                        <View style={styles.paymentDetailRow}>
+                          <Text style={styles.paymentDetailLabel}>Reference #:</Text>
+                          <Text style={styles.paymentDetailValue}>{payment.transaction_number}</Text>
+                        </View>
+                      )}
+                    </View>
+
+                    {/* Rejection Reason (if rejected) */}
+                    {payment.payment_status === 'rejected' && payment.reason && (
+                      <View style={styles.rejectionReasonContainer}>
+                        <View style={styles.rejectionReasonHeader}>
+                          <Feather name="alert-circle" size={18} color={COLORS.error} />
+                          <Text style={styles.rejectionReasonTitle}>Decline Reason:</Text>
+                        </View>
+                        <Text style={styles.rejectionReasonText}>{payment.reason}</Text>
+                      </View>
+                    )}
+
+                    {/* Receipt Photo */}
+                    {payment.receipt_photo && (
+                      <View style={styles.paymentReceiptContainer}>
+                        <Text style={styles.paymentReceiptLabel}>Receipt Photo:</Text>
+                        <Image
+                          source={{ uri: `${api_config.base_url}/api/files/${payment.receipt_photo}` }}
+                          style={styles.paymentReceiptImage}
+                          resizeMode="contain"
+                        />
+                      </View>
+                    )}
+                  </View>
+                );
+              })}
+            </View>
+          </>
+        )}
+
         <View style={{ height: 100 }} />
       </ScrollView>
 
@@ -416,7 +616,11 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
         {/* Owner: Send payment (show if any approved) */}
         {isOwner && isApproved && progressReports.some(p => p.progress_status === 'approved') && itemStatus !== 'completed' && (
           <View style={styles.bottomRow}>
-            <TouchableOpacity style={styles.sendPaymentButton}>
+            <TouchableOpacity 
+              style={styles.sendPaymentButton}
+              onPress={() => setShowPaymentForm(true)}
+            >
+              <Feather name="credit-card" size={20} color={COLORS.surface} style={{ marginRight: 8 }} />
               <Text style={styles.sendPaymentButtonText}>Send payment receipt</Text>
             </TouchableOpacity>
           </View>
@@ -528,6 +732,65 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
             navigation.goBack();
           }}
         />
+      </Modal>
+
+      {/* Payment Receipt Form Modal */}
+      <Modal
+        visible={showPaymentForm}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        onRequestClose={() => setShowPaymentForm(false)}
+      >
+        <PaymentReceiptForm
+          milestoneItemId={milestoneItem.item_id}
+          projectId={projectId}
+          milestoneTitle={`Milestone ${milestoneNumber}: ${milestoneItem.milestone_item_title}`}
+          onClose={() => setShowPaymentForm(false)}
+          onSuccess={() => {
+            setShowPaymentForm(false);
+            Alert.alert('Success', 'Payment receipt submitted successfully!');
+            // Refresh payments list
+            payment_service.get_payments_by_item(milestoneItem.item_id)
+              .then(res => {
+                if (res.success && res.data?.payments) {
+                  setPayments(res.data.payments);
+                }
+              })
+              .catch(err => console.error('Error refreshing payments:', err));
+          }}
+        />
+      </Modal>
+
+      {/* Dispute Form Modal */}
+      <Modal
+        visible={showDisputeForm}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        onRequestClose={() => setShowDisputeForm(false)}
+      >
+        <DisputeForm
+          projectId={projectId}
+          projectTitle={projectTitle || 'Project'}
+          milestoneId={(milestoneItem as any).milestone_id || (milestoneItem as any).parentMilestoneId}
+          milestoneTitle={`Milestone ${milestoneNumber}`}
+          milestoneItemId={milestoneItem.item_id}
+          milestoneItemTitle={milestoneItem.milestone_item_title}
+          onClose={() => setShowDisputeForm(false)}
+          onSuccess={() => {
+            setShowDisputeForm(false);
+            Alert.alert('Success', 'Your dispute has been filed successfully');
+          }}
+        />
+      </Modal>
+
+      {/* Dispute History Modal */}
+      <Modal
+        visible={showDisputeHistory}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        onRequestClose={() => setShowDisputeHistory(false)}
+      >
+        <DisputeHistory onClose={() => setShowDisputeHistory(false)} />
       </Modal>
 
       {/* Approve/Reject actions are available inside the Progress Report Detail modal */}
@@ -692,6 +955,9 @@ const styles = StyleSheet.create({
   reportLineApproved: {
     backgroundColor: COLORS.success,
   },
+  reportLineRejected: {
+    backgroundColor: COLORS.error,
+  },
   reportLinePending: {
     backgroundColor: COLORS.border,
   },
@@ -774,6 +1040,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.accent,
     borderRadius: 12,
     paddingVertical: 16,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -972,5 +1239,155 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: COLORS.surface,
+  },
+
+  // Menu Dropdown Styles
+  menuDropdown: {
+    position: 'absolute',
+    top: 50,
+    right: 8,
+    backgroundColor: COLORS.surface,
+    borderRadius: 12,
+    paddingVertical: 8,
+    minWidth: 180,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+    zIndex: 1000,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 12,
+  },
+  menuItemText: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: COLORS.text,
+  },
+
+  // Payments Section
+  paymentsSection: {
+    marginTop: 24,
+  },
+  paymentCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  paymentHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  paymentTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  paymentTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  paymentStatusBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  paymentStatusText: {
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  paymentAmountContainer: {
+    backgroundColor: COLORS.accentLight,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    alignItems: 'center',
+  },
+  paymentAmountLabel: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    marginBottom: 4,
+  },
+  paymentAmountValue: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: COLORS.accent,
+  },
+  paymentDetails: {
+    backgroundColor: COLORS.borderLight,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+  },
+  paymentDetailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+  },
+  paymentDetailLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: COLORS.textSecondary,
+  },
+  paymentDetailValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  rejectionReasonContainer: {
+    backgroundColor: COLORS.errorLight,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: COLORS.error,
+  },
+  rejectionReasonHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  rejectionReasonTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.error,
+  },
+  rejectionReasonText: {
+    fontSize: 14,
+    color: COLORS.error,
+    lineHeight: 20,
+  },
+  paymentReceiptContainer: {
+    marginTop: 4,
+  },
+  paymentReceiptLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginBottom: 8,
+  },
+  paymentReceiptImage: {
+    width: '100%',
+    height: 200,
+    borderRadius: 12,
+    backgroundColor: COLORS.borderLight,
   },
 });

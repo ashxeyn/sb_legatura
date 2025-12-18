@@ -72,7 +72,7 @@ interface ProgressReportFormProps {
   onSuccess: () => void;
 }
 
-export default function ProgressReportForm({
+export default function progressReportForm({
   milestoneItemId,
   milestoneTitle,
   userId,

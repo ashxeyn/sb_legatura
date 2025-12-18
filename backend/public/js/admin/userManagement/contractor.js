@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', function() {
-    // ========================================
+    // =====
     // ELEMENT REFERENCES
-    // ========================================
+    // =====
 
     // Filters
     const dateFromInput = document.getElementById('dateFrom');
@@ -11,6 +11,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const contractorsWrap = document.getElementById('contractorsTableWrap');
 
     let debounceTimer;
+
+
+    // Period Dropdown
+    const periodBtn = document.getElementById('periodBtn');
+    const periodDropdown = document.getElementById('periodDropdown');
+    const periodText = document.getElementById('periodText');
+    const periodOptions = document.querySelectorAll('.period-option');
 
     // Add Contractor Modal
     const addContractorBtn = document.getElementById('addContractorBtn');
@@ -47,6 +54,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+
     // Edit Contractor Modal
     const editContractorModal = document.getElementById('editContractorModal');
     const closeEditModalBtn = document.getElementById('closeEditModalBtn');
@@ -55,6 +63,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const editProfileUpload = document.getElementById('editProfileUpload');
     const editProfilePreview = document.getElementById('editProfilePreview');
     const editProfileInitials = document.getElementById('editProfileInitials');
+
 
     // Delete Contractor Modal
     const deleteContractorModal = document.getElementById('deleteContractorModal');
@@ -66,9 +75,9 @@ document.addEventListener('DOMContentLoaded', function() {
     let rowToDelete = null;
     let idToDelete = null;
 
-    // ========================================
+    // =====
     // ERROR CLEARING
-    // ========================================
+    // =====
     function clearInputError(input) {
         input.classList.remove('border-red-500');
         const parent = input.parentNode;
@@ -95,9 +104,9 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // ========================================
+    // =====
     // FILTER FUNCTIONALITY
-    // ========================================
+    // =====
 
     // Function to fetch and update data
     async function fetchAndUpdate(url) {
@@ -193,9 +202,50 @@ document.addEventListener('DOMContentLoaded', function() {
         searchInput.value = urlParams.get('search');
     }
 
-    // ========================================
+    // =====
     // ADD CONTRACTOR MODAL FUNCTIONALITY
-    // ========================================
+    // =====
+
+    let rowToDelete = null;
+
+    // Table Action Buttons
+    const editButtons = document.querySelectorAll('.edit-btn');
+    const deleteButtons = document.querySelectorAll('.delete-btn');
+    const viewButtons = document.querySelectorAll('.view-btn');
+
+    // =====
+    // PERIOD DROPDOWN FUNCTIONALITY
+    // =====
+
+    periodBtn.addEventListener('click', function() {
+        periodDropdown.classList.toggle('hidden');
+    });
+
+    periodOptions.forEach(option => {
+        option.addEventListener('click', function(e) {
+            e.preventDefault();
+            const period = this.getAttribute('data-period');
+            const periodMap = {
+                'today': 'Today',
+                'week': 'This Week',
+                'month': 'This Month',
+                'year': 'This Year'
+            };
+            periodText.textContent = periodMap[period];
+            periodDropdown.classList.add('hidden');
+        });
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!periodBtn.contains(e.target) && !periodDropdown.contains(e.target)) {
+            periodDropdown.classList.add('hidden');
+        }
+    });
+
+    // =====
+    // ADD CONTRACTOR MODAL FUNCTIONALITY
+    // =====
 
     function openAddModal() {
         addContractorModal.classList.remove('hidden');
@@ -206,6 +256,7 @@ document.addEventListener('DOMContentLoaded', function() {
             modalContent.style.opacity = '1';
         }, 10);
     }
+
 
     function closeAddModal() {
         const modalContent = addContractorModal.querySelector('.modal-content');
@@ -446,14 +497,93 @@ document.addEventListener('DOMContentLoaded', function() {
                 closeEditModal();
             }
             if (deleteContractorModal && !deleteContractorModal.classList.contains('hidden')) {
+            addContractorModal.querySelectorAll('input').forEach(input => {
+                if (input.type !== 'file') input.value = '';
+            });
+            profilePreview.classList.add('hidden');
+            profileIcon.classList.remove('hidden');
+            if (repProfilePreview) repProfilePreview.classList.add('hidden');
+            if (repProfileIcon) repProfileIcon.classList.remove('hidden');
+            if (repProfileUpload) repProfileUpload.value = '';
+        }, 300);
+    }
+
+    addContractorBtn.addEventListener('click', openAddModal);
+    closeModalBtn.addEventListener('click', closeAddModal);
+    cancelBtn.addEventListener('click', closeAddModal);
+
+    // Profile Upload Preview
+    profileUpload.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                profilePreview.src = e.target.result;
+                profilePreview.classList.remove('hidden');
+                profileIcon.classList.add('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    // Representative Profile Upload Preview
+    if (repProfileUpload) {
+        repProfileUpload.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    if (repProfilePreview) {
+                        repProfilePreview.src = e.target.result;
+                        repProfilePreview.classList.remove('hidden');
+                    }
+                    if (repProfileIcon) repProfileIcon.classList.add('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+
+    // Save Button with Loading State
+    saveBtn.addEventListener('click', function() {
+        const originalText = this.innerHTML;
+        this.innerHTML = '<i class="fi fi-rr-spinner animate-spin"></i> Saving...';
+        this.disabled = true;
+
+        // Simulate save
+        setTimeout(() => {
+            showNotification('Contractor added successfully!', 'success');
+            closeAddModal();
+            this.innerHTML = originalText;
+            this.disabled = false;
+        }, 1500);
+    });
+
+    // Close modal on backdrop click
+    addContractorModal.addEventListener('click', function(e) {
+        if (e.target === addContractorModal) {
+            closeAddModal();
+        }
+    });
+
+    // Close modal on ESC key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            if (!addContractorModal.classList.contains('hidden')) {
+                closeAddModal();
+            }
+            if (!editContractorModal.classList.contains('hidden')) {
+                closeEditModal();
+            }
+            if (!deleteContractorModal.classList.contains('hidden')) {
                 closeDeleteModal();
             }
         }
     });
 
-    // ========================================
+    // =====
     // GENERIC PASSWORD VISIBILITY TOGGLES
-    // ========================================
+    // =====
     document.addEventListener('click', function(e) {
         const btn = e.target.closest('[data-toggle-password]');
         if (!btn) return;
@@ -474,9 +604,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // ========================================
+    // =====
     // EDIT CONTRACTOR MODAL FUNCTIONALITY
-    // ========================================
+    // =====
 
     // Contractor Type "Others" Toggle for Edit Modal
     const editContractorTypeSelect = document.getElementById('edit_contractorTypeSelect');
@@ -726,6 +856,23 @@ document.addEventListener('DOMContentLoaded', function() {
             showNotification('Error fetching contractor details', 'error');
         }
 
+
+    // =====
+    // EDIT CONTRACTOR MODAL FUNCTIONALITY
+    // =====
+
+    function openEditModal(contractorData) {
+        // Populate form with contractor data
+        document.getElementById('editCompanyName').value = contractorData.name;
+        document.getElementById('editYearsOperation').value = contractorData.years;
+        document.getElementById('editAccountType').value = contractorData.accountType;
+        document.getElementById('editContactNumber').value = contractorData.contact || '+63 912 345 6789';
+        document.getElementById('editLicenseNumber').value = contractorData.license || 'LIC-2025-001';
+        document.getElementById('editRegistrationDate').value = contractorData.dateRegistered;
+        document.getElementById('editEmail').value = contractorData.email || 'contact@company.com';
+        document.getElementById('editUsername').value = contractorData.username || 'username';
+        editProfileInitials.textContent = contractorData.initials;
+
         editContractorModal.classList.remove('hidden');
         editContractorModal.classList.add('flex');
         document.body.style.overflow = 'hidden';
@@ -735,6 +882,7 @@ document.addEventListener('DOMContentLoaded', function() {
             modalContent.style.opacity = '1';
         }, 10);
     }
+
 
     function closeEditModal() {
         const modalContent = editContractorModal.querySelector('.modal-content');
@@ -868,13 +1016,63 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // ========================================
+    // =====
     // DELETE CONTRACTOR MODAL FUNCTIONALITY
-    // ========================================
+    // =====
 
     function openDeleteModal(contractorName, id, row) {
         rowToDelete = row;
         idToDelete = id;
+            editProfilePreview.classList.add('hidden');
+            editProfileInitials.classList.remove('hidden');
+        }, 300);
+    }
+
+    closeEditModalBtn.addEventListener('click', closeEditModal);
+    cancelEditBtn.addEventListener('click', closeEditModal);
+
+    // Edit Profile Upload Preview
+    editProfileUpload.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                editProfilePreview.src = e.target.result;
+                editProfilePreview.classList.remove('hidden');
+                editProfileInitials.classList.add('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    // Save Edit Button with Loading State
+    saveEditBtn.addEventListener('click', function() {
+        const originalText = this.innerHTML;
+        this.innerHTML = '<i class="fi fi-rr-spinner animate-spin"></i> Saving...';
+        this.disabled = true;
+
+        // Simulate save
+        setTimeout(() => {
+            showNotification('Contractor updated successfully!', 'success');
+            closeEditModal();
+            this.innerHTML = originalText;
+            this.disabled = false;
+        }, 1500);
+    });
+
+    // Close edit modal on backdrop click
+    editContractorModal.addEventListener('click', function(e) {
+        if (e.target === editContractorModal) {
+            closeEditModal();
+        }
+    });
+
+    // =====
+    // DELETE CONTRACTOR MODAL FUNCTIONALITY
+    // =====
+
+    function openDeleteModal(contractorName, row) {
+        rowToDelete = row;
         deleteContractorNameSpan.textContent = contractorName;
         deleteContractorModal.classList.remove('hidden');
         deleteContractorModal.classList.add('flex');
@@ -895,6 +1093,7 @@ document.addEventListener('DOMContentLoaded', function() {
             modalContent.style.opacity = '1';
         }, 10);
     }
+
 
     function closeDeleteModal() {
         const modalContent = deleteContractorModal.querySelector('.modal-content');
@@ -975,9 +1174,9 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // ========================================
+    // =====
     // TABLE ACTION BUTTONS & PAGINATION
-    // ========================================
+    // =====
 
     function attachActionListeners() {
         // Edit Buttons
@@ -1038,14 +1237,111 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initial attachment
     attachActionListeners();
 
-    // ========================================
+    // =====
     // HELPER FUNCTIONS
-    // ========================================
+    // =====
+
+        }, 300);
+    }
+
+    confirmDeleteBtn.addEventListener('click', function() {
+        const originalText = this.innerHTML;
+        this.innerHTML = '<i class="fi fi-rr-spinner animate-spin"></i> Deleting...';
+        this.disabled = true;
+
+        // Simulate deletion
+        setTimeout(() => {
+            if (rowToDelete) {
+                // Fade out animation
+                rowToDelete.style.transition = 'all 0.3s ease';
+                rowToDelete.style.opacity = '0';
+                rowToDelete.style.transform = 'translateX(-20px)';
+
+                setTimeout(() => {
+                    rowToDelete.remove();
+                    showNotification('Contractor deleted successfully!', 'success');
+                }, 300);
+            }
+
+            closeDeleteModal();
+            this.innerHTML = originalText;
+            this.disabled = false;
+        }, 1000);
+    });
+
+    cancelDeleteBtn.addEventListener('click', closeDeleteModal);
+
+    // Close delete modal on backdrop click
+    deleteContractorModal.addEventListener('click', function(e) {
+        if (e.target === deleteContractorModal) {
+            closeDeleteModal();
+        }
+    });
+
+    // =====
+    // TABLE ACTION BUTTONS
+    // =====
+
+    editButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            addRipple(this, event);
+            const row = this.closest('tr');
+            const nameCell = row.querySelector('td:first-child span');
+            const name = nameCell.textContent.trim();
+            const initials = row.querySelector('.rounded-full').textContent.trim();
+            const dateRegistered = row.querySelector('td:nth-child(2)').textContent.trim();
+            const years = row.querySelector('td:nth-child(3)').textContent.trim().replace(' years', '');
+            const accountTypeText = row.querySelector('td:nth-child(4) span').textContent.trim();
+
+            // Map account type display text to value
+            const accountTypeMap = {
+                'General Contractor': 'general',
+                'Construction Contractor': 'construction',
+                'Specialty Contractor': 'specialty'
+            };
+
+            const contractorData = {
+                name: name,
+                initials: initials,
+                dateRegistered: convertDateToISO(dateRegistered),
+                years: years,
+                accountType: accountTypeMap[accountTypeText] || 'general',
+                contact: '+63 912 345 6789',
+                license: 'LIC-2025-001',
+                email: 'contact@' + name.toLowerCase().replace(/\s+/g, '') + '.com',
+                username: name.toLowerCase().replace(/\s+/g, '')
+            };
+
+            openEditModal(contractorData);
+        });
+    });
+
+    deleteButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            addRipple(this, event);
+            const row = this.closest('tr');
+            const name = row.querySelector('td:first-child span').textContent.trim();
+            openDeleteModal(name, row);
+        });
+    });
+
+    viewButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            addRipple(this, event);
+            // Redirect to contractor_Views page
+            window.location.href = '/admin/user-management/contractor/view';
+        });
+    });
+
+    // =====
+    // HELPER FUNCTIONS
+    // =====
 
     function showNotification(message, type = 'success') {
         const notification = document.createElement('div');
         const bgColor = type === 'success' ? 'bg-green-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500';
         const icon = type === 'success' ? 'fi-rr-check-circle' : type === 'error' ? 'fi-rr-cross-circle' : 'fi-rr-info';
+
 
         notification.className = `fixed top-6 right-6 ${bgColor} text-white px-6 py-4 rounded-lg shadow-2xl flex items-center gap-3 z-[100] transform translate-x-[400px] transition-transform duration-300`;
         notification.innerHTML = `
@@ -1059,11 +1355,19 @@ document.addEventListener('DOMContentLoaded', function() {
             notification.style.transform = 'translateX(0)';
         }, 10);
 
+
+        document.body.appendChild(notification);
+
+        setTimeout(() => {
+            notification.style.transform = 'translateX(0)';
+        }, 10);
+
         setTimeout(() => {
             notification.style.transform = 'translateX(400px)';
             setTimeout(() => notification.remove(), 300);
         }, 3000);
     }
+
 
     function addRipple(button, event) {
         const ripple = document.createElement('span');
@@ -1071,6 +1375,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const size = Math.max(rect.width, rect.height);
         const x = event.clientX - rect.left - size / 2;
         const y = event.clientY - rect.top - size / 2;
+
 
         ripple.style.width = ripple.style.height = size + 'px';
         ripple.style.left = x + 'px';
@@ -1082,9 +1387,35 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(() => ripple.remove(), 600);
     }
 
-    // ========================================
+    // =====
     // INPUT FOCUS EFFECTS
-    // ========================================
+    // =====
+
+
+        button.appendChild(ripple);
+
+        setTimeout(() => ripple.remove(), 600);
+    }
+
+    function convertDateToISO(dateStr) {
+        // Convert "10 Oct, 2025" to "2025-10-10"
+        const months = {
+            'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04',
+            'May': '05', 'Jun': '06', 'Jul': '07', 'Aug': '08',
+            'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
+        };
+
+        const parts = dateStr.split(' ');
+        const day = parts[0].padStart(2, '0');
+        const month = months[parts[1].replace(',', '')];
+        const year = parts[2];
+
+        return `${year}-${month}-${day}`;
+    }
+
+    // =====
+    // INPUT FOCUS EFFECTS
+    // =====
 
     const allInputs = document.querySelectorAll('input, select, textarea');
     allInputs.forEach(input => {
@@ -1092,15 +1423,30 @@ document.addEventListener('DOMContentLoaded', function() {
             this.parentElement.classList.add('ring-2', 'ring-orange-400');
         });
 
+
         input.addEventListener('blur', function() {
             this.parentElement.classList.remove('ring-2', 'ring-orange-400');
         });
     });
 
-    // ========================================
+    // =====
+    // RANKING FILTER
+    // =====
+
+    const rankingFilter = document.getElementById('rankingFilter');
+    rankingFilter.addEventListener('change', function() {
+        const value = this.value;
+        // Placeholder for filter functionality
+        console.log('Filter by:', value);
+    });
+
+    // =====
     // DTI/SEC DROPZONE UPLOAD
-    // ========================================
+    // =====
     // Elements declared at top
+    const dtiDropzone = document.getElementById('dtiDropzone');
+    const dtiUpload = document.getElementById('dtiUpload');
+    const dtiFileName = document.getElementById('dtiFileName');
 
     if (dtiDropzone && dtiUpload) {
         const highlight = () => dtiDropzone.classList.add('ring-2', 'ring-orange-400');
@@ -1148,9 +1494,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// ========================================
+// =====
 // CSS INJECTION FOR ANIMATIONS
-// ========================================
+// =====
 
 const style = document.createElement('style');
 style.textContent = `
@@ -1163,6 +1509,7 @@ style.textContent = `
         pointer-events: none;
     }
 
+
     @keyframes ripple-animation {
         to {
             transform: scale(2);
@@ -1170,16 +1517,23 @@ style.textContent = `
         }
     }
 
+
     .modal-content {
         transform: scale(0.95);
         opacity: 0;
         transition: all 0.3s ease;
     }
 
+
     @keyframes spin {
         from { transform: rotate(0deg); }
         to { transform: rotate(360deg); }
     }
+
+    .animate-spin {
+        animation: spin 1s linear infinite;
+    }
+
 
     .animate-spin {
         animation: spin 1s linear infinite;
@@ -1196,10 +1550,20 @@ style.textContent = `
         animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
     }
 
+
+    .animate-ping {
+        animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
+    }
+
     .form-group input:focus,
     .form-group select:focus {
         transform: scale(1.01);
     }
+
+    tbody tr {
+        cursor: pointer;
+    }
+
 
     tbody tr {
         cursor: pointer;

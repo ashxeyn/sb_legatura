@@ -20,6 +20,7 @@ import ContractorBusinessDocumentsScreen from './src/screens/contractor/business
 // Shared Screens
 import EditProfileScreen from './src/screens/both/editProfile';
 import ViewProfileScreen from './src/screens/both/viewProfile';
+import HelpCenterScreen from './src/screens/both/helpCenter';
 import { api_config } from './src/config/api';
 import EmailVerificationScreen from './src/screens/both/emailVerification';
 import ProfilePictureScreen from './src/screens/both/profilePic';
@@ -33,7 +34,9 @@ type AppState = 'loading' | 'onboarding' | 'auth_choice' | 'login' | 'signup' | 
     'contractor_company_info' | 'contractor_account_setup' | 'contractor_email_verification' | 'contractor_business_documents' | 'contractor_profile_picture' |
     // Property Owner Flow
     'po_personal_info' | 'po_account_setup' | 'po_email_verification' | 'po_role_verification' | 'po_profile_picture' |
-    'main' | 'edit_profile' | 'view_profile';
+    'main' | 'edit_profile' | 'view_profile' | 'help_center';
+
+
 
 export default function App() {
     const [app_state, set_app_state] = useState<AppState>('loading');
@@ -441,6 +444,7 @@ export default function App() {
                     onLogout={handle_logout}
                     onViewProfile={() => set_app_state('view_profile')}
                     onEditProfile={() => set_app_state('edit_profile')}
+                    onOpenHelp={() => set_app_state('help_center')}
                     initialTab={initial_home_tab}
                 />
             </SafeAreaProvider>
@@ -479,6 +483,16 @@ export default function App() {
                         profile_pic: user_data?.profile_pic ? `${api_config.base_url}/storage/${user_data.profile_pic}` : undefined,
                         cover_photo: user_data?.cover_photo ? `${api_config.base_url}/storage/${user_data.cover_photo}` : undefined,
                     }}
+                />
+            </SafeAreaProvider>
+        );
+    }
+
+    if (app_state === 'help_center') {
+        return (
+            <SafeAreaProvider>
+                <HelpCenterScreen
+                    onBack={() => set_app_state('main')}
                 />
             </SafeAreaProvider>
         );

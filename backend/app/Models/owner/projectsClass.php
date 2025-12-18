@@ -3,6 +3,7 @@
 namespace App\Models\Owner;
 
 use Illuminate\Support\Facades\DB;
+use App\Services\BidRankingService;
 
 class projectsClass
 {
@@ -273,6 +274,7 @@ class projectsClass
 
     public function getProjectBids($projectId)
     {
+        // Fetch all bids with contractor details
         $bids = DB::table('bids as b')
             ->join('contractors as c', 'b.contractor_id', '=', 'c.contractor_id')
             ->join('users as u', 'c.user_id', '=', 'u.user_id')
@@ -304,7 +306,6 @@ class projectsClass
                      'b.bid_status', 'b.submitted_at', 'b.decision_date', 'c.contractor_id',
                      'c.company_name', 'c.years_of_experience', 'c.company_email', 'c.company_phone',
                      'c.company_website', 'c.completed_projects', 'u.username', 'u.profile_pic')
-            ->orderBy('b.submitted_at', 'desc')
             ->get();
 
         // Get bid files for each bid
@@ -314,7 +315,12 @@ class projectsClass
                 ->get();
         }
 
-        return $bids;
+        // ✨ Apply intelligent ranking using BidRankingService
+        // This will sort bids by score (price, experience, reviews, subscription)
+        $rankingService = new BidRankingService();
+        $rankedBids = $rankingService->rankBids($projectId, collect($bids));
+
+        return $rankedBids;
     }
 
     public function acceptBid($projectId, $bidId, $ownerId)

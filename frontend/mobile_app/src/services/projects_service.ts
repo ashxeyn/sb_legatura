@@ -584,4 +584,29 @@ export class projects_service {
       };
     }
   }
+
+  /**
+   * Complete a project (mark as completed)
+   * Only available to property owners when all milestone items are completed
+   */
+  static async complete_project(projectId: number): Promise<ApiResponse> {
+    try {
+      const response = await api_request(`/api/owner/projects/${projectId}/complete`, {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+      });
+
+      return response;
+    } catch (error) {
+      console.error('Error completing project:', error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to complete project',
+        status: 500,
+      };
+    }
+  }
 }

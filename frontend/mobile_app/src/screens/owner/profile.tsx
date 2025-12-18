@@ -17,6 +17,8 @@ import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 interface ProfileScreenProps {
   onLogout: () => void;
   onEditProfile?: () => void; // ✅ Add this line
+  onViewProfile?: () => void;
+  onOpenHelp?: () => void;
   userData?: {
     username?: string;
     email?: string;
@@ -39,7 +41,7 @@ interface MenuItem {
   danger?: boolean;
 }
 
-export default function ProfileScreen({ onLogout, onViewProfile, onEditProfile, userData }: ProfileScreenProps) {
+export default function ProfileScreen({ onLogout, onViewProfile, onEditProfile, onOpenHelp, userData }: ProfileScreenProps) {
   const insets = useSafeAreaInsets();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
@@ -139,7 +141,13 @@ export default function ProfileScreen({ onLogout, onViewProfile, onEditProfile, 
           label: 'Help Center',
           subtitle: 'Get help and support',
           showArrow: true,
-          onPress: () => Alert.alert('Coming Soon', 'This feature is under development.'),
+          onPress: () => {
+            if (typeof onOpenHelp === 'function') {
+              onOpenHelp();
+            } else {
+              Alert.alert('Coming Soon', 'This feature is under development.');
+            }
+          },
         },
         {
           id: 'about',

@@ -16,6 +16,7 @@ import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 
 interface ContractorProfileScreenProps {
   onLogout: () => void;
+  onOpenHelp?: () => void;
   userData?: {
     username?: string;
     email?: string;
@@ -38,7 +39,7 @@ interface MenuItem {
   danger?: boolean;
 }
 
-export default function ContractorProfileScreen({ onLogout, userData }: ContractorProfileScreenProps) {
+export default function ContractorProfileScreen({ onLogout, onOpenHelp, userData }: ContractorProfileScreenProps) {
   const insets = useSafeAreaInsets();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
@@ -160,14 +161,20 @@ export default function ContractorProfileScreen({ onLogout, userData }: Contract
     {
       title: 'Support',
       items: [
-        {
-          id: 'help',
-          icon: 'help-circle-outline',
-          label: 'Help Center',
-          subtitle: 'Get help and support',
-          showArrow: true,
-          onPress: () => Alert.alert('Coming Soon', 'This feature is under development.'),
-        },
+            {
+              id: 'help',
+              icon: 'help-circle-outline',
+              label: 'Help Center',
+              subtitle: 'Get help and support',
+              showArrow: true,
+              onPress: () => {
+                if (typeof onOpenHelp === 'function') {
+                  onOpenHelp();
+                } else {
+                  Alert.alert('Coming Soon', 'This feature is under development.');
+                }
+              },
+            },
         {
           id: 'about',
           icon: 'information-circle-outline',

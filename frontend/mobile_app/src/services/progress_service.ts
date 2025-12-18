@@ -48,7 +48,7 @@ export class progress_service {
         } as any);
       });
 
-      const response = await api_request('/contractor/progress/upload', {
+      const response = await api_request('/api/contractor/progress/upload', {
         method: 'POST',
         headers: {
           'Accept': 'application/json',
@@ -73,7 +73,7 @@ export class progress_service {
    */
   static async get_progress_by_item(userId: number, itemId: number): Promise<ApiResponse> {
     try {
-      const response = await api_request(`/both/progress/files/${itemId}?user_id=${userId}`, {
+      const response = await api_request(`/api/both/progress/files/${itemId}?user_id=${userId}`, {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
@@ -96,7 +96,7 @@ export class progress_service {
    */
   static async get_progress(userId: number, progressId: number): Promise<ApiResponse> {
     try {
-      const response = await api_request(`/contractor/progress/files/${progressId}?user_id=${userId}&progress_id=${progressId}`, {
+      const response = await api_request(`/api/contractor/progress/files/${progressId}?user_id=${userId}&progress_id=${progressId}`, {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
@@ -146,7 +146,7 @@ export class progress_service {
         });
       }
 
-      const response = await api_request(`/contractor/progress/${progressId}`, {
+      const response = await api_request(`/api/progress/${progressId}`, {
         method: 'PUT',
         headers: {
           'Accept': 'application/json',
@@ -171,7 +171,7 @@ export class progress_service {
    */
   static async delete_progress(userId: number, progressId: number, reason: string): Promise<ApiResponse> {
     try {
-      const response = await api_request(`/contractor/progress/${progressId}`, {
+      const response = await api_request(`/api/progress/${progressId}`, {
         method: 'DELETE',
         headers: {
           'Accept': 'application/json',
@@ -199,7 +199,7 @@ export class progress_service {
    */
   static async approve_progress(progressId: number): Promise<ApiResponse> {
     try {
-      const response = await api_request(`/progress/${progressId}/approve`, {
+      const response = await api_request(`/api/progress/${progressId}/approve`, {
         method: 'POST',
         headers: {
           'Accept': 'application/json',
@@ -224,7 +224,7 @@ export class progress_service {
    */
   static async reject_progress(progressId: number, reason?: string): Promise<ApiResponse> {
     try {
-      const response = await api_request(`/progress/${progressId}/reject`, {
+      const response = await api_request(`/api/progress/${progressId}/reject`, {
         method: 'POST',
         headers: {
           'Accept': 'application/json',
