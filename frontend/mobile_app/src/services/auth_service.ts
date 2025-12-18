@@ -94,14 +94,11 @@ export class auth_service {
 
   // Role selection for signup
   static async select_role(user_type: 'contractor' | 'property_owner'): Promise<api_response> {
-    return await api_request('/api/role-select', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: JSON.stringify({ user_type }),
-    });
+    // On mobile we don't need to perform a server-side role switch at this step —
+    // the signup flow will continue client-side and submit the chosen user_type
+    // during the actual registration requests. Return a successful response
+    // so the UI can proceed like the web flow.
+    return { success: true, status: 200, data: { user_type }, message: 'Role selected' };
   }
 
   // Get provinces directly from PSGC API (bypassing backend for consistent codes)

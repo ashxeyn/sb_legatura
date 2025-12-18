@@ -1,19 +1,19 @@
-// API configuration for connecting to Laravel backend
-
 const API_BASE_URL = 'http://192.168.1.62:8000';
+
+import { storage_service } from '../utils/storage';
+
+// API configuration for connecting to Laravel backend
+const API_BASE_URL = 'http://192.168.254.103:8000';
 
 import { storage_service } from '../utils/storage';
 
 export const api_config = {
     base_url: API_BASE_URL,
     endpoints: {
-        // Authentication endpoints
         auth: {
             login: '/accounts/login',
             signup_form: '/api/signup-form',
         },
-
-        // Registration flow endpoints (using web routes - proper flow)
         contractor: {
             step1: '/accounts/signup/contractor/step1',
             step2: '/accounts/signup/contractor/step2',
@@ -21,7 +21,6 @@ export const api_config = {
             step4: '/accounts/signup/contractor/step4',
             final: '/accounts/signup/contractor/final',
         },
-
         property_owner: {
             step1: '/accounts/signup/owner/step1',
             step2: '/accounts/signup/owner/step2',
@@ -29,48 +28,33 @@ export const api_config = {
             step4: '/accounts/signup/owner/step4',
             final: '/accounts/signup/owner/final',
         },
-
-        // Address/Location endpoints (using API routes)
         address: {
             provinces: '/api/provinces',
             cities: (province_code: string) => `/api/provinces/${province_code}/cities`,
             barangays: (city_code: string) => `/api/cities/${city_code}/barangays`,
         },
-
-        // Contractors endpoints (for property owner feed/homepage)
-        // NOTE: This endpoint needs to be created in the backend
-        // The backend should add: Route::get('/api/contractors', [projectsController::class, 'apiGetContractors'])
-        // That method should call getActiveContractors() and return JSON
         contractors: {
-            list: '/api/contractors', // Endpoint to fetch active contractors (needs to be created in backend)
+            list: '/api/contractors',
         }
     }
 };
 
-// Helper function to get full URL
-export const get_api_url = (endpoint: string) => {
-    return `${API_BASE_URL}${endpoint}`;
-};
+export const get_api_url = (endpoint: string) => `${API_BASE_URL}${endpoint}`;
 
-// Simple CSRF token storage
 let csrfToken: string | null = null;
 
-// Get CSRF token from Laravel
 export const getCsrfToken = async (): Promise<string | null> => {
     try {
         console.log('Fetching CSRF token from:', `${API_BASE_URL}/sanctum/csrf-cookie`);
         const response = await fetch(`${API_BASE_URL}/sanctum/csrf-cookie`, {
             method: 'GET',
-            credentials: 'include', // This ensures cookies are sent and received
+            credentials: 'include',
         });
 
         console.log('CSRF response status:', response.status);
 
         if (response.ok) {
-            // Try to get from response headers
             const setCookieHeader = response.headers.get('set-cookie');
-            console.log('Set-Cookie header:', setCookieHeader);
-
             if (setCookieHeader) {
                 const tokenMatch = setCookieHeader.match(/XSRF-TOKEN=([^;]+)/);
                 if (tokenMatch) {
@@ -80,68 +64,57 @@ export const getCsrfToken = async (): Promise<string | null> => {
                 }
             }
         }
-
-        console.log('Failed to get CSRF token from response');
     } catch (error) {
         console.log('CSRF token fetch failed:', error);
     }
     return null;
 };
 
-// API request helper with proper headers and CSRF handling
-export const api_request = async (
-    endpoint: string,
-    options: RequestInit = {}
-) => {
+export const api_request = async (endpoint: string, options: RequestInit = {}) => {
     const url = get_api_url(endpoint);
-
     console.log(`Making API request to: ${url}`);
 
-    // Try to attach bearer token for API routes if available
     try {
         const savedToken = await storage_service.get_auth_token();
         if (savedToken) {
-            // Attach to default headers below via options.headers merging
             options.headers = {
                 ...(options.headers || {}),
-                'Authorization': `Bearer ${savedToken}`
+                'Authorization': `Bearer ${savedToken}`,
             } as any;
+            console.log('Auth token present (masked):', `${savedToken.substring(0, 8)}...`);
         }
     } catch (e) {
         console.warn('Could not read auth token from storage:', e);
     }
 
-    // For web routes (non-API), get CSRF token if we don't have one
-    // Don't refresh on every request to avoid interfering with session
-    if (!endpoint.startsWith('/api/')) {
+    const reqMethod = ((options.method || 'GET') as string).toString().toUpperCase();
+    if (reqMethod !== 'GET') {
         if (!csrfToken) {
-            console.log('Getting CSRF token for:', endpoint);
+            console.log('Getting CSRF token for non-GET request to:', endpoint);
             await getCsrfToken();
         }
-        console.log('Using CSRF token:', csrfToken ? 'Present' : 'Missing');
+        console.log('Using CSRF token for non-GET:', csrfToken ? 'Present' : 'Missing');
     }
 
     const default_headers: any = {
         'Accept': 'application/json',
-        'X-Requested-With': 'XMLHttpRequest', // Laravel expects this for JSON responses
+        'X-Requested-With': 'XMLHttpRequest',
         'Cache-Control': 'no-cache, no-store, must-revalidate',
         'Pragma': 'no-cache',
         'Expires': '0',
     };
 
-    // Only set Content-Type for JSON requests (not for FormData)
     if (!(options.body instanceof FormData)) {
         default_headers['Content-Type'] = 'application/json';
     }
 
-    // Add CSRF token if available
-    if (csrfToken && !endpoint.startsWith('/api/')) {
+    if (csrfToken) {
         default_headers['X-XSRF-TOKEN'] = csrfToken;
     }
 
     const config: RequestInit = {
         ...options,
-        credentials: 'include', // Include cookies for session management
+        credentials: 'include',
         headers: {
             ...default_headers,
             ...options.headers,
@@ -149,7 +122,6 @@ export const api_request = async (
     };
 
     try {
-        // Cache-bust GET requests so frontend reflects DB changes immediately
         const method = (config.method || 'GET').toString().toUpperCase();
         let fetchUrl = url;
         if (method === 'GET') {
@@ -158,25 +130,18 @@ export const api_request = async (
         }
 
         const response = await fetch(fetchUrl, config);
-
         console.log(`Response status: ${response.status}`);
 
-        // Get response text first to check if it's valid JSON
         const response_text = await response.text();
         console.log('Raw response:', response_text.substring(0, 500));
 
-        if (!response_text.trim()) {
-            throw new Error('Empty response from server');
-        }
+        if (!response_text.trim()) throw new Error('Empty response from server');
 
-        // Try to parse as JSON
         let data;
         try {
             data = JSON.parse(response_text);
         } catch (json_error) {
             console.error('JSON parse error:', json_error);
-
-            // If response looks like HTML (probably an error page)
             if (response_text.trim().startsWith('<')) {
                 throw new Error('Server returned HTML instead of JSON. Check if Laravel backend is running correctly.');
             } else {
@@ -184,20 +149,9 @@ export const api_request = async (
             }
         }
 
-        return {
-            success: response.ok,
-            data,
-            status: response.status,
-            message: data?.message,
-        };
+        return { success: response.ok, data, status: response.status, message: data?.message };
     } catch (error) {
         console.error('API Request Error:', error);
-        return {
-            success: false,
-            data: null,
-            status: 0,
-            message: error instanceof Error ? error.message : 'Network error occurred',
-        };
+        return { success: false, data: null, status: 0, message: error instanceof Error ? error.message : 'Network error occurred' };
     }
 };
-
