@@ -43,22 +43,38 @@
     }
 
     function toast(message, type = "info") {
-        // simple toast fallback
+        const existing = document.querySelector(".toast-notification");
+        if (existing) existing.remove();
+
         const el = document.createElement("div");
-        el.className = `toast ${type}`;
-        el.textContent = message;
-        Object.assign(el.style, {
-            position: "fixed",
-            right: "1rem",
-            bottom: "1rem",
-            padding: "0.5rem 1rem",
-            background: "#111",
-            color: "#fff",
-            zIndex: 9999,
-            borderRadius: "6px",
-        });
+        const icon =
+            type === "success"
+                ? "fi-rr-check-circle"
+                : type === "error"
+                ? "fi-rr-cross-circle"
+                : "fi-rr-info";
+        const bgClass =
+            type === "success"
+                ? "bg-green-500"
+                : type === "error"
+                ? "bg-red-500"
+                : "bg-blue-500";
+
+        el.className = `toast-notification fixed top-24 right-8 z-[60] px-6 py-4 rounded-lg shadow-2xl transform transition-all duration-500 translate-x-full ${bgClass} text-white font-semibold flex items-center gap-3`;
+        el.innerHTML = `<i class="fi ${icon} text-2xl"></i><span>${message}</span>`;
+
         document.body.appendChild(el);
-        setTimeout(() => el.remove(), 3000);
+
+        // slide in
+        setTimeout(() => {
+            el.style.transform = "translateX(0)";
+        }, 10);
+
+        // hide after 3s
+        setTimeout(() => {
+            el.style.transform = "translateX(150%)";
+            setTimeout(() => el.remove(), 500);
+        }, 3000);
     }
 
     // Helper: return consistent status badge HTML for a given status key
@@ -1180,29 +1196,37 @@ function hideModal(id) {
 }
 
 function toast(message, type = "info") {
-    const existing = document.querySelector(".toast");
+    const existing = document.querySelector(".toast-notification");
     if (existing) existing.remove();
 
-    const toast = document.createElement("div");
-    toast.className = `toast ${type}`;
-
+    const el = document.createElement("div");
     const icon =
         type === "success"
             ? "fi-rr-check-circle"
             : type === "error"
             ? "fi-rr-cross-circle"
             : "fi-rr-info";
-    toast.innerHTML = `
-    <i class="fi ${icon}"></i>
-    <span>${message}</span>
-  `;
+    const bgClass =
+        type === "success"
+            ? "bg-green-500"
+            : type === "error"
+            ? "bg-red-500"
+            : "bg-blue-500";
 
-    document.body.appendChild(toast);
+    el.className = `toast-notification fixed top-24 right-8 z-[60] px-6 py-4 rounded-lg shadow-2xl transform transition-all duration-500 translate-x-full ${bgClass} text-white font-semibold flex items-center gap-3`;
+    el.innerHTML = `<i class="fi ${icon} text-2xl"></i><span>${message}</span>`;
 
+    document.body.appendChild(el);
+
+    // slide in
     setTimeout(() => {
-        toast.style.opacity = "0";
-        toast.style.transform = "translateY(10px)";
-        setTimeout(() => toast.remove(), 300);
+        el.style.transform = "translateX(0)";
+    }, 10);
+
+    // hide after 3s
+    setTimeout(() => {
+        el.style.transform = "translateX(150%)";
+        setTimeout(() => el.remove(), 500);
     }, 3000);
 }
 
