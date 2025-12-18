@@ -69,7 +69,13 @@ class progressUploadController extends Controller
 
     private function checkContractorAccess(Request $request)
     {
+        // Support both session-based auth (web) and token-based auth (mobile API)
         $user = Session::get('user');
+        if (!$user && $request->user()) {
+            // Mobile app using Sanctum Bearer token
+            $user = $request->user();
+        }
+        
         if (!$user) {
             if ($request->expectsJson()) {
                 return response()->json([
@@ -80,6 +86,11 @@ class progressUploadController extends Controller
             } else {
                 return redirect('/accounts/login');
             }
+        }
+        
+        // Store user in session for downstream code that expects it there
+        if (!Session::has('user')) {
+            Session::put('user', $user);
         }
 
         // Check if yung user is c
@@ -439,9 +450,16 @@ class progressUploadController extends Controller
         try {
             \Log::info('getProgressFilesForBoth called', ['item_id' => $itemId]);
 
+            // Support both session-based auth (web) and token-based auth (mobile API)
             $user = Session::get('user');
+            if (!$user && $request->user()) {
+                // Mobile app using Sanctum Bearer token
+                $user = $request->user();
+                \Log::info('getProgressFilesForBoth: Using Sanctum token auth', ['user_id' => $user->user_id]);
+            }
+            
             if (!$user) {
-                \Log::warning('getProgressFilesForBoth: No user in session');
+                \Log::warning('getProgressFilesForBoth: No user in session or token');
                 if ($request->expectsJson()) {
                     return response()->json([
                         'success' => false,
@@ -726,7 +744,13 @@ class progressUploadController extends Controller
 
     public function approveProgress(Request $request, $progressId)
     {
+        // Support both session-based auth (web) and token-based auth (mobile API)
         $user = Session::get('user');
+        if (!$user && $request->user()) {
+            // Mobile app using Sanctum Bearer token
+            $user = $request->user();
+        }
+        
         if (!$user) {
             return response()->json([
                 'success' => false,
@@ -805,7 +829,13 @@ class progressUploadController extends Controller
      */
     public function rejectProgress(Request $request, $progressId)
     {
+        // Support both session-based auth (web) and token-based auth (mobile API)
         $user = Session::get('user');
+        if (!$user && $request->user()) {
+            // Mobile app using Sanctum Bearer token
+            $user = $request->user();
+        }
+        
         if (!$user) {
             return response()->json([
                 'success' => false,

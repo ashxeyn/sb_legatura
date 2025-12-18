@@ -190,6 +190,11 @@ export default function ProjectList({ userData, onClose }: ProjectListProps) {
   const getStatusConfig = (project: Project) => {
     const { project_status, project_post_status, display_status, selected_contractor_id } = project;
 
+    // Check if project is completed (priority check)
+    if (project_status === 'completed' || display_status === 'completed') {
+      return { color: COLORS.success, bg: COLORS.successLight, label: 'Completed', icon: 'check-circle' };
+    }
+
     // If under review, show that status
     if (project_post_status === 'under_review') {
       return { color: COLORS.warning, bg: COLORS.warningLight, label: 'Pending Review', icon: 'clock' };
@@ -202,9 +207,6 @@ export default function ProjectList({ userData, onClose }: ProjectListProps) {
       }
       if (display_status === 'in_progress') {
         return { color: COLORS.primary, bg: COLORS.primaryLight, label: 'In Progress', icon: 'activity' };
-      }
-      if (display_status === 'completed') {
-        return { color: COLORS.success, bg: COLORS.successLight, label: 'Completed', icon: 'check-circle' };
       }
     }
 
@@ -249,14 +251,24 @@ export default function ProjectList({ userData, onClose }: ProjectListProps) {
   const renderProjectCard = (project: Project) => {
     const statusConfig = getStatusConfig(project);
     const daysRemaining = project.bidding_due && !project.selected_contractor_id ? getDaysRemaining(project.bidding_due) : null;
+    const isCompleted = project.project_status === 'completed' || project.display_status === 'completed';
 
     return (
       <TouchableOpacity
         key={project.project_id}
-        style={styles.projectCard}
+        style={[
+          styles.projectCard,
+          isCompleted && styles.projectCardCompleted
+        ]}
         activeOpacity={0.7}
         onPress={() => setSelectedProject(project)}
       >
+        {isCompleted && (
+          <View style={styles.completedBanner}>
+            <Feather name="check-circle" size={16} color={COLORS.success} />
+            <Text style={styles.completedBannerText}>Project Completed</Text>
+          </View>
+        )}
         <View style={styles.projectCardHeader}>
           <View style={styles.projectTypeTag}>
             <Feather name="briefcase" size={12} color={COLORS.primary} />
@@ -580,6 +592,33 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
+  },
+  projectCardCompleted: {
+    backgroundColor: COLORS.successLight,
+    borderWidth: 2,
+    borderColor: COLORS.success,
+    shadowColor: COLORS.success,
+    shadowOpacity: 0.15,
+  },
+  completedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.success,
+    marginHorizontal: -16,
+    marginTop: -16,
+    marginBottom: 12,
+    paddingVertical: 8,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+    gap: 6,
+  },
+  completedBannerText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.surface,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   projectCardHeader: {
     flexDirection: 'row',

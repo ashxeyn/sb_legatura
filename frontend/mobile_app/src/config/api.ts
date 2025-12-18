@@ -1,9 +1,5 @@
-const API_BASE_URL = 'http://192.168.1.62:8000';
-
-import { storage_service } from '../utils/storage';
-
 // API configuration for connecting to Laravel backend
-const API_BASE_URL = 'http://192.168.254.103:8000';
+const API_BASE_URL = 'http://192.168.1.45:8000';
 
 import { storage_service } from '../utils/storage';
 
@@ -11,7 +7,7 @@ export const api_config = {
     base_url: API_BASE_URL,
     endpoints: {
         auth: {
-            login: '/accounts/login',
+            login: '/api/login',
             signup_form: '/api/signup-form',
         },
         contractor: {

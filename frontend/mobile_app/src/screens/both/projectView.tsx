@@ -363,17 +363,45 @@ export default function ProjectView({ project, userId, userRole, onClose }: Proj
   };
 
   const getMilestoneCardText = () => {
+    // Check if any milestones are approved
+    const hasApprovedMilestones = currentProject.milestones.some(m => m.setup_status === 'approved');
+    const hasPendingMilestones = currentProject.milestones.some(m => m.setup_status === 'submitted');
+    
     if (isOwner) {
-      return {
-        title: 'Check Milestone Setup',
-        description: 'Review the complete milestone timeline, payment breakdown, and project duration proposed by the contractor.',
-        tapPrompt: 'Tap to review milestone setup',
-      };
+      if (hasApprovedMilestones) {
+        return {
+          title: 'Check Project Progress',
+          description: 'Track milestone completion, review progress reports, and monitor payment history.',
+          tapPrompt: 'Tap to view project progress',
+          icon: 'trending-up',
+          iconColor: COLORS.success,
+        };
+      } else if (hasPendingMilestones) {
+        return {
+          title: 'Review Milestone Setup',
+          description: 'The contractor has submitted a milestone proposal. Review and approve the timeline and payment breakdown.',
+          tapPrompt: 'Tap to review and approve',
+          icon: 'clock',
+          iconColor: COLORS.warning,
+        };
+      } else {
+        return {
+          title: 'Milestone Setup',
+          description: 'The milestone timeline, payment breakdown, and project duration are being prepared by the contractor.',
+          tapPrompt: 'Tap to view details',
+          icon: 'clipboard',
+          iconColor: COLORS.info,
+        };
+      }
     }
+    
+    // Contractor view
     return {
-      title: 'View Milestone Progress',
-      description: 'View the milestone timeline, payment breakdown, and project progress.',
+      title: 'Milestone Progress',
+      description: 'View the milestone timeline, submit progress reports, and track project completion.',
       tapPrompt: 'Tap to view milestones',
+      icon: 'target',
+      iconColor: COLORS.primary,
     };
   };
 
@@ -580,62 +608,42 @@ export default function ProjectView({ project, userId, userRole, onClose }: Proj
             onPress={() => setShowMilestoneApproval(true)}
             activeOpacity={0.7}
           >
-            <View style={styles.sectionIconHeader}>
-              <Feather name="clipboard" size={16} color={COLORS.primary} />
-              <Text style={styles.sectionTitle}>{milestoneCardText.title}</Text>
-              <View style={styles.milestoneBadge}>
-                <Text style={styles.milestoneBadgeText}>{currentProject.milestones_count}</Text>
+            {/* Card Header */}
+            <View style={styles.milestoneCardHeader}>
+              <View style={[styles.milestoneIconContainer, { backgroundColor: milestoneCardText.iconColor + '20' }]}>
+                <Feather name={milestoneCardText.icon} size={24} color={milestoneCardText.iconColor} />
               </View>
-              <Feather name="chevron-right" size={20} color={COLORS.primary} style={{ marginLeft: 'auto' }} />
+              <View style={styles.milestoneHeaderContent}>
+                <Text style={styles.milestoneCardTitle}>{milestoneCardText.title}</Text>
+              </View>
+              <Feather name="chevron-right" size={24} color={COLORS.textMuted} />
             </View>
 
-            {/* Milestone Summary Preview */}
-            <View style={styles.milestoneSummaryPreview}>
-              <Text style={styles.milestoneSummaryText}>
+            {/* Card Description */}
+            <View style={styles.milestoneCardBody}>
+              <Text style={styles.milestoneDescription}>
                 {milestoneCardText.description}
               </Text>
 
-              <View style={styles.milestoneSummaryStats}>
-                <View style={styles.summaryStatItem}>
-                  <Text style={styles.summaryStatLabel}>Total Milestones</Text>
-                  <Text style={styles.summaryStatValue}>{currentProject.milestones_count}</Text>
-                </View>
-                <View style={styles.summaryStatDivider} />
-                <View style={styles.summaryStatItem}>
-                  <Text style={styles.summaryStatLabel}>Pending Approval</Text>
-                  <Text style={styles.summaryStatValue}>
-                    {currentProject.milestones.filter(m => m.setup_status === 'submitted').length}
-                  </Text>
-                </View>
-                <View style={styles.summaryStatDivider} />
-                <View style={styles.summaryStatItem}>
-                  <Text style={styles.summaryStatLabel}>Total Cost</Text>
-                  <Text style={styles.summaryStatValue}>
-                    {formatCurrency(currentProject.accepted_bid?.proposed_cost || 0)}
-                  </Text>
+              {/* Project Info Card */}
+              <View style={styles.projectInfoCards}>
+                <View style={styles.projectInfoCard}>
+                  <Feather name="dollar-sign" size={18} color={COLORS.accent} />
+                  <View style={styles.projectInfoContent}>
+                    <Text style={styles.projectInfoLabel}>Project Budget</Text>
+                    <Text style={styles.projectInfoValue}>{formatCurrency(currentProject.accepted_bid?.proposed_cost || 0)}</Text>
+                  </View>
                 </View>
               </View>
 
-              <View style={styles.tapToReviewPrompt}>
-                <Feather name="arrow-right" size={16} color={COLORS.primary} />
-                <Text style={styles.tapToReviewText}>{milestoneCardText.tapPrompt}</Text>
+              {/* Action Prompt */}
+              <View style={[styles.milestoneActionPrompt, { backgroundColor: milestoneCardText.iconColor + '15' }]}>
+                <Feather name="arrow-right-circle" size={18} color={milestoneCardText.iconColor} />
+                <Text style={[styles.milestoneActionText, { color: milestoneCardText.iconColor }]}>
+                  {milestoneCardText.tapPrompt}
+                </Text>
               </View>
             </View>
-            {/* Owner: Send payment receipt button (project-level) */}
-            {isOwner && (
-              // Show if milestone setup or project setup appears approved so button is available at project start
-              (currentProject.milestones && currentProject.milestones.some(m => m.setup_status === 'approved'))
-              || currentProject.display_status !== 'waiting_milestone_setup'
-            ) && (
-                <View style={styles.projectSendPaymentRow}>
-                  <TouchableOpacity
-                    style={styles.projectSendPaymentButton}
-                    onPress={() => Alert.alert('Send payment receipt', 'Open payment upload form (to implement)')}
-                  >
-                    <Text style={styles.projectSendPaymentText}>Send payment receipt</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
 
           </TouchableOpacity>
         ) : (
@@ -664,6 +672,7 @@ export default function ProjectView({ project, userId, userRole, onClose }: Proj
         <MilestoneApproval
           route={{
             params: {
+              projectId: currentProject.project_id,
               projectTitle: currentProject.project_title,
               projectDescription: currentProject.project_description,
               projectLocation: currentProject.project_location,
@@ -676,6 +685,7 @@ export default function ProjectView({ project, userId, userRole, onClose }: Proj
               milestones: currentProject.milestones,
               userId: userId,
               userRole: userRole,
+              projectStatus: currentProject.project_status,
               onApprovalComplete: async () => {
                 await refreshProjectData();
                 setShowMilestoneApproval(false);
@@ -1058,21 +1068,71 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.primary,
   },
-  projectSendPaymentRow: {
-    marginTop: 12,
+
+  // New Professional Milestone Card Styles
+  milestoneCardHeader: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
+    marginBottom: 16,
   },
-  projectSendPaymentButton: {
-    backgroundColor: COLORS.primary,
+  milestoneIconContainer: {
+    width: 48,
+    height: 48,
     borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    alignItems: 'center',
     justifyContent: 'center',
+    alignItems: 'center',
   },
-  projectSendPaymentText: {
-    color: COLORS.surface,
+  milestoneHeaderContent: {
+    flex: 1,
+  },
+  milestoneCardTitle: {
+    fontSize: 18,
     fontWeight: '700',
+    color: COLORS.text,
+  },
+  milestoneCardBody: {
+    gap: 16,
+  },
+  milestoneDescription: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    lineHeight: 20,
+  },
+  projectInfoCards: {
+    gap: 12,
+  },
+  projectInfoCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.borderLight,
+    borderRadius: 12,
+    padding: 14,
+    gap: 12,
+  },
+  projectInfoContent: {
+    flex: 1,
+  },
+  projectInfoLabel: {
+    fontSize: 12,
+    color: COLORS.textMuted,
+    marginBottom: 2,
+  },
+  projectInfoValue: {
     fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  milestoneActionPrompt: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+  },
+  milestoneActionText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

@@ -1407,5 +1407,98 @@ class projectsController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Complete a project (mark as completed)
+     * API endpoint for mobile app
+     */
+    public function completeProject(Request $request, $projectId)
+    {
+        try {
+            // Support both session-based auth (web) and token-based auth (mobile API)
+            $user = Session::get('user');
+            if (!$user && $request->user()) {
+                $user = $request->user();
+            }
+
+            if (!$user) {
+                return response()->json(['success' => false, 'message' => 'Authentication required'], 401);
+            }
+
+            // Verify user is owner
+            if (!in_array($user->user_type, ['property_owner', 'both'])) {
+                return response()->json(['success' => false, 'message' => 'Access denied. Only owners can complete projects.'], 403);
+            }
+
+            // Get owner_id
+            $owner = DB::table('property_owners')
+                ->where('user_id', $user->user_id)
+                ->first();
+
+            if (!$owner) {
+                return response()->json(['success' => false, 'message' => 'Owner profile not found'], 404);
+            }
+
+            // Verify the project belongs to this owner
+            $project = DB::table('projects as p')
+                ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
+                ->where('p.project_id', $projectId)
+                ->where('pr.owner_id', $owner->owner_id)
+                ->select('p.*')
+                ->first();
+
+            if (!$project) {
+                return response()->json(['success' => false, 'message' => 'Project not found or access denied'], 404);
+            }
+
+            // Check if all milestone items are completed
+            $totalItems = DB::table('milestone_items as mi')
+                ->join('milestones as m', 'mi.milestone_id', '=', 'm.milestone_id')
+                ->where('m.project_id', $projectId)
+                ->where('m.setup_status', 'approved')
+                ->count();
+
+            $completedItems = DB::table('milestone_items as mi')
+                ->join('milestones as m', 'mi.milestone_id', '=', 'm.milestone_id')
+                ->where('m.project_id', $projectId)
+                ->where('m.setup_status', 'approved')
+                ->where('mi.item_status', 'completed')
+                ->count();
+
+            if ($totalItems === 0) {
+                return response()->json(['success' => false, 'message' => 'No approved milestones found for this project'], 400);
+            }
+
+            if ($completedItems < $totalItems) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot complete project. Not all milestone items are completed.',
+                    'completed' => $completedItems,
+                    'total' => $totalItems
+                ], 400);
+            }
+
+            // Update project status to completed
+            DB::table('projects')
+                ->where('project_id', $projectId)
+                ->update([
+                    'project_status' => 'completed'
+                ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Project completed successfully! Congratulations on finishing this project.',
+                'project_id' => $projectId
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('completeProject error', ['error' => $e->getMessage(), 'projectId' => $projectId]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to complete project.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
 }
 

@@ -13,6 +13,24 @@ use App\Http\Controllers\both\disputeController;
 // Test endpoint for mobile app
 Route::get('/test', [authController::class, 'apiTest']);
 
+// File serving endpoint for mobile app (bypasses Apache symlink issues)
+Route::get('/files/{path}', function ($path) {
+    $fullPath = storage_path('app/public/' . $path);
+    
+    if (!file_exists($fullPath)) {
+        return response()->json(['error' => 'File not found'], 404);
+    }
+    
+    $mimeType = mime_content_type($fullPath);
+    
+    return response()->file($fullPath, [
+        'Content-Type' => $mimeType,
+        'Access-Control-Allow-Origin' => '*',
+        'Access-Control-Allow-Methods' => 'GET',
+        'Access-Control-Allow-Headers' => '*',
+    ]);
+})->where('path', '.*');
+
 // Signup form data endpoint for mobile app
 Route::get('/signup-form', [authController::class, 'showSignupForm']);
 
@@ -44,8 +62,10 @@ Route::post('/owner/milestones/{milestoneId}/complete', [projectsController::cla
 Route::post('/owner/milestone-items/{itemId}/complete', [projectsController::class, 'apiSetMilestoneItemComplete']);
 
 // Progress files retrieval for mobile app (owners and contractors)
-Route::get('/both/progress/files/{itemId}', [progressUploadController::class, 'getProgressFilesForBoth']);
-Route::get('/contractor/progress/files/{itemId}', [progressUploadController::class, 'getProgressFiles']);
+// These routes use Sanctum auth - controller handles both session and token auth
+Route::get('/both/progress/files/{itemId}', [progressUploadController::class, 'getProgressFilesForBoth'])->middleware('auth:sanctum');
+Route::get('/contractor/progress/files/{itemId}', [progressUploadController::class, 'getProgressFiles'])->middleware('auth:sanctum');
+Route::post('/contractor/progress/upload', [progressUploadController::class, 'uploadProgress'])->middleware('auth:sanctum');
 
 // Contractor endpoints - for contractor feed
 Route::get('/contractor/projects', [projectsController::class, 'apiGetApprovedProjects']);

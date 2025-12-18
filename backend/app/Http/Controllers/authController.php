@@ -1142,16 +1142,24 @@ class authController extends Controller
     {
         try {
             $request->validate([
-                'email' => 'required|email',
+                'username' => 'required|string',
                 'password' => 'required|string'
             ]);
 
-            $result = $this->authService->login($request->email, $request->password);
+            $result = $this->authService->login($request->username, $request->password);
 
             if ($result['success']) {
                 $user = $result['user'];
-                // Create Sanctum token for mobile app
-                $token = $user->createToken('mobile-app')->plainTextToken;
+                // Create Sanctum token for mobile app - need Eloquent model
+                $token = null;
+                try {
+                    $eloquentUser = \App\Models\User::find($user->user_id ?? null);
+                    if ($eloquentUser) {
+                        $token = $eloquentUser->createToken('mobile-app')->plainTextToken;
+                    }
+                } catch (\Exception $e) {
+                    \Log::warning('Failed to create personal access token: ' . $e->getMessage());
+                }
 
                 return response()->json([
                     'success' => true,
@@ -1173,9 +1181,11 @@ class authController extends Controller
                 'errors' => $e->errors()
             ], 422);
         } catch (\Exception $e) {
+            \Log::error('API Login error: ' . $e->getMessage() . ' | Trace: ' . $e->getTraceAsString());
             return response()->json([
                 'success' => false,
-                'message' => 'An error occurred during login'
+                'message' => 'An error occurred during login',
+                'error' => config('app.debug') ? $e->getMessage() : null
             ], 500);
         }
     }

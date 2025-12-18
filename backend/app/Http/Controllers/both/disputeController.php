@@ -22,7 +22,15 @@ class disputeController extends Controller
 
     private function checkAuthentication(Request $request)
     {
+        // Support both session-based auth (web) and token-based auth (mobile API)
         $user = Session::get('user');
+        if (!$user && $request->user()) {
+            // Mobile app using Sanctum Bearer token
+            $user = $request->user();
+            // Store in session for downstream code
+            Session::put('user', $user);
+        }
+        
         if (!$user) {
             if ($request->expectsJson()) {
                 return response()->json([
@@ -1020,7 +1028,13 @@ class disputeController extends Controller
 
     public function approvePayment(Request $request, $paymentId)
     {
+        // Support both session-based auth (web) and token-based auth (mobile API)
         $user = Session::get('user');
+        if (!$user && $request->user()) {
+            $user = $request->user();
+            Session::put('user', $user);
+        }
+
         if (!$user) {
             return response()->json([
                 'success' => false,
@@ -1108,6 +1122,115 @@ class disputeController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'An error occurred while approving the payment. Please try again.'
+            ], 500);
+        }
+    }
+
+    public function rejectPayment(Request $request, $paymentId)
+    {
+        // Support both session-based auth (web) and token-based auth (mobile API)
+        $user = Session::get('user');
+        if (!$user && $request->user()) {
+            $user = $request->user();
+            Session::put('user', $user);
+        }
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User not authenticated.'
+            ], 401);
+        }
+
+        // Validate reason
+        $request->validate([
+            'reason' => 'required|string|max:1000',
+        ], [
+            'reason.required' => 'Please provide a reason for rejecting this payment.',
+            'reason.max' => 'Reason cannot exceed 1000 characters.',
+        ]);
+
+        // Only contractor can reject payment
+        if (!in_array($user->user_type, ['contractor', 'both'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Access denied. Only contractors can reject payments.'
+            ], 403);
+        }
+
+        if ($user->user_type === 'both') {
+            $currentRole = Session::get('current_role', 'contractor');
+            if ($currentRole !== 'contractor') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Access denied. Please switch to contractor role to reject payments.'
+                ], 403);
+            }
+        }
+
+        // Get contractor_id
+        $contractor = DB::table('contractors')->where('user_id', $user->user_id)->first();
+        if (!$contractor) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Contractor profile not found.'
+            ], 404);
+        }
+
+        // Verify payment belongs to contractor's project
+        $payment = DB::table('milestone_payments as mp')
+            ->join('projects as p', 'mp.project_id', '=', 'p.project_id')
+            ->where('mp.payment_id', $paymentId)
+            ->select('mp.*', 'p.selected_contractor_id', 'mp.contractor_user_id')
+            ->first();
+
+        if (!$payment) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Payment not found.'
+            ], 404);
+        }
+
+        // Check if contractor has access
+        $hasAccess = false;
+        if ($payment->contractor_user_id && $payment->contractor_user_id == $user->user_id) {
+            $hasAccess = true;
+        } else if ($payment->selected_contractor_id && $payment->selected_contractor_id == $contractor->contractor_id) {
+            $hasAccess = true;
+        }
+
+        if (!$hasAccess) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You do not have permission to reject this payment.'
+            ], 403);
+        }
+
+        // Check if payment is in submitted status
+        if ($payment->payment_status !== 'submitted') {
+            return response()->json([
+                'success' => false,
+                'message' => 'This payment is not in submitted status.'
+            ], 400);
+        }
+
+        try {
+            DB::table('milestone_payments')
+                ->where('payment_id', $paymentId)
+                ->update([
+                    'payment_status' => 'rejected',
+                    'reason' => $request->input('reason'),
+                    'updated_at' => now()
+                ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Payment rejected successfully.'
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while rejecting the payment. Please try again.'
             ], 500);
         }
     }
