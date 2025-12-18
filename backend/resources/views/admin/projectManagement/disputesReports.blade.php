@@ -4,6 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
   <title>Admin Dashboard - Legatura</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
@@ -59,6 +60,75 @@
                     </div>
                   </div>
                 </div>
+                    <!-- Reject Confirmation Modal -->
+                    <div id="rejectConfirmModal" class="modal-overlay fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+                      <div class="modal-content bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
+                        <div class="px-6 py-5 bg-gradient-to-r from-red-600 to-rose-600">
+                          <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                              <div class="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                                <i class="fi fi-sr-times-circle text-white text-xl"></i>
+                              </div>
+                              <h3 class="text-xl font-bold text-white">Reject Case?</h3>
+                            </div>
+                            <button class="modal-close text-white/80 hover:text-white transition text-2xl leading-none">&times;</button>
+                          </div>
+                        </div>
+                        <div class="p-6 space-y-5">
+                          <div class="flex items-start gap-4 p-4 bg-red-50 border-l-4 border-red-500 rounded-lg">
+                            <i class="fi fi-rr-info-circle text-red-600 text-xl mt-0.5"></i>
+                            <div class="flex-1">
+                              <p class="text-sm text-red-900 font-semibold mb-1">Reject this case</p>
+                              <p class="text-xs text-red-800">This will reject the dispute and notify the reporter.</p>
+                            </div>
+                          </div>
+                          <div>
+                            <label class="block text-sm font-semibold text-gray-800 mb-2">Rejection Reason *</label>
+                            <textarea id="rejectionReason" rows="4" class="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-red-300 focus:border-red-300 transition resize-none" placeholder="Provide reason for rejecting this dispute..."></textarea>
+                          </div>
+                          <div class="flex items-center justify-end gap-3 pt-3 border-t border-gray-200">
+                            <button class="modal-close px-6 py-2.5 rounded-xl border-2 border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition">Cancel</button>
+                            <button id="confirmRejectBtn" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-semibold shadow-md hover:shadow-lg transition">
+                              Confirm Reject
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <!-- Approve for Review Confirmation Modal (same style, no input) -->
+                    <div id="approveConfirmModal" class="modal-overlay fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+                      <div class="modal-content bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
+                        <div class="px-6 py-5 bg-gradient-to-r from-indigo-600 to-purple-600">
+                          <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                              <div class="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                                <i class="fi fi-sr-check-circle text-white text-xl"></i>
+                              </div>
+                              <h3 class="text-xl font-bold text-white">Approve for Review?</h3>
+                            </div>
+                            <button class="modal-close text-white/80 hover:text-white transition text-2xl leading-none">&times;</button>
+                          </div>
+                        </div>
+                        <div class="p-6 space-y-5">
+                          <div class="flex items-start gap-4 p-4 bg-indigo-50 border-l-4 border-indigo-500 rounded-lg">
+                            <i class="fi fi-rr-info-circle text-indigo-600 text-xl mt-0.5"></i>
+                            <div class="flex-1">
+                              <p class="text-sm text-indigo-900 font-semibold mb-1">Approve this dispute for review</p>
+                              <p class="text-xs text-indigo-800">This will notify both parties and request resubmission as needed.</p>
+                            </div>
+                          </div>
+
+                          <div class="p-2 text-sm text-gray-700">Are you sure you want to approve this dispute for review?</div>
+
+                          <div class="flex items-center justify-end gap-3 pt-3 border-t border-gray-200">
+                            <button class="modal-close px-6 py-2.5 rounded-xl border-2 border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition">Cancel</button>
+                            <button id="confirmApproveBtn" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold shadow-md hover:shadow-lg transition">
+                              Confirm Approve
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
               </div>
 
 
@@ -245,7 +315,7 @@
             <div class="flex items-start justify-between mb-4">
               <div>
                 <p class="text-sm text-gray-500 font-medium mb-1">Total Reports</p>
-                <h3 class="text-4xl font-bold text-gray-800">156</h3>
+                <h3 class="text-4xl font-bold text-gray-800">{{ $totalReports ?? 0 }}</h3>
               </div>
               <div class="w-14 h-14 rounded-full bg-gradient-to-br from-blue-100 to-indigo-200 flex items-center justify-center">
                 <i class="fi fi-sr-file-invoice text-2xl text-blue-600"></i>
@@ -254,7 +324,7 @@
             <div class="flex items-center gap-2 text-sm">
               <span class="flex items-center gap-1 text-emerald-600 font-semibold">
                 <i class="fi fi-rr-arrow-trend-up"></i>
-                <span>10%</span>
+                <span>{{ ($totalChangePercent ?? 0) }}%</span>
               </span>
               <span class="text-gray-400">vs last week</span>
             </div>
@@ -264,8 +334,8 @@
           <div class="stat-card bg-white rounded-2xl shadow-md border border-gray-200 p-6 hover:shadow-xl transition-all duration-300">
             <div class="flex items-start justify-between mb-4">
               <div>
-                <p class="text-sm text-gray-500 font-medium mb-1">Pending Verifications</p>
-                <h3 class="text-4xl font-bold text-gray-800">42</h3>
+                <p class="text-sm text-gray-500 font-medium mb-1">Pending Disputes</p>
+                <h3 class="text-4xl font-bold text-gray-800">{{ $pendingCount ?? 0 }}</h3>
               </div>
               <div class="w-14 h-14 rounded-full bg-gradient-to-br from-amber-100 to-orange-200 flex items-center justify-center">
                 <i class="fi fi-sr-hourglass-end text-2xl text-amber-600"></i>
@@ -274,9 +344,9 @@
             <div class="flex items-center gap-2 text-sm">
               <span class="flex items-center gap-1 text-red-600 font-semibold">
                 <i class="fi fi-rr-arrow-trend-down"></i>
-                <span>3%</span>
+                <span>{{ ($pendingPercent ?? 0) }}%</span>
               </span>
-              <span class="text-gray-400">vs last week</span>
+              <span class="text-gray-400">of total</span>
             </div>
           </div>
 
@@ -285,7 +355,7 @@
             <div class="flex items-start justify-between mb-4">
               <div>
                 <p class="text-sm text-gray-500 font-medium mb-1">Active Disputes</p>
-                <h3 class="text-4xl font-bold text-gray-800">28</h3>
+                <h3 class="text-4xl font-bold text-gray-800">{{ $activeCount ?? 0 }}</h3>
               </div>
               <div class="w-14 h-14 rounded-full bg-gradient-to-br from-red-100 to-rose-200 flex items-center justify-center">
                 <i class="fi fi-sr-shield-exclamation text-2xl text-red-600"></i>
@@ -294,9 +364,9 @@
             <div class="flex items-center gap-2 text-sm">
               <span class="flex items-center gap-1 text-emerald-600 font-semibold">
                 <i class="fi fi-rr-arrow-trend-up"></i>
-                <span>3.2%</span>
+                <span>{{ ($activePercent ?? 0) }}%</span>
               </span>
-              <span class="text-gray-400">vs last week</span>
+              <span class="text-gray-400">of total</span>
             </div>
           </div>
 
@@ -305,7 +375,7 @@
             <div class="flex items-start justify-between mb-4">
               <div>
                 <p class="text-sm text-gray-500 font-medium mb-1">Resolved Cases</p>
-                <h3 class="text-4xl font-bold text-gray-800">342</h3>
+                <h3 class="text-4xl font-bold text-gray-800">{{ $resolvedCount ?? 0 }}</h3>
               </div>
               <div class="w-14 h-14 rounded-full bg-gradient-to-br from-emerald-100 to-teal-200 flex items-center justify-center">
                 <i class="fi fi-sr-check-circle text-2xl text-emerald-600"></i>
@@ -314,9 +384,9 @@
             <div class="flex items-center gap-2 text-sm">
               <span class="flex items-center gap-1 text-emerald-600 font-semibold">
                 <i class="fi fi-rr-arrow-trend-up"></i>
-                <span>8.3%</span>
+                <span>{{ ($resolvedPercent ?? 0) }}%</span>
               </span>
-              <span class="text-gray-400">vs last week</span>
+              <span class="text-gray-400">of total</span>
             </div>
           </div>
         </div>
@@ -328,25 +398,28 @@
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-2 bg-white rounded-xl p-1 shadow-sm">
                 <button class="filter-tab active" data-filter="all">
-                  All <span class="ml-1 text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">156</span>
+                  All <span class="ml-1 text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">{{ $totalReports ?? 0 }}</span>
                 </button>
                 <button class="filter-tab" data-filter="pending">
-                  Pending <span class="ml-1 text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">42</span>
+                  Pending <span class="ml-1 text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">{{ $pendingCount ?? 0 }}</span>
                 </button>
                 <button class="filter-tab" data-filter="disputes">
-                  Disputes <span class="ml-1 text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">28</span>
+                  Disputes <span class="ml-1 text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">{{ $activeCount ?? 0 }}</span>
                 </button>
                 <button class="filter-tab" data-filter="resolved">
-                  Resolved <span class="ml-1 text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">86</span>
+                  Resolved <span class="ml-1 text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">{{ $resolvedCount ?? 0 }}</span>
                 </button>
               </div>
               <div class="flex items-center gap-3">
-                <select id="sortBy" class="px-4 py-2 border-2 border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300">
-                  <option value="date">Sort by Date</option>
-                  <option value="priority">Sort by Priority</option>
-                  <option value="status">Sort by Status</option>
-                </select>
+                <button id="resetFilters" class="flex items-center gap-2 text-red-600 hover:text-red-700 text-sm font-semibold px-3 py-2 rounded-lg hover:bg-red-50 transition">
+                  <i class="fi fi-rr-rotate-left"></i>
+                  <span>Reset Filter</span>
+                </button>
               </div>
+            </div>
+            <div class="mt-3 flex items-center gap-3">
+              <input type="date" id="dateFrom" class="px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                <input type="date" id="dateTo" class="px-3 py-2 border border-gray-300 rounded-lg text-sm">
             </div>
           </div>
 
@@ -359,14 +432,13 @@
                   <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Reporter</th>
                   <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Type</th>
                   <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Subject</th>
-                  <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Priority</th>
                   <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
                   <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Date</th>
                   <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody id="reportsTableBody" class="divide-y divide-gray-200">
-                <!-- Rows will be populated by JavaScript -->
+                @include('admin.projectManagement.partials.disputeTable')
               </tbody>
             </table>
           </div>
@@ -374,24 +446,10 @@
           <!-- Pagination -->
           <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
             <div class="text-sm text-gray-600">
-              Showing <span class="font-semibold">1-10</span> of <span class="font-semibold">156</span> reports
+              Showing <span class="font-semibold">{{ $disputes->firstItem() ?? 0 }}-{{ $disputes->lastItem() ?? 0 }}</span> of <span class="font-semibold">{{ $disputes->total() ?? 0 }}</span> reports
             </div>
-            <div class="flex items-center gap-2">
-              <button class="px-4 py-2 border-2 border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-                Previous
-              </button>
-              <button class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 transition">
-                1
-              </button>
-              <button class="px-4 py-2 border-2 border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50 transition">
-                2
-              </button>
-              <button class="px-4 py-2 border-2 border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50 transition">
-                3
-              </button>
-              <button class="px-4 py-2 border-2 border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50 transition">
-                Next
-              </button>
+            <div class="flex items-center gap-2" id="paginationLinks">
+              {{ $disputes->links() }}
             </div>
           </div>
         </div>
@@ -428,8 +486,8 @@
                   <p class="text-sm font-semibold text-gray-800" id="modalType">-</p>
                 </div>
                 <div>
-                  <label class="text-xs font-semibold text-gray-500 uppercase">Priority</label>
-                  <div id="modalPriority"></div>
+                  <label class="text-xs font-semibold text-gray-500 uppercase">Against</label>
+                  <p class="text-sm font-semibold text-gray-800" id="modalAgainst">-</p>
                 </div>
               </div>
               <div class="space-y-3">
@@ -448,32 +506,26 @@
               </div>
             </div>
 
-            <!-- Subject -->
-            <div class="p-4 bg-indigo-50 border-l-4 border-indigo-500 rounded-lg">
-              <label class="text-xs font-semibold text-gray-500 uppercase block mb-2">Subject</label>
-              <p class="text-sm text-gray-800 font-semibold" id="modalSubject">-</p>
-            </div>
+            <!-- Subject/Description moved to Dispute Details to avoid duplication -->
 
-            <!-- Description -->
-            <div>
-              <label class="text-sm font-semibold text-gray-700 block mb-2">Description</label>
-              <div class="p-4 bg-gray-50 rounded-xl border border-gray-200">
-                <p class="text-sm text-gray-700 leading-relaxed" id="modalDescription">-</p>
-              </div>
-            </div>
-
-            <!-- Dispute Details Section -->
+            <!-- Dispute Details Section (always visible) -->
             <div class="border-t border-gray-200 pt-6">
               <h4 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
                 <i class="fi fi-sr-document text-indigo-600"></i>
                 Dispute Details
               </h4>
-              
+
               <div class="space-y-4">
-                <!-- Reason for Dispute -->
+                <!-- Subject (moved earlier visually but keep here for completeness) -->
                 <div class="bg-white border border-gray-200 rounded-xl p-4">
-                  <label class="text-xs font-semibold text-gray-500 uppercase block mb-2">Reason for Dispute</label>
-                  <p class="text-sm text-gray-800 font-medium" id="modalReasonDispute">-</p>
+                  <label class="text-xs font-semibold text-gray-500 uppercase block mb-2">Subject</label>
+                  <p class="text-sm text-gray-800 font-medium" id="modalSubject">-</p>
+                </div>
+
+                <!-- Description -->
+                <div class="bg-white border border-gray-200 rounded-xl p-4">
+                  <label class="text-xs font-semibold text-gray-500 uppercase block mb-2">Description</label>
+                  <p class="text-sm text-gray-700 leading-relaxed" id="modalDescription">-</p>
                 </div>
 
                 <!-- Requested Action -->
@@ -481,54 +533,18 @@
                   <label class="text-xs font-semibold text-gray-500 uppercase block mb-2">Requested Action</label>
                   <p class="text-sm text-gray-800 font-medium" id="modalRequestedAction">-</p>
                 </div>
-
-                <!-- Remarks -->
-                <div class="bg-white border border-gray-200 rounded-xl p-4">
-                  <label class="text-xs font-semibold text-gray-500 uppercase block mb-2">Remarks</label>
-                  <p class="text-sm text-gray-700 leading-relaxed" id="modalRemarks">-</p>
-                </div>
               </div>
             </div>
 
-            <!-- Linked Progress Report Section -->
-            <div class="border-t border-gray-200 pt-6">
-              <h4 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <i class="fi fi-sr-chart-line-up text-indigo-600"></i>
-                Linked Progress Report
-              </h4>
-              
-              <div class="space-y-4">
-                <div class="grid grid-cols-3 gap-4">
-                  <!-- Current Milestone -->
-                  <div class="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4">
-                    <label class="text-xs font-semibold text-blue-600 uppercase block mb-1">Current Milestone</label>
-                    <p class="text-lg font-bold text-gray-800" id="modalMilestone">-</p>
-                  </div>
+            <!-- Linked Progress Report removed per request -->
 
-                  <!-- Preferred Outcome -->
-                  <div class="bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200 rounded-xl p-4">
-                    <label class="text-xs font-semibold text-purple-600 uppercase block mb-1">Preferred Outcome</label>
-                    <p class="text-lg font-bold text-gray-800" id="modalOutcome">-</p>
-                  </div>
-
-                  <!-- Click to View Report -->
-                  <div class="bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl p-4 flex items-center justify-center">
-                    <button id="viewReportBtn" class="text-emerald-600 hover:text-emerald-700 font-semibold text-sm flex items-center gap-2 transition">
-                      <i class="fi fi-rr-document"></i>
-                      <span>Click to View Report</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Supporting Documents Section -->
+            <!-- Initial Proofs (Supporting Documents) -->
             <div class="border-t border-gray-200 pt-6">
               <h4 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
                 <i class="fi fi-sr-folder-open text-indigo-600"></i>
-                Supporting Documents
+                Initial Proofs
               </h4>
-              
+
               <div id="modalDocumentsSection">
                 <div class="bg-gray-50 rounded-xl border border-gray-200 overflow-hidden">
                   <table class="w-full text-sm">
@@ -536,8 +552,6 @@
                       <tr>
                         <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">File</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Date Submitted</th>
-                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">User Name</th>
-                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Position</th>
                         <th class="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase">Action</th>
                       </tr>
                     </thead>
@@ -549,32 +563,23 @@
               </div>
             </div>
 
-            <!-- Attachments -->
-            <div id="modalAttachmentsSection" class="hidden border-t border-gray-200 pt-6">
-              <h4 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <i class="fi fi-sr-clip text-indigo-600"></i>
-                Additional Attachments
-              </h4>
-              <div id="modalAttachments" class="grid grid-cols-3 gap-3">
-                <!-- Attachments will be rendered here -->
-              </div>
-            </div>
+            <!-- Additional Attachments removed: use Supporting Documents (dispute_files) -->
 
-            <!-- Resubmitted Report Panel Section -->
-            <div class="border-t border-gray-200 pt-6">
+            <!-- Resubmission Panel (hidden by default; will include header + table) -->
+            <div id="sectionResubmission" class="hidden border-t pt-6">
               <h4 class="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
                 <i class="fi fi-sr-refresh text-indigo-600"></i>
                 Resubmitted Report Panel
               </h4>
               <p class="text-xs text-gray-500 mb-4">This section contains uploaded receipts and payment confirmations related to completed milestones</p>
-              
+
               <div id="modalResubmittedSection">
                 <div class="bg-gray-50 rounded-xl border border-gray-200 overflow-hidden">
                   <table class="w-full text-sm">
                     <thead class="bg-gradient-to-r from-indigo-50 to-purple-50 border-b border-gray-200">
                       <tr>
                         <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Resubmitted By</th>
-                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Resubmission Type</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Project ID</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Date Resubmitted</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Status</th>
                         <th class="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase">Action</th>
@@ -588,13 +593,13 @@
               </div>
             </div>
 
-            <!-- Feedback Monitoring Panel Section -->
-            <div class="border-t border-gray-200 pt-6">
+            <!-- Feedback Monitoring Panel (hidden by default) -->
+            <div id="sectionFeedback" class="hidden border-t pt-6">
               <h4 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
                 <i class="fi fi-sr-comment-alt text-indigo-600"></i>
                 Feedback Monitoring Panel
               </h4>
-              
+
               <div id="modalFeedbackSection" class="bg-gradient-to-br from-gray-50 to-indigo-50 rounded-xl border border-gray-200 p-5">
                 <div class="grid grid-cols-2 gap-6">
                   <!-- Left Column: Feedback Info -->
@@ -604,8 +609,8 @@
                       <p class="text-sm font-semibold text-gray-800" id="modalFeedbackFrom">-</p>
                     </div>
                     <div>
-                      <label class="text-xs font-semibold text-gray-500 uppercase block mb-1">Resubmission ID</label>
-                      <p class="text-sm font-semibold text-indigo-600" id="modalResubmissionId">-</p>
+                      <label class="text-xs font-semibold text-gray-500 uppercase block mb-1">Project ID</label>
+                        <p class="text-sm font-semibold text-indigo-600" id="modalResubmissionId">-</p>
                     </div>
                     <div>
                       <label class="text-xs font-semibold text-gray-500 uppercase block mb-1">Response</label>
@@ -630,7 +635,7 @@
               </div>
             </div>
 
-            <!-- Actions -->
+            <!-- Action Containers -->
             <div class="flex items-center justify-between gap-3 pt-6 border-t border-gray-200">
               <div class="flex items-center gap-2 text-xs text-gray-500">
                 <i class="fi fi-rr-shield-check text-indigo-500"></i>
@@ -638,9 +643,23 @@
               </div>
               <div class="flex items-center gap-3">
                 <button class="modal-close px-6 py-2.5 rounded-xl border-2 border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition">Close</button>
-                <button id="resolveBtn" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold shadow-md hover:shadow-lg transition">
-                  Mark as Resolved
-                </button>
+
+                <!-- Section D: Reject and Resolve buttons -->
+                <div id="sectionActions" class="flex items-center gap-3">
+                  <button id="rejectBtn" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-semibold shadow-md hover:shadow-lg transition">
+                    Reject
+                  </button>
+                  <button id="resolveBtn" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold shadow-md hover:shadow-lg transition">
+                    Resolve
+                  </button>
+                </div>
+
+                <!-- Section E: Final Action (Mark as Resolved) -->
+                <div id="sectionFinalAction" class="hidden">
+                  <button id="finalResolveBtn" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold shadow-md hover:shadow-lg transition">
+                    Mark as Resolved
+                  </button>
+                </div>
               </div>
             </div>
           </div>

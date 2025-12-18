@@ -11,6 +11,7 @@ use App\Http\Controllers\admin\analyticsController;
 use App\Http\Controllers\admin\userManagementController;
 use App\Http\Controllers\admin\globalManagementController;
 use App\Http\Controllers\admin\ProjectAdminController;
+use App\Http\Controllers\admin\projectManagementController;
 
 
 Route::get('/', function () {
@@ -170,7 +171,12 @@ Route::get('/admin/global-management/posting-management', [globalManagementContr
 // Project Management Routes
 Route::get('/admin/project-management/list-of-projects', [ProjectAdminController::class, 'listOfProjects'])->name('admin.projectManagement.listOfprojects');
 Route::get('/admin/project-management/subscriptions', [ProjectAdminController::class, 'subscriptions'])->name('admin.projectManagement.subscriptions');
-Route::get('/admin/project-management/disputes-reports', [ProjectAdminController::class, 'disputesReports'])->name('admin.projectManagement.disputesReports');
+Route::get('/admin/project-management/disputes-reports', [projectManagementController::class, 'disputesReports'])->name('admin.projectManagement.disputesReports');
+Route::get('/admin/project-management/disputes/{id}/details', [projectManagementController::class, 'getDisputeDetails'])->name('admin.projectManagement.disputeDetails');
+// Dispute actions: approve for review, reject (cancel), finalize resolution
+Route::post('/admin/project-management/disputes/{id}/approve', [projectManagementController::class, 'approveForReview'])->name('admin.projectManagement.dispute.approve');
+Route::post('/admin/project-management/disputes/{id}/reject', [projectManagementController::class, 'rejectDispute'])->name('admin.projectManagement.dispute.reject');
+Route::post('/admin/project-management/disputes/{id}/finalize', [projectManagementController::class, 'finalizeResolution'])->name('admin.projectManagement.dispute.finalize');
 Route::get('/admin/project-management/messages', [ProjectAdminController::class, 'messages'])->name('admin.projectManagement.messages');
 
 // Settings Routes
