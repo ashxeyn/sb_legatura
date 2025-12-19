@@ -16,9 +16,10 @@ import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 
 interface ProfileScreenProps {
   onLogout: () => void;
-  onEditProfile?: () => void; // ✅ Add this line
+  onEditProfile?: () => void;
   onViewProfile?: () => void;
   onOpenHelp?: () => void;
+  onOpenSwitchRole?: () => void; // ✅ Navigate to switch role screen
   userData?: {
     username?: string;
     email?: string;
@@ -27,7 +28,6 @@ interface ProfileScreenProps {
     user_type?: string;
     onViewProfile?: () => void;
     onEditProfile?: () => void;
-
   };
 }
 
@@ -41,7 +41,7 @@ interface MenuItem {
   danger?: boolean;
 }
 
-export default function ProfileScreen({ onLogout, onViewProfile, onEditProfile, onOpenHelp, userData }: ProfileScreenProps) {
+export default function ProfileScreen({ onLogout, onViewProfile, onEditProfile, onOpenHelp, onOpenSwitchRole, userData }: ProfileScreenProps) {
   const insets = useSafeAreaInsets();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
@@ -108,6 +108,14 @@ export default function ProfileScreen({ onLogout, onViewProfile, onEditProfile, 
           subtitle: 'Update your password',
           showArrow: true,
           onPress: () => Alert.alert('Coming Soon', 'This feature is under development.'),
+        },
+        {
+          id: 'switch_role',
+          icon: 'swap-horizontal-outline',
+          label: 'Switch Role',
+          subtitle: 'Manage your role settings',
+          showArrow: true,
+          onPress: onOpenSwitchRole || (() => Alert.alert('Coming Soon', 'This feature is under development.')),
         },
       ],
     },

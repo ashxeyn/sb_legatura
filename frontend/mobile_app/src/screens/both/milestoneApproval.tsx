@@ -535,7 +535,7 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
             <TouchableOpacity style={styles.menuItem} onPress={handleReportHistory}>
               <Feather name="clock" size={18} color={COLORS.text} />
               <Text style={styles.menuItemText}>Report History</Text>
-            </TouchableOpacity>
+        </TouchableOpacity>
           </View>
         )}
       </View>

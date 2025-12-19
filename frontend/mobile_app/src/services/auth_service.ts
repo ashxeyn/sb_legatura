@@ -54,12 +54,25 @@ export interface api_response<T = any> {
 export class auth_service {
   // Get signup form data (contractor types, occupations, etc.)
   static async get_signup_form_data(): Promise<api_response<signup_form_data>> {
-    return await api_request(api_config.endpoints.auth.signup_form, {
+    const response = await api_request(api_config.endpoints.auth.signup_form, {
       headers: {
         'Accept': 'application/json',
         'X-Requested-With': 'XMLHttpRequest',
       },
     });
+    
+    // Handle nested data structure: response.data.data or response.data
+    if (response.success && response.data) {
+      // If data is nested (response.data.data), extract it
+      if (response.data.data) {
+        return {
+          ...response,
+          data: response.data.data
+        };
+      }
+    }
+    
+    return response;
   }
 
   /**
@@ -204,40 +217,11 @@ export class auth_service {
     // Create FormData for file uploads
     const formData = new FormData();
 
-    // Map idType string to valid_id_id based on the database valid_ids table
-    const idTypeMapping: { [key: string]: number } = {
-      "Philippine Passport": 1,
-      "Driver's License": 2,
-      "SSS ID/UMID": 3,
-      "Social Security ID (SSS)": 3,
-      "PhilHealth ID": 4,
-      "Voter's ID": 6,
-      "Voter's ID/Certification": 6,
-      "Postal ID": 7,
-      "PRC ID": 8,
-      "Professional Regulation Commission (PRC) ID": 8,
-      "National ID": 9,
-      "National ID (PhilSys)": 9,
-      "Senior Citizen ID": 10,
-      "OFW/OWWA ID": 11,
-      "PWD ID": 12,
-      "NBI Clearance": 14,
-      "Barangay ID": 17,
-      "GSIS eCard": 18,
-      "Government Service Insurance System (GSIS) ID": 18,
-      // Fallback mappings
-      "Passport": 1,
-      "Tax Identification Number (TIN)": 3,
-      "Unified Multi-Purpose ID (UMID)": 3,
-      "Police Clearance": 14,
-      "Cedula": 17,
-      "Other Government-Issued ID": 9,
-      "School ID": 17,
-      "Company ID": 17,
-    };
-
-    const validIdId = idTypeMapping[verificationInfo.idType] || 9;
-    formData.append('valid_id_id', validIdId.toString());
+    // Use valid_id_id directly from verificationInfo (must exist in database)
+    if (!verificationInfo.valid_id_id) {
+      throw new Error('valid_id_id is required and must exist in the database');
+    }
+    formData.append('valid_id_id', verificationInfo.valid_id_id.toString());
 
     // Add image files with proper React Native format
     if (verificationInfo.idFrontImage) {

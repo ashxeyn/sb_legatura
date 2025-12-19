@@ -284,7 +284,7 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
               <TouchableOpacity style={styles.menuItem} onPress={handleReportHistory}>
                 <Feather name="clock" size={18} color={COLORS.text} />
                 <Text style={styles.menuItemText}>Report History</Text>
-              </TouchableOpacity>
+          </TouchableOpacity>
             </View>
           )}
         </View>
@@ -371,7 +371,7 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
             <TouchableOpacity style={styles.menuItem} onPress={handleReportHistory}>
               <Feather name="clock" size={18} color={COLORS.text} />
               <Text style={styles.menuItemText}>Report History</Text>
-            </TouchableOpacity>
+        </TouchableOpacity>
           </View>
         )}
       </View>

@@ -211,7 +211,7 @@ class accountRequest extends FormRequest
     protected function ownerStep4Rules()
     {
         return [
-            'valid_id_id' => 'required|integer',
+            'valid_id_id' => 'required|integer|exists:valid_ids,id',
             'valid_id_photo' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
             'valid_id_back_photo' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
             'police_clearance' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120'
@@ -276,7 +276,7 @@ class accountRequest extends FormRequest
     protected function switchOwnerStep2Rules()
     {
         return [
-            'valid_id_id' => 'required|integer',
+            'valid_id_id' => 'required|integer|exists:valid_ids,id',
             'valid_id_photo' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
             'valid_id_back_photo' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
             'police_clearance' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120'

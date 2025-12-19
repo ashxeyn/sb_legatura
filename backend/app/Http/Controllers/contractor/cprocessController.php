@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 use App\Models\contractor\contractorClass;
 
 class cprocessController extends Controller
@@ -69,19 +70,17 @@ class cprocessController extends Controller
 
     public function switchRole(Request $request)
     {
-        if (!Session::has('user')) {
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Authentication required',
-                    'redirect_url' => '/accounts/login'
-                ], 401);
-            } else {
-                return redirect('/accounts/login')->with('error', 'Please login first');
-            }
+        // Support both session and Sanctum token authentication
+        // $request->user() is set by Sanctum middleware
+        $user = Session::get('user') ?: $request->user();
+        
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Authentication required',
+                'redirect_url' => '/accounts/login'
+            ], 401);
         }
-
-        $user = Session::get('user');
 
         if ($user->user_type !== 'both') {
             if ($request->expectsJson()) {
@@ -125,36 +124,62 @@ class cprocessController extends Controller
 
     public function getCurrentRole(Request $request)
     {
-        if (!Session::has('user')) {
-            if ($request->expectsJson()) {
+        try {
+            // Support both session and Sanctum token authentication
+            $user = Session::get('user');
+            
+            // If no session user, try Sanctum
+            if (!$user && $request->user()) {
+                $user = $request->user();
+            }
+            
+            // If still no user, try to get from token manually
+            if (!$user && $request->bearerToken()) {
+                $token = \Laravel\Sanctum\PersonalAccessToken::findToken($request->bearerToken());
+                if ($token && $token->tokenable) {
+                    $user = $token->tokenable;
+                }
+            }
+            
+            if (!$user) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Authentication required',
                     'redirect_url' => '/accounts/login'
                 ], 401);
-            } else {
-                return redirect('/accounts/login')->with('error', 'Please login first');
             }
-        }
 
-        $user = Session::get('user');
-        $currentRole = Session::get('current_role', $user->user_type === 'both' ? 'contractor' : $user->user_type);
+            // For Sanctum-authenticated users, check the database for current_role
+            // For session users, get from session
+            $currentRole = Session::get('current_role');
+            if (!$currentRole) {
+                // Default: if user_type is 'both', default to contractor, otherwise use their user_type
+                $userType = is_object($user) ? $user->user_type : ($user['user_type'] ?? null);
+                $currentRole = $userType === 'both' ? 'contractor' : $userType;
+            }
 
-        if ($request->expectsJson()) {
+            // Normalize current_role format (convert 'owner' to 'contractor' for consistency)
+            $normalizedRole = $currentRole;
+            if ($currentRole === 'property_owner' || $currentRole === 'owner') {
+                $normalizedRole = 'owner';
+            } elseif ($currentRole === 'contractor') {
+                $normalizedRole = 'contractor';
+            }
+
+            $userType = is_object($user) ? $user->user_type : ($user['user_type'] ?? null);
+
             return response()->json([
                 'success' => true,
-                'data' => [
-                    'user_type' => $user->user_type,
-                    'current_role' => $currentRole,
-                    'can_switch_roles' => $user->user_type === 'both'
-                ]
+                'user_type' => $userType,
+                'current_role' => $normalizedRole,
+                'can_switch_roles' => $userType === 'both'
             ]);
-        } else {
+        } catch (\Exception $e) {
+            \Log::error('getCurrentRole error: ' . $e->getMessage());
             return response()->json([
-                'user_type' => $user->user_type,
-                'current_role' => $currentRole,
-                'can_switch_roles' => $user->user_type === 'both'
-            ]);
+                'success' => false,
+                'message' => 'An error occurred: ' . $e->getMessage()
+            ], 500);
         }
     }
 

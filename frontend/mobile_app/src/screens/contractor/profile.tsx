@@ -17,6 +17,7 @@ import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 interface ContractorProfileScreenProps {
   onLogout: () => void;
   onOpenHelp?: () => void;
+  onOpenSwitchRole?: () => void; // ✅ Navigate to switch role screen
   userData?: {
     username?: string;
     email?: string;
@@ -39,7 +40,7 @@ interface MenuItem {
   danger?: boolean;
 }
 
-export default function ContractorProfileScreen({ onLogout, onOpenHelp, userData }: ContractorProfileScreenProps) {
+export default function ContractorProfileScreen({ onLogout, onOpenHelp, onOpenSwitchRole, userData }: ContractorProfileScreenProps) {
   const insets = useSafeAreaInsets();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
@@ -126,6 +127,14 @@ export default function ContractorProfileScreen({ onLogout, onOpenHelp, userData
           subtitle: 'Update your password',
           showArrow: true,
           onPress: () => Alert.alert('Coming Soon', 'This feature is under development.'),
+        },
+        {
+          id: 'switch_role',
+          icon: 'swap-horizontal-outline',
+          label: 'Switch Role',
+          subtitle: 'Manage your role settings',
+          showArrow: true,
+          onPress: onOpenSwitchRole || (() => Alert.alert('Coming Soon', 'This feature is under development.')),
         },
         {
           id: 'documents',

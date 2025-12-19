@@ -10,6 +10,7 @@ use App\Models\accounts\accountClass;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class authController extends Controller
 {
@@ -130,6 +131,13 @@ class authController extends Controller
         $picabCategories = $this->accountClass->getPicabCategories();
 
         if (request()->expectsJson()) {
+            // Ensure valid_ids is properly formatted as an array
+            $validIdsArray = $validIds->map(function ($item) {
+                return [
+                    'id' => (int) $item->id,
+                    'valid_id_name' => $item->valid_id_name
+                ];
+            })->values()->toArray();
 
             return response()->json([
                 'success' => true,
@@ -137,7 +145,7 @@ class authController extends Controller
                 'data' => [
                     'contractor_types' => $contractorTypes,
                     'occupations' => $occupations,
-                    'valid_ids' => $validIds,
+                    'valid_ids' => $validIdsArray,
                     'provinces' => $provinces,
                     'picab_categories' => $picabCategories
                 ]
@@ -708,118 +716,209 @@ class authController extends Controller
 
     // ROLE SWITCHING METHODS
 
-    // Show role switch form
+    // Show role switch form - Same logic as web version, but returns JSON for mobile
     public function showSwitchForm()
     {
-        if (!Session::has('user')) {
-            if (request()->expectsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Authentication required',
-                    'redirect_url' => '/accounts/login'
-                ], 401);
-            } else {
-                return redirect('/accounts/login')->with('error', 'Please login first');
+        try {
+            // Support both session and Sanctum token authentication
+            $user = Session::get('user');
+            
+            // If no session user, try Sanctum
+            if (!$user && request()->user()) {
+                $user = request()->user();
             }
-        }
+            
+            // If still no user, try to get from token manually
+            if (!$user && request()->bearerToken()) {
+                try {
+                    $token = \Laravel\Sanctum\PersonalAccessToken::findToken(request()->bearerToken());
+                    if ($token && $token->tokenable) {
+                        $user = $token->tokenable;
+                    }
+                } catch (\Exception $tokenError) {
+                    // Silent fail, will return 401 below
+                }
+            }
+            
+            if (!$user) {
+                if (request()->expectsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Authentication required',
+                        'redirect_url' => '/accounts/login'
+                    ], 401);
+                } else {
+                    return redirect('/accounts/login')->with('error', 'Please login first');
+                }
+            }
 
-        $user = Session::get('user');
-        $currentRole = $user->user_type;
-
-        // Check if user already has both roles
-        if ($user->user_type === 'both') {
-            if (request()->expectsJson()) {
+            // Get user_id and user_type safely
+            $userId = is_object($user) ? ($user->user_id ?? $user->id ?? null) : ($user['user_id'] ?? null);
+            $userType = is_object($user) ? ($user->user_type ?? null) : ($user['user_type'] ?? null);
+            
+            if (!$userId) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'You already have both roles',
-                    'redirect_url' => '/dashboard'
+                    'message' => 'Invalid user data'
                 ], 400);
-            } else {
-                return redirect('/dashboard')->with('error', 'You already have both roles');
             }
-        }
 
-        // Get data para sa dropdowns (same as signup)
-        $contractorTypes = $this->accountClass->getContractorTypes();
-        $occupations = $this->accountClass->getOccupations();
-        $validIds = $this->accountClass->getValidIds();
-        $picabCategories = ['AAAA', 'AAA', 'AA', 'A', 'B', 'C', 'D', 'Trade/E'];
-        $provinces = $this->psgcService->getProvinces();
+            $currentRole = $userType;
 
-        $existingData = $this->getExistingUserData($user->user_id, $currentRole);
+            // Check if user already has both roles
+            if ($userType === 'both') {
+                if (request()->expectsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'You already have both roles',
+                        'redirect_url' => '/dashboard'
+                    ], 400);
+                } else {
+                    return redirect('/dashboard')->with('error', 'You already have both roles');
+                }
+            }
 
-        if (request()->expectsJson()) {
+            // Get data para sa dropdowns (same as signup) - using EXACT same logic as showSignupForm
+            $contractorTypes = $this->accountClass->getContractorTypes();
+            $occupations = $this->accountClass->getOccupations();
+            $validIds = $this->accountClass->getValidIds();
+            $provinces = $this->psgcService->getProvinces();
+            $picabCategories = $this->accountClass->getPicabCategories();
+
+            // Get existing user data
+            $existingData = $this->getExistingUserData($userId, $currentRole);
+
+            if (request()->expectsJson()) {
+                // Return JSON - Laravel will automatically convert collections to arrays (same as showSignupForm)
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Role switch form data',
+                    'current_role' => $currentRole,
+                    'existing_data' => $existingData,
+                    'form_data' => [
+                        'contractor_types' => $contractorTypes,
+                        'occupations' => $occupations,
+                        'valid_ids' => $validIds,
+                        'picab_categories' => $picabCategories,
+                        'provinces' => $provinces
+                    ],
+                    'is_switch_mode' => true
+                ], 200);
+            } else {
+                return view('accounts.signup', compact(
+                    'contractorTypes',
+                    'occupations',
+                    'validIds',
+                    'picabCategories',
+                    'provinces',
+                    'currentRole',
+                    'existingData'
+                ))->with('isSwitchMode', true);
+            }
+        } catch (\Throwable $e) {
+            // Always return a response, even on fatal errors
+            try {
+                Log::error('showSwitchForm error: ' . $e->getMessage() . ' | Line: ' . $e->getLine() . ' | File: ' . $e->getFile());
+            } catch (\Exception $logError) {
+                // If logging fails, at least return error
+            }
+            
             return response()->json([
-                'success' => true,
-                'message' => 'Role switch form data',
-                'current_role' => $currentRole,
-                'existing_data' => $existingData,
-                'form_data' => [
-                    'contractor_types' => $contractorTypes,
-                    'occupations' => $occupations,
-                    'valid_ids' => $validIds,
-                    'picab_categories' => $picabCategories,
-                    'provinces' => $provinces
-                ],
-                'is_switch_mode' => true
-            ], 200);
-        } else {
-            return view('accounts.signup', compact(
-                'contractorTypes',
-                'occupations',
-                'validIds',
-                'picabCategories',
-                'provinces',
-                'currentRole',
-                'existingData'
-            ))->with('isSwitchMode', true);
+                'success' => false,
+                'message' => 'An error occurred: ' . $e->getMessage(),
+                'error_type' => get_class($e)
+            ], 500);
         }
     }
 
     // Get existing user data
     private function getExistingUserData($userId, $currentRole)
     {
+        $user = DB::table('users')->where('user_id', $userId)->first();
         $data = [
-            'user' => DB::table('users')->where('user_id', $userId)->first(),
+            'user' => $user ? (array) $user : null,
         ];
 
         if ($currentRole === 'contractor') {
             $contractor = DB::table('contractors')->where('user_id', $userId)->first();
             if ($contractor) {
                 $contractorUser = DB::table('contractor_users')->where('user_id', $userId)->first();
-                $data['contractor'] = $contractor;
-                $data['contractor_user'] = $contractorUser;
+                $data['contractor'] = (array) $contractor;
+                $data['contractor_user'] = $contractorUser ? (array) $contractorUser : null;
             }
-        } elseif ($currentRole === 'property_owner') {
+        } elseif ($currentRole === 'property_owner' || $currentRole === 'owner') {
             $owner = DB::table('property_owners')->where('user_id', $userId)->first();
             if ($owner) {
-                $data['property_owner'] = $owner;
+                $data['property_owner'] = (array) $owner;
             }
         }
 
         return $data;
     }
 
-    // Switch to Contractor
+    // Switch to Contractor Step 1 - This handles company information (like regular contractorStep1)
+    // For switch mode, we need to save company info to switch_contractor_step1
     public function switchContractorStep1(accountRequest $request)
     {
-        if (!Session::has('user')) {
-            return response()->json(['success' => false, 'errors' => ['Session expired. Please login again.']], 401);
+        // Support both session and Sanctum token authentication
+        $user = Session::get('user') ?: $request->user();
+        
+        if (!$user) {
+            return response()->json(['success' => false, 'errors' => ['Authentication required. Please login again.']], 401);
         }
 
+        // For switch mode, step1 can be either company info OR account info
+        // Check what fields are being sent
         $step1Data = Session::get('switch_contractor_step1', []);
-
-        $step1Data = array_merge($step1Data, $request->only(['first_name','middle_name','last_name','username','company_email']));
+        
+        // If request has company fields, it's the company info step
+        if ($request->has('company_name')) {
+            // This is company information step
+            $companyData = $request->only([
+                'company_name', 'company_phone', 'years_of_experience', 
+                'contractor_type_id', 'contractor_type_other_text', 'services_offered',
+                'business_address_street', 'business_address_barangay', 'business_address_city',
+                'business_address_province', 'business_address_postal', 'company_website', 'company_social_media'
+            ]);
+            
+            // Build business address
+            $businessAddress = trim(
+                ($companyData['business_address_street'] ?? '') . ', ' .
+                ($companyData['business_address_barangay'] ?? '') . ', ' .
+                ($companyData['business_address_city'] ?? '') . ', ' .
+                ($companyData['business_address_province'] ?? '') . ' ' .
+                ($companyData['business_address_postal'] ?? '')
+            );
+            
+            $step1Data = array_merge($step1Data, [
+                'company_name' => $companyData['company_name'],
+                'company_phone' => $companyData['company_phone'],
+                'years_of_experience' => $companyData['years_of_experience'],
+                'type_id' => $companyData['contractor_type_id'],
+                'contractor_type_other' => $companyData['contractor_type_other_text'] ?? null,
+                'services_offered' => $companyData['services_offered'],
+                'business_address' => $businessAddress,
+                'company_website' => $companyData['company_website'] ?? null,
+                'company_social_media' => $companyData['company_social_media'] ?? null
+            ]);
+        } else {
+            // This is account information step (step 2)
+            $step1Data = array_merge($step1Data, $request->only(['first_name','middle_name','last_name','username','company_email']));
+        }
+        
         Session::put('switch_contractor_step1', $step1Data);
 
-        return response()->json(['success' => true, 'message' => 'Account information saved']);
+        return response()->json(['success' => true, 'message' => 'Information saved']);
     }
 
     // Switch to Contractor Step 2
     public function switchContractorStep2(accountRequest $request)
     {
-        if (!Session::has('user')) {
-            return response()->json(['success' => false, 'errors' => ['Session expired. Please login again.']], 401);
+        // Support both session and Sanctum token authentication
+        $user = Session::get('user') ?: $request->user();
+        
+        if (!$user) {
+            return response()->json(['success' => false, 'errors' => ['Authentication required. Please login again.']], 401);
         }
 
         $validated = $request->validated();
@@ -838,15 +937,23 @@ class authController extends Controller
     // Switch to Contractor Final
     public function switchContractorFinal(accountRequest $request)
     {
-        if (!Session::has('user') || !Session::has('switch_contractor_step1') || !Session::has('switch_contractor_step2')) {
-            return response()->json(['success' => false, 'errors' => ['Session expired or previous steps not completed']], 401);
+        // Support both session and Sanctum token authentication
+        $user = Session::get('user') ?: $request->user();
+        
+        if (!$user) {
+            return response()->json(['success' => false, 'errors' => ['Authentication required. Please login again.']], 401);
+        }
+
+        // For mobile API, allow passing step data directly in request
+        // For web, use session data
+        $step1 = $request->input('step1_data') ?: Session::get('switch_contractor_step1');
+        $step2 = $request->input('step2_data') ?: Session::get('switch_contractor_step2');
+
+        if (!$step1 || !$step2) {
+            return response()->json(['success' => false, 'errors' => ['Previous steps not completed. Please complete all steps.']], 400);
         }
 
         $validated = $request->validated();
-
-        $user = Session::get('user');
-        $step1 = Session::get('switch_contractor_step1');
-        $step2 = Session::get('switch_contractor_step2');
 
         try {
             DB::beginTransaction();
@@ -855,64 +962,84 @@ class authController extends Controller
                 $file = $request->file('profile_pic');
                 $filename = time() . '_profile_' . $file->getClientOriginalName();
                 $profilePicPath = $file->storeAs('profile_pictures', $filename, 'public');
-                DB::table('users')->where('user_id', $user->user_id)->update(['profile_pic' => $profilePicPath]);
+                $userId = is_object($user) ? ($user->user_id ?? $user->id) : ($user['user_id'] ?? null);
+                if ($userId) {
+                    DB::table('users')->where('user_id', $userId)->update(['profile_pic' => $profilePicPath]);
+                }
             }
 
-            $businessAddress = $step1['business_address'];
+            $businessAddress = $step1['business_address'] ?? '';
 
-            $ownerData = DB::table('property_owners')->where('user_id', $user->user_id)->first();
+            $userId = is_object($user) ? ($user->user_id ?? $user->id) : ($user['user_id'] ?? null);
+            $userEmail = is_object($user) ? ($user->email ?? null) : ($user['email'] ?? null);
+            
+            if (!$userId) {
+                DB::rollBack();
+                return response()->json(['success' => false, 'errors' => ['Invalid user data']], 400);
+            }
+
+            $ownerData = DB::table('property_owners')->where('user_id', $userId)->first();
 
             $contractorId = DB::table('contractors')->insertGetId([
-                'user_id' => $user->user_id,
-                'company_name' => $step1['company_name'],
-                'years_of_experience' => $step1['years_of_experience'],
-                'type_id' => $step1['type_id'],
+                'user_id' => $userId,
+                'company_name' => $step1['company_name'] ?? '',
+                'years_of_experience' => $step1['years_of_experience'] ?? 0,
+                'type_id' => $step1['type_id'] ?? null,
                 'contractor_type_other' => $step1['contractor_type_other'] ?? null,
-                'services_offered' => $step1['services_offered'],
+                'services_offered' => $step1['services_offered'] ?? '',
                 'business_address' => $businessAddress,
-                'company_email' => $user->email,
-                'company_phone' => $step1['company_phone'],
-                'company_website' => $step1['company_website'],
-                'company_social_media' => $step1['company_social_media'],
-                'picab_number' => $step2['picab_number'],
-                'picab_category' => $step2['picab_category'],
-                'picab_expiration_date' => $step2['picab_expiration_date'],
-                'business_permit_number' => $step2['business_permit_number'],
-                'business_permit_city' => $step2['business_permit_city'],
-                'business_permit_expiration' => $step2['business_permit_expiration'],
-                'tin_business_reg_number' => $step2['tin_business_reg_number'],
-                'dti_sec_registration_photo' => $step2['dti_sec_registration_photo'],
+                'company_email' => $userEmail,
+                'company_phone' => $step1['company_phone'] ?? '',
+                'company_website' => $step1['company_website'] ?? null,
+                'company_social_media' => $step1['company_social_media'] ?? null,
+                'picab_number' => $step2['picab_number'] ?? '',
+                'picab_category' => $step2['picab_category'] ?? '',
+                'picab_expiration_date' => $step2['picab_expiration_date'] ?? null,
+                'business_permit_number' => $step2['business_permit_number'] ?? '',
+                'business_permit_city' => $step2['business_permit_city'] ?? '',
+                'business_permit_expiration' => $step2['business_permit_expiration'] ?? null,
+                'tin_business_reg_number' => $step2['tin_business_reg_number'] ?? '',
+                'dti_sec_registration_photo' => $step2['dti_sec_registration_photo'] ?? null,
                 'verification_status' => 'pending',
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
 
-            DB::table('contractor_users')->insert([
-                'contractor_id' => $contractorId,
-                'user_id' => $user->user_id,
-                'authorized_rep_lname' => $ownerData->last_name,
-                'authorized_rep_mname' => $ownerData->middle_name,
-                'authorized_rep_fname' => $ownerData->first_name,
-                'phone_number' => $ownerData->phone_number,
-                'role' => 'owner',
-                'is_active' => 0,
-                'created_at' => now(),
-            ]);
+            if ($ownerData) {
+                DB::table('contractor_users')->insert([
+                    'contractor_id' => $contractorId,
+                    'user_id' => $userId,
+                    'authorized_rep_lname' => $ownerData->last_name ?? '',
+                    'authorized_rep_mname' => $ownerData->middle_name ?? null,
+                    'authorized_rep_fname' => $ownerData->first_name ?? '',
+                    'phone_number' => $ownerData->phone_number ?? '',
+                    'role' => 'owner',
+                    'is_active' => 0,
+                    'created_at' => now(),
+                ]);
+            }
 
-            DB::table('users')->where('user_id', $user->user_id)->update([
+            DB::table('users')->where('user_id', $userId)->update([
                 'user_type' => 'both',
                 'updated_at' => now(),
             ]);
 
             Session::forget(['switch_contractor_step1', 'switch_contractor_step2']);
-            $updatedUser = DB::table('users')->where('user_id', $user->user_id)->first();
-            Session::put('user', $updatedUser);
-            Session::put('userType', 'both');
-
-            Session::put('current_role', 'contractor'); // Default to contractor since they just added contractor role
+            $updatedUser = DB::table('users')->where('user_id', $userId)->first();
+            if (Session::has('user')) {
+                Session::put('user', $updatedUser);
+                Session::put('userType', 'both');
+                Session::put('current_role', 'contractor');
+            }
 
             DB::commit();
-            return response()->json(['success' => true, 'message' => 'Role switch successful! You now have both roles.', 'redirect' => '/dashboard']);
+            return response()->json([
+                'success' => true, 
+                'message' => 'Role switch successful! You now have both roles.', 
+                'user_type' => 'both',
+                'current_role' => 'contractor',
+                'redirect_url' => '/dashboard'
+            ]);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['success' => false, 'errors' => ['An error occurred: ' . $e->getMessage()]], 500);
@@ -924,41 +1051,39 @@ class authController extends Controller
     // Switch to Owner Step 1 (Account Setup)
     public function switchOwnerStep1(accountRequest $request)
     {
-        if (!Session::has('user')) {
-            if ($request->expectsJson()) {
-                return response()->json(['success' => false, 'errors' => ['Session expired. Please login again.']], 401);
-            }
+        // Support both session and Sanctum token authentication
+        $user = Session::get('user') ?: $request->user();
+        
+        if (!$user) {
+            return response()->json(['success' => false, 'errors' => ['Authentication required. Please login again.']], 401);
         }
 
         $validated = $request->validated();
 
         // Store account info for owner switch
         $step1Data = [
-            'username' => $validated['username'],
-            'email' => $validated['email']
+            'username' => $validated['username'] ?? null,
+            'email' => $validated['email'] ?? null
         ];
 
         Session::put('switch_owner_step1', $step1Data);
 
-        if ($request->expectsJson()) {
-            return response()->json([
-                'success' => true,
-                'message' => 'Account information saved',
-                'step' => 2,
-                'next_step' => 'documents'
-            ]);
-        } else {
-            return response()->json(['success' => true, 'message' => 'Account information saved']);
-        }
+        return response()->json([
+            'success' => true,
+            'message' => 'Account information saved',
+            'step' => 2,
+            'next_step' => 'documents'
+        ]);
     }
 
     // Switch to Owner Step 2
     public function switchOwnerStep2(accountRequest $request)
     {
-        if (!Session::has('user')) {
-            if ($request->expectsJson()) {
-                return response()->json(['success' => false, 'errors' => ['Session expired. Please login again.']], 401);
-            }
+        // Support both session and Sanctum token authentication
+        $user = Session::get('user') ?: $request->user();
+        
+        if (!$user) {
+            return response()->json(['success' => false, 'errors' => ['Authentication required. Please login again.']], 401);
         }
 
         $validated = $request->validated();
@@ -986,33 +1111,31 @@ class authController extends Controller
 
         Session::put('switch_owner_step2', $validated);
 
-        if ($request->expectsJson()) {
-            return response()->json([
-                'success' => true,
-                'message' => 'Documents uploaded successfully',
-                'step' => 3,
-                'next_step' => 'final'
-            ]);
-        } else {
-            return response()->json(['success' => true, 'message' => 'Documents uploaded successfully']);
-        }
+        return response()->json([
+            'success' => true,
+            'message' => 'Documents uploaded successfully',
+            'step' => 3,
+            'next_step' => 'final'
+        ]);
     }
 
     // Switch to Owner Final
     public function switchOwnerFinal(accountRequest $request)
     {
-        if (!Session::has('user')) {
-            if ($request->expectsJson()) {
-                return response()->json(['success' => false, 'errors' => ['Session expired. Please login again.']], 401);
-            }
+        // Support both session and Sanctum token authentication
+        $user = Session::get('user') ?: $request->user();
+        
+        if (!$user) {
+            return response()->json(['success' => false, 'errors' => ['Authentication required. Please login again.']], 401);
         }
 
         $validated = $request->validated();
-        $user = Session::get('user');
 
-        $ownerStep1 = Session::get('owner_step1');
-        $switchStep1 = Session::get('switch_owner_step1');
-        $switchStep2 = Session::get('switch_owner_step2');
+        // For mobile API, allow passing step data directly in request
+        // For web, use session data
+        $ownerStep1 = $request->input('owner_step1_data') ?: Session::get('owner_step1');
+        $switchStep1 = $request->input('switch_step1_data') ?: Session::get('switch_owner_step1');
+        $switchStep2 = $request->input('switch_step2_data') ?: Session::get('switch_owner_step2');
 
         if (!$ownerStep1) {
             if ($request->expectsJson()) {
@@ -1142,29 +1265,32 @@ class authController extends Controller
     {
         try {
             $request->validate([
-                'username' => 'required|string',
+                'username' => 'required|string', // Accept username (can be username or email)
                 'password' => 'required|string'
             ]);
 
             $result = $this->authService->login($request->username, $request->password);
 
             if ($result['success']) {
-                $user = $result['user'];
-                // Create Sanctum token for mobile app - need Eloquent model
-                $token = null;
-                try {
-                    $eloquentUser = \App\Models\User::find($user->user_id ?? null);
-                    if ($eloquentUser) {
-                        $token = $eloquentUser->createToken('mobile-app')->plainTextToken;
-                    }
-                } catch (\Exception $e) {
-                    \Log::warning('Failed to create personal access token: ' . $e->getMessage());
+                $userData = $result['user'];
+                
+                // Convert stdClass to Eloquent User model for Sanctum token creation
+                $eloquentUser = \App\Models\User::find($userData->user_id ?? $userData->id ?? null);
+                
+                if (!$eloquentUser) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'User model not found'
+                    ], 500);
                 }
+                
+                // Create Sanctum token for mobile app
+                $token = $eloquentUser->createToken('mobile-app')->plainTextToken;
 
                 return response()->json([
                     'success' => true,
                     'message' => 'Login successful',
-                    'user' => $user,
+                    'user' => $userData, // Return original user data
                     'userType' => $result['userType'],
                     'token' => $token
                 ], 200);
@@ -1181,11 +1307,9 @@ class authController extends Controller
                 'errors' => $e->errors()
             ], 422);
         } catch (\Exception $e) {
-            \Log::error('API Login error: ' . $e->getMessage() . ' | Trace: ' . $e->getTraceAsString());
             return response()->json([
                 'success' => false,
-                'message' => 'An error occurred during login',
-                'error' => config('app.debug') ? $e->getMessage() : null
+                'message' => 'An error occurred during login'
             ], 500);
         }
     }

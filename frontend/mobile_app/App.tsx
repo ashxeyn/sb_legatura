@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StatusBar } from 'react-native';
+import { StatusBar, View, Text, Alert } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import LoadingScreen from './src/screens/loadingScreen';
 import OnboardingScreen from './src/screens/onboardingScreen';
@@ -21,20 +21,20 @@ import ContractorBusinessDocumentsScreen from './src/screens/contractor/business
 import EditProfileScreen from './src/screens/both/editProfile';
 import ViewProfileScreen from './src/screens/both/viewProfile';
 import HelpCenterScreen from './src/screens/both/helpCenter';
+import SwitchRoleScreen from './src/screens/both/switchRole';
 import { api_config } from './src/config/api';
 import EmailVerificationScreen from './src/screens/both/emailVerification';
 import ProfilePictureScreen from './src/screens/both/profilePic';
 import HomepageScreen from './src/screens/both/homepage';
 import { auth_service } from './src/services/auth_service';
 import { storage_service } from './src/utils/storage';
-import { Alert } from 'react-native';
 
 type AppState = 'loading' | 'onboarding' | 'auth_choice' | 'login' | 'signup' | 'user_type_selection' |
     // Contractor Flow  
     'contractor_company_info' | 'contractor_account_setup' | 'contractor_email_verification' | 'contractor_business_documents' | 'contractor_profile_picture' |
     // Property Owner Flow
     'po_personal_info' | 'po_account_setup' | 'po_email_verification' | 'po_role_verification' | 'po_profile_picture' |
-    'main' | 'edit_profile' | 'view_profile' | 'help_center';
+    'main' | 'edit_profile' | 'view_profile' | 'help_center' | 'switch_role';
 
 
 
@@ -136,6 +136,8 @@ export default function App() {
     };
 
     const handle_user_type_selected = (user_type: 'contractor' | 'property_owner', formData: any) => {
+        console.log('User type selected, formData:', formData);
+        console.log('Valid IDs in formData:', formData?.valid_ids);
         set_selected_user_type(user_type);
         set_form_data(formData); // Store form data for subsequent screens
 
@@ -361,11 +363,36 @@ export default function App() {
     }
 
     if (app_state === 'po_role_verification') {
+        // Ensure we get valid_ids from the correct structure
+        const validIds = form_data?.valid_ids || [];
+        console.log('Rendering verification screen with validIds:', validIds);
+        console.log('Form data:', form_data);
+        console.log('Form data valid_ids:', form_data?.valid_ids);
+
+        // If form_data is missing, show error and go back
+        if (!form_data) {
+            // Use useEffect to show alert once
+            useEffect(() => {
+                Alert.alert(
+                    'Error',
+                    'Form data not loaded. Please start the registration process again.',
+                    [
+                        {
+                            text: 'OK',
+                            onPress: () => set_app_state('user_type_selection')
+                        }
+                    ]
+                );
+            }, []);
+            return null;
+        }
+
         return (
             <SafeAreaProvider>
                 <POVerificationScreen
                     personalInfo={po_personal_info}
                     accountInfo={po_account_setup}
+                    validIds={validIds}
                     onBackPress={() => set_app_state('po_email_verification')}
                     onComplete={async (verificationInfo: any) => {
                         try {
@@ -445,6 +472,7 @@ export default function App() {
                     onViewProfile={() => set_app_state('view_profile')}
                     onEditProfile={() => set_app_state('edit_profile')}
                     onOpenHelp={() => set_app_state('help_center')}
+                    onOpenSwitchRole={() => set_app_state('switch_role')}
                     initialTab={initial_home_tab}
                 />
             </SafeAreaProvider>
@@ -493,6 +521,40 @@ export default function App() {
             <SafeAreaProvider>
                 <HelpCenterScreen
                     onBack={() => set_app_state('main')}
+                />
+            </SafeAreaProvider>
+        );
+    }
+
+    if (app_state === 'switch_role') {
+        return (
+            <SafeAreaProvider>
+                <SwitchRoleScreen
+                    onBack={() => {
+                        set_initial_home_tab('profile');
+                        set_app_state('main');
+                    }}
+                    onRoleChanged={async () => {
+                        // Reload user data after role switch
+                        try {
+                            const stored_user_data = await storage_service.get_user_data();
+                            if (stored_user_data) {
+                                set_user_data(stored_user_data);
+                                
+                                // Update selected user type based on the switched role
+                                // Note: The backend will have updated the session's current_role
+                                // but user_data.user_type will still be 'both'
+                                // We need to re-fetch or just keep it as is
+                            }
+                        } catch (error) {
+                            console.error('Error reloading user data after role switch:', error);
+                        }
+                    }}
+                    userData={{
+                        username: user_data?.username,
+                        email: user_data?.email,
+                        user_type: user_data?.user_type,
+                    }}
                 />
             </SafeAreaProvider>
         );

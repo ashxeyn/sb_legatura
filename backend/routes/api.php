@@ -90,6 +90,16 @@ Route::post('/contractor/projects/{projectId}/milestones', [\App\Http\Controller
 
 // Note: profile update registered below inside sanctum-protected group
 
+// DEBUG TEST ENDPOINT - Remove after testing
+Route::get('/test-auth', function (Request $request) {
+    return response()->json([
+        'request_user' => $request->user() ? 'EXISTS (ID: '.$request->user()->user_id.')' : 'NULL',
+        'auth_check' => auth('sanctum')->check() ? 'TRUE' : 'FALSE',
+        'auth_user' => auth('sanctum')->user() ? 'EXISTS (ID: '.auth('sanctum')->user()->user_id.')' : 'NULL',
+        'has_bearer' => $request->bearerToken() ? 'YES ('.substr($request->bearerToken(), 0, 10).'...)' : 'NO',
+    ]);
+})->middleware('auth:sanctum');
+
 // Protected routes (require authentication via Sanctum)
 Route::middleware('auth:sanctum')->group(function () {
 
@@ -118,6 +128,22 @@ Route::middleware('auth:sanctum')->group(function () {
     // Role management
     Route::post('/role/switch', [cprocessController::class, 'switchRole']);
     Route::get('/role/current', [cprocessController::class, 'getCurrentRole']);
+    
+    // Test endpoint first
+    Route::get('/role/switch-form-test', function() {
+        Log::info('Test endpoint called');
+        return response()->json(['success' => true, 'message' => 'Test endpoint works']);
+    });
+    
+    Route::get('/role/switch-form', [authController::class, 'showSwitchForm']); // Get form data for adding role
+    
+    // Add role endpoints (for users with single role to add another role)
+    Route::post('/role/add/contractor/step1', [authController::class, 'switchContractorStep1']);
+    Route::post('/role/add/contractor/step2', [authController::class, 'switchContractorStep2']);
+    Route::post('/role/add/contractor/final', [authController::class, 'switchContractorFinal']);
+    Route::post('/role/add/owner/step1', [authController::class, 'switchOwnerStep1']);
+    Route::post('/role/add/owner/step2', [authController::class, 'switchOwnerStep2']);
+    Route::post('/role/add/owner/final', [authController::class, 'switchOwnerFinal']);
 
     // Dashboard
     Route::get('/dashboard', [projectsController::class, 'showDashboard']);

@@ -111,9 +111,10 @@ interface HomepageProps {
   onViewProfile?: () => void;
   onEditProfile?: () => void;
   onOpenHelp?: () => void;
+  onOpenSwitchRole?: () => void;
 }
 
-export default function HomepageScreen({ userType = 'property_owner', userData, onLogout, onViewProfile, onEditProfile, onOpenHelp }: HomepageProps) {
+export default function HomepageScreen({ userType = 'property_owner', userData, onLogout, onViewProfile, onEditProfile, onOpenHelp, onOpenSwitchRole }: HomepageProps) {
   const insets = useSafeAreaInsets();
   const [popularContractors, setPopularContractors] = useState<ContractorType[]>([]);
   const [availableProjects, setAvailableProjects] = useState<Project[]>([]);
@@ -800,9 +801,11 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
           onLogout={handleLogout}
           onViewProfile={onViewProfile}
           onOpenHelp={onOpenHelp}
+          onOpenSwitchRole={onOpenSwitchRole}
           userData={{
             username: userData?.username,
             email: userData?.email,
+            user_type: userData?.user_type,
             profile_pic: userData?.profile_pic ? getStorageUrl(userData.profile_pic) : undefined,
             cover_photo: userData?.cover_photo ? getStorageUrl(userData.cover_photo) : undefined,
             user_type: userData?.user_type,
@@ -821,9 +824,11 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
         onViewProfile={onViewProfile}
         onEditProfile={onEditProfile}
         onOpenHelp={onOpenHelp}
+        onOpenSwitchRole={onOpenSwitchRole}
         userData={{
           username: userData?.username,
           email: userData?.email,
+          user_type: userData?.user_type,
           profile_pic: userData?.profile_pic ? getStorageUrl(userData.profile_pic) : undefined,
           cover_photo: userData?.cover_photo ? getStorageUrl(userData.cover_photo) : undefined,
           user_type: userData?.user_type,

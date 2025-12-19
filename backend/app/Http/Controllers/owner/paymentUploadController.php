@@ -77,17 +77,17 @@ class paymentUploadController extends Controller
 				$receiptPath = $file->storeAs('payments/receipts', $filename, 'public');
 			}
 
-		// Get contractor user id from project
+			// Get contractor user id from project
 		// Get primary contractor user (owner role preferred, or first active user)
-		$project = DB::table('projects as p')
-			->leftJoin('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
-			->leftJoin('contractors as c', 'p.selected_contractor_id', '=', 'c.contractor_id')
+			$project = DB::table('projects as p')
+				->leftJoin('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
+				->leftJoin('contractors as c', 'p.selected_contractor_id', '=', 'c.contractor_id')
 			->leftJoin('contractor_users as cu', function($join) {
 				$join->on('c.contractor_id', '=', 'cu.contractor_id')
 					->where('cu.is_active', '=', 1)
 					->where('cu.is_deleted', '=', 0);
 			})
-			->where('p.project_id', $validated['project_id'])
+				->where('p.project_id', $validated['project_id'])
 			->select(
 				'p.project_id', 
 				'pr.owner_id', 
@@ -97,40 +97,40 @@ class paymentUploadController extends Controller
 				) as contractor_user_id')
 			)
 			->groupBy('p.project_id', 'pr.owner_id')
-			->first();
+				->first();
 
-		// Get owner_id from property_owners table
-		$owner = DB::table('property_owners')->where('user_id', $user->user_id)->first();
-		$ownerId = $owner ? $owner->owner_id : null;
+			// Get owner_id from property_owners table
+			$owner = DB::table('property_owners')->where('user_id', $user->user_id)->first();
+			$ownerId = $owner ? $owner->owner_id : null;
 
 		if (!$ownerId) {
 			return response()->json(['success' => false, 'message' => 'Owner record not found. Please contact support.'], 403);
 		}
 
-		$hasAccess = false;
-		if ($ownerId && $project && $project->owner_id) {
-			$hasAccess = ($project->owner_id == $ownerId);
-		} else if ($project) {
-			// Legacy: compare user_id directly
-			$hasAccess = ($project->owner_id == $user->user_id);
-		}
+			$hasAccess = false;
+			if ($ownerId && $project && $project->owner_id) {
+				$hasAccess = ($project->owner_id == $ownerId);
+			} else if ($project) {
+				// Legacy: compare user_id directly
+				$hasAccess = ($project->owner_id == $user->user_id);
+			}
 
-		if (!$project || !$hasAccess) {
-			return response()->json(['success' => false, 'message' => 'Project not found or access denied'], 403);
-		}
+			if (!$project || !$hasAccess) {
+				return response()->json(['success' => false, 'message' => 'Project not found or access denied'], 403);
+			}
 
 		// Validate contractor_user_id exists
 		if (!$project->contractor_user_id) {
 			return response()->json(['success' => false, 'message' => 'Contractor user not found for this project. Please contact support.'], 403);
 		}
 
-		// Prevent multiple active submissions for the same milestone item.
-		// Only allow a new upload if existing payments for this item are all 'rejected' or 'deleted'.
-		$existingCount = DB::table('milestone_payments')
-			->where('item_id', $validated['item_id'])
+			// Prevent multiple active submissions for the same milestone item.
+			// Only allow a new upload if existing payments for this item are all 'rejected' or 'deleted'.
+			$existingCount = DB::table('milestone_payments')
+				->where('item_id', $validated['item_id'])
 			->where('owner_id', $ownerId)
-			->whereNotIn('payment_status', ['rejected', 'deleted'])
-			->count();
+				->whereNotIn('payment_status', ['rejected', 'deleted'])
+				->count();
 
 			if ($existingCount > 0) {
 				return response()->json(['success' => false, 'message' => 'You already have a payment validation submitted for this milestone. Only payments with status rejected or deleted can be re-submitted.'], 403);
@@ -156,18 +156,18 @@ class paymentUploadController extends Controller
 				$transactionDate = date('Y-m-d', strtotime($validated['transaction_date']));
 			}
 
-		$data = [
-			'item_id' => $validated['item_id'],
-			'project_id' => $validated['project_id'],
+			$data = [
+				'item_id' => $validated['item_id'],
+				'project_id' => $validated['project_id'],
 			'owner_id' => $ownerId,
 			'contractor_user_id' => $project->contractor_user_id,
-			'amount' => $validated['amount'],
-			'payment_type' => $validated['payment_type'],
-			'transaction_number' => $validated['transaction_number'] ?? null,
+				'amount' => $validated['amount'],
+				'payment_type' => $validated['payment_type'],
+				'transaction_number' => $validated['transaction_number'] ?? null,
 			'receipt_photo' => $receiptPath ?? '',
-			'transaction_date' => $transactionDate,
-			'payment_status' => 'submitted'
-		];
+				'transaction_date' => $transactionDate,
+				'payment_status' => 'submitted'
+			];
 
 			$paymentId = $this->paymentClass->createPayment($data);
 

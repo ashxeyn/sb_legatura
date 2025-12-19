@@ -369,7 +369,7 @@ export default function ProjectView({ project, userId, userRole, onClose }: Proj
     
     if (isOwner) {
       if (hasApprovedMilestones) {
-        return {
+      return {
           title: 'Check Project Progress',
           description: 'Track milestone completion, review progress reports, and monitor payment history.',
           tapPrompt: 'Tap to view project progress',
@@ -391,8 +391,8 @@ export default function ProjectView({ project, userId, userRole, onClose }: Proj
           tapPrompt: 'Tap to view details',
           icon: 'clipboard',
           iconColor: COLORS.info,
-        };
-      }
+      };
+    }
     }
     
     // Contractor view
@@ -632,7 +632,7 @@ export default function ProjectView({ project, userId, userRole, onClose }: Proj
                   <View style={styles.projectInfoContent}>
                     <Text style={styles.projectInfoLabel}>Project Budget</Text>
                     <Text style={styles.projectInfoValue}>{formatCurrency(currentProject.accepted_bid?.proposed_cost || 0)}</Text>
-                  </View>
+                </View>
                 </View>
               </View>
 

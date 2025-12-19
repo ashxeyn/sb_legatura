@@ -16,7 +16,8 @@ import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 
 interface ProfileScreenProps {
   onLogout: () => void;
-  onEditProfile?: () => void; // ✅ Add this line
+  onEditProfile?: () => void;
+  onSwitchRole?: () => void; // ✅ Add switch role handler
   userData?: {
     username?: string;
     email?: string;
@@ -25,7 +26,6 @@ interface ProfileScreenProps {
     user_type?: string;
     onViewProfile?: () => void;
     onEditProfile?: () => void;
-
   };
 }
 
@@ -39,7 +39,7 @@ interface MenuItem {
   danger?: boolean;
 }
 
-export default function ProfileScreen({ onLogout, onViewProfile, onEditProfile, userData }: ProfileScreenProps) {
+export default function ProfileScreen({ onLogout, onViewProfile, onEditProfile, onSwitchRole, userData }: ProfileScreenProps) {
   const insets = useSafeAreaInsets();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
@@ -106,6 +106,16 @@ export default function ProfileScreen({ onLogout, onViewProfile, onEditProfile, 
           subtitle: 'Update your password',
           showArrow: true,
           onPress: () => Alert.alert('Coming Soon', 'This feature is under development.'),
+        },
+        {
+          id: 'switch_role',
+          icon: 'swap-horizontal-outline',
+          label: 'Switch Role',
+          subtitle: userData?.user_type === 'both' ? 'Switch to Contractor view' : 'Role switching not available',
+          showArrow: userData?.user_type === 'both',
+          onPress: userData?.user_type === 'both' 
+            ? onSwitchRole 
+            : () => Alert.alert('Not Available', 'You only have one role registered.'),
         },
       ],
     },

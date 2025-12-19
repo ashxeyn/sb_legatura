@@ -32,7 +32,13 @@ export default function UserTypeSelectionScreen({ onBackPress, onContinue }: Use
         const response = await auth_service.get_signup_form_data();
 
         if (response.success) {
-          setFormData(response.data);
+          console.log('Form data received:', response.data);
+          // After normalization in auth_service, response.data should be the actual data object
+          const formData = response.data;
+          console.log('Form data (extracted):', formData);
+          console.log('Valid IDs in response:', formData?.valid_ids);
+          console.log('Valid IDs count:', formData?.valid_ids?.length || 0);
+          setFormData(formData);
         } else {
           Alert.alert('Error', 'Failed to load form data. Please check your connection.');
         }

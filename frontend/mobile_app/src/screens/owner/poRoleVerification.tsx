@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -16,25 +16,72 @@ import { MaterialIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { PropertyOwnerPersonalInfo as PersonalInfo } from './personalInfo';
 import { AccountInfo } from './accountSetup';
-import { VALID_ID_TYPES } from '../../data/validIdTypes';
+import { valid_id, auth_service } from '../../services/auth_service';
 
 interface VerificationScreenProps {
   onBackPress: () => void;
   onComplete: (verificationInfo: VerificationInfo) => void;
   personalInfo: PersonalInfo;
   accountInfo: AccountInfo;
+  validIds: valid_id[];
   initialData?: VerificationInfo | null;
 }
 
 export interface VerificationInfo {
-  idType: string;
+  valid_id_id: number;
+  idTypeName: string;
   idFrontImage?: string;
   idBackImage?: string;
   policeClearanceImage?: string;
 }
 
-export default function VerificationScreen({ onBackPress, onComplete, personalInfo, accountInfo, initialData }: VerificationScreenProps) {
-  const [idType, setIdType] = useState(initialData?.idType || '');
+export default function VerificationScreen({ onBackPress, onComplete, personalInfo, accountInfo, validIds, initialData }: VerificationScreenProps) {
+  const [localValidIds, setLocalValidIds] = useState<valid_id[]>(validIds || []);
+  const [isLoadingIds, setIsLoadingIds] = useState(false);
+
+  // Log validIds for debugging
+  useEffect(() => {
+    console.log('VerificationScreen - validIds prop:', validIds);
+    console.log('VerificationScreen - validIds length:', validIds?.length || 0);
+    
+    // If validIds prop is empty, try to load them directly
+    if (!validIds || validIds.length === 0) {
+      console.log('Valid IDs not provided, attempting to load from API...');
+      loadValidIds();
+    } else {
+      setLocalValidIds(validIds);
+    }
+  }, [validIds]);
+
+  const loadValidIds = async () => {
+    try {
+      setIsLoadingIds(true);
+      const response = await auth_service.get_signup_form_data();
+      console.log('Full API response:', JSON.stringify(response, null, 2));
+      
+      // After normalization in auth_service, response.data should be the actual data object
+      const validIdsData = response.data?.valid_ids;
+      
+      if (response.success && validIdsData && Array.isArray(validIdsData) && validIdsData.length > 0) {
+        console.log('Loaded valid IDs from API:', validIdsData);
+        setLocalValidIds(validIdsData);
+      } else {
+        console.error('Failed to load valid IDs. Response:', response);
+        console.error('Valid IDs data:', validIdsData);
+        console.error('Response data structure:', response.data);
+      }
+    } catch (error) {
+      console.error('Error loading valid IDs:', error);
+    } finally {
+      setIsLoadingIds(false);
+    }
+  };
+
+  const [selectedValidId, setSelectedValidId] = useState<valid_id | null>(
+    initialData?.valid_id_id && validIds && validIds.length > 0
+      ? validIds.find(id => id.id === initialData.valid_id_id) || null
+      : null
+  );
   const [idFrontImage, setIdFrontImage] = useState<string | null>(initialData?.idFrontImage || null);
   const [idBackImage, setIdBackImage] = useState<string | null>(initialData?.idBackImage || null);
   const [policeClearanceImage, setPoliceClearanceImage] = useState<string | null>(initialData?.policeClearanceImage || null);
@@ -42,30 +89,46 @@ export default function VerificationScreen({ onBackPress, onComplete, personalIn
   // ID Type selector states
   const [showIdTypeModal, setShowIdTypeModal] = useState(false);
   const [idTypeSearch, setIdTypeSearch] = useState('');
-  const [filteredIdTypes, setFilteredIdTypes] = useState(VALID_ID_TYPES);
+  const [filteredIdTypes, setFilteredIdTypes] = useState<valid_id[]>(localValidIds);
+
+  // Update filteredIdTypes when localValidIds changes
+  useEffect(() => {
+    if (localValidIds && localValidIds.length > 0) {
+      setFilteredIdTypes(localValidIds);
+      console.log('Valid IDs loaded:', localValidIds);
+    } else {
+      console.warn('Valid IDs is empty or undefined:', localValidIds);
+    }
+  }, [localValidIds]);
 
   const handleIdTypeSearch = (text: string) => {
     setIdTypeSearch(text);
     if (text.trim() === '') {
-      setFilteredIdTypes(VALID_ID_TYPES);
+      setFilteredIdTypes(localValidIds || []);
     } else {
-      const filtered = VALID_ID_TYPES.filter(type =>
-        type.toLowerCase().includes(text.toLowerCase())
+      const filtered = (localValidIds || []).filter(id =>
+        id.valid_id_name.toLowerCase().includes(text.toLowerCase())
       );
       setFilteredIdTypes(filtered);
     }
   };
 
-  const selectIdType = (selectedIdType: string) => {
-    setIdType(selectedIdType);
+  const selectIdType = (selectedId: valid_id) => {
+    setSelectedValidId(selectedId);
     setIdTypeSearch('');
-    setFilteredIdTypes(VALID_ID_TYPES);
+    setFilteredIdTypes(localValidIds || []);
     setShowIdTypeModal(false);
   };
 
   const openIdTypeModal = () => {
+    if (!localValidIds || localValidIds.length === 0) {
+      Alert.alert('Error', 'Valid IDs are not loaded. Please try again.');
+      // Try to reload
+      loadValidIds();
+      return;
+    }
     setIdTypeSearch('');
-    setFilteredIdTypes(VALID_ID_TYPES);
+    setFilteredIdTypes(localValidIds);
     setShowIdTypeModal(true);
   };
 
@@ -140,11 +203,11 @@ export default function VerificationScreen({ onBackPress, onComplete, personalIn
   };
 
   const isFormValid = () => {
-    return idType.trim() !== '' && idFrontImage && idBackImage && policeClearanceImage;
+    return selectedValidId !== null && idFrontImage && idBackImage && policeClearanceImage;
   };
 
   const handleComplete = () => {
-    if (!idType.trim()) {
+    if (!selectedValidId) {
       Alert.alert('Error', 'Please select a valid ID type');
       return;
     }
@@ -160,7 +223,8 @@ export default function VerificationScreen({ onBackPress, onComplete, personalIn
     }
 
     const verificationInfo: VerificationInfo = {
-      idType: idType.trim(),
+      valid_id_id: selectedValidId.id,
+      idTypeName: selectedValidId.valid_id_name,
       idFrontImage,
       idBackImage,
       policeClearanceImage,
@@ -201,14 +265,24 @@ export default function VerificationScreen({ onBackPress, onComplete, personalIn
 
         <View style={styles.formContainer}>
           <View style={styles.inputContainer}>
-            <TouchableOpacity style={styles.dropdownContainer} onPress={openIdTypeModal}>
-              <View style={styles.dropdownInputWrapper}>
-                <Text style={[styles.dropdownInputText, !idType && styles.placeholderText]}>
-                  {idType || 'Type of Valid ID'}
-                </Text>
-                <MaterialIcons name="keyboard-arrow-down" size={24} color="#666666" style={styles.dropdownIcon} />
+            {isLoadingIds ? (
+              <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>Loading valid IDs...</Text>
               </View>
-            </TouchableOpacity>
+            ) : (!localValidIds || localValidIds.length === 0) ? (
+              <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>Valid IDs are not loaded. Please go back and try again.</Text>
+              </View>
+            ) : (
+              <TouchableOpacity style={styles.dropdownContainer} onPress={openIdTypeModal}>
+                <View style={styles.dropdownInputWrapper}>
+                  <Text style={[styles.dropdownInputText, !selectedValidId && styles.placeholderText]}>
+                    {selectedValidId ? selectedValidId.valid_id_name : 'Type of Valid ID'}
+                  </Text>
+                  <MaterialIcons name="keyboard-arrow-down" size={24} color="#666666" style={styles.dropdownIcon} />
+                </View>
+              </TouchableOpacity>
+            )}
           </View>
 
           <View style={styles.sectionSeparator}>
@@ -334,20 +408,26 @@ export default function VerificationScreen({ onBackPress, onComplete, personalIn
               autoFocus
             />
 
-            <FlatList
-              data={filteredIdTypes}
-              keyExtractor={(item, index) => `${item}-${index}`}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={styles.idTypeItem}
-                  onPress={() => selectIdType(item)}
-                >
-                  <Text style={styles.idTypeText}>{item}</Text>
-                </TouchableOpacity>
-              )}
-              style={styles.idTypeList}
-              showsVerticalScrollIndicator={false}
-            />
+            {filteredIdTypes.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>No valid IDs available. Please check your connection.</Text>
+              </View>
+            ) : (
+              <FlatList
+                data={filteredIdTypes}
+                keyExtractor={(item) => item.id.toString()}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={styles.idTypeItem}
+                    onPress={() => selectIdType(item)}
+                  >
+                    <Text style={styles.idTypeText}>{item.valid_id_name}</Text>
+                  </TouchableOpacity>
+                )}
+                style={styles.idTypeList}
+                showsVerticalScrollIndicator={false}
+              />
+            )}
           </View>
         </View>
       </Modal>
@@ -606,5 +686,27 @@ const styles = StyleSheet.create({
   idTypeText: {
     fontSize: 16,
     color: '#333333',
+  },
+  emptyContainer: {
+    padding: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#999999',
+    textAlign: 'center',
+  },
+  errorContainer: {
+    backgroundColor: '#FFF3CD',
+    borderWidth: 1,
+    borderColor: '#FFC107',
+    borderRadius: 12,
+    padding: 16,
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#856404',
+    textAlign: 'center',
   },
 });
