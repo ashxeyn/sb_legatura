@@ -5,6 +5,7 @@ namespace App\Http\Requests\Both;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Http\Exceptions\HttpResponseException;
+use Laravel\Sanctum\PersonalAccessToken;
 
 class disputeRequest extends FormRequest
 {
@@ -74,19 +75,57 @@ class disputeRequest extends FormRequest
                 'integer',
                 'exists:milestone_items,item_id',
                 function ($attribute, $value, $fail) {
-                    if ($value) {
-                        $user = \Session::get('user');
-                        if ($user) {
-                            $existingDispute = \DB::table('disputes')
-                                ->where('milestone_item_id', $value)
-                                ->where('raised_by_user_id', $user->user_id)
-                                ->whereIn('dispute_status', ['open', 'under_review'])
-                                ->first();
-
-                            if ($existingDispute) {
-                                $fail('You already have an open dispute for this milestone item. Please wait for it to be resolved or closed before filing another dispute.');
+                    try {
+                        if ($value) {
+                            // Try to get user from session first
+                            $user = \Session::get('user');
+                            $userId = null;
+                            
+                            // If no session user, try to get from request (for API token auth)
+                            if (!$user) {
+                                $request = request();
+                                $bearerToken = $request->bearerToken();
+                                if ($bearerToken) {
+                                    try {
+                                        $token = PersonalAccessToken::findToken($bearerToken);
+                                        if ($token) {
+                                            $user = $token->tokenable;
+                                        }
+                                    } catch (\Exception $e) {
+                                        // Token lookup failed, continue without user
+                                        \Log::warning('disputeRequest validation: Token lookup failed', ['error' => $e->getMessage()]);
+                                    }
+                                }
+                                
+                                // Fallback to request->user() if available
+                                if (!$user && $request->user()) {
+                                    $user = $request->user();
+                                }
                             }
+                            
+                            if ($user && isset($user->user_id)) {
+                                $userId = $user->user_id;
+                                if ($userId) {
+                                    $existingDispute = \DB::table('disputes')
+                                        ->where('milestone_item_id', $value)
+                                        ->where('raised_by_user_id', $userId)
+                                        ->whereIn('dispute_status', ['open', 'under_review'])
+                                        ->first();
+
+                                    if ($existingDispute) {
+                                        $fail('You already have an open dispute for this milestone item. Please wait for it to be resolved or closed before filing another dispute.');
+                                    }
+                                }
+                            }
+                            // If no user found, skip this validation check (will be handled in controller)
                         }
+                    } catch (\Exception $e) {
+                        // Log validation error but don't fail validation - let controller handle auth
+                        \Log::warning('disputeRequest validation error in milestone_item_id check', [
+                            'error' => $e->getMessage(),
+                            'trace' => $e->getTraceAsString()
+                        ]);
+                        // Don't fail validation - controller will handle authentication
                     }
                 }
             ],

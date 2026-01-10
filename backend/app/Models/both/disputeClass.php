@@ -9,22 +9,53 @@ class disputeClass
 {
     public function createDispute($data)
     {
-        $disputeId = DB::table('disputes')->insertGetId([
-            'project_id' => $data['project_id'],
-            'raised_by_user_id' => $data['raised_by_user_id'],
-            'against_user_id' => $data['against_user_id'],
-            'milestone_id' => $data['milestone_id'],
-            'milestone_item_id' => $data['milestone_item_id'],
-            'dispute_type' => $data['dispute_type'],
-            'dispute_desc' => $data['dispute_desc'],
-            'if_others_distype' => isset($data['if_others_distype']) ? $data['if_others_distype'] : null,
-            'dispute_status' => 'open',
-            'admin_response' => null,
-            'created_at' => now(),
-            'resolved_at' => null
-        ]);
+        try {
+            // Prepare insert data
+            $insertData = [
+                'project_id' => $data['project_id'],
+                'raised_by_user_id' => $data['raised_by_user_id'],
+                'against_user_id' => $data['against_user_id'],
+                'milestone_id' => isset($data['milestone_id']) ? $data['milestone_id'] : null,
+                'milestone_item_id' => isset($data['milestone_item_id']) ? $data['milestone_item_id'] : null,
+                'dispute_type' => $data['dispute_type'],
+                'dispute_desc' => $data['dispute_desc'],
+                'if_others_distype' => isset($data['if_others_distype']) && !empty($data['if_others_distype']) ? $data['if_others_distype'] : null,
+                'dispute_status' => 'open',
+                'reason' => '', // Set to empty string as some database schemas require this field to be NOT NULL
+                'admin_response' => null,
+                'resolved_at' => null
+            ];
 
-        return $disputeId;
+            // Only set created_at if it's not auto-managed by the database
+            // Most databases will handle this automatically with DEFAULT current_timestamp()
+            // But we'll set it explicitly to be safe
+            $insertData['created_at'] = now();
+
+            \Log::info('createDispute: Attempting to insert dispute', [
+                'data' => array_merge($insertData, ['dispute_desc' => substr($insertData['dispute_desc'], 0, 50) . '...'])
+            ]);
+
+            $disputeId = DB::table('disputes')->insertGetId($insertData);
+
+            \Log::info('createDispute: Dispute created successfully', ['dispute_id' => $disputeId]);
+
+            return $disputeId;
+        } catch (\Illuminate\Database\QueryException $e) {
+            \Log::error('createDispute: Database query exception', [
+                'error' => $e->getMessage(),
+                'code' => $e->getCode(),
+                'sql' => $e->getSql() ?? 'N/A',
+                'bindings' => $e->getBindings() ?? []
+            ]);
+            throw $e;
+        } catch (\Exception $e) {
+            \Log::error('createDispute: General exception', [
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ]);
+            throw $e;
+        }
     }
 
     public function getDisputesByUser($userId)

@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
+use Laravel\Sanctum\PersonalAccessToken;
 
 class projectsController extends Controller
 {
@@ -1415,13 +1416,57 @@ class projectsController extends Controller
     public function completeProject(Request $request, $projectId)
     {
         try {
+            \Log::info('completeProject called', [
+                'project_id' => $projectId,
+                'bearer_token' => $request->bearerToken() ? 'present' : 'missing'
+            ]);
+
             // Support both session-based auth (web) and token-based auth (mobile API)
             $user = Session::get('user');
-            if (!$user && $request->user()) {
-                $user = $request->user();
+            
+            // If no session user, try to authenticate via Sanctum token
+            if (!$user) {
+                $bearerToken = $request->bearerToken();
+                \Log::info('completeProject: No session user, checking bearer token', [
+                    'token_present' => $bearerToken ? 'yes' : 'no'
+                ]);
+                
+                if ($bearerToken) {
+                    // Find the token in the database
+                    $token = PersonalAccessToken::findToken($bearerToken);
+                    if ($token) {
+                        // Get the user associated with the token
+                        $user = $token->tokenable;
+                        \Log::info('completeProject: Token found, user authenticated', [
+                            'user_id' => $user->user_id ?? null
+                        ]);
+                        // Store user in session for downstream code that expects it there
+                        if ($user && !Session::has('user')) {
+                            Session::put('user', $user);
+                        }
+                    } else {
+                        \Log::warning('completeProject: Token not found in database');
+                    }
+                }
+                
+                // Fallback to request->user() if available (when middleware is applied)
+                if (!$user && $request->user()) {
+                    $user = $request->user();
+                    \Log::info('completeProject: Using request->user()', [
+                        'user_id' => $user->user_id ?? null
+                    ]);
+                    if (!Session::has('user')) {
+                        Session::put('user', $user);
+                    }
+                }
+            } else {
+                \Log::info('completeProject: Using session user', [
+                    'user_id' => $user->user_id ?? null
+                ]);
             }
 
             if (!$user) {
+                \Log::warning('completeProject: No user found, returning 401');
                 return response()->json(['success' => false, 'message' => 'Authentication required'], 401);
             }
 

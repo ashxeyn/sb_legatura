@@ -18,6 +18,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { milestones_service } from '../../services/milestones_service';
 import { projects_service } from '../../services/projects_service';
 import MilestoneApproval from './milestoneApproval';
+import MilestoneSetup from '../contractor/milestoneSetup';
 
 // Color palette
 const COLORS = {
@@ -142,6 +143,7 @@ export default function ProjectView({ project, userId, userRole, onClose }: Proj
   const [rejectingMilestone, setRejectingMilestone] = useState<number | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [showMilestoneApproval, setShowMilestoneApproval] = useState(false);
+  const [showMilestoneSetup, setShowMilestoneSetup] = useState(false);
 
   const isOwner = userRole === 'owner';
   const isContractor = userRole === 'contractor';
@@ -656,6 +658,16 @@ export default function ProjectView({ project, userId, userRole, onClose }: Proj
                 : "Set up milestones to define the project timeline and payment schedule."
               }
             </Text>
+            {isContractor && (
+              <TouchableOpacity
+                style={styles.setupMilestoneButton}
+                onPress={() => setShowMilestoneSetup(true)}
+                activeOpacity={0.8}
+              >
+                <Feather name="settings" size={18} color="#FFFFFF" />
+                <Text style={styles.setupMilestoneButtonText}>Setup Milestone</Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
 
@@ -694,6 +706,27 @@ export default function ProjectView({ project, userId, userRole, onClose }: Proj
           }}
           navigation={{
             goBack: () => setShowMilestoneApproval(false),
+          }}
+        />
+      </Modal>
+
+      {/* Milestone Setup Screen - Full Screen Modal */}
+      <Modal
+        visible={showMilestoneSetup}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        onRequestClose={() => setShowMilestoneSetup(false)}
+      >
+        <MilestoneSetup
+          project={currentProject}
+          userId={userId}
+          onClose={() => {
+            setShowMilestoneSetup(false);
+            refreshProjectData(); // Refresh to show new milestones
+          }}
+          onSave={() => {
+            setShowMilestoneSetup(false);
+            refreshProjectData(); // Refresh to show new milestones
           }}
         />
       </Modal>
@@ -921,6 +954,28 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     textAlign: 'center',
     lineHeight: 20,
+    marginBottom: 20,
+  },
+  setupMilestoneButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 12,
+    marginTop: 8,
+    gap: 8,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  setupMilestoneButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   // Inline contractor styles (inside dropdown)
   contractorInfoInline: {

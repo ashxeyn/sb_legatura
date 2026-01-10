@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Storage;
 use Exception;
+use Laravel\Sanctum\PersonalAccessToken;
 
 class disputeController extends Controller
 {
@@ -22,16 +23,46 @@ class disputeController extends Controller
 
     private function checkAuthentication(Request $request)
     {
+        \Log::info('checkAuthentication called', ['bearer_token' => $request->bearerToken() ? 'present' : 'missing']);
+        
         // Support both session-based auth (web) and token-based auth (mobile API)
         $user = Session::get('user');
-        if (!$user && $request->user()) {
-            // Mobile app using Sanctum Bearer token
-            $user = $request->user();
-            // Store in session for downstream code
-            Session::put('user', $user);
+        
+        // If no session user, try to authenticate via Sanctum token
+        if (!$user) {
+            $bearerToken = $request->bearerToken();
+            \Log::info('checkAuthentication: No session user, checking bearer token', ['token_present' => $bearerToken ? 'yes' : 'no']);
+            
+            if ($bearerToken) {
+                // Find the token in the database
+                $token = PersonalAccessToken::findToken($bearerToken);
+                if ($token) {
+                    // Get the user associated with the token
+                    $user = $token->tokenable;
+                    \Log::info('checkAuthentication: Token found, user authenticated', ['user_id' => $user->user_id ?? null]);
+                    // Store user in session for downstream code that expects it there
+                    if ($user && !Session::has('user')) {
+                        Session::put('user', $user);
+                    }
+                } else {
+                    \Log::warning('checkAuthentication: Token not found in database');
+                }
+            }
+            
+            // Fallback to request->user() if available (when middleware is applied)
+            if (!$user && $request->user()) {
+                $user = $request->user();
+                \Log::info('checkAuthentication: Using request->user()', ['user_id' => $user->user_id ?? null]);
+                if (!Session::has('user')) {
+                    Session::put('user', $user);
+                }
+            }
+        } else {
+            \Log::info('checkAuthentication: Using session user', ['user_id' => $user->user_id ?? null]);
         }
         
         if (!$user) {
+            \Log::warning('checkAuthentication: No user found, returning 401');
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => false,
@@ -73,18 +104,84 @@ class disputeController extends Controller
         }
     }
 
-    public function fileDispute(disputeRequest $request)
+    public function fileDispute(Request $request)
     {
+        // Log immediately to confirm request reached this method
+        \Log::info('fileDispute METHOD CALLED', [
+            'bearer_token' => $request->bearerToken() ? 'present' : 'missing',
+            'method' => $request->method(),
+            'url' => $request->fullUrl(),
+            'has_files' => $request->hasFile('evidence_files') || $request->hasFile('evidence_file')
+        ]);
+        
         try {
+            
+            // Manually validate the request
+            try {
+                $validated = $request->validate([
+                    'project_id' => 'required|integer|exists:projects,project_id',
+                    'milestone_id' => 'required|integer|exists:milestones,milestone_id',
+                    'milestone_item_id' => 'required|integer|exists:milestone_items,item_id',
+                    'dispute_type' => 'required|string|in:Payment,Delay,Quality,Others',
+                    'dispute_desc' => 'required|string|max:2000',
+                    'if_others_distype' => 'nullable|required_if:dispute_type,Others|string|max:255',
+                    'evidence_file' => 'nullable|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:5120',
+                    'evidence_files' => 'nullable|array|max:10',
+                    'evidence_files.*' => 'file|mimes:jpg,jpeg,png,pdf,doc,docx|max:5120'
+                ]);
+            } catch (\Illuminate\Validation\ValidationException $e) {
+                \Log::error('fileDispute validation failed', ['errors' => $e->errors()]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $e->errors()
+                ], 422);
+            } catch (\Exception $e) {
+                \Log::error('fileDispute validation error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation error: ' . $e->getMessage()
+                ], 422);
+            }
+            
             $authCheck = $this->checkAuthentication($request);
             if ($authCheck) {
                 return $authCheck;
             }
 
             $user = Session::get('user');
+            if (!$user) {
+                \Log::error('fileDispute: No user found after checkAuthentication');
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Authentication failed'
+                ], 401);
+            }
+            
             $userId = $user->user_id;
-
-            $validated = $request->validated();
+            \Log::info('fileDispute: User authenticated', ['user_id' => $userId]);
+            \Log::info('fileDispute: Request validated', [
+                'project_id' => $validated['project_id'] ?? null,
+                'milestone_id' => $validated['milestone_id'] ?? null,
+                'milestone_item_id' => $validated['milestone_item_id'] ?? null,
+                'dispute_type' => $validated['dispute_type'] ?? null,
+                'has_files' => $request->hasFile('evidence_files') || $request->hasFile('evidence_file')
+            ]);
+            
+            // Check for existing open dispute for this milestone item
+            $existingDispute = DB::table('disputes')
+                ->where('milestone_item_id', $validated['milestone_item_id'])
+                ->where('raised_by_user_id', $userId)
+                ->whereIn('dispute_status', ['open', 'under_review'])
+                ->first();
+            
+            if ($existingDispute) {
+                \Log::warning('fileDispute: Existing open dispute found', ['dispute_id' => $existingDispute->dispute_id ?? null]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You already have an open dispute for this milestone item. Please wait for it to be resolved or closed before filing another dispute.'
+                ], 400);
+            }
 
             // Validate project and its users
             $validation = $this->disputeClass->validateProjectUsers($validated['project_id']);
@@ -134,6 +231,40 @@ class disputeController extends Controller
                 ], 400);
             }
 
+            // Validate milestone exists and belongs to project
+            $milestone = DB::table('milestones')
+                ->where('milestone_id', $validated['milestone_id'])
+                ->where('project_id', $validated['project_id'])
+                ->first();
+            
+            if (!$milestone) {
+                \Log::warning('fileDispute: Milestone validation failed', [
+                    'milestone_id' => $validated['milestone_id'],
+                    'project_id' => $validated['project_id']
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid milestone: Milestone not found or does not belong to this project'
+                ], 400);
+            }
+
+            // Validate milestone item exists and belongs to milestone
+            $milestoneItem = DB::table('milestone_items')
+                ->where('item_id', $validated['milestone_item_id'])
+                ->where('milestone_id', $validated['milestone_id'])
+                ->first();
+            
+            if (!$milestoneItem) {
+                \Log::warning('fileDispute: Milestone item validation failed', [
+                    'milestone_item_id' => $validated['milestone_item_id'],
+                    'milestone_id' => $validated['milestone_id']
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid milestone item: Item not found or does not belong to this milestone'
+                ], 400);
+            }
+
             $disputeData = [
                 'project_id' => $validated['project_id'],
                 'raised_by_user_id' => $userId,
@@ -142,37 +273,57 @@ class disputeController extends Controller
                 'milestone_item_id' => $validated['milestone_item_id'],
                 'dispute_type' => $validated['dispute_type'],
                 'dispute_desc' => $validated['dispute_desc'],
-                'if_others_distype' => isset($validated['if_others_distype']) ? $validated['if_others_distype'] : null
+                'if_others_distype' => isset($validated['if_others_distype']) && !empty($validated['if_others_distype']) ? $validated['if_others_distype'] : null
             ];
+
+            \Log::info('fileDispute: About to create dispute', [
+                'dispute_data' => array_merge($disputeData, ['dispute_desc' => substr($disputeData['dispute_desc'], 0, 50) . '...'])
+            ]);
 
             $disputeId = $this->disputeClass->createDispute($disputeData);
 
             // Handle multiple evidence files
             $uploadedFiles = [];
+            $files = [];
+            
             if ($request->hasFile('evidence_files')) {
-                $files = $request->file('evidence_files');
-                if (!is_array($files)) {
-                    $files = [$files];
+                $uploadedFilesFromRequest = $request->file('evidence_files');
+                if (is_array($uploadedFilesFromRequest)) {
+                    $files = $uploadedFilesFromRequest;
+                } else {
+                    $files = [$uploadedFilesFromRequest];
                 }
-
-                foreach ($files as $file) {
-                    $fileName = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-                    $storagePath = $file->storeAs('disputes/evidence', $fileName, 'public');
-
-                    $fileId = $this->disputeClass->createDisputeFile(
-                        $disputeId,
-                        $storagePath,
-                        $file->getClientOriginalName(),
-                        $file->getMimeType(),
-                        $file->getSize()
-                    );
-
-                    $uploadedFiles[] = [
-                        'file_id' => $fileId,
-                        'original_name' => $file->getClientOriginalName(),
-                        'size' => $file->getSize()
-                    ];
+            } else {
+                // Try alternative format: evidence_files[0], evidence_files[1], etc.
+                $allFiles = $request->allFiles();
+                foreach ($allFiles as $key => $file) {
+                    if (strpos($key, 'evidence_files') === 0) {
+                        if (is_array($file)) {
+                            $files = array_merge($files, $file);
+                        } else {
+                            $files[] = $file;
+                        }
+                    }
                 }
+            }
+
+            foreach ($files as $file) {
+                $fileName = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+                $storagePath = $file->storeAs('disputes/evidence', $fileName, 'public');
+
+                $fileId = $this->disputeClass->createDisputeFile(
+                    $disputeId,
+                    $storagePath,
+                    $file->getClientOriginalName(),
+                    $file->getMimeType(),
+                    $file->getSize()
+                );
+
+                $uploadedFiles[] = [
+                    'file_id' => $fileId,
+                    'original_name' => $file->getClientOriginalName(),
+                    'size' => $file->getSize()
+                ];
             }
 
             // Keep backward compatibility with single file
@@ -197,6 +348,11 @@ class disputeController extends Controller
             }
 
             if ($disputeId) {
+                \Log::info('fileDispute: Dispute created successfully', [
+                    'dispute_id' => $disputeId,
+                    'files_count' => count($uploadedFiles)
+                ]);
+                
                 if ($request->expectsJson()) {
                     return response()->json([
                         'success' => true,
@@ -215,22 +371,91 @@ class disputeController extends Controller
                     ], 201);
                 }
             } else {
+                \Log::error('fileDispute: Failed to create dispute', ['user_id' => $userId]);
                 return response()->json([
                     'success' => false,
                     'message' => 'Failed to file dispute'
                 ], 500);
             }
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            \Log::error('fileDispute ValidationException', [
+                'errors' => $e->errors(),
+                'message' => $e->getMessage()
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Illuminate\Database\QueryException $e) {
+            $user = Session::get('user');
+            $userId = $user ? ($user->user_id ?? null) : null;
+            
+            \Log::error('fileDispute QueryException: ' . $e->getMessage(), [
+                'user_id' => $userId,
+                'sql' => $e->getSql() ?? 'N/A',
+                'bindings' => $e->getBindings() ?? [],
+                'code' => $e->getCode(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ]);
+
+            // Provide user-friendly error message
+            $errorMessage = 'Database error occurred while filing dispute';
+            if (strpos($e->getMessage(), 'foreign key constraint') !== false) {
+                $errorMessage = 'Invalid project, milestone, or user reference. Please verify the project and milestone information.';
+            } elseif (strpos($e->getMessage(), 'cannot be null') !== false) {
+                $errorMessage = 'Required information is missing. Please check all fields are filled correctly.';
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => $errorMessage,
+                'error_type' => 'DatabaseError',
+                'debug' => config('app.debug') ? $e->getMessage() : null
+            ], 500);
         } catch (\Exception $e) {
-            \Log::error('Dispute submission error: ' . $e->getMessage(), [
-                'user_id' => $user->user_id ?? null,
-                'request_data' => $request->all(),
-                'trace' => $e->getTraceAsString()
+            $user = Session::get('user');
+            $userId = $user ? ($user->user_id ?? null) : null;
+            
+            \Log::error('fileDispute EXCEPTION: ' . $e->getMessage(), [
+                'user_id' => $userId,
+                'exception_type' => get_class($e),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+                'request_data' => $request->except(['evidence_files', 'evidence_file']) // Exclude files from log
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Error filing dispute',
-                'error' => $e->getMessage()
+                'message' => 'Error filing dispute: ' . $e->getMessage(),
+                'error_type' => get_class($e),
+                'debug' => config('app.debug') ? [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine()
+                ] : null
+            ], 500);
+        } catch (\Throwable $e) {
+            // Catch any PHP errors including fatal errors
+            $user = Session::get('user');
+            $userId = $user ? ($user->user_id ?? null) : null;
+            
+            \Log::error('fileDispute THROWABLE: ' . $e->getMessage(), [
+                'user_id' => $userId,
+                'exception_type' => get_class($e),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Fatal error filing dispute: ' . $e->getMessage(),
+                'debug' => config('app.debug') ? [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine()
+                ] : null
             ], 500);
         }
     }
@@ -238,15 +463,27 @@ class disputeController extends Controller
     public function getDisputes(Request $request)
     {
         try {
+            \Log::info('getDisputes called', ['bearer_token' => $request->bearerToken() ? 'present' : 'missing']);
+            
             $authCheck = $this->checkAuthentication($request);
             if ($authCheck) {
                 return $authCheck;
             }
 
             $user = Session::get('user');
+            if (!$user) {
+                \Log::error('getDisputes: No user found after checkAuthentication');
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Authentication failed'
+                ], 401);
+            }
+            
             $userId = $user->user_id;
+            \Log::info('getDisputes: User authenticated', ['user_id' => $userId]);
 
             $disputes = $this->disputeClass->getDisputesWithFiles($userId);
+            \Log::info('getDisputes: Disputes retrieved', ['count' => count($disputes)]);
 
             if ($request->expectsJson()) {
                 return response()->json([
@@ -264,11 +501,16 @@ class disputeController extends Controller
                 ], 200);
             }
         } catch (\Exception $e) {
+            $userId = Session::get('user')->user_id ?? null;
+            \Log::error('getDisputes error: ' . $e->getMessage(), [
+                'user_id' => $userId,
+                'trace' => $e->getTraceAsString()
+            ]);
+            
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Error retrieving disputes',
-                    'error' => $e->getMessage()
+                    'message' => 'Error retrieving disputes: ' . $e->getMessage()
                 ], 500);
             } else {
                 return response()->json([
@@ -1028,13 +1270,12 @@ class disputeController extends Controller
 
     public function approvePayment(Request $request, $paymentId)
     {
-        // Support both session-based auth (web) and token-based auth (mobile API)
-        $user = Session::get('user');
-        if (!$user && $request->user()) {
-            $user = $request->user();
-            Session::put('user', $user);
+        $authCheck = $this->checkAuthentication($request);
+        if ($authCheck) {
+            return $authCheck;
         }
 
+        $user = Session::get('user');
         if (!$user) {
             return response()->json([
                 'success' => false,
@@ -1128,13 +1369,12 @@ class disputeController extends Controller
 
     public function rejectPayment(Request $request, $paymentId)
     {
-        // Support both session-based auth (web) and token-based auth (mobile API)
-        $user = Session::get('user');
-        if (!$user && $request->user()) {
-            $user = $request->user();
-            Session::put('user', $user);
+        $authCheck = $this->checkAuthentication($request);
+        if ($authCheck) {
+            return $authCheck;
         }
 
+        $user = Session::get('user');
         if (!$user) {
             return response()->json([
                 'success' => false,

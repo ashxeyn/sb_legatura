@@ -271,13 +271,16 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
     try {
       const response = await payment_service.get_payments_by_project(projectId);
       if (response.success) {
-        setPaymentHistory(response.data?.payments || []);
+        // Handle different response structures
+        const payments = response.data?.payments || response.payments || [];
+        setPaymentHistory(Array.isArray(payments) ? payments : []);
       } else {
-        Alert.alert('Error', response.message || 'Failed to fetch payment history');
+        console.warn('Payment history API returned unsuccessful response:', response.message);
+        setPaymentHistory([]); // Set empty array instead of showing alert
       }
     } catch (error) {
       console.error('Error fetching payment history:', error);
-      Alert.alert('Error', 'Failed to fetch payment history');
+      setPaymentHistory([]); // Set empty array instead of showing alert
     } finally {
       setLoadingPayments(false);
     }
@@ -721,8 +724,8 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
         <View style={{ height: 140 }} />
       </ScrollView>
 
-      {/* Action Buttons - Fixed at Bottom */}
-      {submittedMilestone && (
+      {/* Action Buttons - Fixed at Bottom - Only show for owners */}
+      {submittedMilestone && userRole === 'owner' && (
         <View style={[styles.actionButtonsContainer, { paddingBottom: insets.bottom + 16 }]}>
           <TouchableOpacity
             style={styles.requestChangesBtn}

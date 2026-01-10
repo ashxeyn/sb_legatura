@@ -13,6 +13,7 @@ import {
   Dimensions,
   Modal,
   FlatList,
+  Alert,
 } from 'react-native';
 import { View as SafeAreaView, StatusBar, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -21,6 +22,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { projects_service } from '../../services/projects_service';
 import MyProjects from './myProjects';
 import MyBids from './myBids';
+import MilestoneSetup from './milestoneSetup';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -108,6 +110,9 @@ export default function ContractorDashboard({
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pinnedBid, setPinnedBid] = useState<Bid | null>(null);
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [showMilestoneSetup, setShowMilestoneSetup] = useState(false);
+  const [isLoadingProject, setIsLoadingProject] = useState(false);
   const [showPinModal, setShowPinModal] = useState(false);
   const [showPinOptions, setShowPinOptions] = useState(false);
   const [avatarError, setAvatarError] = useState(false);
@@ -120,9 +125,9 @@ export default function ContractorDashboard({
 
   // Notify parent when entering/exiting full-screen mode
   useEffect(() => {
-    const isFullScreen = showMyProjects || showMyBids;
+    const isFullScreen = showMyProjects || showMyBids || showMilestoneSetup;
     onFullScreenChange?.(isFullScreen);
-  }, [showMyProjects, showMyBids, onFullScreenChange]);
+  }, [showMyProjects, showMyBids, showMilestoneSetup, onFullScreenChange]);
 
   useEffect(() => {
     setAvatarError(false);
@@ -198,6 +203,35 @@ export default function ContractorDashboard({
     return `${formatNum(min)} - ${formatNum(max)}`;
   };
 
+  const handleAcceptedBidClick = async (bid: Bid) => {
+    try {
+      setIsLoadingProject(true);
+      // Fetch contractor projects to get the full project data
+      const response = await projects_service.get_contractor_projects(userData?.user_id || 0);
+      
+      if (response.success) {
+        const projectsData = response.data?.data || response.data || [];
+        const project = Array.isArray(projectsData) 
+          ? projectsData.find((p: Project) => p.project_id === bid.project_id)
+          : null;
+        
+        if (project) {
+          setSelectedProject(project);
+          setShowMilestoneSetup(true);
+        } else {
+          Alert.alert('Error', 'Project not found. Please try again.');
+        }
+      } else {
+        Alert.alert('Error', 'Failed to load project data. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error loading project:', error);
+      Alert.alert('Error', 'Failed to load project data. Please try again.');
+    } finally {
+      setIsLoadingProject(false);
+    }
+  };
+
   const formatCost = (cost: number) => {
     if (cost >= 1000000) return `₱${(cost / 1000000).toFixed(2)}M`;
     if (cost >= 1000) return `₱${(cost / 1000).toFixed(0)}K`;
@@ -246,6 +280,39 @@ export default function ContractorDashboard({
           <Text style={styles.loadingText}>Loading your dashboard...</Text>
         </View>
       </SafeAreaView>
+    );
+  }
+
+  if (isLoadingProject) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar hidden={true} />
+        <View style={styles.loadingContainer}>
+          <View style={styles.loadingSpinner}>
+            <ActivityIndicator size="large" color={COLORS.primary} />
+          </View>
+          <Text style={styles.loadingText}>Loading project...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Show Milestone Setup screen if selected
+  if (showMilestoneSetup && selectedProject) {
+    return (
+      <MilestoneSetup
+        project={selectedProject}
+        userId={userData?.user_id}
+        onClose={() => {
+          setShowMilestoneSetup(false);
+          setSelectedProject(null);
+        }}
+        onSave={() => {
+          setShowMilestoneSetup(false);
+          setSelectedProject(null);
+          fetchData(); // Refresh dashboard after saving milestones
+        }}
+      />
     );
   }
 
@@ -536,6 +603,15 @@ export default function ContractorDashboard({
                     key={bid.bid_id}
                     style={styles.bidCard}
                     activeOpacity={0.7}
+                    onPress={async () => {
+                      // If bid is accepted, redirect to milestone setup
+                      if (bid.bid_status === 'accepted') {
+                        await handleAcceptedBidClick(bid);
+                      } else {
+                        // For other statuses, navigate to MyBids screen
+                        onBrowseProjects?.();
+                      }
+                    }}
                   >
                     <View style={styles.bidCardHeader}>
                       <View style={styles.bidTypeTag}>

@@ -60,20 +60,21 @@ Route::post('/owner/milestones/{milestoneId}/approve', [projectsController::clas
 Route::post('/owner/milestones/{milestoneId}/reject', [projectsController::class, 'apiRejectMilestone']);
 Route::post('/owner/milestones/{milestoneId}/complete', [projectsController::class, 'apiSetMilestoneComplete']);
 Route::post('/owner/milestone-items/{itemId}/complete', [projectsController::class, 'apiSetMilestoneItemComplete']);
-Route::post('/owner/projects/{projectId}/complete', [projectsController::class, 'completeProject'])->middleware('auth:sanctum');
+Route::post('/owner/projects/{projectId}/complete', [projectsController::class, 'completeProject']);
 
-// Owner payment upload routes for mobile app
-Route::post('/owner/payment/upload', [paymentUploadController::class, 'uploadPayment'])->middleware('auth:sanctum');
-Route::put('/owner/payment/{paymentId}', [paymentUploadController::class, 'updatePayment'])->middleware('auth:sanctum');
-Route::delete('/owner/payment/{paymentId}', [paymentUploadController::class, 'deletePayment'])->middleware('auth:sanctum');
-Route::get('/projects/{projectId}/payments', [paymentUploadController::class, 'getPaymentsByProject'])->middleware('auth:sanctum');
-Route::get('/milestone-items/{itemId}/payments', [paymentUploadController::class, 'getPaymentsByItem'])->middleware('auth:sanctum');
+// Owner payment upload routes for mobile app - controller handles auth manually
+Route::post('/owner/payment/upload', [paymentUploadController::class, 'uploadPayment']);
+Route::put('/owner/payment/{paymentId}', [paymentUploadController::class, 'updatePayment']);
+Route::delete('/owner/payment/{paymentId}', [paymentUploadController::class, 'deletePayment']);
+// Payment routes - controllers handle both session and token auth
+Route::get('/projects/{projectId}/payments', [paymentUploadController::class, 'getPaymentsByProject']);
+Route::get('/milestone-items/{itemId}/payments', [paymentUploadController::class, 'getPaymentsByItem']);
 
 // Progress files retrieval for mobile app (owners and contractors)
 // These routes use optional Sanctum auth - controller handles both session and token auth
-Route::get('/both/progress/files/{itemId}', [progressUploadController::class, 'getProgressFilesForBoth'])->middleware('auth:sanctum');
-Route::get('/contractor/progress/files/{itemId}', [progressUploadController::class, 'getProgressFiles'])->middleware('auth:sanctum');
-Route::post('/contractor/progress/upload', [progressUploadController::class, 'uploadProgress'])->middleware('auth:sanctum');
+Route::get('/both/progress/files/{itemId}', [progressUploadController::class, 'getProgressFilesForBoth']);
+Route::get('/contractor/progress/files/{itemId}', [progressUploadController::class, 'getProgressFiles']);
+Route::post('/contractor/progress/upload', [progressUploadController::class, 'uploadProgress']);
 
 // Contractor endpoints - for contractor feed
 Route::get('/contractor/projects', [projectsController::class, 'apiGetApprovedProjects']);
@@ -199,9 +200,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/', [progressUploadController::class, 'store']);
         Route::put('/{id}', [progressUploadController::class, 'update']);
         Route::delete('/{id}', [progressUploadController::class, 'destroy']);
-        Route::post('/{id}/approve', [progressUploadController::class, 'approveProgress']);
-        Route::post('/{id}/reject', [progressUploadController::class, 'rejectProgress']);
-
         // Progress files
         Route::post('/files', [progressUploadController::class, 'uploadFiles']);
         Route::delete('/files/{id}', [progressUploadController::class, 'deleteFile']);
@@ -214,19 +212,28 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/', [paymentUploadController::class, 'store']);
         Route::put('/{id}', [paymentUploadController::class, 'update']);
         Route::delete('/{id}', [paymentUploadController::class, 'destroy']);
-        Route::post('/{id}/approve', [disputeController::class, 'approvePayment'])->middleware('auth:sanctum');
-        Route::post('/{id}/reject', [disputeController::class, 'rejectPayment'])->middleware('auth:sanctum');
     });
 
     // Disputes (Both)
-    Route::prefix('disputes')->group(function () {
-        Route::get('/', [disputeController::class, 'getDisputes'])->middleware('auth:sanctum');
-        Route::get('/{id}', [disputeController::class, 'getDisputeDetails'])->middleware('auth:sanctum');
-        Route::post('/', [disputeController::class, 'fileDispute'])->middleware('auth:sanctum');
-        Route::put('/{id}', [disputeController::class, 'updateDispute'])->middleware('auth:sanctum');
-        Route::delete('/{id}', [disputeController::class, 'cancelDispute'])->middleware('auth:sanctum');
-    });
-
     // Projects list (Both)
     Route::get('/projects', [disputeController::class, 'showProjectsPage']);
 });
+
+// Payment approve/reject routes - controller handles auth manually
+Route::prefix('payments')->group(function () {
+    Route::post('/{id}/approve', [disputeController::class, 'approvePayment']);
+    Route::post('/{id}/reject', [disputeController::class, 'rejectPayment']);
+});
+
+// Disputes routes - controller handles auth manually
+Route::prefix('disputes')->group(function () {
+    Route::get('/', [disputeController::class, 'getDisputes']);
+    Route::get('/{id}', [disputeController::class, 'getDisputeDetails']);
+    Route::post('/', [disputeController::class, 'fileDispute']);
+    Route::put('/{id}', [disputeController::class, 'updateDispute']);
+    Route::delete('/{id}', [disputeController::class, 'cancelDispute']);
+});
+
+// Progress approve/reject routes - outside middleware group so controller can handle auth manually
+Route::post('/progress/{id}/approve', [progressUploadController::class, 'approveProgress']);
+Route::post('/progress/{id}/reject', [progressUploadController::class, 'rejectProgress']);

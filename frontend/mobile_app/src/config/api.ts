@@ -25,9 +25,9 @@ export const api_config = {
             final: '/accounts/signup/owner/final',
         },
         address: {
-            provinces: '/api/provinces',
-            cities: (province_code: string) => `/api/provinces/${province_code}/cities`,
-            barangays: (city_code: string) => `/api/cities/${city_code}/barangays`,
+            provinces: '/api/psgc/provinces',
+            cities: (province_code: string) => `/api/psgc/provinces/${province_code}/cities`,
+            barangays: (city_code: string) => `/api/psgc/cities/${city_code}/barangays`,
         },
         contractors: {
             list: '/api/contractors',

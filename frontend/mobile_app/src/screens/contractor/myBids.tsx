@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons, Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { projects_service } from '../../services/projects_service';
+import MilestoneSetup from './milestoneSetup';
 
 interface Bid {
   bid_id: number;
@@ -86,6 +87,18 @@ export default function MyBids({ userData, onClose }: MyBidsProps) {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [selectedBid, setSelectedBid] = useState<Bid | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [selectedProject, setSelectedProject] = useState<any>(null);
+  const [showMilestoneSetup, setShowMilestoneSetup] = useState(false);
+  const [isLoadingProject, setIsLoadingProject] = useState(false);
+
+  // Debug effect to track state changes
+  useEffect(() => {
+    console.log('MyBids - State update:', {
+      showMilestoneSetup,
+      hasSelectedProject: !!selectedProject,
+      selectedProjectId: selectedProject?.project_id
+    });
+  }, [showMilestoneSetup, selectedProject]);
 
   const statusBarHeight = insets.top || (Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 44);
 
@@ -128,6 +141,70 @@ export default function MyBids({ userData, onClose }: MyBidsProps) {
     setRefreshing(true);
     await fetchBids();
     setRefreshing(false);
+  };
+
+  const handleAcceptedBidClick = async (bid: Bid) => {
+    try {
+      setIsLoadingProject(true);
+      console.log('handleAcceptedBidClick - Fetching project for bid:', bid.bid_id, 'project_id:', bid.project_id);
+      
+      // Fetch contractor projects to get the full project data
+      const response = await projects_service.get_contractor_projects(userData?.user_id || 0);
+      console.log('handleAcceptedBidClick - Response:', response);
+      
+      if (response.success) {
+        // Handle nested response structure
+        let projectsData = response.data;
+        if (projectsData && projectsData.data && Array.isArray(projectsData.data)) {
+          projectsData = projectsData.data;
+        } else if (!Array.isArray(projectsData)) {
+          projectsData = [];
+        }
+        
+        console.log('handleAcceptedBidClick - Projects data:', projectsData);
+        console.log('handleAcceptedBidClick - Projects count:', projectsData.length);
+        console.log('handleAcceptedBidClick - Looking for project_id:', bid.project_id);
+        console.log('handleAcceptedBidClick - Available project IDs:', projectsData.map((p: any) => ({ id: p.project_id, title: p.project_title })));
+        
+        // Try to find project by project_id (convert to number for comparison)
+        const projectIdToFind = Number(bid.project_id);
+        const project = projectsData.find((p: any) => Number(p.project_id) === projectIdToFind);
+        
+        console.log('handleAcceptedBidClick - Found project:', project);
+        console.log('handleAcceptedBidClick - Project ID match:', project ? `Match: ${project.project_id} === ${bid.project_id}` : 'No match');
+        
+        if (project) {
+          // Ensure project has the right structure for milestone setup
+          const projectForSetup = {
+            ...project,
+            display_status: project.display_status || project.project_status || 'waiting_milestone_setup',
+            milestones: project.milestones || [],
+            milestones_count: project.milestones_count || 0
+          };
+          console.log('handleAcceptedBidClick - Setting project for milestone setup:', projectForSetup);
+          console.log('handleAcceptedBidClick - Project display_status:', projectForSetup.display_status);
+          console.log('handleAcceptedBidClick - Project milestones:', projectForSetup.milestones);
+          
+          // Set state directly - this should trigger re-render with MilestoneSetup
+          setSelectedProject(projectForSetup);
+          setShowMilestoneSetup(true);
+          console.log('handleAcceptedBidClick - State set: showMilestoneSetup=true, selectedProject set');
+          console.log('handleAcceptedBidClick - Component should now render MilestoneSetup');
+        } else {
+          console.error('handleAcceptedBidClick - Project not found in projects list');
+          console.error('handleAcceptedBidClick - Bid project_id:', bid.project_id, 'Type:', typeof bid.project_id);
+          Alert.alert('Error', `Project not found. Looking for project_id: ${bid.project_id}. Please try again.`);
+        }
+      } else {
+        console.error('handleAcceptedBidClick - Failed to fetch projects:', response.message);
+        Alert.alert('Error', 'Failed to load project data. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error loading project:', error);
+      Alert.alert('Error', 'Failed to load project data. Please try again.');
+    } finally {
+      setIsLoadingProject(false);
+    }
   };
 
   const formatCost = (cost: number) => {
@@ -178,6 +255,32 @@ export default function MyBids({ userData, onClose }: MyBidsProps) {
     rejected: bids.filter(b => b.bid_status === 'rejected').length,
   };
 
+  // Show Milestone Setup screen if selected - MUST be first check before any other rendering
+  if (showMilestoneSetup && selectedProject) {
+    console.log('MyBids - Rendering MilestoneSetup with project:', selectedProject);
+    console.log('MyBids - Project ID:', selectedProject.project_id);
+    console.log('MyBids - Project title:', selectedProject.project_title);
+    console.log('MyBids - Project display_status:', selectedProject.display_status);
+    
+    return (
+      <MilestoneSetup
+        project={selectedProject}
+        userId={userData?.user_id}
+        onClose={() => {
+          console.log('MyBids - MilestoneSetup onClose called');
+          setShowMilestoneSetup(false);
+          setSelectedProject(null);
+        }}
+        onSave={() => {
+          console.log('MyBids - MilestoneSetup onSave called');
+          setShowMilestoneSetup(false);
+          setSelectedProject(null);
+          fetchBids(); // Refresh bids after saving milestones
+        }}
+      />
+    );
+  }
+
   if (isLoading && !refreshing) {
     return (
       <View style={[styles.container, { paddingTop: statusBarHeight }]}>
@@ -185,6 +288,18 @@ export default function MyBids({ userData, onClose }: MyBidsProps) {
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.primary} />
           <Text style={styles.loadingText}>Loading your bids...</Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (isLoadingProject) {
+    return (
+      <View style={[styles.container, { paddingTop: statusBarHeight }]}>
+        <StatusBar hidden={true} />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+          <Text style={styles.loadingText}>Loading project...</Text>
         </View>
       </View>
     );
@@ -289,8 +404,12 @@ export default function MyBids({ userData, onClose }: MyBidsProps) {
                 style={styles.bidCard}
                 activeOpacity={0.7}
                 onPress={() => {
-                  setSelectedBid(bid);
-                  setShowDetailsModal(true);
+                  // Only show details modal for non-accepted bids
+                  // Accepted bids use the Setup button
+                  if (bid.bid_status !== 'accepted') {
+                    setSelectedBid(bid);
+                    setShowDetailsModal(true);
+                  }
                 }}
               >
                 <View style={styles.bidHeader}>
@@ -347,17 +466,32 @@ export default function MyBids({ userData, onClose }: MyBidsProps) {
                 </View>
 
                 <View style={styles.bidFooter}>
-                  <View style={styles.dateContainer}>
-                    <Feather name="calendar" size={12} color={COLORS.textMuted} />
-                    <Text style={styles.dateText}>
-                      Submitted {formatDate(bid.submitted_at)}
-                    </Text>
-                  </View>
-                  {bid.owner_name && (
-                    <View style={styles.ownerContainer}>
-                      <Feather name="user" size={12} color={COLORS.textMuted} />
-                      <Text style={styles.ownerText}>{bid.owner_name}</Text>
+                  <View style={styles.footerLeft}>
+                    <View style={styles.dateContainer}>
+                      <Feather name="calendar" size={12} color={COLORS.textMuted} />
+                      <Text style={styles.dateText}>
+                        Submitted {formatDate(bid.submitted_at)}
+                      </Text>
                     </View>
+                    {bid.owner_name && (
+                      <View style={styles.ownerContainer}>
+                        <Feather name="user" size={12} color={COLORS.textMuted} />
+                        <Text style={styles.ownerText}>{bid.owner_name}</Text>
+                      </View>
+                    )}
+                  </View>
+                  {bid.bid_status === 'accepted' && (
+                    <TouchableOpacity
+                      style={styles.setupButton}
+                      onPress={async (e) => {
+                        e.stopPropagation(); // Prevent card click
+                        await handleAcceptedBidClick(bid);
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <Feather name="settings" size={14} color="#FFFFFF" />
+                      <Text style={styles.setupButtonText}>Setup</Text>
+                    </TouchableOpacity>
                   )}
                 </View>
               </TouchableOpacity>
@@ -834,6 +968,12 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: COLORS.border,
   },
+  footerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
   dateContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1057,5 +1197,19 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     marginTop: 12,
     textAlign: 'center',
+  },
+  setupButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  setupButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginLeft: 6,
   },
 });

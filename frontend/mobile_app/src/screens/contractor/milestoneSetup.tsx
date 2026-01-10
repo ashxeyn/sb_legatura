@@ -10,7 +10,9 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
+  StatusBar,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { projects_service } from '../../services/projects_service';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -588,7 +590,8 @@ const MilestoneSetup: React.FC<MilestoneSetupProps> = ({ project, userId, onClos
   );
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <StatusBar barStyle="light-content" backgroundColor={PRIMARY} />
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={onClose}>
@@ -646,7 +649,7 @@ const MilestoneSetup: React.FC<MilestoneSetupProps> = ({ project, userId, onClos
           </TouchableOpacity>
         )}
       </View>
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -657,7 +660,7 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: PRIMARY,
-    paddingTop: 50,
+    paddingTop: 12,
     paddingBottom: 20,
     paddingHorizontal: 20,
     flexDirection: 'row',

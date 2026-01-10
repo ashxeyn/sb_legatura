@@ -52,7 +52,7 @@ export class progress_service {
         method: 'POST',
         headers: {
           'Accept': 'application/json',
-          'Content-Type': 'multipart/form-data',
+          // Don't set Content-Type for FormData - browser will set it automatically with boundary
         },
         body: formData,
       });

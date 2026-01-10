@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Laravel\Sanctum\PersonalAccessToken;
 
 class progressUploadController extends Controller
 {
@@ -71,9 +72,30 @@ class progressUploadController extends Controller
     {
         // Support both session-based auth (web) and token-based auth (mobile API)
         $user = Session::get('user');
-        if (!$user && $request->user()) {
-            // Mobile app using Sanctum Bearer token
-            $user = $request->user();
+        
+        // If no session user, try to authenticate via Sanctum token
+        if (!$user) {
+            $bearerToken = $request->bearerToken();
+            if ($bearerToken) {
+                // Find the token in the database
+                $token = PersonalAccessToken::findToken($bearerToken);
+                if ($token) {
+                    // Get the user associated with the token
+                    $user = $token->tokenable;
+                    // Store user in session for downstream code that expects it there
+                    if ($user && !Session::has('user')) {
+                        Session::put('user', $user);
+                    }
+                }
+            }
+            
+            // Fallback to request->user() if available (when middleware is applied)
+            if (!$user && $request->user()) {
+                $user = $request->user();
+                if (!Session::has('user')) {
+                    Session::put('user', $user);
+                }
+            }
         }
         
         if (!$user) {
@@ -86,11 +108,6 @@ class progressUploadController extends Controller
             } else {
                 return redirect('/accounts/login');
             }
-        }
-        
-        // Store user in session for downstream code that expects it there
-        if (!Session::has('user')) {
-            Session::put('user', $user);
         }
 
         // Check if yung user is c
@@ -169,17 +186,35 @@ class progressUploadController extends Controller
             }
 
             // Validate that files are present
-            if (!$request->hasFile('progress_files')) {
+            // Check for both 'progress_files' (array) and single file uploads
+            $files = [];
+            if ($request->hasFile('progress_files')) {
+                $uploadedFiles = $request->file('progress_files');
+                if (is_array($uploadedFiles)) {
+                    $files = $uploadedFiles;
+                } else {
+                    $files = [$uploadedFiles];
+                }
+            } else {
+                // Try alternative format: progress_files[0], progress_files[1], etc.
+                $allFiles = $request->allFiles();
+                foreach ($allFiles as $key => $file) {
+                    if (strpos($key, 'progress_files') === 0 || is_numeric($key)) {
+                        if (is_array($file)) {
+                            $files = array_merge($files, $file);
+                        } else {
+                            $files[] = $file;
+                        }
+                    }
+                }
+            }
+
+            if (count($files) === 0) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Please upload at least one progress file'
                 ], 400);
             }
-
-                $files = $request->file('progress_files');
-                if (!is_array($files)) {
-                    $files = [$files];
-                }
 
             if (count($files) === 0) {
                 return response()->json([
@@ -282,21 +317,39 @@ class progressUploadController extends Controller
                     ], 201);
             }
         } catch (\Exception $e) {
+            $userId = null;
+            $contractorId = null;
+            $itemId = null;
+            
+            if (isset($user) && $user && isset($user->user_id)) {
+                $userId = $user->user_id;
+            }
+            if (isset($contractor) && $contractor && isset($contractor->contractor_id)) {
+                $contractorId = $contractor->contractor_id;
+            }
+            if (isset($validated) && isset($validated['item_id'])) {
+                $itemId = $validated['item_id'];
+            }
+            
             \Log::error('Progress upload error: ' . $e->getMessage(), [
-                'user_id' => $user->user_id ?? null,
-                'contractor_id' => $contractor->contractor_id ?? null,
-                'item_id' => $validated['item_id'] ?? null,
-                'request_data' => $request->all(),
-                'file_count' => $request->hasFile('progress_files') ? count($request->file('progress_files')) : 0,
+                'user_id' => $userId,
+                'contractor_id' => $contractorId,
+                'item_id' => $itemId,
+                'request_data' => $request->except(['progress_files']), // Exclude files from log
+                'file_count' => $request->hasFile('progress_files') ? (is_array($request->file('progress_files')) ? count($request->file('progress_files')) : 1) : 0,
                 'trace' => $e->getTraceAsString()
             ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Error uploading progress files: ' . $e->getMessage(),
-                'error' => $e->getMessage(),
-                'error_type' => get_class($e)
-            ], 500);
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error uploading progress files: ' . $e->getMessage(),
+                    'error' => $e->getMessage(),
+                    'error_type' => get_class($e)
+                ], 500);
+            } else {
+                return redirect('/contractor/progress/upload')->with('error', 'Error uploading progress files: ' . $e->getMessage());
+            }
         }
     }
 
@@ -452,10 +505,31 @@ class progressUploadController extends Controller
 
             // Support both session-based auth (web) and token-based auth (mobile API)
             $user = Session::get('user');
-            if (!$user && $request->user()) {
-                // Mobile app using Sanctum Bearer token
-                $user = $request->user();
-                \Log::info('getProgressFilesForBoth: Using Sanctum token auth', ['user_id' => $user->user_id]);
+            
+            // If no session user, try to authenticate via Sanctum token
+            if (!$user) {
+                $bearerToken = $request->bearerToken();
+                if ($bearerToken) {
+                    // Find the token in the database
+                    $token = PersonalAccessToken::findToken($bearerToken);
+                    if ($token) {
+                        // Get the user associated with the token
+                        $user = $token->tokenable;
+                        // Store user in session for downstream code that expects it there
+                        if ($user && !Session::has('user')) {
+                            Session::put('user', $user);
+                        }
+                        \Log::info('getProgressFilesForBoth: Using Sanctum token auth', ['user_id' => $user->user_id ?? null]);
+                    }
+                }
+                
+                // Fallback to request->user() if available (when middleware is applied)
+                if (!$user && $request->user()) {
+                    $user = $request->user();
+                    if (!Session::has('user')) {
+                        Session::put('user', $user);
+                    }
+                }
             }
             
             if (!$user) {
@@ -470,7 +544,7 @@ class progressUploadController extends Controller
                 return redirect('/accounts/login')->with('error', 'Please login to continue');
             }
 
-            \Log::info('getProgressFilesForBoth user found', ['user_id' => $user->user_id]);
+            \Log::info('getProgressFilesForBoth user found', ['user_id' => $user->user_id ?? null]);
 
             // Check if user has access to this milestone item (either as owner or contractor)
             // projects -> relationship_id -> project_relationships -> owner_id -> property_owners
@@ -511,17 +585,29 @@ class progressUploadController extends Controller
                 ]
             ], 200);
         } catch (\Exception $e) {
+            $userId = null;
+            if (isset($user) && $user) {
+                $userId = is_object($user) ? ($user->user_id ?? $user->id ?? null) : ($user['user_id'] ?? null);
+            }
+            
             \Log::error('getProgressFilesForBoth error: ' . $e->getMessage(), [
                 'item_id' => $itemId,
-                'user_id' => $user->user_id ?? null,
+                'user_id' => $userId,
                 'trace' => $e->getTraceAsString()
             ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Error retrieving progress files: ' . $e->getMessage(),
-                'error' => $e->getMessage()
-            ], 500);
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error retrieving progress files: ' . $e->getMessage(),
+                    'data' => [
+                        'progress_list' => [],
+                        'total_count' => 0
+                    ]
+                ], 500);
+            } else {
+                return redirect('/accounts/login')->with('error', 'Error retrieving progress files: ' . $e->getMessage());
+            }
         }
     }
 
@@ -744,84 +830,135 @@ class progressUploadController extends Controller
 
     public function approveProgress(Request $request, $progressId)
     {
-        // Support both session-based auth (web) and token-based auth (mobile API)
-        $user = Session::get('user');
-        if (!$user && $request->user()) {
-            // Mobile app using Sanctum Bearer token
-            $user = $request->user();
-        }
-        
-        if (!$user) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Authentication required',
-                'redirect_url' => '/accounts/login'
-            ], 401);
-        }
-
-        // Only owner can approve
-        if (!in_array($user->user_type, ['property_owner', 'both'])) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Access denied. Only owners can approve progress.'
-            ], 403);
-        }
-        if ($user->user_type === 'both') {
-            $currentRole = Session::get('current_role', 'owner');
-            if ($currentRole !== 'owner') {
+        try {
+            \Log::info('approveProgress called', ['progress_id' => $progressId, 'bearer_token' => $request->bearerToken() ? 'present' : 'missing']);
+            
+            // Support both session-based auth (web) and token-based auth (mobile API)
+            $user = Session::get('user');
+            
+            // If no session user, try to authenticate via Sanctum token
+            if (!$user) {
+                $bearerToken = $request->bearerToken();
+                \Log::info('approveProgress: No session user, checking bearer token', ['token_present' => $bearerToken ? 'yes' : 'no']);
+                
+                if ($bearerToken) {
+                    // Find the token in the database
+                    $token = PersonalAccessToken::findToken($bearerToken);
+                    if ($token) {
+                        // Get the user associated with the token
+                        $user = $token->tokenable;
+                        \Log::info('approveProgress: Token found, user authenticated', ['user_id' => $user->user_id ?? null]);
+                        // Store user in session for downstream code that expects it there
+                        if ($user && !Session::has('user')) {
+                            Session::put('user', $user);
+                        }
+                    } else {
+                        \Log::warning('approveProgress: Token not found in database');
+                    }
+                }
+                
+                // Fallback to request->user() if available (when middleware is applied)
+                if (!$user && $request->user()) {
+                    $user = $request->user();
+                    \Log::info('approveProgress: Using request->user()', ['user_id' => $user->user_id ?? null]);
+                    if (!Session::has('user')) {
+                        Session::put('user', $user);
+                    }
+                }
+            } else {
+                \Log::info('approveProgress: Using session user', ['user_id' => $user->user_id ?? null]);
+            }
+            
+            if (!$user) {
+                \Log::warning('approveProgress: No user found, returning 401');
                 return response()->json([
                     'success' => false,
-                    'message' => 'Access denied. Please switch to owner role to approve progress.'
+                    'message' => 'Authentication required',
+                    'redirect_url' => '/accounts/login'
+                ], 401);
+            }
+
+            // Only owner can approve
+            if (!in_array($user->user_type, ['property_owner', 'both'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Access denied. Only owners can approve progress.'
                 ], 403);
             }
-        }
+            if ($user->user_type === 'both') {
+                $currentRole = Session::get('current_role', 'owner');
+                if ($currentRole !== 'owner') {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Access denied. Please switch to owner role to approve progress.'
+                    ], 403);
+                }
+            }
 
-        // Find progress and verify owner
-        $progress = DB::table('progress')
-            ->join('milestone_items as mi', 'progress.milestone_item_id', '=', 'mi.item_id')
-            ->join('milestones as m', 'mi.milestone_id', '=', 'm.milestone_id')
-            ->join('projects as p', 'm.project_id', '=', 'p.project_id')
-            ->leftJoin('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
-            ->where('progress.progress_id', $progressId)
-            ->select('progress.*', 'pr.owner_id')
-            ->first();
+            // Find progress and verify owner
+            $progress = DB::table('progress')
+                ->join('milestone_items as mi', 'progress.milestone_item_id', '=', 'mi.item_id')
+                ->join('milestones as m', 'mi.milestone_id', '=', 'm.milestone_id')
+                ->join('projects as p', 'm.project_id', '=', 'p.project_id')
+                ->leftJoin('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
+                ->where('progress.progress_id', $progressId)
+                ->select('progress.*', 'pr.owner_id')
+                ->first();
 
-        if (!$progress) {
+            if (!$progress) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Progress report not found.'
+                ], 404);
+            }
+
+            // Get owner_id from property_owners table
+            $owner = DB::table('property_owners')->where('user_id', $user->user_id)->first();
+            $ownerId = $owner ? $owner->owner_id : null;
+
+            $hasPermission = false;
+            if ($ownerId && $progress->owner_id) {
+                // Compare owner_id from property_owners table
+                $hasPermission = ($progress->owner_id == $ownerId);
+            } else {
+                // Legacy: compare user_id directly
+                $hasPermission = ($progress->owner_id == $user->user_id);
+            }
+
+            if (!$hasPermission) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You do not have permission to approve this progress.'
+                ], 403);
+            }
+
+            // Update status
+            DB::table('progress')
+                ->where('progress_id', $progressId)
+                ->update(['progress_status' => 'approved']);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Progress report approved successfully.'
+            ], 200);
+        } catch (\Exception $e) {
+            $userId = null;
+            if (isset($user) && $user) {
+                $userId = is_object($user) ? ($user->user_id ?? $user->id ?? null) : ($user['user_id'] ?? null);
+            }
+            
+            \Log::error('approveProgress error: ' . $e->getMessage(), [
+                'progress_id' => $progressId,
+                'user_id' => $userId,
+                'trace' => $e->getTraceAsString()
+            ]);
+
             return response()->json([
                 'success' => false,
-                'message' => 'Progress report not found.'
-            ], 404);
+                'message' => 'Error approving progress report: ' . $e->getMessage(),
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        // Get owner_id from property_owners table
-        $owner = DB::table('property_owners')->where('user_id', $user->user_id)->first();
-        $ownerId = $owner ? $owner->owner_id : null;
-
-        $hasPermission = false;
-        if ($ownerId && $progress->owner_id) {
-            // Compare owner_id from property_owners table
-            $hasPermission = ($progress->owner_id == $ownerId);
-        } else {
-            // Legacy: compare user_id directly
-            $hasPermission = ($progress->owner_id == $user->user_id);
-        }
-
-        if (!$hasPermission) {
-            return response()->json([
-                'success' => false,
-                'message' => 'You do not have permission to approve this progress.'
-            ], 403);
-        }
-
-        // Update status
-        DB::table('progress')
-            ->where('progress_id', $progressId)
-            ->update(['progress_status' => 'approved']);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Progress report approved successfully.'
-        ]);
     }
 
     /**
@@ -829,86 +966,137 @@ class progressUploadController extends Controller
      */
     public function rejectProgress(Request $request, $progressId)
     {
-        // Support both session-based auth (web) and token-based auth (mobile API)
-        $user = Session::get('user');
-        if (!$user && $request->user()) {
-            // Mobile app using Sanctum Bearer token
-            $user = $request->user();
-        }
-        
-        if (!$user) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Authentication required',
-                'redirect_url' => '/accounts/login'
-            ], 401);
-        }
-
-        // Only owner can reject
-        if (!in_array($user->user_type, ['property_owner', 'both'])) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Access denied. Only owners can reject progress.'
-            ], 403);
-        }
-        if ($user->user_type === 'both') {
-            $currentRole = Session::get('current_role', 'owner');
-            if ($currentRole !== 'owner') {
+        try {
+            \Log::info('rejectProgress called', ['progress_id' => $progressId, 'bearer_token' => $request->bearerToken() ? 'present' : 'missing']);
+            
+            // Support both session-based auth (web) and token-based auth (mobile API)
+            $user = Session::get('user');
+            
+            // If no session user, try to authenticate via Sanctum token
+            if (!$user) {
+                $bearerToken = $request->bearerToken();
+                \Log::info('rejectProgress: No session user, checking bearer token', ['token_present' => $bearerToken ? 'yes' : 'no']);
+                
+                if ($bearerToken) {
+                    // Find the token in the database
+                    $token = PersonalAccessToken::findToken($bearerToken);
+                    if ($token) {
+                        // Get the user associated with the token
+                        $user = $token->tokenable;
+                        \Log::info('rejectProgress: Token found, user authenticated', ['user_id' => $user->user_id ?? null]);
+                        // Store user in session for downstream code that expects it there
+                        if ($user && !Session::has('user')) {
+                            Session::put('user', $user);
+                        }
+                    } else {
+                        \Log::warning('rejectProgress: Token not found in database');
+                    }
+                }
+                
+                // Fallback to request->user() if available (when middleware is applied)
+                if (!$user && $request->user()) {
+                    $user = $request->user();
+                    \Log::info('rejectProgress: Using request->user()', ['user_id' => $user->user_id ?? null]);
+                    if (!Session::has('user')) {
+                        Session::put('user', $user);
+                    }
+                }
+            } else {
+                \Log::info('rejectProgress: Using session user', ['user_id' => $user->user_id ?? null]);
+            }
+            
+            if (!$user) {
+                \Log::warning('rejectProgress: No user found, returning 401');
                 return response()->json([
                     'success' => false,
-                    'message' => 'Access denied. Please switch to owner role to reject progress.'
+                    'message' => 'Authentication required',
+                    'redirect_url' => '/accounts/login'
+                ], 401);
+            }
+
+            // Only owner can reject
+            if (!in_array($user->user_type, ['property_owner', 'both'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Access denied. Only owners can reject progress.'
                 ], 403);
             }
-        }
+            if ($user->user_type === 'both') {
+                $currentRole = Session::get('current_role', 'owner');
+                if ($currentRole !== 'owner') {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Access denied. Please switch to owner role to reject progress.'
+                    ], 403);
+                }
+            }
 
-        // Find progress and verify owner
-        $progress = DB::table('progress')
-            ->join('milestone_items as mi', 'progress.milestone_item_id', '=', 'mi.item_id')
-            ->join('milestones as m', 'mi.milestone_id', '=', 'm.milestone_id')
-            ->join('projects as p', 'm.project_id', '=', 'p.project_id')
-            ->leftJoin('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
-            ->where('progress.progress_id', $progressId)
-            ->select('progress.*', 'pr.owner_id')
-            ->first();
+            // Find progress and verify owner
+            $progress = DB::table('progress')
+                ->join('milestone_items as mi', 'progress.milestone_item_id', '=', 'mi.item_id')
+                ->join('milestones as m', 'mi.milestone_id', '=', 'm.milestone_id')
+                ->join('projects as p', 'm.project_id', '=', 'p.project_id')
+                ->leftJoin('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
+                ->where('progress.progress_id', $progressId)
+                ->select('progress.*', 'pr.owner_id')
+                ->first();
 
-        if (!$progress) {
+            if (!$progress) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Progress report not found.'
+                ], 404);
+            }
+
+            // Get owner_id from property_owners table
+            $owner = DB::table('property_owners')->where('user_id', $user->user_id)->first();
+            $ownerId = $owner ? $owner->owner_id : null;
+
+            $hasPermission = false;
+            if ($ownerId && $progress->owner_id) {
+                $hasPermission = ($progress->owner_id == $ownerId);
+            } else {
+                $hasPermission = ($progress->owner_id == $user->user_id);
+            }
+
+            if (!$hasPermission) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You do not have permission to reject this progress.'
+                ], 403);
+            }
+
+            // Optional rejection reason
+            $reason = $request->input('reason', null);
+
+            DB::table('progress')
+                ->where('progress_id', $progressId)
+                ->update([
+                    'progress_status' => 'rejected',
+                    'delete_reason' => $reason
+                ]);
+
             return response()->json([
-                'success' => false,
-                'message' => 'Progress report not found.'
-            ], 404);
-        }
-
-        // Get owner_id from property_owners table
-        $owner = DB::table('property_owners')->where('user_id', $user->user_id)->first();
-        $ownerId = $owner ? $owner->owner_id : null;
-
-        $hasPermission = false;
-        if ($ownerId && $progress->owner_id) {
-            $hasPermission = ($progress->owner_id == $ownerId);
-        } else {
-            $hasPermission = ($progress->owner_id == $user->user_id);
-        }
-
-        if (!$hasPermission) {
-            return response()->json([
-                'success' => false,
-                'message' => 'You do not have permission to reject this progress.'
-            ], 403);
-        }
-
-        // Optional rejection reason
-        $reason = $request->input('reason', null);
-
-        DB::table('progress')
-            ->where('progress_id', $progressId)
-            ->update([
-                'progress_status' => 'rejected',
-                'delete_reason' => $reason
+                'success' => true,
+                'message' => 'Progress report rejected successfully.'
+            ], 200);
+        } catch (\Exception $e) {
+            $userId = null;
+            if (isset($user) && $user) {
+                $userId = is_object($user) ? ($user->user_id ?? $user->id ?? null) : ($user['user_id'] ?? null);
+            }
+            
+            \Log::error('rejectProgress error: ' . $e->getMessage(), [
+                'progress_id' => $progressId,
+                'user_id' => $userId,
+                'trace' => $e->getTraceAsString()
             ]);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Progress report rejected successfully.'
-        ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Error rejecting progress report: ' . $e->getMessage(),
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }

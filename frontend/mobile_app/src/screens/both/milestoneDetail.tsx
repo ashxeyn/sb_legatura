@@ -11,6 +11,7 @@ import {
   Modal,
   ActivityIndicator,
   TextInput,
+  Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
@@ -130,6 +131,14 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
       .then(res => {
         console.log('Progress API response:', JSON.stringify(res));
         if (isMounted) {
+          // Handle error responses gracefully
+          if (!res.success) {
+            console.warn('Progress API returned unsuccessful response:', res.message);
+            setProgressReports([]);
+            setFetchError(null); // Don't show error for empty results
+            return;
+          }
+
           // Try multiple shapes: api_request wraps JSON as { success, message, data }
           // Backend may wrap data => { data: { progress_list } } or { progress_list }
           let progressList: any[] | null = null;
@@ -148,26 +157,53 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
             return null;
           };
 
-          // Common locations
-          progressList = tryArray(res.data?.data?.progress_list) || progressList;
-          progressList = tryArray(res.data?.progress_list) || progressList;
+          // Common locations - handle deeply nested responses
+          // Response structure: { success: true, data: { success: true, data: { progress_list: [...] } } }
+          // Check the most deeply nested first
+          if (res.data?.data?.progress_list) {
+            progressList = tryArray(res.data.data.progress_list);
+            console.log('Found progress_list at res.data.data.progress_list:', progressList?.length);
+          }
+          // Check one level up
+          if (!progressList && res.data?.progress_list) {
+            progressList = tryArray(res.data.progress_list);
+            console.log('Found progress_list at res.data.progress_list:', progressList?.length);
+          }
+          // Check if data.data is the array itself
+          if (!progressList && res.data?.data && Array.isArray(res.data.data)) {
+            progressList = tryArray(res.data.data);
+            console.log('Found progress_list at res.data.data (array):', progressList?.length);
+          }
           // Sometimes backend returns data directly as an array
-          progressList = tryArray(res.data) || progressList;
-          // Deep nested wrappers
-          progressList = tryArray(res.data?.data) || progressList;
+          if (!progressList && Array.isArray(res.data)) {
+            progressList = tryArray(res.data);
+            console.log('Found progress_list at res.data (array):', progressList?.length);
+          }
+          // Also check if the entire data object has progress_list at root
+          if (!progressList && res.progress_list) {
+            progressList = tryArray(res.progress_list);
+            console.log('Found progress_list at res.progress_list:', progressList?.length);
+          }
 
-          if (progressList) {
+          if (progressList && progressList.length > 0) {
             console.log('Setting progress reports from normalized list:', progressList.length);
+            console.log('Progress reports data:', JSON.stringify(progressList, null, 2));
             setProgressReports(progressList);
+            setFetchError(null);
           } else {
             console.log('No progress reports found in response, clearing list');
+            console.log('Response structure:', JSON.stringify(res, null, 2));
             setProgressReports([]);
+            setFetchError(null); // Don't show error for empty results
           }
         }
       })
       .catch(err => {
         console.error('Progress fetch error:', err);
-        if (isMounted) setFetchError('Failed to fetch progress reports.');
+        if (isMounted) {
+          setProgressReports([]);
+          setFetchError(null); // Don't show error, just show empty state
+        }
       })
       .finally(() => {
         if (isMounted) setLoadingReports(false);
@@ -185,9 +221,12 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
       .then(res => {
         console.log('Payment API response:', JSON.stringify(res));
         if (isMounted) {
-          if (res.success && res.data?.payments) {
-            setPayments(res.data.payments);
+          if (res.success) {
+            // Handle different response structures
+            const payments = res.data?.payments || res.data?.data?.payments || res.payments || [];
+            setPayments(Array.isArray(payments) ? payments : []);
           } else {
+            console.warn('Payment API returned unsuccessful response:', res.message);
             setPayments([]);
           }
         }
@@ -243,6 +282,18 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
 
   // Show milestone complete action when at least one progress report has been approved
   const hasAnyApproved = progressReports.some((p) => p.progress_status === 'approved');
+  
+  // Debug button visibility
+  const shouldShowPaymentButton = isOwner && isApproved && progressReports.some(p => p.progress_status === 'approved') && itemStatus !== 'completed';
+  console.log('Payment button visibility check:', {
+    isOwner,
+    isApproved,
+    hasApprovedProgress: progressReports.some(p => p.progress_status === 'approved'),
+    itemStatus,
+    progressReportsCount: progressReports.length,
+    progressStatuses: progressReports.map(p => p.progress_status),
+    shouldShow: shouldShowPaymentButton
+  });
 
   // Get attachment from milestone item (from database)
   const hasAttachment = milestoneItem.attachment_path && milestoneItem.attachment_name;
@@ -614,7 +665,7 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
       {/* Unified Bottom Bar: stack multiple buttons to avoid overlap */}
       <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 16 }]}>
         {/* Owner: Send payment (show if any approved) */}
-        {isOwner && isApproved && progressReports.some(p => p.progress_status === 'approved') && itemStatus !== 'completed' && (
+        {shouldShowPaymentButton && (
           <View style={styles.bottomRow}>
             <TouchableOpacity 
               style={styles.sendPaymentButton}

@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Laravel\Sanctum\PersonalAccessToken;
 
 class paymentUploadController extends Controller
 {
@@ -21,14 +22,46 @@ class paymentUploadController extends Controller
 
 	private function checkOwnerAccess(Request $request)
 	{
+		\Log::info('checkOwnerAccess called', ['bearer_token' => $request->bearerToken() ? 'present' : 'missing']);
+		
 		// Support both session-based auth (web) and token-based auth (mobile API)
 		$user = Session::get('user');
-		if (!$user && $request->user()) {
-			// Mobile app using Sanctum Bearer token
-			$user = $request->user();
+		
+		// If no session user, try to authenticate via Sanctum token
+		if (!$user) {
+			$bearerToken = $request->bearerToken();
+			\Log::info('checkOwnerAccess: No session user, checking bearer token', ['token_present' => $bearerToken ? 'yes' : 'no']);
+			
+			if ($bearerToken) {
+				// Find the token in the database
+				$token = PersonalAccessToken::findToken($bearerToken);
+				if ($token) {
+					// Get the user associated with the token
+					$user = $token->tokenable;
+					\Log::info('checkOwnerAccess: Token found, user authenticated', ['user_id' => $user->user_id ?? null]);
+					// Store user in session for downstream code that expects it there
+					if ($user && !Session::has('user')) {
+						Session::put('user', $user);
+					}
+				} else {
+					\Log::warning('checkOwnerAccess: Token not found in database');
+				}
+			}
+			
+			// Fallback to request->user() if available (when middleware is applied)
+			if (!$user && $request->user()) {
+				$user = $request->user();
+				\Log::info('checkOwnerAccess: Using request->user()', ['user_id' => $user->user_id ?? null]);
+				if (!Session::has('user')) {
+					Session::put('user', $user);
+				}
+			}
+		} else {
+			\Log::info('checkOwnerAccess: Using session user', ['user_id' => $user->user_id ?? null]);
 		}
 		
 		if (!$user) {
+			\Log::warning('checkOwnerAccess: No user found, returning 401');
 			if ($request->expectsJson()) {
 				return response()->json(['success' => false, 'message' => 'Authentication required', 'redirect_url' => '/accounts/login'], 401);
 			}
@@ -63,11 +96,21 @@ class paymentUploadController extends Controller
 	public function uploadPayment(paymentUploadRequest $request)
 	{
 		try {
+			\Log::info('uploadPayment called', ['bearer_token' => $request->bearerToken() ? 'present' : 'missing']);
+			
 			$auth = $this->checkOwnerAccess($request);
 			if ($auth) return $auth;
 
 			$user = Session::get('user');
+			if (!$user) {
+				\Log::error('uploadPayment: No user found after checkOwnerAccess');
+				return response()->json(['success' => false, 'message' => 'Authentication failed'], 401);
+			}
+			
+			\Log::info('uploadPayment: User authenticated', ['user_id' => $user->user_id ?? null]);
+			
 			$validated = $request->validated();
+			\Log::info('uploadPayment: Request validated', ['item_id' => $validated['item_id'] ?? null, 'project_id' => $validated['project_id'] ?? null]);
 
 			$receiptPath = null;
 			if ($request->hasFile('receipt_photo')) {
@@ -170,10 +213,21 @@ class paymentUploadController extends Controller
 			];
 
 			$paymentId = $this->paymentClass->createPayment($data);
+			\Log::info('uploadPayment: Payment created successfully', ['payment_id' => $paymentId]);
 
 			return response()->json(['success' => true, 'message' => 'Payment validation uploaded', 'payment_id' => $paymentId], 201);
 		} catch (\Exception $e) {
-			return response()->json(['success' => false, 'message' => 'Error uploading payment: ' . $e->getMessage()], 500);
+			$userId = Session::get('user')->user_id ?? null;
+			\Log::error('uploadPayment error: ' . $e->getMessage(), [
+				'user_id' => $userId,
+				'trace' => $e->getTraceAsString(),
+				'request_data' => $request->except(['receipt_photo']) // Exclude file from log
+			]);
+			
+			return response()->json([
+				'success' => false,
+				'message' => 'Error uploading payment: ' . $e->getMessage()
+			], 500);
 		}
 	}
 
@@ -288,13 +342,46 @@ class paymentUploadController extends Controller
 	public function getPaymentsByProject(Request $request, $projectId)
 	{
 		try {
+			\Log::info('getPaymentsByProject called', ['project_id' => $projectId, 'bearer_token' => $request->bearerToken() ? 'present' : 'missing']);
+			
 			// Support both session-based auth (web) and token-based auth (mobile API)
 			$user = Session::get('user');
-			if (!$user && $request->user()) {
-				$user = $request->user();
+			
+			// If no session user, try to authenticate via Sanctum token
+			if (!$user) {
+				$bearerToken = $request->bearerToken();
+				\Log::info('getPaymentsByProject: No session user, checking bearer token', ['token_present' => $bearerToken ? 'yes' : 'no']);
+				
+				if ($bearerToken) {
+					// Find the token in the database
+					$token = PersonalAccessToken::findToken($bearerToken);
+					if ($token) {
+						// Get the user associated with the token
+						$user = $token->tokenable;
+						\Log::info('getPaymentsByProject: Token found, user authenticated', ['user_id' => $user->user_id ?? null]);
+						// Store user in session for downstream code that expects it there
+						if ($user && !Session::has('user')) {
+							Session::put('user', $user);
+						}
+					} else {
+						\Log::warning('getPaymentsByProject: Token not found in database');
+					}
+				}
+				
+				// Fallback to request->user() if available (when middleware is applied)
+				if (!$user && $request->user()) {
+					$user = $request->user();
+					\Log::info('getPaymentsByProject: Using request->user()', ['user_id' => $user->user_id ?? null]);
+					if (!Session::has('user')) {
+						Session::put('user', $user);
+					}
+				}
+			} else {
+				\Log::info('getPaymentsByProject: Using session user', ['user_id' => $user->user_id ?? null]);
 			}
 
 			if (!$user) {
+				\Log::warning('getPaymentsByProject: No user found, returning 401');
 				return response()->json(['success' => false, 'message' => 'Authentication required'], 401);
 			}
 
@@ -331,20 +418,62 @@ class paymentUploadController extends Controller
 				'total_count' => $payments->count()
 			]);
 		} catch (\Exception $e) {
-			return response()->json(['success' => false, 'message' => 'Error fetching payments: ' . $e->getMessage()], 500);
+			\Log::error('getPaymentsByProject error: ' . $e->getMessage(), [
+				'project_id' => $projectId,
+				'trace' => $e->getTraceAsString()
+			]);
+			return response()->json([
+				'success' => false,
+				'message' => 'Error fetching payments: ' . $e->getMessage(),
+				'payments' => [],
+				'total_count' => 0
+			], 500);
 		}
 	}
 
 	public function getPaymentsByItem(Request $request, $itemId)
 	{
 		try {
+			\Log::info('getPaymentsByItem called', ['item_id' => $itemId, 'bearer_token' => $request->bearerToken() ? 'present' : 'missing']);
+			
 			// Support both session-based auth (web) and token-based auth (mobile API)
 			$user = Session::get('user');
-			if (!$user && $request->user()) {
-				$user = $request->user();
+			
+			// If no session user, try to authenticate via Sanctum token
+			if (!$user) {
+				$bearerToken = $request->bearerToken();
+				\Log::info('getPaymentsByItem: No session user, checking bearer token', ['token_present' => $bearerToken ? 'yes' : 'no']);
+				
+				if ($bearerToken) {
+					// Find the token in the database
+					$token = PersonalAccessToken::findToken($bearerToken);
+					if ($token) {
+						// Get the user associated with the token
+						$user = $token->tokenable;
+						\Log::info('getPaymentsByItem: Token found, user authenticated', ['user_id' => $user->user_id ?? null]);
+						// Store user in session for downstream code that expects it there
+						if ($user && !Session::has('user')) {
+							Session::put('user', $user);
+						}
+					} else {
+						\Log::warning('getPaymentsByItem: Token not found in database');
+					}
+				}
+				
+				// Fallback to request->user() if available (when middleware is applied)
+				if (!$user && $request->user()) {
+					$user = $request->user();
+					\Log::info('getPaymentsByItem: Using request->user()', ['user_id' => $user->user_id ?? null]);
+					if (!Session::has('user')) {
+						Session::put('user', $user);
+					}
+				}
+			} else {
+				\Log::info('getPaymentsByItem: Using session user', ['user_id' => $user->user_id ?? null]);
 			}
 
 			if (!$user) {
+				\Log::warning('getPaymentsByItem: No user found, returning 401');
 				return response()->json(['success' => false, 'message' => 'Authentication required'], 401);
 			}
 
@@ -383,7 +512,18 @@ class paymentUploadController extends Controller
 				]
 			]);
 		} catch (\Exception $e) {
-			return response()->json(['success' => false, 'message' => 'Error fetching payments: ' . $e->getMessage()], 500);
+			\Log::error('getPaymentsByItem error: ' . $e->getMessage(), [
+				'item_id' => $itemId,
+				'trace' => $e->getTraceAsString()
+			]);
+			return response()->json([
+				'success' => false,
+				'message' => 'Error fetching payments: ' . $e->getMessage(),
+				'data' => [
+					'payments' => [],
+					'total_count' => 0
+				]
+			], 500);
 		}
 	}
 }

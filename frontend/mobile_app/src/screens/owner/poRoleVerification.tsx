@@ -274,14 +274,14 @@ export default function VerificationScreen({ onBackPress, onComplete, personalIn
                 <Text style={styles.errorText}>Valid IDs are not loaded. Please go back and try again.</Text>
               </View>
             ) : (
-              <TouchableOpacity style={styles.dropdownContainer} onPress={openIdTypeModal}>
-                <View style={styles.dropdownInputWrapper}>
+            <TouchableOpacity style={styles.dropdownContainer} onPress={openIdTypeModal}>
+              <View style={styles.dropdownInputWrapper}>
                   <Text style={[styles.dropdownInputText, !selectedValidId && styles.placeholderText]}>
                     {selectedValidId ? selectedValidId.valid_id_name : 'Type of Valid ID'}
-                  </Text>
-                  <MaterialIcons name="keyboard-arrow-down" size={24} color="#666666" style={styles.dropdownIcon} />
-                </View>
-              </TouchableOpacity>
+                </Text>
+                <MaterialIcons name="keyboard-arrow-down" size={24} color="#666666" style={styles.dropdownIcon} />
+              </View>
+            </TouchableOpacity>
             )}
           </View>
 
@@ -413,20 +413,20 @@ export default function VerificationScreen({ onBackPress, onComplete, personalIn
                 <Text style={styles.emptyText}>No valid IDs available. Please check your connection.</Text>
               </View>
             ) : (
-              <FlatList
-                data={filteredIdTypes}
+            <FlatList
+              data={filteredIdTypes}
                 keyExtractor={(item) => item.id.toString()}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    style={styles.idTypeItem}
-                    onPress={() => selectIdType(item)}
-                  >
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.idTypeItem}
+                  onPress={() => selectIdType(item)}
+                >
                     <Text style={styles.idTypeText}>{item.valid_id_name}</Text>
-                  </TouchableOpacity>
-                )}
-                style={styles.idTypeList}
-                showsVerticalScrollIndicator={false}
-              />
+                </TouchableOpacity>
+              )}
+              style={styles.idTypeList}
+              showsVerticalScrollIndicator={false}
+            />
             )}
           </View>
         </View>

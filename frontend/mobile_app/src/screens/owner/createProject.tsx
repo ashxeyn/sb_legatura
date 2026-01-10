@@ -682,24 +682,35 @@ export default function CreateProjectScreen({ onBackPress, onSubmit, contractorT
                 <Ionicons name="close" size={24} color="#333" />
               </TouchableOpacity>
             </View>
-            <FlatList
-              data={barangays}
-              keyExtractor={(item, index) => `${item.code}-${index}`}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={styles.modalItem}
-                  onPress={() => {
-                    setBarangay(item.code);
-                    setShowBarangayModal(false);
-                  }}
-                >
-                  <Text style={styles.modalItemText}>{item.name}</Text>
-                  {barangay === item.code && (
-                    <Ionicons name="checkmark" size={20} color="#EC7E00" />
-                  )}
-                </TouchableOpacity>
-              )}
-            />
+            {loadingBarangays ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#EC7E00" />
+                <Text style={styles.loadingText}>Loading barangays...</Text>
+              </View>
+            ) : barangays.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>No barangays available</Text>
+              </View>
+            ) : (
+              <FlatList
+                data={barangays}
+                keyExtractor={(item, index) => `${item.code}-${index}`}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={styles.modalItem}
+                    onPress={() => {
+                      setBarangay(item.code);
+                      setShowBarangayModal(false);
+                    }}
+                  >
+                    <Text style={styles.modalItemText}>{item.name}</Text>
+                    {barangay === item.code && (
+                      <Ionicons name="checkmark" size={20} color="#EC7E00" />
+                    )}
+                  </TouchableOpacity>
+                )}
+              />
+            )}
           </View>
         </View>
       </Modal>

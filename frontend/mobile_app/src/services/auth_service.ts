@@ -156,23 +156,30 @@ export class auth_service {
     }
   }
 
-  // Get barangays by city directly from PSGC API
+  // Get barangays by city from backend
   static async get_barangays_by_city(city_code: string): Promise<api_response<barangay[]>> {
     try {
       console.log('Fetching barangays for city:', city_code);
-      const response = await fetch(`https://psgc.gitlab.io/api/cities-municipalities/${city_code}/barangays/`);
+      const api_url = `${api_config.base_url}${api_config.endpoints.address.barangays(city_code)}`;
+      const response = await fetch(api_url, {
+        headers: {
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      });
       if (response.ok) {
         const data = await response.json();
         // Sort by name and map to simpler format
-        const barangays = data
+        const barangaysData = Array.isArray(data) ? data : (data.data || data);
+        const barangays = barangaysData
           .map((b: any) => ({ code: b.code, name: b.name }))
           .sort((a: barangay, b: barangay) => a.name.localeCompare(b.name));
-        console.log('Loaded', barangays.length, 'barangays from PSGC API');
+        console.log('Loaded', barangays.length, 'barangays from backend');
         return { success: true, data: barangays, status: 200 };
       }
       return { success: false, data: [], status: response.status, message: 'Failed to fetch barangays' };
     } catch (error) {
-      console.error('PSGC barangays fetch error:', error);
+      console.error('Barangays fetch error:', error);
       return { success: false, data: [], status: 0, message: 'Network error' };
     }
   }
