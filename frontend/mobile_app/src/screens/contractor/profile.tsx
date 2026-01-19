@@ -13,6 +13,11 @@ import {
 import { View as SafeAreaView, StatusBar, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
+import ImageFallback from '../../components/ImageFallback';
+
+// Default images
+const defaultCoverPhoto = require('../../../assets/images/pictures/cp_default.jpg');
+const defaultContractorAvatar = require('../../../assets/images/pictures/contractor_default.png');
 
 interface ContractorProfileScreenProps {
   onLogout: () => void;
@@ -248,28 +253,19 @@ export default function ContractorProfileScreen({ onLogout, onOpenHelp, onOpenSw
                 resizeMode="cover"
               />
             ) : (
-              <View style={styles.coverPhotoPlaceholder}>
-                <MaterialIcons name="photo-camera" size={24} color="#FFFFFF" />
-              </View>
+              <Image source={defaultCoverPhoto} style={styles.coverPhoto} resizeMode="cover" />
             )}
           </View>
 
           {/* Profile Info */}
           <View style={styles.profileInfoContainer}>
             <View style={styles.avatarContainer}>
-              {userData?.profile_pic ? (
-                <Image
-                  source={{ uri: userData.profile_pic }}
+                <ImageFallback
+                  uri={userData?.profile_pic || undefined}
+                  defaultImage={defaultContractorAvatar}
                   style={styles.avatar}
                   resizeMode="cover"
                 />
-              ) : (
-                <View style={styles.avatarPlaceholder}>
-                  <Text style={styles.avatarText}>
-                    {getInitials(userData?.company_name || userData?.username || 'Contractor')}
-                  </Text>
-                </View>
-              )}
               <TouchableOpacity style={styles.editAvatarButton}>
                 <MaterialIcons name="camera-alt" size={16} color="#FFFFFF" />
               </TouchableOpacity>

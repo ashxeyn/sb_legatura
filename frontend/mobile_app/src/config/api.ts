@@ -1,5 +1,5 @@
 // API configuration for connecting to Laravel backend
-const API_BASE_URL = 'http://10.236.216.46:8000';
+const API_BASE_URL = 'http://192.168.254.107:8084';
 
 import { storage_service } from '../utils/storage';
 

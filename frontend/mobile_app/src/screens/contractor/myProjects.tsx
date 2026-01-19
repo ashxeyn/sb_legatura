@@ -294,15 +294,20 @@ export default function MyProjects({ userData, onClose }: MyProjectsProps) {
         {project.owner_name && (
           <View style={styles.ownerSection}>
             <View style={styles.ownerAvatar}>
-              {project.owner_profile_pic ? (
-                <Image source={{ uri: project.owner_profile_pic }} style={styles.ownerImage} />
-              ) : (
-                <View style={styles.ownerPlaceholder}>
-                  <Text style={styles.ownerInitial}>
-                    {project.owner_name.charAt(0).toUpperCase()}
-                  </Text>
-                </View>
-              )}
+                {project.owner_profile_pic ? (
+                  <ImageFallback
+                    uri={project.owner_profile_pic}
+                    defaultImage={require('../../../assets/images/pictures/contractor_default.png')}
+                    style={styles.ownerImage}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <View style={styles.ownerPlaceholder}>
+                    <Text style={styles.ownerInitial}>
+                      {project.owner_name.charAt(0).toUpperCase()}
+                    </Text>
+                  </View>
+                )}
             </View>
             <View style={styles.ownerInfo}>
               <Text style={styles.ownerLabel}>Property Owner</Text>

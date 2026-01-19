@@ -16,8 +16,8 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 
-import ProgressReportForm from './progressReportForm';
-import ProgressReportDetail from './progressReportDetail';
+import ProgressReportForm from './ProgressReportForm';
+import ProgressReportDetail from './ProgressReportDetail';
 import PaymentReceiptForm from './paymentReceiptForm';
 import DisputeForm from './disputeForm';
 import DisputeHistory from './disputeHistory';

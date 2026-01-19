@@ -129,7 +129,7 @@ export class projects_service {
             type: file.mimeType || 'application/octet-stream',
             name: file.name || `blueprint_${index}.pdf`,
           };
-          formData.append('blueprint[]', blueprintFile as any);
+          formData.append('blueprint', blueprintFile as any);
         });
       }
 
@@ -141,7 +141,7 @@ export class projects_service {
             type: file.mimeType || 'application/octet-stream',
             name: file.name || `design_${index}.pdf`,
           };
-          formData.append('desired_design[]', designFile as any);
+          formData.append('desired_design', designFile as any);
         });
       }
 
@@ -153,7 +153,7 @@ export class projects_service {
             type: file.mimeType || 'application/octet-stream',
             name: file.name || `other_${index}.pdf`,
           };
-          formData.append('others[]', otherFile as any);
+          formData.append('others', otherFile as any);
         });
       }
 

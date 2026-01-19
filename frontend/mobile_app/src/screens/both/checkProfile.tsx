@@ -14,10 +14,14 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, MaterialIcons, Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { api_config } from '../../config/api';
+import ImageFallback from '../../components/ImageFallback';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+// Default images
+const defaultCoverPhoto = require('../../../assets/images/pictures/cp_default.jpg');
+const defaultContractorAvatar = require('../../../assets/images/pictures/contractor_default.png');
 
 // Color palette
 const COLORS = {
@@ -381,28 +385,21 @@ export default function CheckProfile({ contractor, onClose, onSendMessage }: Che
       >
         {/* Cover Photo Section */}
         <View style={styles.coverSection}>
-          {coverPhotoUrl ? (
-            <Image
-              source={{ uri: coverPhotoUrl }}
-              style={styles.coverPhoto}
-              resizeMode="cover"
-            />
-          ) : (
-            <LinearGradient
-              colors={[COLORS.primary, COLORS.primaryDark]}
-              style={styles.coverPhoto}
-            />
-          )}
+          <ImageFallback
+            uri={coverPhotoUrl || undefined}
+            defaultImage={defaultCoverPhoto}
+            style={styles.coverPhoto}
+            resizeMode="cover"
+          />
 
           {/* Profile Picture */}
           <View style={styles.profilePicContainer}>
-            {logoUrl ? (
-              <Image source={{ uri: logoUrl }} style={styles.profilePic} />
-            ) : (
-              <View style={styles.profilePicPlaceholder}>
-                <Text style={styles.profilePicText}>{initials}</Text>
-              </View>
-            )}
+            <ImageFallback
+              uri={logoUrl || undefined}
+              defaultImage={defaultContractorAvatar}
+              style={styles.profilePic}
+              resizeMode="cover"
+            />
           </View>
         </View>
 
