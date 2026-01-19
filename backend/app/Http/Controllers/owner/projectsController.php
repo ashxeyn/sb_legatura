@@ -910,6 +910,73 @@ class projectsController extends Controller
                     'project_status' => 'open'
                 ]);
 
+                // Handle file uploads
+                // Building permit (required)
+                if ($request->hasFile('building_permit')) {
+                    $file = $request->file('building_permit');
+                    $path = $file->store('project_files/building_permit', 'public');
+                    DB::table('project_files')->insert([
+                        'project_id' => $projectId,
+                        'file_type' => 'building permit',
+                        'file_path' => $path,
+                        'uploaded_at' => now()
+                    ]);
+                }
+
+                // Title of land (required)
+                if ($request->hasFile('title_of_land')) {
+                    $file = $request->file('title_of_land');
+                    $path = $file->store('project_files/titles', 'public');
+                    DB::table('project_files')->insert([
+                        'project_id' => $projectId,
+                        'file_type' => 'title',
+                        'file_path' => $path,
+                        'uploaded_at' => now()
+                    ]);
+                }
+
+                // Blueprints (optional, multiple)
+                if ($request->hasFile('blueprint')) {
+                    $blueprints = $request->file('blueprint');
+                    foreach ($blueprints as $file) {
+                        $path = $file->store('project_files/blueprints', 'public');
+                        DB::table('project_files')->insert([
+                            'project_id' => $projectId,
+                            'file_type' => 'blueprint',
+                            'file_path' => $path,
+                            'uploaded_at' => now()
+                        ]);
+                    }
+                }
+
+                // Desired designs (optional, multiple)
+                if ($request->hasFile('desired_design')) {
+                    $designs = $request->file('desired_design');
+                    foreach ($designs as $file) {
+                        $path = $file->store('project_files/designs', 'public');
+                        DB::table('project_files')->insert([
+                            'project_id' => $projectId,
+                            'file_type' => 'desired design',
+                            'file_path' => $path,
+                            'uploaded_at' => now()
+                        ]);
+                    }
+                }
+
+                // Other files (optional, multiple)
+                if ($request->hasFile('others')) {
+                    $others = $request->file('others');
+                    foreach ($others as $file) {
+                        $path = $file->store('project_files/others', 'public');
+                        DB::table('project_files')->insert([
+                            'project_id' => $projectId,
+                            'file_type' => 'others',
+                            'file_path' => $path,
+                            'uploaded_at' => now()
+                        ]);
+                    }
+                }
+
                 DB::commit();
 
                 return response()->json([
@@ -1071,6 +1138,15 @@ class projectsController extends Controller
                     ->whereNotIn('bid_status', ['cancelled'])
                     ->count();
                 $project->bids_count = $bidCount;
+                // Attach project files (only desired design images for collage display)
+                $fileRows = DB::table('project_files')
+                    ->where('project_id', $project->project_id)
+                    ->where('file_type', 'desired design')
+                    ->orderBy('file_id', 'asc')
+                    ->pluck('file_path')
+                    ->toArray();
+
+                $project->files = $fileRows;
             }
 
             return response()->json([

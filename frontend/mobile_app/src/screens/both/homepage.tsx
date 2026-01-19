@@ -21,6 +21,7 @@ import { MaterialIcons, Ionicons, Feather } from '@expo/vector-icons';
 import { contractors_service, Contractor as ContractorType } from '../../services/contractors_service';
 import { projects_service, ContractorType as ContractorTypeOption } from '../../services/projects_service';
 import { api_config } from '../../config/api';
+import ImageFallback from '../../components/ImageFallback';
 
 // Helper to build full storage URL for profile/cover images
 const getStorageUrl = (filePath?: string, defaultSubfolder = 'profiles') => {
@@ -65,6 +66,8 @@ import Notifications from './notifications';
 
 // Default cover photo
 const defaultCoverPhoto = require('../../../assets/images/pictures/cp_default.jpg');
+const defaultContractorAvatar = require('../../../assets/images/pictures/contractor_default.png');
+const defaultOwnerAvatar = require('../../../assets/images/pictures/property_owner_default.png');
 
 const { width } = Dimensions.get('window');
 
@@ -102,6 +105,7 @@ interface Project {
   owner_profile_pic?: string;
   owner_user_id?: number;
   bids_count?: number;
+  files?: string[];
 }
 
 interface HomepageProps {
@@ -147,6 +151,9 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
 
   // Get status bar height (top inset)
   const statusBarHeight = insets.top || (Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 44);
+
+  // Resolve effective user type: prefer explicit userData.user_type when available
+  const effectiveUserType = userData?.user_type || userType;
 
   // Handle logout - calls the parent callback
   const handleLogout = () => {
@@ -215,7 +222,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
   useEffect(() => {
     const fetchContractors = async () => {
       // Only fetch contractors for property owners (contractors see projects instead)
-      if (userType !== 'property_owner') {
+      if (effectiveUserType !== 'property_owner') {
         setIsLoading(false);
         return;
       }
@@ -259,7 +266,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
     };
 
     fetchContractors();
-  }, [userType]);
+  }, [effectiveUserType]);
 
   /**
    * Fetch available projects for contractors
@@ -268,7 +275,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
   useEffect(() => {
     const fetchProjects = async () => {
       // Only fetch projects for contractors
-      if (userType !== 'contractor') {
+      if (effectiveUserType !== 'contractor') {
         return;
       }
 
@@ -302,7 +309,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
     };
 
     fetchProjects();
-  }, [userType]);
+  }, [effectiveUserType]);
 
   // Function to refresh available projects (for contractor view)
   const refreshProjects = useCallback(async () => {
@@ -346,6 +353,10 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
       ? `${api_config.base_url}/storage/${item.cover_photo}`
       : null;
 
+    const logoUri = item.logo_url
+      ? (item.logo_url.startsWith('http') ? item.logo_url : `${api_config.base_url}/storage/${item.logo_url}`)
+      : null;
+
     // Generate initials for avatar fallback
     const initials = item.company_name
       ?.split(' ')
@@ -360,32 +371,42 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
         activeOpacity={0.7}
         onPress={() => setSelectedContractor(item)}
       >
-        {/* Header: Company Avatar + Info + Type Badge */}
-        <View style={styles.contractorHeader}>
-          <View style={styles.contractorInfo}>
-            <View style={styles.contractorAvatarCircle}>
-              <Text style={styles.contractorInitials}>{initials}</Text>
-            </View>
-            <View>
-              <Text style={styles.contractorName}>{item.company_name}</Text>
-              <Text style={styles.contractorSubtitle}>
-                {item.years_of_experience || 0} years experience
-              </Text>
-            </View>
-          </View>
+        {/* Cover photo + avatar + info (avatar overlaps cover) */}
+        <ImageFallback
+          uri={coverPhotoUri || undefined}
+          defaultImage={defaultCoverPhoto}
+          style={[styles.contractorCover, { width }]}
+          resizeMode="cover"
+        />
+
+        {/* Overlapping badge below the cover, positioned to the right */}
+        <View style={styles.badgeOverlap}>
           <View style={styles.contractorTypeBadgeContainer}>
-            <Text style={styles.contractorTypeBadgeText}>
-              {item.contractor_type || 'General'}
-            </Text>
+            <Text style={styles.contractorTypeBadgeText}>{item.contractor_type || 'General'}</Text>
           </View>
         </View>
 
-        {/* Description if available */}
-        {item.company_description && (
-          <Text style={styles.contractorDescription} numberOfLines={2}>
-            {item.company_description}
-          </Text>
-        )}
+        <View style={styles.contractorHeaderNew}>
+          <View style={styles.leftColumn}>
+            <View style={styles.contractorAvatarWrapper}>
+              <ImageFallback
+                uri={logoUri || undefined}
+                defaultImage={defaultContractorAvatar}
+                style={styles.contractorAvatarImg}
+                resizeMode="cover"
+              />
+            </View>
+          </View>
+
+          <View style={styles.rightColumn} />
+        </View>
+
+        <View style={styles.contractorInfoBlock}>
+          <Text style={styles.contractorName} numberOfLines={2}>{item.company_name}</Text>
+          <Text style={styles.contractorSubtitle}>{item.years_of_experience || 0} years experience</Text>
+        </View>
+
+        {/* Description removed per request */}
 
         {/* Details */}
         <View style={styles.contractorDetailsContainer}>
@@ -403,21 +424,18 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
             <MaterialIcons name="work" size={16} color="#666666" />
             <Text style={styles.detailText}>{item.completed_projects || 0} projects completed</Text>
           </View>
-          {item.services_offered && (
-            <View style={styles.detailRow}>
-              <MaterialIcons name="build" size={16} color="#666666" />
-              <Text style={styles.detailText} numberOfLines={1}>{item.services_offered}</Text>
-            </View>
-          )}
+          {/* badge moved to header right side */}
         </View>
 
-        {/* Footer: Contact Button */}
-        <View style={styles.contractorCardFooter}>
-          <TouchableOpacity style={styles.contactContractorButton} activeOpacity={0.8}>
-            <MaterialIcons name="mail" size={18} color="#FFFFFF" />
-            <Text style={styles.contactContractorButtonText}>Contact</Text>
-          </TouchableOpacity>
-        </View>
+        {/* Footer: Contact Button (hidden for property owners) */}
+        {effectiveUserType !== 'property_owner' && (
+          <View style={styles.contractorCardFooter}>
+            <TouchableOpacity style={styles.contactContractorButton} activeOpacity={0.8}>
+              <MaterialIcons name="mail" size={18} color="#FFFFFF" />
+              <Text style={styles.contactContractorButtonText}>Contact</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </TouchableOpacity>
     );
   };
@@ -442,6 +460,163 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
     const deadlineDate = new Date(deadline);
     const diff = Math.ceil((deadlineDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
     return diff;
+  };
+
+  /**
+   * Render project images in a Facebook-style collage
+   */
+  const renderProjectImages = (files: string[]) => {
+    if (!files || files.length === 0) return null;
+
+    // Helper to check if file is an image
+    const isImage = (filePath: string) => {
+      // If it's already a full URL (http/https), treat as image
+      if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
+        return true;
+      }
+      const ext = filePath.toLowerCase().split('.').pop();
+      return ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext || '');
+    };
+
+    // Build full URLs
+    const fileUrls = files.map(file => {
+      // If file is already a full URL, use it directly
+      const url = (file.startsWith('http://') || file.startsWith('https://')) 
+        ? file 
+        : `${api_config.base_url}/storage/${file}`;
+      return {
+        url,
+        isImage: isImage(file),
+      };
+    });
+
+    // Filter to only images, or show document placeholders
+    const displayFiles = fileUrls;
+    
+    if (displayFiles.length === 0) return null;
+
+    // Single file
+    if (displayFiles.length === 1) {
+      return (
+        <View style={styles.imageCollageContainer}>
+          {displayFiles[0].isImage ? (
+            <Image source={{ uri: displayFiles[0].url }} style={styles.imageSingle} resizeMode="cover" />
+          ) : (
+            <View style={[styles.imageSingle, styles.documentPlaceholder]}>
+              <MaterialIcons name="insert-drive-file" size={48} color="#999" />
+              <Text style={styles.documentText}>Project Document</Text>
+            </View>
+          )}
+        </View>
+      );
+    }
+
+    // Two files - side by side
+    if (displayFiles.length === 2) {
+      return (
+        <View style={styles.imageCollageContainer}>
+          <View style={styles.imageRowTwo}>
+            {displayFiles[0].isImage ? (
+              <Image source={{ uri: displayFiles[0].url }} style={styles.imageHalf} resizeMode="cover" />
+            ) : (
+              <View style={[styles.imageHalf, styles.documentPlaceholder]}>
+                <MaterialIcons name="insert-drive-file" size={32} color="#999" />
+              </View>
+            )}
+            {displayFiles[1].isImage ? (
+              <Image source={{ uri: displayFiles[1].url }} style={styles.imageHalf} resizeMode="cover" />
+            ) : (
+              <View style={[styles.imageHalf, styles.documentPlaceholder]}>
+                <MaterialIcons name="insert-drive-file" size={32} color="#999" />
+              </View>
+            )}
+          </View>
+        </View>
+      );
+    }
+
+    // Three files - one large on left, two stacked on right
+    if (displayFiles.length === 3) {
+      return (
+        <View style={styles.imageCollageContainer}>
+          <View style={styles.imageRowThree}>
+            {displayFiles[0].isImage ? (
+              <Image source={{ uri: displayFiles[0].url }} style={styles.imageThreeLarge} resizeMode="cover" />
+            ) : (
+              <View style={[styles.imageThreeLarge, styles.documentPlaceholder]}>
+                <MaterialIcons name="insert-drive-file" size={40} color="#999" />
+              </View>
+            )}
+            <View style={styles.imageThreeStack}>
+              {displayFiles[1].isImage ? (
+                <Image source={{ uri: displayFiles[1].url }} style={styles.imageThreeSmall} resizeMode="cover" />
+              ) : (
+                <View style={[styles.imageThreeSmall, styles.documentPlaceholder]}>
+                  <MaterialIcons name="insert-drive-file" size={28} color="#999" />
+                </View>
+              )}
+              {displayFiles[2].isImage ? (
+                <Image source={{ uri: displayFiles[2].url }} style={styles.imageThreeSmall} resizeMode="cover" />
+              ) : (
+                <View style={[styles.imageThreeSmall, styles.documentPlaceholder]}>
+                  <MaterialIcons name="insert-drive-file" size={28} color="#999" />
+                </View>
+              )}
+            </View>
+          </View>
+        </View>
+      );
+    }
+
+    // Four or more files - 2x2 grid, show +N on last item if more than 4
+    const displayItems = displayFiles.slice(0, 4);
+    const remainingCount = displayFiles.length - 4;
+
+    return (
+      <View style={styles.imageCollageContainer}>
+        <View style={styles.imageGrid}>
+          <View style={styles.imageGridRow}>
+            {displayItems[0].isImage ? (
+              <Image source={{ uri: displayItems[0].url }} style={styles.imageQuarter} resizeMode="cover" />
+            ) : (
+              <View style={[styles.imageQuarter, styles.documentPlaceholder]}>
+                <MaterialIcons name="insert-drive-file" size={24} color="#999" />
+              </View>
+            )}
+            {displayItems[1].isImage ? (
+              <Image source={{ uri: displayItems[1].url }} style={styles.imageQuarter} resizeMode="cover" />
+            ) : (
+              <View style={[styles.imageQuarter, styles.documentPlaceholder]}>
+                <MaterialIcons name="insert-drive-file" size={24} color="#999" />
+              </View>
+            )}
+          </View>
+          <View style={styles.imageGridRow}>
+            {displayItems[2].isImage ? (
+              <Image source={{ uri: displayItems[2].url }} style={styles.imageQuarter} resizeMode="cover" />
+            ) : (
+              <View style={[styles.imageQuarter, styles.documentPlaceholder]}>
+                <MaterialIcons name="insert-drive-file" size={24} color="#999" />
+              </View>
+            )}
+            <View style={styles.imageQuarterWrapper}>
+              {displayItems[3].isImage ? (
+                <Image source={{ uri: displayItems[3].url }} style={styles.imageQuarter} resizeMode="cover" />
+              ) : (
+                <View style={[styles.imageQuarter, styles.documentPlaceholder]}>
+                  <MaterialIcons name="insert-drive-file" size={24} color="#999" />
+                </View>
+              )}
+              {remainingCount > 0 && (
+                <View style={styles.imageOverlay}>
+                  <Text style={styles.imageOverlayText}>+{remainingCount}</Text>
+                </View>
+              )}
+            </View>
+          </View>
+        </View>
+      </View>
+    );
   };
 
   /**
@@ -475,11 +650,19 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
         <View style={styles.projectHeader}>
           <View style={styles.ownerInfo}>
             {ownerProfileUrl ? (
-              <Image source={{ uri: ownerProfileUrl }} style={styles.ownerAvatarImg} />
+              <ImageFallback
+                uri={ownerProfileUrl}
+                defaultImage={defaultOwnerAvatar}
+                style={styles.ownerAvatarImg}
+                resizeMode="cover"
+              />
             ) : (
-              <View style={styles.ownerAvatarCircle}>
-                <Text style={styles.ownerInitials}>{ownerInitials}</Text>
-              </View>
+              <ImageFallback
+                uri={undefined}
+                defaultImage={defaultOwnerAvatar}
+                style={styles.ownerAvatarImg}
+                resizeMode="cover"
+              />
             )}
             <View>
               <Text style={styles.ownerName}>{project.owner_name || 'Property Owner'}</Text>
@@ -529,6 +712,9 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
             <Text style={styles.detailText}>{project.bids_count || 0} bids received</Text>
           </View>
         </View>
+
+        {/* Project Images Collage */}
+        {project.files && project.files.length > 0 && renderProjectImages(project.files)}
 
         {/* Footer: Place Bid Button */}
         <View style={styles.projectCardFooter}>
@@ -604,7 +790,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
     console.log('Profile image URL:', profileImageUrl);
 
     // For contractors, show projects feed
-    if (userType === 'contractor') {
+    if (effectiveUserType === 'contractor') {
       return renderContractorHomeContent();
     }
 
@@ -795,7 +981,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
   // Render profile based on user type
   const renderProfileContent = () => {
     // For contractors, show the contractor profile
-    if (userType === 'contractor') {
+    if (effectiveUserType === 'contractor') {
       return (
         <ContractorProfile
           onLogout={handleLogout}
@@ -840,7 +1026,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
   // Render dashboard based on user type
   const renderDashboardContent = () => {
     // For contractors, show the contractor dashboard
-    if (userType === 'contractor') {
+    if (effectiveUserType === 'contractor') {
       return (
         <ContractorDashboard
           userData={{
@@ -1228,6 +1414,53 @@ const styles = StyleSheet.create({
     marginBottom: 0,
     borderBottomWidth: 8,
     borderBottomColor: '#F0F0F0',
+    position: 'relative',
+    overflow: 'visible',
+  },
+  contractorCover: {
+    height: 110,
+    backgroundColor: '#E5E5E5',
+    marginBottom: 12,
+    alignSelf: 'center',
+  },
+  contractorHeaderNew: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 0,
+    marginTop: -40,
+    marginBottom: 8,
+    paddingHorizontal: 16,
+  },
+  leftColumn: {
+    width: 80,
+    alignItems: 'flex-start',
+  },
+  rightColumn: {
+    flex: 1,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    paddingRight: 16,
+  },
+  contractorAvatarWrapper: {
+    marginRight: 12,
+    alignItems: 'flex-start',
+  },
+  contractorAvatarImg: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
+    backgroundColor: '#E5E5E5',
+  },
+  contractorAvatarCircleNew: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
   },
   contractorHeader: {
     flexDirection: 'row',
@@ -1255,7 +1488,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   contractorName: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
     color: '#333333',
   },
@@ -1263,6 +1496,21 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#999999',
   },
+  contractorMainInfo: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  contractorInfoBlock: {
+    paddingHorizontal: 0,
+    marginTop: -8,
+    marginBottom: 8,
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  
   contractorTypeBadgeContainer: {
     backgroundColor: '#FFF3E6',
     paddingHorizontal: 10,
@@ -1273,6 +1521,16 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
     color: '#EC7E00',
+  },
+  badgeOverlap: {
+    position: 'absolute',
+    right: 12,
+    top: 140,
+    zIndex: 20,
+    elevation: 20,
+  },
+  badgeRow: {
+    marginTop: 6,
   },
   contractorDescription: {
     fontSize: 14,
@@ -1608,5 +1866,85 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '600',
+  },
+  // Project images collage styles
+  imageCollageContainer: {
+    marginTop: 12,
+    marginBottom: 0,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  imageSingle: {
+    width: '100%',
+    height: 200,
+    backgroundColor: '#E5E5E5',
+  },
+  imageRowTwo: {
+    flexDirection: 'row',
+    gap: 2,
+  },
+  imageHalf: {
+    flex: 1,
+    height: 180,
+    backgroundColor: '#E5E5E5',
+  },
+  imageRowThree: {
+    flexDirection: 'row',
+    height: 200,
+    gap: 2,
+  },
+  imageThreeLarge: {
+    flex: 2,
+    height: 200,
+    backgroundColor: '#E5E5E5',
+  },
+  imageThreeStack: {
+    flex: 1,
+    gap: 2,
+  },
+  imageThreeSmall: {
+    flex: 1,
+    backgroundColor: '#E5E5E5',
+  },
+  imageGrid: {
+    gap: 2,
+  },
+  imageGridRow: {
+    flexDirection: 'row',
+    gap: 2,
+  },
+  imageQuarter: {
+    width: '49.5%',
+    height: 100,
+    backgroundColor: '#E5E5E5',
+  },
+  imageQuarterWrapper: {
+    width: '49.5%',
+    position: 'relative',
+  },
+  imageOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  imageOverlayText: {
+    color: '#FFFFFF',
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  documentPlaceholder: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F5F5F5',
+  },
+  documentText: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 8,
   },
 });

@@ -14,6 +14,7 @@ import {
   Platform,
   Keyboard,
 } from 'react-native';
+import ImageFallback from '../../components/ImageFallback';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons, Ionicons, Feather } from '@expo/vector-icons';
 import { api_config } from '../../config/api';
@@ -197,10 +198,11 @@ export default function SearchScreen({
         {/* Owner Profile Picture / Avatar */}
         <View style={styles.avatarContainer}>
           {profileImageUrl ? (
-            <Image
-              source={{ uri: profileImageUrl }}
+            <ImageFallback
+              uri={profileImageUrl}
+              defaultImage={require('../../../assets/images/pictures/cp_default.jpg')}
               style={styles.profileImage}
-              defaultSource={require('../../../assets/images/pictures/cp_default.jpg')}
+              resizeMode="cover"
             />
           ) : (
             <View style={[styles.avatarPlaceholder, { backgroundColor: avatarColor }]}>
