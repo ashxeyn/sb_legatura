@@ -158,6 +158,12 @@ Route::get('/admin/user-management/contractors/{id}/edit', [userManagementContro
 Route::put('/admin/user-management/contractors/update/{user_id}', [userManagementController::class, 'updateContractor'])->name('admin.userManagement.contractor.update');
 Route::delete('/admin/user-management/contractors/{id}', [userManagementController::class, 'deleteContractor'])->name('admin.userManagement.contractor.delete');
 Route::get('/admin/user-management/contractor/view', [userManagementController::class, 'viewContractor'])->name('admin.userManagement.contractor.view');
+Route::post('/admin/user-management/contractor/team-member/store', [userManagementController::class, 'addContractorTeamMember'])->name('admin.userManagement.contractor.teamMember.store');
+Route::get('/admin/user-management/contractor/team-member/{id}/edit', [userManagementController::class, 'fetchContractorTeamMember'])->name('admin.userManagement.contractor.teamMember.edit');
+Route::put('/admin/user-management/contractor/team-member/update/{id}', [userManagementController::class, 'updateContractorTeamMember'])->name('admin.userManagement.contractor.teamMember.update');
+Route::delete('/admin/user-management/contractor/team-member/deactivate/{id}', [userManagementController::class, 'deactivateContractorTeamMember'])->name('admin.userManagement.contractor.teamMember.deactivate');
+Route::patch('/admin/user-management/contractor/team-member/reactivate/{id}', [userManagementController::class, 'reactivateContractorTeamMember'])->name('admin.userManagement.contractor.teamMember.reactivate');
+Route::post('/admin/user-management/contractor/representative/change', [userManagementController::class, 'changeContractorRepresentative'])->name('admin.userManagement.contractor.representative.change');
 Route::get('/admin/user-management/verification-requests', [userManagementController::class, 'verificationRequest'])->name('admin.userManagement.verificationRequest');
 Route::get('/admin/user-management/suspended-accounts', [userManagementController::class, 'suspendedAccounts'])->name('admin.userManagement.suspendedAccounts');
 Route::post('/admin/user-management/suspended-accounts/reactivate', [userManagementController::class, 'reactivateSuspendedAccount'])->name('admin.userManagement.suspendedAccounts.reactivate');

@@ -667,7 +667,7 @@
               <div class="border-2 border-gray-300 rounded-lg p-3 text-center transition-all peer-checked:border-red-500 peer-checked:bg-red-50 hover:border-red-300 hover:shadow-md">
                 <i class="fi fi-rr-ban text-xl text-gray-400 peer-checked:text-red-500 transition-colors mb-1"></i>
                 <p class="font-semibold text-gray-700 text-sm peer-checked:text-red-600">Permanent</p>
-                <p class="text-xs text-gray-500 mt-1">Indefinite</p>
+                <p class="text-xs text-gray-500 mt-1">Account deletion</p>
               </div>
             </label>
           </div>

@@ -429,6 +429,164 @@ class contractorClass extends Model
 
         $contractor->team_members = $teamMembers;
 
+        // Store original is_active based on verification_status
+        $originalIsActive = $contractor->is_active;
+
+        // Check if OWNER is suspended (only owner suspension affects entire contractor)
+        $ownerSuspended = DB::table('contractor_users')
+            ->where('contractor_id', $contractorId)
+            ->where('role', 'owner')
+            ->where('is_active', 0)
+            ->first();
+
+        if ($ownerSuspended) {
+            $contractor->is_active = 0;
+            $contractor->suspension_reason = $ownerSuspended->suspension_reason ?? null;
+            $contractor->suspension_until = $ownerSuspended->suspension_until ?? null;
+        } else {
+            // Owner is not suspended - restore original is_active and clear suspension fields
+            $contractor->is_active = $originalIsActive;
+            $contractor->suspension_reason = null;
+            $contractor->suspension_until = null;
+        }
+
         return $contractor;
+    }
+
+    /**
+     * Add a new team member to a contractor
+     */
+    public function addTeamMember($data)
+    {
+        return DB::transaction(function () use ($data) {
+            // Generate Username
+            do {
+                $username = 'staff_' . mt_rand(1000, 9999);
+            } while (DB::table('users')->where('username', $username)->exists());
+
+            // Create User (type: staff)
+            $userId = DB::table('users')->insertGetId([
+                'profile_pic' => $data['profile_pic'] ?? null,
+                'username' => $username,
+                'email' => $data['email'],
+                'password_hash' => bcrypt('teammember123@!'),
+                'OTP_hash' => 'admin_created',
+                'user_type' => 'staff',
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+
+            // Create Contractor User (Team Member)
+            DB::table('contractor_users')->insert([
+                'contractor_id' => $data['contractor_id'],
+                'user_id' => $userId,
+                'authorized_rep_fname' => $data['first_name'],
+                'authorized_rep_mname' => $data['middle_name'] ?? null,
+                'authorized_rep_lname' => $data['last_name'],
+                'phone_number' => $data['phone_number'],
+                'role' => $data['role'],
+                'if_others' => $data['role_other'] ?? null,
+                'is_active' => 1,
+                'is_deleted' => 0,
+                'created_at' => now()
+            ]);
+
+            return [
+                'user_id' => $userId,
+                'username' => $username,
+                'email' => $data['email']
+            ];
+        });
+    }
+
+    public function changeRepresentative($contractorId, $newRepresentativeId)
+    {
+        return DB::transaction(function () use ($contractorId, $newRepresentativeId) {
+            // Get the current representative
+            $currentRepresentative = DB::table('contractor_users')
+                ->where('contractor_id', $contractorId)
+                ->where('role', 'representative')
+                ->where('is_deleted', 0)
+                ->first();
+
+            // Get the new representative details
+            $newRepresentative = DB::table('contractor_users')
+                ->where('contractor_user_id', $newRepresentativeId)
+                ->where('contractor_id', $contractorId)
+                ->where('is_deleted', 0)
+                ->first();
+
+            if (!$newRepresentative) {
+                throw new \Exception('Selected team member not found.');
+            }
+
+            // If there's a current representative, demote them
+            if ($currentRepresentative) {
+                // Save their current role to role_other if needed, then change to their previous role
+                // If they have a role_other value, restore it to role
+                $previousRole = $currentRepresentative->role_other ?: 'manager';
+
+                DB::table('contractor_users')
+                    ->where('contractor_user_id', $currentRepresentative->contractor_user_id)
+                    ->update([
+                        'role' => $previousRole,
+                        'role_other' => null // Clear role_other after restoration
+                    ]);
+            }
+
+            // Promote the new representative
+            // Save their current role to role_other before promoting
+            DB::table('contractor_users')
+                ->where('contractor_user_id', $newRepresentativeId)
+                ->update([
+                    'role_other' => $newRepresentative->role, // Save current role
+                    'role' => 'representative' // Promote to representative
+                ]);
+
+            return [
+                'success' => true,
+                'new_representative' => $newRepresentative,
+                'previous_representative' => $currentRepresentative
+            ];
+        });
+    }
+
+    /**
+     * Suspend contractor (suspends all members when owner is suspended)
+     */
+    public function suspendContractor($id, $reason, $duration, $suspensionUntil)
+    {
+        return DB::transaction(function () use ($id, $reason, $duration, $suspensionUntil) {
+            // Suspend ALL contractor_users for this contractor (owner suspension affects entire company)
+            DB::table('contractor_users')
+                ->where('contractor_id', $id)
+                ->update([
+                    'is_active' => 0,
+                    'suspension_reason' => $reason,
+                    'suspension_until' => $suspensionUntil
+                ]);
+
+            // Get contractor info
+            $contractor = DB::table('contractors')->where('contractor_id', $id)->first();
+
+            if ($contractor) {
+                // Pause ongoing projects/bids
+                $bidIds = DB::table('bids')
+                    ->where('contractor_id', $id)
+                    ->whereIn('bid_status', ['pending', 'approved'])
+                    ->pluck('bid_id');
+
+                if ($bidIds->isNotEmpty()) {
+                    DB::table('bids')
+                        ->whereIn('bid_id', $bidIds)
+                        ->update([
+                            'bid_status' => 'withdrawn',
+                            'updated_at' => now()
+                        ]);
+                }
+            }
+
+            return $contractor;
+        });
     }
 }

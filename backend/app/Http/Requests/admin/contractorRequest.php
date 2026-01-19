@@ -21,6 +21,14 @@ class contractorRequest extends FormRequest
      */
     public function rules(): array
     {
+        if ($this->routeIs('api.admin.contractor.suspend')) {
+            return [
+                'reason' => 'required|string',
+                'duration' => 'required|in:temporary,permanent',
+                'suspension_until' => 'nullable|date|after:today|required_if:duration,temporary',
+            ];
+        }
+
         $isUpdate = !empty($this->route('user_id'));
         $userId = $this->route('user_id');
 

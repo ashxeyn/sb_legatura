@@ -12,6 +12,11 @@ use Illuminate\Support\Facades\DB;
 use App\Http\Requests\Admin\rejectVerificationRequest;
 use App\Http\Requests\admin\propertyOwnerRequest;
 use App\Http\Requests\admin\contractorRequest;
+use App\Http\Requests\admin\contractorTeamMemberRequest;
+use App\Http\Requests\admin\updateContractorTeamMemberRequest;
+use App\Http\Requests\admin\changeContractorRepresentativeRequest;
+use App\Http\Requests\admin\deactivateContractorTeamMemberRequest;
+use App\Http\Requests\admin\reactivateContractorTeamMemberRequest;
 use App\Services\psgcApiService;
 use Illuminate\Support\Facades\Mail;
 
@@ -552,14 +557,339 @@ class userManagementController extends authController
 
         $picabCategories = $accountModel->getPicabCategories();
         $provinces = $psgcService->getProvinces();
+        $allCities = $psgcService->getAllCities();
         $contractorTypes = DB::table('contractor_types')->get();
 
         return view('admin.userManagement.contractor_Views', [
             'contractor' => $contractor,
             'picabCategories' => $picabCategories,
             'provinces' => $provinces,
+            'allCities' => $allCities,
             'contractorTypes' => $contractorTypes
         ]);
+    }
+
+    /**
+     * Add a team member to a contractor
+     */
+    public function addContractorTeamMember(contractorTeamMemberRequest $request)
+    {
+        $validated = $request->validated();
+
+        try {
+            // Handle Profile Picture Upload
+            $profilePicPath = null;
+            if ($request->hasFile('profile_pic')) {
+                $profilePicPath = $request->file('profile_pic')->store('team_members', 'public');
+            }
+
+            // Prepare Data for Model
+            $data = [
+                'profile_pic' => $profilePicPath,
+                'email' => $validated['email'],
+                'first_name' => $validated['first_name'],
+                'middle_name' => $validated['middle_name'] ?? null,
+                'last_name' => $validated['last_name'],
+                'phone_number' => $validated['phone_number'],
+                'role' => $validated['role'],
+                'role_other' => $validated['role_other'] ?? null,
+                'contractor_id' => $validated['contractor_id']
+            ];
+
+            // Call Model to Create User and Team Member
+            $contractorModel = new contractorClass();
+            $result = $contractorModel->addTeamMember($data);
+
+            // Send Email Notification
+            try {
+                \Illuminate\Support\Facades\Mail::raw(
+                    "You have been added as a team member by the admin.\n\n" .
+                    "Login Credentials:\n" .
+                    "Username: " . $result['username'] . "\n" .
+                    "Password: teammember123@!\n\n" .
+                    "Note: Username and Password are automatically generated.\n" .
+                    "Please change your password after logging in for security.",
+                    function ($message) use ($result) {
+                        $message->to($result['email'])
+                                ->subject('Team Member Account Created - Legatura');
+                    }
+                );
+            } catch (\Exception $e) {
+                // Log email error but don't fail the request
+                \Illuminate\Support\Facades\Log::error('Failed to send team member creation email: ' . $e->getMessage());
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Team member added successfully',
+                'data' => [
+                    'username' => $result['username'],
+                    'email' => $result['email']
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Change contractor representative
+     */
+    public function changeContractorRepresentative(changeContractorRepresentativeRequest $request)
+    {
+        $validated = $request->validated();
+
+        try {
+            $contractorModel = new contractorClass();
+            $result = $contractorModel->changeRepresentative(
+                $validated['contractor_id'],
+                $validated['new_representative_id']
+            );
+
+            // Get updated representative details for notification
+            $newRep = DB::table('contractor_users')
+                ->join('users', 'contractor_users.user_id', '=', 'users.user_id')
+                ->where('contractor_user_id', $validated['new_representative_id'])
+                ->select(
+                    'contractor_users.*',
+                    'users.email',
+                    'users.username'
+                )
+                ->first();
+
+            // Send notification email to new representative
+            try {
+                Mail::raw(
+                    "You have been assigned as the Company Representative.\n\n" .
+                    "This role gives you authorization to represent the company in all official matters.\n\n" .
+                    "If you have any questions, please contact the administrator.",
+                    function ($message) use ($newRep) {
+                        $message->to($newRep->email)
+                                ->subject('Company Representative Assignment - Legatura');
+                    }
+                );
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to send representative change email: ' . $e->getMessage());
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Company representative changed successfully',
+                'data' => $result
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Fetch contractor team member data for editing
+     */
+    public function fetchContractorTeamMember($id)
+    {
+        try {
+            $member = DB::table('contractor_users')
+                ->join('users', 'contractor_users.user_id', '=', 'users.user_id')
+                ->where('contractor_users.contractor_user_id', $id)
+                ->select(
+                    'contractor_users.*',
+                    'users.username',
+                    'users.email',
+                    'users.profile_pic'
+                )
+                ->first();
+
+            if (!$member) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Team member not found'
+                ], 404);
+            }
+
+            // Map database column names to expected frontend field names
+            $memberData = [
+                'contractor_user_id' => $member->contractor_user_id,
+                'first_name' => $member->authorized_rep_fname,
+                'middle_name' => $member->authorized_rep_mname,
+                'last_name' => $member->authorized_rep_lname,
+                'phone_number' => $member->phone_number,
+                'role' => $member->role,
+                'if_others' => $member->if_others,
+                'username' => $member->username,
+                'email' => $member->email,
+                'profile_pic' => $member->profile_pic
+            ];
+
+            return response()->json([
+                'success' => true,
+                'data' => $memberData
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Update contractor team member
+     */
+    public function updateContractorTeamMember(updateContractorTeamMemberRequest $request)
+    {
+        try {
+            $validated = $request->validated();
+
+            // Get the contractor_user record to get user_id
+            $contractorUser = DB::table('contractor_users')
+                ->where('contractor_user_id', $validated['contractor_user_id'])
+                ->first();
+
+            if (!$contractorUser) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Team member not found'
+                ], 404);
+            }
+
+            $userId = $contractorUser->user_id;
+
+            // Handle profile picture upload if present
+            $profilePicPath = null;
+            if ($request->hasFile('profile_pic')) {
+                $file = $request->file('profile_pic');
+                $filename = time() . '_' . $file->getClientOriginalName();
+                $file->move(public_path('img/profile_pics'), $filename);
+                $profilePicPath = 'img/profile_pics/' . $filename;
+            }
+
+            // Prepare user table update data
+            $userData = [
+                'username' => $validated['username'],
+                'email' => $validated['email']
+            ];
+
+            // Only update password if provided
+            if (!empty($validated['password'])) {
+                $userData['password_hash'] = password_hash($validated['password'], PASSWORD_DEFAULT);
+            }
+
+            // Only update profile pic if new one uploaded
+            if ($profilePicPath) {
+                $userData['profile_pic'] = $profilePicPath;
+            }
+
+            // Update users table
+            DB::table('users')
+                ->where('user_id', $userId)
+                ->update($userData);
+
+            // Prepare contractor_users table update data
+            $contractorUserData = [
+                'authorized_rep_fname' => $validated['first_name'],
+                'authorized_rep_lname' => $validated['last_name'],
+                'phone_number' => $validated['phone_number'],
+                'role' => $validated['role']
+            ];
+
+            // Add optional middle name if provided
+            if (isset($validated['middle_name'])) {
+                $contractorUserData['authorized_rep_mname'] = $validated['middle_name'];
+            }
+
+            // Handle role "others" - store custom role in if_others column
+            if ($validated['role'] === 'others' && isset($validated['role_other'])) {
+                $contractorUserData['if_others'] = $validated['role_other'];
+            } else {
+                // Clear if_others if role is not "others"
+                $contractorUserData['if_others'] = null;
+            }
+
+            // Update contractor_users table
+            DB::table('contractor_users')
+                ->where('contractor_user_id', $validated['contractor_user_id'])
+                ->update($contractorUserData);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Team member updated successfully'
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Deactivate contractor team member (soft delete)
+     */
+    public function deactivateContractorTeamMember(deactivateContractorTeamMemberRequest $request)
+    {
+        try {
+            $validated = $request->validated();
+
+            // Update contractor_users table to set is_active = 0, is_deleted = 1, and save reason
+            DB::table('contractor_users')
+                ->where('contractor_user_id', $validated['contractor_user_id'])
+                ->update([
+                    'is_active' => 0,
+                    'is_deleted' => 1,
+                    'deletion_reason' => $validated['deletion_reason']
+                ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Team member deactivated successfully'
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Reactivate contractor team member
+     */
+    public function reactivateContractorTeamMember(reactivateContractorTeamMemberRequest $request)
+    {
+        try {
+            $validated = $request->validated();
+
+            // Update contractor_users table to reactivate the member
+            DB::table('contractor_users')
+                ->where('contractor_user_id', $validated['contractor_user_id'])
+                ->update([
+                    'is_active' => 1,
+                    'is_deleted' => 0,
+                    'deletion_reason' => null
+                ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Team member reactivated successfully'
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -956,6 +1286,54 @@ class userManagementController extends authController
     }
 
     /**
+     * Suspend contractor (reusing property owner suspension logic)
+     */
+    public function suspendContractor(contractorRequest $request, $id)
+    {
+        $validated = $request->validated();
+
+        $reason = $validated['reason'];
+        $duration = $validated['duration'];
+        $suspensionUntil = $validated['suspension_until'] ?? null;
+
+        if ($duration === 'permanent') {
+            $suspensionUntil = '9999-12-31';
+        }
+
+        $contractorModel = new contractorClass();
+        $contractor = $contractorModel->suspendContractor($id, $reason, $duration, $suspensionUntil);
+
+        if ($contractor) {
+            // Get user email
+            $user = User::where('user_id', $contractor->user_id)->first();
+
+            if ($user) {
+                // Send email notification
+                try {
+                    $emailData = [
+                        'name' => $contractor->company_name,
+                        'reason' => $reason,
+                        'duration' => $duration,
+                        'until' => $suspensionUntil
+                    ];
+
+                    Mail::raw("Dear {$contractor->company_name},\n\nYour contractor account has been suspended.\n\nReason: {$reason}\nDuration: " . ucfirst($duration) . "\nSuspension Until: {$suspensionUntil}\n\nPlease contact support for more information.", function ($message) use ($user) {
+                        $message->to($user->email)
+                                ->subject('Contractor Account Suspension Notification');
+                    });
+                } catch (\Exception $e) {
+                    // Log email error but don't fail the request
+                    // Log::error('Failed to send suspension email: ' . $e->getMessage());
+                }
+            }
+
+            return response()->json(['success' => true, 'message' => 'Contractor suspended successfully']);
+        }
+
+        return response()->json(['success' => false, 'message' => 'Failed to suspend contractor'], 400);
+    }
+
+    /**
      * Get contractors as JSON (for AJAX)
      */
     public function getContractorsApi(Request $request)
@@ -1015,23 +1393,6 @@ class userManagementController extends authController
     /**
      * Suspend a contractor
      */
-    public function suspendContractor(Request $request, $id)
-    {
-        $reason = $request->input('reason', 'Suspended by admin');
-
-        $updated = DB::table('contractors')
-            ->where('contractor_id', $id)
-            ->update([
-                'verification_status' => 'rejected'
-            ]);
-
-        if ($updated) {
-            return response()->json(['success' => true, 'message' => 'Contractor suspended']);
-        }
-
-        return response()->json(['success' => false, 'message' => 'Failed to suspend'], 400);
-    }
-
     /**
      * Get verification requests as JSON
      */

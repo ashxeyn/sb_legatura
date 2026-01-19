@@ -4,6 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
   <title>Admin Dashboard - Legatura</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
@@ -22,7 +23,7 @@
 
 </head>
 
-<body class="bg-gray-50 text-gray-800 font-sans">
+<body class="bg-gray-50 text-gray-800 font-sans" data-contractor-id="{{ $contractor->contractor_id ?? '' }}">
   <div class="flex min-h-screen">
 
     <aside class="bg-white shadow-xl flex flex-col">
@@ -245,14 +246,21 @@
             <span>Back</span>
           </a>
           <div class="flex items-center gap-3">
-            <button id="editContractorBtn" class="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-all duration-300 text-gray-700 flex items-center gap-2 hover:shadow-md hover:scale-105">
+            <button onclick="openEditModal({{ $contractor->contractor_id }})" class="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-all duration-300 text-gray-700 flex items-center gap-2 hover:shadow-md hover:scale-105">
               <i class="fi fi-rr-edit"></i>
               <span>Edit</span>
             </button>
-            <button id="suspendContractorBtn" class="px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white transition-all duration-300 flex items-center gap-2 hover:shadow-lg hover:scale-105">
+            @if($contractor->is_active == 1)
+            <button id="suspendContractorBtn" data-id="{{ $contractor->contractor_id }}" class="px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white transition-all duration-300 flex items-center gap-2 hover:shadow-lg hover:scale-105">
               <i class="fi fi-rr-ban"></i>
               <span>Suspend</span>
             </button>
+            @else
+            <div class="px-4 py-2 rounded-lg bg-red-100 text-red-600 font-medium flex items-center gap-2 cursor-default">
+                <i class="fi fi-rr-ban"></i>
+                <span>Suspended</span>
+            </div>
+            @endif
           </div>
         </div>
 
@@ -280,7 +288,7 @@
               </div>
               <div>
                 <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Account Status</label>
-                @if($contractor->is_active)
+                @if($contractor->is_active == 1)
                   <span class="inline-block px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-semibold">Active</span>
                 @else
                   <span class="inline-block px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm font-semibold">Inactive</span>
@@ -322,7 +330,7 @@
                   <div class="md:col-span-2 flex items-center gap-6 p-6 bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl border-2 border-orange-200">
                     <div class="w-24 h-24 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center overflow-hidden shadow-xl ring-4 ring-orange-200">
                       @if(isset($contractor->profile_pic) && $contractor->profile_pic)
-                        <img id="companyLogoImg" src="{{ asset('storage/' . $contractor->profile_pic) }}" alt="{{ $contractor->company_name }}" class="w-full h-full object-cover">
+                        <img id="companyLogoImg" src="{{ asset($contractor->profile_pic) }}" alt="{{ $contractor->company_name }}" class="w-full h-full object-cover">
                       @else
                         <i id="companyLogoIcon" class="fi fi-sr-building text-white text-4xl"></i>
                       @endif
@@ -612,7 +620,7 @@
                   <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Member</th>
                   <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Position</th>
                   <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Date Added</th>
-                  <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
+                  <th id="statusColumnHeader" class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
                   <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
@@ -640,7 +648,7 @@
                       <div class="flex items-center gap-3 {{ !$member->is_active ? 'opacity-60' : '' }}">
                         <div class="w-10 h-10 rounded-full bg-gradient-to-br from-{{ $color }}-400 to-{{ $color }}-600 flex items-center justify-center overflow-hidden shadow-md group-hover:shadow-lg transition-all group-hover:scale-110">
                           @if($member->profile_pic)
-                            <img src="{{ asset('storage/' . $member->profile_pic) }}" alt="{{ $fname . ' ' . $lname }}" class="w-full h-full object-cover">
+                            <img src="{{ asset($member->profile_pic) }}" alt="{{ $fname . ' ' . $lname }}" class="w-full h-full object-cover">
                           @else
                             <span class="text-white font-bold text-sm">{{ $initials }}</span>
                           @endif
@@ -652,28 +660,33 @@
                     </td>
                     <td class="px-6 py-4 text-center text-sm text-gray-600">{{ ucfirst($member->role ?? 'N/A') }}</td>
                     <td class="px-6 py-4 text-center text-sm text-gray-600">{{ $member->created_at ? \Carbon\Carbon::parse($member->created_at)->format('M d, Y') : 'N/A' }}</td>
-                    <td class="px-6 py-4 text-center">
+                    <td class="px-6 py-4 text-center status-cell">
                       @if($member->is_active)
-                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 transition-all duration-200 hover:scale-110 hover:shadow-md">
+                        <span class="status-badge inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 transition-all duration-200 hover:scale-110 hover:shadow-md">
                           Active
                         </span>
                       @else
-                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                        <span class="status-badge inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600 hidden">
                           Deactivated
                         </span>
+                        <span class="deletion-reason text-sm text-gray-700">{{ $member->deletion_reason ?? 'No reason provided' }}</span>
                       @endif
                     </td>
                     <td class="px-6 py-4">
                       <div class="flex items-center justify-center gap-2">
                         @if($member->is_active)
-                          <button class="team-edit-btn p-2 rounded-lg hover:bg-orange-50 transition-all group/btn" title="Edit Member">
+                          <button class="team-edit-btn p-2 rounded-lg hover:bg-orange-50 transition-all group/btn" title="Edit Member" data-member-id="{{ $member->contractor_user_id }}">
                             <i class="fi fi-rr-pencil text-orange-600 group-hover/btn:scale-110 transition-transform"></i>
                           </button>
-                          <button class="team-deactivate-btn p-2 rounded-lg hover:bg-red-50 transition-all group/btn" title="Deactivate Account">
+                          <button class="team-deactivate-btn p-2 rounded-lg hover:bg-red-50 transition-all group/btn" title="Deactivate Account"
+                                  data-member-id="{{ $member->contractor_user_id }}"
+                                  data-member-name="{{ $fname . ' ' . ($member->authorized_rep_mname ?? '') . ' ' . $lname }}">
                             <i class="fi fi-rr-ban text-red-600 group-hover/btn:scale-110 transition-transform"></i>
                           </button>
                         @else
-                          <button class="team-reactivate-btn p-2 rounded-lg hover:bg-green-50 transition-all group/btn" title="Reactivate Account">
+                          <button class="team-reactivate-btn p-2 rounded-lg hover:bg-green-50 transition-all group/btn" title="Reactivate Account"
+                                  data-member-id="{{ $member->contractor_user_id }}"
+                                  data-member-name="{{ $fname . ' ' . ($member->authorized_rep_mname ?? '') . ' ' . $lname }}">
                             <i class="fi fi-rr-check-circle text-green-600 group-hover/btn:scale-110 transition-transform"></i>
                           </button>
                         @endif
@@ -732,21 +745,21 @@
           <div class="bg-white rounded-lg p-3 border border-red-200 space-y-2">
             <div class="flex items-center gap-3">
               <div class="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 text-white font-bold flex items-center justify-center shadow-md">
-                JL
+                {{ strtoupper(substr($contractor->company_name ?? 'C', 0, 1) . substr($contractor->company_name ?? 'C', strpos($contractor->company_name ?? ' ', ' ') + 1, 1)) }}
               </div>
               <div>
-                <p class="font-bold text-gray-800">J'Lois Construction</p>
-                <p class="text-xs text-gray-600">jlois_construction</p>
+                <p class="font-bold text-gray-800">{{ $contractor->company_name ?? 'N/A' }}</p>
+                <p class="text-xs text-gray-600">{{ $contractor->username ?? 'N/A' }}</p>
               </div>
             </div>
             <div class="grid grid-cols-2 gap-2 pt-2 border-t border-gray-200">
               <div class="text-center">
                 <p class="text-xs text-gray-500">Active Projects</p>
-                <p class="text-lg font-bold text-gray-800">12</p>
+                <p class="text-lg font-bold text-gray-800">{{ $contractor->active_projects_count ?? 0 }}</p>
               </div>
               <div class="text-center">
                 <p class="text-xs text-gray-500">Member Since</p>
-                <p class="text-sm font-semibold text-gray-800">Jan 2023</p>
+                <p class="text-sm font-semibold text-gray-800">{{ date('M Y', strtotime($contractor->created_at ?? now())) }}</p>
               </div>
             </div>
           </div>
@@ -764,6 +777,7 @@
             placeholder="Please provide a detailed reason for suspending this account..."
             class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-red-400 focus:border-red-400 transition-all hover:border-red-300 bg-white resize-none text-sm"
           ></textarea>
+          <p id="suspendReasonError" class="text-red-500 text-xs mt-1 hidden"></p>
           <p class="text-xs text-gray-500 mt-1 flex items-center gap-1">
             <i class="fi fi-rr-info"></i>
             This reason will be recorded and may be shared with the contractor.
@@ -791,6 +805,14 @@
                 <p class="text-xs text-gray-600">Account deletion</p>
               </div>
             </label>
+          </div>
+
+          <!-- Date Picker for Temporary Suspension -->
+          <div id="suspensionDateContainer" class="mt-3 transition-all duration-300 overflow-hidden">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Suspension Until</label>
+            <input type="date" id="suspensionDate" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-all text-sm" min="{{ date('Y-m-d', strtotime('+1 day')) }}">
+            <p id="suspensionDateError" class="text-red-500 text-xs mt-1 hidden"></p>
+            <p class="text-xs text-gray-500 mt-1">The account will be automatically reactivated after this date.</p>
           </div>
         </div>
 
@@ -826,220 +848,240 @@
 
   <!-- Edit Contractor Modal -->
   <div id="editContractorModal" class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden transform transition-all duration-300 scale-95 opacity-0 modal-content">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto modal-content">
       <!-- Modal Header -->
-      <div class="sticky top-0 bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-5 flex items-center justify-between rounded-t-2xl z-10 shadow-lg">
-        <h2 class="text-2xl font-bold text-white flex items-center gap-3">
-          <i class="fi fi-rr-edit"></i>
-          Edit Contractor
-        </h2>
-        <button id="closeEditModalBtn" class="text-white hover:text-orange-100 transition-all p-2 rounded-lg hover:bg-white hover:bg-opacity-20 hover:rotate-90 duration-300">
+      <div class="sticky top-0 bg-white border-b border-gray-200 px-8 py-5 flex items-center justify-between rounded-t-2xl z-10">
+        <h2 class="text-2xl font-bold text-gray-800">Edit Contractor</h2>
+        <button id="closeEditModalBtn" class="text-gray-400 hover:text-gray-600 transition p-2 rounded-lg hover:bg-gray-100">
           <i class="fi fi-rr-cross text-2xl"></i>
         </button>
       </div>
 
       <!-- Modal Body -->
-      <div class="overflow-y-auto max-h-[calc(90vh-80px)] p-6 md:p-8 space-y-6">
-
-        <!-- Edit Type Selector -->
-        <div class="flex gap-3 p-4 bg-gray-50 rounded-xl border-2 border-gray-200">
-          <button id="editCompanyTab" class="flex-1 px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg font-semibold shadow-md transition-all hover:shadow-lg flex items-center justify-center gap-2">
-            <i class="fi fi-rr-building"></i>
-            <span>Company Information</span>
-          </button>
-          <button id="editRepresentativeTab" class="flex-1 px-6 py-3 bg-white border-2 border-gray-300 text-gray-700 rounded-lg font-semibold transition-all hover:bg-gray-50 hover:shadow-md flex items-center justify-center gap-2">
-            <i class="fi fi-rr-user"></i>
-            <span>Representative Information</span>
-          </button>
-        </div>
-
-        <!-- Company Information Form -->
-        <div id="companyFormSection" class="space-y-6">
-        <!-- Company Logo Section -->
-        <div class="flex items-center gap-6 p-6 bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl border-2 border-orange-200 hover:shadow-lg transition-all duration-300">
+      <div class="p-8">
+        <form id="editContractorForm">
+        <input type="hidden" id="edit_user_id" name="user_id">
+        <!-- Profile Picture Section -->
+        <div class="flex items-center gap-6 mb-8">
           <div class="relative group">
-            <div class="w-24 h-24 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center overflow-hidden shadow-xl ring-4 ring-orange-200 hover:ring-orange-300 transition-all duration-300">
-              <img id="editCompanyLogoPreview" src="" alt="Company Logo" class="w-full h-full object-cover hidden">
-              <i id="editCompanyLogoIcon" class="fi fi-sr-building text-white text-4xl"></i>
+            <div class="w-24 h-24 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center overflow-hidden shadow-lg">
+              <i class="fi fi-rr-building text-4xl text-gray-500" id="editProfileIcon"></i>
+              <img id="editProfilePreview" class="w-full h-full object-cover hidden" alt="Profile Preview">
             </div>
-            <label for="editCompanyLogoUpload" class="absolute -bottom-1 -right-1 bg-orange-500 hover:bg-orange-600 text-white p-2.5 rounded-full cursor-pointer shadow-lg transition-all transform hover:scale-110 hover:rotate-12">
-              <i class="fi fi-rr-camera"></i>
+            <label for="editProfileUpload" class="absolute bottom-0 right-0 bg-orange-500 hover:bg-orange-600 text-white p-2 rounded-full cursor-pointer shadow-lg transition transform hover:scale-110">
+              <i class="fi fi-rr-pencil text-sm"></i>
+              <input type="file" id="editProfileUpload" name="profile_pic" class="hidden" accept="image/*">
             </label>
-            <input type="file" id="editCompanyLogoUpload" accept="image/*" class="hidden">
           </div>
           <div>
-            <h3 class="text-lg font-bold text-gray-800">Company Logo</h3>
-            <p class="text-sm text-gray-600 mt-1">Click the camera icon to update logo</p>
-            <p class="text-xs text-orange-600 mt-1 font-medium">• JPG, PNG • Max 5MB</p>
+            <h3 class="text-lg font-semibold text-gray-800">Company Logo</h3>
+            <p class="text-sm text-gray-500">Update logo for the contractor company</p>
           </div>
         </div>
 
         <!-- Company Information Section -->
-        <div>
-          <h3 class="text-lg font-bold text-orange-600 mb-4 flex items-center gap-2 pb-2 border-b-2 border-orange-200">
+        <div class="mb-6">
+          <h3 class="text-lg font-semibold text-orange-500 mb-4 flex items-center gap-2">
             <i class="fi fi-rr-building"></i>
             Company Information
           </h3>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div class="form-group">
-              <label class="form-label">Company Name</label>
-              <input type="text" value="J'Lois Construction" class="form-input">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Years of Operation</label>
-              <input type="number" value="98" class="form-input">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Account Type</label>
-              <select class="form-input">
-                <option>General Contractor</option>
-                <option selected>Construction</option>
-                <option>Specialty Contractor</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Contact Number</label>
-              <input type="tel" value="+63 912 345 6789" class="form-input">
-            </div>
-            <div class="form-group">
-              <label class="form-label">License Number</label>
-              <input type="text" value="LIC-2023-12345" class="form-input">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Registration Date</label>
-              <input type="date" value="2023-01-15" class="form-input">
-            </div>
-          </div>
-        </div>
-
-        <!-- Company Website / Socials -->
-        <div>
-          <h3 class="text-lg font-bold text-orange-600 mb-4 flex items-center gap-2 pb-2 border-b-2 border-orange-200">
-            <i class="fi fi-rr-globe"></i>
-            Company Website / Socials
-          </h3>
-          <div class="space-y-3">
-            <div class="form-group">
-              <input type="url" value="https://jloisconstruction.com" placeholder="https://" class="form-input">
-            </div>
-            <div class="form-group">
-              <input type="url" value="https://facebook.com/jloisconstruction" placeholder="https://" class="form-input">
-            </div>
-            <div class="form-group">
-              <input type="url" value="https://linkedin.com/company/jloisconstruction" placeholder="https://" class="form-input">
-            </div>
-          </div>
-        </div>
-
-        <!-- Action Buttons for Company -->
-        <div class="flex items-center justify-end gap-3 pt-6 border-t-2 border-gray-200">
-          <button id="cancelEditBtn" class="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all font-semibold hover:shadow-md hover:scale-105 active:scale-95">
-            Cancel
-          </button>
-          <button id="saveEditBtn" class="px-8 py-3 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-lg transition-all font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95 flex items-center gap-2">
-            <i class="fi fi-rr-disk"></i>
-            Save Changes
-          </button>
-        </div>
-        </div>
-
-        <!-- Company Representative Information Form -->
-        <div id="representativeFormSection" class="space-y-6 hidden">
-        <!-- Company Representative Information -->
-        <div>
-          <h3 class="text-lg font-bold text-orange-600 mb-4 flex items-center gap-2 pb-2 border-b-2 border-orange-200">
-            <i class="fi fi-rr-id-badge"></i>
-            Company Representative Information
-          </h3>
-
-          <!-- Representative Photo -->
-          <div class="flex items-center gap-6 p-6 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl border-2 border-blue-200 hover:shadow-lg transition-all duration-300 mb-4">
-            <div class="relative group">
-              <div class="w-20 h-20 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center overflow-hidden shadow-xl ring-4 ring-blue-200 hover:ring-blue-300 transition-all duration-300">
-                <img id="editRepPhotoPreview" src="" alt="Representative Photo" class="w-full h-full object-cover hidden">
-                <i id="editRepPhotoIcon" class="fi fi-rr-user text-white text-3xl"></i>
-              </div>
-              <label for="editRepPhotoUpload" class="absolute -bottom-1 -right-1 bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-full cursor-pointer shadow-lg transition-all transform hover:scale-110 hover:rotate-12">
-                <i class="fi fi-rr-camera text-sm"></i>
-              </label>
-              <input type="file" id="editRepPhotoUpload" accept="image/*" class="hidden">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Company Name</label>
+              <input type="text" id="edit_company_name" name="company_name" placeholder="Enter company name" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
             </div>
             <div>
-              <h3 class="text-base font-bold text-gray-800">Representative Photo</h3>
-              <p class="text-sm text-gray-600 mt-1">Optional • JPG/PNG • 400x400 recommended</p>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Company Phone</label>
+              <input type="tel" id="edit_company_phone" name="company_phone" placeholder="09xxxxxxxxx" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
             </div>
-          </div>
-
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div class="form-group">
-              <label class="form-label">First Name</label>
-              <input type="text" value="John" class="form-input">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Date of Incorporation</label>
+              <input type="date" id="edit_company_start_date" name="company_start_date" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
             </div>
-            <div class="form-group">
-              <label class="form-label">Position / Role</label>
-              <input type="text" value="Project Manager" class="form-input">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Contractor Type</label>
+              <select name="contractor_type_id" id="edit_contractorTypeSelect" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+                <option value="">Select Type</option>
+                @foreach($contractorTypes as $type)
+                  <option value="{{ $type->type_id }}">{{ $type->type_name }}</option>
+                @endforeach
+              </select>
+              <input type="text" name="contractor_type_other_text" id="edit_contractorTypeOtherInput" placeholder="Please specify type" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition mt-2 hidden">
             </div>
-            <div class="form-group">
-              <label class="form-label">Middle Name</label>
-              <input type="text" value="Michael" class="form-input">
+            <div class="md:col-span-2">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Services Offered</label>
+              <input type="text" id="edit_services_offered" name="services_offered" placeholder="e.g. Plumbing, Electrical, Roofing" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
             </div>
-            <div class="form-group">
-              <label class="form-label">Email Address</label>
-              <input type="email" value="john.santos@jlois.com" class="form-input">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Company Website <span class="text-gray-400">(optional)</span></label>
+              <input type="url" id="edit_company_website" name="company_website" placeholder="https://" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
             </div>
-            <div class="form-group">
-              <label class="form-label">Last Name</label>
-              <input type="text" value="Santos" class="form-input">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Contact Number</label>
-              <input type="tel" value="+63 918 765 4321" class="form-input">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Username</label>
-              <input type="text" value="johnsantos" class="form-input">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Social Media <span class="text-gray-400">(optional)</span></label>
+              <input type="url" id="edit_company_social_media" name="company_social_media" placeholder="https://" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
             </div>
           </div>
         </div>
 
-        <!-- Business Address -->
-        <div>
-          <h3 class="text-lg font-bold text-orange-600 mb-4 flex items-center gap-2 pb-2 border-b-2 border-orange-200">
-            <i class="fi fi-rr-marker"></i>
-            Business Address
+        <!-- Representative Information Section -->
+        <div class="mb-6">
+          <h3 class="text-lg font-semibold text-orange-500 mb-4 flex items-center gap-2">
+            <i class="fi fi-rr-user"></i>
+            Representative Information
           </h3>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div class="form-group md:col-span-2">
-              <label class="form-label">Street Address</label>
-              <input type="text" value="123 Construction Avenue, Building 5" class="form-input">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">First Name</label>
+              <input type="text" id="edit_first_name" name="first_name" placeholder="Enter first name" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
             </div>
-            <div class="form-group">
-              <label class="form-label">City</label>
-              <input type="text" value="Zamboanga City" class="form-input">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Middle Name <span class="text-gray-400">(optional)</span></label>
+              <input type="text" id="edit_middle_name" name="middle_name" placeholder="Enter middle name" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
             </div>
-            <div class="form-group">
-              <label class="form-label">Province</label>
-              <input type="text" value="Zamboanga del Sur" class="form-input">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Last Name</label>
+              <input type="text" id="edit_last_name" name="last_name" placeholder="Enter last name" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
             </div>
-            <div class="form-group">
-              <label class="form-label">Postal Code</label>
-              <input type="text" value="7000" class="form-input">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Company Email</label>
+              <input type="email" id="edit_company_email" name="company_email" placeholder="Enter email address" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
             </div>
           </div>
         </div>
 
-        <!-- Action Buttons for Representative -->
-        <div class="flex items-center justify-end gap-3 pt-6 border-t-2 border-gray-200">
-          <button class="cancel-edit-rep-btn px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all font-semibold hover:shadow-md hover:scale-105 active:scale-95">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- Account Setup Section -->
+          <div class="space-y-6">
+            <div>
+                <h3 class="text-lg font-semibold text-orange-500 mb-4 flex items-center gap-2">
+                <i class="fi fi-rr-user-gear"></i>
+                Account Setup
+                </h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Username</label>
+                        <input type="text" id="edit_username" name="username" placeholder="Enter username" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition" readonly>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">New Password <span class="text-gray-400">(Optional)</span></label>
+                        <input type="password" id="edit_password" name="password" placeholder="Enter new password" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+                        <p class="text-xs text-gray-500 mt-1">Leave blank if you don't want to change the password.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <h3 class="text-lg font-semibold text-orange-500 mb-4 flex items-center gap-2">
+                <i class="fi fi-rr-map-marker"></i>
+                Business Address
+                </h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Province</label>
+                        <select id="edit_contractor_address_province" name="business_address_province" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+                            <option value="">Select Province</option>
+                            @foreach($provinces as $province)
+                                <option value="{{ $province['code'] }}" data-name="{{ $province['name'] }}">{{ $province['name'] }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">City/Municipality</label>
+                        <select id="edit_contractor_address_city" name="business_address_city" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition" disabled>
+                            <option value="">Select City/Municipality</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Barangay</label>
+                        <select id="edit_contractor_address_barangay" name="business_address_barangay" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition" disabled>
+                            <option value="">Select Barangay</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Street Address / Unit No.</label>
+                        <input type="text" id="edit_business_address_street" name="business_address_street" placeholder="Enter street address" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Zip Code</label>
+                        <input type="text" id="edit_business_address_postal" name="business_address_postal" placeholder="Enter zip code" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+                    </div>
+                </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Documents Section -->
+        <div class="mt-6">
+          <h3 class="text-lg font-semibold text-orange-500 mb-4 flex items-center gap-2">
+            <i class="fi fi-rr-file-invoice"></i>
+            Legal Documents
+          </h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">PCAB Number <span class="text-red-500">*</span></label>
+              <input type="text" id="edit_picab_number" name="picab_number" placeholder="Enter PCAB number" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">PCAB Category <span class="text-red-500">*</span></label>
+              <select id="edit_picab_category" name="picab_category" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+                <option value="">Select Category</option>
+                @foreach($picabCategories as $category)
+                    <option value="{{ $category }}">{{ $category }}</option>
+                @endforeach
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">PCAB Expiration Date <span class="text-red-500">*</span></label>
+              <input type="date" id="edit_picab_expiration_date" name="picab_expiration_date" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Business Permit Number <span class="text-red-500">*</span></label>
+              <input type="text" id="edit_business_permit_number" name="business_permit_number" placeholder="Enter permit number" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Business Permit City <span class="text-red-500">*</span></label>
+              <select id="edit_business_permit_city" name="business_permit_city" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+                <option value="">Select City</option>
+                @foreach($allCities as $city)
+                    <option value="{{ $city['name'] }}">{{ $city['name'] }}</option>
+                @endforeach
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Business Permit Expiration <span class="text-red-500">*</span></label>
+              <input type="date" id="edit_business_permit_expiration" name="business_permit_expiration" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">TIN Business Registration Number <span class="text-red-500">*</span></label>
+              <input type="text" id="edit_tin_business_reg_number" name="tin_business_reg_number" placeholder="Enter TIN/Business Reg. number" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">DTI / SEC Registration <span class="text-gray-400">(Optional)</span></label>
+              <div id="editDtiDropzone" class="flex items-center justify-center w-full h-[110px] rounded-xl border-2 border-dashed border-orange-300 bg-orange-50 text-orange-600 hover:bg-orange-100 transition-all relative cursor-pointer">
+                <input id="editDtiUpload" name="dti_sec_registration_photo" type="file" accept="image/*,application/pdf" class="hidden">
+                <div class="text-center pointer-events-none">
+                  <i class="fi fi-rr-upload text-2xl"></i>
+                  <div class="text-sm font-medium mt-1">Upload image or file</div>
+                  <div id="editDtiFileName" class="text-xs text-orange-500 mt-1"></div>
+                </div>
+              </div>
+              <div id="editCurrentDtiFile" class="mt-2 text-sm hidden">
+                  Current: <a href="#" target="_blank" class="text-orange-600 hover:underline font-medium">View File</a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="flex items-center justify-end gap-3 mt-8 pt-6 border-t border-gray-200">
+          <button type="button" id="cancelEditBtn" class="px-6 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition font-medium">
             Cancel
           </button>
-          <button class="save-edit-rep-btn px-8 py-3 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-lg transition-all font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95 flex items-center gap-2">
-            <i class="fi fi-rr-disk"></i>
+          <button type="button" id="saveEditBtn" class="px-6 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-lg transition font-medium shadow-md hover:shadow-lg transform hover:scale-105">
             Save Changes
           </button>
         </div>
-        </div>
-
+        </form>
       </div>
     </div>
   </div>
@@ -1086,39 +1128,80 @@
             <i class="fi fi-rr-user"></i>
             Personal Information
           </h3>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+          <!-- Auto-Generation Note -->
+          <div class="mb-4 p-4 bg-blue-50 border-l-4 border-blue-500 rounded">
+            <div class="flex items-start gap-3">
+              <i class="fi fi-rr-info text-blue-500 mt-1"></i>
+              <div>
+                <p class="text-sm font-semibold text-blue-800">Note: Username and Password are automatically generated.</p>
+                <p class="text-sm text-blue-700 mt-1">Default Password: <span class="font-mono font-semibold">teammember123@!</span></p>
+                <p class="text-sm text-blue-700 mt-1">The username will be <span class="font-mono font-semibold">staff_</span> followed by a random 4-digit number.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div class="form-group">
               <label class="form-label">First Name <span class="text-red-500">*</span></label>
               <input type="text" id="teamMemberFirstName" placeholder="Enter first name" class="form-input">
+              <span id="teamMemberFirstNameError" class="text-xs text-red-500 mt-1 hidden"></span>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Middle Name</label>
+              <input type="text" id="teamMemberMiddleName" placeholder="Enter middle name" class="form-input">
+              <span id="teamMemberMiddleNameError" class="text-xs text-red-500 mt-1 hidden"></span>
             </div>
             <div class="form-group">
               <label class="form-label">Last Name <span class="text-red-500">*</span></label>
               <input type="text" id="teamMemberLastName" placeholder="Enter last name" class="form-input">
+              <span id="teamMemberLastNameError" class="text-xs text-red-500 mt-1 hidden"></span>
+            </div>
+            <div class="form-group md:col-span-3">
+              <label class="form-label">Email Address <span class="text-red-500">*</span></label>
+              <input type="email" id="teamMemberEmail" placeholder="name@example.com" class="form-input">
+              <span id="teamMemberEmailError" class="text-xs text-red-500 mt-1 hidden"></span>
             </div>
             <div class="form-group md:col-span-2">
-              <label class="form-label">Position / Role <span class="text-red-500">*</span></label>
-              <input type="text" id="teamMemberPosition" placeholder="e.g., Site Engineer, Architect" class="form-input">
+              <label class="form-label">Role <span class="text-red-500">*</span></label>
+              <select id="teamMemberRole" class="form-input">
+                <option value="">Select Role</option>
+                <option value="owner">Owner</option>
+                <option value="manager">Manager</option>
+                <option value="engineer">Engineer</option>
+                <option value="architect">Architect</option>
+                <option value="representative">Representative</option>
+                <option value="others">Others</option>
+              </select>
+              <span id="teamMemberRoleError" class="text-xs text-red-500 mt-1 hidden"></span>
             </div>
-            <div class="form-group">
-              <label class="form-label">Email Address <span class="text-red-500">*</span></label>
-              <input type="email" id="teamMemberEmail" placeholder="name@company.com" class="form-input">
+            <div class="form-group hidden" id="teamMemberRoleOtherGroup">
+              <label class="form-label">Specify Role <span class="text-red-500">*</span></label>
+              <input type="text" id="teamMemberRoleOther" placeholder="Specify role" class="form-input">
+              <span id="teamMemberRoleOtherError" class="text-xs text-red-500 mt-1 hidden"></span>
             </div>
-            <div class="form-group">
-              <label class="form-label">Contact Number</label>
-              <input type="tel" id="teamMemberContact" placeholder="+63 9xx xxx xxxx" class="form-input">
+            <div class="form-group md:col-span-3">
+              <label class="form-label">Contact Number <span class="text-red-500">*</span></label>
+              <input type="tel" id="teamMemberContact" placeholder="09xxxxxxxxx" class="form-input">
+              <span id="teamMemberContactError" class="text-xs text-red-500 mt-1 hidden"></span>
             </div>
           </div>
         </div>
 
         <!-- Action Buttons -->
-        <div class="flex items-center justify-end gap-3 pt-6 border-t-2 border-gray-200">
-          <button id="cancelAddTeamMemberBtn" class="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all font-semibold hover:shadow-md hover:scale-105 active:scale-95">
-            Cancel
+        <div class="flex items-center justify-between gap-3 pt-6 border-t-2 border-gray-200">
+          <button id="backToRepresentativeModalBtn" class="px-6 py-3 border-2 border-blue-300 text-blue-600 rounded-lg hover:bg-blue-50 transition-all font-semibold hover:shadow-md hover:scale-105 active:scale-95 flex items-center gap-2 hidden">
+            Back
           </button>
-          <button id="saveTeamMemberBtn" class="px-8 py-3 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-lg transition-all font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95 flex items-center gap-2">
-            <i class="fi fi-rr-disk"></i>
-            Add Member
-          </button>
+          <div class="flex items-center gap-3 ml-auto">
+            <button id="cancelAddTeamMemberBtn" class="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all font-semibold hover:shadow-md hover:scale-105 active:scale-95">
+              Cancel
+            </button>
+            <button id="saveTeamMemberBtn" class="px-8 py-3 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-lg transition-all font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95 flex items-center gap-2">
+              <i class="fi fi-rr-disk"></i>
+              Add Member
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -1165,25 +1248,80 @@
             Personal Information
           </h3>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <input type="hidden" id="editTeamMemberContractorUserId">
             <div class="form-group">
               <label class="form-label">First Name <span class="text-red-500">*</span></label>
-              <input type="text" id="editTeamMemberFirstName" value="Olive Faith" class="form-input">
+              <input type="text" id="editTeamMemberFirstName" class="form-input">
+              <span id="editFirstNameError" class="text-xs text-red-500 mt-1 hidden"></span>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Middle Name</label>
+              <input type="text" id="editTeamMemberMiddleName" class="form-input">
+              <span id="editMiddleNameError" class="text-xs text-red-500 mt-1 hidden"></span>
             </div>
             <div class="form-group">
               <label class="form-label">Last Name <span class="text-red-500">*</span></label>
-              <input type="text" id="editTeamMemberLastName" value="Podios" class="form-input">
+              <input type="text" id="editTeamMemberLastName" class="form-input">
+              <span id="editLastNameError" class="text-xs text-red-500 mt-1 hidden"></span>
             </div>
-            <div class="form-group md:col-span-2">
-              <label class="form-label">Position / Role <span class="text-red-500">*</span></label>
-              <input type="text" id="editTeamMemberPosition" value="Secretary" class="form-input">
+            <div class="form-group">
+              <label class="form-label">Contact Number <span class="text-red-500">*</span></label>
+              <input type="tel" id="editTeamMemberContact" class="form-input">
+              <span id="editPhoneNumberError" class="text-xs text-red-500 mt-1 hidden"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Account Information -->
+        <div>
+          <h3 class="text-lg font-bold text-orange-600 mb-4 flex items-center gap-2 pb-2 border-b-2 border-orange-200">
+            <i class="fi fi-rr-shield-check"></i>
+            Account Information
+          </h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="form-group">
+              <label class="form-label">Username <span class="text-red-500">*</span></label>
+              <input type="text" id="editTeamMemberUsername" class="form-input">
+              <span id="editUsernameError" class="text-xs text-red-500 mt-1 hidden"></span>
             </div>
             <div class="form-group">
               <label class="form-label">Email Address <span class="text-red-500">*</span></label>
-              <input type="email" id="editTeamMemberEmail" value="olive.podios@jlois.com" class="form-input">
+              <input type="email" id="editTeamMemberEmail" class="form-input">
+              <span id="editEmailError" class="text-xs text-red-500 mt-1 hidden"></span>
             </div>
+            <div class="form-group md:col-span-2">
+              <label class="form-label">Password</label>
+              <input type="password" id="editTeamMemberPassword" placeholder="Leave blank to keep current password" class="form-input">
+              <span id="editPasswordError" class="text-xs text-red-500 mt-1 hidden"></span>
+              <p class="text-xs text-gray-500 mt-1">Leave blank if you don't want to change the password</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Role Information -->
+        <div>
+          <h3 class="text-lg font-bold text-orange-600 mb-4 flex items-center gap-2 pb-2 border-b-2 border-orange-200">
+            <i class="fi fi-rr-briefcase"></i>
+            Role Information
+          </h3>
+          <div class="grid grid-cols-1 gap-4">
             <div class="form-group">
-              <label class="form-label">Contact Number</label>
-              <input type="tel" id="editTeamMemberContact" value="+63 912 345 6789" class="form-input">
+              <label class="form-label">Role <span class="text-red-500">*</span></label>
+              <select id="editTeamMemberRole" class="form-input">
+                <option value="" disabled>Select Role</option>
+                <option value="owner">Owner</option>
+                <option value="manager">Manager</option>
+                <option value="engineer">Engineer</option>
+                <option value="architect">Architect</option>
+                <option value="representative">Representative</option>
+                <option value="others">Others</option>
+              </select>
+              <span id="editRoleError" class="text-xs text-red-500 mt-1 hidden"></span>
+            </div>
+            <div class="form-group hidden" id="editRoleOtherDiv">
+              <label class="form-label">Specify Role <span class="text-red-500">*</span></label>
+              <input type="text" id="editTeamMemberRoleOther" placeholder="e.g., Consultant, Surveyor" class="form-input">
+              <span id="editRoleOtherError" class="text-xs text-red-500 mt-1 hidden"></span>
             </div>
           </div>
         </div>
@@ -1218,13 +1356,24 @@
       </div>
 
       <!-- Content Section -->
-      <div class="px-8 pb-8 text-center">
+      <div class="px-8 pb-4 text-center">
         <h2 class="text-3xl font-bold text-gray-900 mb-3 tracking-tight">Deactivate User</h2>
         <p class="text-gray-600 leading-relaxed text-base mb-2">
           Are you sure you want to deactivate
         </p>
         <p class="text-xl font-bold text-gray-900 mb-1" id="deactivateTeamMemberName">Olive Faith Podios</p>
-        <p class="text-sm text-gray-500">This action can be reversed later.</p>
+        <p class="text-sm text-gray-500 mb-4">This action can be reversed later.</p>
+
+        <!-- Deactivation Reason -->
+        <div class="text-left">
+          <label class="block text-sm font-semibold text-gray-700 mb-2">Reason for Deactivation <span class="text-red-500">*</span></label>
+          <textarea
+            id="deactivateTeamMemberReason"
+            rows="3"
+            class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition resize-none text-sm"
+            placeholder="Provide a reason (minimum 10 characters)"></textarea>
+          <span id="deactivateReasonError" class="text-xs text-red-500 mt-1 hidden"></span>
+        </div>
       </div>
 
       <!-- Action Buttons -->
@@ -1300,15 +1449,25 @@
             <i class="fi fi-rr-info text-blue-600 text-lg"></i>
             <h3 class="font-bold text-gray-800">Current Representative</h3>
           </div>
+          @if($contractor->representative)
           <div class="flex items-center gap-4 p-3 bg-white rounded-lg border border-blue-200">
             <div class="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold shadow-md">
-              JS
+              {{ strtoupper(substr($contractor->representative->authorized_rep_fname ?? '', 0, 1) . substr($contractor->representative->authorized_rep_lname ?? '', 0, 1)) }}
             </div>
             <div>
-              <p class="font-semibold text-gray-800">John Michael Santos</p>
-              <p class="text-sm text-gray-600">Project Manager • john.santos@jlois.com</p>
+              <p class="font-semibold text-gray-800">
+                {{ ($contractor->representative->authorized_rep_fname ?? '') . ' ' .
+                   ($contractor->representative->authorized_rep_mname ?? '') . ' ' .
+                   ($contractor->representative->authorized_rep_lname ?? '') }}
+              </p>
+              <p class="text-sm text-gray-600">{{ ucfirst($contractor->representative->role ?? 'Representative') }} • {{ $contractor->representative->phone_number ?? 'N/A' }}</p>
             </div>
           </div>
+          @else
+          <div class="p-3 bg-white rounded-lg border border-blue-200">
+            <p class="text-sm text-gray-600 text-center">No representative assigned</p>
+          </div>
+          @endif
         </div>
 
         <!-- Search Bar -->
@@ -1324,80 +1483,63 @@
 
         <!-- Team Members List -->
         <div>
-          <h3 class="text-sm font-bold text-gray-600 uppercase tracking-wider mb-3">Select New Representative</h3>
+          <h3 class="text-sm font-bold text-gray-600 uppercase tracking-wider mb-3">Select from Existing Team Members</h3>
           <div class="space-y-2 max-h-96 overflow-y-auto" id="teamMembersList">
+            @php
+              $teamMembers = collect($contractor->team_members ?? [])->filter(function($member) {
+                return $member->role !== 'representative' && $member->is_deleted == 0 && $member->is_active == 1;
+              });
+            @endphp
 
-            <!-- Team Member Option 1 -->
-            <div class="team-member-option flex items-center justify-between p-4 border-2 border-gray-200 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-all cursor-pointer group" data-member-id="1" data-member-name="Olive Faith Podios" data-member-position="Secretary" data-member-email="olive.podios@jlois.com">
-              <div class="flex items-center gap-4">
-                <div class="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-md group-hover:scale-110 transition-transform">
-                  OF
+            @if($teamMembers->count() > 0)
+              @foreach($teamMembers as $member)
+                @php
+                  $initials = strtoupper(substr($member->authorized_rep_fname ?? '', 0, 1) . substr($member->authorized_rep_lname ?? '', 0, 1));
+                  $fullName = trim(($member->authorized_rep_fname ?? '') . ' ' . ($member->authorized_rep_mname ?? '') . ' ' . ($member->authorized_rep_lname ?? ''));
+                  $role = $member->role === 'others' ? ($member->if_others ?? 'Staff') : ucfirst($member->role ?? 'Staff');
+                  $colors = ['from-purple-500 to-purple-600', 'from-blue-500 to-blue-600', 'from-green-500 to-green-600', 'from-red-500 to-red-600', 'from-yellow-500 to-yellow-600'];
+                  $colorIndex = ord($initials[0]) % count($colors);
+                @endphp
+                <div class="team-member-option flex items-center justify-between p-4 border-2 border-gray-200 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-all cursor-pointer group"
+                     data-member-id="{{ $member->contractor_user_id }}"
+                     data-member-name="{{ $fullName }}"
+                     data-member-position="{{ $role }}"
+                     data-member-phone="{{ $member->phone_number ?? 'N/A' }}">
+                  <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-full bg-gradient-to-br {{ $colors[$colorIndex] }} flex items-center justify-center text-white font-bold shadow-md group-hover:scale-110 transition-transform">
+                      {{ $initials }}
+                    </div>
+                    <div>
+                      <p class="font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">{{ $fullName }}</p>
+                      <p class="text-sm text-gray-600">{{ $role }} • {{ $member->phone_number ?? 'N/A' }}</p>
+                    </div>
+                  </div>
+                  <i class="fi fi-rr-check-circle text-2xl text-gray-300 group-hover:text-blue-500 transition-colors"></i>
                 </div>
-                <div>
-                  <p class="font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">Olive Faith Podios</p>
-                  <p class="text-sm text-gray-600">Secretary • olive.podios@jlois.com</p>
-                </div>
+              @endforeach
+            @else
+              <div class="text-center py-6">
+                <i class="fi fi-rr-users text-gray-300 text-3xl mb-2"></i>
+                <p class="text-gray-500">No team members available</p>
               </div>
-              <i class="fi fi-rr-check-circle text-2xl text-gray-300 group-hover:text-blue-500 transition-colors"></i>
-            </div>
-
-            <!-- Team Member Option 2 -->
-            <div class="team-member-option flex items-center justify-between p-4 border-2 border-gray-200 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-all cursor-pointer group" data-member-id="2" data-member-name="Shane Hart Jimenez" data-member-position="Site Engineer" data-member-email="shane.jimenez@jlois.com">
-              <div class="flex items-center gap-4">
-                <div class="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold shadow-md group-hover:scale-110 transition-transform">
-                  SH
-                </div>
-                <div>
-                  <p class="font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">Shane Hart Jimenez</p>
-                  <p class="text-sm text-gray-600">Site Engineer • shane.jimenez@jlois.com</p>
-                </div>
-              </div>
-              <i class="fi fi-rr-check-circle text-2xl text-gray-300 group-hover:text-blue-500 transition-colors"></i>
-            </div>
-
-            <!-- Team Member Option 3 -->
-            <div class="team-member-option flex items-center justify-between p-4 border-2 border-gray-200 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-all cursor-pointer group" data-member-id="3" data-member-name="Maria Santos Cruz" data-member-position="Project Coordinator" data-member-email="maria.cruz@jlois.com">
-              <div class="flex items-center gap-4">
-                <div class="w-12 h-12 rounded-full bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center text-white font-bold shadow-md group-hover:scale-110 transition-transform">
-                  MS
-                </div>
-                <div>
-                  <p class="font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">Maria Santos Cruz</p>
-                  <p class="text-sm text-gray-600">Project Coordinator • maria.cruz@jlois.com</p>
-                </div>
-              </div>
-              <i class="fi fi-rr-check-circle text-2xl text-gray-300 group-hover:text-blue-500 transition-colors"></i>
-            </div>
-
-            <!-- Team Member Option 4 -->
-            <div class="team-member-option flex items-center justify-between p-4 border-2 border-gray-200 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-all cursor-pointer group" data-member-id="4" data-member-name="Carlos Rivera Lopez" data-member-position="Safety Officer" data-member-email="carlos.lopez@jlois.com">
-              <div class="flex items-center gap-4">
-                <div class="w-12 h-12 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold shadow-md group-hover:scale-110 transition-transform">
-                  CR
-                </div>
-                <div>
-                  <p class="font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">Carlos Rivera Lopez</p>
-                  <p class="text-sm text-gray-600">Safety Officer • carlos.lopez@jlois.com</p>
-                </div>
-              </div>
-              <i class="fi fi-rr-check-circle text-2xl text-gray-300 group-hover:text-blue-500 transition-colors"></i>
-            </div>
-
-            <!-- Team Member Option 5 -->
-            <div class="team-member-option flex items-center justify-between p-4 border-2 border-gray-200 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-all cursor-pointer group" data-member-id="5" data-member-name="Anna Marie Reyes" data-member-position="Architect" data-member-email="anna.reyes@jlois.com">
-              <div class="flex items-center gap-4">
-                <div class="w-12 h-12 rounded-full bg-gradient-to-br from-yellow-500 to-yellow-600 flex items-center justify-center text-white font-bold shadow-md group-hover:scale-110 transition-transform">
-                  AM
-                </div>
-                <div>
-                  <p class="font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">Anna Marie Reyes</p>
-                  <p class="text-sm text-gray-600">Architect • anna.reyes@jlois.com</p>
-                </div>
-              </div>
-              <i class="fi fi-rr-check-circle text-2xl text-gray-300 group-hover:text-blue-500 transition-colors"></i>
-            </div>
-
+            @endif
           </div>
+        </div>
+
+        <!-- Divider -->
+        <div class="flex items-center gap-4 my-4">
+          <div class="flex-1 h-px bg-gray-300"></div>
+          <span class="text-sm text-gray-500 font-semibold">OR</span>
+          <div class="flex-1 h-px bg-gray-300"></div>
+        </div>
+
+        <!-- Add New Member Button -->
+        <div>
+          <h3 class="text-sm font-bold text-gray-600 uppercase tracking-wider mb-3">Add New Team Member as Representative</h3>
+          <button id="addNewRepresentativeBtn" class="w-full py-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-all text-gray-600 hover:text-blue-600 font-semibold flex items-center justify-center gap-2 group">
+            <i class="fi fi-rr-plus-circle text-xl group-hover:scale-110 transition-transform"></i>
+            <span>Add New Member as Representative</span>
+          </button>
         </div>
 
         <!-- Warning Note -->
@@ -1425,6 +1567,7 @@
     </div>
   </div>
 
+  <script src="{{ asset('js/admin/userManagement/contractor.js') }}" defer></script>
   <script src="{{ asset('js/admin/userManagement/contractor_Views.js') }}" defer></script>
 
 </body>
