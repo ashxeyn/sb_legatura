@@ -44,6 +44,11 @@ document.addEventListener("DOMContentLoaded", function () {
             if (typeof attachModalListeners === "function") {
                 attachModalListeners();
             }
+
+            // Re-attach reactivate listeners if needed (for suspended accounts)
+            if (typeof attachReactivateListeners === "function") {
+                attachReactivateListeners();
+            }
         } catch (error) {
             console.error("Error fetching data:", error);
         }

@@ -22,7 +22,8 @@ class reactivateContractorTeamMemberRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'contractor_user_id' => 'required|exists:contractor_users,contractor_user_id',
+            'contractor_user_id' => 'required|integer',
+            'user_type' => 'sometimes|string|in:contractor,property_owner',
         ];
     }
 
@@ -34,8 +35,9 @@ class reactivateContractorTeamMemberRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'contractor_user_id.required' => 'Team member ID is required.',
-            'contractor_user_id.exists' => 'Team member not found.',
+            'contractor_user_id.required' => 'User ID is required.',
+            'contractor_user_id.integer' => 'User ID must be an integer.',
+            'user_type.in' => 'Invalid user type.',
         ];
     }
 }

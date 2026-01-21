@@ -11,16 +11,17 @@
   <meta name="csrf-token" content="{{ csrf_token() }}">
   <link rel="stylesheet" href="{{ asset('css/admin/home/mainComponents.css') }}">
   <link rel="stylesheet" href="{{ asset('css/admin/userManagement/suspendedAccounts.css') }}">
-  
+
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-solid-straight/css/uicons-solid-straight.css'>
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-solid-rounded/css/uicons-solid-rounded.css'>
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-bold-rounded/css/uicons-bold-rounded.css'>
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-regular-rounded/css/uicons-regular-rounded.css'>
-  
+
 
   <script src="{{ asset('js/admin/home/mainComponents.js') }}" defer></script>
+  <script src="{{ asset('js/admin/reusables/filters.js') }}" defer></script>
 
-  
+
 </head>
 
 <body class="bg-gray-50 text-gray-800 font-sans">
@@ -172,9 +173,10 @@
 
         <div class="flex items-center gap-6">
           <div class="relative w-64" style="width: 600px;">
-            <input 
-              type="text" 
-              placeholder="Search..." 
+            <input
+              type="text"
+              id="searchInput"
+              placeholder="Search..."
               class="border border-gray-300 rounded-lg px-4 py-2 pr-10 focus:ring-2 focus:ring-indigo-400 focus:outline-none w-full"
             >
             <i class="fi fi-rr-search absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
@@ -237,29 +239,27 @@
         </div>
       </header>
 
-      
+
 
       <div class="p-8 space-y-6 max-w-7xl mx-auto">
         <!-- Filters Bar -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex items-center justify-between gap-4">
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex flex-wrap items-center justify-between gap-4">
           <div class="flex items-center gap-3">
             <div class="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700">
               <i class="fi fi-rr-filter text-gray-500"></i>
               <span>Filter By</span>
             </div>
 
-            <button class="relative flex items-center gap-2 bg-white border border-gray-300 rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition">
-              <span>Account Type</span>
-              <i class="fi fi-rr-angle-small-down text-gray-500"></i>
-            </button>
-
-            <button class="relative flex items-center gap-2 bg-white border border-gray-300 rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition">
-              <span>Date Suspended</span>
-              <i class="fi fi-rr-angle-small-down text-gray-500"></i>
-            </button>
+            <!-- Date Range -->
+            <div class="flex items-center gap-2">
+              <label class="text-sm font-medium text-gray-700">From:</label>
+              <input type="date" id="dateFrom" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400">
+              <label class="text-sm font-medium text-gray-700">To:</label>
+              <input type="date" id="dateTo" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400">
+            </div>
           </div>
 
-          <button id="saResetFilterBtn" class="flex items-center gap-2 text-red-600 hover:text-red-700 text-sm font-semibold px-3 py-2 rounded-lg hover:bg-red-50 transition">
+          <button id="resetFilterBtn" class="flex items-center gap-2 text-red-600 hover:text-red-700 text-sm font-semibold px-3 py-2 rounded-lg hover:bg-red-50 transition">
             <i class="fi fi-rr-rotate-left"></i>
             <span>Reset Filter</span>
           </button>
@@ -275,105 +275,13 @@
           </div>
 
           <!-- Contractors Table -->
-          <div id="saContractorsTableWrap" class="overflow-x-auto">
-            <table class="w-full">
-              <thead>
-                <tr class="bg-gray-50 border-b border-gray-200">
-                  <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Name</th>
-                  <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Date Registered</th>
-                  <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Date Suspended</th>
-                  <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Account Type</th>
-                  <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Total Projects</th>
-                  <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Action</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-gray-200">
-                <tr class="hover:bg-gray-50 transition duration-150 ease-in-out group">
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <img class="w-10 h-10 rounded-full object-cover flex-shrink-0" src="https://i.pravatar.cc/80?img=12" alt="avatar">
-                      <span class="font-medium text-gray-900">HorizonBuild Corporation</span>
-                    </div>
-                  </td>
-                  <td class="px-6 py-4 text-center"><div class="text-sm text-gray-600">12 Jan, 2023</div></td>
-                  <td class="px-6 py-4 text-center"><div class="text-sm text-gray-600">18 Jul, 2025</div></td>
-                  <td class="px-6 py-4 text-center"><span class="text-sm text-gray-700">Contractor</span></td>
-                  <td class="px-6 py-4 text-center"><span class="text-sm text-gray-700">3</span></td>
-                  <td class="px-6 py-4">
-                    <div class="flex items-center justify-center gap-2">
-                      <button class="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition sa-view-btn" data-key="hb" title="View">
-                        <i class="fi fi-rr-eye"></i>
-                      </button>
-                      <button class="p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition sa-del-btn action-btn" data-type="Contractor" data-name="HorizonBuild Corporation" title="Delete">
-                        <i class="fi fi-rr-trash"></i>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-                <tr class="hover:bg-gray-50 transition duration-150 ease-in-out group">
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <img class="w-10 h-10 rounded-full object-cover flex-shrink-0" src="https://i.pravatar.cc/80?img=28" alt="avatar">
-                      <span class="font-medium text-gray-900">MetroBase Construction</span>
-                    </div>
-                  </td>
-                  <td class="px-6 py-4 text-center"><div class="text-sm text-gray-600">12 Jan, 2023</div></td>
-                  <td class="px-6 py-4 text-center"><div class="text-sm text-gray-600">12 Jan, 2025</div></td>
-                  <td class="px-6 py-4 text-center"><span class="text-sm text-gray-700">Contractor</span></td>
-                  <td class="px-6 py-4 text-center"><span class="text-sm text-gray-700">3</span></td>
-                  <td class="px-6 py-4">
-                    <div class="flex items-center justify-center gap-2">
-                      <button class="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition sa-view-btn" data-key="mb" title="View">
-                        <i class="fi fi-rr-eye"></i>
-                      </button>
-                      <button class="p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition sa-del-btn action-btn" data-type="Contractor" data-name="MetroBase Construction" title="Delete">
-                        <i class="fi fi-rr-trash"></i>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+          <div id="contractorsTableWrap" class="overflow-x-auto">
+            @include('admin.userManagement.partials.suspendedContractorsTable')
           </div>
 
           <!-- Property Owners Table -->
-          <div id="saOwnersTableWrap" class="overflow-x-auto hidden">
-            <table class="w-full">
-              <thead>
-                <tr class="bg-gray-50 border-b border-gray-200">
-                  <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Name</th>
-                  <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Date Registered</th>
-                  <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Date Suspended</th>
-                  <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Account Type</th>
-                  <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Total Projects</th>
-                  <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Action</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-gray-200">
-                <tr class="hover:bg-gray-50 transition duration-150 ease-in-out group">
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <img class="w-10 h-10 rounded-full object-cover flex-shrink-0" src="https://i.pravatar.cc/80?img=5" alt="avatar">
-                      <span class="font-medium text-gray-900">Jerome Castillo</span>
-                    </div>
-                  </td>
-                  <td class="px-6 py-4 text-center"><div class="text-sm text-gray-600">12 Jan, 2023</div></td>
-                  <td class="px-6 py-4 text-center"><div class="text-sm text-gray-600">12 Jan, 2025</div></td>
-                  <td class="px-6 py-4 text-center"><span class="text-sm text-gray-700">Property Owner</span></td>
-                  <td class="px-6 py-4 text-center"><span class="text-sm text-gray-700">11</span></td>
-                  <td class="px-6 py-4">
-                    <div class="flex items-center justify-center gap-2">
-                      <button class="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition so-view-btn" data-key="jc" title="View">
-                        <i class="fi fi-rr-eye"></i>
-                      </button>
-                      <button class="p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition so-del-btn action-btn" data-type="Property Owner" data-name="Jerome Castillo" title="Delete">
-                        <i class="fi fi-rr-trash"></i>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+          <div id="ownersTableWrap" class="overflow-x-auto hidden">
+            @include('admin.userManagement.partials.suspendedOwnersTable')
           </div>
         </div>
       </div>
@@ -648,7 +556,7 @@
                 </div>
               </div>
 
-                
+
               <div>
                 <h3 class="text-lg font-bold text-orange-600 mb-4 flex items-center gap-2 pb-2 border-b-2 border-orange-200">
                   <i class="fi fi-rr-building"></i>
@@ -953,6 +861,44 @@
           </div>
         </div>
       </div>
+
+  <!-- Reactivate Suspended Account Modal -->
+  <div id="reactivateSuspendedAccountModal" class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm z-50 hidden items-center justify-center p-4 animate-fadeIn">
+    <div class="bg-white rounded-3xl shadow-2xl max-w-sm w-full transform transition-all duration-300 scale-95 opacity-0 modal-content overflow-hidden">
+      <!-- Icon Section with Gradient Background -->
+      <div class="flex justify-center pt-12 pb-8 bg-gradient-to-b from-green-50 to-white relative">
+        <div class="w-32 h-32 bg-gradient-to-br from-green-100 to-green-50 rounded-full flex items-center justify-center relative animate-pulse-slow">
+          <div class="absolute inset-0 bg-green-200 rounded-full animate-ping opacity-30"></div>
+          <div class="relative w-24 h-24 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center shadow-xl transform hover:scale-110 transition-transform duration-300">
+            <div class="w-16 h-16 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+              <i class="fi fi-rr-user-check text-white text-4xl"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Content Section -->
+      <div class="px-8 pb-8 text-center">
+        <h2 class="text-3xl font-bold text-gray-900 mb-3 tracking-tight">Reactivate User</h2>
+        <p class="text-gray-600 leading-relaxed text-base mb-2">
+          Are you sure you want to reactivate
+        </p>
+        <p class="text-xl font-bold text-gray-900 mb-1" id="reactivateSuspendedAccountName">User Name</p>
+        <p class="text-sm text-gray-500">They will regain access to their account.</p>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="px-8 pb-8 space-y-3">
+        <button id="confirmReactivateSuspendedAccountBtn" class="w-full px-6 py-4 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-2xl transition-all font-bold shadow-xl hover:shadow-2xl transform hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2 text-base">
+          <i class="fi fi-rr-user-check"></i>
+          Reactivate
+        </button>
+        <button id="cancelReactivateSuspendedAccountBtn" class="w-full px-6 py-4 bg-white border-2 border-gray-200 text-gray-700 rounded-2xl hover:bg-gray-50 transition-all font-semibold hover:border-gray-300 hover:shadow-md transform hover:scale-[1.02] active:scale-95 text-base">
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
 
     </main>
 

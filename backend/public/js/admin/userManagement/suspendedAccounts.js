@@ -2,8 +2,8 @@
 (function(){
 	const cTab = document.getElementById('saTabContractors');
 	const oTab = document.getElementById('saTabOwners');
-	const cWrap = document.getElementById('saContractorsTableWrap');
-	const oWrap = document.getElementById('saOwnersTableWrap');
+	const cWrap = document.getElementById('contractorsTableWrap');
+	const oWrap = document.getElementById('ownersTableWrap');
 	function activate(which){
 		if(which==='contractors'){
 			cTab?.classList.add('text-orange-600','border-orange-500');
@@ -24,6 +24,22 @@
 	cTab?.addEventListener('click', ()=>activate('contractors'));
 	oTab?.addEventListener('click', ()=>activate('owners'));
 })();
+
+// ============================================================================
+// REACTIVATE HANDLER - Attach listeners after page load and AJAX updates
+// ============================================================================
+document.addEventListener('DOMContentLoaded', function() {
+	attachReactivateListeners();
+});
+
+function attachReactivateListeners() {
+	const reactivateButtons = document.querySelectorAll('.reactivate-btn');
+	reactivateButtons.forEach(btn => {
+		// Remove existing listener to avoid duplicates
+		btn.removeEventListener('click', handleReactivate);
+		btn.addEventListener('click', handleReactivate);
+	});
+}
 
 // Contractor view modal
 (function(){
@@ -706,3 +722,186 @@
 	modal?.addEventListener('click', (e)=>{ if(e.target===modal) close(); });
 	document.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && !modal.classList.contains('hidden')) close(); });
 })();
+
+// ============================================================================
+// REACTIVATE HANDLER - For AJAX updated buttons
+// ============================================================================
+let currentReactivateUserId = null;
+let currentReactivateUserType = null;
+let currentReactivateUserName = null;
+
+function handleReactivate(event) {
+	const btn = event.currentTarget;
+	const userId = btn.getAttribute('data-id');
+	const userType = btn.getAttribute('data-user-type');
+	const userName = btn.getAttribute('data-name');
+
+	if (!userId || !userType) {
+		console.error('Missing data attributes for reactivation');
+		return;
+	}
+
+	// Store current user data
+	currentReactivateUserId = userId;
+	currentReactivateUserType = userType;
+	currentReactivateUserName = userName;
+
+	// Open modal
+	openReactivateSuspendedAccountModal(userName);
+}
+
+function openReactivateSuspendedAccountModal(userName) {
+	// Set user name in modal
+	document.getElementById('reactivateSuspendedAccountName').textContent = userName;
+
+	// Show modal
+	const modal = document.getElementById('reactivateSuspendedAccountModal');
+	const modalContent = modal.querySelector('.modal-content');
+	modal.classList.remove('hidden');
+	modal.classList.add('flex');
+	setTimeout(() => {
+		modalContent.classList.remove('scale-95', 'opacity-0');
+		modalContent.classList.add('scale-100', 'opacity-100');
+	}, 10);
+}
+
+function closeReactivateSuspendedAccountModal() {
+	const modal = document.getElementById('reactivateSuspendedAccountModal');
+	const modalContent = modal.querySelector('.modal-content');
+
+	modalContent.classList.remove('scale-100', 'opacity-100');
+	modalContent.classList.add('scale-95', 'opacity-0');
+
+	setTimeout(() => {
+		modal.classList.add('hidden');
+		modal.classList.remove('flex');
+		currentReactivateUserId = null;
+		currentReactivateUserType = null;
+		currentReactivateUserName = null;
+	}, 300);
+}
+
+function confirmReactivateSuspendedAccount() {
+	if (!currentReactivateUserId || !currentReactivateUserType) {
+		console.error('Missing user data for reactivation');
+		return;
+	}
+
+	const confirmBtn = document.getElementById('confirmReactivateSuspendedAccountBtn');
+	const originalBtnText = confirmBtn.innerHTML;
+	confirmBtn.disabled = true;
+	confirmBtn.innerHTML = '<i class="fi fi-rr-spinner animate-spin"></i> Reactivating...';
+
+	const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+	fetch('/admin/user-management/suspended-accounts/reactivate', {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			'X-CSRF-TOKEN': csrfToken,
+			'Accept': 'application/json'
+		},
+		body: JSON.stringify({
+			contractor_user_id: currentReactivateUserId,
+			user_type: currentReactivateUserType
+		})
+	})
+	.then(response => response.json())
+	.then(data => {
+		if (data.success) {
+			// Close modal
+			closeReactivateSuspendedAccountModal();
+
+			// Show success notification
+			showNotification(data.message || 'Account reactivated successfully!', 'success');
+
+			// Find and remove the row from table
+			const tableWrap = currentReactivateUserType === 'contractor' ?
+				document.getElementById('contractorsTableWrap') :
+				document.getElementById('ownersTableWrap');
+
+			if (tableWrap) {
+				const row = tableWrap.querySelector(`button[data-id="${currentReactivateUserId}"]`)?.closest('tr');
+				if (row) {
+					row.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+					row.style.opacity = '0';
+					row.style.transform = 'translateX(-16px)';
+					setTimeout(() => {
+						row.remove();
+						// Check if table is now empty
+						const tbody = tableWrap.querySelector('tbody');
+						if (tbody && tbody.querySelectorAll('tr').length === 0) {
+							// Reload to show empty state
+							setTimeout(() => window.location.reload(), 1000);
+						}
+					}, 300);
+				}
+			}
+		} else {
+			// Show error notification
+			showNotification(data.message || 'Failed to reactivate account', 'error');
+		}
+	})
+	.catch(error => {
+		console.error('Error:', error);
+		showNotification('An error occurred. Please try again.', 'error');
+	})
+	.finally(() => {
+		// Re-enable button
+		confirmBtn.disabled = false;
+		confirmBtn.innerHTML = originalBtnText;
+	});
+}
+
+// Notification function (matching contractor_Views.js style)
+function showNotification(message, type = 'success') {
+	const notification = document.createElement('div');
+	notification.className = `fixed top-24 right-8 z-[60] px-6 py-4 rounded-lg shadow-2xl transform transition-all duration-500 translate-x-full ${
+		type === 'success' ? 'bg-green-500' : 'bg-red-500'
+	} text-white font-semibold flex items-center gap-3`;
+	notification.innerHTML = `
+		<i class="fi fi-rr-${type === 'success' ? 'check-circle' : 'cross-circle'} text-2xl"></i>
+		<span>${message}</span>
+	`;
+	document.body.appendChild(notification);
+
+	setTimeout(() => {
+		notification.style.transform = 'translateX(0)';
+	}, 10);
+
+	setTimeout(() => {
+		notification.style.transform = 'translateX(150%)';
+		setTimeout(() => notification.remove(), 500);
+	}, 3000);
+}
+
+// Event listeners for modal
+document.addEventListener('DOMContentLoaded', function() {
+	const confirmBtn = document.getElementById('confirmReactivateSuspendedAccountBtn');
+	const cancelBtn = document.getElementById('cancelReactivateSuspendedAccountBtn');
+	const modal = document.getElementById('reactivateSuspendedAccountModal');
+
+	if (confirmBtn) {
+		confirmBtn.addEventListener('click', confirmReactivateSuspendedAccount);
+	}
+
+	if (cancelBtn) {
+		cancelBtn.addEventListener('click', closeReactivateSuspendedAccountModal);
+	}
+
+	// Close on background click
+	if (modal) {
+		modal.addEventListener('click', function(e) {
+			if (e.target === modal) {
+				closeReactivateSuspendedAccountModal();
+			}
+		});
+	}
+
+	// Close on ESC key
+	document.addEventListener('keydown', function(e) {
+		if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
+			closeReactivateSuspendedAccountModal();
+		}
+	});
+});

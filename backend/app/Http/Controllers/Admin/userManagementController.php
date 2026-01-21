@@ -1094,10 +1094,30 @@ class userManagementController extends authController
     /**
      * Show suspended accounts
      */
-    public function suspendedAccounts()
+    public function suspendedAccounts(Request $request)
     {
-        $suspendedContractors = $this->getSuspendedContractors();
-        $suspendedOwners = $this->getSuspendedOwners();
+        $search = $request->query('search');
+        $dateFrom = $request->query('date_from');
+        $dateTo = $request->query('date_to');
+
+        $suspendedContractors = \App\Models\admin\bothReactivateClass::getSuspendedContractors($search, $dateFrom, $dateTo);
+        $suspendedOwners = \App\Models\admin\bothReactivateClass::getSuspendedPropertyOwners($search, $dateFrom, $dateTo);
+
+        // If AJAX request, return JSON with filtered data
+        if ($request->ajax()) {
+            $contractorsHtml = view('admin.userManagement.partials.suspendedContractorsTable', [
+                'suspendedContractors' => $suspendedContractors
+            ])->render();
+
+            $ownersHtml = view('admin.userManagement.partials.suspendedOwnersTable', [
+                'suspendedOwners' => $suspendedOwners
+            ])->render();
+
+            return response()->json([
+                'contractors_html' => $contractorsHtml,
+                'owners_html' => $ownersHtml
+            ]);
+        }
 
         return view('admin.userManagement.suspendedAccounts', [
             'suspendedContractors' => $suspendedContractors,
@@ -1106,7 +1126,48 @@ class userManagementController extends authController
     }
 
     /**
-     * Reactivate a suspended account
+     * Reactivate a suspended contractor or property owner
+     */
+    public function reactivateSuspendedUser(\App\Http\Requests\admin\reactivateContractorTeamMemberRequest $request)
+    {
+        try {
+            $userType = $request->input('user_type');
+            $userId = $request->input('contractor_user_id'); // For contractor, this is contractor_user_id; for owner, it's owner_id
+
+            if ($userType === 'contractor') {
+                $result = \App\Models\admin\bothReactivateClass::reactivateContractor($userId);
+                $message = 'Contractor reactivated successfully!';
+            } elseif ($userType === 'property_owner') {
+                $result = \App\Models\admin\bothReactivateClass::reactivatePropertyOwner($userId);
+                $message = 'Property owner reactivated successfully!';
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid user type'
+                ], 400);
+            }
+
+            if ($result) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $message
+                ]);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to reactivate user'
+            ], 400);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Reactivate a suspended account (old method - keeping for compatibility)
      */
     public function reactivateSuspendedAccount(Request $request)
     {
