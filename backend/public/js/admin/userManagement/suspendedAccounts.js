@@ -1,4 +1,3 @@
-// Tabs switching for Suspended Accounts
 (function(){
 	const cTab = document.getElementById('saTabContractors');
 	const oTab = document.getElementById('saTabOwners');
@@ -25,9 +24,6 @@
 	oTab?.addEventListener('click', ()=>activate('owners'));
 })();
 
-// ============================================================================
-// REACTIVATE HANDLER - Attach listeners after page load and AJAX updates
-// ============================================================================
 document.addEventListener('DOMContentLoaded', function() {
 	attachReactivateListeners();
 });
@@ -35,13 +31,12 @@ document.addEventListener('DOMContentLoaded', function() {
 function attachReactivateListeners() {
 	const reactivateButtons = document.querySelectorAll('.reactivate-btn');
 	reactivateButtons.forEach(btn => {
-		// Remove existing listener to avoid duplicates
+
 		btn.removeEventListener('click', handleReactivate);
 		btn.addEventListener('click', handleReactivate);
 	});
 }
 
-// Contractor view modal
 (function(){
 	const modal = document.getElementById('saContractorModal');
 	const panel = modal?.querySelector('.sa-modal-panel');
@@ -57,7 +52,7 @@ function attachReactivateListeners() {
 	const rsModal = document.getElementById('saReactivateSuccessModal');
 	const rsPanel = rsModal?.querySelector('.sa-reactivate-success-panel');
 	const rsConfirm = document.getElementById('saReactivateSuccessConfirm');
-	// Edit-before-reactivation modal
+
 	const reModal = document.getElementById('saReactivateEditModal');
 	const rePanel = reModal?.querySelector('.sa-reactivate-edit-panel');
 	const reClose = document.getElementById('saReactivateEditClose');
@@ -69,7 +64,6 @@ function attachReactivateListeners() {
 	const reRepSection = document.getElementById('saRERepSection');
 	let currentKey = null; let currentRow = null; let currentName = null; let currentEntityType = 'contractor';
 
-	// Demo data used to populate the view modal
 	const data = {
 		hb: {
 			name:'HorizonBuild Corporation',
@@ -187,34 +181,34 @@ function attachReactivateListeners() {
 	function open(key, row){
 		const d = data[key]; if(!d) return;
 		currentKey = key; currentRow = row || null; currentName = d.name; currentEntityType = 'contractor';
-		// Header / identity
+
 		setText('saCName', d.name);
 		setText('saCInitials', initials(d.name));
-		// Contact and stats
+
 		setText('saCEmail', d.email);
 		setText('saCPhone', d.phone);
 		setText('saCExp', `${d.experienceYears} yrs`);
 		setText('saCTotal', `${d.projects.total}`);
 		setText('saCFinished', `${d.projects.finished}`);
-		// Representative
+
 		setText('saCRepName', d.rep.name);
 		setText('saCRepRole', d.rep.role);
 		setText('saCRepEmail', d.rep.email);
 		setText('saCRepPhone', d.rep.phone);
 		setSrc('saCRepAvatar', d.rep.avatar);
-		// Suspension
+
 		setText('saCDate', d.date);
 		setText('saCReason', d.reason);
-		// Company details
+
 		setText('saCRegDate', d.company.registeredDate);
 		setText('saCPCABNo', d.company.pcabNo);
 		setText('saCPCABCat', d.company.pcabCategory);
 		setText('saCBizNo', d.company.businessPermitNo);
 		setText('saCBizExp', d.company.businessPermitExp);
 		setText('saCTIN', d.company.TIN);
-		// Documents
+
 		renderDocs(d.documents || []);
-		// Profile
+
 		setSrc('saCBanner', d.profile.banner);
 		setText('saCLocation', d.profile.location);
 		setText('saCRating', d.profile.rating);
@@ -225,7 +219,6 @@ function attachReactivateListeners() {
 			(d.profile.specialties||[]).forEach(s=> specs.appendChild(chip(s)));
 		}
 
-		// Wire interactive helpers each open
 		document.querySelectorAll('[data-copy-target]')?.forEach(btn=>{
 			btn.addEventListener('click', (e)=>{
 				e.preventDefault();
@@ -263,7 +256,6 @@ function attachReactivateListeners() {
 	close2?.addEventListener('click', close);
 	modal?.addEventListener('click', e=>{ if(e.target===modal) close(); });
 
-	// Reactivate flow
 	function csrfToken(){ return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''; }
 	function openReactivate(){
 		if(!rModal) return;
@@ -271,7 +263,7 @@ function attachReactivateListeners() {
 		const nameEl = document.getElementById('saReactivateName');
 		if(title) title.textContent = 'Reactivate ' + (currentName || 'Account');
 		if(nameEl) nameEl.textContent = currentName || 'this account';
-		// Ensure Edit option is visible for supported entity types
+
 		rEdit?.classList.remove('hidden');
 		rModal.classList.remove('hidden');
 		requestAnimationFrame(()=>{
@@ -306,7 +298,7 @@ function attachReactivateListeners() {
 			});
 			const json = await res.json();
 			if(json?.success){
-				// Show success modal; row removal happens on confirm
+
 				openReactivateSuccess();
 			}else{
 				showToast('Unable to reactivate. Please try again');
@@ -325,7 +317,6 @@ function attachReactivateListeners() {
 	rKeep?.addEventListener('click', ()=> doReactivate('keep'));
 	rEdit?.addEventListener('click', ()=> currentEntityType==='owner' ? openOwnerEditBeforeReactivate() : openEditBeforeReactivate());
 
-	// Success modal controls
 	function openReactivateSuccess(){
 		if(!rsModal) return;
 		closeReactivate(); // hide options modal underneath
@@ -357,7 +348,7 @@ function attachReactivateListeners() {
 		}
 	}
 	rsConfirm?.addEventListener('click', ()=>{
-		// Remove table row with animation, then close all
+
 		if(currentRow){
 			const h = currentRow.getBoundingClientRect().height + 'px';
 			currentRow.style.height = h;
@@ -378,10 +369,9 @@ function attachReactivateListeners() {
 		showToast('Account reactivated','success');
 	});
 
-	// Edit-before-reactivation modal logic
 	function openEditBeforeReactivate(){
 		if(!reModal) return;
-		// open edit modal, keep options modal visible underneath? We'll close it for clarity.
+
 		closeReactivate();
 		reModal.classList.remove('hidden');
 		requestAnimationFrame(()=>{
@@ -401,7 +391,6 @@ function attachReactivateListeners() {
 	reClose?.addEventListener('click', closeEditBeforeReactivate);
 	reCancel?.addEventListener('click', closeEditBeforeReactivate);
 
-	// Tabs switch
 	reTabCompany?.addEventListener('click', ()=>{
 		reTabCompany.classList.add('bg-gradient-to-r','from-orange-500','to-orange-600','text-white');
 		reTabCompany.classList.remove('bg-white','border-2','border-gray-300','text-gray-700');
@@ -419,7 +408,6 @@ function attachReactivateListeners() {
 		reRepSection?.classList.remove('hidden');
 	});
 
-	// Fake client-side validation and submit -> AJAX
 	reSubmit?.addEventListener('click', ()=>{
 		const name = document.getElementById('saRECompanyName')?.value?.trim();
 		if(!name){ showToast('Company name is required'); return; }
@@ -430,14 +418,13 @@ function attachReactivateListeners() {
 				<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
 			</svg>
 			<span>Reactivating…</span>`;
-		// call existing reactivation with mode 'edit'
+
 		doReactivate('edit').then(()=>{
 			reSubmit.disabled = false; reSubmit.classList.remove('opacity-90','cursor-wait'); reSubmit.innerHTML = original;
 			closeEditBeforeReactivate();
 		});
 	});
 
-	// Expose a small API for other views (e.g., Owner) to reuse reactivation flow
 	window.SAReactivate = {
 		setContext: ({ id, row, name, type }) => { currentKey = id; currentRow = row || null; currentName = name || ''; currentEntityType = type || 'contractor'; },
 		openOptions: openReactivate,
@@ -447,7 +434,6 @@ function attachReactivateListeners() {
 	};
 })();
 
-// Owner view modal
 (function(){
 	const modal = document.getElementById('saOwnerModal');
 	const panel = modal?.querySelector('.sa-owner-panel');
@@ -512,18 +498,18 @@ function attachReactivateListeners() {
 	function open(key, row){
 		const d = data[key]; if(!d) return;
 		currentKey = key; currentRow = row || null; currentName = d.name;
-		// Populate header/card
+
 		setText('saOName', d.name);
 		setText('saOInitials', initials(d.name));
-		// Contact
+
 		setText('saOEmail', d.email);
 		setText('saOPhone', d.phone);
-		// Suspension
+
 		setText('saODate', d.date);
 		setText('saOReason', d.reason);
-		// Documents
+
 		renderDocs(d.documents||[]);
-		// Profile
+
 		setSrc('saOBanner', d.profile.banner);
 		setText('saOLocation', d.profile.location);
 		setText('saORating', d.profile.rating);
@@ -531,7 +517,6 @@ function attachReactivateListeners() {
 		const specs = el('saOSpecialties');
 		if(specs){ specs.innerHTML=''; (d.profile.specialties||[]).forEach(s=> specs.appendChild(chip(s))); }
 
-		// copy buttons wiring
 		document.querySelectorAll('[data-copy-target]')?.forEach(btn=>{
 			btn.addEventListener('click', (e)=>{
 				e.preventDefault();
@@ -542,7 +527,6 @@ function attachReactivateListeners() {
 			}, { once:true });
 		});
 
-		// Set reactivation context for shared flow
 		if(window.SAReactivate){ window.SAReactivate.setContext({ id: currentKey, row: currentRow, name: currentName, type: 'owner' }); }
 
 		modal?.classList.remove('hidden');
@@ -565,7 +549,6 @@ function attachReactivateListeners() {
 	reactivateBtn?.addEventListener('click', ()=>{ if(window.SAReactivate){ window.SAReactivate.openOptions(); } });
 })();
 
-// Owner Edit-before-reactivation modal logic (parity with contractor)
 (function(){
 	const modal = document.getElementById('saREOwnerModal');
 	if(!modal) return;
@@ -597,7 +580,7 @@ function attachReactivateListeners() {
 	submitBtn?.addEventListener('click', ()=>{
 		const first = document.getElementById('saREOwnerFirst')?.value?.trim();
 		if(!first){
-			// reuse toast from contractor scope if present
+
 			if(typeof showToast==='function') showToast('First name is required');
 			return;
 		}
@@ -611,7 +594,7 @@ function attachReactivateListeners() {
 		if(window.SAReactivate){
 			window.SAReactivate.doEdit();
 		}
-		// close the edit modal after starting reactivation; success modal will show
+
 		setTimeout(()=>{
 			submitBtn.disabled = false; submitBtn.classList.remove('opacity-90','cursor-wait'); submitBtn.innerHTML = original;
 			close();
@@ -619,7 +602,6 @@ function attachReactivateListeners() {
 	});
 })();
 
-// Shared Delete modal with ripple and animations
 (function(){
 	const modal = document.getElementById('saDeleteModal');
 	const panel = modal?.querySelector('.sa-delete-panel');
@@ -630,7 +612,6 @@ function attachReactivateListeners() {
 	const nameEl = document.getElementById('saDeleteName');
 	let currentRow = null;
 
-	// inject ripple CSS once
 	(function(){
 		if(document.getElementById('sa-ripple-style')) return;
 		const style = document.createElement('style');
@@ -723,9 +704,6 @@ function attachReactivateListeners() {
 	document.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && !modal.classList.contains('hidden')) close(); });
 })();
 
-// ============================================================================
-// REACTIVATE HANDLER - For AJAX updated buttons
-// ============================================================================
 let currentReactivateUserId = null;
 let currentReactivateUserType = null;
 let currentReactivateUserName = null;
@@ -741,20 +719,17 @@ function handleReactivate(event) {
 		return;
 	}
 
-	// Store current user data
 	currentReactivateUserId = userId;
 	currentReactivateUserType = userType;
 	currentReactivateUserName = userName;
 
-	// Open modal
 	openReactivateSuspendedAccountModal(userName);
 }
 
 function openReactivateSuspendedAccountModal(userName) {
-	// Set user name in modal
+
 	document.getElementById('reactivateSuspendedAccountName').textContent = userName;
 
-	// Show modal
 	const modal = document.getElementById('reactivateSuspendedAccountModal');
 	const modalContent = modal.querySelector('.modal-content');
 	modal.classList.remove('hidden');
@@ -809,13 +784,11 @@ function confirmReactivateSuspendedAccount() {
 	.then(response => response.json())
 	.then(data => {
 		if (data.success) {
-			// Close modal
+
 			closeReactivateSuspendedAccountModal();
 
-			// Show success notification
 			showNotification(data.message || 'Account reactivated successfully!', 'success');
 
-			// Find and remove the row from table
 			const tableWrap = currentReactivateUserType === 'contractor' ?
 				document.getElementById('contractorsTableWrap') :
 				document.getElementById('ownersTableWrap');
@@ -828,17 +801,17 @@ function confirmReactivateSuspendedAccount() {
 					row.style.transform = 'translateX(-16px)';
 					setTimeout(() => {
 						row.remove();
-						// Check if table is now empty
+
 						const tbody = tableWrap.querySelector('tbody');
 						if (tbody && tbody.querySelectorAll('tr').length === 0) {
-							// Reload to show empty state
+
 							setTimeout(() => window.location.reload(), 1000);
 						}
 					}, 300);
 				}
 			}
 		} else {
-			// Show error notification
+
 			showNotification(data.message || 'Failed to reactivate account', 'error');
 		}
 	})
@@ -847,13 +820,12 @@ function confirmReactivateSuspendedAccount() {
 		showNotification('An error occurred. Please try again.', 'error');
 	})
 	.finally(() => {
-		// Re-enable button
+
 		confirmBtn.disabled = false;
 		confirmBtn.innerHTML = originalBtnText;
 	});
 }
 
-// Notification function (matching contractor_Views.js style)
 function showNotification(message, type = 'success') {
 	const notification = document.createElement('div');
 	notification.className = `fixed top-24 right-8 z-[60] px-6 py-4 rounded-lg shadow-2xl transform transition-all duration-500 translate-x-full ${
@@ -875,7 +847,6 @@ function showNotification(message, type = 'success') {
 	}, 3000);
 }
 
-// Event listeners for modal
 document.addEventListener('DOMContentLoaded', function() {
 	const confirmBtn = document.getElementById('confirmReactivateSuspendedAccountBtn');
 	const cancelBtn = document.getElementById('cancelReactivateSuspendedAccountBtn');
@@ -889,7 +860,6 @@ document.addEventListener('DOMContentLoaded', function() {
 		cancelBtn.addEventListener('click', closeReactivateSuspendedAccountModal);
 	}
 
-	// Close on background click
 	if (modal) {
 		modal.addEventListener('click', function(e) {
 			if (e.target === modal) {
@@ -898,7 +868,6 @@ document.addEventListener('DOMContentLoaded', function() {
 		});
 	}
 
-	// Close on ESC key
 	document.addEventListener('keydown', function(e) {
 		if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
 			closeReactivateSuspendedAccountModal();

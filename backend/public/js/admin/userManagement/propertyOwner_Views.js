@@ -1,8 +1,5 @@
-// Edit Property Owner Modal
 document.addEventListener('DOMContentLoaded', function() {
-    // Edit Modal logic is now handled by propertyOwner.js
 
-    // ===== PROJECT FILTER FUNCTIONALITY =====
     const projectFilter = document.getElementById('projectFilter');
     if (projectFilter) {
         projectFilter.addEventListener('change', function() {
@@ -21,7 +18,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
 
-            // Handle empty state
             let emptyMessage = projectsList.querySelector('.empty-message');
             if (visibleCount === 0) {
                 if (!emptyMessage) {
@@ -41,7 +37,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // ===== SUSPEND MODAL FUNCTIONALITY =====
     const suspendBtn = document.getElementById('suspendPropertyOwnerBtn');
     const suspendModal = document.getElementById('suspendAccountModal');
     const suspendModalContent = suspendModal ? suspendModal.querySelector('.modal-content') : null;
@@ -53,7 +48,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const suspensionDateInput = document.getElementById('suspensionDate');
     const radioButtons = document.querySelectorAll('input[name="suspensionDuration"]');
 
-    // Toggle date picker visibility
     radioButtons.forEach(radio => {
         radio.addEventListener('change', function() {
             if (this.value === 'temporary') {
@@ -68,14 +62,12 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Open suspend modal
     if (suspendBtn && suspendModal && suspendModalContent) {
         suspendBtn.addEventListener('click', function() {
             suspendModal.classList.remove('hidden');
             suspendModal.classList.add('flex');
             document.body.style.overflow = 'hidden';
 
-            // Trigger animation
             setTimeout(() => {
                 suspendModalContent.classList.remove('scale-95', 'opacity-0');
                 suspendModalContent.classList.add('scale-100', 'opacity-100');
@@ -83,7 +75,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Close suspend modal function
     function closeSuspendModal() {
         if (!suspendModalContent) return;
 
@@ -95,7 +86,6 @@ document.addEventListener('DOMContentLoaded', function() {
             suspendModal.classList.remove('flex');
             document.body.style.overflow = 'auto';
 
-            // Reset form
             if (suspendReasonTextarea) {
                 suspendReasonTextarea.value = '';
             }
@@ -105,13 +95,12 @@ document.addEventListener('DOMContentLoaded', function() {
             const radioButtons = suspendModal.querySelectorAll('input[type="radio"]');
             if (radioButtons.length > 0) {
                 radioButtons[0].checked = true;
-                // Trigger change event to reset UI
+
                 radioButtons[0].dispatchEvent(new Event('change'));
             }
         }, 300);
     }
 
-    // Close button handlers
     if (closeSuspendModalBtn) {
         closeSuspendModalBtn.addEventListener('click', closeSuspendModal);
     }
@@ -120,7 +109,6 @@ document.addEventListener('DOMContentLoaded', function() {
         cancelSuspendBtn.addEventListener('click', closeSuspendModal);
     }
 
-    // Close on backdrop click
     if (suspendModal) {
         suspendModal.addEventListener('click', function(e) {
             if (e.target === suspendModal) {
@@ -129,14 +117,12 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Prevent modal content click from closing
     if (suspendModalContent) {
         suspendModalContent.addEventListener('click', function(e) {
             e.stopPropagation();
         });
     }
 
-    // Success notification helper
     function showNotification(message, type = 'success') {
         const notification = document.createElement('div');
         notification.className = `fixed top-24 right-8 z-[60] px-6 py-4 rounded-lg shadow-2xl transform transition-all duration-500 translate-x-full ${
@@ -158,7 +144,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 3000);
     }
 
-    // Confirm suspension handler
     if (confirmSuspendBtn) {
         confirmSuspendBtn.addEventListener('click', function() {
             const reason = suspendReasonTextarea ? suspendReasonTextarea.value.trim() : '';
@@ -167,7 +152,6 @@ document.addEventListener('DOMContentLoaded', function() {
             let suspensionDate = null;
             let hasError = false;
 
-            // Reset errors
             suspendReasonTextarea.classList.remove('border-red-500', 'shake');
             document.getElementById('suspendReasonError').classList.add('hidden');
             document.getElementById('suspendReasonError').textContent = '';
@@ -179,7 +163,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             if (!reason) {
-                // Show error if no reason provided
+
                 suspendReasonTextarea.classList.add('border-red-500', 'shake');
                 const errorEl = document.getElementById('suspendReasonError');
                 errorEl.textContent = 'Please provide a reason for suspension';
@@ -208,7 +192,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (hasError) return;
 
-            // Add loading state
             const originalContent = confirmSuspendBtn.innerHTML;
             confirmSuspendBtn.innerHTML = '<i class="fi fi-rr-spinner animate-spin"></i> Suspending...';
             confirmSuspendBtn.disabled = true;
@@ -238,7 +221,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     }, 1500);
                 } else {
                     if (data.errors) {
-                        // Handle server-side validation errors
+
                         if (data.errors.reason) {
                             suspendReasonTextarea.classList.add('border-red-500', 'shake');
                             const errorEl = document.getElementById('suspendReasonError');
@@ -270,7 +253,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Add textarea focus effect
     if (suspendReasonTextarea) {
         suspendReasonTextarea.addEventListener('focus', function() {
             this.classList.add('ring-2', 'ring-red-200');
@@ -281,7 +263,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // ESC key to close suspend modal
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
             if (suspendModal && !suspendModal.classList.contains('hidden')) {
@@ -291,13 +272,11 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// Image Viewer Modal Functions
 window.openImageModal = function(src, title) {
     const modal = document.getElementById('imageViewerModal');
     const img = document.getElementById('imageModalPreview');
     const titleEl = document.getElementById('imageModalTitle');
 
-    // Reset state first
     img.classList.remove('scale-100', 'opacity-100');
     img.classList.add('scale-95', 'opacity-0');
 
@@ -306,7 +285,6 @@ window.openImageModal = function(src, title) {
     modal.classList.remove('hidden');
     modal.classList.add('flex');
 
-    // Animate in with a small delay
     setTimeout(() => {
         img.classList.remove('scale-95', 'opacity-0');
         img.classList.add('scale-100', 'opacity-100');

@@ -6,6 +6,7 @@ use App\Http\Controllers\authController;
 use App\Models\User;
 use App\Models\admin\propertyOwnerClass;
 use App\Models\admin\contractorClass;
+use App\Models\admin\userVerificationClass;
 use App\Models\accounts\accountClass;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -552,6 +553,21 @@ class userManagementController extends authController
                 ->with('error', 'Contractor not found');
         }
 
+        // Handle AJAX requests
+        if ($request->ajax()) {
+            // If modal parameter is set, return representative modal list
+            if ($request->query('modal') === 'representative') {
+                return response()->json([
+                    'modal_html' => view('admin.userManagement.partials.representativeModalList', ['contractor' => $contractor])->render(),
+                ]);
+            }
+
+            // Default: return team members table
+            return response()->json([
+                'html' => view('admin.userManagement.partials.teamMembersTable', ['contractor' => $contractor])->render(),
+            ]);
+        }
+
         $accountModel = new accountClass();
         $psgcService = new psgcApiService();
 
@@ -987,50 +1003,11 @@ class userManagementController extends authController
      */
     public function getVerificationRequestDetails($id)
     {
-        $user = User::find($id);
+        $verificationModel = new userVerificationClass();
+        $data = $verificationModel->getVerificationDetails($id);
 
-        if (!$user) {
+        if (!$data) {
             return response()->json(['error' => 'User not found'], 404);
-        }
-
-        $data = [
-            'user' => $user,
-            'profile' => null,
-            'representative' => null
-        ];
-
-        if ($user->user_type === 'contractor') {
-            $profile = DB::table('contractors')
-                ->leftJoin('contractor_types', 'contractors.type_id', '=', 'contractor_types.type_id')
-                ->where('contractors.user_id', $id)
-                ->select('contractors.*', 'contractor_types.type_name as contractor_type')
-                ->first();
-
-            if ($profile) {
-                // Map DB columns to expected frontend keys
-                $profile->pcab_license_number = $profile->picab_number;
-                $profile->pcab_category = $profile->picab_category;
-                $profile->pcab_validity = $profile->picab_expiration_date;
-                $profile->tin_number = $profile->tin_business_reg_number;
-                $profile->experience_years = $profile->years_of_experience;
-                $profile->business_permit_validity = $profile->business_permit_expiration;
-            }
-            $data['profile'] = $profile;
-            $data['representative'] = DB::table('contractor_users')->where('user_id', $id)->first();
-        } elseif ($user->user_type === 'property_owner') {
-            $profile = DB::table('property_owners')
-                ->leftJoin('valid_ids', 'property_owners.valid_id_id', '=', 'valid_ids.id')
-                ->leftJoin('occupations', 'property_owners.occupation_id', '=', 'occupations.id')
-                ->where('property_owners.user_id', $id)
-                ->select('property_owners.*', 'valid_ids.valid_id_name as valid_id_type', 'occupations.occupation_name')
-                ->first();
-
-            if ($profile) {
-                $profile->birthdate = $profile->date_of_birth;
-                $profile->occupation = $profile->occupation_name ?? $profile->occupation_other;
-                $profile->valid_id_number = 'N/A'; // Column missing in DB
-            }
-            $data['profile'] = $profile;
         }
 
         return response()->json($data);
@@ -1041,24 +1018,14 @@ class userManagementController extends authController
      */
     public function approveVerification(Request $request, $id)
     {
-        $user = User::find($id);
-        if (!$user) {
-            return response()->json(['success' => false, 'message' => 'User not found'], 404);
+        $verificationModel = new userVerificationClass();
+        $result = $verificationModel->approveVerification($id);
+
+        if (!$result['success']) {
+            return response()->json($result, 404);
         }
 
-        // Update User table
-        // $user->is_verified = true;
-        // $user->is_active = true;
-        // $user->save();
-
-        // Update Profile table (optional, if there's a status field there too)
-        if ($user->user_type === 'contractor') {
-            DB::table('contractors')->where('user_id', $id)->update(['verification_status' => 'approved']);
-        } elseif ($user->user_type === 'property_owner') {
-            DB::table('property_owners')->where('user_id', $id)->update(['verification_status' => 'approved']);
-        }
-
-        return response()->json(['success' => true, 'message' => 'User verified successfully']);
+        return response()->json($result);
     }
 
     /**
@@ -1066,29 +1033,15 @@ class userManagementController extends authController
      */
     public function rejectVerification(rejectVerificationRequest $request, $id)
     {
-        $user = User::find($id);
-        if (!$user) {
-            return response()->json(['success' => false, 'message' => 'User not found'], 404);
+        $validated = $request->validated();
+        $verificationModel = new userVerificationClass();
+        $result = $verificationModel->rejectVerification($id, $validated['reason']);
+
+        if (!$result['success']) {
+            return response()->json($result, 404);
         }
 
-        $reason = $request->validated()['reason'];
-
-        // Update Profile table with rejection reason
-        if ($user->user_type === 'contractor') {
-            DB::table('contractors')->where('user_id', $id)->update([
-                'verification_status' => 'rejected',
-                'rejection_reason' => $reason
-            ]);
-        } elseif ($user->user_type === 'property_owner') {
-            DB::table('property_owners')->where('user_id', $id)->update([
-                'verification_status' => 'rejected',
-                'rejection_reason' => $reason
-            ]);
-        }
-
-        // Note: We keep is_verified=false and is_active=false in users table
-
-        return response()->json(['success' => true, 'message' => 'Verification rejected']);
+        return response()->json($result);
     }
 
     /**
@@ -1437,6 +1390,77 @@ class userManagementController extends authController
 
     /**
      * Verify a contractor
+     */
+    /**
+     * Approve contractor verification request
+     */
+    public function approveContractorVerification($id)
+    {
+        \Log::info("Approving contractor verification for user_id: {$id}");
+
+        $user = User::find($id);
+
+        if (!$user) {
+            \Log::error("User not found for verification approval: {$id}");
+            return response()->json(['success' => false, 'message' => 'User not found'], 404);
+        }
+
+        $updated = DB::table('contractors')
+            ->where('user_id', $id)
+            ->update([
+                'verification_status' => 'approved',
+                'verification_date' => now()
+            ]);
+
+        if ($updated) {
+            \Log::info("Contractor verification approved for user_id: {$id}");
+            return response()->json([
+                'success' => true,
+                'message' => 'Contractor verification approved successfully'
+            ]);
+        }
+
+        \Log::warning("No contractor record found for user_id: {$id}");
+        return response()->json(['success' => false, 'message' => 'Contractor not found'], 404);
+    }
+
+    /**
+     * Reject contractor verification request
+     */
+    public function rejectContractorVerification(VerificationRequest $request, $id)
+    {
+        \Log::info("Rejecting contractor verification for user_id: {$id}");
+
+        $validated = $request->validated();
+        $user = User::find($id);
+
+        if (!$user) {
+            \Log::error("User not found for verification rejection: {$id}");
+            return response()->json(['success' => false, 'message' => 'User not found'], 404);
+        }
+
+        $updated = DB::table('contractors')
+            ->where('user_id', $id)
+            ->update([
+                'verification_status' => 'rejected',
+                'rejection_reason' => $validated['reason'],
+                'verification_date' => now()
+            ]);
+
+        if ($updated) {
+            \Log::info("Contractor verification rejected for user_id: {$id}");
+            return response()->json([
+                'success' => true,
+                'message' => 'Contractor verification rejected successfully'
+            ]);
+        }
+
+        \Log::warning("No contractor record found for user_id: {$id}");
+        return response()->json(['success' => false, 'message' => 'Contractor not found'], 404);
+    }
+
+    /**
+     * Legacy method - kept for backward compatibility
      */
     public function verifyContractor($id)
     {

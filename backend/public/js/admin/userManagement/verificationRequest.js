@@ -161,14 +161,27 @@
             );
             if (!response.ok) throw new Error("Failed to fetch details");
             const data = await response.json();
-            console.log("Verification Request Data:", data); // Debug log
+            console.log("Verification Request Data:", data);
+
+            if (!data || !data.user) {
+                showNotification("Data not found", "error");
+                return;
+            }
 
             const { user, profile } = data;
 
             if (type === "contractor") {
+                if (!profile) {
+                    showNotification("Contractor profile data not found", "error");
+                    return;
+                }
                 populateContractorModal(user, profile);
                 toggleModal(contractorModal, true);
             } else {
+                if (!profile) {
+                    showNotification("Owner profile data not found", "error");
+                    return;
+                }
                 populateOwnerModal(user, profile);
                 toggleModal(ownerModal, true);
             }
@@ -182,34 +195,38 @@
     }
 
     function populateContractorModal(user, profile) {
-        setText("vrCompanyName", profile.company_name || user.username);
+        setText("vrCompanyName", profile.company_name || user.username || "N/A");
         setText(
             "vrCompanyContact",
-            `${user.email} • ${profile.company_phone || "N/A"}`
+            `${user.email || "N/A"} • ${profile.company_phone || "N/A"}`
         );
         setText(
             "vrCompanyInitials",
-            setInitials(profile.company_name || user.username)
+            setInitials(profile.company_name || user.username || "NA")
         );
 
-        // Representative section removed from view
-        // setText('vrRepName', `${user.first_name} ${user.last_name}`);
-        // setText('vrRepRole', profile.position || 'Representative');
-        // setText('vrRepContact', user.phone_number);
-        // setText('vrRepEmail', user.email);
-        // setText('vrRepInitials', setInitials(`${user.first_name} ${user.last_name}`));
+        // Owner Details
+        const ownerFullName = [
+            profile.authorized_rep_fname,
+            profile.authorized_rep_mname,
+            profile.authorized_rep_lname
+        ].filter(Boolean).join(' ') || user.username || "N/A";
 
-        setText("vrContractorType", profile.contractor_type);
-        setText("vrYears", profile.experience_years);
-        setText("vrServices", profile.services_offered);
+        setText("vrOwnerName", ownerFullName);
+        setText("vrOwnerAddress", profile.business_address || "N/A");
+        setText("vrOwnerInitials", setInitials(ownerFullName));
 
-        setText("vrPcabNo", profile.pcab_license_number);
-        setText("vrPcabCategory", profile.pcab_category);
-        setText("vrPcabExp", profile.pcab_validity);
-        setText("vrBpExp", profile.business_permit_validity);
-        setText("vrTin", profile.tin_number);
-        setText("vrBpNo", profile.business_permit_number);
-        setText("vrBpCity", profile.business_permit_city);
+        setText("vrContractorType", profile.contractor_type || "N/A");
+        setText("vrYears", profile.experience_years || "N/A");
+        setText("vrServices", profile.services_offered || "N/A");
+
+        setText("vrPcabNo", profile.pcab_license_number || "N/A");
+        setText("vrPcabCategory", profile.pcab_category || "N/A");
+        setText("vrPcabExp", profile.pcab_validity || "N/A");
+        setText("vrBpExp", profile.business_permit_validity || "N/A");
+        setText("vrTin", profile.tin_number || "N/A");
+        setText("vrBpNo", profile.business_permit_number || "N/A");
+        setText("vrBpCity", profile.business_permit_city || "N/A");
     }
 
     function populateOwnerModal(user, profile) {
@@ -320,7 +337,10 @@
                 );
 
                 if (response.ok) {
-                    // Remove row from DOM
+                    toggleModal(acceptModal, false);
+                    toggleModal(contractorModal, false);
+                    toggleModal(ownerModal, false);
+
                     const btn = document.querySelector(
                         `button[data-key="${currentUserId}"]`
                     );
@@ -332,8 +352,8 @@
                             setTimeout(() => row.remove(), 500);
                         }
                     }
-                    toggleModal(acceptModal, false);
-                    showNotification("User approved successfully!", "success");
+
+                    showNotification("Verification approved successfully!", "success");
                 } else {
                     const err = await response.json();
                     showNotification(
@@ -351,11 +371,12 @@
         .getElementById("rejectConfirmBtn")
         ?.addEventListener("click", async () => {
             if (!currentUserId) return;
-            const reason = document.getElementById("rejectReasonInput").value;
-            if (!reason) {
-                document
-                    .getElementById("rejectReasonError")
-                    .classList.remove("hidden");
+            const reason = document.getElementById("rejectReasonInput").value.trim();
+            const errorEl = document.getElementById("rejectReasonError");
+
+            if (!reason || reason.length < 10) {
+                errorEl.textContent = reason.length === 0 ? "Reason is required." : "Reason must be at least 10 characters.";
+                errorEl.classList.remove("hidden");
                 return;
             }
 
@@ -377,7 +398,10 @@
                 );
 
                 if (response.ok) {
-                    // Remove row from DOM
+                    toggleModal(rejectModal, false);
+                    toggleModal(contractorModal, false);
+                    toggleModal(ownerModal, false);
+
                     const btn = document.querySelector(
                         `button[data-key="${currentUserId}"]`
                     );
@@ -389,10 +413,10 @@
                             setTimeout(() => row.remove(), 500);
                         }
                     }
-                    toggleModal(rejectModal, false);
-                    showNotification("User rejected successfully!", "success");
-                    // Clear input
+
+                    showNotification("Verification rejected successfully!", "success");
                     document.getElementById("rejectReasonInput").value = "";
+                    errorEl.classList.add("hidden");
                 } else {
                     const err = await response.json();
                     showNotification(
@@ -405,4 +429,9 @@
                 showNotification("An error occurred.", "error");
             }
         });
+
+    // Clear error when user starts typing
+    document.getElementById("rejectReasonInput")?.addEventListener("input", () => {
+        document.getElementById("rejectReasonError")?.classList.add("hidden");
+    });
 })();

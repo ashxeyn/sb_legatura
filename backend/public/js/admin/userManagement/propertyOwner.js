@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', function() {
-  // Initialize Filters
+
   const dateFromInput = document.getElementById('dateFrom');
   const dateToInput = document.getElementById('dateTo');
   const searchInput = document.getElementById('searchInput');
@@ -8,7 +8,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
   let debounceTimer;
 
-  // Function to fetch and update data
   async function fetchAndUpdate(url) {
       try {
           const response = await fetch(url, {
@@ -25,13 +24,10 @@ document.addEventListener('DOMContentLoaded', function() {
               ownersWrap.innerHTML = data.html;
           }
 
-          // Update URL without reload
           window.history.pushState({}, '', url);
 
-          // Re-attach pagination listeners
           attachPaginationListeners();
 
-          // Re-attach action button listeners
           attachActionListeners();
 
       } catch (error) {
@@ -61,7 +57,6 @@ document.addEventListener('DOMContentLoaded', function() {
           params.delete('search');
       }
 
-      // Reset pagination when filtering
       params.delete('page');
 
       return `${url.pathname}?${params.toString()}`;
@@ -90,7 +85,6 @@ document.addEventListener('DOMContentLoaded', function() {
       });
   }
 
-  // Attach listeners
   if (dateFromInput) dateFromInput.addEventListener('change', handleFilterChange);
   if (dateToInput) dateToInput.addEventListener('change', handleFilterChange);
   if (searchInput) searchInput.addEventListener('input', handleSearchInput);
@@ -104,10 +98,8 @@ document.addEventListener('DOMContentLoaded', function() {
       });
   }
 
-  // Initial pagination listeners
   attachPaginationListeners();
 
-  // Populate inputs from URL on load
   const urlParams = new URLSearchParams(window.location.search);
   if (dateFromInput && urlParams.has('date_from')) {
       dateFromInput.value = urlParams.get('date_from');
@@ -119,7 +111,6 @@ document.addEventListener('DOMContentLoaded', function() {
       searchInput.value = urlParams.get('search');
   }
 
-  // Action Buttons Interactivity (Wrapped in function for re-attachment)
   function attachActionListeners() {
     const viewButtons = document.querySelectorAll('.view-btn');
     const editButtons = document.querySelectorAll('.edit-btn');
@@ -166,7 +157,6 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     });
 
-    // Table row click highlight
     const tableRows = document.querySelectorAll('#propertyOwnersTable tr');
     tableRows.forEach(row => {
       row.addEventListener('click', function() {
@@ -176,10 +166,8 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  // Initial attachment
   attachActionListeners();
 
-  // Add Property Owner Button
   const addBtn = document.querySelector('#addPropertyOwnerBtn');
   const modal = document.getElementById('addPropertyOwnerModal');
   const closeModalBtn = document.getElementById('closeModalBtn');
@@ -187,12 +175,11 @@ document.addEventListener('DOMContentLoaded', function() {
   const saveBtn = document.getElementById('saveBtn');
 
   if (addBtn && modal) {
-    // Open modal
+
     addBtn.addEventListener('click', function() {
       modal.classList.remove('hidden');
       document.body.style.overflow = 'hidden';
 
-      // Animate modal content
       const modalContent = modal.querySelector('.modal-content');
       modalContent.style.transform = 'scale(0.9)';
       modalContent.style.opacity = '0';
@@ -204,7 +191,6 @@ document.addEventListener('DOMContentLoaded', function() {
       }, 10);
     });
 
-    // Close modal functions
     const closeModal = () => {
       const modalContent = modal.querySelector('.modal-content');
       modalContent.style.transform = 'scale(0.9)';
@@ -213,7 +199,7 @@ document.addEventListener('DOMContentLoaded', function() {
       setTimeout(() => {
         modal.classList.add('hidden');
         document.body.style.overflow = 'auto';
-        // Reset form (optional)
+
         resetModalForm();
       }, 300);
     };
@@ -221,25 +207,21 @@ document.addEventListener('DOMContentLoaded', function() {
     closeModalBtn.addEventListener('click', closeModal);
     cancelBtn.addEventListener('click', closeModal);
 
-    // Close on outside click
     modal.addEventListener('click', function(e) {
       if (e.target === modal) {
         closeModal();
       }
     });
 
-    // Close on Escape key
     document.addEventListener('keydown', function(e) {
       if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
         closeModal();
       }
     });
 
-    // Save button
     saveBtn.addEventListener('click', async function() {
         const formData = new FormData();
 
-        // Collect inputs
         const inputs = modal.querySelectorAll('input, select');
         inputs.forEach(input => {
             if (input.type === 'file') {
@@ -251,8 +233,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     formData.append(input.name, input.value);
                 }
             } else if (input.tagName === 'SELECT') {
-                // Handle PSGC selects to send names instead of codes if needed, or handle in backend
-                // But addPropertyOwner expects names for address construction
+
                 if (input.id === 'owner_address_province' || input.id === 'owner_address_city' || input.id === 'owner_address_barangay') {
                     if (input.selectedIndex > 0) {
                         const name = input.options[input.selectedIndex].getAttribute('data-name');
@@ -269,13 +250,11 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
 
-        // Add CSRF token
         const csrfToken = document.querySelector('meta[name="csrf-token"]');
         if (csrfToken) {
             formData.append('_token', csrfToken.content);
         }
 
-        // Clear previous errors
         modal.querySelectorAll('.error-message').forEach(el => el.remove());
         modal.querySelectorAll('.border-red-500').forEach(el => el.classList.remove('border-red-500'));
 
@@ -293,7 +272,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (response.ok) {
                 showNotification('Property Owner added successfully!', 'success');
                 closeModal();
-                // Refresh table
+
                 handleFilterChange();
             } else {
                 if (result.errors) {
@@ -306,7 +285,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             errorMsg.textContent = messages[0];
                             input.parentElement.appendChild(errorMsg);
                         } else {
-                            // Handle special cases like file uploads where input might be hidden or wrapped differently
+
                             if (key === 'valid_id_photo') {
                                 const area = document.getElementById('idFrontUploadArea');
                                 if (area) {
@@ -345,7 +324,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             }
                         }
                     }
-                    // Scroll to first error
+
                     const firstError = modal.querySelector('.error-message');
                     if (firstError) {
                         firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -361,7 +340,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  // Occupation "Others" Toggle
   const occupationSelect = document.getElementById('occupationSelect');
   const occupationOtherInput = document.getElementById('occupationOtherInput');
 
@@ -376,9 +354,6 @@ document.addEventListener('DOMContentLoaded', function() {
       });
   }
 
-  // PSGC Logic handled by account.js
-
-  // File Upload Previews
   function setupFileUpload(uploadId, areaId, fileNameId) {
       const upload = document.getElementById(uploadId);
       const area = document.getElementById(areaId);
@@ -395,7 +370,6 @@ document.addEventListener('DOMContentLoaded', function() {
               }
           });
 
-          // Drag and drop
           area.addEventListener('dragover', (e) => {
               e.preventDefault();
               area.classList.add('border-orange-400', 'bg-orange-50');
@@ -422,7 +396,6 @@ document.addEventListener('DOMContentLoaded', function() {
   setupFileUpload('idBackUpload', 'idBackUploadArea', 'idBackFileName');
   setupFileUpload('policeClearanceUpload', 'policeClearanceUploadArea', 'policeClearanceFileName');
 
-  // Profile Picture Upload
   const profileUpload = document.getElementById('profileUpload');
   const profilePreview = document.getElementById('profilePreview');
   const profileIcon = document.getElementById('profileIcon');
@@ -442,7 +415,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  // ID Upload Area
   const idUploadArea = document.getElementById('idUploadArea');
   const idUpload = document.getElementById('idUpload');
   const idFileName = document.getElementById('idFileName');
@@ -459,7 +431,6 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     });
 
-    // Drag and drop
     idUploadArea.addEventListener('dragover', (e) => {
       e.preventDefault();
       idUploadArea.classList.add('border-orange-400', 'bg-orange-50');
@@ -481,7 +452,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  // Reset modal form
   function resetModalForm() {
     const inputs = modal.querySelectorAll('input, select');
     inputs.forEach(input => {
@@ -492,29 +462,24 @@ document.addEventListener('DOMContentLoaded', function() {
       } else {
         input.value = '';
       }
-      // Clear error styling
+
       input.classList.remove('border-red-500');
     });
 
-    // Clear error messages
     modal.querySelectorAll('.error-message').forEach(el => el.remove());
 
-    // Clear upload area errors
     modal.querySelectorAll('.border-red-500').forEach(el => el.classList.remove('border-red-500'));
 
-    // Reset profile preview
     if (profilePreview && profileIcon) {
       profilePreview.classList.add('hidden');
       profileIcon.classList.remove('hidden');
     }
 
-    // Reset ID file name
     if (idFileName) {
       idFileName.classList.add('hidden');
       idUploadArea.classList.remove('border-orange-400', 'bg-orange-50');
     }
 
-    // Reset other file names if they exist
     ['idFrontFileName', 'idBackFileName', 'policeClearanceFileName'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.classList.add('hidden');
@@ -526,7 +491,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  // Add input animation on focus and clear errors on input
   const modalInputs = document.querySelectorAll('#addPropertyOwnerModal input, #addPropertyOwnerModal select');
   modalInputs.forEach(input => {
     input.addEventListener('focus', function() {
@@ -538,7 +502,6 @@ document.addEventListener('DOMContentLoaded', function() {
       this.parentElement.classList.remove('transform', 'scale-[1.02]');
     });
 
-    // Clear errors on input
     input.addEventListener('input', function() {
         if (this.classList.contains('border-red-500')) {
             this.classList.remove('border-red-500');
@@ -549,7 +512,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // For select elements, use 'change' event
     if (input.tagName === 'SELECT') {
         input.addEventListener('change', function() {
             if (this.classList.contains('border-red-500')) {
@@ -563,7 +525,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
-  // Ripple effect function
   function addRipple(button, event) {
     const ripple = document.createElement('span');
     const rect = button.getBoundingClientRect();
@@ -583,7 +544,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 600);
   }
 
-  // Add hover effect to avatar
   const avatars = document.querySelectorAll('.w-10.h-10.rounded-full');
   avatars.forEach(avatar => {
     avatar.addEventListener('mouseenter', function() {
@@ -596,7 +556,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 
-  // Animate table on load
   const rows = document.querySelectorAll('#propertyOwnersTable tr');
   rows.forEach((row, index) => {
     row.style.opacity = '0';
@@ -609,7 +568,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }, index * 50);
   });
 
-  // ===== EDIT MODAL FUNCTIONALITY =====
   const editModal = document.getElementById('editPropertyOwnerModal');
   const editModalContent = editModal ? editModal.querySelector('.modal-content') : null;
   const closeEditModalBtn = document.getElementById('closeEditModalBtn');
@@ -619,7 +577,6 @@ document.addEventListener('DOMContentLoaded', function() {
   const editProfilePreview = document.getElementById('editProfilePreview');
   const editProfileIcon = document.getElementById('editProfileIcon');
 
-  // Open edit modal with user data
   async function openEditModal(userId) {
     if (!editModal || !editModalContent) return;
 
@@ -636,7 +593,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const user = data.user;
         const owner = data.owner;
 
-        // Populate form fields
         document.getElementById('edit_user_id').value = user.id;
         document.getElementById('edit_first_name').value = owner.first_name;
         document.getElementById('edit_middle_name').value = owner.middle_name || '';
@@ -648,7 +604,6 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('edit_street_address').value = owner.street_address;
         document.getElementById('edit_zip_code').value = owner.zip_code;
 
-        // Occupation
         const occupationSelect = document.getElementById('edit_occupationSelect');
         const occupationOtherInput = document.getElementById('edit_occupationOtherInput');
         if (owner.occupation_id) {
@@ -660,7 +615,6 @@ document.addEventListener('DOMContentLoaded', function() {
             occupationOtherInput.classList.remove('hidden');
         }
 
-        // Profile Picture
         if (owner.profile_pic) {
             editProfilePreview.src = `/storage/${owner.profile_pic}`;
             editProfilePreview.classList.remove('hidden');
@@ -670,13 +624,10 @@ document.addEventListener('DOMContentLoaded', function() {
             editProfileIcon.classList.remove('hidden');
         }
 
-        // Address (PSGC)
         const provinceSelect = document.getElementById('edit_owner_address_province');
         const citySelect = document.getElementById('edit_owner_address_city');
         const barangaySelect = document.getElementById('edit_owner_address_barangay');
 
-        // Set Province
-        // We need to find the option with the matching name to get the code
         let provinceCode = '';
         for (let i = 0; i < provinceSelect.options.length; i++) {
             if (provinceSelect.options[i].getAttribute('data-name') === owner.province) {
@@ -687,7 +638,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         if (provinceCode) {
-            // Fetch Cities
+
             const citiesResponse = await fetch(`/api/psgc/provinces/${provinceCode}/cities`);
             const cities = await citiesResponse.json();
 
@@ -707,7 +658,7 @@ document.addEventListener('DOMContentLoaded', function() {
             citySelect.disabled = false;
 
             if (cityCode) {
-                // Fetch Barangays
+
                 const barangaysResponse = await fetch(`/api/psgc/cities/${cityCode}/barangays`);
                 const barangays = await barangaysResponse.json();
 
@@ -726,10 +677,8 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
-        // Valid ID
         document.getElementById('edit_valid_id_id').value = owner.valid_id_id;
 
-        // Display current files if they exist
         const currentIdFront = document.getElementById('currentIdFront');
         const currentIdBack = document.getElementById('currentIdBack');
         const currentPoliceClearance = document.getElementById('currentPoliceClearance');
@@ -752,13 +701,10 @@ document.addEventListener('DOMContentLoaded', function() {
             currentPoliceClearance.innerHTML = '';
         }
 
-
-        // Show modal
         editModal.classList.remove('hidden');
         editModal.classList.add('flex');
         document.body.style.overflow = 'hidden';
 
-        // Trigger animation
         setTimeout(() => {
             editModalContent.classList.remove('scale-95', 'opacity-0');
             editModalContent.classList.add('scale-100', 'opacity-100');
@@ -770,7 +716,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
-  // Close edit modal function
   function closeEditModal() {
     if (!editModalContent) return;
 
@@ -781,14 +726,12 @@ document.addEventListener('DOMContentLoaded', function() {
       editModal.classList.add('hidden');
       editModal.classList.remove('flex');
       document.body.style.overflow = 'auto';
-      // Reset form
+
       document.getElementById('editPropertyOwnerForm').reset();
 
-      // Clear error messages and styles
       editModal.querySelectorAll('.error-message').forEach(el => el.remove());
       editModal.querySelectorAll('.border-red-500').forEach(el => el.classList.remove('border-red-500'));
 
-      // Reset previews
       editProfilePreview.classList.add('hidden');
       editProfileIcon.classList.remove('hidden');
       document.getElementById('editIdFrontFileName').classList.add('hidden');
@@ -800,7 +743,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 300);
   }
 
-  // Close button handlers
   if (closeEditModalBtn) {
     closeEditModalBtn.addEventListener('click', closeEditModal);
   }
@@ -809,7 +751,6 @@ document.addEventListener('DOMContentLoaded', function() {
     cancelEditBtn.addEventListener('click', closeEditModal);
   }
 
-  // Close on backdrop click
   if (editModal) {
     editModal.addEventListener('click', function(e) {
       if (e.target === editModal) {
@@ -818,14 +759,12 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  // Prevent modal content click from closing
   if (editModalContent) {
     editModalContent.addEventListener('click', function(e) {
       e.stopPropagation();
     });
   }
 
-  // Profile picture upload preview
   if (editProfileUpload && editProfilePreview && editProfileIcon) {
     editProfileUpload.addEventListener('change', function(e) {
       const file = e.target.files[0];
@@ -841,12 +780,10 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  // Edit Modal File Uploads
   setupFileUpload('editIdFrontUpload', 'editIdFrontUploadArea', 'editIdFrontFileName');
   setupFileUpload('editIdBackUpload', 'editIdBackUploadArea', 'editIdBackFileName');
   setupFileUpload('editPoliceClearanceUpload', 'editPoliceClearanceUploadArea', 'editPoliceClearanceFileName');
 
-  // Edit Modal PSGC Logic
   const editProvince = document.getElementById('edit_owner_address_province');
   const editCity = document.getElementById('edit_owner_address_city');
   const editBarangay = document.getElementById('edit_owner_address_barangay');
@@ -913,7 +850,6 @@ document.addEventListener('DOMContentLoaded', function() {
       });
   }
 
-  // Edit Occupation "Others" Toggle
   const editOccupationSelect = document.getElementById('edit_occupationSelect');
   const editOccupationOtherInput = document.getElementById('edit_occupationOtherInput');
 
@@ -928,7 +864,6 @@ document.addEventListener('DOMContentLoaded', function() {
       });
   }
 
-  // Save button handler
   const editForm = document.getElementById('editPropertyOwnerForm');
   if (editForm) {
     editForm.addEventListener('submit', async function(e) {
@@ -937,7 +872,6 @@ document.addEventListener('DOMContentLoaded', function() {
       const userId = document.getElementById('edit_user_id').value;
       const formData = new FormData(this);
 
-      // Handle PSGC names
       if (editProvince.selectedIndex > 0) {
           formData.append('province_name', editProvince.options[editProvince.selectedIndex].getAttribute('data-name'));
       }
@@ -948,21 +882,17 @@ document.addEventListener('DOMContentLoaded', function() {
           formData.append('barangay_name', editBarangay.options[editBarangay.selectedIndex].getAttribute('data-name'));
       }
 
-      // Add CSRF token
       const csrfToken = document.querySelector('meta[name="csrf-token"]');
       if (csrfToken) {
           formData.append('_token', csrfToken.content);
       }
 
-      // Add method spoofing for PUT
       formData.append('_method', 'PUT');
 
-      // Add loading state
       const originalContent = saveEditBtn.innerHTML;
       saveEditBtn.innerHTML = '<i class="fi fi-rr-spinner animate-spin"></i> Saving...';
       saveEditBtn.disabled = true;
 
-      // Clear previous errors
       editModal.querySelectorAll('.error-message').forEach(el => el.remove());
       editModal.querySelectorAll('.border-red-500').forEach(el => el.classList.remove('border-red-500'));
 
@@ -984,7 +914,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (document.getElementById('ownersTableWrap')) {
                 handleFilterChange(); // Refresh table
             } else {
-                // On View page, reload to show changes
+
                 setTimeout(() => {
                     window.location.reload();
                 }, 500);
@@ -992,10 +922,9 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             if (result.errors) {
                 for (const [key, messages] of Object.entries(result.errors)) {
-                    // Handle nested keys like valid_id_photo
+
                     let input = editModal.querySelector(`[name="${key}"]`);
 
-                    // Special handling for file uploads and other specific fields
                     if (!input) {
                         if (key === 'valid_id_photo') {
                             const area = document.getElementById('editIdFrontUploadArea');
@@ -1041,7 +970,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         input.parentElement.appendChild(errorMsg);
                     }
                 }
-                // Scroll to first error
+
                 const firstError = editModal.querySelector('.error-message');
                 if (firstError) {
                     firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -1060,7 +989,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  // Add input focus effects for edit modal
   const editInputs = editModal ? editModal.querySelectorAll('input, select') : [];
   editInputs.forEach(input => {
     input.addEventListener('focus', function() {
@@ -1071,7 +999,6 @@ document.addEventListener('DOMContentLoaded', function() {
       this.parentElement.classList.remove('ring-2', 'ring-orange-200');
     });
 
-    // Clear errors on input
     input.addEventListener('input', function() {
         if (this.classList.contains('border-red-500')) {
             this.classList.remove('border-red-500');
@@ -1082,7 +1009,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // For select elements, use 'change' event
     if (input.tagName === 'SELECT') {
         input.addEventListener('change', function() {
             if (this.classList.contains('border-red-500')) {
@@ -1096,14 +1022,12 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
-  // ESC key to close edit modal
   document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape' && editModal && !editModal.classList.contains('hidden')) {
       closeEditModal();
     }
   });
 
-  // Success notification helper
   function showNotification(message, type = 'success') {
     const notification = document.createElement('div');
     notification.className = `fixed top-24 right-8 z-[60] px-6 py-4 rounded-lg shadow-2xl transform transition-all duration-500 translate-x-full ${
@@ -1125,7 +1049,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 3000);
   }
 
-  // ===== DELETE MODAL FUNCTIONALITY =====
   const deleteModal = document.getElementById('deleteUserModal');
   const deleteModalContent = deleteModal ? deleteModal.querySelector('.modal-content') : null;
   const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
@@ -1136,19 +1059,16 @@ document.addEventListener('DOMContentLoaded', function() {
   let rowToDelete = null;
   let idToDelete = null;
 
-  // Open delete modal
   function openDeleteModal(userName, row, id) {
     if (!deleteModal || !deleteModalContent) return;
 
     rowToDelete = row;
     idToDelete = id;
 
-    // Set user name
     if (deleteUserNameSpan) {
       deleteUserNameSpan.textContent = userName;
     }
 
-    // Reset reason input
     if (deletionReasonInput) {
         deletionReasonInput.value = '';
         deletionReasonInput.classList.remove('border-red-500');
@@ -1157,19 +1077,16 @@ document.addEventListener('DOMContentLoaded', function() {
         deletionReasonError.classList.add('hidden');
     }
 
-    // Show modal
     deleteModal.classList.remove('hidden');
     deleteModal.classList.add('flex');
     document.body.style.overflow = 'hidden';
 
-    // Trigger animation
     setTimeout(() => {
       deleteModalContent.classList.remove('scale-95', 'opacity-0');
       deleteModalContent.classList.add('scale-100', 'opacity-100');
     }, 10);
   }
 
-  // Close delete modal
   function closeDeleteModal() {
     if (!deleteModalContent) return;
 
@@ -1185,17 +1102,14 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 300);
   }
 
-  // Cancel delete button
   if (cancelDeleteBtn) {
     cancelDeleteBtn.addEventListener('click', closeDeleteModal);
   }
 
-  // Confirm delete button
   if (confirmDeleteBtn) {
     confirmDeleteBtn.addEventListener('click', async function() {
       if (!rowToDelete || !idToDelete) return;
 
-      // Validate reason
       const reason = deletionReasonInput.value.trim();
       if (!reason) {
           deletionReasonInput.classList.add('border-red-500');
@@ -1206,7 +1120,6 @@ document.addEventListener('DOMContentLoaded', function() {
           deletionReasonError.classList.add('hidden');
       }
 
-      // Add loading state
       const originalContent = confirmDeleteBtn.innerHTML;
       confirmDeleteBtn.innerHTML = '<i class="fi fi-rr-spinner animate-spin"></i> Deleting...';
       confirmDeleteBtn.disabled = true;
@@ -1239,14 +1152,13 @@ document.addEventListener('DOMContentLoaded', function() {
           console.error('Error deleting user:', error);
           alert('An error occurred while deleting.');
       } finally {
-        // Reset button
+
         confirmDeleteBtn.innerHTML = originalContent;
         confirmDeleteBtn.disabled = false;
       }
     });
   }
 
-  // Close on backdrop click
   if (deleteModal) {
     deleteModal.addEventListener('click', function(e) {
       if (e.target === deleteModal) {
@@ -1255,27 +1167,23 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  // Prevent modal content click from closing
   if (deleteModalContent) {
     deleteModalContent.addEventListener('click', function(e) {
       e.stopPropagation();
     });
   }
 
-  // ESC key to close delete modal
   document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape' && deleteModal && !deleteModal.classList.contains('hidden')) {
       closeDeleteModal();
     }
   });
 
-  // Make openDeleteModal globally accessible for delete buttons
   window.openDeleteModal = openDeleteModal;
   window.openEditModal = openEditModal;
   window.closeEditModal = closeEditModal;
 });
 
-// Add CSS for ripple effect
 const style = document.createElement('style');
 style.textContent = `
   .action-btn {

@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', function() {
-  // Initialize Filters
+ 
   const dateFromInput = document.getElementById('dateFrom');
   const dateToInput = document.getElementById('dateTo');
   const searchInput = document.getElementById('searchInput');
@@ -8,7 +8,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
   let debounceTimer;
 
-  // Function to fetch and update data
   async function fetchAndUpdate(url) {
       try {
           const response = await fetch(url, {
@@ -25,13 +24,10 @@ document.addEventListener('DOMContentLoaded', function() {
               contractorsWrap.innerHTML = data.html;
           }
 
-          // Update URL without reload
           window.history.pushState({}, '', url);
 
-          // Re-attach pagination listeners
           attachPaginationListeners();
 
-          // Re-attach action button listeners
           attachActionListeners();
 
       } catch (error) {
@@ -61,7 +57,6 @@ document.addEventListener('DOMContentLoaded', function() {
           params.delete('search');
       }
 
-      // Reset pagination when filtering
       params.delete('page');
 
       return `${url.pathname}?${params.toString()}`;
@@ -90,7 +85,6 @@ document.addEventListener('DOMContentLoaded', function() {
       });
   }
 
-  // Attach listeners
   if (dateFromInput) dateFromInput.addEventListener('change', handleFilterChange);
   if (dateToInput) dateToInput.addEventListener('change', handleFilterChange);
   if (searchInput) searchInput.addEventListener('input', handleSearchInput);
@@ -104,10 +98,8 @@ document.addEventListener('DOMContentLoaded', function() {
       });
   }
 
-  // Initial pagination listeners
   attachPaginationListeners();
 
-  // Populate inputs from URL on load
   const urlParams = new URLSearchParams(window.location.search);
   if (dateFromInput && urlParams.has('date_from')) {
       dateFromInput.value = urlParams.get('date_from');
@@ -119,7 +111,6 @@ document.addEventListener('DOMContentLoaded', function() {
       searchInput.value = urlParams.get('search');
   }
 
-  // Action Buttons Interactivity (Wrapped in function for re-attachment)
   function attachActionListeners() {
     const viewButtons = document.querySelectorAll('.view-btn');
     const editButtons = document.querySelectorAll('.edit-btn');
@@ -166,7 +157,6 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     });
 
-    // Table row click highlight
     const tableRows = document.querySelectorAll('#contractorsTable tr');
     tableRows.forEach(row => {
       row.addEventListener('click', function() {
@@ -176,10 +166,8 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  // Initial attachment
   attachActionListeners();
 
-  // Add Contractor Button
   const addBtn = document.querySelector('#addContractorBtn');
   const modal = document.getElementById('addContractorModal');
   const closeModalBtn = document.getElementById('closeModalBtn');
@@ -187,12 +175,11 @@ document.addEventListener('DOMContentLoaded', function() {
   const saveBtn = document.getElementById('saveBtn');
 
   if (addBtn && modal) {
-    // Open modal
+
     addBtn.addEventListener('click', function() {
       modal.classList.remove('hidden');
       document.body.style.overflow = 'hidden';
 
-      // Animate modal content
       const modalContent = modal.querySelector('.modal-content');
       modalContent.style.transform = 'scale(0.9)';
       modalContent.style.opacity = '0';
@@ -204,7 +191,6 @@ document.addEventListener('DOMContentLoaded', function() {
       }, 10);
     });
 
-    // Close modal functions
     const closeModal = () => {
       const modalContent = modal.querySelector('.modal-content');
       modalContent.style.transform = 'scale(0.9)';
@@ -213,7 +199,7 @@ document.addEventListener('DOMContentLoaded', function() {
       setTimeout(() => {
         modal.classList.add('hidden');
         document.body.style.overflow = 'auto';
-        // Reset form (optional)
+
         resetModalForm();
       }, 300);
     };
@@ -221,25 +207,21 @@ document.addEventListener('DOMContentLoaded', function() {
     closeModalBtn.addEventListener('click', closeModal);
     cancelBtn.addEventListener('click', closeModal);
 
-    // Close on outside click
     modal.addEventListener('click', function(e) {
       if (e.target === modal) {
         closeModal();
       }
     });
 
-    // Close on Escape key
     document.addEventListener('keydown', function(e) {
       if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
         closeModal();
       }
     });
 
-    // Save button
     saveBtn.addEventListener('click', async function() {
         const formData = new FormData();
 
-        // Collect inputs
         const inputs = modal.querySelectorAll('input, select, textarea');
         inputs.forEach(input => {
             if (input.type === 'file') {
@@ -251,7 +233,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     formData.append(input.name, input.value);
                 }
             } else if (input.tagName === 'SELECT') {
-                // Handle PSGC selects to send names instead of codes if needed
+
                 if (input.id === 'contractor_address_province' || input.id === 'contractor_address_city' || input.id === 'contractor_address_barangay') {
                     if (input.selectedIndex > 0) {
                         const name = input.options[input.selectedIndex].getAttribute('data-name');
@@ -267,18 +249,15 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
 
-        // Add CSRF token
         const csrfToken = document.querySelector('meta[name="csrf-token"]');
         if (csrfToken) {
             formData.append('_token', csrfToken.content);
         }
 
-        // Add loading state
         const originalText = this.innerHTML;
         this.innerHTML = '<i class="fi fi-rr-spinner animate-spin"></i> Saving...';
         this.disabled = true;
 
-        // Clear previous errors
         modal.querySelectorAll('.error-message').forEach(el => el.remove());
         modal.querySelectorAll('.border-red-500').forEach(el => el.classList.remove('border-red-500'));
 
@@ -296,7 +275,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (response.ok) {
                 showNotification('Contractor added successfully!', 'success');
                 closeModal();
-                // Refresh table
+
                 handleFilterChange();
             } else {
                 if (result.errors) {
@@ -323,7 +302,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             showNotification(messages[0], 'error');
                         }
                     }
-                    // Scroll to first error
+
                     const firstError = modal.querySelector('.error-message');
                     if (firstError) {
                         firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -342,7 +321,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  // Contractor Type "Others" Toggle
   const contractorTypeSelect = document.getElementById('contractorTypeSelect');
   const contractorTypeOtherInput = document.getElementById('contractorTypeOtherInput');
   if (contractorTypeSelect && contractorTypeOtherInput) {
@@ -359,7 +337,6 @@ document.addEventListener('DOMContentLoaded', function() {
       });
   }
 
-  // Address Handling (PSGC)
   const provinceSelect = document.getElementById('contractor_address_province');
   const citySelect = document.getElementById('contractor_address_city');
   const barangaySelect = document.getElementById('contractor_address_barangay');
@@ -412,7 +389,6 @@ document.addEventListener('DOMContentLoaded', function() {
       });
   }
 
-  // Profile Upload Preview
   const profileUpload = document.getElementById('profileUpload');
   const profilePreview = document.getElementById('profilePreview');
   const profileIcon = document.getElementById('profileIcon');
@@ -432,7 +408,6 @@ document.addEventListener('DOMContentLoaded', function() {
       });
   }
 
-  // DTI/SEC Dropzone Upload
   const dtiDropzone = document.getElementById('dtiDropzone');
   const dtiUpload = document.getElementById('dtiUpload');
   const dtiFileName = document.getElementById('dtiFileName');
@@ -441,7 +416,6 @@ document.addEventListener('DOMContentLoaded', function() {
       const highlight = () => dtiDropzone.classList.add('ring-2', 'ring-orange-400');
       const unhighlight = () => dtiDropzone.classList.remove('ring-2', 'ring-orange-400');
 
-      // Click to upload
       dtiDropzone.addEventListener('click', () => dtiUpload.click());
 
       ['dragenter', 'dragover'].forEach(evt => {
@@ -463,7 +437,7 @@ document.addEventListener('DOMContentLoaded', function() {
       dtiDropzone.addEventListener('drop', (e) => {
           const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
           if (file) {
-              // Create a new DataTransfer to set files
+
               const dataTransfer = new DataTransfer();
               dataTransfer.items.add(file);
               dtiUpload.files = dataTransfer.files;
@@ -472,7 +446,7 @@ document.addEventListener('DOMContentLoaded', function() {
                   const sizeKB = Math.round(file.size / 1024);
                   dtiFileName.textContent = `${file.name} • ${sizeKB} KB`;
               }
-              // Clear error if any
+
               dtiDropzone.classList.remove('border-red-500');
               const errorMsg = dtiDropzone.parentElement.querySelector('.error-message');
               if (errorMsg) errorMsg.remove();
@@ -488,7 +462,6 @@ document.addEventListener('DOMContentLoaded', function() {
       });
   }
 
-  // Reset modal form
   function resetModalForm() {
     const inputs = modal.querySelectorAll('input, select, textarea');
     inputs.forEach(input => {
@@ -501,29 +474,24 @@ document.addEventListener('DOMContentLoaded', function() {
       } else {
         input.value = '';
       }
-      // Clear error styling
+
       input.classList.remove('border-red-500');
     });
 
-    // Clear error messages
     modal.querySelectorAll('.error-message').forEach(el => el.remove());
 
-    // Clear upload area errors
     modal.querySelectorAll('.border-red-500').forEach(el => el.classList.remove('border-red-500'));
 
-    // Reset profile preview
     if (profilePreview && profileIcon) {
       profilePreview.classList.add('hidden');
       profileIcon.classList.remove('hidden');
     }
 
-    // Reset DTI file name
     if (dtiFileName) {
       dtiFileName.textContent = '';
       if (dtiDropzone) dtiDropzone.classList.remove('border-orange-500', 'bg-orange-100');
     }
 
-    // Reset Address Selects
     if (citySelect) {
         citySelect.innerHTML = '<option value="">Select City/Municipality</option>';
         citySelect.disabled = true;
@@ -534,7 +502,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
-  // Add input animation on focus and clear errors on input
   const modalInputs = document.querySelectorAll('#addContractorModal input, #addContractorModal select, #addContractorModal textarea');
   modalInputs.forEach(input => {
     input.addEventListener('focus', function() {
@@ -546,7 +513,6 @@ document.addEventListener('DOMContentLoaded', function() {
       this.parentElement.classList.remove('transform', 'scale-[1.02]');
     });
 
-    // Clear errors on input
     input.addEventListener('input', function() {
         if (this.classList.contains('border-red-500')) {
             this.classList.remove('border-red-500');
@@ -557,7 +523,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // For select elements, use 'change' event
     if (input.tagName === 'SELECT') {
         input.addEventListener('change', function() {
             if (this.classList.contains('border-red-500')) {
@@ -571,7 +536,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
-  // Ripple effect function
   function addRipple(button, event) {
     const ripple = document.createElement('span');
     const rect = button.getBoundingClientRect();
@@ -591,7 +555,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 600);
   }
 
-  // Animate table on load
   const rows = document.querySelectorAll('#contractorsTable tr');
   rows.forEach((row, index) => {
     row.style.opacity = '0';
@@ -604,7 +567,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }, index * 50);
   });
 
-  // ===== EDIT MODAL FUNCTIONALITY =====
   const editModal = document.getElementById('editContractorModal');
   const editModalContent = editModal ? editModal.querySelector('.modal-content') : null;
   const closeEditModalBtn = document.getElementById('closeEditModalBtn');
@@ -614,7 +576,6 @@ document.addEventListener('DOMContentLoaded', function() {
   const editProfilePreview = document.getElementById('editProfilePreview');
   const editProfileIcon = document.getElementById('editProfileIcon');
 
-  // Open edit modal with contractor data
   async function openEditModal(contractorId) {
     if (!editModal || !editModalContent) return;
 
@@ -632,13 +593,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const data = result.data;
 
-        // Populate form fields
         document.getElementById('edit_user_id').value = data.user_id;
         document.getElementById('edit_company_name').value = data.company_name || '';
         document.getElementById('edit_company_phone').value = data.company_phone || '';
         document.getElementById('edit_company_start_date').value = data.company_start_date || '';
 
-        // Contractor Type
         const typeSelect = document.getElementById('edit_contractorTypeSelect');
         if (typeSelect) {
             typeSelect.value = data.type_id || '';
@@ -655,18 +614,15 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('edit_company_website').value = data.company_website || '';
         document.getElementById('edit_company_social_media').value = data.company_social_media || '';
 
-        // Representative
         document.getElementById('edit_first_name').value = data.authorized_rep_fname || '';
         document.getElementById('edit_middle_name').value = data.authorized_rep_mname || '';
         document.getElementById('edit_last_name').value = data.authorized_rep_lname || '';
         document.getElementById('edit_company_email').value = data.email || '';
         document.getElementById('edit_username').value = data.username || '';
 
-        // Address
         document.getElementById('edit_business_address_street').value = data.business_address_street || '';
         document.getElementById('edit_business_address_postal').value = data.business_address_postal || '';
 
-        // Legal Docs
         document.getElementById('edit_picab_number').value = data.picab_number || '';
         document.getElementById('edit_picab_category').value = data.picab_category || '';
         document.getElementById('edit_picab_expiration_date').value = data.picab_expiration_date || '';
@@ -675,7 +631,6 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('edit_business_permit_expiration').value = data.business_permit_expiration || '';
         document.getElementById('edit_tin_business_reg_number').value = data.tin_business_reg_number || '';
 
-        // DTI/SEC File Link
         const dtiLinkContainer = document.getElementById('editCurrentDtiFile');
         if (dtiLinkContainer) {
             if (data.dti_sec_registration_photo) {
@@ -686,7 +641,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
-        // Profile Pic Preview
         if (data.profile_pic) {
             editProfilePreview.src = `/storage/${data.profile_pic}`;
             editProfilePreview.classList.remove('hidden');
@@ -696,12 +650,10 @@ document.addEventListener('DOMContentLoaded', function() {
             editProfileIcon.classList.remove('hidden');
         }
 
-        // Address (PSGC) - Cascading Dropdowns
         const provinceSelect = document.getElementById('edit_contractor_address_province');
         const citySelect = document.getElementById('edit_contractor_address_city');
         const barangaySelect = document.getElementById('edit_contractor_address_barangay');
 
-        // Set Province
         let provinceCode = '';
         if (data.business_address_province && provinceSelect) {
             for (let i = 0; i < provinceSelect.options.length; i++) {
@@ -717,7 +669,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
-        // Fetch and Set City
         if (provinceCode && citySelect) {
             try {
                 const citiesResponse = await fetch(`/api/psgc/provinces/${provinceCode}/cities`);
@@ -742,7 +693,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
                 citySelect.disabled = false;
 
-                // Fetch and Set Barangay
                 if (cityCode && barangaySelect) {
                     const barangaysResponse = await fetch(`/api/psgc/cities/${cityCode}/barangays`);
                     const barangays = await barangaysResponse.json();
@@ -768,12 +718,10 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
-        // Show modal
         editModal.classList.remove('hidden');
         editModal.classList.add('flex');
         document.body.style.overflow = 'hidden';
 
-        // Trigger animation
         setTimeout(() => {
             editModalContent.classList.remove('scale-95', 'opacity-0');
             editModalContent.classList.add('scale-100', 'opacity-100');
@@ -785,7 +733,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
-  // Close edit modal function
   function closeEditModal() {
     if (!editModalContent) return;
 
@@ -797,21 +744,17 @@ document.addEventListener('DOMContentLoaded', function() {
       editModal.classList.remove('flex');
       document.body.style.overflow = 'auto';
 
-      // Reset form
       const form = document.getElementById('editContractorForm');
       if (form) form.reset();
 
-      // Clear error messages and styles
       editModal.querySelectorAll('.error-message').forEach(el => el.remove());
       editModal.querySelectorAll('.border-red-500').forEach(el => el.classList.remove('border-red-500'));
 
-      // Reset previews
       if (editProfilePreview) editProfilePreview.classList.add('hidden');
       if (editProfileIcon) editProfileIcon.classList.remove('hidden');
     }, 300);
   }
 
-  // Close button handlers
   if (closeEditModalBtn) {
     closeEditModalBtn.addEventListener('click', closeEditModal);
   }
@@ -820,7 +763,6 @@ document.addEventListener('DOMContentLoaded', function() {
     cancelEditBtn.addEventListener('click', closeEditModal);
   }
 
-  // Close on backdrop click
   if (editModal) {
     editModal.addEventListener('click', function(e) {
       if (e.target === editModal) {
@@ -829,7 +771,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  // Profile picture upload preview
   if (editProfileUpload && editProfilePreview && editProfileIcon) {
     editProfileUpload.addEventListener('change', function(e) {
       const file = e.target.files[0];
@@ -845,7 +786,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  // Edit Modal PSGC Logic
   const editProvince = document.getElementById('edit_contractor_address_province');
   const editCity = document.getElementById('edit_contractor_address_city');
   const editBarangay = document.getElementById('edit_contractor_address_barangay');
@@ -912,7 +852,6 @@ document.addEventListener('DOMContentLoaded', function() {
       });
   }
 
-  // Edit Contractor Type "Others" Toggle
   const editContractorTypeSelect = document.getElementById('edit_contractorTypeSelect');
   const editContractorTypeOtherInput = document.getElementById('edit_contractorTypeOtherInput');
   if (editContractorTypeSelect && editContractorTypeOtherInput) {
@@ -928,7 +867,6 @@ document.addEventListener('DOMContentLoaded', function() {
       });
   }
 
-  // Save button handler
   if (saveEditBtn) {
     saveEditBtn.addEventListener('click', async function(e) {
       e.preventDefault();
@@ -937,7 +875,6 @@ document.addEventListener('DOMContentLoaded', function() {
       const userId = document.getElementById('edit_user_id').value;
       const formData = new FormData(form);
 
-      // Handle PSGC names
       if (editProvince && editProvince.selectedIndex > 0) {
           const name = editProvince.options[editProvince.selectedIndex].getAttribute('data-name') || editProvince.options[editProvince.selectedIndex].text;
           formData.set('business_address_province', name);
@@ -951,21 +888,17 @@ document.addEventListener('DOMContentLoaded', function() {
           formData.set('business_address_barangay', name);
       }
 
-      // Add CSRF token
       const csrfToken = document.querySelector('meta[name="csrf-token"]');
       if (csrfToken) {
           formData.append('_token', csrfToken.content);
       }
 
-      // Add method spoofing for PUT
       formData.append('_method', 'PUT');
 
-      // Add loading state
       const originalContent = this.innerHTML;
       this.innerHTML = '<i class="fi fi-rr-spinner animate-spin"></i> Saving...';
       this.disabled = true;
 
-      // Clear previous errors
       editModal.querySelectorAll('.error-message').forEach(el => el.remove());
       editModal.querySelectorAll('.border-red-500').forEach(el => el.classList.remove('border-red-500'));
 
@@ -983,13 +916,11 @@ document.addEventListener('DOMContentLoaded', function() {
         if (response.ok && result.success) {
             showNotification('Contractor updated successfully!', 'success');
             closeEditModal();
-            
-            // Check if we're on contractor_Views page
+
             const isViewPage = document.querySelector('[data-contractor-id]');
             if (isViewPage) {
-                setTimeout(function() {
-                    window.location.reload();
-                }, 500);
+
+                refreshContractorDetails();
             } else {
                 handleFilterChange(); // Refresh table on main page
             }
@@ -1007,7 +938,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         showNotification(messages[0], 'error');
                     }
                 }
-                // Scroll to first error
+
                 const firstError = editModal.querySelector('.error-message');
                 if (firstError) {
                     firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -1026,7 +957,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  // Add input focus effects for edit modal
   const editInputs = editModal ? editModal.querySelectorAll('input, select, textarea') : [];
   editInputs.forEach(input => {
     input.addEventListener('focus', function() {
@@ -1037,7 +967,6 @@ document.addEventListener('DOMContentLoaded', function() {
       this.parentElement.classList.remove('ring-2', 'ring-orange-200');
     });
 
-    // Clear errors on input
     input.addEventListener('input', function() {
         if (this.classList.contains('border-red-500')) {
             this.classList.remove('border-red-500');
@@ -1048,7 +977,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // For select elements, use 'change' event
     if (input.tagName === 'SELECT') {
         input.addEventListener('change', function() {
             if (this.classList.contains('border-red-500')) {
@@ -1062,7 +990,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
-  // ===== DELETE MODAL FUNCTIONALITY =====
   const deleteModal = document.getElementById('deleteContractorModal');
   const deleteModalContent = deleteModal ? deleteModal.querySelector('.modal-content') : null;
   const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
@@ -1073,19 +1000,16 @@ document.addEventListener('DOMContentLoaded', function() {
   let rowToDelete = null;
   let idToDelete = null;
 
-  // Open delete modal
   function openDeleteModal(contractorName, row, id) {
     if (!deleteModal || !deleteModalContent) return;
 
     rowToDelete = row;
     idToDelete = id;
 
-    // Set contractor name
     if (deleteContractorNameSpan) {
       deleteContractorNameSpan.textContent = contractorName;
     }
 
-    // Reset reason input
     if (deletionReasonInput) {
         deletionReasonInput.value = '';
         deletionReasonInput.classList.remove('border-red-500');
@@ -1094,19 +1018,16 @@ document.addEventListener('DOMContentLoaded', function() {
         deletionReasonError.classList.add('hidden');
     }
 
-    // Show modal
     deleteModal.classList.remove('hidden');
     deleteModal.classList.add('flex');
     document.body.style.overflow = 'hidden';
 
-    // Trigger animation
     setTimeout(() => {
       deleteModalContent.classList.remove('scale-95', 'opacity-0');
       deleteModalContent.classList.add('scale-100', 'opacity-100');
     }, 10);
   }
 
-  // Close delete modal
   function closeDeleteModal() {
     if (!deleteModalContent) return;
 
@@ -1122,17 +1043,14 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 300);
   }
 
-  // Cancel delete button
   if (cancelDeleteBtn) {
     cancelDeleteBtn.addEventListener('click', closeDeleteModal);
   }
 
-  // Confirm delete button
   if (confirmDeleteBtn) {
     confirmDeleteBtn.addEventListener('click', async function() {
       if (!rowToDelete || !idToDelete) return;
 
-      // Validate reason
       const reason = deletionReasonInput.value.trim();
       if (!reason) {
           deletionReasonInput.classList.add('border-red-500');
@@ -1143,7 +1061,6 @@ document.addEventListener('DOMContentLoaded', function() {
           deletionReasonError.classList.add('hidden');
       }
 
-      // Add loading state
       const originalContent = this.innerHTML;
       this.innerHTML = '<i class="fi fi-rr-spinner animate-spin"></i> Deleting...';
       this.disabled = true;
@@ -1176,14 +1093,13 @@ document.addEventListener('DOMContentLoaded', function() {
           console.error('Error deleting contractor:', error);
           showNotification('An error occurred while deleting', 'error');
       } finally {
-        // Reset button
+
         this.innerHTML = originalContent;
         this.disabled = false;
       }
     });
   }
 
-  // Close on backdrop click
   if (deleteModal) {
     deleteModal.addEventListener('click', function(e) {
       if (e.target === deleteModal) {
@@ -1192,7 +1108,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  // Success notification helper
   function showNotification(message, type = 'success') {
     const notification = document.createElement('div');
     notification.className = `fixed top-24 right-8 z-[60] px-6 py-4 rounded-lg shadow-2xl transform transition-all duration-500 translate-x-full ${
@@ -1214,61 +1129,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 3000);
   }
 
-  // Make functions globally accessible
   window.openDeleteModal = openDeleteModal;
   window.openEditModal = openEditModal;
   window.closeEditModal = closeEditModal;
 });
 
-// Add CSS for ripple effect
-const style = document.createElement('style');
-style.textContent = `
-  .action-btn {
-    position: relative;
-    overflow: hidden;
-  }
-
-  .ripple-effect {
-    position: absolute;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.6);
-    transform: scale(0);
-    animation: ripple-animation 0.6s ease-out;
-    pointer-events: none;
-  }
-
-  @keyframes ripple-animation {
-    to {
-      transform: scale(4);
-      opacity: 0;
-    }
-  }
-
-  .action-btn:active {
-    transform: scale(0.95);
-  }
-
-  #contractorsTable tr {
-    transition: all 0.2s ease;
-  }
-
-  #contractorsTable tr:hover {
-    transform: translateX(4px);
-  }
-
-  .scale-95 {
-    transform: scale(0.95);
-    transition: transform 0.1s ease;
-  }
-
-  .fi-rr-spinner {
-    display: inline-block;
-    animation: spin 1s linear infinite;
-  }
-
-  @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-  }
-`;
-document.head.appendChild(style);

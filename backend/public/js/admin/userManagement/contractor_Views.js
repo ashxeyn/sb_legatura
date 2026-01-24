@@ -1,4 +1,103 @@
-// Suspend Modal Elements
+async function fetchAndUpdateTeamMembers() {
+    const contractorId = document.body.dataset.contractorId;
+    if (!contractorId) {
+        console.error('Contractor ID not found');
+        return;
+    }
+
+    const url = `/admin/user-management/contractor/view?id=${contractorId}`;
+
+    try {
+        const response = await fetch(url, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
+
+        if (!response.ok) throw new Error('Network response was not ok');
+
+        const data = await response.json();
+        const teamMembersTable = document.getElementById('teamMembersTable');
+
+        if (teamMembersTable && data.html) {
+            teamMembersTable.innerHTML = data.html;
+        }
+
+        attachTeamMemberListeners();
+
+        refreshRepresentativeModalList();
+
+    } catch (error) {
+        console.error('Error fetching team members data:', error);
+        showNotification('Failed to refresh team members list', 'error');
+    }
+}
+
+function refreshContractorDetails() {
+    const contractorId = document.body.dataset.contractorId;
+    if (!contractorId) {
+        console.error('Contractor ID not found');
+        return;
+    }
+
+    setTimeout(() => {
+        window.location.replace(`/admin/user-management/contractor/view?id=${contractorId}`);
+    }, 500);
+}
+
+window.refreshContractorDetails = refreshContractorDetails;
+
+function refreshRepresentativeModalList() {
+    const contractorId = document.body.dataset.contractorId;
+    if (!contractorId) return;
+
+    fetch(`/admin/user-management/contractor/view?id=${contractorId}&modal=representative`, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        const teamMembersList = document.getElementById('teamMembersList');
+        if (teamMembersList && data.modal_html) {
+            teamMembersList.innerHTML = data.modal_html;
+        }
+    })
+    .catch(error => {
+        console.error('Error refreshing representative modal list:', error);
+    });
+}
+
+function attachTeamMemberListeners() {
+
+    document.querySelectorAll('.team-edit-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const memberId = this.dataset.memberId;
+            openEditTeamMemberModal(memberId);
+        });
+    });
+
+    document.querySelectorAll('.team-deactivate-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const memberId = this.dataset.memberId;
+            const memberName = this.dataset.memberName;
+            openDeactivateTeamMemberModal(memberId, memberName);
+        });
+    });
+
+    document.querySelectorAll('.team-reactivate-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const memberId = this.dataset.memberId;
+            const memberName = this.dataset.memberName;
+            openReactivateTeamMemberModal(memberId, memberName);
+        });
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    attachTeamMemberListeners();
+});
+
 const suspendBtn = document.getElementById('suspendContractorBtn');
 const suspendModal = document.getElementById('suspendAccountModal');
 const suspendModalContent = suspendModal ? suspendModal.querySelector('.modal-content') : null;
@@ -10,11 +109,6 @@ const suspensionDateContainer = document.getElementById('suspensionDateContainer
 const suspensionDateInput = document.getElementById('suspensionDate');
 const radioButtons = document.querySelectorAll('input[name="suspensionDuration"]');
 
-// ============================================
-// SUSPEND MODAL FUNCTIONS
-// ============================================
-
-// Toggle date picker visibility
 radioButtons.forEach(radio => {
     radio.addEventListener('change', function() {
         if (this.value === 'temporary') {
@@ -53,7 +147,6 @@ function closeSuspendModal() {
         suspendModal.classList.remove('flex');
         document.body.style.overflow = 'auto';
 
-        // Reset form
         if (suspendReasonTextarea) {
             suspendReasonTextarea.value = '';
         }
@@ -96,7 +189,6 @@ function confirmSuspend() {
     let suspensionDate = null;
     let hasError = false;
 
-    // Reset errors
     suspendReasonTextarea.classList.remove('border-red-500', 'shake');
     document.getElementById('suspendReasonError').classList.add('hidden');
     document.getElementById('suspendReasonError').textContent = '';
@@ -136,7 +228,6 @@ function confirmSuspend() {
 
     if (hasError) return;
 
-    // Add loading state
     const originalContent = confirmSuspendBtn.innerHTML;
     confirmSuspendBtn.innerHTML = '<i class="fi fi-rr-spinner animate-spin"></i> Suspending...';
     confirmSuspendBtn.disabled = true;
@@ -161,9 +252,16 @@ function confirmSuspend() {
         if (data.success) {
             showNotification('Contractor account suspended successfully!', 'success');
             closeSuspendModal();
-            setTimeout(() => {
-                window.location.reload();
-            }, 1500);
+
+            const statusBadge = document.querySelector('.text-xs.font-medium.px-2\\.5.py-1');
+            if (statusBadge) {
+                statusBadge.className = 'text-xs font-medium px-2.5 py-1 rounded-full bg-red-100 text-red-600';
+                statusBadge.textContent = 'Suspended';
+            }
+
+            if (suspendBtn) {
+                suspendBtn.style.display = 'none';
+            }
         } else {
             if (data.errors) {
                 if (data.errors.reason) {
@@ -196,10 +294,6 @@ function confirmSuspend() {
     });
 }
 
-// ============================================
-// TEAM MEMBERS MODAL ELEMENTS
-// ============================================
-
 const addTeamMemberBtn = document.getElementById('addTeamMemberBtn');
 const addTeamMemberModal = document.getElementById('addTeamMemberModal');
 const closeAddTeamMemberBtn = document.getElementById('closeAddTeamMemberBtn');
@@ -230,10 +324,6 @@ let currentEditingRow = null;
 let currentDeactivatingRow = null;
 let currentReactivatingRow = null;
 
-// ============================================
-// TEAM MEMBERS TAB SWITCHING
-// ============================================
-
 function initTeamMemberTabs() {
     const tabs = document.querySelectorAll('.team-tab');
     const statusHeader = document.getElementById('statusColumnHeader');
@@ -242,7 +332,6 @@ function initTeamMemberTabs() {
         tab.addEventListener('click', function() {
             const tabName = this.dataset.tab;
 
-            // Update active tab styles
             tabs.forEach(t => {
                 t.classList.remove('border-orange-500', 'text-orange-600');
                 t.classList.add('border-transparent', 'text-gray-600');
@@ -250,10 +339,9 @@ function initTeamMemberTabs() {
             this.classList.remove('border-transparent', 'text-gray-600');
             this.classList.add('border-orange-500', 'text-orange-600');
 
-            // Update column header and visibility based on tab
             if (tabName === 'deactivated') {
                 if (statusHeader) statusHeader.textContent = 'Reason';
-                // Show deletion reason, hide status badge
+
                 document.querySelectorAll('.status-cell').forEach(cell => {
                     const badge = cell.querySelector('.status-badge');
                     const reason = cell.querySelector('.deletion-reason');
@@ -262,7 +350,7 @@ function initTeamMemberTabs() {
                 });
             } else {
                 if (statusHeader) statusHeader.textContent = 'Status';
-                // Show status badge, hide deletion reason
+
                 document.querySelectorAll('.status-cell').forEach(cell => {
                     const badge = cell.querySelector('.status-badge');
                     const reason = cell.querySelector('.deletion-reason');
@@ -271,19 +359,18 @@ function initTeamMemberTabs() {
                 });
             }
 
-            // Filter table rows
             const tableRows = document.querySelectorAll('.team-member-row');
             tableRows.forEach(row => {
                 const rowStatus = row.dataset.status;
                 if (tabName === 'all') {
-                    // Show only active members
+
                     if (rowStatus === 'active') {
                         row.classList.remove('hidden');
                     } else {
                         row.classList.add('hidden');
                     }
                 } else if (tabName === 'deactivated') {
-                    // Show only deactivated members
+
                     if (rowStatus === 'deactivated') {
                         row.classList.remove('hidden');
                     } else {
@@ -295,16 +382,11 @@ function initTeamMemberTabs() {
     });
 }
 
-// ============================================
-// ADD TEAM MEMBER MODAL FUNCTIONS
-// ============================================
-
 function openAddTeamMemberModal(isRepresentative = false, fromChangeRepModal = false) {
-    // Store context in modal dataset
+
     addTeamMemberModal.dataset.isRepresentative = isRepresentative;
     addTeamMemberModal.dataset.fromChangeRepModal = fromChangeRepModal;
 
-    // Show/hide back button based on context
     const backBtn = document.getElementById('backToRepresentativeModalBtn');
     if (backBtn) {
         if (fromChangeRepModal) {
@@ -318,14 +400,14 @@ function openAddTeamMemberModal(isRepresentative = false, fromChangeRepModal = f
     const roleSelect = document.getElementById('teamMemberRole');
 
     if (isRepresentative) {
-        // Hide role selection for representative
+
         roleGroup.classList.add('hidden');
-        // Auto-set role to representative
+
         roleSelect.value = 'representative';
     } else {
-        // Show role selection for regular member
+
         roleGroup.classList.remove('hidden');
-        // Remove owner and representative options
+
         const options = roleSelect.querySelectorAll('option');
         options.forEach(option => {
             if (option.value === 'owner' || option.value === 'representative') {
@@ -369,18 +451,15 @@ function resetAddTeamMemberForm() {
     teamMemberPhotoPreview.classList.add('hidden');
     teamMemberCameraIcon.classList.remove('hidden');
 
-    // Reset role group visibility
     const roleGroup = document.getElementById('teamMemberRole').closest('.form-group');
     roleGroup.classList.remove('hidden');
 
-    // Reset all role options to visible
     const roleSelect = document.getElementById('teamMemberRole');
     const options = roleSelect.querySelectorAll('option');
     options.forEach(option => {
         option.style.display = '';
     });
 
-    // Clear error states and messages
     const inputs = ['teamMemberFirstName', 'teamMemberMiddleName', 'teamMemberLastName', 'teamMemberEmail', 'teamMemberRole', 'teamMemberRoleOther', 'teamMemberContact'];
     inputs.forEach(id => {
         const element = document.getElementById(id);
@@ -405,7 +484,6 @@ function saveAddTeamMember() {
     const contact = document.getElementById('teamMemberContact').value.trim();
     const contractorId = document.body.dataset.contractorId;
 
-    // Clear previous error states
     const inputs = ['teamMemberFirstName', 'teamMemberMiddleName', 'teamMemberLastName', 'teamMemberEmail', 'teamMemberRole', 'teamMemberRoleOther', 'teamMemberContact'];
     inputs.forEach(id => {
         const element = document.getElementById(id);
@@ -419,7 +497,6 @@ function saveAddTeamMember() {
         }
     });
 
-    // Create FormData
     const formData = new FormData();
     formData.append('first_name', firstName);
     if (middleName) formData.append('middle_name', middleName);
@@ -430,27 +507,22 @@ function saveAddTeamMember() {
     formData.append('phone_number', contact);
     formData.append('contractor_id', contractorId);
 
-    // Add profile picture if uploaded
     const profilePicFile = teamMemberUpload.files[0];
     if (profilePicFile) {
         formData.append('profile_pic', profilePicFile);
     }
 
-    // Get CSRF token
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
 
-    // Add CSRF token to FormData as well (fallback)
     if (csrfToken) {
         formData.append('_token', csrfToken);
     }
 
-    // Disable save button
     const saveBtn = document.getElementById('saveTeamMemberBtn');
     const originalBtnText = saveBtn.innerHTML;
     saveBtn.disabled = true;
     saveBtn.innerHTML = '<i class="fi fi-rr-spinner animate-spin"></i> Adding...';
 
-    // Send AJAX request
     fetch('/admin/user-management/contractor/team-member/store', {
         method: 'POST',
         headers: {
@@ -460,7 +532,7 @@ function saveAddTeamMember() {
         body: formData
     })
     .then(response => {
-        // Check if response is JSON
+
         return response.json().then(data => ({
             ok: response.ok,
             status: response.status,
@@ -471,15 +543,13 @@ function saveAddTeamMember() {
         if (ok && data.success === true) {
             showNotification(data.message || 'Team member added successfully!', 'success');
             closeAddTeamMemberModal();
-            // Reload the page to show new team member
-            setTimeout(() => {
-                window.location.reload();
-            }, 1000);
+
+            fetchAndUpdateTeamMembers();
         } else {
-            // Handle validation errors (422 status)
+
             if (status === 422 && data.errors) {
                 Object.keys(data.errors).forEach(field => {
-                    // Map Laravel field names to HTML element IDs
+
                     const fieldMap = {
                         'first_name': 'teamMemberFirstName',
                         'middle_name': 'teamMemberMiddleName',
@@ -506,33 +576,28 @@ function saveAddTeamMember() {
                         }
                     }
                 });
-                // Don't show toast for validation errors
+
             } else {
-                // Show toast only for major errors (non-validation)
+
                 showNotification(data.message || 'Failed to add team member.', 'error');
             }
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        // Show toast for network/server errors
+
         showNotification('An error occurred. Please try again.', 'error');
     })
     .finally(() => {
-        // Re-enable save button
+
         saveBtn.disabled = false;
         saveBtn.innerHTML = originalBtnText;
     });
 }
 
-// ============================================
-// EDIT TEAM MEMBER MODAL FUNCTIONS
-// ============================================
-
 function openEditTeamMemberModal(row) {
     currentEditingRow = row;
 
-    // Extract current data from row
     const nameElement = row.querySelector('.font-medium');
     const fullName = nameElement.textContent.trim();
     const nameParts = fullName.split(' ');
@@ -542,11 +607,9 @@ function openEditTeamMemberModal(row) {
     const positionElement = row.querySelectorAll('td')[1];
     const position = positionElement ? positionElement.textContent.trim() : '';
 
-    // Update initials in modal
     const initials = firstName.charAt(0).toUpperCase() + (lastName ? lastName.charAt(0).toUpperCase() : '');
     editTeamMemberInitials.textContent = initials;
 
-    // Copy avatar gradient colors from row to modal
     const avatarElement = row.querySelector('.w-10');
     const avatarClasses = avatarElement.className;
     const gradientMatch = avatarClasses.match(/from-(\w+)-\d+\s+to-(\w+)-\d+/);
@@ -555,16 +618,13 @@ function openEditTeamMemberModal(row) {
         modalAvatar.className = `w-20 h-20 rounded-full bg-gradient-to-br ${gradientMatch[0]} flex items-center justify-center overflow-hidden shadow-md`;
     }
 
-    // Reset photo to show initials
     editTeamMemberPhotoPreview.classList.add('hidden');
     editTeamMemberInitials.classList.remove('hidden');
 
-    // Populate form - use data attributes or placeholder values for email/contact
     document.getElementById('editTeamMemberFirstName').value = firstName;
     document.getElementById('editTeamMemberLastName').value = lastName;
     document.getElementById('editTeamMemberPosition').value = position;
 
-    // Get email and contact from data attributes if available, otherwise use placeholders
     const email = row.dataset.email || `${firstName.toLowerCase()}.${lastName.toLowerCase().replace(/\s+/g, '')}@jlois.com`;
     const contact = row.dataset.contact || '+63 912 345 6789';
 
@@ -602,20 +662,17 @@ function saveEditTeamMember() {
     const position = document.getElementById('editTeamMemberPosition').value.trim();
     const email = document.getElementById('editTeamMemberEmail').value.trim();
 
-    // Validation
     if (!firstName || !lastName || !position || !email) {
         alert('Please fill in all required fields.');
         return;
     }
 
-    // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
         alert('Please enter a valid email address.');
         return;
     }
 
-    // Update row data
     const nameElement = currentEditingRow.querySelector('.font-medium');
     const emailElement = currentEditingRow.querySelector('.text-gray-500');
     const positionElement = currentEditingRow.querySelectorAll('td')[1].querySelector('span');
@@ -624,29 +681,21 @@ function saveEditTeamMember() {
     emailElement.textContent = email;
     positionElement.textContent = position;
 
-    // Update avatar initials
     const avatarElement = currentEditingRow.querySelector('.w-10');
     const initials = firstName.charAt(0).toUpperCase() + lastName.charAt(0).toUpperCase();
     avatarElement.textContent = initials;
 
-    // Show success notification
     showNotification('Team member updated successfully!', 'success');
 
     closeEditTeamMemberModal();
 }
 
-// ============================================
-// DEACTIVATE TEAM MEMBER MODAL FUNCTIONS
-// ============================================
-
 function openDeactivateTeamMemberModal(row) {
     currentDeactivatingRow = row;
 
-    // Get member name
     const nameElement = row.querySelector('.font-medium');
     const memberName = nameElement.textContent.trim();
 
-    // Update modal text
     document.getElementById('deactivateTeamMemberName').textContent = memberName;
 
     deactivateTeamMemberModal.classList.remove('hidden');
@@ -672,15 +721,12 @@ function closeDeactivateTeamMemberModal() {
 function confirmDeactivateTeamMember() {
     if (!currentDeactivatingRow) return;
 
-    // Update row status
     currentDeactivatingRow.dataset.status = 'deactivated';
 
-    // Update status badge
     const statusBadge = currentDeactivatingRow.querySelectorAll('td')[3].querySelector('span');
     statusBadge.className = 'inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600';
     statusBadge.textContent = 'Deactivated';
 
-    // Update actions - replace edit/deactivate with reactivate button
     const actionsCell = currentDeactivatingRow.querySelectorAll('td')[4];
     actionsCell.innerHTML = `
         <div class="flex items-center justify-center gap-2">
@@ -690,36 +736,27 @@ function confirmDeactivateTeamMember() {
         </div>
     `;
 
-    // Fade out the row
     currentDeactivatingRow.querySelector('.flex.items-center.gap-3').classList.add('opacity-60');
     const nameSpan = currentDeactivatingRow.querySelector('.font-medium');
     nameSpan.classList.remove('text-gray-800');
     nameSpan.classList.add('text-gray-600');
 
-    // Hide row if on "All" tab
     const activeTab = document.querySelector('.team-tab.border-orange-500');
     if (activeTab && activeTab.dataset.tab === 'all') {
         currentDeactivatingRow.classList.add('hidden');
     }
 
-    // Show success notification
     showNotification('Team member deactivated successfully!', 'success');
 
     closeDeactivateTeamMemberModal();
 }
 
-// ============================================
-// REACTIVATE TEAM MEMBER MODAL FUNCTIONS
-// ============================================
-
 function openReactivateTeamMemberModal(row) {
     currentReactivatingRow = row;
 
-    // Get member name
     const nameElement = row.querySelector('.font-medium');
     const memberName = nameElement.textContent.trim();
 
-    // Update modal text
     document.getElementById('reactivateTeamMemberName').textContent = memberName;
 
     reactivateTeamMemberModal.classList.remove('hidden');
@@ -747,15 +784,12 @@ function confirmReactivateTeamMember() {
 
     const row = currentReactivatingRow;
 
-    // Update row status
     row.dataset.status = 'active';
 
-    // Update status badge
     const statusBadge = row.querySelectorAll('td')[3].querySelector('span');
     statusBadge.className = 'inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 transition-all duration-200 hover:scale-110 hover:shadow-md';
     statusBadge.textContent = 'Active';
 
-    // Update actions - restore edit/deactivate buttons
     const actionsCell = row.querySelectorAll('td')[4];
     actionsCell.innerHTML = `
         <div class="flex items-center justify-center gap-2">
@@ -768,19 +802,16 @@ function confirmReactivateTeamMember() {
         </div>
     `;
 
-    // Restore normal styling
     row.querySelector('.flex.items-center.gap-3').classList.remove('opacity-60');
     const nameSpan = row.querySelector('.font-medium');
     nameSpan.classList.remove('text-gray-600');
     nameSpan.classList.add('text-gray-800');
 
-    // Get member name for avatar restoration
     const memberName = nameSpan.textContent.trim();
     const nameParts = memberName.split(' ');
     const firstName = nameParts[0] || '';
     const lastName = nameParts[nameParts.length - 1] || '';
 
-    // Restore avatar gradient (use different colors for variety)
     const avatarElement = row.querySelector('.w-10');
     const gradients = [
         'from-purple-400 to-purple-600',
@@ -792,21 +823,15 @@ function confirmReactivateTeamMember() {
     const randomGradient = gradients[Math.floor(Math.random() * gradients.length)];
     avatarElement.className = `w-10 h-10 rounded-full bg-gradient-to-br ${randomGradient} flex items-center justify-center overflow-hidden shadow-md group-hover:shadow-lg transition-all group-hover:scale-110`;
 
-    // Hide row if on "Deactivated" tab
     const activeTab = document.querySelector('.team-tab.border-orange-500');
     if (activeTab && activeTab.dataset.tab === 'deactivated') {
         row.classList.add('hidden');
     }
 
-    // Show success notification
     showNotification('Team member reactivated successfully!', 'success');
 
     closeReactivateTeamMemberModal();
 }
-
-// ============================================
-// TEAM MEMBER IMAGE PREVIEW HANDLERS
-// ============================================
 
 if (teamMemberUpload) {
     teamMemberUpload.addEventListener('change', function(e) {
@@ -838,10 +863,6 @@ if (editTeamMemberUpload) {
     });
 }
 
-// ============================================
-// NOTIFICATION FUNCTION
-// ============================================
-
 function showNotification(message, type = 'success') {
     const notification = document.createElement('div');
     notification.className = `fixed top-4 right-4 z-[60] px-6 py-4 rounded-lg shadow-2xl transform transition-all duration-300 translate-x-full ${
@@ -868,41 +889,29 @@ function showNotification(message, type = 'success') {
     }, 3000);
 }
 
-// ============================================
-// TEAM MEMBERS EVENT DELEGATION
-// ============================================
-
 document.addEventListener('click', function(e) {
-    // Edit button clicked
+
     if (e.target.closest('.team-edit-btn')) {
         const row = e.target.closest('.team-member-row');
         openEditTeamMemberModal(row);
     }
 
-    // Deactivate button clicked
     if (e.target.closest('.team-deactivate-btn')) {
         const row = e.target.closest('.team-member-row');
         openDeactivateTeamMemberModal(row);
     }
 
-    // Reactivate button clicked
     if (e.target.closest('.team-reactivate-btn')) {
         const row = e.target.closest('.team-member-row');
         openReactivateTeamMemberModal(row);
     }
 });
 
-// ============================================
-// EVENT LISTENERS
-// ============================================
-
-// Suspend Modal Events
 if (suspendBtn) suspendBtn.addEventListener('click', openSuspendModal);
 if (closeSuspendBtn) closeSuspendBtn.addEventListener('click', closeSuspendModal);
 if (cancelSuspendBtn) cancelSuspendBtn.addEventListener('click', closeSuspendModal);
 if (confirmSuspendBtn) confirmSuspendBtn.addEventListener('click', confirmSuspend);
 
-// Close modals when clicking outside
 if (suspendModal) {
     suspendModal.addEventListener('click', function(e) {
         if (e.target === suspendModal) {
@@ -911,14 +920,12 @@ if (suspendModal) {
     });
 }
 
-// Prevent modal content click from closing
 if (suspendModalContent) {
     suspendModalContent.addEventListener('click', function(e) {
         e.stopPropagation();
     });
 }
 
-// Add textarea focus effect
 if (suspendReasonTextarea) {
     suspendReasonTextarea.addEventListener('focus', function() {
         this.classList.add('ring-2', 'ring-red-200');
@@ -929,7 +936,6 @@ if (suspendReasonTextarea) {
     });
 }
 
-// Close modals on ESC key
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
         if (!suspendModal.classList.contains('hidden')) {
@@ -953,10 +959,6 @@ document.addEventListener('keydown', function(e) {
         }
     }
 });
-
-// ============================================
-// CHANGE REPRESENTATIVE MODAL
-// ============================================
 
 const changeRepresentativeBtn = document.getElementById('changeRepresentativeBtn');
 const changeRepresentativeModal = document.getElementById('changeRepresentativeModal');
@@ -986,28 +988,26 @@ function closeChangeRepresentativeModal() {
         changeRepresentativeModal.classList.add('hidden');
         selectedMember = null;
         confirmChangeRepresentativeBtn.disabled = true;
-        // Clear selection styles
+
         document.querySelectorAll('.team-member-option').forEach(option => {
             option.classList.remove('border-blue-500', 'bg-blue-50');
             option.classList.add('border-gray-200');
         });
-        // Clear search
+
         if (searchTeamMemberInput) searchTeamMemberInput.value = '';
     }, 300);
 }
 
 function selectTeamMember(memberElement) {
-    // Remove selection from all options
+
     document.querySelectorAll('.team-member-option').forEach(option => {
         option.classList.remove('border-blue-500', 'bg-blue-50');
         option.classList.add('border-gray-200');
     });
 
-    // Add selection to clicked option
     memberElement.classList.remove('border-gray-200');
     memberElement.classList.add('border-blue-500', 'bg-blue-50');
 
-    // Store selected member data
     selectedMember = {
         id: memberElement.dataset.memberId,
         name: memberElement.dataset.memberName,
@@ -1015,7 +1015,6 @@ function selectTeamMember(memberElement) {
         phone: memberElement.dataset.memberPhone
     };
 
-    // Enable confirm button
     confirmChangeRepresentativeBtn.disabled = false;
 }
 
@@ -1024,15 +1023,12 @@ function confirmChangeRepresentative() {
 
     const contractorId = document.body.dataset.contractorId;
 
-    // Get CSRF token
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
 
-    // Disable button and show loading state
     const originalBtnText = confirmChangeRepresentativeBtn.innerHTML;
     confirmChangeRepresentativeBtn.disabled = true;
     confirmChangeRepresentativeBtn.innerHTML = '<i class="fi fi-rr-spinner animate-spin"></i> Changing...';
 
-    // Send AJAX request
     fetch('/admin/user-management/contractor/representative/change', {
         method: 'POST',
         headers: {
@@ -1057,12 +1053,15 @@ function confirmChangeRepresentative() {
         if (ok && data.success === true) {
             showNotification(data.message || `Company representative changed to ${selectedMember.name}`, 'success');
             closeChangeRepresentativeModal();
-            // Reload page to reflect changes
-            setTimeout(() => {
-                window.location.reload();
-            }, 1000);
+
+            const repNameEl = document.querySelector('[data-representative-name]');
+            if (repNameEl) {
+                repNameEl.textContent = selectedMember.name;
+            }
+
+            fetchAndUpdateTeamMembers();
         } else {
-            // Show error in toast for major errors
+
             showNotification(data.message || 'Failed to change representative.', 'error');
         }
     })
@@ -1071,18 +1070,14 @@ function confirmChangeRepresentative() {
         showNotification('An error occurred. Please try again.', 'error');
     })
     .finally(() => {
-        // Re-enable button
+
         confirmChangeRepresentativeBtn.disabled = false;
         confirmChangeRepresentativeBtn.innerHTML = originalBtnText;
     });
 }
 
-// ============================================
-// EDIT TEAM MEMBER FUNCTIONALITY
-// ============================================
-
 function openEditTeamMemberModal(memberId) {
-    // Fetch team member data
+
     fetch(`/admin/user-management/contractor/team-member/${memberId}/edit`, {
         method: 'GET',
         headers: {
@@ -1095,10 +1090,8 @@ function openEditTeamMemberModal(memberId) {
         if (data.success && data.data) {
             const member = data.data;
 
-            // Store member ID in hidden input
             document.getElementById('editTeamMemberContractorUserId').value = member.contractor_user_id;
 
-            // Populate form fields
             document.getElementById('editTeamMemberFirstName').value = member.first_name || '';
             document.getElementById('editTeamMemberMiddleName').value = member.middle_name || '';
             document.getElementById('editTeamMemberLastName').value = member.last_name || '';
@@ -1108,7 +1101,6 @@ function openEditTeamMemberModal(memberId) {
             document.getElementById('editTeamMemberPassword').value = ''; // Always blank for security
             document.getElementById('editTeamMemberRole').value = member.role || '';
 
-            // Show/hide role_other field based on role
             const roleOtherDiv = document.getElementById('editRoleOtherDiv');
             const roleOtherInput = document.getElementById('editTeamMemberRoleOther');
             if (member.role === 'others') {
@@ -1119,7 +1111,6 @@ function openEditTeamMemberModal(memberId) {
                 roleOtherInput.value = '';
             }
 
-            // Handle profile picture
             const previewImg = document.getElementById('editTeamMemberPreview');
             const initialsSpan = document.getElementById('editTeamMemberInitials');
 
@@ -1134,7 +1125,6 @@ function openEditTeamMemberModal(memberId) {
                 initialsSpan.textContent = initials.toUpperCase();
             }
 
-            // Clear any previous error states
             const inputs = ['editTeamMemberFirstName', 'editTeamMemberMiddleName', 'editTeamMemberLastName',
                           'editTeamMemberContact', 'editTeamMemberUsername', 'editTeamMemberEmail',
                           'editTeamMemberPassword', 'editTeamMemberRole', 'editTeamMemberRoleOther'];
@@ -1150,7 +1140,6 @@ function openEditTeamMemberModal(memberId) {
                 }
             });
 
-            // Show modal
             const modal = document.getElementById('editTeamMemberModal');
             const modalContent = modal.querySelector('.modal-content');
             modal.classList.remove('hidden');
@@ -1178,7 +1167,6 @@ function saveEditTeamMember() {
     const role = document.getElementById('editTeamMemberRole').value.trim();
     const roleOther = document.getElementById('editTeamMemberRoleOther').value.trim();
 
-    // Clear previous error states
     const inputs = ['editTeamMemberFirstName', 'editTeamMemberMiddleName', 'editTeamMemberLastName',
                   'editTeamMemberContact', 'editTeamMemberUsername', 'editTeamMemberEmail',
                   'editTeamMemberPassword', 'editTeamMemberRole', 'editTeamMemberRoleOther'];
@@ -1194,7 +1182,6 @@ function saveEditTeamMember() {
         }
     });
 
-    // Create FormData
     const formData = new FormData();
     formData.append('contractor_user_id', memberId);
     formData.append('first_name', firstName);
@@ -1207,28 +1194,23 @@ function saveEditTeamMember() {
     formData.append('role', role);
     if (role === 'others' && roleOther) formData.append('role_other', roleOther);
 
-    // Add profile picture if uploaded
     const profilePicFile = document.getElementById('editTeamMemberUpload').files[0];
     if (profilePicFile) {
         formData.append('profile_pic', profilePicFile);
     }
 
-    // Laravel method spoofing for PUT request
     formData.append('_method', 'PUT');
 
-    // Get CSRF token
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
     if (csrfToken) {
         formData.append('_token', csrfToken);
     }
 
-    // Disable save button
     const saveBtn = document.getElementById('saveEditTeamMemberBtn');
     const originalBtnText = saveBtn.innerHTML;
     saveBtn.disabled = true;
     saveBtn.innerHTML = '<i class="fi fi-rr-spinner animate-spin"></i> Saving...';
 
-    // Send AJAX request
     fetch(`/admin/user-management/contractor/team-member/update/${memberId}`, {
         method: 'POST', // Using POST with _method spoofing
         headers: {
@@ -1248,15 +1230,13 @@ function saveEditTeamMember() {
         if (ok && data.success === true) {
             showNotification(data.message || 'Team member updated successfully!', 'success');
             closeEditTeamMemberModal();
-            // Reload the page to show updated data
-            setTimeout(() => {
-                window.location.reload();
-            }, 1000);
+
+            fetchAndUpdateTeamMembers();
         } else {
-            // Handle validation errors (422 status)
+
             if (status === 422 && data.errors) {
                 Object.keys(data.errors).forEach(field => {
-                    // Map Laravel field names to HTML element IDs
+
                     const fieldMap = {
                         'first_name': 'editTeamMemberFirstName',
                         'middle_name': 'editTeamMemberMiddleName',
@@ -1286,9 +1266,9 @@ function saveEditTeamMember() {
                         }
                     }
                 });
-                // Don't show toast for validation errors
+
             } else {
-                // Show toast only for major errors (non-validation)
+
                 showNotification(data.message || 'Failed to update team member.', 'error');
             }
         }
@@ -1298,7 +1278,7 @@ function saveEditTeamMember() {
         showNotification('An error occurred. Please try again.', 'error');
     })
     .finally(() => {
-        // Re-enable save button
+
         saveBtn.disabled = false;
         saveBtn.innerHTML = originalBtnText;
     });
@@ -1315,7 +1295,6 @@ function closeEditTeamMemberModal() {
         modal.classList.add('hidden');
         modal.classList.remove('flex');
 
-        // Clear form
         document.getElementById('editTeamMemberFirstName').value = '';
         document.getElementById('editTeamMemberMiddleName').value = '';
         document.getElementById('editTeamMemberLastName').value = '';
@@ -1327,7 +1306,6 @@ function closeEditTeamMemberModal() {
         document.getElementById('editTeamMemberRoleOther').value = '';
         document.getElementById('editRoleOtherDiv').classList.add('hidden');
 
-        // Reset profile picture
         const previewImg = document.getElementById('editTeamMemberPreview');
         const initialsSpan = document.getElementById('editTeamMemberInitials');
         previewImg.src = '';
@@ -1339,19 +1317,13 @@ function closeEditTeamMemberModal() {
     }, 300);
 }
 
-// ============================================
-// DEACTIVATE TEAM MEMBER FUNCTIONALITY
-// ============================================
-
 let currentDeactivateMemberId = null;
 
 function openDeactivateTeamMemberModal(memberId, memberName) {
     currentDeactivateMemberId = memberId;
 
-    // Set member name in modal
     document.getElementById('deactivateTeamMemberName').textContent = memberName;
 
-    // Clear previous reason and error
     const reasonTextarea = document.getElementById('deactivateTeamMemberReason');
     const errorElement = document.getElementById('deactivateReasonError');
 
@@ -1360,7 +1332,6 @@ function openDeactivateTeamMemberModal(memberId, memberName) {
     errorElement.textContent = '';
     errorElement.classList.add('hidden');
 
-    // Show modal
     const modal = document.getElementById('deactivateTeamMemberModal');
     const modalContent = modal.querySelector('.modal-content');
     modal.classList.remove('hidden');
@@ -1383,7 +1354,6 @@ function closeDeactivateTeamMemberModal() {
         modal.classList.remove('flex');
         currentDeactivateMemberId = null;
 
-        // Clear form
         document.getElementById('deactivateTeamMemberReason').value = '';
         document.getElementById('deactivateReasonError').classList.add('hidden');
     }, 300);
@@ -1394,12 +1364,10 @@ function confirmDeactivateTeamMember() {
     const reasonTextarea = document.getElementById('deactivateTeamMemberReason');
     const errorElement = document.getElementById('deactivateReasonError');
 
-    // Clear previous error
     reasonTextarea.classList.remove('border-red-500');
     errorElement.classList.add('hidden');
     errorElement.textContent = '';
 
-    // Client-side validation
     if (!reason) {
         reasonTextarea.classList.add('border-red-500');
         errorElement.textContent = 'Deactivation reason is required.';
@@ -1414,25 +1382,21 @@ function confirmDeactivateTeamMember() {
         return;
     }
 
-    // Create FormData
     const formData = new FormData();
     formData.append('contractor_user_id', currentDeactivateMemberId);
     formData.append('deletion_reason', reason);
     formData.append('_method', 'DELETE');
 
-    // Get CSRF token
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
     if (csrfToken) {
         formData.append('_token', csrfToken);
     }
 
-    // Disable button
     const confirmBtn = document.getElementById('confirmDeactivateTeamMemberBtn');
     const originalBtnText = confirmBtn.innerHTML;
     confirmBtn.disabled = true;
     confirmBtn.innerHTML = '<i class="fi fi-rr-spinner animate-spin"></i> Deactivating...';
 
-    // Send AJAX request
     fetch(`/admin/user-management/contractor/team-member/deactivate/${currentDeactivateMemberId}`, {
         method: 'POST',
         headers: {
@@ -1452,12 +1416,10 @@ function confirmDeactivateTeamMember() {
         if (ok && data.success === true) {
             showNotification(data.message || 'Team member deactivated successfully!', 'success');
             closeDeactivateTeamMemberModal();
-            // Reload page to update the table
-            setTimeout(() => {
-                window.location.reload();
-            }, 1000);
+
+            fetchAndUpdateTeamMembers();
         } else {
-            // Handle validation errors (422 status)
+
             if (status === 422 && data.errors) {
                 if (data.errors.deletion_reason) {
                     reasonTextarea.classList.add('border-red-500');
@@ -1465,7 +1427,7 @@ function confirmDeactivateTeamMember() {
                     errorElement.classList.remove('hidden');
                 }
             } else {
-                // Show toast for other errors
+
                 showNotification(data.message || 'Failed to deactivate team member.', 'error');
             }
         }
@@ -1475,25 +1437,19 @@ function confirmDeactivateTeamMember() {
         showNotification('An error occurred. Please try again.', 'error');
     })
     .finally(() => {
-        // Re-enable button
+
         confirmBtn.disabled = false;
         confirmBtn.innerHTML = originalBtnText;
     });
 }
-
-// ============================================
-// REACTIVATE TEAM MEMBER FUNCTIONALITY
-// ============================================
 
 let currentReactivateMemberId = null;
 
 function openReactivateTeamMemberModal(memberId, memberName) {
     currentReactivateMemberId = memberId;
 
-    // Set member name in modal
     document.getElementById('reactivateTeamMemberName').textContent = memberName;
 
-    // Show modal
     const modal = document.getElementById('reactivateTeamMemberModal');
     const modalContent = modal.querySelector('.modal-content');
     modal.classList.remove('hidden');
@@ -1519,24 +1475,21 @@ function closeReactivateTeamMemberModal() {
 }
 
 function confirmReactivateTeamMember() {
-    // Create FormData
+
     const formData = new FormData();
     formData.append('contractor_user_id', currentReactivateMemberId);
     formData.append('_method', 'PATCH');
 
-    // Get CSRF token
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
     if (csrfToken) {
         formData.append('_token', csrfToken);
     }
 
-    // Disable button
     const confirmBtn = document.getElementById('confirmReactivateTeamMemberBtn');
     const originalBtnText = confirmBtn.innerHTML;
     confirmBtn.disabled = true;
     confirmBtn.innerHTML = '<i class="fi fi-rr-spinner animate-spin"></i> Reactivating...';
 
-    // Send AJAX request
     fetch(`/admin/user-management/contractor/team-member/reactivate/${currentReactivateMemberId}`, {
         method: 'POST',
         headers: {
@@ -1556,12 +1509,10 @@ function confirmReactivateTeamMember() {
         if (ok && data.success === true) {
             showNotification(data.message || 'Team member reactivated successfully!', 'success');
             closeReactivateTeamMemberModal();
-            // Reload page to update the table
-            setTimeout(() => {
-                window.location.reload();
-            }, 1000);
+
+            fetchAndUpdateTeamMembers();
         } else {
-            // Show error toast
+
             showNotification(data.message || 'Failed to reactivate team member.', 'error');
         }
     })
@@ -1570,7 +1521,7 @@ function confirmReactivateTeamMember() {
         showNotification('An error occurred. Please try again.', 'error');
     })
     .finally(() => {
-        // Re-enable button
+
         confirmBtn.disabled = false;
         confirmBtn.innerHTML = originalBtnText;
     });
@@ -1592,10 +1543,9 @@ function filterTeamMembers() {
     });
 }
 
-// Event listeners for Change Representative modal
 if (changeRepresentativeBtn) {
     changeRepresentativeBtn.addEventListener('click', function() {
-        // Always open the change representative modal (it now has option to add new or select existing)
+
         openChangeRepresentativeModal();
     });
 }
@@ -1616,7 +1566,6 @@ if (searchTeamMemberInput) {
     searchTeamMemberInput.addEventListener('input', filterTeamMembers);
 }
 
-// Delegate click events to team member options
 document.addEventListener('click', function(e) {
     const memberOption = e.target.closest('.team-member-option');
     if (memberOption) {
@@ -1624,33 +1573,30 @@ document.addEventListener('click', function(e) {
     }
 });
 
-// Add New Representative button inside the Change Representative modal
 const addNewRepresentativeBtn = document.getElementById('addNewRepresentativeBtn');
 if (addNewRepresentativeBtn) {
     addNewRepresentativeBtn.addEventListener('click', function() {
-        // Close the change representative modal
+
         closeChangeRepresentativeModal();
-        // Open the add team member modal with representative flag and track it came from change rep modal
+
         setTimeout(() => {
             openAddTeamMemberModal(true, true);
         }, 300);
     });
 }
 
-// Back button in Add Team Member modal to return to Change Representative modal
 const backToRepresentativeModalBtn = document.getElementById('backToRepresentativeModalBtn');
 if (backToRepresentativeModalBtn) {
     backToRepresentativeModalBtn.addEventListener('click', function() {
-        // Close the add team member modal
+
         closeAddTeamMemberModal();
-        // Reopen the change representative modal
+
         setTimeout(() => {
             openChangeRepresentativeModal();
         }, 300);
     });
 }
 
-// Close modal when clicking outside
 if (changeRepresentativeModal) {
     changeRepresentativeModal.addEventListener('click', function(e) {
         if (e.target === changeRepresentativeModal) {
@@ -1659,22 +1605,15 @@ if (changeRepresentativeModal) {
     });
 }
 
-// ============================================
-// TEAM MEMBERS INITIALIZATION
-// ============================================
-
-// Initialize team member tabs on page load
 if (document.querySelector('.team-tab')) {
     initTeamMemberTabs();
 }
 
-// Team Members Modal Events
 if (addTeamMemberBtn) addTeamMemberBtn.addEventListener('click', () => openAddTeamMemberModal(false));
 if (closeAddTeamMemberBtn) closeAddTeamMemberBtn.addEventListener('click', closeAddTeamMemberModal);
 if (cancelAddTeamMemberBtn) cancelAddTeamMemberBtn.addEventListener('click', closeAddTeamMemberModal);
 if (saveTeamMemberBtn) saveTeamMemberBtn.addEventListener('click', saveAddTeamMember);
 
-// Role dropdown change event for "Others" field
 const teamMemberRoleSelect = document.getElementById('teamMemberRole');
 const teamMemberRoleOtherGroup = document.getElementById('teamMemberRoleOtherGroup');
 if (teamMemberRoleSelect && teamMemberRoleOtherGroup) {
@@ -1688,7 +1627,6 @@ if (teamMemberRoleSelect && teamMemberRoleOtherGroup) {
     });
 }
 
-// Role dropdown change event for Edit modal "Others" field
 const editTeamMemberRoleSelect = document.getElementById('editTeamMemberRole');
 const editRoleOtherDiv = document.getElementById('editRoleOtherDiv');
 if (editTeamMemberRoleSelect && editRoleOtherDiv) {
@@ -1702,7 +1640,6 @@ if (editTeamMemberRoleSelect && editRoleOtherDiv) {
     });
 }
 
-// Event delegation for team member edit buttons
 document.addEventListener('click', function(e) {
     const editBtn = e.target.closest('.team-edit-btn');
     if (editBtn) {
@@ -1712,7 +1649,6 @@ document.addEventListener('click', function(e) {
         }
     }
 
-    // Event delegation for team member deactivate buttons
     const deactivateBtn = e.target.closest('.team-deactivate-btn');
     if (deactivateBtn) {
         const memberId = deactivateBtn.getAttribute('data-member-id');
@@ -1722,7 +1658,6 @@ document.addEventListener('click', function(e) {
         }
     }
 
-    // Event delegation for team member reactivate buttons
     const reactivateBtn = e.target.closest('.team-reactivate-btn');
     if (reactivateBtn) {
         const memberId = reactivateBtn.getAttribute('data-member-id');
@@ -1744,7 +1679,6 @@ if (confirmDeactivateTeamMemberBtn) confirmDeactivateTeamMemberBtn.addEventListe
 if (cancelReactivateTeamMemberBtn) cancelReactivateTeamMemberBtn.addEventListener('click', closeReactivateTeamMemberModal);
 if (confirmReactivateTeamMemberBtn) confirmReactivateTeamMemberBtn.addEventListener('click', confirmReactivateTeamMember);
 
-// Close team member modals when clicking outside
 if (addTeamMemberModal) {
     addTeamMemberModal.addEventListener('click', function(e) {
         if (e.target === addTeamMemberModal) {
@@ -1777,15 +1711,10 @@ if (reactivateTeamMemberModal) {
     });
 }
 
-// ============================================
-// SMOOTH SCROLL ANIMATIONS
-// ============================================
-
-// Add smooth scroll behavior to all anchor links
 document.querySelectorAll('a[href^="#"]').forEach(anchor => {
     anchor.addEventListener('click', function (e) {
         const href = this.getAttribute('href');
-        // Only handle hash links that start with # and are valid CSS selectors
+
         if (href && href.startsWith('#') && href.length > 1) {
             try {
                 const target = document.querySelector(href);
@@ -1797,7 +1726,7 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
                     });
                 }
             } catch (err) {
-                // Invalid selector, ignore
+
                 console.warn('Invalid selector:', href);
             }
         }

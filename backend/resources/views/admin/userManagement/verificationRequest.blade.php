@@ -297,7 +297,7 @@
 
             <!-- Body -->
             <div class="overflow-y-auto max-h-[calc(90vh-120px)] p-6 space-y-6">
-              <!-- Top Grid: Profile & Representative -->
+              <!-- Top Grid: Profile & Owner Details -->
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <!-- Profile Card -->
                 <div class="bg-white rounded-xl border border-gray-200 p-4">
@@ -308,6 +308,23 @@
                     <div class="flex-1 min-w-0">
                       <h3 id="vrCompanyName" class="text-lg font-bold text-gray-800 truncate">Panda Construction Company</h3>
                       <p id="vrCompanyContact" class="text-sm text-gray-600 truncate">pandaconstruction@domain.com • +63 934 567 8912</p>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Owner Details Card -->
+                <div class="bg-white rounded-xl border border-gray-200 p-4">
+                  <div class="flex items-start gap-4">
+                    <div class="w-16 h-16 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 text-white font-bold text-lg flex items-center justify-center flex-shrink-0">
+                      <span id="vrOwnerInitials">OW</span>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <h3 id="vrOwnerName" class="text-lg font-bold text-gray-800 truncate">Owner Name</h3>
+                      <p class="text-xs text-gray-500 mb-2">Owner</p>
+                      <div class="flex items-start gap-2">
+                        <i class="fi fi-rr-marker text-blue-500 mt-0.5 flex-shrink-0"></i>
+                        <p id="vrOwnerAddress" class="text-sm text-gray-600 line-clamp-2">Business Address</p>
+                      </div>
                     </div>
                   </div>
                 </div>
