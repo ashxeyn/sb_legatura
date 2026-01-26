@@ -11,11 +11,18 @@ use App\Http\Controllers\admin\analyticsController;
 use App\Http\Controllers\admin\userManagementController;
 use App\Http\Controllers\admin\globalManagementController;
 use App\Http\Controllers\admin\ProjectAdminController;
+use App\Http\Controllers\Web\PredictionController;
+
 
 
 Route::get('/', function () {
     return view('startPoint');
 });
+
+// AI Routes
+Route::get('/predict-delay', [PredictionController::class, 'showForm'])->name('predict.form');
+Route::post('/predict-delay', [PredictionController::class, 'predict'])->name('predict.delay');
+
 
 // Authentication Routes
 Route::get('/accounts/login', [authController::class, 'showLoginForm']);
@@ -250,22 +257,27 @@ Route::prefix('/api/admin/analytics')->group(function () {
 });
 
 Route::prefix('/api/admin/projects')->group(function () {
-    Route::get('/', [ProjectAdminController::class, 'getProjectsApi'])->name('api.admin.projects');
-    Route::post('/{id}/assign-contractor', [ProjectAdminController::class, 'assignContractor'])->name('api.admin.project.assignContractor');
-    Route::post('/{id}/approve', [ProjectAdminController::class, 'approve'])->name('api.admin.project.approve');
-    Route::post('/{id}/reject', [ProjectAdminController::class, 'reject'])->name('api.admin.project.reject');
+    Route::get('/', [projectAdminController::class, 'getProjectsApi'])->name('api.admin.projects');
+    Route::post('/{id}/assign-contractor', [projectAdminController::class, 'assignContractor'])->name('api.admin.project.assignContractor');
+    Route::post('/{id}/approve', [projectAdminController::class, 'approve'])->name('api.admin.project.approve');
+    Route::post('/{id}/reject', [projectAdminController::class, 'reject'])->name('api.admin.project.reject');
 
-    Route::get('/subscriptions', [ProjectAdminController::class, 'getSubscriptionsApi'])->name('api.admin.subscriptions');
-    Route::get('/messages', [ProjectAdminController::class, 'getMessagesApi'])->name('api.admin.messages');
-    Route::get('/disputes', [ProjectAdminController::class, 'getDisputesApi'])->name('api.admin.disputes');
+    Route::get('/subscriptions', [projectAdminController::class, 'getSubscriptionsApi'])->name('api.admin.subscriptions');
+    Route::get('/messages', [projectAdminController::class, 'getMessagesApi'])->name('api.admin.messages');
+    Route::get('/disputes', [projectAdminController::class, 'getDisputesApi'])->name('api.admin.disputes');
 });
 
 // New admin resource API routes
 Route::prefix('/api/admin')->group(function () {
-    Route::apiResource('projects', App\Http\Controllers\Admin\ProjectController::class);
-    Route::apiResource('bids', App\Http\Controllers\Admin\BidController::class);
-    Route::apiResource('milestones', App\Http\Controllers\Admin\MilestoneController::class);
-    Route::apiResource('payments', App\Http\Controllers\Admin\PaymentController::class);
+    Route::apiResource('projects', App\Http\Controllers\admin\projectController::class);
+    Route::apiResource('bids', App\Http\Controllers\admin\bidController::class);
+    Route::apiResource('milestones', App\Http\Controllers\admin\milestoneController::class);
+    Route::apiResource('payments', App\Http\Controllers\admin\paymentController::class);
 });
 
 Route::get('/storage/{path}', [authController::class, 'serve'])->where('path', '.*')->name('storage.serve');
+
+// Ensure test page route is registered (explicit fallback)
+Route::get('/test', function () {
+    return view('test');
+})->name('test.fallback');

@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class PlatformPayment extends Model
+class platformPaymentClass extends Model
 {
     protected $primaryKey = 'payment_id';
     public $incrementing = true;

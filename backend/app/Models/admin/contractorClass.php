@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class Contractor extends Model
+class contractorClass extends Model
 {
     protected $primaryKey = 'contractor_id';
     public $incrementing = true;
@@ -22,6 +22,6 @@ class Contractor extends Model
 
     public function bids(): HasMany
     {
-        return $this->hasMany(Bid::class, 'contractor_id', 'contractor_id');
+        return $this->hasMany(bidClass::class, 'contractor_id', 'contractor_id');
     }
 }

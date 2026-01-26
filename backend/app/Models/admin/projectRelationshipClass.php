@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class ProjectRelationship extends Model
+class projectRelationshipClass extends Model
 {
     protected $primaryKey = 'rel_id';
     public $incrementing = true;
@@ -20,11 +20,11 @@ class ProjectRelationship extends Model
 
     public function owner(): HasOne
     {
-        return $this->hasOne(PropertyOwner::class, 'owner_id', 'owner_id');
+        return $this->hasOne(propertyOwnerClass::class, 'owner_id', 'owner_id');
     }
 
     public function project(): HasOne
     {
-        return $this->hasOne(Project::class, 'project_id', 'project_id');
+        return $this->hasOne(projectClass::class, 'project_id', 'project_id');
     }
 }

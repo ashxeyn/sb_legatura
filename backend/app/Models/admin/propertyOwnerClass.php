@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class PropertyOwner extends Model
+class propertyOwnerClass extends Model
 {
     protected $primaryKey = 'owner_id';
     public $incrementing = true;
@@ -23,6 +23,6 @@ class PropertyOwner extends Model
 
     public function projects(): HasMany
     {
-        return $this->hasMany(Project::class, 'owner_id', 'owner_id');
+        return $this->hasMany(projectClass::class, 'owner_id', 'owner_id');
     }
 }
