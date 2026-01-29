@@ -1,0 +1,699 @@
+/* Apply Bid Modal Styles */
+
+.apply-bid-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1000;
+    overflow-y: auto;
+}
+
+.apply-bid-modal.active {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 2rem 1rem;
+}
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: 1001;
+}
+
+.modal-container {
+    position: relative;
+    background-color: #ffffff;
+    border-radius: 0.75rem;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    width: 100%;
+    max-width: 600px;
+    margin: 2rem auto;
+    z-index: 1002;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    animation: modalSlideIn 0.3s ease-out;
+    overflow: hidden;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Modal Header */
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.5rem;
+    border-bottom: 1px solid #e5e5e5;
+    position: sticky;
+    top: 0;
+    background-color: #ffffff;
+    border-radius: 0.75rem 0.75rem 0 0;
+    z-index: 10;
+}
+
+.modal-back-btn {
+    background: none;
+    border: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #1f2937;
+    transition: all 0.2s ease;
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-right: 0.5rem;
+}
+
+.modal-back-btn:hover {
+    background-color: #f3f4f6;
+    transform: translateX(-2px);
+}
+
+.modal-back-btn:active {
+    transform: translateX(0) scale(0.95);
+}
+
+.modal-back-btn i {
+    font-size: 1.25rem;
+}
+
+.modal-title {
+    flex: 1;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin: 0;
+    text-align: center;
+}
+
+.modal-close-btn {
+    background: none;
+    border: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #6b7280;
+    transition: all 0.2s ease;
+    font-size: 1.25rem;
+}
+
+.modal-close-btn:hover {
+    background-color: #f3f4f6;
+    color: #1f2937;
+}
+
+.modal-close-btn:active {
+    transform: scale(0.95);
+}
+
+/* Project Info Section */
+.modal-project-info {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid #e5e5e5;
+    background-color: #f9fafb;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.project-info-label {
+    font-size: 0.875rem;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+.project-type-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    background-color: #fef3e7;
+    color: #f97316;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.project-name {
+    font-size: 0.875rem;
+    color: #374151;
+    font-weight: 500;
+}
+
+/* Modal Body */
+.modal-body {
+    padding: 1.5rem;
+    padding-bottom: 2rem;
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+    max-height: calc(90vh - 200px);
+}
+
+/* Form Styles */
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: #374151;
+}
+
+.form-input,
+.form-textarea {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 0.5rem;
+    font-size: 0.9375rem;
+    font-family: inherit;
+    transition: all 0.2s ease;
+    background-color: #ffffff;
+    color: #1f2937;
+    box-sizing: border-box;
+}
+
+.form-input:focus,
+.form-textarea:focus {
+    outline: none;
+    border-color: #EEA24B;
+    box-shadow: 0 0 0 3px rgba(238, 162, 75, 0.1);
+}
+
+.form-input:hover,
+.form-textarea:hover {
+    border-color: #d1d5db;
+}
+
+.form-textarea {
+    min-height: 150px;
+    resize: vertical;
+    line-height: 1.6;
+}
+
+.textarea-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 0.5rem;
+}
+
+.character-count {
+    font-size: 0.75rem;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+.character-count.warning {
+    color: #f59e0b;
+}
+
+.character-count.error {
+    color: #ef4444;
+}
+
+/* File Upload Area */
+.file-upload-area {
+    position: relative;
+    width: 100%;
+    min-height: 200px;
+    border: 2px dashed #EEA24B;
+    border-radius: 0.5rem;
+    background-color: #fef9f3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-bottom: 0.75rem;
+}
+
+.file-upload-area:hover {
+    background-color: #fef3e7;
+    border-color: #f97316;
+}
+
+.file-upload-area.dragover {
+    background-color: #fef3e7;
+    border-color: #f97316;
+    transform: scale(1.02);
+}
+
+.file-input-hidden {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+}
+
+.file-upload-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 2rem;
+    text-align: center;
+}
+
+.file-upload-icon {
+    font-size: 3rem;
+    color: #9ca3af;
+    transition: color 0.3s ease;
+}
+
+.file-upload-area:hover .file-upload-icon {
+    color: #EEA24B;
+}
+
+.file-upload-text {
+    font-size: 0.9375rem;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+/* File Preview Container */
+.file-preview-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.file-preview-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    background-color: #f3f4f6;
+    border-radius: 0.5rem;
+    border: 1px solid #e5e7eb;
+    transition: all 0.2s ease;
+}
+
+.file-preview-item:hover {
+    background-color: #e5e7eb;
+    border-color: #d1d5db;
+}
+
+.file-preview-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex: 1;
+    min-width: 0;
+}
+
+.file-preview-icon {
+    font-size: 1.25rem;
+    color: #EEA24B;
+    flex-shrink: 0;
+}
+
+.file-preview-name {
+    font-size: 0.875rem;
+    color: #374151;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.file-preview-size {
+    font-size: 0.75rem;
+    color: #6b7280;
+    margin-left: 0.5rem;
+}
+
+.file-preview-remove {
+    background: none;
+    border: none;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #6b7280;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.file-preview-remove:hover {
+    background-color: #fee2e2;
+    color: #ef4444;
+}
+
+.file-preview-remove:active {
+    transform: scale(0.95);
+}
+
+.file-preview-remove i {
+    font-size: 0.875rem;
+}
+
+/* Form Hints */
+.form-hint {
+    display: block;
+    margin-top: 0.5rem;
+    font-size: 0.75rem;
+    color: #6b7280;
+    line-height: 1.5;
+}
+
+.form-hint-disclaimer {
+    color: #6b7280;
+    margin-top: 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.form-hint-example {
+    color: #9ca3af;
+    font-style: italic;
+}
+
+/* Alerts */
+.alert {
+    padding: 1rem;
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+    font-size: 0.875rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.alert-success {
+    background-color: #d1fae5;
+    color: #065f46;
+    border: 1px solid #6ee7b7;
+}
+
+.alert-error {
+    background-color: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fca5a5;
+}
+
+.error-message {
+    margin-top: 0.5rem;
+    font-size: 0.75rem;
+    color: #ef4444;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.error-message.hidden {
+    display: none;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* Modal Footer */
+.modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 1rem;
+    padding: 1.5rem;
+    border-top: 1px solid #e5e5e5;
+    background-color: #ffffff;
+    border-radius: 0 0 0.75rem 0.75rem;
+    flex-shrink: 0;
+    z-index: 10;
+    position: relative;
+}
+
+.btn {
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.5rem;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border: none;
+    position: relative;
+    overflow: hidden;
+}
+
+.btn::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+}
+
+.btn:hover::before {
+    width: 300px;
+    height: 300px;
+}
+
+.btn-cancel {
+    background-color: #f3f4f6;
+    color: #374151;
+}
+
+.btn-cancel:hover {
+    background-color: #e5e7eb;
+    transform: translateY(-1px);
+}
+
+.btn-cancel:active {
+    transform: translateY(0);
+}
+
+.btn-submit {
+    background-color: #EEA24B;
+    color: #ffffff;
+}
+
+.btn-submit:hover {
+    background-color: #e39b3b;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(238, 162, 75, 0.4);
+}
+
+.btn-submit:active {
+    transform: translateY(0);
+    background-color: #c2410c;
+}
+
+.btn-submit:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .apply-bid-modal.active {
+        padding: 0;
+        align-items: stretch;
+    }
+
+    .modal-container {
+        margin: 0;
+        max-height: 100vh;
+        border-radius: 0;
+        max-width: 100%;
+    }
+
+    .modal-header {
+        border-radius: 0;
+        padding: 1rem;
+    }
+
+    .modal-project-info {
+        padding: 0.75rem 1rem;
+    }
+
+    .modal-footer {
+        border-radius: 0;
+        padding: 1rem;
+        flex-direction: column-reverse;
+    }
+
+    .btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .modal-body {
+        padding: 1rem;
+    }
+
+    .file-upload-area {
+        min-height: 150px;
+    }
+
+    .file-upload-content {
+        padding: 1.5rem;
+    }
+
+    .file-upload-icon {
+        font-size: 2.5rem;
+    }
+}
+
+/* Scrollbar Styling */
+.modal-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+.modal-body::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.modal-body::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+
+.modal-body::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* Animation for file preview items */
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.file-preview-item {
+    animation: slideIn 0.3s ease-out;
+}
+
+/* Interactive input focus effects */
+.form-input:focus,
+.form-textarea:focus {
+    transform: translateY(-1px);
+    box-shadow: 0 0 0 3px rgba(238, 162, 75, 0.1), 0 2px 8px rgba(238, 162, 75, 0.15);
+}
+
+/* File upload area animations */
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+.file-upload-area:hover .file-upload-icon {
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* Button loading state */
+.btn-submit.loading {
+    position: relative;
+    color: transparent;
+}
+
+.btn-submit.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 2px solid #ffffff;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Form group animations */
+.form-group {
+    animation: fadeIn 0.3s ease-out backwards;
+}
+
+.form-group:nth-child(1) { animation-delay: 0.1s; }
+.form-group:nth-child(2) { animation-delay: 0.2s; }
+.form-group:nth-child(3) { animation-delay: 0.3s; }
+.form-group:nth-child(4) { animation-delay: 0.4s; }
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Modal project info animation */
+.modal-project-info {
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

@@ -1,0 +1,211 @@
+/* Password Toggle Button */
+.password-toggle-button {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: #6b7280;
+    cursor: pointer;
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s ease;
+}
+
+.password-toggle-button:hover {
+    color: #374151;
+}
+
+.password-toggle-button:focus {
+    outline: none;
+}
+
+/* Animation for blobs */
+@keyframes blob {
+    0%, 100% {
+        transform: translate(0, 0) scale(1);
+    }
+    33% {
+        transform: translate(30px, -50px) scale(1.1);
+    }
+    66% {
+        transform: translate(-20px, 20px) scale(0.9);
+    }
+}
+
+.animate-blob {
+    animation: blob 7s infinite;
+}
+
+.animation-delay-2000 {
+    animation-delay: 2s;
+}
+
+.animation-delay-4000 {
+    animation-delay: 4s;
+}
+
+/* Form Validation Styles */
+.error-border {
+    border-color: #ef4444 !important;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+.error-message {
+    color: #ef4444;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+    display: none;
+}
+
+.error-message.show {
+    display: block;
+}
+
+/* Success Message */
+.success-message {
+    background-color: #dcfce7;
+    border: 1px solid #86efac;
+    color: #166534;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+/* Loading State */
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Login button styling - matches login page design */
+.login-button {
+    margin-top: 2rem;                    /* Space above button */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;                         /* Space between text and icon */
+    padding: 0.875rem 2rem;              /* Button padding */
+    background-color: #022644;           /* Dark blue background */
+    color: #ffffff;                      /* White text */
+    font-size: 0.95rem;                  /* Button text size */
+    font-weight: 600;                    /* Semi-bold */
+    border-radius: 0.5rem;               /* Rounded corners */
+    text-decoration: none;               /* Remove underline */
+    transition: all 0.3s ease;           /* Smooth transitions */
+    box-shadow: 0 4px 6px rgba(2, 38, 68, 0.2); /* Subtle shadow */
+}
+
+.login-button:hover {
+    background-color: #033457;           /* Slightly lighter on hover */
+    transform: translateY(-2px);         /* Lift effect on hover */
+    box-shadow: 0 6px 12px rgba(2, 38, 68, 0.3); /* Deeper shadow on hover */
+}
+
+.login-button:active {
+    transform: translateY(0);            /* Press effect */
+}
+
+/* Create Account button styling - matches login button color */
+.create-account-button {
+    background-color: #022644;           /* Dark blue background - same as login */
+    border: none;
+}
+
+.create-account-button:hover {
+    background-color: #033457;           /* Slightly lighter on hover */
+    transform: translateY(-2px);         /* Lift effect on hover */
+    box-shadow: 0 6px 12px rgba(2, 38, 68, 0.3); /* Deeper shadow on hover */
+}
+
+.create-account-button:active {
+    transform: translateY(0);            /* Press effect */
+    background-color: #022644;
+}
+
+/* Branding Section - Manually Adjustable */
+.branding-section {
+    background-color: #F9F3E7;
+    padding: 3rem; /* Adjust padding here */
+}
+
+.branding-container {
+    max-width: 90%; /* Adjust container width here */
+    text-align: center;
+    margin-top: -50px;
+}
+
+.logo-image {
+    width: 300px; /* Adjust logo size here */
+    height: 300px; /* Adjust logo height here */
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    margin: 0 auto -20px; /* Adjust logo spacing here (negative margin pulls next element up) */
+}
+
+.name-image {
+    width: 180px; /* Adjust legatura text width here */
+    height: auto;
+    max-width: 100%;
+    object-fit: contain;
+    margin: -28px auto 0; /* Adjust text spacing here (negative margin pulls it up) */
+}
+
+.tagline-text {
+    margin-top: 1.5rem; /* Adjust spacing above tagline here */
+    font-size: 16px; /* Adjust tagline font size here */
+    line-height: 1.6; /* Adjust line spacing here */
+    color: #374151; /* Adjust text color here */
+    text-align: center;
+    max-width: 95%; /* Adjust tagline width heSre */
+    font-weight: 400;
+    padding: 0 1rem; /* Adjust horizontal padding here */
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .password-toggle-button {
+        right: 10px;
+        padding: 6px;
+    }
+    
+    .branding-section {
+        padding: 2rem; /* Adjust mobile padding here */
+    }
+    
+    .logo-image {
+        width: 200px; /* Adjust mobile logo size here */
+        height: 200px;
+        margin: 0 auto -60px;
+    }
+    
+    .name-image {
+        width: 140px; /* Adjust mobile text size here */
+        margin: -20px auto 0;
+    }
+    
+    .tagline-text {
+        font-size: 14px; /* Adjust mobile font size here */
+        margin-top: 1rem;
+    }
+}

@@ -1,0 +1,697 @@
+/* Contractor Form Modal Styles */
+#switchToContractorModal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2000;
+    overflow-y: auto;
+}
+
+#switchToContractorModal:not(.hidden) {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 2rem 1rem;
+}
+
+#authorizedRepresentativeForm {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2000;
+    overflow-y: auto;
+}
+
+#authorizedRepresentativeForm:not(.hidden) {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 2rem 1rem;
+}
+
+#verificationDocumentsForm {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2000;
+    overflow-y: auto;
+}
+
+#verificationDocumentsForm:not(.hidden) {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 2rem 1rem;
+}
+
+#profilePictureForm {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2000;
+    overflow-y: auto;
+}
+
+#profilePictureForm:not(.hidden) {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 2rem 1rem;
+}
+
+#authorizedRepresentativeForm:not(.hidden) {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 2rem 1rem;
+}
+
+.switch-account-modal.hidden {
+    display: none !important;
+}
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: -1;
+}
+
+.switch-account-modal-container.max-w-2xl {
+    max-width: 600px;
+    position: relative;
+    background: linear-gradient(to bottom, #ffffff 0%, #f9fafb 100%);
+    border-radius: 1.25rem;
+    width: 100%;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    padding: 2rem;
+    margin: auto;
+}
+
+.back-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0;
+    margin-bottom: 1.5rem;
+    font-size: 1rem;
+    font-weight: 500;
+    color: #f97316;
+    background: none;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.back-button:hover {
+    color: #ea580c;
+    transform: translateX(-4px);
+}
+
+.back-button i {
+    font-size: 1.125rem;
+}
+
+/* Contractor Form Header */
+.switch-contractor-header {
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+.contractor-form-icon {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    border-radius: 50%;
+    position: relative;
+    padding: 0.875rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.contractor-form-icon .contractor-logo {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.contractor-form-icon i {
+    font-size: 2rem;
+    color: white;
+}
+
+.contractor-form-icon i:first-child {
+    position: absolute;
+    left: 15px;
+}
+
+.contractor-form-icon i:last-child {
+    position: absolute;
+    right: 15px;
+}
+
+.contractor-form-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin-bottom: 0.5rem;
+}
+
+.contractor-form-subtitle {
+    font-size: 0.9375rem;
+    color: #6b7280;
+    font-weight: 400;
+}
+
+/* Form Sections */
+.contractor-account-form {
+    width: 100%;
+}
+
+/* Info Box */
+.form-info-box {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem;
+    background-color: #fef3c7;
+    border: 1px solid #fcd34d;
+    border-radius: 0.5rem;
+    margin-bottom: 2rem;
+}
+
+.info-box-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    width: 32px;
+    height: 32px;
+    background-color: #f97316;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.info-number {
+    color: white;
+    font-weight: 600;
+    font-size: 1.125rem;
+}
+
+.info-box-text {
+    color: #92400e;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    margin: 0;
+    line-height: 1.4;
+}
+
+.form-section {
+    margin-bottom: 2rem;
+}
+
+.form-section-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #f3f4f6;
+}
+
+/* Form Groups */
+.form-group {
+    margin-bottom: 1.25rem;
+}
+
+.form-label {
+    display: block;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 0.5rem;
+}
+
+.form-label .required {
+    color: #ef4444;
+    margin-left: 2px;
+}
+
+/* Form Inputs */
+.form-input {
+    width: 100%;
+    padding: 0.875rem 1rem;
+    font-size: 0.9375rem;
+    color: #1f2937;
+    background-color: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    transition: all 0.2s ease;
+    outline: none;
+}
+
+.form-input::placeholder {
+    color: #9ca3af;
+}
+
+.form-input:focus {
+    background-color: white;
+    border-color: #f97316;
+    box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
+}
+
+.form-input:hover {
+    border-color: #d1d5db;
+}
+
+/* Select Wrapper */
+.select-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.form-select {
+    width: 100%;
+    padding: 0.875rem 2.5rem 0.875rem 1rem;
+    font-size: 0.9375rem;
+    color: #1f2937;
+    background-color: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    transition: all 0.2s ease;
+    outline: none;
+    appearance: none;
+    cursor: pointer;
+}
+
+.form-select option[disabled] {
+    color: #9ca3af;
+}
+
+.form-select:focus {
+    background-color: white;
+    border-color: #f97316;
+    box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
+}
+
+.form-select:hover {
+    border-color: #d1d5db;
+}
+
+.select-icon {
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1rem;
+    color: #6b7280;
+    pointer-events: none;
+}
+
+/* Form Actions */
+.form-actions {
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #f3f4f6;
+}
+
+.contractor-form-submit-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 1rem 2rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: white;
+    background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+    border: none;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 6px -1px rgba(249, 115, 22, 0.3);
+}
+
+.contractor-form-submit-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(249, 115, 22, 0.4);
+}
+
+.contractor-form-submit-btn:active {
+    transform: translateY(0);
+}
+
+.contractor-form-submit-btn i {
+    font-size: 1.125rem;
+}
+
+/* File Upload Styles */
+.file-upload-area {
+    position: relative;
+    border: 2px dashed #f97316;
+    border-radius: 0.5rem;
+    background-color: #fef3f2;
+    padding: 2.5rem 1.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.file-upload-area:hover {
+    background-color: #fef3f2;
+    border-color: #ea580c;
+}
+
+.file-input {
+    display: none;
+}
+
+.file-upload-label {
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+}
+
+.file-upload-icon {
+    font-size: 2.5rem;
+    color: #f97316;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.file-upload-text {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #1f2937;
+    margin: 0;
+}
+
+.file-upload-hint {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin: 0;
+}
+
+.file-preview-image {
+    max-width: 100%;
+    max-height: 200px;
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+    object-fit: contain;
+}
+
+/* Profile Picture Upload Styles */
+.profile-picture-section {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 2rem 0;
+}
+
+.profile-picture-upload-area {
+    position: relative;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.profile-picture-upload-area:hover .profile-picture-circle {
+    transform: scale(1.05);
+    box-shadow: 0 10px 25px rgba(249, 115, 22, 0.2);
+}
+
+.profile-picture-upload-label {
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.profile-picture-upload-label:hover .profile-picture-text {
+    color: #ea580c;
+}
+
+.profile-picture-circle {
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    background-color: #e5e7eb;
+    border: 3px solid #f97316;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 4rem;
+    color: #d1d5db;
+    margin: 0 auto;
+    overflow: hidden;
+    position: relative;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.profile-preview-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+.profile-picture-text {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #f97316;
+    margin: 0;
+}
+
+.profile-picture-hint {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin: 0;
+}
+
+/* Complete Role Switch Button */
+.complete-role-switch-btn {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    border: none;
+}
+
+.complete-role-switch-btn:hover {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(16, 185, 129, 0.3);
+}
+
+.complete-role-switch-btn:active {
+    transform: translateY(0);
+}
+/* Confirmation Modal */
+.confirmation-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2001;
+    align-items: center;
+    justify-content: center;
+}
+
+.confirmation-modal:not(.hidden) {
+    display: flex;
+}
+
+.confirmation-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+}
+
+.confirmation-dialog {
+    position: relative;
+    z-index: 2002;
+    background: white;
+    border-radius: 1.5rem;
+    padding: 2.5rem 2rem;
+    max-width: 450px;
+    width: 90%;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    text-align: center;
+}
+
+.confirmation-icon-wrapper {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+}
+
+.confirmation-icon {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #fff7ed 0%, #fed7aa 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.confirmation-icon i {
+    font-size: 3.5rem;
+    color: #f97316;
+    font-weight: 600;
+}
+
+.confirmation-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin-bottom: 1rem;
+    line-height: 1.2;
+}
+
+.confirmation-message {
+    font-size: 1rem;
+    color: #6b7280;
+    line-height: 1.6;
+    margin-bottom: 2rem;
+}
+
+.confirmation-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.confirmation-cancel-btn,
+.confirmation-confirm-btn {
+    padding: 0.875rem 1.5rem;
+    border: none;
+    border-radius: 0.75rem;
+    font-size: 1.125rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.confirmation-cancel-btn {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+.confirmation-cancel-btn:hover {
+    background: #e5e7eb;
+    transform: translateY(-1px);
+}
+
+.confirmation-confirm-btn {
+    background: linear-gradient(to right, #f97316, #ea580c);
+    color: white;
+    box-shadow: 0 4px 6px rgba(249, 115, 22, 0.2);
+}
+
+.confirmation-confirm-btn:hover {
+    background: linear-gradient(to right, #ea580c, #c2410c);
+    box-shadow: 0 6px 10px rgba(249, 115, 22, 0.3);
+    transform: translateY(-1px);
+}
+
+.confirmation-cancel-btn:active,
+.confirmation-confirm-btn:active {
+    transform: translateY(1px);
+}
+
+@media (max-width: 640px) {
+    .confirmation-dialog {
+        padding: 2rem 1.5rem;
+    }
+
+    .confirmation-icon {
+        width: 100px;
+        height: 100px;
+    }
+
+    .confirmation-icon i {
+        font-size: 3rem;
+    }
+
+    .confirmation-title {
+        font-size: 1.5rem;
+    }
+
+    .confirmation-message {
+        font-size: 0.9375rem;
+    }
+
+    .confirmation-actions {
+        grid-template-columns: 1fr;
+    }
+
+    .confirmation-cancel-btn,
+    .confirmation-confirm-btn {
+        width: 100%;
+    }
+}
+/* Responsive Design */
+@media (max-width: 640px) {
+    .switch-account-modal-container.max-w-2xl {
+        max-width: 100%;
+        margin: 1rem;
+    }
+
+    .contractor-form-title {
+        font-size: 1.25rem;
+    }
+
+    .contractor-form-icon {
+        width: 60px;
+        height: 60px;
+    }
+
+    .contractor-form-icon i {
+        font-size: 1.5rem;
+    }
+
+    .contractor-form-icon i:first-child {
+        left: 10px;
+    }
+
+    .contractor-form-icon i:last-child {
+        right: 10px;
+    }
+
+    .form-section-title {
+        font-size: 1.125rem;
+    }
+}

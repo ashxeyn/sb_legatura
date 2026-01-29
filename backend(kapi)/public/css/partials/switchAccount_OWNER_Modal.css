@@ -1,0 +1,589 @@
+/* Owner Form Modal Styles */
+#switchToOwnerModal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2000;
+    overflow-y: auto;
+}
+
+#switchToOwnerModal:not(.hidden) {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 2rem 1rem;
+}
+/* Account Setup Form Modal */
+#accountSetupForm {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2000;
+    overflow-y: auto;
+}
+
+#accountSetupForm:not(.hidden) {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 2rem 1rem;
+}
+
+/* Profile Picture Form Modal */
+#profilePictureOwnerForm {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2000;
+    overflow-y: auto;
+}
+
+#profilePictureOwnerForm:not(.hidden) {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 2rem 1rem;
+}
+.switch-account-modal.hidden {
+    display: none !important;
+}
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: -1;
+}
+
+.switch-account-modal-container.max-w-2xl {
+    max-width: 600px;
+    position: relative;
+    background: linear-gradient(to bottom, #ffffff 0%, #f9fafb 100%);
+    border-radius: 1.25rem;
+    width: 100%;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    padding: 2rem;
+    margin: auto;
+}
+
+.back-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0;
+    margin-bottom: 1.5rem;
+    font-size: 1rem;
+    font-weight: 500;
+    color: #f97316;
+    background: none;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.back-button:hover {
+    color: #ea580c;
+    transform: translateX(-4px);
+}
+
+.back-button i {
+    font-size: 1.125rem;
+}
+
+/* Owner Form Header */
+.switch-owner-header {
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+.owner-form-icon {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    border-radius: 50%;
+    position: relative;
+    padding: 0.875rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.owner-form-icon .owner-logo {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.owner-form-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin-bottom: 0.5rem;
+}
+
+.owner-form-subtitle {
+    font-size: 0.9375rem;
+    color: #6b7280;
+    font-weight: 400;
+}
+
+/* Form Sections */
+.switch-account-modal-body {
+    margin-top: 1.5rem;
+}
+
+.owner-account-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.form-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.form-section-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 0.5rem;
+}
+
+/* Info Box */
+.form-info-box {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background-color: #fef3f2;
+    border: 1px solid #fee2e2;
+    border-radius: 0.5rem;
+    padding: 0.875rem 1rem;
+    margin-bottom: 1rem;
+}
+
+.info-box-icon {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    background-color: #f97316;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.info-number {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: white;
+}
+
+.info-box-text {
+    font-size: 0.875rem;
+    color: #92400e;
+    margin: 0;
+    font-weight: 500;
+}
+
+/* Form Groups */
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.form-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151;
+}
+
+.required {
+    color: #ef4444;
+}
+
+/* Form Inputs */
+.form-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    font-size: 0.9375rem;
+    color: #1f2937;
+    background-color: #ffffff;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    transition: all 0.2s ease;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: #f97316;
+    box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
+}
+
+.form-input::placeholder {
+    color: #9ca3af;
+}
+
+/* Select Wrapper */
+.select-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.form-select {
+    width: 100%;
+    padding: 0.75rem 2.5rem 0.75rem 1rem;
+    font-size: 0.9375rem;
+    color: #1f2937;
+    background-color: #ffffff;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    appearance: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.form-select:focus {
+    outline: none;
+    border-color: #f97316;
+    box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
+}
+
+.select-icon {
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    color: #6b7280;
+    font-size: 1rem;
+}
+
+/* Form Actions */
+.form-actions {
+    margin-top: 1.5rem;
+    display: flex;
+    justify-content: center;
+}
+
+.owner-form-submit-btn {
+    width: 100%;
+    padding: 0.875rem 2rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: white;
+    background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+    border: none;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.owner-form-submit-btn:hover {
+    background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(249, 115, 22, 0.4);
+}
+
+.owner-form-submit-btn:active {
+    transform: translateY(0);
+}
+/* Profile Picture Section */
+.profile-picture-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 2rem 0;
+}
+
+.profile-picture-upload-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+}
+
+.profile-picture-circle {
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    border: 3px solid #f97316;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background-color: #f9fafb;
+    position: relative;
+}
+
+.profile-picture-circle:hover {
+    transform: scale(1.05);
+    border-color: #ea580c;
+    box-shadow: 0 4px 12px rgba(249, 115, 22, 0.2);
+}
+
+.profile-picture-input {
+    display: none;
+}
+
+.profile-picture-label {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.profile-picture-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    color: #d1d5db;
+}
+
+.profile-picture-placeholder i {
+    font-size: 5rem;
+}
+
+.profile-picture-preview {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.upload-photo-text {
+    font-size: 1rem;
+    color: #f97316;
+    font-weight: 600;
+    text-align: center;
+}
+
+/* Complete Role Switch Button */
+.complete-role-switch-btn {
+    width: 100%;
+    padding: 0.875rem;
+    background: linear-gradient(to right, #10b981, #059669);
+    color: white;
+    border: none;
+    border-radius: 0.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.complete-role-switch-btn:hover {
+    background: linear-gradient(to right, #059669, #047857);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    transform: translateY(-1px);
+}
+
+.complete-role-switch-btn:active {
+    transform: translateY(1px);
+}
+
+/* Confirmation Modal */
+.confirmation-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2001;
+    align-items: center;
+    justify-content: center;
+}
+
+.confirmation-modal:not(.hidden) {
+    display: flex;
+}
+
+.confirmation-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+}
+
+.confirmation-dialog {
+    position: relative;
+    z-index: 2002;
+    background: white;
+    border-radius: 1.5rem;
+    padding: 2.5rem 2rem;
+    max-width: 450px;
+    width: 90%;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    text-align: center;
+}
+
+.confirmation-icon-wrapper {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+}
+
+.confirmation-icon {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #fff7ed 0%, #fed7aa 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.confirmation-icon i {
+    font-size: 3.5rem;
+    color: #f97316;
+    font-weight: 600;
+}
+
+.confirmation-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin-bottom: 1rem;
+    line-height: 1.2;
+}
+
+.confirmation-message {
+    font-size: 1rem;
+    color: #6b7280;
+    line-height: 1.6;
+    margin-bottom: 2rem;
+}
+
+.confirmation-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.confirmation-cancel-btn,
+.confirmation-confirm-btn {
+    padding: 0.875rem 1.5rem;
+    border: none;
+    border-radius: 0.75rem;
+    font-size: 1.125rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.confirmation-cancel-btn {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+.confirmation-cancel-btn:hover {
+    background: #e5e7eb;
+    transform: translateY(-1px);
+}
+
+.confirmation-confirm-btn {
+    background: linear-gradient(to right, #f97316, #ea580c);
+    color: white;
+    box-shadow: 0 4px 6px rgba(249, 115, 22, 0.2);
+}
+
+.confirmation-confirm-btn:hover {
+    background: linear-gradient(to right, #ea580c, #c2410c);
+    box-shadow: 0 6px 10px rgba(249, 115, 22, 0.3);
+    transform: translateY(-1px);
+}
+
+.confirmation-cancel-btn:active,
+.confirmation-confirm-btn:active {
+    transform: translateY(1px);
+}
+
+@media (max-width: 640px) {
+    .confirmation-dialog {
+        padding: 2rem 1.5rem;
+    }
+
+    .confirmation-icon {
+        width: 100px;
+        height: 100px;
+    }
+
+    .confirmation-icon i {
+        font-size: 3rem;
+    }
+
+    .confirmation-title {
+        font-size: 1.5rem;
+    }
+
+    .confirmation-message {
+        font-size: 0.9375rem;
+    }
+
+    .confirmation-actions {
+        grid-template-columns: 1fr;
+    }
+
+    .confirmation-cancel-btn,
+    .confirmation-confirm-btn {
+        width: 100%;
+    }
+}
+.owner-form-submit-btn i {
+    font-size: 1.125rem;
+}
+
+/* Responsive Design */
+@media (max-width: 640px) {
+    .switch-account-modal-container.max-w-2xl {
+        max-width: 100%;
+        margin: 1rem;
+    }
+
+    .owner-form-title {
+        font-size: 1.25rem;
+    }
+
+    .owner-form-icon {
+        width: 60px;
+        height: 60px;
+    }
+
+    .form-section-title {
+        font-size: 1.125rem;
+    }
+}

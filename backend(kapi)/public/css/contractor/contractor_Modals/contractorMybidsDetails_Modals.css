@@ -1,0 +1,951 @@
+/* Bid Details Modal Styles */
+
+/* Utility Classes */
+.hidden {
+    display: none !important;
+}
+
+.bid-details-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1000;
+    overflow-y: auto;
+}
+
+.bid-details-modal.active {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 2rem 0;
+}
+
+/* Modal Overlay */
+.bid-details-modal .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: 1001;
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* Modal Container */
+.bid-details-modal .modal-container {
+    position: relative;
+    background: white;
+    border-radius: 1rem;
+    width: 90%;
+    max-width: 900px;
+    max-height: 90vh;
+    margin: 0 auto;
+    z-index: 1002;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    animation: slideUp 0.3s ease-out;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Modal Header */
+.bid-details-modal .modal-header {
+    padding: 1.5rem 2rem;
+    border-bottom: 2px solid #f3f4f6;
+    background: linear-gradient(135deg, #ffffff 0%, #fef3e7 100%);
+    position: relative;
+    overflow: hidden;
+}
+
+.bid-details-modal .modal-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #EEA24B 0%, #F57C00 100%);
+}
+
+.bid-details-modal .modal-header-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.bid-details-modal .modal-title {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin: 0;
+}
+
+.bid-details-modal .modal-title i {
+    color: #EEA24B;
+    font-size: 1.75rem;
+}
+
+.bid-details-modal .modal-close-btn {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    border: none;
+    background: #f3f4f6;
+    color: #6b7280;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.bid-details-modal .modal-close-btn:hover {
+    background: #EEA24B;
+    color: white;
+    transform: rotate(90deg);
+}
+
+/* Modal Body */
+.bid-details-modal .modal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 2rem;
+}
+
+/* Bid Status Banner */
+.bid-status-banner {
+    background: linear-gradient(135deg, #fef3e7 0%, #fde8d0 100%);
+    border-left: 4px solid #EEA24B;
+    border-radius: 0.75rem;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.status-banner-content {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.status-banner-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #EEA24B;
+    font-size: 1.5rem;
+}
+
+.status-banner-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.status-banner-label {
+    font-size: 0.75rem;
+    color: #6b7280;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.status-banner-value {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.status-banner-date {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    color: #6b7280;
+}
+
+/* Status-specific banner colors */
+.bid-status-banner.status-pending {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    border-left-color: #f59e0b;
+}
+
+.bid-status-banner.status-pending .status-banner-icon {
+    color: #f59e0b;
+}
+
+.bid-status-banner.status-accepted {
+    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+    border-left-color: #10b981;
+}
+
+.bid-status-banner.status-accepted .status-banner-icon {
+    color: #10b981;
+}
+
+.bid-status-banner.status-rejected {
+    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+    border-left-color: #ef4444;
+}
+
+.bid-status-banner.status-rejected .status-banner-icon {
+    color: #ef4444;
+}
+
+/* Details Section */
+.details-section {
+    background: white;
+    border-radius: 0.75rem;
+    border: 1px solid #e5e7eb;
+    margin-bottom: 1.5rem;
+    overflow: hidden;
+}
+
+.section-header-modal {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1.25rem 1.5rem;
+    background: #f9fafb;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.section-header-modal i {
+    color: #EEA24B;
+    font-size: 1.25rem;
+}
+
+.section-title {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: #1f2937;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    margin: 0;
+}
+
+.section-content {
+    padding: 1.5rem;
+}
+
+/* Project Info Header */
+.project-info-header {
+    display: flex;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.project-info-image {
+    flex-shrink: 0;
+}
+
+.bid-project-image {
+    width: 150px;
+    height: 150px;
+    object-fit: cover;
+    border-radius: 0.75rem;
+    border: 2px solid #e5e7eb;
+}
+
+.project-info-details {
+    flex: 1;
+}
+
+.project-info-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin-bottom: 0.75rem;
+}
+
+.project-info-meta {
+    margin-bottom: 0.75rem;
+}
+
+.project-type-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.375rem 0.875rem;
+    background: #fef3e7;
+    color: #EEA24B;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.project-info-location {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #6b7280;
+    font-size: 0.875rem;
+}
+
+.project-info-location i {
+    color: #EEA24B;
+}
+
+/* Owner Info Section */
+.owner-info-section {
+    padding: 1rem;
+    background: #f9fafb;
+    border-radius: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.owner-info-label {
+    font-size: 0.75rem;
+    color: #6b7280;
+    font-weight: 600;
+    text-transform: uppercase;
+    margin-bottom: 0.75rem;
+}
+
+.owner-info-content {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.owner-info-avatar {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #EEA24B 0%, #E89A3C 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 700;
+    font-size: 1rem;
+}
+
+.owner-info-name {
+    font-weight: 600;
+    color: #1f2937;
+}
+
+/* Project Description */
+.project-description-section {
+    margin-bottom: 0;
+}
+
+.description-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 0.5rem;
+}
+
+.project-description-text {
+    color: #6b7280;
+    line-height: 1.6;
+    margin: 0;
+}
+
+/* Specifications Grid */
+.specifications-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.spec-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.875rem;
+    background: #f9fafb;
+    border-radius: 0.5rem;
+    border: 1px solid #e5e7eb;
+}
+
+.spec-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #EEA24B;
+    flex-shrink: 0;
+}
+
+.spec-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.spec-label {
+    font-size: 0.75rem;
+    color: #6b7280;
+    display: block;
+    margin-bottom: 0.25rem;
+}
+
+.spec-value {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #1f2937;
+    display: block;
+}
+
+/* Budget and Timeline Section */
+.budget-timeline-section {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+}
+
+.budget-timeline-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.25rem;
+    background: linear-gradient(135deg, #fef3e7 0%, #fde8d0 100%);
+    border-radius: 0.75rem;
+    border: 2px solid #fbbf24;
+}
+
+.budget-timeline-icon {
+    width: 3rem;
+    height: 3rem;
+    border-radius: 50%;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #EEA24B;
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+
+.budget-timeline-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.budget-timeline-label {
+    font-size: 0.75rem;
+    color: #6b7280;
+    font-weight: 600;
+}
+
+.budget-timeline-value {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+/* Documents List */
+.documents-list {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.document-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.document-item:hover {
+    background: white;
+    border-color: #EEA24B;
+    box-shadow: 0 2px 8px rgba(238, 162, 75, 0.15);
+}
+
+.document-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 0.5rem;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #EEA24B;
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+
+.document-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.document-name {
+    font-weight: 600;
+    color: #1f2937;
+    font-size: 0.875rem;
+    display: block;
+    margin-bottom: 0.25rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.document-size {
+    font-size: 0.75rem;
+    color: #6b7280;
+}
+
+.document-download {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    background: #EEA24B;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.875rem;
+    transition: all 0.3s ease;
+}
+
+.document-item:hover .document-download {
+    transform: scale(1.1);
+}
+
+/* No Documents Message */
+.no-documents-message {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: #9ca3af;
+}
+
+.no-documents-message i {
+    font-size: 3rem;
+    margin-bottom: 0.75rem;
+    display: block;
+}
+
+.no-documents-message p {
+    font-size: 0.875rem;
+    margin: 0;
+}
+
+/* Bid Highlight Section */
+.bid-highlight-section {
+    border: 2px solid #EEA24B;
+    background: linear-gradient(135deg, #fffbf5 0%, #fef8f0 100%);
+}
+
+.bid-highlight-section .section-header-modal {
+    background: linear-gradient(135deg, #fef3e7 0%, #fde8d0 100%);
+}
+
+/* Bid Amount Display */
+.bid-amount-display {
+    text-align: center;
+    padding: 2rem;
+    background: white;
+    border-radius: 0.75rem;
+    margin-bottom: 1.5rem;
+    border: 2px solid #fbbf24;
+}
+
+.bid-amount-label {
+    font-size: 0.875rem;
+    color: #6b7280;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.bid-amount-value {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: #EEA24B;
+    margin-bottom: 0.5rem;
+}
+
+.bid-amount-comparison {
+    font-size: 0.875rem;
+    color: #10b981;
+    font-weight: 600;
+}
+
+/* Bid Details Grid */
+.bid-details-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.bid-detail-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem;
+    background: white;
+    border-radius: 0.5rem;
+    border: 1px solid #e5e7eb;
+}
+
+.bid-detail-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    background: #fef3e7;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #EEA24B;
+    flex-shrink: 0;
+}
+
+.bid-detail-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.bid-detail-label {
+    font-size: 0.75rem;
+    color: #6b7280;
+}
+
+.bid-detail-value {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+/* Bid Notes */
+.bid-notes-section {
+    padding: 1.25rem;
+    background: white;
+    border-radius: 0.5rem;
+    border: 1px solid #e5e7eb;
+}
+
+.bid-notes-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 0.75rem;
+}
+
+.bid-notes-text {
+    color: #6b7280;
+    line-height: 1.6;
+    margin: 0;
+}
+
+/* Modal Footer */
+.bid-details-modal .modal-footer {
+    padding: 1.5rem 2rem;
+    border-top: 2px solid #f3f4f6;
+    background-color: #f9fafb;
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+}
+
+.modal-btn {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.secondary-btn {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+.secondary-btn:hover {
+    background: #e5e7eb;
+    color: #4b5563;
+}
+
+.withdraw-bid-btn {
+    background: #ef4444;
+    color: white;
+}
+
+.withdraw-bid-btn:hover {
+    background: #dc2626;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .bid-details-modal .modal-container {
+        width: 95%;
+        margin: 1rem auto;
+    }
+
+    .bid-details-modal .modal-body {
+        padding: 1.5rem 1rem;
+    }
+
+    .project-info-header {
+        flex-direction: column;
+    }
+
+    .bid-project-image {
+        width: 100%;
+        height: 200px;
+    }
+
+    .specifications-grid,
+    .budget-timeline-section,
+    .bid-details-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .bid-amount-value {
+        font-size: 2rem;
+    }
+}
+
+/* Withdraw Confirmation Modal */
+.withdraw-confirmation-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+}
+
+.withdraw-confirmation-modal.active {
+    display: flex;
+}
+
+.confirmation-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: 2001;
+    animation: fadeIn 0.2s ease-out;
+}
+
+.confirmation-container {
+    position: relative;
+    background: white;
+    border-radius: 1rem;
+    width: 90%;
+    max-width: 500px;
+    z-index: 2002;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+    animation: scaleIn 0.3s ease-out;
+    padding: 2rem;
+}
+
+/* Confirmation Icon */
+.confirmation-icon-wrapper {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+}
+
+.confirmation-icon {
+    width: 4rem;
+    height: 4rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    animation: bounce 0.5s ease-out;
+}
+
+.confirmation-icon.warning {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    color: #f59e0b;
+    border: 3px solid #fbbf24;
+}
+
+/* Confirmation Content */
+.confirmation-content {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.confirmation-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin-bottom: 0.75rem;
+}
+
+.confirmation-message {
+    color: #6b7280;
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+}
+
+.confirmation-bid-info {
+    background: #f9fafb;
+    border-radius: 0.75rem;
+    padding: 1rem 1.5rem;
+    border: 1px solid #e5e7eb;
+}
+
+.confirmation-bid-detail {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+}
+
+.confirmation-bid-detail:not(:last-child) {
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.confirmation-bid-label {
+    font-size: 0.875rem;
+    color: #6b7280;
+    font-weight: 600;
+}
+
+.confirmation-bid-value {
+    font-size: 0.875rem;
+    color: #1f2937;
+    font-weight: 700;
+}
+
+/* Confirmation Actions */
+.confirmation-actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.confirmation-btn {
+    flex: 1;
+    padding: 0.875rem 1.5rem;
+    border: none;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.cancel-btn {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+.cancel-btn:hover {
+    background: #e5e7eb;
+    color: #4b5563;
+    transform: translateY(-1px);
+}
+
+.danger-btn {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+}
+
+.danger-btn:hover {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+    transform: translateY(-1px);
+}
+
+/* Animations */
+@keyframes scaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes bounce {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+    .confirmation-container {
+        width: 95%;
+        padding: 1.5rem;
+    }
+
+    .confirmation-actions {
+        flex-direction: column;
+    }
+
+    .confirmation-btn {
+        width: 100%;
+    }
+}
+

@@ -1,0 +1,487 @@
+/* Property Owner Page Styles */
+
+/* Controls Section */
+.controls-wrapper {
+  animation: slideDown 0.4s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Custom Select Styling */
+select {
+  cursor: pointer;
+}
+
+select::-ms-expand {
+  display: none;
+}
+
+/* Period Dropdown */
+#periodDropdown {
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Table Styles */
+table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+tbody tr {
+  position: relative;
+}
+
+tbody tr::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #e5e7eb 20%, #e5e7eb 80%, transparent);
+}
+
+tbody tr:last-child::after {
+  display: none;
+}
+
+/* Avatar Styles */
+.w-10.h-10.rounded-full {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+}
+
+/* Action Buttons */
+.action-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.action-btn i {
+  font-size: 16px;
+}
+
+.action-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.action-btn:active {
+  transform: translateY(0);
+}
+
+/* Badge Styles for Numbers */
+.inline-flex.items-center.justify-center.w-8.h-8.rounded-full {
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.inline-flex.items-center.justify-center.w-8.h-8.rounded-full:hover {
+  transform: scale(1.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Add Button Animation */
+button[class*="from-orange-500"] {
+  position: relative;
+  overflow: hidden;
+}
+
+button[class*="from-orange-500"]::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s ease, height 0.6s ease;
+}
+
+button[class*="from-orange-500"]:hover::before {
+  width: 300px;
+  height: 300px;
+}
+
+/* Table Row Hover Effect */
+#propertyOwnersTable tr {
+  cursor: pointer;
+}
+
+#propertyOwnersTable tr.bg-indigo-50 {
+  background: linear-gradient(90deg, #eef2ff 0%, #e0e7ff 100%);
+}
+
+/* Loading State (for future use) */
+.table-loading {
+  position: relative;
+}
+
+.table-loading::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Smooth Scroll */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom Scrollbar */
+.overflow-x-auto::-webkit-scrollbar {
+  height: 8px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-thumb {
+  background: #c7d2fe;
+  border-radius: 10px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-thumb:hover {
+  background: #a5b4fc;
+}
+
+/* Period Button Active State */
+#periodBtn:active {
+  transform: scale(0.98);
+}
+
+/* Responsive Adjustments */
+@media (max-width: 1024px) {
+  .controls-wrapper {
+    flex-direction: column;
+    align-items: stretch !important;
+  }
+
+  .controls-wrapper > div {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  button[class*="from-orange-500"] {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 768px) {
+  table {
+    font-size: 0.875rem;
+  }
+
+  .action-btn {
+    width: 32px;
+    height: 32px;
+  }
+
+  .action-btn i {
+    font-size: 14px;
+  }
+
+  .w-10.h-10.rounded-full {
+    width: 2rem;
+    height: 2rem;
+  }
+}
+
+/* Pulse animation for ongoing projects badge */
+.bg-green-100 {
+  animation: pulse-subtle 2s infinite;
+}
+
+@keyframes pulse-subtle {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+/* Focus states for accessibility */
+select:focus,
+button:focus {
+  outline: 2px solid #6366f1;
+  outline-offset: 2px;
+}
+
+.action-btn:focus {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+/* Modal Styles */
+#addPropertyOwnerModal {
+  animation: fadeInModal 0.3s ease-out;
+}
+
+@keyframes fadeInModal {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.modal-content {
+  animation: slideUpModal 0.3s ease-out;
+}
+
+@keyframes slideUpModal {
+  from {
+    transform: translateY(20px) scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+/* Modal Input Focus Effects */
+#addPropertyOwnerModal input:focus,
+#addPropertyOwnerModal select:focus {
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
+}
+
+/* Profile Upload Hover */
+#addPropertyOwnerModal .group:hover .bg-gradient-to-br {
+  transform: scale(1.05);
+  transition: transform 0.3s ease;
+}
+
+/* File Upload Area Animation */
+#idUploadArea {
+  transition: all 0.3s ease;
+}
+
+#idUploadArea:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(249, 115, 22, 0.2);
+}
+
+/* Modal Header Sticky Shadow */
+#addPropertyOwnerModal .sticky {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+/* Save Button Pulse Animation */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
+  }
+  50% {
+    box-shadow: 0 4px 20px rgba(249, 115, 22, 0.5);
+  }
+}
+
+#saveBtn:hover {
+  animation: pulse-glow 2s infinite;
+}
+
+/* Password Toggle Button */
+#togglePassword:hover,
+#toggleConfirmPassword:hover {
+  transform: scale(1.1);
+  transition: transform 0.2s ease;
+}
+
+/* Custom Scrollbar for Modal */
+.modal-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.modal-content::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.modal-content::-webkit-scrollbar-thumb {
+  background: #fb923c;
+  border-radius: 10px;
+}
+
+.modal-content::-webkit-scrollbar-thumb:hover {
+  background: #f97316;
+}
+
+/* View Modal Scrollbar */
+.view-modal-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.view-modal-content::-webkit-scrollbar-track {
+  background: #f9fafb;
+  border-radius: 10px;
+}
+
+.view-modal-content::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #6366f1, #4f46e5);
+  border-radius: 10px;
+}
+
+.view-modal-content::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #4f46e5, #4338ca);
+}
+
+/* Firefox Scrollbar */
+.modal-content,
+.view-modal-content {
+  scrollbar-width: thin;
+  scrollbar-color: #fb923c #f1f1f1;
+}
+
+.view-modal-content {
+  scrollbar-color: #6366f1 #f9fafb;
+}
+
+/* Form Section Headers */
+#addPropertyOwnerModal h3 {
+  position: relative;
+  padding-bottom: 8px;
+}
+
+#addPropertyOwnerModal h3::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 40px;
+  height: 3px;
+  background: linear-gradient(90deg, #f97316, #fb923c);
+  border-radius: 2px;
+}
+
+/* Input Animation */
+#addPropertyOwnerModal input,
+#addPropertyOwnerModal select {
+  transition: all 0.2s ease;
+}
+
+#addPropertyOwnerModal input:hover,
+#addPropertyOwnerModal select:hover {
+  border-color: #fb923c;
+}
+
+/* Modal Backdrop Blur Animation */
+#addPropertyOwnerModal.hidden {
+  pointer-events: none;
+}
+
+/* Close Button Hover Effect */
+#closeModalBtn:hover {
+  transform: rotate(90deg);
+  transition: transform 0.3s ease;
+}
+
+/* View Modal Styles */
+.view-modal-content {
+  animation: slideUpModal 0.3s ease-out;
+}
+
+#viewPropertyOwnerModal .sticky {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Portfolio Image Hover */
+#viewPropertyOwnerModal .aspect-video:hover {
+  transform: translateY(-4px);
+  transition: all 0.3s ease;
+}
+
+/* Document Item Hover */
+#viewPropertyOwnerModal .space-y-4 > div:hover {
+  transform: translateX(4px);
+  transition: all 0.3s ease;
+}
+
+/* Stats Card Animation */
+@keyframes statPulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+#viewPropertyOwnerModal .grid > div:hover {
+  animation: statPulse 0.6s ease;
+}
+
+/* Back Button Hover */
+#backToListBtn:hover {
+  transform: translateX(-4px);
+  transition: transform 0.3s ease;
+}
+
+/* Send Message Button Pulse */
+@keyframes messagePulse {
+  0%, 100% {
+    box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
+  }
+  50% {
+    box-shadow: 0 6px 20px rgba(249, 115, 22, 0.5);
+  }
+}
+
+#viewPropertyOwnerModal button:has(.fi-rr-comment-alt):hover {
+  animation: messagePulse 1.5s infinite;
+}
+
+/* Contact Info Card Hover Effect */
+#viewPropertyOwnerModal .bg-gray-50:hover {
+  background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+}
+
+/* Document Download Button */
+#viewPropertyOwnerModal .fi-rr-download:hover {
+  transform: translateY(2px);
+  transition: transform 0.2s ease;
+}

@@ -1,0 +1,484 @@
+/* Admin Login Page Styles */
+
+/* ========================================
+   MAIN CONTAINER - EASILY CUSTOMIZABLE
+   ======================================== */
+
+/* Main login container sizing */
+.login-main-container {
+    max-width: 1250px;           /* 1152px - adjust overall container width */
+    width: 100%;                /* Full width up to max-width */
+    margin: 0 auto;             /* Center horizontally */
+}
+
+/* Inner container (the card) */
+.login-inner-container {
+    min-height: 600px;          /* Minimum height - adjust as needed */
+    max-height: 90vh;           /* Maximum height relative to viewport */
+}
+
+/* ========================================
+   LEFT SIDE BRANDING - EASILY CUSTOMIZABLE
+   ======================================== */
+
+/* Left side background color */
+.left-branding {
+    background-color: #F9F3E7; /* Change this color */
+}
+
+/* Branding container spacing */
+.branding-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    max-width: 100%;
+    width: auto;
+}
+
+/* Logo image sizing */
+.logo-image {
+    width: 300px;        /* adjust width */
+    height: 300px;       /* adjust height */
+    max-width: 100%;     /* Prevents overflow */
+    max-height: 100%;    /* Prevents overflow */
+    object-fit: contain;
+    margin-top: -90px; /* Keeps aspect ratio */
+}
+
+/* Legatura name image sizing */
+.name-image {
+    width: 180px;        /* 256px - adjust width */
+    height: auto;        /* Auto height maintains aspect ratio */
+    max-width: 100%;     /* Prevents overflow */
+    object-fit: contain;
+    margin-top: -28px; /* Keeps aspect ratio */
+}
+
+/* Tagline text styling */
+.tagline-text {
+    margin-top: 1.5rem;           /* Space above tagline - adjust as needed */
+    font-size: 16px;              /* 16px - adjust text size */
+    line-height: 1.6;             /* Line spacing */
+    color: #374151;               /* Gray-700 - change text color */
+    text-align: center;           /* Center alignment */
+    max-width: 90%;               /* Maximum width to prevent stretching */
+    font-weight: 400;             /* Regular weight - change to 500, 600, or 700 for bolder */
+    padding: 0 1rem;              /* Horizontal padding */
+}
+
+/* Signup button styling - matches left side design */
+.signup-button {
+    margin-top: 2rem;                    /* Space above button */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;                         /* Space between text and icon */
+    padding: 0.875rem 2rem;              /* Button padding */
+    background-color: #022644;           /* Dark blue background - matches your theme */
+    color: #ffffff;                      /* White text */
+    font-size: 0.95rem;                  /* Button text size */
+    font-weight: 600;                    /* Semi-bold */
+    border-radius: 0.5rem;               /* Rounded corners */
+    text-decoration: none;               /* Remove underline */
+    transition: all 0.3s ease;           /* Smooth transitions */
+    box-shadow: 0 4px 6px rgba(2, 38, 68, 0.2); /* Subtle shadow */
+}
+
+.signup-button:hover {
+    background-color: #033457;           /* Slightly lighter on hover */
+    transform: translateY(-2px);         /* Lift effect on hover */
+    box-shadow: 0 6px 12px rgba(2, 38, 68, 0.3); /* Deeper shadow on hover */
+}
+
+.signup-button:active {
+    transform: translateY(0);            /* Press effect */
+}
+
+/* ========================================
+   RIGHT SIDE LOGIN FORM - EASILY CUSTOMIZABLE
+   ======================================== */
+
+/* Login form container background */
+.login-form-container {
+    background-color: #ffffff;           /* White background - change as needed */
+    padding: 2rem 3rem;                  /* Container padding */
+}
+
+/* Form wrapper max width */
+.login-form-wrapper {
+    max-width: 28rem;                    /* 448px - adjust form width */
+    margin: 0 auto;
+    margin-top: 25px;
+}
+
+/* Form header section */
+.form-header {
+    margin-bottom: 2rem;                 /* Space below header */
+}
+
+.form-title {
+    font-size: 1.875rem;                 /* 30px - adjust title size */
+    font-weight: 700;                    /* Bold */
+    color: #1f2937;                      /* Gray-800 - change color */
+    margin-bottom: 0.5rem;
+}
+
+.form-subtitle {
+    font-size: 1rem;                     /* 16px - adjust subtitle size */
+    color: #6b7280;                      /* Gray-500 - change color */
+}
+
+/* Form labels */
+.form-label {
+    font-size: 0.875rem;                 /* 14px - adjust label size */
+    font-weight: 600;                    /* Semi-bold */
+    color: #374151;                      /* Gray-700 - change color */
+}
+
+/* Form inputs */
+.form-input {
+    padding: 0.75rem 1rem;               /* Input padding - adjust size */
+    font-size: 1rem;                     /* 16px - input text size */
+    border-radius: 0.5rem;               /* Rounded corners */
+    border: 1px solid #d1d5db;           /* Gray-300 border */
+    transition: all 0.2s ease;
+}
+
+.form-input:focus {
+    border-color: #3b82f6;               /* Blue-500 - change focus border */
+    ring-color: #93c5fd;                 /* Blue-200 - change focus ring */
+}
+
+/* Form options (remember me & forgot password) */
+.form-options {
+    margin-top: 1rem;                    /* Space above */
+    margin-bottom: 1rem;                 /* Space below */
+}
+
+.forgot-link {
+    color: #3b82f6;                      /* Blue-600 - change color */
+    font-size: 0.875rem;                 /* 14px */
+}
+
+.forgot-link:hover {
+    color: #2563eb;                      /* Blue-700 on hover */
+}
+
+/* Password toggle eye icon button */
+.password-toggle-button {
+    position: absolute;
+    right: 1rem;                         /* 16px - distance from right edge */
+    top: 5px;                            /* Center vertically */
+    transform: translateY(-50%);         /* Precise vertical centering */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;                       /* 40px - clickable area width */
+    height: 2.5rem;                      /* 40px - clickable area height */
+    color: #6b7280;                      /* Gray-500 - icon color */
+    cursor: pointer;
+    transition: color 0.2s ease;
+
+}
+
+.password-toggle-button:hover {
+    color: #374151;                      /* Gray-700 - darker on hover */
+}
+
+.password-toggle-button i {
+    font-size: 1.125rem;                 /* 18px - icon size, adjust as needed */
+}
+
+/* Login submit button - matches signup button style */
+.login-submit-button {
+    background-color: #022644;           /* Dark blue - matches signup button */
+    color: #ffffff;                      /* White text */
+    padding: 0.75rem 1.5rem;             /* Button padding */
+    font-size: 1rem;                     /* Button text size */
+    font-weight: 600;                    /* Semi-bold */
+    border-radius: 0.5rem;               /* Rounded corners */
+    border: none;                        /* No border */
+    transition: all 0.3s ease;           /* Smooth transitions */
+    cursor: pointer;
+}
+
+.login-submit-button:hover {
+    background-color: #033457;           /* Slightly lighter on hover - matches signup */
+    transform: translateY(-2px);         /* Lift effect */
+    box-shadow: 0 8px 15px rgba(2, 38, 68, 0.3); /* Enhanced shadow on hover */
+}
+
+.login-submit-button:active {
+    transform: translateY(0);            /* Press effect */
+}
+
+/* Responsive adjustments for smaller screens */
+@media (max-width: 768px) {
+    .login-main-container {
+        max-width: 95%;         /* Wider on mobile for better use of space */
+    }
+    
+    .login-inner-container {
+        min-height: auto;       /* Remove minimum height on mobile */
+    }
+    
+    .login-form-container {
+        padding: 1.5rem;        /* Less padding on mobile */
+    }
+    
+    .form-title {
+        font-size: 1.5rem;      /* 24px - smaller title on mobile */
+    }
+    
+    .form-subtitle {
+        font-size: 0.875rem;    /* 14px - smaller subtitle on mobile */
+    }
+    
+    .login-submit-button {
+        padding: 0.75rem 1.25rem; /* Adjust button padding on mobile */
+        font-size: 0.9375rem;     /* Slightly smaller text on mobile */
+    }
+    
+    .logo-image {
+        width: 8rem;     /* 128px - smaller on mobile */
+        height: 8rem;    /* 128px - smaller on mobile */
+    }
+    
+    .name-image {
+        width: 12rem;    /* 192px - smaller on mobile */
+    }
+    
+    .tagline-text {
+        font-size: 0.875rem;  /* 14px - smaller text on mobile */
+        margin-top: 1rem;      /* Less space on mobile */
+    }
+    
+    .signup-button {
+        margin-top: 1.5rem;    /* Less space on mobile */
+        padding: 0.75rem 1.5rem; /* Smaller padding on mobile */
+        font-size: 0.875rem;   /* Smaller text on mobile */
+    }
+    
+    .password-toggle-button {
+        right: 0.75rem;         /* 12px - closer on mobile */
+        width: 2.25rem;         /* 36px - slightly smaller on mobile */
+        height: 2.25rem;        /* 36px - slightly smaller on mobile */
+    }
+    
+    .password-toggle-button i {
+        font-size: 1rem;        /* 16px - smaller icon on mobile */
+    }
+}
+
+/* ========================================
+   ANIMATION EFFECTS
+   ======================================== */
+
+@keyframes blob {
+    0%, 100% {
+        transform: translate(0, 0) scale(1);
+    }
+    25% {
+        transform: translate(20px, -50px) scale(1.1);
+    }
+    50% {
+        transform: translate(-20px, 20px) scale(0.9);
+    }
+    75% {
+        transform: translate(50px, 50px) scale(1.05);
+    }
+}
+
+.animate-blob {
+    animation: blob 20s infinite;
+}
+
+.animation-delay-2000 {
+    animation-delay: 2s;
+}
+
+.animation-delay-4000 {
+    animation-delay: 4s;
+}
+
+/* Form Input Focus Effects */
+input:focus {
+    transform: translateY(-2px);
+}
+
+/* Button Hover Effects */
+button[type="submit"]:hover,
+button[type="button"]:hover {
+    box-shadow: 0 10px 25px rgba(59, 130, 246, 0.3);
+}
+
+/* Smooth transitions for all interactive elements */
+input,
+button,
+a {
+    transition: all 0.2s ease-in-out;
+}
+
+/* Password visibility toggle */
+#togglePassword:active {
+    transform: scale(0.95);
+}
+
+/* Alert animations */
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.alert {
+    animation: slideDown 0.3s ease-out;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.alert-success {
+    background-color: #d1fae5;
+    color: #065f46;
+    border-left: 4px solid #10b981;
+}
+
+.alert-error {
+    background-color: #fee2e2;
+    color: #991b1b;
+    border-left: 4px solid #ef4444;
+}
+
+.alert-info {
+    background-color: #dbeafe;
+    color: #1e40af;
+    border-left: 4px solid #3b82f6;
+}
+
+/* Loading state */
+.loading {
+    position: relative;
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 3px solid transparent;
+    border-top-color: #ffffff;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .bg-gradient-to-br {
+        background: linear-gradient(to bottom right, #0f172a, #1e3a8a, #0f172a);
+    }
+}
+
+/* Glassmorphism effect enhancement */
+.backdrop-blur-xl {
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+}
+
+/* Input validation states */
+input.error {
+    border-color: #ef4444;
+}
+
+input.success {
+    border-color: #10b981;
+}
+
+/* Hover effect for links */
+a {
+    position: relative;
+}
+
+a::after {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 2px;
+    bottom: -2px;
+    left: 0;
+    background-color: currentColor;
+    transition: width 0.3s ease-in-out;
+}
+
+a:hover::after {
+    width: 100%;
+}
+
+/* Checkbox custom styling */
+input[type="checkbox"]:checked {
+    background-color: #2563eb;
+    border-color: #2563eb;
+}
+
+/* Form field animations */
+.form-group {
+    position: relative;
+}
+
+.form-group input:focus + label,
+.form-group input:not(:placeholder-shown) + label {
+    transform: translateY(-1.5rem) scale(0.85);
+    color: #2563eb;
+}
+
+/* Smooth page transitions */
+body {
+    animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+/* Error message styling */
+.error-message {
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+    display: block;
+}
+
+.error-message:not(.hidden) {
+    animation: slideDown 0.3s ease-out;
+}
+
+/* Focus ring for accessibility */
+*:focus-visible {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+}
+
+/* Disable focus ring for mouse users */
+*:focus:not(:focus-visible) {
+    outline: none;
+}
