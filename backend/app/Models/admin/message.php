@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class messageClass extends Model
+class Message extends Model
 {
     protected $primaryKey = 'message_id';
     public $incrementing = true;

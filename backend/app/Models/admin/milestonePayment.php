@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class milestonePaymentClass extends Model
+class MilestonePayment extends Model
 {
     protected $primaryKey = 'payment_id';
     public $incrementing = true;
@@ -30,6 +30,6 @@ class milestonePaymentClass extends Model
 
     public function milestone(): BelongsTo
     {
-        return $this->belongsTo(milestoneClass::class, 'milestone_id', 'milestone_id');
+        return $this->belongsTo(Milestone::class, 'milestone_id', 'milestone_id');
     }
 }

@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class projectClass extends Model
+class Project extends Model
 {
     protected $primaryKey = 'project_id';
     public $incrementing = true;
@@ -36,16 +36,16 @@ class projectClass extends Model
 
     public function relationship(): BelongsTo
     {
-        return $this->belongsTo(projectRelationshipClass::class, 'relationship_id', 'rel_id');
+        return $this->belongsTo(ProjectRelationship::class, 'relationship_id', 'rel_id');
     }
 
     public function bids(): HasMany
     {
-        return $this->hasMany(bidClass::class, 'project_id', 'project_id');
+        return $this->hasMany(Bid::class, 'project_id', 'project_id');
     }
 
     public function milestones(): HasMany
     {
-        return $this->hasMany(milestoneClass::class, 'project_id', 'project_id');
+        return $this->hasMany(Milestone::class, 'project_id', 'project_id');
     }
 }

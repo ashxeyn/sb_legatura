@@ -4,7 +4,7 @@ namespace App\Http\Controllers\admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\admin\storePaymentRequest;
-use App\Models\admin\milestonePaymentClass;
+use App\Models\admin\milestonePayment;
 use Illuminate\Http\Request;
 
 class paymentController extends Controller
@@ -12,7 +12,7 @@ class paymentController extends Controller
     public function index(Request $request)
     {
         $perPage = (int)$request->input('per_page',15);
-        $q = milestonePaymentClass::query();
+        $q = milestonePayment::query();
         if ($status = $request->input('status')) {
             $q->where('payment_status',$status);
         }
@@ -21,20 +21,20 @@ class paymentController extends Controller
 
     public function show($id)
     {
-        $p = milestonePaymentClass::find($id);
+        $p = milestonePayment::find($id);
         if (!$p) return response()->json(['error'=>'Not found'],404);
         return response()->json($p);
     }
 
     public function store(storePaymentRequest $request)
     {
-        $p = milestonePaymentClass::create($request->validated());
+        $p = milestonePayment::create($request->validated());
         return response()->json($p,201);
     }
 
     public function update(Request $request, $id)
     {
-        $p = milestonePaymentClass::find($id);
+        $p = milestonePayment::find($id);
         if (!$p) return response()->json(['error'=>'Not found'],404);
         $p->update($request->only(['payment_status','amount','transaction_date']));
         return response()->json($p);
@@ -42,7 +42,7 @@ class paymentController extends Controller
 
     public function destroy($id)
     {
-        $p = milestonePaymentClass::find($id);
+        $p = milestonePayment::find($id);
         if (!$p) return response()->json(['error'=>'Not found'],404);
         $p->delete();
         return response()->json(['deleted'=>true]);
