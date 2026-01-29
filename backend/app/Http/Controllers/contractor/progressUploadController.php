@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\contractor;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Contractor\progressUploadRequest;
+use App\Http\Requests\contractor\progressUploadRequest;
 use App\Models\contractor\progressUploadClass;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Session;

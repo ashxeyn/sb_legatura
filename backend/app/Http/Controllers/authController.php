@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Http\Requests\Accounts\accountRequest;
+use App\Http\Requests\accounts\accountRequest;
 use App\Services\authService;
 use App\Services\psgcApiService;
 use App\Models\accounts\accountClass;

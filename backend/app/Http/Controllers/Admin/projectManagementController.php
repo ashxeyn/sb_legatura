@@ -1,5 +1,5 @@
 <?php
-namespace App\Http\Controllers\admin;
+namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
@@ -14,6 +14,27 @@ use App\Mail\disputeFiledRespondentRequest;
 
 class projectManagementController extends Controller
 {
+    public function listOfProjects(Request $request)
+    {
+        $search = $request->query('search');
+        $dateFrom = $request->query('date_from');
+        $dateTo = $request->query('date_to');
+        $verification = $request->query('verification');
+        $progress = $request->query('progress');
+
+        $projects = projectClass::getAllProjects($search, $dateFrom, $dateTo, $verification, $progress, 15);
+
+        if ($request->ajax()) {
+            return response()->json([
+                'html' => view('admin.projectManagement.partials.projectTable', ['projects' => $projects])->render(),
+            ]);
+        }
+
+        return view('admin.projectManagement.listOfProjects', [
+            'projects' => $projects
+        ]);
+    }
+
     public function index()
     {
         $disputes = disputeClass::paginateAll(20);
@@ -231,5 +252,310 @@ class projectManagementController extends Controller
 
         return response()->json(['success' => true]);
     }
-}
 
+    /**
+     * Fetch complete project details for view modals
+     */
+    public function getProjectDetails(Request $request, $id)
+    {
+        try {
+            $projectModel = new projectClass();
+            $projectData = $projectModel->fetchProjectFullDetails($id);
+
+            if (!$projectData) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Project not found'
+                ], 404);
+            }
+
+            return response()->json([
+                'success' => true,
+                'status' => $projectData['projectStatus'],
+                'data' => $projectData
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error fetching project details: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Server error: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get completed project details with rendered HTML
+     */
+    public function getCompletedDetails($id)
+    {
+        try {
+            $projectModel = new projectClass();
+            $project = $projectModel->fetchCompletedProjectDetails($id);
+
+            if (!$project) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Project not found'
+                ], 404);
+            }
+
+            $html = view('admin.projectManagement.partials.completedModalContent', compact('project'))->render();
+
+            return response()->json([
+                'success' => true,
+                'html' => $html
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error fetching completed project details: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Server error: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get completion details modal with reviews and feedback
+     */
+    public function getCompletionDetails($id)
+    {
+        try {
+            $projectModel = new projectClass();
+            $completionData = $projectModel->getCompletionDetails($id);
+
+            if (!$completionData) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Project not found'
+                ], 404);
+            }
+
+            $html = view('admin.projectManagement.partials.completionDetailsModal', compact('completionData'))->render();
+
+            return response()->json([
+                'success' => true,
+                'html' => $html
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error fetching completion details: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Server error: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get ongoing project details with rendered HTML
+     */
+    public function getOngoingDetails($id)
+    {
+        try {
+            $projectModel = new projectClass();
+            $project = $projectModel->fetchOngoingProjectDetails($id);
+
+            if (!$project) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Project not found'
+                ], 404);
+            }
+
+            $html = view('admin.projectManagement.partials.ongoingProjectModal', compact('project'))->render();
+
+            return response()->json([
+                'success' => true,
+                'html' => $html
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error fetching ongoing project details: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Server error: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getOpenDetails($id)
+    {
+        try {
+            $projectModel = new projectClass();
+            $project = $projectModel->fetchOpenProjectDetails($id);
+
+            if (!$project) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Project not found'
+                ], 404);
+            }
+
+            $html = view('admin.projectManagement.partials.biddingDetailsModal', compact('project'))->render();
+
+            return response()->json([
+                'success' => true,
+                'html' => $html
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error fetching open project details: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Server error: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    public function getBidDetails($bidId)
+    {
+        try {
+            $projectModel = new \App\Models\admin\projectClass();
+            $bid = $projectModel->fetchSpecificBidDetails($bidId);
+
+            if (!$bid) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Bid not found'
+                ], 404);
+            }
+
+            $html = view('admin.projectManagement.partials.bidStatusModal', compact('bid'))->render();
+
+            return response()->json([
+                'success' => true,
+                'html' => $html
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error fetching bid details: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load bid details: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getAcceptBidSummary($bidId)
+    {
+        try {
+            $projectModel = new \App\Models\admin\projectClass();
+            $bid = $projectModel->fetchAcceptBidSummary($bidId);
+
+            if (!$bid) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Bid not found'
+                ], 404);
+            }
+
+            $html = view('admin.projectManagement.partials.acceptBidModal', compact('bid'))->render();
+
+            return response()->json([
+                'success' => true,
+                'html' => $html
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error fetching accept bid summary: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load bid summary: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function acceptBid(Request $request, $bidId)
+    {
+        try {
+            $projectModel = new \App\Models\admin\projectClass();
+            $result = $projectModel->acceptBid($bidId);
+
+            return response()->json($result);
+
+        } catch (\Exception $e) {
+            \Log::error('Error accepting bid: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to accept bid: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getRejectBidSummary($bidId)
+    {
+        try {
+            $projectModel = new \App\Models\admin\projectClass();
+            $bid = $projectModel->fetchRejectBidSummary($bidId);
+
+            if (!$bid) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Bid not found'
+                ], 404);
+            }
+
+            $html = view('admin.projectManagement.partials.rejectBidModal', compact('bid'))->render();
+
+            return response()->json([
+                'success' => true,
+                'html' => $html
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error fetching reject bid summary: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load bid summary: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function rejectBid(Request $request, $bidId)
+    {
+        try {
+            $reason = $request->input('reason');
+            $projectModel = new \App\Models\admin\projectClass();
+            $result = $projectModel->rejectBid($bidId, $reason);
+
+            return response()->json($result);
+
+        } catch (\Exception $e) {
+            \Log::error('Error rejecting bid: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to reject bid: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getTerminatedDetails($id)
+    {
+        try {
+            $projectModel = new \App\Models\admin\projectClass();
+            $project = $projectModel->fetchTerminatedProjectDetails($id);
+
+            if (!$project) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Project not found'
+                ], 404);
+            }
+
+            $html = view('admin.projectManagement.partials.cancelledProjectModal', compact('project'))->render();
+
+            return response()->json([
+                'success' => true,
+                'html' => $html
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error fetching terminated project details: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load project details: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+}

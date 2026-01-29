@@ -10,7 +10,7 @@ use App\Models\admin\userVerificationClass;
 use App\Models\accounts\accountClass;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use App\Http\Requests\Admin\rejectVerificationRequest;
+use App\Http\Requests\admin\rejectVerificationRequest;
 use App\Http\Requests\admin\propertyOwnerRequest;
 use App\Http\Requests\admin\contractorRequest;
 use App\Http\Requests\admin\contractorTeamMemberRequest;

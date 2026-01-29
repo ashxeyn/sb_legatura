@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Both;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Both\disputeRequest;
+use App\Http\Requests\both\disputeRequest;
 use App\Models\Both\disputeClass;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;

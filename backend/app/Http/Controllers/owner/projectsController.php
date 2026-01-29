@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Owner;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Owner\projectsRequest;
+use App\Http\Requests\owner\projectsRequest;
 use App\Models\Owner\projectsClass;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Session;
