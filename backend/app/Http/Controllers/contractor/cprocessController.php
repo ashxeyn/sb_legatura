@@ -19,6 +19,47 @@ class cprocessController extends Controller
     {
         $this->contractorClass = new contractorClass();
     }
+
+    public function showHomepage(Request $request)
+    {
+        return view('contractor.contractor_Homepage');
+    }
+
+    public function showMessages(Request $request)
+    {
+        return view('contractor.contractor_Messages');
+    }
+
+    public function showProfile(Request $request)
+    {
+        return view('contractor.contractor_Profile');
+    }
+
+    public function showDashboard(Request $request)
+    {
+        return view('contractor.contractor_Dashboard');
+    }
+
+    public function showMyProjects(Request $request)
+    {
+        return view('contractor.contractor_Myprojects');
+    }
+
+    public function showMyBids(Request $request)
+    {
+        return view('contractor.contractor_Mybids');
+    }
+
+    public function showMilestoneReport(Request $request)
+    {
+        return view('contractor.contractor_MilestoneReport');
+    }
+
+    public function showMilestoneProgressReport(Request $request)
+    {
+        return view('contractor.contractor_MilestoneprogressReport');
+    }
+
     private function checkContractorAccess(Request $request)
     {
         if (!Session::has('user')) {

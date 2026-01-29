@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\App;
 use Laravel\Sanctum\PersonalAccessToken;
 
 class projectsController extends Controller
@@ -70,6 +71,258 @@ class projectsController extends Controller
         $contractorTypes = $this->projectsClass->getContractorTypes();
 
         return view('both.dashboard', compact('feedItems', 'isOwner', 'contractorTypes', 'currentRole', 'userType', 'feedType', 'contractorProjectsForMilestone'));
+    }
+
+    public function showHomepage(Request $request)
+    {
+        // Get contractor types for modal dropdown
+        $contractorTypes = $this->projectsClass->getContractorTypes();
+        return view('owner.propertyOwner_Homepage', compact('contractorTypes'));
+    }
+
+    public function showOwnerDashboard(Request $request)
+    {
+        // Allow access without login in local/testing environments
+        $isLocalOrTesting = App::environment(['local', 'testing', 'development']);
+        
+        $user = Session::get('user');
+        
+        // Only require login in production/staging environments
+        if (!$isLocalOrTesting && !$user) {
+            return redirect('/accounts/login');
+        }
+
+        // If in testing mode and no user, allow access anyway
+        if ($isLocalOrTesting && !$user) {
+            // Allow access without authentication for testing
+            return view('owner.propertyOwner_Dashboard');
+        }
+
+        // Normal authentication flow for logged-in users
+        $currentRole = session('current_role', $user->user_type);
+        $userType = $user->user_type;
+
+        // Only owners can access this dashboard (skip in testing if no user)
+        if ($user) {
+            $isOwner = ($userType === 'property_owner' || $userType === 'both') &&
+                       ($currentRole === 'owner' || $currentRole === 'property_owner');
+
+            if (!$isOwner && !$isLocalOrTesting) {
+                return redirect('/dashboard')->with('error', 'Only property owners can access this dashboard.');
+            }
+        }
+
+        return view('owner.propertyOwner_Dashboard');
+    }
+
+    public function showAllProjects(Request $request)
+    {
+        // Allow access without login in local/testing environments
+        $isLocalOrTesting = App::environment(['local', 'testing', 'development']);
+        
+        $user = Session::get('user');
+        
+        // Only require login in production/staging environments
+        if (!$isLocalOrTesting && !$user) {
+            return redirect('/accounts/login');
+        }
+
+        // If in testing mode and no user, allow access anyway
+        if ($isLocalOrTesting && !$user) {
+            // Allow access without authentication for testing
+            return view('owner.propertyOwner_Allprojects');
+        }
+
+        // Normal authentication flow for logged-in users
+        $currentRole = session('current_role', $user->user_type);
+        $userType = $user->user_type;
+
+        // Only owners can access this page (skip in testing if no user)
+        if ($user) {
+            $isOwner = ($userType === 'property_owner' || $userType === 'both') &&
+                       ($currentRole === 'owner' || $currentRole === 'property_owner');
+
+            if (!$isOwner && !$isLocalOrTesting) {
+                return redirect('/dashboard')->with('error', 'Only property owners can access this page.');
+            }
+        }
+
+        return view('owner.propertyOwner_Allprojects');
+    }
+
+    public function showProfile(Request $request)
+    {
+        // Allow access without login in local/testing environments
+        $isLocalOrTesting = App::environment(['local', 'testing', 'development']);
+        
+        $user = Session::get('user');
+        
+        // Only require login in production/staging environments
+        if (!$isLocalOrTesting && !$user) {
+            return redirect('/accounts/login');
+        }
+
+        // If in testing mode and no user, allow access anyway
+        if ($isLocalOrTesting && !$user) {
+            // Allow access without authentication for testing
+            return view('owner.propertyOwner_Profile');
+        }
+
+        // Normal authentication flow for logged-in users
+        $currentRole = session('current_role', $user->user_type);
+        $userType = $user->user_type;
+
+        // Only owners can access this page (skip in testing if no user)
+        if ($user) {
+            $isOwner = ($userType === 'property_owner' || $userType === 'both') &&
+                       ($currentRole === 'owner' || $currentRole === 'property_owner');
+
+            if (!$isOwner && !$isLocalOrTesting) {
+                return redirect('/dashboard')->with('error', 'Only property owners can access this page.');
+            }
+        }
+
+        return view('owner.propertyOwner_Profile');
+    }
+
+    public function showMilestoneReport(Request $request)
+    {
+        // Allow access without login in local/testing environments
+        $isLocalOrTesting = App::environment(['local', 'testing', 'development']);
+        
+        $user = Session::get('user');
+        
+        // Only require login in production/staging environments
+        if (!$isLocalOrTesting && !$user) {
+            return redirect('/accounts/login');
+        }
+
+        // If in testing mode and no user, allow access anyway
+        if ($isLocalOrTesting && !$user) {
+            // Allow access without authentication for testing
+            return view('owner.propertyOwner_MilestoneReport');
+        }
+
+        // Normal authentication flow for logged-in users
+        $currentRole = session('current_role', $user->user_type);
+        $userType = $user->user_type;
+
+        // Only owners can access this page (skip in testing if no user)
+        if ($user) {
+            $isOwner = ($userType === 'property_owner' || $userType === 'both') &&
+                       ($currentRole === 'owner' || $currentRole === 'property_owner');
+
+            if (!$isOwner && !$isLocalOrTesting) {
+                return redirect('/dashboard')->with('error', 'Only property owners can access this page.');
+            }
+        }
+
+        return view('owner.propertyOwner_MilestoneReport');
+    }
+
+    public function showMilestoneProgressReport(Request $request)
+    {
+        // Allow access without login in local/testing environments
+        $isLocalOrTesting = App::environment(['local', 'testing', 'development']);
+        
+        $user = Session::get('user');
+        
+        // Only require login in production/staging environments
+        if (!$isLocalOrTesting && !$user) {
+            return redirect('/accounts/login');
+        }
+
+        // If in testing mode and no user, allow access anyway
+        if ($isLocalOrTesting && !$user) {
+            // Allow access without authentication for testing
+            return view('owner.propertyOwner_MilestoneprogressReport');
+        }
+
+        // Normal authentication flow for logged-in users
+        $currentRole = session('current_role', $user->user_type);
+        $userType = $user->user_type;
+
+        // Only owners can access this page (skip in testing if no user)
+        if ($user) {
+            $isOwner = ($userType === 'property_owner' || $userType === 'both') &&
+                       ($currentRole === 'owner' || $currentRole === 'property_owner');
+
+            if (!$isOwner && !$isLocalOrTesting) {
+                return redirect('/dashboard')->with('error', 'Only property owners can access this page.');
+            }
+        }
+
+        return view('owner.propertyOwner_MilestoneprogressReport');
+    }
+
+    public function showFinishedProjects(Request $request)
+    {
+        // Allow access without login in local/testing environments
+        $isLocalOrTesting = App::environment(['local', 'testing', 'development']);
+        
+        $user = Session::get('user');
+        
+        // Only require login in production/staging environments
+        if (!$isLocalOrTesting && !$user) {
+            return redirect('/accounts/login');
+        }
+
+        // If in testing mode and no user, allow access anyway
+        if ($isLocalOrTesting && !$user) {
+            // Allow access without authentication for testing
+            return view('owner.propertyOwner_Finishedprojects');
+        }
+
+        // Normal authentication flow for logged-in users
+        $currentRole = session('current_role', $user->user_type);
+        $userType = $user->user_type;
+
+        // Only owners can access this page (skip in testing if no user)
+        if ($user) {
+            $isOwner = ($userType === 'property_owner' || $userType === 'both') &&
+                       ($currentRole === 'owner' || $currentRole === 'property_owner');
+
+            if (!$isOwner && !$isLocalOrTesting) {
+                return redirect('/dashboard')->with('error', 'Only property owners can access this page.');
+            }
+        }
+
+        return view('owner.propertyOwner_Finishedprojects');
+    }
+
+    public function showMessages(Request $request)
+    {
+        // Allow access without login in local/testing environments
+        $isLocalOrTesting = App::environment(['local', 'testing', 'development']);
+        
+        $user = Session::get('user');
+        
+        // Only require login in production/staging environments
+        if (!$isLocalOrTesting && !$user) {
+            return redirect('/accounts/login');
+        }
+
+        // If in testing mode and no user, allow access anyway
+        if ($isLocalOrTesting && !$user) {
+            // Allow access without authentication for testing
+            return view('owner.propertyOwner_Messages');
+        }
+
+        // Normal authentication flow for logged-in users
+        $currentRole = session('current_role', $user->user_type);
+        $userType = $user->user_type;
+
+        // Only owners can access this page (skip in testing if no user)
+        if ($user) {
+            $isOwner = ($userType === 'property_owner' || $userType === 'both') &&
+                       ($currentRole === 'owner' || $currentRole === 'property_owner');
+
+            if (!$isOwner && !$isLocalOrTesting) {
+                return redirect('/dashboard')->with('error', 'Only property owners can access this page.');
+            }
+        }
+
+        return view('owner.propertyOwner_Messages');
     }
 
     public function showCreatePostPage(Request $request)
