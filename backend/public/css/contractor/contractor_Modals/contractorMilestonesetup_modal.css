@@ -1,0 +1,929 @@
+/* Milestone Setup Modal Styles */
+
+.milestone-setup-modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 9999;
+    animation: fadeIn 0.3s ease;
+}
+
+.milestone-setup-modal-overlay.active {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.milestone-setup-modal {
+    background: white;
+    border-radius: 1rem;
+    width: 100%;
+    max-width: 600px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: slideUp 0.3s ease;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+/* Modal Header */
+.milestone-modal-header {
+    background: linear-gradient(135deg, #EEA24B 0%, #E89A3C 100%);
+    color: white;
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.milestone-back-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    color: white;
+    font-size: 1.25rem;
+}
+
+.milestone-back-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.05);
+}
+
+.milestone-header-content {
+    flex: 1;
+}
+
+.milestone-modal-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0;
+    margin-bottom: 0.25rem;
+}
+
+.milestone-project-name {
+    font-size: 0.875rem;
+    opacity: 0.95;
+    margin: 0;
+}
+
+/* Step Indicators */
+.milestone-steps-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    background: white;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.step-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.step-circle {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: #e5e7eb;
+    color: #9ca3af;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1.125rem;
+    transition: all 0.3s ease;
+}
+
+.step-item.active .step-circle {
+    background: linear-gradient(135deg, #EEA24B 0%, #E89A3C 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(238, 162, 75, 0.4);
+}
+
+.step-item.completed .step-circle {
+    background: #10B981;
+    color: white;
+}
+
+.step-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #9ca3af;
+    transition: color 0.3s ease;
+}
+
+.step-item.active .step-label {
+    color: #EEA24B;
+}
+
+.step-item.completed .step-label {
+    color: #10B981;
+}
+
+.step-connector {
+    width: 80px;
+    height: 2px;
+    background: #e5e7eb;
+    margin: 0 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+/* Modal Body */
+.milestone-modal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 2rem;
+}
+
+.milestone-modal-body::-webkit-scrollbar {
+    width: 6px;
+}
+
+.milestone-modal-body::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.milestone-modal-body::-webkit-scrollbar-thumb {
+    background: #EEA24B;
+    border-radius: 3px;
+}
+
+/* Step Content */
+.milestone-step-content {
+    display: none;
+    animation: fadeIn 0.3s ease;
+}
+
+.milestone-step-content.active {
+    display: block;
+}
+
+.step-content-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin: 0;
+    margin-bottom: 0.5rem;
+}
+
+.step-content-description {
+    color: #6b7280;
+    margin: 0;
+    margin-bottom: 1.5rem;
+    line-height: 1.6;
+}
+
+/* Form Elements */
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 0.5rem;
+}
+
+.required {
+    color: #EF4444;
+}
+
+.form-input,
+.form-textarea {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-family: inherit;
+    transition: all 0.3s ease;
+}
+
+.form-input:focus,
+.form-textarea:focus {
+    outline: none;
+    border-color: #EEA24B;
+    box-shadow: 0 0 0 3px rgba(238, 162, 75, 0.1);
+}
+
+.form-input::placeholder,
+.form-textarea::placeholder {
+    color: #9ca3af;
+}
+
+.form-textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+.form-hint {
+    font-size: 0.75rem;
+    color: #6b7280;
+    margin-top: 0.5rem;
+    margin-bottom: 0;
+}
+
+/* Input with Icon */
+.input-with-icon {
+    position: relative;
+}
+
+.input-icon-left {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #EEA24B;
+    font-size: 1.125rem;
+    pointer-events: none;
+}
+
+.input-with-icon .form-input {
+    padding-left: 3rem;
+}
+
+.input-with-icon.date-field .form-input {
+    padding-left: 3rem;
+    padding-right: 3rem;
+}
+
+/* Date Input */
+.date-input {
+    cursor: pointer;
+    position: relative;
+    color-scheme: light;
+}
+
+/* Hide the default calendar picker indicator */
+.date-input::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    position: absolute;
+    right: 0.5rem;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    z-index: 3;
+}
+
+/* Show a styled calendar icon on the right */
+.input-with-icon.date-field {
+    position: relative;
+}
+
+/* Calendar icon on the right */
+.date-calendar-icon {
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #9ca3af;
+    font-size: 1rem;
+    cursor: pointer;
+    z-index: 2;
+    transition: color 0.2s ease;
+}
+
+.date-calendar-icon:hover {
+    color: #EEA24B;
+}
+
+/* When date input has value, show it properly */
+.date-input:valid {
+    color: #1f2937;
+}
+
+.date-input:focus {
+    outline: none;
+    border-color: #EEA24B;
+}
+
+/* Style the date input text */
+.date-input {
+    font-family: inherit;
+}
+
+/* For webkit browsers (Chrome, Safari, Edge) */
+.date-input::-webkit-datetime-edit {
+    padding: 0;
+}
+
+.date-input::-webkit-datetime-edit-fields-wrapper {
+    padding: 0;
+}
+
+.date-input::-webkit-datetime-edit-text {
+    padding: 0 0.2em;
+}
+
+/* Form Row */
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+/* Total Progress Display */
+.total-progress-display {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background-color: #f9fafb;
+    border-radius: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.total-progress-label {
+    font-weight: 600;
+    color: #374151;
+    font-size: 0.9375rem;
+}
+
+.total-progress-value {
+    font-weight: 700;
+    color: #EEA24B;
+    font-size: 1.125rem;
+}
+
+/* Milestone Row Fields */
+.milestone-row-fields {
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.form-group.flex-1 {
+    flex: 1;
+}
+
+/* Input with Prefix/Suffix */
+.input-with-prefix,
+.input-with-suffix {
+    position: relative;
+    flex: 1;
+}
+
+.input-prefix,
+.input-suffix {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #6b7280;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.input-prefix {
+    left: 1rem;
+}
+
+.input-suffix {
+    right: 1rem;
+}
+
+.input-with-prefix .form-input {
+    padding-left: 2.5rem;
+}
+
+.input-with-suffix .form-input {
+    padding-right: 2.5rem;
+}
+
+.input-group {
+    display: flex;
+    gap: 0.75rem;
+}
+
+/* Payment Mode Cards */
+.payment-mode-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.payment-mode-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 0.75rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.payment-mode-card input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.payment-mode-card:hover {
+    border-color: #EEA24B;
+    background: #fef3e7;
+}
+
+.payment-mode-card.active {
+    border-color: #EEA24B;
+    background: linear-gradient(135deg, #FEF3E7 0%, #FFF5E6 100%);
+    box-shadow: 0 2px 8px rgba(238, 162, 75, 0.2);
+}
+
+.payment-mode-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #f3f4f6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6b7280;
+    font-size: 1.25rem;
+    transition: all 0.3s ease;
+}
+
+.payment-mode-card.active .payment-mode-icon {
+    background: #EEA24B;
+    color: white;
+}
+
+.payment-mode-content {
+    flex: 1;
+}
+
+.payment-mode-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin: 0;
+    margin-bottom: 0.25rem;
+}
+
+.payment-mode-card.active .payment-mode-title {
+    color: #EEA24B;
+}
+
+.payment-mode-description {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin: 0;
+    line-height: 1.5;
+}
+
+/* Milestone Items */
+#milestonesContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.milestone-item {
+    border: 2px solid #e5e7eb;
+    border-radius: 0.75rem;
+    padding: 1.25rem;
+    background: white;
+    transition: all 0.3s ease;
+}
+
+.milestone-item:hover {
+    border-color: #EEA24B;
+    box-shadow: 0 2px 8px rgba(238, 162, 75, 0.1);
+}
+
+.milestone-item-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.milestone-item-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin: 0;
+}
+
+.milestone-number {
+    color: #EEA24B;
+}
+
+.milestone-remove-btn {
+    background: #fee2e2;
+    border: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #dc2626;
+    transition: all 0.3s ease;
+}
+
+.milestone-remove-btn:hover {
+    background: #fecaca;
+    transform: scale(1.1);
+}
+
+.add-milestone-btn {
+    width: 100%;
+    padding: 0.875rem;
+    margin-top: 1rem;
+    background: white;
+    border: 2px dashed #e5e7eb;
+    border-radius: 0.75rem;
+    color: #6b7280;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    transition: all 0.3s ease;
+}
+
+.add-milestone-btn:hover {
+    border-color: #EEA24B;
+    background: #fef3e7;
+    color: #EEA24B;
+    transform: translateY(-1px);
+}
+
+.add-milestone-btn i {
+    font-size: 1.125rem;
+}
+
+/* Modal Footer */
+.milestone-modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.5rem;
+    border-top: 1px solid #e5e7eb;
+    background: #f9fafb;
+    gap: 1rem;
+}
+
+.btn-secondary,
+.btn-primary {
+    flex: 1;
+    padding: 0.875rem 1.5rem;
+    border: none;
+    border-radius: 0.75rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    transition: all 0.3s ease;
+}
+
+.btn-secondary {
+    background: white;
+    color: #6b7280;
+    border: 2px solid #e5e7eb;
+}
+
+.btn-secondary:hover {
+    background: #f9fafb;
+    border-color: #d1d5db;
+}
+
+.btn-secondary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #EEA24B 0%, #E89A3C 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(238, 162, 75, 0.3);
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #E89A3C 0%, #D88A2C 100%);
+    box-shadow: 0 6px 16px rgba(238, 162, 75, 0.4);
+    transform: translateY(-1px);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Confirmation Modal */
+.milestone-confirmation-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.6);
+    z-index: 10000;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    animation: fadeIn 0.3s ease;
+}
+
+.milestone-confirmation-overlay.active {
+    display: flex;
+}
+
+.milestone-confirmation-modal {
+    background: white;
+    border-radius: 1rem;
+    width: 100%;
+    max-width: 500px;
+    overflow: hidden;
+    animation: slideUp 0.3s ease;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+}
+
+.confirmation-header {
+    text-align: center;
+    padding: 2rem 2rem 1.5rem;
+    background: linear-gradient(135deg, #FEF3E7 0%, #FFF5E6 100%);
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.confirmation-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1rem;
+    color: white;
+    font-size: 2rem;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.confirmation-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin: 0;
+    margin-bottom: 0.5rem;
+}
+
+.confirmation-subtitle {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin: 0;
+}
+
+.confirmation-body {
+    padding: 1.5rem 2rem;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.confirmation-body::-webkit-scrollbar {
+    width: 6px;
+}
+
+.confirmation-body::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.confirmation-body::-webkit-scrollbar-thumb {
+    background: #EEA24B;
+    border-radius: 3px;
+}
+
+.confirmation-section {
+    margin-bottom: 1.5rem;
+}
+
+.confirmation-section:last-child {
+    margin-bottom: 0;
+}
+
+.confirmation-section-title {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: #EEA24B;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 0;
+    margin-bottom: 0.75rem;
+}
+
+.confirmation-detail {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    background: #f9fafb;
+    border-radius: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.confirmation-detail:last-child {
+    margin-bottom: 0;
+}
+
+.confirmation-detail.highlight {
+    background: linear-gradient(135deg, #FEF3E7 0%, #FFF5E6 100%);
+    border: 1px solid #EEA24B;
+}
+
+.detail-label {
+    font-size: 0.875rem;
+    color: #6b7280;
+    font-weight: 600;
+}
+
+.detail-value {
+    font-size: 0.875rem;
+    color: #1f2937;
+    font-weight: 700;
+}
+
+.confirmation-detail.highlight .detail-value {
+    color: #EEA24B;
+}
+
+.confirmation-warning {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 1rem;
+    background: #fffbeb;
+    border: 1px solid #fbbf24;
+    border-radius: 0.5rem;
+    margin-top: 1.5rem;
+}
+
+.confirmation-warning i {
+    color: #f59e0b;
+    font-size: 1.25rem;
+    flex-shrink: 0;
+    margin-top: 0.125rem;
+}
+
+.confirmation-warning span {
+    font-size: 0.8125rem;
+    color: #92400e;
+    line-height: 1.5;
+}
+
+.confirmation-footer {
+    display: flex;
+    gap: 0.75rem;
+    padding: 1.5rem 2rem;
+    background: #f9fafb;
+    border-top: 1px solid #e5e7eb;
+}
+
+.btn-cancel,
+.btn-confirm {
+    flex: 1;
+    padding: 0.875rem 1.5rem;
+    border: none;
+    border-radius: 0.75rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    transition: all 0.3s ease;
+}
+
+.btn-cancel {
+    background: white;
+    color: #6b7280;
+    border: 2px solid #e5e7eb;
+}
+
+.btn-cancel:hover {
+    background: #f9fafb;
+    border-color: #d1d5db;
+    transform: translateY(-1px);
+}
+
+.btn-confirm {
+    background: linear-gradient(135deg, #EEA24B 0%, #E89A3C 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(238, 162, 75, 0.3);
+}
+
+.btn-confirm:hover {
+    background: linear-gradient(135deg, #E89A3C 0%, #D88A2C 100%);
+    box-shadow: 0 6px 16px rgba(238, 162, 75, 0.4);
+    transform: translateY(-1px);
+}
+
+.btn-confirm:active,
+.btn-cancel:active {
+    transform: translateY(0);
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+    .milestone-setup-modal {
+        max-height: 100vh;
+        border-radius: 0;
+    }
+
+    .milestone-modal-body {
+        padding: 1.5rem;
+    }
+
+    .step-connector {
+        width: 40px;
+    }
+
+    .form-row,
+    .milestone-row-fields {
+        grid-template-columns: 1fr;
+    }
+
+    .input-group {
+        flex-direction: column;
+    }
+
+    .milestone-modal-footer {
+        flex-direction: column-reverse;
+    }
+
+    .btn-secondary,
+    .btn-primary {
+        width: 100%;
+    }
+
+    .milestone-confirmation-modal {
+        margin: 1rem;
+    }
+
+    .confirmation-header {
+        padding: 1.5rem 1.5rem 1rem;
+    }
+
+    .confirmation-body {
+        padding: 1rem 1.5rem;
+    }
+
+    .confirmation-footer {
+        padding: 1rem 1.5rem;
+        flex-direction: column-reverse;
+    }
+
+    .btn-cancel,
+    .btn-confirm {
+        width: 100%;
+    }
+}

@@ -18,6 +18,94 @@ Route::get('/', function () {
     return view('startPoint');
 });
 
+// Splash / introduction screen for owner signup/login
+Route::get('/intro', function () {
+    return view('signUp_logIN.introduction');
+});
+
+// Owner web login screen
+Route::get('/login', function () {
+    return view('signUp_logIN.logIn');
+});
+
+// Owner account type selection screen
+Route::get('/account-type', function () {
+    return view('signUp_logIN.accountType');
+});
+// Owner account setup screen
+Route::match(['get', 'post'], '/propertyOwner/account-setup', function () {
+    return view('signUp_logIN.propertyOwner_accountSetup');
+})->name('owner.account-setup');
+
+// Back-compat: keep old path working
+Route::get('/account-setup', function () {
+    return redirect('/propertyOwner/account-setup');
+});
+
+// Contractor account setup screen
+Route::match(['get', 'post'], '/contractor/account-setup', function () {
+    return view('signUp_logIN.contractor_accountSetup');
+})->name('contractor.account-setup');
+
+// OTP Verification screen
+Route::get('/otp-verification', function () {
+    return view('signUp_logIN.otp_Verification');
+})->name('otp.verification');
+
+// Add profile photo screen
+Route::get('/add-profile-photo', function () {
+    return view('signUp_logIN.add_Profilepicture');
+})->name('profile.photo');
+
+// Property Owner Homepage
+Route::get('/owner/homepage', [\App\Http\Controllers\Owner\projectsController::class, 'showHomepage'])->name('owner.homepage');
+
+// Property Owner Dashboard
+Route::get('/owner/dashboard', [\App\Http\Controllers\Owner\projectsController::class, 'showOwnerDashboard'])->name('owner.dashboard');
+
+// Property Owner All Projects
+Route::get('/owner/projects', [\App\Http\Controllers\Owner\projectsController::class, 'showAllProjects'])->name('owner.projects');
+
+// Property Owner Profile
+Route::get('/owner/profile', [\App\Http\Controllers\Owner\projectsController::class, 'showProfile'])->name('owner.profile');
+
+// Property Owner Finished Projects
+Route::get('/owner/projects/finished', [\App\Http\Controllers\Owner\projectsController::class, 'showFinishedProjects'])->name('owner.projects.finished');
+
+// Property Owner Milestone Report
+Route::get('/owner/projects/milestone-report', [\App\Http\Controllers\Owner\projectsController::class, 'showMilestoneReport'])->name('owner.projects.milestone-report');
+
+// Property Owner Milestone Progress Report
+Route::get('/owner/projects/milestone-progress-report', [\App\Http\Controllers\Owner\projectsController::class, 'showMilestoneProgressReport'])->name('owner.projects.milestone-progress-report');
+
+// Property Owner Messages
+Route::get('/owner/messages', [\App\Http\Controllers\Owner\projectsController::class, 'showMessages'])->name('owner.messages');
+
+// Contractor Homepage
+Route::get('/contractor/homepage', [\App\Http\Controllers\contractor\cprocessController::class, 'showHomepage'])->name('contractor.homepage');
+
+// Contractor Dashboard
+Route::get('/contractor/dashboard', [\App\Http\Controllers\contractor\cprocessController::class, 'showDashboard'])->name('contractor.dashboard');
+
+// Contractor My Projects
+Route::get('/contractor/projects', [\App\Http\Controllers\contractor\cprocessController::class, 'showMyProjects'])->name('contractor.projects');
+Route::get('/contractor/myprojects', [\App\Http\Controllers\contractor\cprocessController::class, 'showMyProjects'])->name('contractor.myprojects');
+
+// Contractor My Bids
+Route::get('/contractor/mybids', [\App\Http\Controllers\contractor\cprocessController::class, 'showMyBids'])->name('contractor.mybids');
+
+// Contractor Milestone Report
+Route::get('/contractor/projects/milestone-report', [\App\Http\Controllers\contractor\cprocessController::class, 'showMilestoneReport'])->name('contractor.projects.milestone-report');
+
+// Contractor Milestone Progress Report
+Route::get('/contractor/projects/milestone-progress-report', [\App\Http\Controllers\contractor\cprocessController::class, 'showMilestoneProgressReport'])->name('contractor.projects.milestone-progress-report');
+
+// Contractor Messages
+Route::get('/contractor/messages', [\App\Http\Controllers\contractor\cprocessController::class, 'showMessages'])->name('contractor.messages');
+
+// Contractor Profile
+Route::get('/contractor/profile', [\App\Http\Controllers\contractor\cprocessController::class, 'showProfile'])->name('contractor.profile');
+
 // Authentication Routes
 Route::get('/accounts/login', [authController::class, 'showLoginForm']);
 Route::post('/accounts/login', [authController::class, 'login']);
@@ -67,9 +155,9 @@ Route::get('/api/psgc/provinces/{provinceCode}/cities', [authController::class, 
 Route::get('/api/psgc/cities/{cityCode}/barangays', [authController::class, 'getBarangaysByCity']);
 
 // Dashboard Routes
-// Route::get('/admin/dashboard', function() {
-//     return view('admin.dashboard');
-// });
+Route::get('/admin/dashboard', function() {
+    return view('admin.dashboard');
+});
 
 Route::get('/dashboard', [\App\Http\Controllers\Owner\projectsController::class, 'showDashboard']);
 

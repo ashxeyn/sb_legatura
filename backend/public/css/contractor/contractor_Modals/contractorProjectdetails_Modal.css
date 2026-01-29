@@ -1,0 +1,879 @@
+/* Project Details Modal Styles */
+
+.project-details-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1000;
+    overflow-y: auto;
+}
+
+.project-details-modal.active {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 2rem 1rem;
+}
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: 1001;
+    animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.modal-container {
+    position: relative;
+    background-color: #ffffff;
+    border-radius: 0.75rem;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    width: 100%;
+    max-width: 900px;
+    margin: 2rem auto;
+    z-index: 1002;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    animation: modalSlideIn 0.3s ease-out;
+    overflow: hidden;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Modal Header */
+.modal-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid #e5e5e5;
+    position: sticky;
+    top: 0;
+    background-color: #ffffff;
+    border-radius: 0.75rem 0.75rem 0 0;
+    z-index: 10;
+}
+
+.modal-header-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.modal-title {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin: 0;
+}
+
+.modal-title i {
+    color: #EEA24B;
+    font-size: 1.5rem;
+}
+
+.modal-close-btn {
+    background: none;
+    border: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #6b7280;
+    transition: all 0.2s ease;
+    font-size: 1.25rem;
+}
+
+.modal-close-btn:hover {
+    background-color: #f3f4f6;
+    color: #1f2937;
+    transform: rotate(90deg);
+}
+
+/* Modal Body */
+.modal-body {
+    padding: 1.5rem;
+    overflow-y: auto;
+    flex: 1;
+}
+
+/* Project Header Section */
+.project-header-section {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 2px solid #f3f4f6;
+}
+
+.project-title-modal {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin: 0 0 0.75rem 0;
+    line-height: 1.3;
+}
+
+.project-location-modal {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #6b7280;
+    font-size: 1rem;
+}
+
+.project-location-modal i {
+    color: #EEA24B;
+    font-size: 1.125rem;
+}
+
+/* Project Image Section */
+.project-image-section {
+    margin-bottom: 1.5rem;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.project-image-modal {
+    width: 100%;
+    height: 300px;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.project-image-modal:hover {
+    transform: scale(1.02);
+}
+
+/* Details Section */
+.details-section {
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background-color: #f9fafb;
+    border-radius: 0.75rem;
+    border: 1px solid #e5e7eb;
+    transition: all 0.3s ease;
+}
+
+.details-section:hover {
+    border-color: #EEA24B;
+    box-shadow: 0 4px 12px rgba(238, 162, 75, 0.1);
+}
+
+.section-header-modal {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.section-header-modal i {
+    color: #EEA24B;
+    font-size: 1.25rem;
+}
+
+.section-title {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.section-content {
+    color: #4b5563;
+    line-height: 1.6;
+}
+
+/* Description */
+.project-description-modal {
+    font-size: 1rem;
+    line-height: 1.7;
+    color: #374151;
+    margin: 0;
+}
+
+/* Specifications Grid */
+.specifications-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.spec-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background-color: #ffffff;
+    border-radius: 0.5rem;
+    border: 1px solid #e5e7eb;
+    transition: all 0.2s ease;
+}
+
+.spec-item:hover {
+    border-color: #EEA24B;
+    transform: translateY(-2px);
+    box-shadow: 0 2px 8px rgba(238, 162, 75, 0.15);
+}
+
+.spec-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 0.5rem;
+    background: linear-gradient(135deg, #EEA24B 0%, #F57C00 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+.spec-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.spec-label {
+    display: block;
+    font-size: 0.75rem;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.25rem;
+}
+
+.spec-value {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+/* Measurements Grid */
+.measurements-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+}
+
+.measurement-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.25rem;
+    background-color: #ffffff;
+    border-radius: 0.75rem;
+    border: 2px solid #e5e7eb;
+    transition: all 0.3s ease;
+}
+
+.measurement-item:hover {
+    border-color: #EEA24B;
+    transform: translateY(-4px);
+    box-shadow: 0 4px 12px rgba(238, 162, 75, 0.2);
+}
+
+.measurement-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 0.75rem;
+    background: linear-gradient(135deg, #EEA24B 0%, #F57C00 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+
+.measurement-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.measurement-label {
+    font-size: 0.75rem;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+}
+
+.measurement-value {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+/* Budget Display */
+.budget-display {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    padding: 1.5rem;
+    background: linear-gradient(135deg, #EEA24B 0%, #F57C00 100%);
+    border-radius: 0.75rem;
+    color: white;
+    box-shadow: 0 4px 12px rgba(238, 162, 75, 0.3);
+}
+
+.budget-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 0.75rem;
+    background-color: rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.budget-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.budget-label {
+    font-size: 0.875rem;
+    opacity: 0.9;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+}
+
+.budget-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+/* Contractor Card */
+.contractor-card {
+    background-color: #ffffff;
+    border-radius: 0.75rem;
+    border: 2px solid #e5e7eb;
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.contractor-card:hover {
+    border-color: #EEA24B;
+    box-shadow: 0 4px 12px rgba(238, 162, 75, 0.15);
+}
+
+.contractor-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.contractor-avatar-modal {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #EEA24B 0%, #F57C00 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.5rem;
+    font-weight: 700;
+    flex-shrink: 0;
+    box-shadow: 0 4px 8px rgba(238, 162, 75, 0.3);
+}
+
+.contractor-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.contractor-name-modal {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin: 0 0 0.25rem 0;
+}
+
+.contractor-role-modal {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin: 0;
+}
+
+.contractor-rating-modal {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background-color: #fef3c7;
+    border-radius: 9999px;
+    color: #92400E;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.contractor-rating-modal i {
+    color: #f59e0b;
+}
+
+.contractor-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.detail-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.875rem;
+    color: #4b5563;
+}
+
+.detail-row i {
+    color: #EEA24B;
+    font-size: 1rem;
+    width: 20px;
+    flex-shrink: 0;
+}
+
+/* Status and Progress */
+.status-progress-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.status-badge-modal {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1.25rem;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-transform: capitalize;
+    width: fit-content;
+}
+
+.status-dot-modal {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.status-badge-modal.status-pending {
+    background-color: #FEF3C7;
+    color: #92400E;
+}
+
+.status-badge-modal.status-pending .status-dot-modal {
+    background-color: #F59E0B;
+}
+
+.status-badge-modal.status-active {
+    background-color: #D1FAE5;
+    color: #065F46;
+}
+
+.status-badge-modal.status-active .status-dot-modal {
+    background-color: #10B981;
+}
+
+.status-badge-modal.status-in_progress {
+    background-color: #DBEAFE;
+    color: #1E40AF;
+}
+
+.status-badge-modal.status-in_progress .status-dot-modal {
+    background-color: #3B82F6;
+}
+
+.status-badge-modal.status-completed {
+    background-color: #D1FAE5;
+    color: #065F46;
+}
+
+.status-badge-modal.status-completed .status-dot-modal {
+    background-color: #10B981;
+}
+
+.progress-section-modal {
+    background-color: #ffffff;
+    padding: 1.25rem;
+    border-radius: 0.75rem;
+    border: 1px solid #e5e7eb;
+}
+
+.progress-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+}
+
+.progress-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #374151;
+}
+
+.progress-percentage-modal {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: #EEA24B;
+}
+
+.progress-bar-container {
+    width: 100%;
+    height: 12px;
+    background-color: #e5e7eb;
+    border-radius: 9999px;
+    overflow: hidden;
+}
+
+.progress-bar-modal {
+    height: 100%;
+    background: linear-gradient(90deg, #EEA24B 0%, #F57C00 100%);
+    border-radius: 9999px;
+    transition: width 1s ease-out;
+    position: relative;
+    overflow: hidden;
+}
+
+.progress-bar-modal::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.3),
+        transparent
+    );
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    0% {
+        transform: translateX(-100%);
+    }
+    100% {
+        transform: translateX(100%);
+    }
+}
+
+/* Modal Footer */
+.modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 1rem;
+    padding: 1.5rem;
+    border-top: 1px solid #e5e5e5;
+    background-color: #f9fafb;
+    border-radius: 0 0 0.75rem 0.75rem;
+}
+
+.btn-secondary,
+.btn-primary {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+}
+
+.btn-secondary {
+    background-color: #f3f4f6;
+    color: #374151;
+    border: 2px solid #e5e7eb;
+}
+
+.btn-secondary:hover {
+    background-color: #e5e7eb;
+    color: #1f2937;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #EEA24B 0%, #F57C00 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(238, 162, 75, 0.3);
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(238, 162, 75, 0.4);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .modal-container {
+        max-width: 100%;
+        margin: 1rem;
+        max-height: 95vh;
+    }
+
+    .modal-body {
+        padding: 1rem;
+    }
+
+    .project-title-modal {
+        font-size: 1.5rem;
+    }
+
+    .project-image-modal {
+        height: 200px;
+    }
+
+    .specifications-grid,
+    .measurements-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .contractor-header {
+        flex-wrap: wrap;
+    }
+
+    .modal-footer {
+        flex-direction: column-reverse;
+    }
+
+    .btn-secondary,
+    .btn-primary {
+        width: 100%;
+    }
+}
+
+@media (max-width: 640px) {
+    .project-details-modal.active {
+        padding: 0;
+    }
+
+    .modal-container {
+        border-radius: 0;
+        margin: 0;
+        max-height: 100vh;
+    }
+
+    .modal-header {
+        border-radius: 0;
+    }
+
+    .modal-footer {
+        border-radius: 0;
+    }
+}
+
+/* Milestone Setup Section */
+.milestone-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.milestone-header-left {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.milestone-header-right {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #EEA24B;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.milestone-indicator {
+    color: #EEA24B;
+    font-weight: 700;
+}
+
+.milestone-header-right i {
+    color: #EEA24B;
+    font-size: 0.875rem;
+}
+
+.milestone-description {
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    color: #6b7280;
+    margin: 0 0 1.25rem 0;
+}
+
+.milestone-metrics-grid {
+    display: flex;
+    align-items: center;
+    background-color: #f9fafb;
+    border-radius: 0.75rem;
+    padding: 1.25rem;
+    margin-bottom: 1.25rem;
+    border: 1px solid #e5e7eb;
+}
+
+.milestone-metric {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.milestone-metric-divider {
+    width: 1px;
+    height: 40px;
+    background-color: #e5e7eb;
+    margin: 0 1rem;
+}
+
+.metric-label {
+    font-size: 0.8125rem;
+    color: #6b7280;
+    font-weight: 500;
+    text-align: center;
+}
+
+.metric-value {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: #1f2937;
+    text-align: center;
+}
+
+.milestone-review-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 1rem 1.5rem;
+    background-color: #fef3e7;
+    border: 2px solid #fde68a;
+    border-radius: 0.75rem;
+    color: #92400E;
+    font-size: 0.9375rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.milestone-review-btn:hover {
+    background-color: #fde68a;
+    border-color: #EEA24B;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(238, 162, 75, 0.2);
+}
+
+.milestone-review-btn:active {
+    transform: translateY(0);
+}
+
+.milestone-review-btn i {
+    color: #EEA24B;
+    font-size: 1rem;
+    transition: transform 0.3s ease;
+}
+
+.milestone-review-btn:hover i {
+    transform: translateX(4px);
+}
+
+/* Responsive adjustments for milestone section */
+@media (max-width: 768px) {
+    .milestone-metrics-grid {
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .milestone-metric-divider {
+        width: 100%;
+        height: 1px;
+        margin: 0.5rem 0;
+    }
+
+    .milestone-metric {
+        width: 100%;
+    }
+}
+
+/* Notification Animations */
+@keyframes slideUp {
+    from {
+        transform: translateY(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateY(100%);
+        opacity: 0;
+    }
+}
