@@ -202,139 +202,300 @@
             </div>
           </div>
 
-          <!-- Milestone Timeline Panel -->
-          <div class="bg-gray-50 rounded-xl p-4 border border-gray-200">
-            <h3 class="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
-              <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-              </svg>
-              Milestone Timeline
-            </h3>
-            <div class="grid grid-cols-2 gap-4">
-              <!-- Left Panel: Milestone List -->
-              <div class="space-y-2">
-                @php $cumulative = 0; @endphp
-                @forelse($project->milestone_items as $item)
+          <!-- Project's Milestone and Details (Row) -->
+          <div class="grid lg:grid-cols-2 gap-6">
+            <!-- Project's Milestone -->
+            <div class="bg-white border border-gray-200 rounded-xl p-5 space-y-4 hover:shadow-lg transition-all duration-300">
+              <h3 class="font-bold text-gray-900 text-base pb-3 flex items-center gap-2">
+                <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                </svg>
+                Project's Milestone
+              </h3>
+              <div class="space-y-0">
+                @php
+                  $totalPercentage = array_sum(array_column($project->milestone_items, 'percentage_progress'));
+                  $cumulative = $totalPercentage;
+                  $reversedItems = array_reverse($project->milestone_items);
+                  $totalItems = count($reversedItems);
+                @endphp
+                @forelse($reversedItems as $index => $item)
                   @php
-                    $statusColors = [
-                      'completed' => 'bg-green-100 text-green-700 border-green-300',
-                      'in_progress' => 'bg-blue-100 text-blue-700 border-blue-300',
-                      'delayed' => 'bg-red-100 text-red-700 border-red-300',
-                      'cancelled' => 'bg-gray-100 text-gray-700 border-gray-300',
-                      'not_started' => 'bg-gray-50 text-gray-600 border-gray-200'
-                    ];
-                    $statusColor = $statusColors[$item->item_status] ?? 'bg-gray-50 text-gray-600 border-gray-200';
-
-                    // Calculate cumulative percentage from milestone_items table
-                    $cumulative += $item->percentage_progress;
+                    $isLast = ($index == $totalItems - 1);
                   @endphp
+                  <div class="flex items-start gap-4">
+                    <!-- Timeline left side -->
+                    <div class="flex flex-col items-center">
+                      <!-- Percentage badge -->
+                      <div class="flex-shrink-0 w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center text-gray-700 font-bold text-xs">
+                        {{ min(round($cumulative), 100) }}%
+                      </div>
+                      <!-- Vertical line and checkmark -->
+                      @if(!$isLast)
+                        <div class="relative flex-1 w-0.5 bg-gray-200 my-2" style="min-height: 60px;">
+                          @php
+                            // For terminated projects, check actual status
+                            $actualStatus = ($item->item_status === 'not_started' || $item->item_status === 'in_progress') ? 'terminated' : $item->item_status;
+                          @endphp
+                          @if($item->item_status === 'completed')
+                            <div class="absolute left-1/2 -translate-x-1/2 -bottom-3 w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">
+                              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+                              </svg>
+                            </div>
+                          @elseif($actualStatus === 'terminated')
+                            <div class="absolute left-1/2 -translate-x-1/2 -bottom-3 w-8 h-8 rounded-full bg-red-500 flex items-center justify-center">
+                              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"/>
+                              </svg>
+                            </div>
+                          @endif
+                        </div>
+                      @endif
+                    </div>
 
-                  <div onclick="showTerminatedMilestoneDetail({{ $item->item_id }})" class="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:bg-white cursor-pointer transition-all duration-200 hover:shadow-md">
-                    <div class="w-10 h-10 rounded-full {{ $statusColor }} border-2 flex items-center justify-center flex-shrink-0 font-bold text-sm">
-                      {{ round($cumulative) }}%
+                    <!-- Milestone card -->
+                    <div class="flex-1 mb-6">
+                      <div class="border-2 border-gray-200 bg-gradient-to-br from-gray-50 to-slate-50 rounded-lg p-4 cursor-pointer hover:shadow-md transition-all" onclick="showTerminatedMilestoneDetails({{ $item->item_id }})">
+                        <div class="flex items-start justify-between mb-2">
+                          <h4 class="text-base font-bold text-gray-900">{{ $item->milestone_item_title }}</h4>
+                          @php
+                            // For terminated projects, show 'terminated' for incomplete milestones
+                            $actualStatus = ($item->item_status === 'not_started' || $item->item_status === 'in_progress') ? 'terminated' : $item->item_status;
+                            $statusColors = [
+                              'completed' => 'bg-green-100 text-green-800 border-green-200',
+                              'in_progress' => 'bg-blue-100 text-blue-800 border-blue-200',
+                              'delayed' => 'bg-red-100 text-red-800 border-red-200',
+                              'cancelled' => 'bg-gray-100 text-gray-800 border-gray-200',
+                              'terminated' => 'bg-red-100 text-red-800 border-red-200',
+                              'not_started' => 'bg-gray-50 text-gray-600 border-gray-200'
+                            ];
+                            $statusColor = $statusColors[$actualStatus] ?? 'bg-gray-50 text-gray-600 border-gray-200';
+                            $displayStatus = $actualStatus === 'terminated' ? 'Terminated' : ucfirst(str_replace('_', ' ', $actualStatus));
+                          @endphp
+                          <span class="inline-flex px-3 py-1 text-xs font-semibold rounded-full {{ $statusColor }} border">
+                            {{ $displayStatus }}
+                          </span>
+                        </div>
+                        <p class="text-xs text-gray-500 mb-2 uppercase tracking-wide">{{ \Carbon\Carbon::parse($item->date_to_finish)->format('d M g:i A') }}</p>
+                        @if($item->milestone_item_description)
+                          <p class="text-sm text-gray-600 mb-3 line-clamp-2">{{ $item->milestone_item_description }}</p>
+                        @endif
+                        <button class="text-gray-600 hover:text-gray-700 text-sm font-semibold flex items-center gap-1">
+                          View Details
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                          </svg>
+                        </button>
+                      </div>
                     </div>
-                    <div class="flex-1">
-                      <p class="text-sm font-medium text-gray-900">{{ $item->milestone_item_title }}</p>
-                      <p class="text-xs text-gray-500">{{ \Carbon\Carbon::parse($item->date_to_finish)->format('M j, Y') }}</p>
-                    </div>
-                    <span class="px-2 py-1 rounded-full text-xs font-medium {{ $statusColor }} border">
-                      {{ ucfirst(str_replace('_', ' ', $item->item_status)) }}
-                    </span>
                   </div>
+                  @php $cumulative -= $item->percentage_progress; @endphp
                 @empty
                   <p class="text-sm text-gray-500 text-center py-8">No milestone items available</p>
                 @endforelse
               </div>
+            </div>
 
-              <!-- Right Panel: Details -->
-              <div class="space-y-4">
+            <!-- Details -->
+            <div class="bg-white border border-gray-200 rounded-xl p-5 space-y-4 hover:shadow-lg transition-all duration-300">
+              <div class="flex items-center justify-between pb-3 border-b border-gray-200">
+                <h3 class="font-bold text-gray-900 text-base flex items-center gap-2">
+                  <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                  Details
+                </h3>
+              </div>
+              <div id="terminatedDetailsContent" class="space-y-4">
                 <div class="text-sm text-gray-500 text-center py-8">Select a milestone to view details</div>
 
                 <!-- Hidden divs for each milestone item detail -->
                 @foreach($project->milestone_items as $item)
-                <div id="term-detail-{{ $item->item_id }}" class="hidden space-y-3">
-                  <h4 class="text-sm font-bold text-gray-900 border-b pb-2">{{ $item->milestone_item_title }}</h4>
-                  <div class="space-y-2 text-sm">
-                    <div class="flex justify-between">
-                      <span class="text-gray-600">Status:</span>
-                      <span class="font-semibold text-gray-900">{{ ucfirst(str_replace('_', ' ', $item->item_status)) }}</span>
+                  <div id="term-detail-{{ $item->item_id }}" class="hidden space-y-4">
+                    <!-- Milestone header -->
+                    <div class="flex items-center justify-between">
+                      <h4 class="text-lg font-bold text-gray-900">{{ $item->milestone_item_title }}</h4>
+                      @php
+                        // For terminated projects, show 'terminated' for incomplete milestones
+                        $actualStatus = ($item->item_status === 'not_started' || $item->item_status === 'in_progress') ? 'terminated' : $item->item_status;
+                        $statusColors = [
+                          'completed' => 'bg-green-100 text-green-800 border-green-200',
+                          'in_progress' => 'bg-blue-100 text-blue-800 border-blue-200',
+                          'delayed' => 'bg-red-100 text-red-800 border-red-200',
+                          'cancelled' => 'bg-gray-100 text-gray-800 border-gray-200',
+                          'terminated' => 'bg-red-100 text-red-800 border-red-200',
+                          'not_started' => 'bg-gray-50 text-gray-600 border-gray-200'
+                        ];
+                        $statusColor = $statusColors[$actualStatus] ?? 'bg-gray-50 text-gray-600 border-gray-200';
+                        $displayStatus = $actualStatus === 'terminated' ? 'Terminated' : ucfirst(str_replace('_', ' ', $actualStatus));
+                      @endphp
+                      <span class="inline-flex px-3 py-1 text-xs font-semibold rounded-full {{ $statusColor }} border">
+                        {{ $displayStatus }}
+                      </span>
                     </div>
-                    <div class="flex justify-between">
-                      <span class="text-gray-600">Target Completion:</span>
-                      <span class="font-semibold text-gray-900">{{ \Carbon\Carbon::parse($item->date_to_finish)->format('F j, Y') }}</span>
+
+                    <!-- Date -->
+                    <p class="text-sm text-gray-500">{{ \Carbon\Carbon::parse($item->date_to_finish)->format('d M g:i A') }}</p>
+
+                    <!-- Description -->
+                    <p class="text-sm text-gray-700 leading-relaxed">{{ $item->milestone_item_description ?? 'No description' }}</p>
+
+                    <!-- List of Reports Section -->
+                    <div class="pt-4">
+                      <h5 class="text-sm font-bold text-gray-900 mb-3 uppercase tracking-wide">List of Reports</h5>
+                      @if(count($item->progress_reports) > 0)
+                        <div class="space-y-2">
+                          @foreach($item->progress_reports as $prog)
+                            <div class="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                              <p class="text-sm font-semibold text-gray-900">{{ $prog['purpose'] }}</p>
+                              <p class="text-xs text-gray-500 mt-1">{{ \Carbon\Carbon::parse($prog['submitted_at'])->format('M d, Y g:i A') }}</p>
+                              <span class="inline-flex mt-2 px-2 py-1 text-xs font-semibold rounded {{ $prog['progress_status'] === 'approved' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800' }}">
+                                {{ ucfirst($prog['progress_status']) }}
+                              </span>
+
+                              <!-- Files for this specific progress report -->
+                              @if(isset($prog['files']) && count($prog['files']) > 0)
+                                <div class="mt-3 space-y-1">
+                                  @foreach($prog['files'] as $file)
+                                    <a href="{{ asset('storage/' . $file['file_path']) }}" target="_blank" class="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-gray-100 to-slate-100 border border-gray-300 rounded-lg hover:shadow-md transition-all text-sm">
+                                      <svg class="w-4 h-4 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+                                      </svg>
+                                      <span class="text-xs font-medium text-gray-900">{{ $file['original_name'] ?? basename($file['file_path']) }}</span>
+                                    </a>
+                                  @endforeach
+                                </div>
+                              @endif
+                            </div>
+                          @endforeach
+                        </div>
+                      @else
+                        <p class="text-sm text-gray-400">No reports available</p>
+                      @endif
                     </div>
                   </div>
-
-                  @if(!empty($item->progress_reports))
-                    <div class="mt-4">
-                      <p class="text-xs font-semibold text-gray-700 mb-2">Progress Reports:</p>
-                      <div class="space-y-2">
-                        @foreach($item->progress_reports as $progress)
-                          <div class="bg-white p-3 rounded-lg border border-gray-200">
-                            <div class="flex justify-between items-start mb-1">
-                              <span class="text-xs font-semibold text-gray-700">
-                                @php
-                                  $statusColors = [
-                                    'submitted' => 'bg-blue-100 text-blue-700',
-                                    'approved' => 'bg-green-100 text-green-700',
-                                    'rejected' => 'bg-red-100 text-red-700',
-                                    'deleted' => 'bg-gray-100 text-gray-700'
-                                  ];
-                                  $statusColor = $statusColors[$progress['progress_status']] ?? 'bg-gray-100 text-gray-700';
-                                @endphp
-                                <span class="px-2 py-0.5 rounded-full text-xs font-medium {{ $statusColor }}">
-                                  {{ ucfirst($progress['progress_status']) }}
-                                </span>
-                              </span>
-                              <span class="text-xs text-gray-500">{{ \Carbon\Carbon::parse($progress['submitted_at'])->format('M j, Y') }}</span>
-                            </div>
-                            <p class="text-xs text-gray-600">{{ $progress['purpose'] }}</p>
-                          </div>
-                        @endforeach
-                      </div>
-                    </div>
-                  @endif
-                </div>
                 @endforeach
               </div>
             </div>
           </div>
 
-          <!-- Payment Summary Panel -->
-          <div class="bg-gray-50 rounded-xl p-4 border border-gray-200">
-            <h3 class="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
-              <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
-              </svg>
-              Payment Summary
-            </h3>
-            <div class="overflow-x-auto">
+          <!-- Payment Summary (Row) -->
+          <div class="bg-white border border-gray-200 rounded-xl p-5 space-y-4 hover:shadow-lg transition-all duration-300">
+            <div class="flex items-center justify-between border-b-2 border-gray-400 pb-3">
+              <div>
+                <h3 class="text-sm font-bold text-gray-900 flex items-center gap-2">
+                  <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                  </svg>
+                  Payment Summary
+                </h3>
+                <p class="text-xs text-gray-500 mt-1">Payment records before project termination</p>
+              </div>
+            </div>
+
+            <!-- Stats grid -->
+            <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div class="bg-gradient-to-br from-gray-50 to-slate-50 rounded-lg p-4 border border-gray-200 hover:shadow-md transition-all duration-200 group">
+                <div class="flex items-center justify-between mb-2">
+                  <p class="text-xs text-gray-600 font-medium">Total Milestones Paid</p>
+                  <svg class="w-5 h-5 text-gray-400 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                </div>
+                <p class="text-xl font-bold text-gray-900">{{ $project->total_milestones_paid }}</p>
+              </div>
+              <div class="bg-gradient-to-br from-gray-50 to-slate-50 rounded-lg p-4 border border-gray-200 hover:shadow-md transition-all duration-200 group">
+                <div class="flex items-center justify-between mb-2">
+                  <p class="text-xs text-gray-600 font-medium">Total Amount Paid</p>
+                  <svg class="w-5 h-5 text-gray-400 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                </div>
+                <p class="text-xl font-bold text-gray-600">₱{{ number_format($project->total_amount_paid, 2) }}</p>
+              </div>
+              <div class="bg-gradient-to-br from-gray-50 to-slate-50 rounded-lg p-4 border border-gray-200 hover:shadow-md transition-all duration-200 group">
+                <div class="flex items-center justify-between mb-2">
+                  <p class="text-xs text-gray-600 font-medium">Last Payment Date</p>
+                  <svg class="w-5 h-5 text-gray-400 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                  </svg>
+                </div>
+                <p class="text-sm font-semibold text-gray-900">{{ $project->last_payment_date ? \Carbon\Carbon::parse($project->last_payment_date)->format('M d, Y') : 'N/A' }}</p>
+              </div>
+              <div class="bg-gradient-to-br from-gray-50 to-slate-50 rounded-lg p-4 border border-gray-200 hover:shadow-md transition-all duration-200 group">
+                <div class="flex items-center justify-between mb-2">
+                  <p class="text-xs text-gray-600 font-medium">Over All Payment Status</p>
+                  <svg class="w-5 h-5 text-gray-400 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                </div>
+                <p class="text-sm font-bold text-gray-600">{{ $project->overall_payment_status }}</p>
+              </div>
+            </div>
+
+            <div class="rounded-lg border border-gray-200 overflow-hidden">
               <table class="w-full text-sm">
-                <thead>
-                  <tr class="border-b border-gray-200">
-                    <th class="text-left py-2 px-3 text-xs font-semibold text-gray-600">Milestone</th>
-                    <th class="text-left py-2 px-3 text-xs font-semibold text-gray-600">Payment Amount</th>
-                    <th class="text-left py-2 px-3 text-xs font-semibold text-gray-600">Status</th>
-                    <th class="text-left py-2 px-3 text-xs font-semibold text-gray-600">Paid On</th>
+                <thead class="bg-gradient-to-r from-gray-50 to-slate-50 border-b border-gray-200">
+                  <tr>
+                    <th class="text-left px-4 py-3 text-xs font-semibold text-gray-700">Milestone</th>
+                    <th class="text-left px-4 py-3 text-xs font-semibold text-gray-700">Milestone Period</th>
+                    <th class="text-left px-4 py-3 text-xs font-semibold text-gray-700">Amount Paid</th>
+                    <th class="text-left px-4 py-3 text-xs font-semibold text-gray-700">Date of Payment</th>
+                    <th class="text-left px-4 py-3 text-xs font-semibold text-gray-700">Uploaded By</th>
+                    <th class="text-left px-4 py-3 text-xs font-semibold text-gray-700">Proof of Payment</th>
+                    <th class="text-left px-4 py-3 text-xs font-semibold text-gray-700">Verification Status</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody class="divide-y divide-gray-200 bg-white">
                   @forelse($project->payments as $payment)
-                    <tr class="border-b border-gray-100">
-                      <td class="py-2 px-3 text-gray-900">{{ $payment->milestone_item_title ?? 'N/A' }}</td>
-                      <td class="py-2 px-3 text-gray-900 font-medium">₱{{ number_format($payment->amount, 2) }}</td>
-                      <td class="py-2 px-3">
-                        <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                    <tr class="hover:bg-gray-50 transition-colors duration-150">
+                      <td class="px-4 py-3 text-sm font-semibold">{{ $payment->milestone_item_title ?? 'N/A' }}</td>
+                      <td class="px-4 py-3 text-sm">
+                        @if($payment->date_to_finish)
+                          {{ \Carbon\Carbon::parse($payment->date_to_finish)->format('M d, Y') }}
+                        @else
+                          —
+                        @endif
+                      </td>
+                      <td class="px-4 py-3 text-sm font-semibold text-gray-600">₱{{ number_format($payment->amount, 2) }}</td>
+                      <td class="px-4 py-3 text-sm">
+                        {{ $payment->transaction_date ? \Carbon\Carbon::parse($payment->transaction_date)->format('M d, Y') : '—' }}
+                      </td>
+                      <td class="px-4 py-3 text-sm">{{ $payment->uploaded_by ?? 'Property Owner' }}</td>
+                      <td class="px-4 py-3">
+                        @if($payment->receipt_photo)
+                          <a href="{{ asset('storage/' . $payment->receipt_photo) }}" target="_blank" class="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 hover:underline text-xs">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+                            View
+                          </a>
+                        @else
+                          <span class="text-xs text-gray-400">No file</span>
+                        @endif
+                      </td>
+                      <td class="px-4 py-3">
+                        @php
+                          $statusColors = [
+                            'paid' => 'bg-green-100 text-green-700',
+                            'approved' => 'bg-green-100 text-green-700',
+                            'pending' => 'bg-yellow-100 text-yellow-700',
+                            'rejected' => 'bg-red-100 text-red-700'
+                          ];
+                          $statusColor = $statusColors[$payment->payment_status] ?? 'bg-gray-100 text-gray-700';
+                        @endphp
+                        <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {{ $statusColor }}">
                           {{ ucfirst($payment->payment_status) }}
                         </span>
-                      </td>
-                      <td class="py-2 px-3 text-gray-900">
-                        {{ $payment->transaction_date ? \Carbon\Carbon::parse($payment->transaction_date)->format('M j, Y') : 'N/A' }}
                       </td>
                     </tr>
                   @empty
                     <tr>
-                      <td colspan="4" class="py-4 text-center text-sm text-gray-400">No payment records available</td>
+                      <td colspan="7" class="px-4 py-8 text-center text-sm text-gray-400">
+                        No payment records available
+                      </td>
                     </tr>
                   @endforelse
                 </tbody>

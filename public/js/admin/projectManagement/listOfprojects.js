@@ -898,6 +898,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   };
 
+  // Alias for consistency with Blade template
+  window.showTerminatedMilestoneDetails = window.showTerminatedMilestoneDetail;
+
 });
 
 

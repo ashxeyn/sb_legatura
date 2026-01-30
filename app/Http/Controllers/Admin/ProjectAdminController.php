@@ -128,7 +128,7 @@ class projectAdminController extends Controller
 
         $projects = $query->orderBy('projects.project_id', 'desc')->paginate(15);
 
-        return view('admin.projectManagement.listOfprojects', [
+        return view('admin.projectManagement.listOfProjects', [
             'projects' => $projects
         ]);
     }

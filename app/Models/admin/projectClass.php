@@ -1167,6 +1167,7 @@ class projectClass
         $milestoneItems = DB::table('milestone_items')
             ->join('milestones', 'milestone_items.milestone_id', '=', 'milestones.milestone_id')
             ->leftJoin('progress', 'milestone_items.item_id', '=', 'progress.milestone_item_id')
+            ->leftJoin('progress_files', 'progress.progress_id', '=', 'progress_files.progress_id')
             ->where('milestones.project_id', $id)
             ->select(
                 'milestone_items.*',
@@ -1174,12 +1175,15 @@ class projectClass
                 'progress.progress_id',
                 'progress.purpose',
                 'progress.progress_status',
-                'progress.submitted_at'
+                'progress.submitted_at',
+                'progress_files.file_id',
+                'progress_files.file_path',
+                'progress_files.original_name'
             )
             ->orderBy('milestone_items.sequence_order')
             ->get();
 
-        // Group progress by item_id
+        // Group progress by item_id with files
         $groupedItems = [];
         foreach ($milestoneItems as $item) {
             $itemId = $item->item_id;
@@ -1188,27 +1192,77 @@ class projectClass
                 $groupedItems[$itemId]->progress_reports = [];
             }
             if ($item->progress_id) {
-                $groupedItems[$itemId]->progress_reports[] = [
-                    'progress_id' => $item->progress_id,
-                    'purpose' => $item->purpose,
-                    'progress_status' => $item->progress_status,
-                    'submitted_at' => $item->submitted_at
-                ];
+                $progressKey = $item->progress_id;
+                if (!isset($groupedItems[$itemId]->progress_reports[$progressKey])) {
+                    $groupedItems[$itemId]->progress_reports[$progressKey] = [
+                        'progress_id' => $item->progress_id,
+                        'purpose' => $item->purpose,
+                        'progress_status' => $item->progress_status,
+                        'submitted_at' => $item->submitted_at,
+                        'files' => []
+                    ];
+                }
+
+                // Add files to this specific progress report
+                if ($item->file_id) {
+                    $fileExists = false;
+                    foreach ($groupedItems[$itemId]->progress_reports[$progressKey]['files'] as $existingFile) {
+                        if ($existingFile['file_id'] == $item->file_id) {
+                            $fileExists = true;
+                            break;
+                        }
+                    }
+                    if (!$fileExists) {
+                        $groupedItems[$itemId]->progress_reports[$progressKey]['files'][] = [
+                            'file_id' => $item->file_id,
+                            'file_path' => $item->file_path,
+                            'original_name' => $item->original_name
+                        ];
+                    }
+                }
             }
         }
+
+        // Convert progress_reports associative array to indexed array
+        foreach ($groupedItems as $itemId => $item) {
+            $groupedItems[$itemId]->progress_reports = array_values($item->progress_reports);
+        }
+
         $project->milestone_items = array_values($groupedItems);
 
-        // Get approved payments
+        // Payment summary calculations - using BOTH 'approved' and 'paid' statuses
+        $paymentSummary = DB::table('milestone_payments')
+            ->select(
+                DB::raw('COUNT(DISTINCT item_id) as total_milestones_paid'),
+                DB::raw('SUM(amount) as total_amount_paid'),
+                DB::raw('MAX(transaction_date) as last_payment_date')
+            )
+            ->where('project_id', $id)
+            ->whereIn('payment_status', ['approved', 'paid'])
+            ->first();
+
+        $totalMilestoneItems = count($groupedItems);
+        $project->total_milestones_paid = $paymentSummary->total_milestones_paid ?? 0;
+        $project->total_amount_paid = $paymentSummary->total_amount_paid ?? 0;
+        $project->last_payment_date = $paymentSummary->last_payment_date;
+        $project->overall_payment_status = ($project->total_milestones_paid > 0)
+            ? 'Partially Paid'
+            : 'Terminated';
+
+        // Get payment records for table - filter to approved/paid only
         $payments = DB::table('milestone_payments')
             ->leftJoin('milestone_items', 'milestone_payments.item_id', '=', 'milestone_items.item_id')
-            ->where('milestone_payments.project_id', $id)
-            ->where('milestone_payments.payment_status', 'paid')
             ->select(
                 'milestone_payments.*',
+                'milestone_items.sequence_order',
+                'milestone_items.date_to_finish',
                 'milestone_items.milestone_item_title'
             )
-            ->orderBy('milestone_payments.transaction_date', 'desc')
+            ->where('milestone_payments.project_id', $id)
+            ->whereIn('milestone_payments.payment_status', ['approved', 'paid'])
+            ->orderBy('milestone_items.sequence_order', 'asc')
             ->get();
+
         $project->payments = $payments;
 
         return $project;

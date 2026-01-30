@@ -10,18 +10,18 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
   <link rel="stylesheet" href="{{ asset('css/admin/home/mainComponents.css') }}">
-  <link rel="stylesheet" href="{{ asset('css/admin/projectManagement/listOfprojects.css') }}">
-  
+  <link rel="stylesheet" href="{{ asset('css/admin/projectManagement/listOfProjects.css') }}">
+
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-solid-straight/css/uicons-solid-straight.css'>
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-solid-rounded/css/uicons-solid-rounded.css'>
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-bold-rounded/css/uicons-bold-rounded.css'>
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-regular-rounded/css/uicons-regular-rounded.css'>
-  
+
 
   <script src="{{ asset('js/admin/home/mainComponents.js') }}" defer></script>
   <script src="{{ asset('js/admin/projectManagement/milestones.api.js') }}" defer></script>
 
-  
+
 </head>
 
 <body class="bg-gray-50 text-gray-800 font-sans">
@@ -109,9 +109,9 @@
 
         <div class="flex items-center gap-6">
           <div class="relative w-64" style="width: 600px;">
-            <input 
-              type="text" 
-              placeholder="Search milestones..." 
+            <input
+              type="text"
+              placeholder="Search milestones..."
               class="border border-gray-300 rounded-lg px-4 py-2 pr-10 focus:ring-2 focus:ring-indigo-400 focus:outline-none w-full"
             >
             <i class="fi fi-rr-search absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
