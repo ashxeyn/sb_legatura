@@ -310,9 +310,11 @@ class projectsClass
 
         // Get bid files for each bid
         foreach ($bids as $bid) {
-            $bid->files = DB::table('bid_files')
+            $files = DB::table('bid_files')
                 ->where('bid_id', $bid->bid_id)
+                ->select('file_id', 'bid_id', 'file_name', 'file_path', 'description', 'uploaded_at')
                 ->get();
+            $bid->files = $files->toArray();
         }
 
         // ✨ Apply intelligent ranking using BidRankingService

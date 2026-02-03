@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   Alert,
   Modal,
+  TextInput,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
@@ -67,6 +68,7 @@ interface Milestone {
   milestone_description: string;
   milestone_status: string;
   setup_status: string;
+  setup_rej_reason?: string;
   start_date: string;
   end_date: string;
   created_at: string;
@@ -144,6 +146,11 @@ export default function ProjectView({ project, userId, userRole, onClose }: Proj
   const [refreshing, setRefreshing] = useState(false);
   const [showMilestoneApproval, setShowMilestoneApproval] = useState(false);
   const [showMilestoneSetup, setShowMilestoneSetup] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [pendingRejectMilestoneId, setPendingRejectMilestoneId] = useState<number | null>(null);
+  const [showEditMilestone, setShowEditMilestone] = useState(false);
+  const [milestoneToEdit, setMilestoneToEdit] = useState<Milestone | null>(null);
 
   const isOwner = userRole === 'owner';
   const isContractor = userRole === 'contractor';
@@ -230,40 +237,54 @@ export default function ProjectView({ project, userId, userRole, onClose }: Proj
     );
   };
 
-  const handleRejectMilestone = async (milestoneId: number) => {
+  const handleRejectMilestone = (milestoneId: number) => {
     if (!userId) {
       Alert.alert('Error', 'User not authenticated');
       return;
     }
 
-    Alert.alert(
-      'Reject Milestone',
-      'Are you sure you want to reject this milestone?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Reject',
-          style: 'destructive',
-          onPress: async () => {
-            setRejectingMilestone(milestoneId);
-            try {
-              const response = await milestones_service.reject_milestone(milestoneId, userId);
+    // Open modal for rejection reason
+    setPendingRejectMilestoneId(milestoneId);
+    setRejectionReason('');
+    setShowRejectModal(true);
+  };
 
-              if (response.success) {
-                Alert.alert('Success', 'Milestone rejected successfully');
-                await refreshProjectData();
-              } else {
-                Alert.alert('Error', response.message || 'Failed to reject milestone');
-              }
-            } catch (error) {
-              Alert.alert('Error', 'An unexpected error occurred');
-            } finally {
-              setRejectingMilestone(null);
-            }
-          },
-        },
-      ]
-    );
+  const confirmRejectMilestone = async () => {
+    if (!rejectionReason.trim()) {
+      Alert.alert('Error', 'Please provide a reason for rejection');
+      return;
+    }
+
+    if (!pendingRejectMilestoneId || !userId) return;
+
+    setShowRejectModal(false);
+    setRejectingMilestone(pendingRejectMilestoneId);
+
+    try {
+      const response = await milestones_service.reject_milestone(
+        pendingRejectMilestoneId,
+        userId,
+        rejectionReason.trim()
+      );
+
+      if (response.success) {
+        Alert.alert('Success', 'Milestone rejected successfully');
+        await refreshProjectData();
+      } else {
+        Alert.alert('Error', response.message || 'Failed to reject milestone');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'An unexpected error occurred');
+    } finally {
+      setRejectingMilestone(null);
+      setPendingRejectMilestoneId(null);
+      setRejectionReason('');
+    }
+  };
+
+  const handleEditMilestoneSetup = (milestone: Milestone) => {
+    setMilestoneToEdit(milestone);
+    setShowEditMilestone(true);
   };
 
   const renderMilestoneStatusBadge = (milestone: Milestone) => {
@@ -603,6 +624,55 @@ export default function ProjectView({ project, userId, userRole, onClose }: Proj
         {/* Status Banner */}
         {renderStatusBanner()}
 
+        {/* Contractor Rejection Notice - Show rejected milestones with reasons */}
+        {isContractor && currentProject.milestones?.some(m => m.setup_status === 'rejected' && m.setup_rej_reason) && (
+          <View style={styles.contractorRejectionSection}>
+            {currentProject.milestones
+              .filter(m => m.setup_status === 'rejected' && m.setup_rej_reason)
+              .map((rejectedMilestone) => (
+                <View key={rejectedMilestone.milestone_id} style={styles.contractorRejectionNotice}>
+                  <View style={styles.contractorRejectionNoticeHeader}>
+                    <View style={styles.contractorRejectionNoticeIcon}>
+                      <Feather name="alert-octagon" size={22} color={COLORS.error} />
+                    </View>
+                    <View style={styles.contractorRejectionNoticeTitles}>
+                      <Text style={styles.contractorRejectionNoticeTitle}>Setup Rejected</Text>
+                      <Text style={styles.contractorRejectionNoticeSubtitle}>
+                        {rejectedMilestone.milestone_name}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.contractorRejectionNoticeContent}>
+                    <View style={styles.contractorFeedbackHeader}>
+                      <Feather name="message-circle" size={14} color={COLORS.textSecondary} />
+                      <Text style={styles.contractorFeedbackLabel}>Owner's Feedback:</Text>
+                    </View>
+                    <Text style={styles.contractorFeedbackText}>
+                      {rejectedMilestone.setup_rej_reason}
+                    </Text>
+                  </View>
+
+                  <View style={styles.contractorRejectionNoticeAction}>
+                    <Feather name="tool" size={14} color={COLORS.accent} />
+                    <Text style={styles.contractorRejectionNoticeActionText}>
+                      Update your milestone setup to address the feedback
+                    </Text>
+                  </View>
+
+                  <TouchableOpacity
+                    style={styles.contractorEditSetupButton}
+                    onPress={() => handleEditMilestoneSetup(rejectedMilestone)}
+                    activeOpacity={0.7}
+                  >
+                    <Feather name="edit-3" size={18} color="#FFFFFF" />
+                    <Text style={styles.contractorEditSetupButtonText}>Edit Milestone Setup</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+          </View>
+        )}
+
         {/* Milestone Setup Review Section */}
         {currentProject.milestones && currentProject.milestones.length > 0 ? (
           <TouchableOpacity
@@ -729,6 +799,108 @@ export default function ProjectView({ project, userId, userRole, onClose }: Proj
             refreshProjectData(); // Refresh to show new milestones
           }}
         />
+      </Modal>
+
+      {/* Milestone Edit Modal */}
+      {showEditMilestone && milestoneToEdit && (
+        <Modal
+          visible={showEditMilestone}
+          animationType="slide"
+          presentationStyle="fullScreen"
+          onRequestClose={() => {
+            setShowEditMilestone(false);
+            setMilestoneToEdit(null);
+          }}
+        >
+          <MilestoneSetup
+            project={{
+              project_id: currentProject.project_id,
+              project_title: currentProject.project_title,
+            }}
+            userId={userId}
+            onClose={() => {
+              setShowEditMilestone(false);
+              setMilestoneToEdit(null);
+            }}
+            onSave={async () => {
+              setShowEditMilestone(false);
+              setMilestoneToEdit(null);
+              await refreshProjectData();
+            }}
+            editMode={true}
+            existingMilestone={milestoneToEdit}
+          />
+        </Modal>
+      )}
+
+      {/* Milestone Rejection Modal */}
+      <Modal
+        visible={showRejectModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => {
+          setShowRejectModal(false);
+          setPendingRejectMilestoneId(null);
+          setRejectionReason('');
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.rejectModalContent}>
+            <View style={styles.rejectModalHeader}>
+              <View style={styles.rejectIconContainer}>
+                <Feather name="alert-circle" size={24} color={COLORS.danger} />
+              </View>
+              <Text style={styles.rejectModalTitle}>Reject Milestone Setup</Text>
+              <Text style={styles.rejectModalSubtitle}>
+                Please provide a reason for rejecting this milestone. This will help the contractor understand what needs to be changed.
+              </Text>
+            </View>
+
+            <View style={styles.rejectInputContainer}>
+              <Text style={styles.rejectInputLabel}>
+                Rejection Reason <Text style={styles.requiredStar}>*</Text>
+              </Text>
+              <TextInput
+                style={styles.rejectTextInput}
+                value={rejectionReason}
+                onChangeText={setRejectionReason}
+                placeholder="Explain why you're rejecting this milestone setup..."
+                placeholderTextColor={COLORS.textMuted}
+                multiline
+                numberOfLines={5}
+                maxLength={500}
+                textAlignVertical="top"
+              />
+              <Text style={styles.characterCount}>
+                {rejectionReason.length}/500
+              </Text>
+            </View>
+
+            <View style={styles.rejectModalActions}>
+              <TouchableOpacity
+                style={styles.rejectCancelButton}
+                onPress={() => {
+                  setShowRejectModal(false);
+                  setPendingRejectMilestoneId(null);
+                  setRejectionReason('');
+                }}
+              >
+                <Text style={styles.rejectCancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.rejectConfirmButton,
+                  !rejectionReason.trim() && styles.rejectConfirmButtonDisabled
+                ]}
+                onPress={confirmRejectMilestone}
+                disabled={!rejectionReason.trim()}
+              >
+                <Feather name="x-circle" size={18} color="#FFFFFF" />
+                <Text style={styles.rejectConfirmButtonText}>Reject Milestone</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
       </Modal>
     </View>
   );
@@ -1189,5 +1361,207 @@ const styles = StyleSheet.create({
   milestoneActionText: {
     fontSize: 14,
     fontWeight: '600',
+  },
+
+  // Rejection Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  rejectModalContent: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 12,
+    width: '100%',
+    maxWidth: 500,
+    padding: 24,
+    gap: 20,
+  },
+  rejectModalHeader: {
+    gap: 12,
+    alignItems: 'center',
+  },
+  rejectIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: COLORS.dangerLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  rejectModalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: COLORS.text,
+    textAlign: 'center',
+  },
+  rejectModalSubtitle: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  rejectInputContainer: {
+    gap: 8,
+  },
+  rejectInputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  requiredStar: {
+    color: COLORS.error,
+  },
+  rejectTextInput: {
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 14,
+    color: COLORS.text,
+    minHeight: 120,
+    backgroundColor: COLORS.background,
+  },
+  characterCount: {
+    fontSize: 12,
+    color: COLORS.textMuted,
+    textAlign: 'right',
+  },
+  rejectModalActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  rejectCancelButton: {
+    flex: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rejectCancelButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  rejectConfirmButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    backgroundColor: COLORS.error,
+  },
+  rejectConfirmButtonDisabled: {
+    opacity: 0.5,
+  },
+  rejectConfirmButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+
+  // Contractor Rejection Notice Styles
+  contractorRejectionSection: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 8,
+    gap: 12,
+  },
+  contractorRejectionNotice: {
+    backgroundColor: '#FFF1F2',
+    borderRadius: 12,
+    padding: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: COLORS.error,
+    gap: 14,
+  },
+  contractorRejectionNoticeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  contractorRejectionNoticeIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: COLORS.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  contractorRejectionNoticeTitles: {
+    flex: 1,
+  },
+  contractorRejectionNoticeTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.error,
+    marginBottom: 3,
+  },
+  contractorRejectionNoticeSubtitle: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    fontWeight: '500',
+  },
+  contractorRejectionNoticeContent: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 8,
+    padding: 12,
+    gap: 8,
+  },
+  contractorFeedbackHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  contractorFeedbackLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  contractorFeedbackText: {
+    fontSize: 14,
+    color: COLORS.text,
+    lineHeight: 20,
+  },
+  contractorRejectionNoticeAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: COLORS.accentLight,
+    borderRadius: 6,
+    padding: 10,
+  },
+  contractorRejectionNoticeActionText: {
+    flex: 1,
+    fontSize: 13,
+    color: COLORS.text,
+    fontWeight: '500',
+    lineHeight: 18,
+  },
+  contractorEditSetupButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    backgroundColor: COLORS.primary,
+    borderRadius: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    marginTop: 4,
+  },
+  contractorEditSetupButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 });

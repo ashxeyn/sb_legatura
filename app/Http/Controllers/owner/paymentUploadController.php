@@ -526,5 +526,97 @@ class paymentUploadController extends Controller
 			], 500);
 		}
 	}
+
+	public function getDownpaymentReceipts(Request $request, $projectId)
+	{
+		try {
+			\Log::info('getDownpaymentReceipts called', ['project_id' => $projectId, 'bearer_token' => $request->bearerToken() ? 'present' : 'missing']);
+			
+			// Support both session-based auth (web) and token-based auth (mobile API)
+			$user = Session::get('user');
+			
+			// If no session user, try to authenticate via Sanctum token
+			if (!$user) {
+				$bearerToken = $request->bearerToken();
+				\Log::info('getDownpaymentReceipts: No session user, checking bearer token', ['token_present' => $bearerToken ? 'yes' : 'no']);
+				
+				if ($bearerToken) {
+					// Find the token in the database
+					$token = PersonalAccessToken::findToken($bearerToken);
+					if ($token) {
+						// Get the user associated with the token
+						$user = $token->tokenable;
+						\Log::info('getDownpaymentReceipts: Token found, user authenticated', ['user_id' => $user->user_id ?? null]);
+						// Store user in session for downstream code that expects it there
+						if ($user && !Session::has('user')) {
+							Session::put('user', $user);
+						}
+					} else {
+						\Log::warning('getDownpaymentReceipts: Token not found in database');
+					}
+				}
+				
+				// Fallback to request->user() if available (when middleware is applied)
+				if (!$user && $request->user()) {
+					$user = $request->user();
+					\Log::info('getDownpaymentReceipts: Using request->user()', ['user_id' => $user->user_id ?? null]);
+					if (!Session::has('user')) {
+						Session::put('user', $user);
+					}
+				}
+			} else {
+				\Log::info('getDownpaymentReceipts: Using session user', ['user_id' => $user->user_id ?? null]);
+			}
+
+			if (!$user) {
+				\Log::warning('getDownpaymentReceipts: No user found, returning 401');
+				return response()->json(['success' => false, 'message' => 'Authentication required'], 401);
+			}
+
+			// Get downpayment receipts (item_id = -1 indicates downpayment, not a milestone item)
+			$payments = DB::table('milestone_payments as mp')
+				->leftJoin('property_owners as po', 'mp.owner_id', '=', 'po.owner_id')
+				->where('mp.project_id', $projectId)
+				->where('mp.item_id', -1) // Special identifier for downpayment
+				->whereNotIn('mp.payment_status', ['deleted'])
+				->select(
+					'mp.payment_id',
+					'mp.item_id',
+					'mp.amount',
+					'mp.payment_type',
+					'mp.transaction_number',
+					'mp.receipt_photo',
+					'mp.transaction_date',
+					'mp.payment_status',
+					'mp.reason',
+					'mp.updated_at',
+					DB::raw('CONCAT(po.first_name, " ", po.last_name) as owner_name')
+				)
+				->orderBy('mp.transaction_date', 'desc')
+				->orderBy('mp.payment_id', 'desc')
+				->get();
+
+			return response()->json([
+				'success' => true,
+				'data' => [
+					'payments' => $payments,
+					'total_count' => $payments->count()
+				]
+			]);
+		} catch (\Exception $e) {
+			\Log::error('getDownpaymentReceipts error: ' . $e->getMessage(), [
+				'project_id' => $projectId,
+				'trace' => $e->getTraceAsString()
+			]);
+			return response()->json([
+				'success' => false,
+				'message' => 'Error fetching downpayment receipts: ' . $e->getMessage(),
+				'data' => [
+					'payments' => [],
+					'total_count' => 0
+				]
+			], 500);
+		}
+	}
 }
 

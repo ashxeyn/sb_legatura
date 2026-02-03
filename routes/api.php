@@ -23,6 +23,7 @@ Log::info('=== INCOMING API REQUEST ===', [
 Route::get('/test', [authController::class, 'apiTest']);
 
 // File serving endpoint for mobile app (bypasses Apache symlink issues)
+// For viewing files inline (images, PDFs in browser)
 Route::get('/files/{path}', function ($path) {
     $fullPath = storage_path('app/public/' . $path);
     
@@ -31,9 +32,34 @@ Route::get('/files/{path}', function ($path) {
     }
     
     $mimeType = mime_content_type($fullPath);
+    $fileName = basename($path);
+    
+    // For images and PDFs, display inline; for others, suggest download
+    $disposition = 'inline';
+    if (preg_match('/\.(doc|docx|xls|xlsx|ppt|pptx|zip|rar)$/i', $fileName)) {
+        $disposition = 'attachment';
+    }
     
     return response()->file($fullPath, [
         'Content-Type' => $mimeType,
+        'Content-Disposition' => $disposition . '; filename="' . $fileName . '"',
+        'Access-Control-Allow-Origin' => '*',
+        'Access-Control-Allow-Methods' => 'GET',
+        'Access-Control-Allow-Headers' => '*',
+    ]);
+})->where('path', '.*');
+
+// File download endpoint (forces download instead of inline view)
+Route::get('/download/{path}', function ($path) {
+    $fullPath = storage_path('app/public/' . $path);
+    
+    if (!file_exists($fullPath)) {
+        return response()->json(['error' => 'File not found'], 404);
+    }
+    
+    $fileName = basename($path);
+    
+    return response()->download($fullPath, $fileName, [
         'Access-Control-Allow-Origin' => '*',
         'Access-Control-Allow-Methods' => 'GET',
         'Access-Control-Allow-Headers' => '*',
@@ -95,6 +121,7 @@ Route::put('/owner/payment/{paymentId}', [paymentUploadController::class, 'updat
 Route::delete('/owner/payment/{paymentId}', [paymentUploadController::class, 'deletePayment']);
 // Payment routes - controllers handle both session and token auth
 Route::get('/projects/{projectId}/payments', [paymentUploadController::class, 'getPaymentsByProject']);
+Route::get('/projects/{projectId}/downpayment-receipts', [paymentUploadController::class, 'getDownpaymentReceipts']);
 Route::get('/milestone-items/{itemId}/payments', [paymentUploadController::class, 'getPaymentsByItem']);
 
 // Progress files retrieval for mobile app (owners and contractors)
@@ -115,6 +142,7 @@ Route::get('/contractor/my-bids', [\App\Http\Controllers\contractor\biddingContr
 Route::get('/contractor/my-projects', [\App\Http\Controllers\contractor\cprocessController::class, 'apiGetContractorProjects']);
 Route::get('/contractor/projects/{projectId}/milestone-form', [\App\Http\Controllers\contractor\cprocessController::class, 'apiGetMilestoneFormData']);
 Route::post('/contractor/projects/{projectId}/milestones', [\App\Http\Controllers\contractor\cprocessController::class, 'apiSubmitMilestones']);
+Route::put('/contractor/projects/{projectId}/milestones/{milestoneId}', [\App\Http\Controllers\contractor\cprocessController::class, 'apiUpdateMilestone']);
 
 // Note: profile update registered below inside sanctum-protected group
 

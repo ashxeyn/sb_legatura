@@ -20,6 +20,8 @@ import { payment_service } from '../../services/payment_service';
 import { projects_service } from '../../services/projects_service';
 import MilestoneDetail from './milestoneDetail';
 import DisputeHistory from './disputeHistory';
+import MilestoneSetup from '../contractor/milestoneSetup';
+import DownpaymentDetail from './downpaymentDetail';
 import { api_config } from '../../config/api';
 
 // Color palette
@@ -72,6 +74,7 @@ interface Milestone {
   milestone_description: string;
   milestone_status: string;
   setup_status: string;
+  setup_rej_reason?: string;
   start_date: string;
   end_date: string;
   created_at: string;
@@ -140,9 +143,15 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
   const [showDisputeHistory, setShowDisputeHistory] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
+  const [showMilestoneRejectModal, setShowMilestoneRejectModal] = useState(false);
+  const [milestoneRejectReason, setMilestoneRejectReason] = useState('');
+  const [pendingRejectMilestoneId, setPendingRejectMilestoneId] = useState<number | null>(null);
   const [showCompleteProjectModal, setShowCompleteProjectModal] = useState(false);
   const [completingProject, setCompletingProject] = useState(false);
   const [isProjectCompleted, setIsProjectCompleted] = useState(projectStatus === 'completed');
+  const [showEditMilestone, setShowEditMilestone] = useState(false);
+  const [milestoneToEdit, setMilestoneToEdit] = useState<Milestone | null>(null);
+  const [showDownpaymentDetail, setShowDownpaymentDetail] = useState(false);
 
   // Flatten all milestone items from all milestones into one array for the timeline
   const allMilestoneItems: (MilestoneItem & { parentMilestoneId: number; parentSetupStatus: string; parentMilestoneStatus: string })[] = [];
@@ -158,6 +167,13 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
       });
     }
   });
+
+  // Get payment plan info for downpayment
+  const firstMilestone = milestones[0];
+  const paymentPlan = firstMilestone?.payment_plan;
+  const isDownpaymentMode = paymentPlan?.payment_mode === 'downpayment';
+  const downpaymentAmount = paymentPlan?.downpayment_amount || 0;
+  const downpaymentPercentage = totalCost > 0 ? (downpaymentAmount / totalCost) * 100 : 0;
 
   // Sort by sequence order
   allMilestoneItems.sort((a, b) => a.sequence_order - b.sequence_order);
@@ -217,41 +233,60 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
   };
 
   const handleRequestChanges = (milestoneId: number) => {
-    Alert.alert(
-      'Request Changes',
-      'Are you sure you want to request changes to this milestone setup?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Request Changes',
-          style: 'destructive',
-          onPress: async () => {
-            setRejectingMilestone(milestoneId);
-            try {
-              const response = await milestones_service.reject_milestone(milestoneId, userId);
+    setPendingRejectMilestoneId(milestoneId);
+    setMilestoneRejectReason('');
+    setShowMilestoneRejectModal(true);
+  };
 
-              if (response.success) {
-                Alert.alert('Success', 'Change request sent to contractor', [
-                  {
-                    text: 'OK',
-                    onPress: () => {
-                      if (onApprovalComplete) onApprovalComplete();
-                      navigation.goBack();
-                    },
-                  },
-                ]);
-              } else {
-                Alert.alert('Error', response.message || 'Failed to request changes');
-              }
-            } catch (error) {
-              Alert.alert('Error', 'An unexpected error occurred');
-            } finally {
-              setRejectingMilestone(null);
-            }
+  const confirmRejectMilestone = async () => {
+    if (!milestoneRejectReason.trim()) {
+      Alert.alert('Required', 'Please provide a reason for requesting changes');
+      return;
+    }
+
+    if (!pendingRejectMilestoneId) return;
+
+    setShowMilestoneRejectModal(false);
+    setRejectingMilestone(pendingRejectMilestoneId);
+
+    try {
+      const response = await milestones_service.reject_milestone(
+        pendingRejectMilestoneId,
+        userId,
+        milestoneRejectReason.trim()
+      );
+
+      if (response.success) {
+        Alert.alert('Success', 'Change request sent to contractor', [
+          {
+            text: 'OK',
+            onPress: () => {
+              if (onApprovalComplete) onApprovalComplete();
+              navigation.goBack();
+            },
           },
-        },
-      ]
-    );
+        ]);
+      } else {
+        Alert.alert('Error', response.message || 'Failed to request changes');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'An unexpected error occurred');
+    } finally {
+      setRejectingMilestone(null);
+      setPendingRejectMilestoneId(null);
+      setMilestoneRejectReason('');
+    }
+  };
+
+  const handleEditRejectionReason = (milestone: Milestone) => {
+    setPendingRejectMilestoneId(milestone.milestone_id);
+    setMilestoneRejectReason(milestone.setup_rej_reason || '');
+    setShowMilestoneRejectModal(true);
+  };
+
+  const handleEditMilestoneSetup = (milestone: Milestone) => {
+    setMilestoneToEdit(milestone);
+    setShowEditMilestone(true);
   };
 
   // Calculate progress - count completed milestone items
@@ -319,8 +354,9 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
     const approvedPayments = paymentHistory.filter(p => p.payment_status === 'approved');
     const totalPaid = approvedPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
     const totalEstimated = totalCost || 0;
-    const remaining = totalEstimated - totalPaid;
-    return { totalEstimated, totalPaid, remaining };
+    const downpayment = isDownpaymentMode ? downpaymentAmount : 0;
+    const remaining = totalEstimated - downpayment - totalPaid;
+    return { totalEstimated, totalPaid, remaining, downpayment };
   };
 
   const getPaymentStatusColor = (status: string) => {
@@ -655,18 +691,32 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
           })}
 
           {/* Start Point */}
-          <View style={styles.timelineItem}>
+          <TouchableOpacity
+            style={styles.timelineItem}
+            onPress={() => isDownpaymentMode && setShowDownpaymentDetail(true)}
+            activeOpacity={0.7}
+            disabled={!isDownpaymentMode}
+          >
             <View style={[styles.timelineSide, styles.timelineLeft]}>
               <View style={styles.startContent}>
                 <Text style={styles.startLabel}>Start</Text>
-                <Text style={styles.startPercent}>0%</Text>
+                {isDownpaymentMode ? (
+                  <Text style={styles.startPercent}>
+                    {formatCurrency(downpaymentAmount)}
+                  </Text>
+                ) : (
+                  <Text style={styles.startPercent}>0%</Text>
+                )}
               </View>
             </View>
             <View style={styles.timelineCenter}>
-              <View style={styles.startCircle} />
+              <View style={[
+                styles.startCircle,
+                isDownpaymentMode && styles.startCircleDownpayment
+              ]} />
             </View>
             <View style={[styles.timelineSide, styles.timelineRight]} />
-          </View>
+          </TouchableOpacity>
         </View>
 
         {/* Project Completion Status */}
@@ -704,6 +754,95 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
               </TouchableOpacity>
             </View>
           )
+        )}
+
+        {/* Rejection Reason Indicator - Show for rejected milestones */}
+        {userRole === 'owner' && milestones.some(m => m.setup_status === 'rejected' && m.setup_rej_reason) && (
+          <View style={styles.rejectionIndicatorSection}>
+            {milestones
+              .filter(m => m.setup_status === 'rejected' && m.setup_rej_reason)
+              .map((rejectedMilestone, index) => (
+                <View key={rejectedMilestone.milestone_id} style={styles.rejectionIndicatorCard}>
+                  <View style={styles.rejectionIndicatorHeader}>
+                    <View style={styles.rejectionIndicatorIconContainer}>
+                      <Feather name="alert-circle" size={20} color={COLORS.error} />
+                    </View>
+                    <View style={styles.rejectionIndicatorTitleContainer}>
+                      <Text style={styles.rejectionIndicatorTitle}>
+                        Milestone {index + 1} - Changes Requested
+                      </Text>
+                      <Text style={styles.rejectionIndicatorTimestamp}>
+                        {rejectedMilestone.milestone_name}
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.editRejectionButton}
+                      onPress={() => handleEditRejectionReason(rejectedMilestone)}
+                      activeOpacity={0.7}
+                    >
+                      <Feather name="edit-2" size={18} color={COLORS.accent} />
+                    </TouchableOpacity>
+                  </View>
+                  <View style={styles.rejectionReasonContainer}>
+                    <Text style={styles.rejectionReasonLabel}>Your Feedback:</Text>
+                    <Text style={styles.rejectionReasonText}>{rejectedMilestone.setup_rej_reason}</Text>
+                  </View>
+                  <View style={styles.rejectionStatusBadge}>
+                    <View style={styles.rejectionStatusDot} />
+                    <Text style={styles.rejectionStatusText}>Awaiting Contractor Response</Text>
+                  </View>
+                </View>
+              ))}
+          </View>
+        )}
+
+        {/* Contractor Rejection Indicator - Show for rejected milestones */}
+        {userRole === 'contractor' && milestones.some(m => m.setup_status === 'rejected' && m.setup_rej_reason) && (
+          <View style={styles.rejectionIndicatorSection}>
+            {milestones
+              .filter(m => m.setup_status === 'rejected' && m.setup_rej_reason)
+              .map((rejectedMilestone, index) => (
+                <View key={rejectedMilestone.milestone_id} style={styles.contractorRejectionCard}>
+                  <View style={styles.contractorRejectionHeader}>
+                    <View style={styles.contractorRejectionIconContainer}>
+                      <Feather name="x-circle" size={24} color={COLORS.error} />
+                    </View>
+                    <View style={styles.contractorRejectionTitleContainer}>
+                      <Text style={styles.contractorRejectionTitle}>
+                        Milestone Setup Rejected
+                      </Text>
+                      <Text style={styles.contractorRejectionSubtitle}>
+                        {rejectedMilestone.milestone_name}
+                      </Text>
+                    </View>
+                  </View>
+                  
+                  <View style={styles.contractorRejectionReasonBox}>
+                    <View style={styles.contractorReasonHeader}>
+                      <Feather name="message-square" size={16} color={COLORS.textSecondary} />
+                      <Text style={styles.contractorReasonLabel}>Property Owner's Feedback:</Text>
+                    </View>
+                    <Text style={styles.contractorReasonText}>{rejectedMilestone.setup_rej_reason}</Text>
+                  </View>
+
+                  <View style={styles.contractorActionPrompt}>
+                    <Feather name="info" size={16} color={COLORS.accent} />
+                    <Text style={styles.contractorActionText}>
+                      Please review the feedback and update your milestone setup accordingly.
+                    </Text>
+                  </View>
+
+                  <TouchableOpacity
+                    style={styles.contractorEditButton}
+                    onPress={() => handleEditMilestoneSetup(rejectedMilestone)}
+                    activeOpacity={0.7}
+                  >
+                    <Feather name="edit-3" size={18} color="#FFFFFF" />
+                    <Text style={styles.contractorEditButtonText}>Edit Milestone Setup</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+          </View>
         )}
 
         {/* Payment History Button */}
@@ -871,12 +1010,19 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
                       <Text style={styles.modernSummaryLabel}>Total Estimated Project Amount:</Text>
                       <Text style={styles.modernSummaryValue}>{formatCurrency(totals.totalEstimated)}</Text>
                     </View>
+                    {totals.downpayment > 0 && (
+                      <View style={styles.modernSummaryRow}>
+                        <Text style={styles.modernSummaryLabel}>Downpayment Amount:</Text>
+                        <Text style={styles.modernSummaryValue}>{formatCurrency(totals.downpayment)}</Text>
+                      </View>
+                    )}
                     <View style={styles.modernSummaryRow}>
                       <Text style={styles.modernSummaryLabel}>Total Amount Paid:</Text>
                       <Text style={[styles.modernSummaryValue, { color: '#10B981' }]}>
                         {formatCurrency(totals.totalPaid)}
                       </Text>
                     </View>
+                    <View style={[styles.modernSummaryRow, styles.modernSummaryDivider]} />
                     <View style={[styles.modernSummaryRow, styles.modernSummaryRowLast]}>
                       <Text style={[styles.modernSummaryLabel, { fontWeight: '600' }]}>Total Remaining Amount:</Text>
                       <Text style={[styles.modernSummaryValue, { color: '#EF4444', fontWeight: '700' }]}>
@@ -1051,6 +1197,128 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
         onRequestClose={() => setShowDisputeHistory(false)}
       >
         <DisputeHistory onClose={() => setShowDisputeHistory(false)} />
+      </Modal>
+
+      {/* Milestone Edit Modal */}
+      {showEditMilestone && milestoneToEdit && (
+        <Modal
+          visible={showEditMilestone}
+          animationType="slide"
+          presentationStyle="fullScreen"
+          onRequestClose={() => {
+            setShowEditMilestone(false);
+            setMilestoneToEdit(null);
+          }}
+        >
+          <MilestoneSetup
+            project={{
+              project_id: projectId,
+              project_title: projectTitle,
+            }}
+            userId={userId}
+            onClose={() => {
+              setShowEditMilestone(false);
+              setMilestoneToEdit(null);
+            }}
+            onSave={async () => {
+              setShowEditMilestone(false);
+              setMilestoneToEdit(null);
+              if (onApprovalComplete) onApprovalComplete();
+            }}
+            editMode={true}
+            existingMilestone={milestoneToEdit}
+          />
+        </Modal>
+      )}
+
+      {/* Downpayment Detail Modal */}
+      {showDownpaymentDetail && (
+        <Modal
+          visible={showDownpaymentDetail}
+          animationType="slide"
+          presentationStyle="fullScreen"
+          onRequestClose={() => setShowDownpaymentDetail(false)}
+        >
+          <DownpaymentDetail
+            projectId={projectId}
+            projectTitle={projectTitle}
+            downpaymentAmount={downpaymentAmount}
+            totalCost={totalCost}
+            userRole={userRole}
+            userId={userId}
+            onClose={() => setShowDownpaymentDetail(false)}
+          />
+        </Modal>
+      )}
+
+      {/* Milestone Rejection Modal */}
+      <Modal
+        visible={showMilestoneRejectModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => {
+          setShowMilestoneRejectModal(false);
+          setPendingRejectMilestoneId(null);
+          setMilestoneRejectReason('');
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.milestoneRejectModalContent}>
+            <View style={styles.milestoneRejectModalHeader}>
+              <View style={styles.milestoneRejectIconContainer}>
+                <Feather name="alert-circle" size={24} color={COLORS.error} />
+              </View>
+              <Text style={styles.milestoneRejectModalTitle}>Request Changes to Milestone Setup</Text>
+              <Text style={styles.milestoneRejectModalSubtitle}>
+                Please explain what needs to be changed in this milestone setup. The contractor will review your feedback and make the necessary adjustments.
+              </Text>
+            </View>
+
+            <View style={styles.milestoneRejectInputContainer}>
+              <Text style={styles.milestoneRejectInputLabel}>
+                Reason for Changes <Text style={styles.requiredStar}>*</Text>
+              </Text>
+              <TextInput
+                style={styles.milestoneRejectTextInput}
+                value={milestoneRejectReason}
+                onChangeText={setMilestoneRejectReason}
+                placeholder="E.g., Timeline needs adjustment, Cost breakdown unclear, Missing important tasks..."
+                placeholderTextColor={COLORS.textMuted}
+                multiline
+                numberOfLines={5}
+                maxLength={500}
+                textAlignVertical="top"
+              />
+              <Text style={styles.milestoneCharacterCount}>
+                {milestoneRejectReason.length}/500
+              </Text>
+            </View>
+
+            <View style={styles.milestoneRejectModalActions}>
+              <TouchableOpacity
+                style={styles.milestoneRejectCancelButton}
+                onPress={() => {
+                  setShowMilestoneRejectModal(false);
+                  setPendingRejectMilestoneId(null);
+                  setMilestoneRejectReason('');
+                }}
+              >
+                <Text style={styles.milestoneRejectCancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.milestoneRejectConfirmButton,
+                  !milestoneRejectReason.trim() && styles.milestoneRejectConfirmButtonDisabled
+                ]}
+                onPress={confirmRejectMilestone}
+                disabled={!milestoneRejectReason.trim()}
+              >
+                <Feather name="send" size={18} color="#FFFFFF" />
+                <Text style={styles.milestoneRejectConfirmButtonText}>Send Request</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
       </Modal>
 
       {/* Reject Payment Reason Modal */}
@@ -1391,6 +1659,10 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: COLORS.darkBlue,
     zIndex: 1,
+  },
+  startCircleDownpayment: {
+    borderWidth: 3,
+    borderColor: COLORS.accent,
   },
 
   // Action Buttons
@@ -1852,9 +2124,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
   },
+  modernSummaryDivider: {
+    height: 1,
+    backgroundColor: COLORS.border,
+    marginVertical: 8,
+  },
   modernSummaryRowLast: {
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
     marginTop: 8,
     paddingTop: 16,
   },
@@ -2244,6 +2519,301 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: COLORS.surface,
+  },
+
+  // Milestone Rejection Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  milestoneRejectModalContent: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 12,
+    width: '100%',
+    maxWidth: 500,
+    padding: 24,
+    gap: 20,
+  },
+  milestoneRejectModalHeader: {
+    gap: 12,
+    alignItems: 'center',
+  },
+  milestoneRejectIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#FEE2E2',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  milestoneRejectModalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: COLORS.text,
+    textAlign: 'center',
+  },
+  milestoneRejectModalSubtitle: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  milestoneRejectInputContainer: {
+    gap: 8,
+  },
+  milestoneRejectInputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  requiredStar: {
+    color: COLORS.error,
+  },
+  milestoneRejectTextInput: {
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 14,
+    color: COLORS.text,
+    minHeight: 120,
+    backgroundColor: COLORS.background,
+  },
+  milestoneCharacterCount: {
+    fontSize: 12,
+    color: COLORS.textMuted,
+    textAlign: 'right',
+  },
+  milestoneRejectModalActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  milestoneRejectCancelButton: {
+    flex: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  milestoneRejectCancelButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  milestoneRejectConfirmButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    backgroundColor: COLORS.error,
+  },
+  milestoneRejectConfirmButtonDisabled: {
+    opacity: 0.5,
+  },
+  milestoneRejectConfirmButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+
+  // Rejection Indicator Styles
+  rejectionIndicatorSection: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 8,
+    gap: 12,
+  },
+  rejectionIndicatorCard: {
+    backgroundColor: COLORS.errorLight,
+    borderRadius: 12,
+    padding: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: COLORS.error,
+    gap: 12,
+  },
+  rejectionIndicatorHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  rejectionIndicatorIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: COLORS.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  rejectionIndicatorTitleContainer: {
+    flex: 1,
+  },
+  rejectionIndicatorTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.error,
+    marginBottom: 2,
+  },
+  rejectionIndicatorTimestamp: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+  },
+  editRejectionButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: COLORS.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  rejectionReasonContainer: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 8,
+    padding: 12,
+    gap: 6,
+  },
+  rejectionReasonLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  rejectionReasonText: {
+    fontSize: 14,
+    color: COLORS.text,
+    lineHeight: 20,
+  },
+  rejectionStatusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 6,
+  },
+  rejectionStatusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: COLORS.warning,
+  },
+  rejectionStatusText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.warning,
+  },
+
+  // Contractor Rejection Indicator Styles
+  contractorRejectionCard: {
+    backgroundColor: '#FFF5F5',
+    borderRadius: 12,
+    padding: 18,
+    borderLeftWidth: 4,
+    borderLeftColor: COLORS.error,
+    gap: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  contractorRejectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  contractorRejectionIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: COLORS.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: COLORS.error,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  contractorRejectionTitleContainer: {
+    flex: 1,
+  },
+  contractorRejectionTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: COLORS.error,
+    marginBottom: 4,
+  },
+  contractorRejectionSubtitle: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    fontWeight: '500',
+  },
+  contractorRejectionReasonBox: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 10,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#FFE4E6',
+    gap: 10,
+  },
+  contractorReasonHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 2,
+  },
+  contractorReasonLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  contractorReasonText: {
+    fontSize: 15,
+    color: COLORS.text,
+    lineHeight: 22,
+  },
+  contractorActionPrompt: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: COLORS.accentLight,
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#FFE5CC',
+  },
+  contractorActionText: {
+    flex: 1,
+    fontSize: 13,
+    color: COLORS.text,
+    lineHeight: 18,
+    fontWeight: '500',
+  },
+  contractorEditButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    backgroundColor: COLORS.accent,
+    borderRadius: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+  },
+  contractorEditButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 });
 

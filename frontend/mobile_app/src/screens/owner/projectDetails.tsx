@@ -122,7 +122,8 @@ export default function ProjectDetails({ project, userId, onClose, onProjectUpda
   const getFileUrl = (filePath: string) => {
     if (!filePath) return '';
     if (filePath.startsWith('http')) return filePath;
-    return `${api_config.base_url}/storage/${filePath}`;
+    // Use the API files endpoint for proper file serving on mobile
+    return `${api_config.base_url}/api/files/${filePath}`;
   };
 
   const handleOpenFile = (filePath: string) => {

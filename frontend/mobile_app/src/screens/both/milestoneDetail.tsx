@@ -283,6 +283,9 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
   // Show milestone complete action when at least one progress report has been approved
   const hasAnyApproved = progressReports.some((p) => p.progress_status === 'approved');
   
+  // Check if there's at least one approved payment receipt by contractor
+  const hasApprovedPayment = payments.some((p) => p.payment_status === 'approved');
+  
   // Debug button visibility
   const shouldShowPaymentButton = isOwner && isApproved && progressReports.some(p => p.progress_status === 'approved') && itemStatus !== 'completed';
   console.log('Payment button visibility check:', {
@@ -292,7 +295,10 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
     itemStatus,
     progressReportsCount: progressReports.length,
     progressStatuses: progressReports.map(p => p.progress_status),
-    shouldShow: shouldShowPaymentButton
+    shouldShow: shouldShowPaymentButton,
+    hasApprovedPayment,
+    paymentsCount: payments.length,
+    paymentStatuses: payments.map(p => p.payment_status)
   });
 
   // Get attachment from milestone item (from database)
@@ -473,17 +479,7 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
               <Text style={styles.noReportsTitle}>Error</Text>
               <Text style={styles.noReportsText}>{fetchError}</Text>
             </View>
-          ) : progressReports.length === 0 ? (
-            <View style={styles.noReportsContainer}>
-              <View style={styles.noReportsIcon}>
-                <Feather name="file-text" size={32} color={COLORS.textMuted} />
-              </View>
-              <Text style={styles.noReportsTitle}>No Progress Reports Yet</Text>
-              <Text style={styles.noReportsText}>
-                Progress reports from the contractor will appear here once work begins on this milestone.
-              </Text>
-            </View>
-          ) : (
+          ) : progressReports.length === 0 ? null : (
             <View style={styles.reportsTimeline}>
               {progressReports.map((report, index) => {
                 const isLast = index === progressReports.length - 1;
@@ -677,8 +673,8 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
           </View>
         )}
 
-        {/* Owner: Set as Complete (appears when at least one progress report is approved) */}
-        {isOwner && isApproved && hasAnyApproved && itemStatus !== 'completed' && (
+        {/* Owner: Set as Complete (appears when at least one progress report is approved AND at least one payment is approved by contractor) */}
+        {isOwner && isApproved && hasAnyApproved && hasApprovedPayment && itemStatus !== 'completed' && (
           <View style={styles.bottomRow}>
             <TouchableOpacity
               style={styles.completeButton}

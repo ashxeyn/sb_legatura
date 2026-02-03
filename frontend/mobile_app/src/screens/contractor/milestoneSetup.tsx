@@ -48,9 +48,11 @@ interface MilestoneSetupProps {
   userId?: number;
   onClose: () => void;
   onSave: () => void;
+  editMode?: boolean;
+  existingMilestone?: any;
 }
 
-const MilestoneSetup: React.FC<MilestoneSetupProps> = ({ project, userId, onClose, onSave }) => {
+const MilestoneSetup: React.FC<MilestoneSetupProps> = ({ project, userId, onClose, onSave, editMode = false, existingMilestone }) => {
   const projectId = project.project_id;
   const projectTitle = project.project_title;
 
@@ -79,6 +81,29 @@ const MilestoneSetup: React.FC<MilestoneSetupProps> = ({ project, userId, onClos
   // Loading states
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  // Load existing milestone data if in edit mode
+  useEffect(() => {
+    if (editMode && existingMilestone) {
+      setMilestoneName(existingMilestone.milestone_name || '');
+      setPaymentMode(existingMilestone.payment_plan?.payment_mode || 'downpayment');
+      setStartDate(existingMilestone.start_date ? new Date(existingMilestone.start_date) : new Date());
+      setEndDate(existingMilestone.end_date ? new Date(existingMilestone.end_date) : new Date());
+      setTotalProjectCost(existingMilestone.payment_plan?.total_project_cost?.toString() || '');
+      setDownpaymentAmount(existingMilestone.payment_plan?.downpayment_amount?.toString() || '');
+      
+      if (existingMilestone.items && existingMilestone.items.length > 0) {
+        const loadedItems = existingMilestone.items.map((item: any, index: number) => ({
+          id: index + 1,
+          percentage: item.percentage_progress?.toString() || '',
+          title: item.milestone_item_title || '',
+          description: item.milestone_item_description || '',
+          date_to_finish: item.date_to_finish || '',
+        }));
+        setMilestoneItems(loadedItems);
+      }
+    }
+  }, [editMode, existingMilestone]);
 
   // Calculate total percentage
   const totalPercentage = milestoneItems.reduce((sum, item) => {
@@ -234,18 +259,25 @@ const MilestoneSetup: React.FC<MilestoneSetupProps> = ({ project, userId, onClos
         })),
       };
 
-      const response = await projects_service.submit_milestones(userId, projectId, milestoneData);
+      let response;
+      if (editMode && existingMilestone) {
+        // Update existing milestone
+        response = await projects_service.update_milestone(userId, projectId, existingMilestone.milestone_id, milestoneData);
+      } else {
+        // Create new milestone
+        response = await projects_service.submit_milestones(userId, projectId, milestoneData);
+      }
 
       if (response.success) {
-        Alert.alert('Success', 'Milestones have been set up successfully!', [
+        Alert.alert('Success', editMode ? 'Milestone has been updated successfully!' : 'Milestones have been set up successfully!', [
           { text: 'OK', onPress: () => onSave() },
         ]);
       } else {
-        Alert.alert('Error', response.message || 'Failed to submit milestones.');
+        Alert.alert('Error', response.message || (editMode ? 'Failed to update milestone.' : 'Failed to submit milestones.'));
       }
     } catch (error) {
-      console.error('Error submitting milestones:', error);
-      Alert.alert('Error', 'An error occurred while submitting milestones.');
+      console.error(editMode ? 'Error updating milestone:' : 'Error submitting milestones:', error);
+      Alert.alert('Error', editMode ? 'An error occurred while updating the milestone.' : 'An error occurred while submitting milestones.');
     } finally {
       setSubmitting(false);
     }
@@ -598,7 +630,7 @@ const MilestoneSetup: React.FC<MilestoneSetupProps> = ({ project, userId, onClos
           <Ionicons name="arrow-back" size={24} color="#FFF" />
         </TouchableOpacity>
         <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>Setup Milestones</Text>
+          <Text style={styles.headerTitle}>{editMode ? 'Edit' : 'Setup'} Milestones</Text>
           <Text style={styles.headerSubtitle} numberOfLines={1}>
             {projectTitle}
           </Text>
@@ -643,7 +675,7 @@ const MilestoneSetup: React.FC<MilestoneSetupProps> = ({ project, userId, onClos
             ) : (
               <>
                 <Ionicons name="checkmark-circle" size={20} color="#FFF" />
-                <Text style={styles.submitButtonText}>Submit Milestones</Text>
+                <Text style={styles.submitButtonText}>{editMode ? 'Update' : 'Submit'} Milestones</Text>
               </>
             )}
           </TouchableOpacity>

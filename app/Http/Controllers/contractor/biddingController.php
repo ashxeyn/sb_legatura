@@ -341,7 +341,8 @@ class biddingController extends Controller
                     ->where('bid_id', $bid->bid_id)
                     ->select('file_id', 'bid_id', 'file_name', 'file_path', 'description', 'uploaded_at')
                     ->get();
-                $bid->files = $files;
+                $bid->files = $files->toArray();
+                $bid->file_count = count($bid->files);
             }
 
             return response()->json([
@@ -389,7 +390,9 @@ class biddingController extends Controller
             $validated = $request->validate([
                 'proposed_cost' => 'required|numeric|min:0',
                 'estimated_timeline' => 'required|string',
-                'contractor_notes' => 'nullable|string'
+                'contractor_notes' => 'nullable|string',
+                'bid_files' => 'nullable|array',
+                'bid_files.*' => 'file|max:10240|mimes:pdf,doc,docx,jpg,jpeg,png,gif,xls,xlsx'
             ]);
 
             // Check if bid already exists
@@ -417,11 +420,50 @@ class biddingController extends Controller
                 'submitted_at' => now()
             ]);
 
+            // Handle file uploads
+            $uploadedFiles = [];
+            if ($request->hasFile('bid_files')) {
+                $files = $request->file('bid_files');
+                // Ensure it's an array (single file uploads may not be an array)
+                if (!is_array($files)) {
+                    $files = [$files];
+                }
+
+                foreach ($files as $file) {
+                    if ($file && $file->isValid()) {
+                        // Generate unique filename
+                        $originalName = $file->getClientOriginalName();
+                        $extension = $file->getClientOriginalExtension();
+                        $uniqueName = time() . '_' . uniqid() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '_', $originalName);
+                        
+                        // Store file in bid_attachments folder
+                        $path = $file->storeAs('bid_attachments', $uniqueName, 'public');
+                        
+                        // Insert into bid_files table
+                        $fileId = DB::table('bid_files')->insertGetId([
+                            'bid_id' => $bidId,
+                            'file_name' => $originalName,
+                            'file_path' => $path,
+                            'description' => null,
+                            'uploaded_at' => now()
+                        ]);
+
+                        $uploadedFiles[] = [
+                            'file_id' => $fileId,
+                            'file_name' => $originalName,
+                            'file_path' => $path
+                        ];
+                    }
+                }
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Bid submitted successfully',
                 'data' => [
-                    'bid_id' => $bidId
+                    'bid_id' => $bidId,
+                    'files_uploaded' => count($uploadedFiles),
+                    'files' => $uploadedFiles
                 ]
             ], 201);
 

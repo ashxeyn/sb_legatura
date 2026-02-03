@@ -747,6 +747,121 @@ class cprocessController extends Controller
         }
     }
 
+    public function apiUpdateMilestone(Request $request, $projectId, $milestoneId)
+    {
+        $userId = $request->input('user_id');
+        if (!$userId) {
+            return response()->json(['success' => false, 'message' => 'User ID is required'], 400);
+        }
+
+        $contractor = $this->contractorClass->getContractorByUserId($userId);
+        if (!$contractor) {
+            return response()->json(['success' => false, 'message' => 'Contractor not found'], 404);
+        }
+
+        // Validate the request data
+        $validated = $request->validate([
+            'milestone_name' => 'required|string|max:200',
+            'payment_mode' => 'required|in:downpayment,full_payment',
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after_or_equal:start_date',
+            'total_project_cost' => 'required|numeric|min:0',
+            'downpayment_amount' => 'nullable|numeric|min:0',
+            'items' => 'required|array|min:1',
+            'items.*.title' => 'required|string|max:255',
+            'items.*.description' => 'nullable|string',
+            'items.*.percentage' => 'required|numeric|min:0|max:100',
+            'items.*.date_to_finish' => 'required|date|after_or_equal:start_date|before_or_equal:end_date'
+        ]);
+
+        // Verify milestone exists and belongs to contractor
+        $milestone = DB::table('milestones')
+            ->where('milestone_id', $milestoneId)
+            ->where('project_id', $projectId)
+            ->where('contractor_id', $contractor->contractor_id)
+            ->first();
+
+        if (!$milestone) {
+            return response()->json(['success' => false, 'message' => 'Milestone not found'], 404);
+        }
+
+        // Validate items percentages sum to 100
+        $totalPercentage = array_sum(array_column($validated['items'], 'percentage'));
+        if (round($totalPercentage, 2) != 100) {
+            return response()->json(['success' => false, 'message' => 'Milestone percentages must add up to exactly 100%'], 400);
+        }
+
+        $startDate = date('Y-m-d 00:00:00', strtotime($validated['start_date']));
+        $endDate = date('Y-m-d 23:59:59', strtotime($validated['end_date']));
+
+        try {
+            DB::beginTransaction();
+
+            // Update payment plan
+            DB::table('payment_plans')
+                ->where('plan_id', $milestone->plan_id)
+                ->update([
+                    'payment_mode' => $validated['payment_mode'],
+                    'total_project_cost' => $validated['total_project_cost'],
+                    'downpayment_amount' => $validated['downpayment_amount'] ?? 0,
+                    'updated_at' => now()
+                ]);
+
+            // Update milestone - reset to submitted status and clear rejection
+            DB::table('milestones')
+                ->where('milestone_id', $milestoneId)
+                ->update([
+                    'milestone_name' => $validated['milestone_name'],
+                    'milestone_description' => $validated['milestone_name'],
+                    'start_date' => $startDate,
+                    'end_date' => $endDate,
+                    'setup_status' => 'submitted',
+                    'setup_rej_reason' => null,
+                    'updated_at' => now()
+                ]);
+
+            // Delete existing milestone items
+            DB::table('milestone_items')->where('milestone_id', $milestoneId)->delete();
+
+            // Calculate remaining amount after downpayment
+            $remainingAmount = $validated['total_project_cost'] - ($validated['downpayment_amount'] ?? 0);
+
+            // Create updated milestone items
+            foreach ($validated['items'] as $index => $item) {
+                $percentage = $item['percentage'];
+                $itemCostBase = $validated['payment_mode'] === 'downpayment' ? $remainingAmount : $validated['total_project_cost'];
+                $calculatedCost = $itemCostBase * ($percentage / 100);
+
+                $this->contractorClass->createMilestoneItem([
+                    'milestone_id' => $milestoneId,
+                    'sequence_order' => $index + 1,
+                    'percentage_progress' => $percentage,
+                    'milestone_item_title' => $item['title'],
+                    'milestone_item_description' => $item['description'] ?? '',
+                    'milestone_item_cost' => round($calculatedCost, 2),
+                    'date_to_finish' => date('Y-m-d 23:59:59', strtotime($item['date_to_finish']))
+                ]);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Milestone updated successfully!',
+                'data' => ['milestone_id' => $milestoneId]
+            ], 200);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error updating milestone (API): ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while updating the milestone.',
+                'error' => config('app.debug') ? $e->getMessage() : null
+            ], 500);
+        }
+    }
+
     public function deleteMilestone(Request $request, $milestoneId)
     {
         $accessCheck = $this->checkContractorAccess($request);

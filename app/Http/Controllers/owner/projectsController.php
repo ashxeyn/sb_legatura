@@ -988,6 +988,7 @@ class projectsController extends Controller
                                 'milestones.milestone_description',
                                 'milestones.milestone_status',
                                 'milestones.setup_status',
+                                'milestones.setup_rej_reason',
                                 'milestones.start_date',
                                 'milestones.end_date',
                                 'milestones.created_at',
@@ -1592,7 +1593,7 @@ class projectsController extends Controller
                 ->where('milestone_id', $milestoneId)
                 ->update([
                     'setup_status' => 'rejected',
-                    'rejection_reason' => $rejectionReason,
+                    'setup_rej_reason' => $rejectionReason,
                     'updated_at' => now()
                 ]);
 

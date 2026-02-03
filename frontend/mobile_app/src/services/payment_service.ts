@@ -188,14 +188,18 @@ export class payment_service {
   /**
    * Approve a payment (Contractor)
    */
-  static async approve_payment(paymentId: number): Promise<ApiResponse> {
+  static async approve_payment(paymentId: number, userId?: number): Promise<ApiResponse> {
     try {
+      const body: any = {};
+      if (userId) body.user_id = userId;
+
       const response = await api_request(`/api/payments/${paymentId}/approve`, {
         method: 'POST',
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify(body),
       });
 
       return response;
@@ -212,7 +216,7 @@ export class payment_service {
   /**
    * Reject a payment (Contractor)
    */
-  static async reject_payment(paymentId: number, reason: string): Promise<ApiResponse> {
+  static async reject_payment(paymentId: number, userId: number, reason: string): Promise<ApiResponse> {
     try {
       const response = await api_request(`/api/payments/${paymentId}/reject`, {
         method: 'POST',
@@ -220,7 +224,7 @@ export class payment_service {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ reason }),
+        body: JSON.stringify({ user_id: userId, reason }),
       });
 
       return response;
@@ -229,6 +233,29 @@ export class payment_service {
       return {
         success: false,
         message: error instanceof Error ? error.message : 'Failed to reject payment',
+        status: 500,
+      };
+    }
+  }
+
+  /**
+   * Get downpayment receipts for a project
+   */
+  static async get_downpayment_receipts(projectId: number): Promise<ApiResponse> {
+    try {
+      const response = await api_request(`/api/projects/${projectId}/downpayment-receipts`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+      });
+
+      return response;
+    } catch (error) {
+      console.error('Error fetching downpayment receipts:', error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to fetch downpayment receipts',
         status: 500,
       };
     }

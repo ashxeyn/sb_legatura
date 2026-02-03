@@ -310,13 +310,14 @@ export default function ProjectBids({ project, userId, onClose, onBidAccepted }:
     if (!profilePic) return null;
     // If already a full URL, return as is
     if (profilePic.startsWith('http')) return profilePic;
-    // Otherwise, construct from base_url
-    return `${api_config.base_url}/storage/${profilePic}`;
+    // Use the API files endpoint for proper file serving on mobile
+    return `${api_config.base_url}/api/files/${profilePic}`;
   };
 
   const getFileUrl = (filePath: string) => {
     if (filePath.startsWith('http')) return filePath;
-    return `${api_config.base_url}/storage/${filePath}`;
+    // Use the API files endpoint for proper file serving on mobile
+    return `${api_config.base_url}/api/files/${filePath}`;
   };
 
   const openBidDetails = (bid: Bid) => {
@@ -326,11 +327,17 @@ export default function ProjectBids({ project, userId, onClose, onBidAccepted }:
     setSelectedBid(bid);
     setShowBidDetails(true);
 
-    // If backend only returns file_count but not files array, fetch files on demand
-    if ((bid.file_count && bid.file_count > 0) && (!bid.files || bid.files.length === 0)) {
+    // Check if we have files data - files could be an array or undefined
+    const hasFilesData = bid.files && Array.isArray(bid.files) && bid.files.length > 0;
+    const expectsFiles = (bid.file_count && bid.file_count > 0);
+    
+    // If backend indicates files exist but we don't have them, fetch on demand
+    if (expectsFiles && !hasFilesData) {
+      console.log('Files expected but not loaded, fetching on demand...');
       (async () => {
         try {
           const resp = await projects_service.get_bid_files(project.project_id, bid.bid_id);
+          console.log('Fetched bid files response:', resp);
           if (resp.success && Array.isArray(resp.data) && resp.data.length > 0) {
             setSelectedBid(prev => prev ? { ...prev, files: resp.data } : prev);
           }
@@ -419,10 +426,12 @@ export default function ProjectBids({ project, userId, onClose, onBidAccepted }:
           </View>
           <View style={styles.contractorInfo}>
             <Text style={styles.companyName} numberOfLines={1}>{bid.company_name}</Text>
-            <Text style={styles.contractorMeta}>
-              <Feather name="briefcase" size={12} color={COLORS.textMuted} /> {bid.years_of_experience} years exp
-              {bid.completed_projects ? ` • ${bid.completed_projects} projects` : ''}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Feather name="briefcase" size={12} color={COLORS.textMuted} />
+              <Text style={[styles.contractorMeta, { marginLeft: 4 }]}>
+                {bid.years_of_experience} years exp{bid.completed_projects ? ` • ${bid.completed_projects} projects` : ''}
+              </Text>
+            </View>
           </View>
           <View style={[styles.statusBadge, { backgroundColor: statusConfig.bg }]}>
             <Feather name={statusConfig.icon as any} size={12} color={statusConfig.color} />
@@ -475,9 +484,10 @@ export default function ProjectBids({ project, userId, onClose, onBidAccepted }:
 
         {/* Footer */}
         <View style={styles.bidFooter}>
-          <Text style={styles.submittedDate}>
-            <Feather name="clock" size={12} color={COLORS.textMuted} /> {formatDate(bid.submitted_at)}
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Feather name="clock" size={12} color={COLORS.textMuted} />
+            <Text style={[styles.submittedDate, { marginLeft: 4 }]}>{formatDate(bid.submitted_at)}</Text>
+          </View>
           {bid.file_count && bid.file_count > 0 && (
             <View style={styles.filesIndicator}>
               <Feather name="paperclip" size={12} color={COLORS.textSecondary} />
@@ -532,7 +542,7 @@ export default function ProjectBids({ project, userId, onClose, onBidAccepted }:
   );
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.surface} />
 
       {/* Header */}
@@ -598,271 +608,185 @@ export default function ProjectBids({ project, userId, onClose, onBidAccepted }:
             {/* Modal Header */}
             <View style={styles.modalHeader}>
               <TouchableOpacity style={styles.modalCloseButton} onPress={closeBidDetails}>
-                <Feather name="x" size={24} color={COLORS.text} />
+                <Feather name="arrow-left" size={22} color={COLORS.text} />
               </TouchableOpacity>
               <Text style={styles.modalTitle}>Bid Details</Text>
-              <View style={styles.headerSpacer} />
+              <View style={[styles.modalStatusPill, { backgroundColor: getStatusConfig(selectedBid.bid_status).bg }]}>
+                <Text style={[styles.modalStatusText, { color: getStatusConfig(selectedBid.bid_status).color }]}>
+                  {getStatusConfig(selectedBid.bid_status).label}
+                </Text>
+              </View>
             </View>
 
             <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
-              {/* Contractor Profile Section */}
-              <View style={styles.modalSection}>
-                <View style={styles.contractorProfileHeader}>
-                  <View style={styles.contractorAvatarLarge}>
+              {/* Hero Section - Contractor & Price */}
+              <View style={styles.heroSection}>
+                <View style={styles.heroContractor}>
+                  <View style={styles.heroAvatar}>
                     {getProfilePicUrl(selectedBid.profile_pic) ? (
-                      <Image source={{ uri: getProfilePicUrl(selectedBid.profile_pic) }} style={styles.avatarImageLarge} />
+                      <Image source={{ uri: getProfilePicUrl(selectedBid.profile_pic) }} style={styles.heroAvatarImage} />
                     ) : (
-                      <View style={styles.avatarPlaceholderLarge}>
-                        <Text style={styles.avatarTextLarge}>
-                          {selectedBid.company_name?.charAt(0).toUpperCase() || 'C'}
-                        </Text>
-                      </View>
+                      <Text style={styles.heroAvatarText}>
+                        {selectedBid.company_name?.charAt(0).toUpperCase() || 'C'}
+                      </Text>
                     )}
                   </View>
-                  <View style={styles.contractorProfileInfo}>
-                    <Text style={styles.companyNameLarge}>{selectedBid.company_name}</Text>
-                    <Text style={styles.contractorUsername}>@{selectedBid.username}</Text>
-                    {selectedBid.contractor_type && (
-                      <View style={styles.contractorTypeBadge}>
-                        <Text style={styles.contractorTypeText}>{selectedBid.contractor_type}</Text>
-                      </View>
-                    )}
+                  <View style={styles.heroInfo}>
+                    <Text style={styles.heroCompanyName}>{selectedBid.company_name}</Text>
+                    <Text style={styles.heroUsername}>@{selectedBid.username}</Text>
                   </View>
                 </View>
-
-                {/* Contractor Stats */}
-                <View style={styles.statsRow}>
-                  <View style={styles.statItem}>
-                    <Text style={styles.statValue}>{selectedBid.years_of_experience}</Text>
-                    <Text style={styles.statLabel}>Years Exp.</Text>
-                  </View>
-                  <View style={styles.statDivider} />
-                  <View style={styles.statItem}>
-                    <Text style={styles.statValue}>{selectedBid.completed_projects || 0}</Text>
-                    <Text style={styles.statLabel}>Projects</Text>
-                  </View>
-                  {selectedBid.picab_category && (
-                    <>
-                      <View style={styles.statDivider} />
-                      <View style={styles.statItem}>
-                        <Text style={styles.statValue}>{selectedBid.picab_category}</Text>
-                        <Text style={styles.statLabel}>PICAB</Text>
-                      </View>
-                    </>
-                  )}
+                <View style={styles.heroPricing}>
+                  <Text style={styles.heroPriceLabel}>Proposed Cost</Text>
+                  <Text style={styles.heroPriceValue}>{formatCurrency(selectedBid.proposed_cost)}</Text>
+                  <Text style={styles.heroTimeline}>{selectedBid.estimated_timeline} {selectedBid.estimated_timeline === 1 ? 'month' : 'months'} timeline</Text>
                 </View>
               </View>
 
-              {/* Attachments Preview (compact) */}
-              {selectedBid.files && selectedBid.files.length > 0 && (
-                <View style={styles.modalSection}>
-                  <Text style={styles.sectionTitle}>Attachments</Text>
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={{ paddingVertical: 8 }}
-                  >
-                    {selectedBid.files.slice(0, 3).map((file, idx) => (
-                      <TouchableOpacity
-                        key={file.file_id || idx}
-                        style={{ flexDirection: 'row', alignItems: 'center', marginRight: 12 }}
-                        onPress={() => handleOpenFile(file.file_path)}
-                      >
-                        <View style={styles.fileIcon}>
-                          <Feather name={file.file_name.endsWith('.pdf') ? 'file-text' : 'file'} size={20} color={COLORS.primary} />
-                        </View>
-                        <Text style={{ maxWidth: 140, marginLeft: 8, color: COLORS.text }} numberOfLines={1}>
-                          {file.file_name}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                    {selectedBid.files.length > 3 && (
-                      <View style={{ justifyContent: 'center', paddingLeft: 6 }}>
-                        <Text style={{ color: COLORS.textMuted }}>+{selectedBid.files.length - 3} more</Text>
-                      </View>
-                    )}
-                  </ScrollView>
+              {/* Quick Stats Row */}
+              <View style={styles.quickStats}>
+                <View style={styles.quickStatItem}>
+                  <Text style={styles.quickStatValue}>{selectedBid.years_of_experience}</Text>
+                  <Text style={styles.quickStatLabel}>Years Exp.</Text>
                 </View>
-              )}
+                <View style={styles.quickStatDivider} />
+                <View style={styles.quickStatItem}>
+                  <Text style={styles.quickStatValue}>{selectedBid.completed_projects || 0}</Text>
+                  <Text style={styles.quickStatLabel}>Projects</Text>
+                </View>
+                {selectedBid.picab_category && (
+                  <>
+                    <View style={styles.quickStatDivider} />
+                    <View style={styles.quickStatItem}>
+                      <Text style={styles.quickStatValue}>{selectedBid.picab_category}</Text>
+                      <Text style={styles.quickStatLabel}>PICAB Cat.</Text>
+                    </View>
+                  </>
+                )}
+                {selectedBid.contractor_type && (
+                  <>
+                    <View style={styles.quickStatDivider} />
+                    <View style={styles.quickStatItem}>
+                      <Text style={styles.quickStatValue} numberOfLines={1}>{selectedBid.contractor_type}</Text>
+                      <Text style={styles.quickStatLabel}>Type</Text>
+                    </View>
+                  </>
+                )}
+              </View>
 
-              {/* Bid Information */}
-              <View style={styles.modalSection}>
-                <Text style={styles.sectionTitle}>Bid Information</Text>
-                <View style={styles.bidInfoCard}>
-                  <View style={styles.bidInfoRow}>
-                    <View style={styles.bidInfoItem}>
-                      <Feather name="dollar-sign" size={20} color={COLORS.success} />
-                      <View style={styles.bidInfoText}>
-                        <Text style={styles.bidInfoLabel}>Proposed Cost</Text>
-                        <Text style={styles.bidInfoValue}>{formatCurrency(selectedBid.proposed_cost)}</Text>
-                      </View>
-                    </View>
-                  </View>
-                  <View style={styles.bidInfoRow}>
-                    <View style={styles.bidInfoItem}>
-                      <Feather name="calendar" size={20} color={COLORS.info} />
-                      <View style={styles.bidInfoText}>
-                        <Text style={styles.bidInfoLabel}>Estimated Timeline</Text>
-                        <Text style={styles.bidInfoValue}>{selectedBid.estimated_timeline} {selectedBid.estimated_timeline === 1 ? 'month' : 'months'}</Text>
-                      </View>
-                    </View>
-                  </View>
-                  <View style={styles.bidInfoRow}>
-                    <View style={styles.bidInfoItem}>
-                      <Feather name="clock" size={20} color={COLORS.textMuted} />
-                      <View style={styles.bidInfoText}>
-                        <Text style={styles.bidInfoLabel}>Submitted</Text>
-                        <Text style={styles.bidInfoValue}>{formatDate(selectedBid.submitted_at)}</Text>
-                      </View>
-                    </View>
-                  </View>
-                  <View style={[styles.bidInfoRow, { borderBottomWidth: 0 }]}>
-                    <View style={styles.bidInfoItem}>
-                      <Feather name={getStatusConfig(selectedBid.bid_status).icon as any} size={20} color={getStatusConfig(selectedBid.bid_status).color} />
-                      <View style={styles.bidInfoText}>
-                        <Text style={styles.bidInfoLabel}>Status</Text>
-                        <Text style={[styles.bidInfoValue, { color: getStatusConfig(selectedBid.bid_status).color }]}>
-                          {getStatusConfig(selectedBid.bid_status).label}
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
+              {/* Bid Details Table */}
+              <View style={styles.detailsTable}>
+                <Text style={styles.tableHeader}>Bid Information</Text>
+                <View style={styles.tableRow}>
+                  <Text style={styles.tableLabel}>Submitted On</Text>
+                  <Text style={styles.tableValue}>{formatDate(selectedBid.submitted_at)}</Text>
+                </View>
+                <View style={styles.tableRow}>
+                  <Text style={styles.tableLabel}>Proposed Cost</Text>
+                  <Text style={[styles.tableValue, styles.tableValueHighlight]}>{formatCurrency(selectedBid.proposed_cost)}</Text>
+                </View>
+                <View style={styles.tableRow}>
+                  <Text style={styles.tableLabel}>Est. Timeline</Text>
+                  <Text style={styles.tableValue}>{selectedBid.estimated_timeline} {selectedBid.estimated_timeline === 1 ? 'month' : 'months'}</Text>
+                </View>
+                <View style={[styles.tableRow, { borderBottomWidth: 0 }]}>
+                  <Text style={styles.tableLabel}>Status</Text>
+                  <Text style={[styles.tableValue, { color: getStatusConfig(selectedBid.bid_status).color }]}>
+                    {getStatusConfig(selectedBid.bid_status).label}
+                  </Text>
                 </View>
               </View>
 
               {/* Contractor Notes */}
               {selectedBid.contractor_notes && (
-                <View style={styles.modalSection}>
-                  <Text style={styles.sectionTitle}>Contractor Notes</Text>
-                  <View style={styles.notesCard}>
-                    <Text style={styles.notesFullText}>{selectedBid.contractor_notes}</Text>
-                  </View>
+                <View style={styles.notesSection}>
+                  <Text style={styles.tableHeader}>Contractor's Notes</Text>
+                  <Text style={styles.notesText}>{selectedBid.contractor_notes}</Text>
                 </View>
               )}
 
-              {/* Contact Information */}
-              <View style={styles.modalSection}>
-                <Text style={styles.sectionTitle}>Contact Information</Text>
-                <View style={styles.contactCard}>
+              {/* Contact Section */}
+              <View style={styles.contactSection}>
+                <Text style={styles.tableHeader}>Contact</Text>
+                <View style={styles.contactRow}>
                   {selectedBid.company_email && (
-                    <TouchableOpacity
-                      style={styles.contactItem}
-                      onPress={() => handleEmailContractor(selectedBid.company_email!)}
-                    >
-                      <View style={[styles.contactIcon, { backgroundColor: COLORS.infoLight }]}>
-                        <Feather name="mail" size={18} color={COLORS.info} />
-                      </View>
-                      <View style={styles.contactText}>
-                        <Text style={styles.contactLabel}>Email</Text>
-                        <Text style={styles.contactValue}>{selectedBid.company_email}</Text>
-                      </View>
-                      <Feather name="external-link" size={16} color={COLORS.textMuted} />
+                    <TouchableOpacity style={styles.contactBtn} onPress={() => handleEmailContractor(selectedBid.company_email!)}>
+                      <Feather name="mail" size={18} color={COLORS.primary} />
+                      <Text style={styles.contactBtnText}>Email</Text>
                     </TouchableOpacity>
                   )}
                   {selectedBid.company_phone && (
-                    <TouchableOpacity
-                      style={styles.contactItem}
-                      onPress={() => handleCallContractor(selectedBid.company_phone!)}
-                    >
-                      <View style={[styles.contactIcon, { backgroundColor: COLORS.successLight }]}>
-                        <Feather name="phone" size={18} color={COLORS.success} />
-                      </View>
-                      <View style={styles.contactText}>
-                        <Text style={styles.contactLabel}>Phone</Text>
-                        <Text style={styles.contactValue}>{selectedBid.company_phone}</Text>
-                      </View>
-                      <Feather name="external-link" size={16} color={COLORS.textMuted} />
+                    <TouchableOpacity style={styles.contactBtn} onPress={() => handleCallContractor(selectedBid.company_phone!)}>
+                      <Feather name="phone" size={18} color={COLORS.primary} />
+                      <Text style={styles.contactBtnText}>Call</Text>
                     </TouchableOpacity>
                   )}
                   {selectedBid.company_website && (
-                    <TouchableOpacity
-                      style={[styles.contactItem, { borderBottomWidth: 0 }]}
-                      onPress={() => handleOpenWebsite(selectedBid.company_website!)}
-                    >
-                      <View style={[styles.contactIcon, { backgroundColor: COLORS.primaryLight }]}>
-                        <Feather name="globe" size={18} color={COLORS.primary} />
-                      </View>
-                      <View style={styles.contactText}>
-                        <Text style={styles.contactLabel}>Website</Text>
-                        <Text style={styles.contactValue} numberOfLines={1}>{selectedBid.company_website}</Text>
-                      </View>
-                      <Feather name="external-link" size={16} color={COLORS.textMuted} />
+                    <TouchableOpacity style={styles.contactBtn} onPress={() => handleOpenWebsite(selectedBid.company_website!)}>
+                      <Feather name="globe" size={18} color={COLORS.primary} />
+                      <Text style={styles.contactBtnText}>Website</Text>
                     </TouchableOpacity>
                   )}
                 </View>
               </View>
 
+              {/* Attachments Section */}
+              <View style={styles.attachmentsSection}>
+                <View style={styles.attachmentsHeaderRow}>
+                  <Text style={styles.tableHeader}>Attachments</Text>
+                  {selectedBid.files && selectedBid.files.length > 0 && (
+                    <Text style={styles.attachmentCount}>{selectedBid.files.length} file{selectedBid.files.length !== 1 ? 's' : ''}</Text>
+                  )}
+                </View>
+                
+                {selectedBid.files && selectedBid.files.length > 0 ? (
+                  <View style={styles.filesList}>
+                    {selectedBid.files.map((file, idx) => (
+                      <TouchableOpacity
+                        key={file.file_id || idx}
+                        style={styles.fileRow}
+                        onPress={() => handleOpenFile(file.file_path)}
+                      >
+                        <Feather 
+                          name={file.file_name && (file.file_name.endsWith('.pdf') ? 'file-text' : file.file_name.match(/\.(jpg|jpeg|png|gif)$/i) ? 'image' : 'file')} 
+                          size={18} 
+                          color={COLORS.textSecondary} 
+                        />
+                        <Text style={styles.fileName} numberOfLines={1}>{file.file_name || 'Untitled'}</Text>
+                        <Feather name="download" size={16} color={COLORS.textMuted} />
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                ) : (
+                  <View style={styles.noFilesRow}>
+                    <Feather name="inbox" size={18} color={COLORS.textMuted} />
+                    <Text style={styles.noFilesText}>No attachments included</Text>
+                  </View>
+                )}
+              </View>
 
-
-              {/* Bid Attachments & Actions */}
+              {/* Action Buttons - Only show for submitted bids */}
               {selectedBid.bid_status === 'submitted' && (
-                <View style={styles.modalSection}>
-                  {/* Attachments Section - Always show */}
-                  <View style={styles.attachmentsContainer}>
-                    <View style={styles.attachmentsHeader}>
-                      <Feather name="paperclip" size={18} color={COLORS.primary} />
-                      <Text style={styles.attachmentsTitle}>
-                        Attachments {selectedBid.files && selectedBid.files.length > 0 ? `(${selectedBid.files.length})` : ''}
-                      </Text>
-                    </View>
-                    
-                    {selectedBid.files && selectedBid.files.length > 0 ? (
-                      <View style={styles.attachmentsGrid}>
-                        {selectedBid.files.map((file, idx) => (
-                          <TouchableOpacity
-                            key={file.file_id || idx}
-                            style={styles.attachmentCard}
-                            onPress={() => handleOpenFile(file.file_path)}
-                          >
-                            <View style={styles.attachmentIcon}>
-                              <Feather 
-                                name={file.file_name && file.file_name.endsWith('.pdf') ? 'file-text' : 'file'} 
-                                size={20} 
-                                color={COLORS.primary} 
-                              />
-                            </View>
-                            <View style={styles.attachmentInfo}>
-                              <Text style={styles.attachmentName} numberOfLines={1}>{file.file_name}</Text>
-                              {file.description && (
-                                <Text style={styles.attachmentDesc} numberOfLines={1}>{file.description}</Text>
-                              )}
-                            </View>
-                            <Feather name="external-link" size={16} color={COLORS.textMuted} />
-                          </TouchableOpacity>
-                        ))}
-                      </View>
-                    ) : (
-                      <View style={styles.noAttachmentsContainer}>
-                        <Feather name="file-minus" size={24} color={COLORS.textMuted} />
-                        <Text style={styles.noAttachmentsText}>No attachments provided</Text>
-                        <Text style={styles.noAttachmentsSubtext}>The contractor did not include any files with this bid</Text>
-                      </View>
-                    )}
-                  </View>
-
-                  {/* Action Buttons */}
-                  <View style={styles.actionButtonsContainer}>
-                    <TouchableOpacity
-                      style={styles.modalAcceptButton}
-                      onPress={() => {
-                        closeBidDetails();
-                        handleAcceptBid(selectedBid);
-                      }}
-                    >
-                      <Feather name="check-circle" size={20} color="#FFFFFF" />
-                      <Text style={styles.modalAcceptText}>Accept This Bid</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.modalRejectButton}
-                      onPress={() => {
-                        closeBidDetails();
-                        handleRejectBid(selectedBid);
-                      }}
-                    >
-                      <Feather name="x-circle" size={20} color={COLORS.error} />
-                      <Text style={styles.modalRejectText}>Reject Bid</Text>
-                    </TouchableOpacity>
-                  </View>
+                <View style={styles.actionSection}>
+                  <TouchableOpacity
+                    style={styles.acceptBtn}
+                    onPress={() => {
+                      closeBidDetails();
+                      handleAcceptBid(selectedBid);
+                    }}
+                  >
+                    <Feather name="check" size={18} color="#FFFFFF" />
+                    <Text style={styles.acceptBtnText}>Accept Bid</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.rejectBtn}
+                    onPress={() => {
+                      closeBidDetails();
+                      handleRejectBid(selectedBid);
+                    }}
+                  >
+                    <Text style={styles.rejectBtnText}>Decline</Text>
+                  </TouchableOpacity>
                 </View>
               )}
 
@@ -1262,7 +1186,7 @@ const styles = StyleSheet.create({
   buttonDisabled: {
     opacity: 0.6,
   },
-  // Modal styles
+  // Modal styles - Clean Professional Design
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -1272,47 +1196,289 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.surface,
   },
-  modalScrollContent: {
-    padding: 20,
-    paddingBottom: 40,
-  },
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
   },
-  closeModalButton: {
+  modalCloseButton: {
     padding: 4,
-  },
-  modalCompanyName: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: COLORS.text,
-    flex: 1,
     marginRight: 12,
   },
-  bidStatusSection: {
+  modalTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: COLORS.text,
+    flex: 1,
+  },
+  modalStatusPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  modalStatusText: {
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  modalContent: {
+    flex: 1,
+  },
+  // Hero Section
+  heroSection: {
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  heroContractor: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.background,
-    padding: 12,
-    borderRadius: 12,
     marginBottom: 20,
   },
-  detailSection: {
-    marginBottom: 20,
+  heroAvatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 6,
+    backgroundColor: COLORS.primaryLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
+    overflow: 'hidden',
+  },
+  heroAvatarImage: {
+    width: 56,
+    height: 56,
+  },
+  heroAvatarText: {
+    fontSize: 22,
+    fontWeight: '600',
+    color: COLORS.primary,
+  },
+  heroInfo: {
+    flex: 1,
+  },
+  heroCompanyName: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginBottom: 2,
+  },
+  heroUsername: {
+    fontSize: 14,
+    color: COLORS.textMuted,
+  },
+  heroPricing: {
+    backgroundColor: COLORS.background,
+    padding: 16,
+    borderRadius: 6,
+  },
+  heroPriceLabel: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    marginBottom: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  heroPriceValue: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: 4,
+  },
+  heroTimeline: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+  },
+  // Quick Stats
+  quickStats: {
+    flexDirection: 'row',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  quickStatItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  quickStatValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginBottom: 2,
+  },
+  quickStatLabel: {
+    fontSize: 11,
+    color: COLORS.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  quickStatDivider: {
+    width: 1,
+    height: 32,
+    backgroundColor: COLORS.border,
+  },
+  // Details Table
+  detailsTable: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 8,
+  },
+  tableHeader: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 12,
+  },
+  tableRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.borderLight,
+  },
+  tableLabel: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+  },
+  tableValue: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: COLORS.text,
+  },
+  tableValueHighlight: {
+    fontWeight: '600',
+    color: COLORS.success,
+  },
+  // Notes Section
+  notesSection: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 8,
+  },
+  notesText: {
+    fontSize: 14,
+    color: COLORS.text,
+    lineHeight: 22,
+  },
+  // Contact Section
+  contactSection: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 8,
+  },
+  contactRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  contactBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    backgroundColor: COLORS.background,
+    borderRadius: 6,
+    gap: 6,
+  },
+  contactBtnText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: COLORS.primary,
+  },
+  // Attachments Section
+  attachmentsSection: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 8,
+  },
+  attachmentsHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  attachmentCount: {
+    fontSize: 13,
+    color: COLORS.textMuted,
+  },
+  filesList: {
+    gap: 1,
+    backgroundColor: COLORS.border,
+    borderRadius: 6,
+    overflow: 'hidden',
+  },
+  fileRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    backgroundColor: COLORS.background,
+    gap: 12,
+  },
+  fileName: {
+    flex: 1,
+    fontSize: 14,
+    color: COLORS.text,
+  },
+  noFilesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    gap: 10,
+  },
+  noFilesText: {
+    fontSize: 14,
+    color: COLORS.textMuted,
+  },
+  // Action Section
+  actionSection: {
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 8,
+    gap: 10,
+  },
+  acceptBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.success,
+    paddingVertical: 14,
+    borderRadius: 6,
+    gap: 8,
+  },
+  acceptBtnText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  rejectBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+  },
+  rejectBtnText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: COLORS.error,
+  },
+  // Legacy styles kept for compatibility
+  modalSection: {
+    marginBottom: 24,
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '700',
     color: COLORS.text,
     marginBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
   },
   detailRow: {
     flexDirection: 'row',
@@ -1366,12 +1532,6 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 12,
   },
-  fileName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.text,
-    marginBottom: 4,
-  },
   fileDescription: {
     fontSize: 12,
     color: COLORS.textSecondary,
@@ -1396,7 +1556,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: COLORS.success,
     paddingVertical: 14,
-    borderRadius: 12,
+    borderRadius: 6,
   },
   modalRejectButton: {
     flex: 1,
@@ -1405,85 +1565,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: COLORS.errorLight,
     paddingVertical: 14,
-    borderRadius: 12,
-  },
-  // Additional modal styles
-  modalCloseButton: {
-    padding: 8,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.text,
-    flex: 1,
-    textAlign: 'center',
+    borderRadius: 6,
   },
   headerSpacer: {
     width: 40,
   },
-  modalContent: {
-    flex: 1,
-    paddingHorizontal: 20,
-  },
-  modalSection: {
-    marginBottom: 24,
-  },
-  contractorProfileHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  contractorAvatarLarge: {
-    marginRight: 16,
-  },
-  avatarImageLarge: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-  },
-  avatarPlaceholderLarge: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: COLORS.primaryLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarTextLarge: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: COLORS.primary,
-  },
-  contractorProfileInfo: {
-    flex: 1,
-  },
-  companyNameLarge: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: COLORS.text,
-    marginBottom: 4,
-  },
-  contractorUsername: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-    marginBottom: 8,
-  },
-  contractorTypeBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: COLORS.primaryLight,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  contractorTypeText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: COLORS.primary,
-  },
+  // Legacy card styles for bid cards
   statsRow: {
     flexDirection: 'row',
     backgroundColor: COLORS.background,
-    borderRadius: 12,
+    borderRadius: 6,
     padding: 16,
     justifyContent: 'space-around',
   },
@@ -1507,7 +1598,7 @@ const styles = StyleSheet.create({
   },
   bidInfoCard: {
     backgroundColor: COLORS.background,
-    borderRadius: 12,
+    borderRadius: 6,
     padding: 4,
   },
   bidInfoRow: {
@@ -1539,7 +1630,7 @@ const styles = StyleSheet.create({
   },
   notesCard: {
     backgroundColor: COLORS.background,
-    borderRadius: 12,
+    borderRadius: 6,
     padding: 16,
   },
   notesFullText: {
@@ -1549,7 +1640,7 @@ const styles = StyleSheet.create({
   },
   contactCard: {
     backgroundColor: COLORS.background,
-    borderRadius: 12,
+    borderRadius: 6,
     overflow: 'hidden',
   },
   contactItem: {
@@ -1562,7 +1653,7 @@ const styles = StyleSheet.create({
   contactIcon: {
     width: 36,
     height: 36,
-    borderRadius: 18,
+    borderRadius: 6,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -1582,13 +1673,13 @@ const styles = StyleSheet.create({
   },
   filesCard: {
     backgroundColor: COLORS.background,
-    borderRadius: 12,
+    borderRadius: 6,
     overflow: 'hidden',
   },
   fileIcon: {
     width: 40,
     height: 40,
-    borderRadius: 8,
+    borderRadius: 6,
     backgroundColor: COLORS.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
@@ -1602,80 +1693,12 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: COLORS.borderLight,
   },
-  // New improved attachment styles
-  attachmentsContainer: {
-    backgroundColor: COLORS.primaryLight,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 20,
-  },
-  attachmentsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  attachmentsTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.primary,
-    marginLeft: 8,
-  },
-  attachmentsGrid: {
-    gap: 8,
-  },
-  attachmentCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.surface,
-    borderRadius: 12,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  attachmentIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    backgroundColor: COLORS.primaryLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  attachmentInfo: {
-    flex: 1,
-  },
-  attachmentName: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: COLORS.text,
-    marginBottom: 2,
-  },
-  attachmentDesc: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-  },
   actionButtonsContainer: {
     flexDirection: 'row',
     gap: 12,
     paddingTop: 16,
     borderTopWidth: 1,
     borderTopColor: COLORS.border,
-  },
-  noAttachmentsContainer: {
-    alignItems: 'center',
-    paddingVertical: 20,
-  },
-  noAttachmentsText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: COLORS.textSecondary,
-    marginTop: 8,
-    marginBottom: 4,
-  },
-  noAttachmentsSubtext: {
-    fontSize: 12,
-    color: COLORS.textMuted,
-    textAlign: 'center',
   },
   modalAcceptText: {
     color: '#FFFFFF',

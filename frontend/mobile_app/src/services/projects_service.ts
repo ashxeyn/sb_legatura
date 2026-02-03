@@ -678,6 +678,54 @@ export class projects_service {
   }
 
   /**
+   * Update an existing milestone (for rejected milestones)
+   */
+  static async update_milestone(
+    userId: number,
+    projectId: number,
+    milestoneId: number,
+    milestoneData: {
+      milestone_name: string;
+      milestone_description?: string;
+      payment_mode: 'full_payment' | 'downpayment';
+      start_date: string;
+      end_date: string;
+      total_project_cost: number;
+      downpayment_amount?: number;
+      items: Array<{
+        title: string;
+        description?: string;
+        percentage: number;
+        date_to_finish: string;
+      }>;
+    }
+  ): Promise<ApiResponse> {
+    try {
+      const response = await api_request(`/api/contractor/projects/${projectId}/milestones/${milestoneId}`, {
+        method: 'PUT',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify({
+          user_id: userId,
+          ...milestoneData,
+        }),
+      });
+
+      return response;
+    } catch (error) {
+      console.error('Error updating milestone:', error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to update milestone',
+        status: 500,
+      };
+    }
+  }
+
+  /**
    * Complete a project (mark as completed)
    * Only available to property owners when all milestone items are completed
    */
