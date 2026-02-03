@@ -341,7 +341,7 @@ export default function ProjectView({ project, userId, userRole, onClose }: Proj
     // Show info banner if there are milestones pending approval (regardless of display_status)
     const hasPendingMilestones = currentProject.milestones?.some(m => m.setup_status === 'submitted');
     if (hasPendingMilestones) {
-      const pendingCount = currentProject.milestones.filter(m => m.setup_status === 'submitted').length;
+      const pendingCount = (currentProject.milestones || []).filter(m => m.setup_status === 'submitted').length;
       const bannerMessage = isOwner
         ? `${pendingCount} milestone${pendingCount > 1 ? 's' : ''} waiting for your approval. Review and approve below.`
         : `${pendingCount} milestone${pendingCount > 1 ? 's' : ''} pending owner approval.`;
@@ -366,8 +366,8 @@ export default function ProjectView({ project, userId, userRole, onClose }: Proj
 
   const getMilestoneCardText = () => {
     // Check if any milestones are approved
-    const hasApprovedMilestones = currentProject.milestones.some(m => m.setup_status === 'approved');
-    const hasPendingMilestones = currentProject.milestones.some(m => m.setup_status === 'submitted');
+    const hasApprovedMilestones = (currentProject.milestones || []).some(m => m.setup_status === 'approved');
+    const hasPendingMilestones = (currentProject.milestones || []).some(m => m.setup_status === 'submitted');
     
     if (isOwner) {
       if (hasApprovedMilestones) {
@@ -410,7 +410,7 @@ export default function ProjectView({ project, userId, userRole, onClose }: Proj
   const milestoneCardText = getMilestoneCardText();
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.surface} />
 
       {/* Header */}
@@ -690,11 +690,11 @@ export default function ProjectView({ project, userId, userRole, onClose }: Proj
               projectLocation: currentProject.project_location,
               contractorName: currentProject.contractor_info?.company_name || 'Contractor',
               propertyType: currentProject.type_name || currentProject.property_type,
-              projectStartDate: currentProject.milestones[0]?.start_date || currentProject.created_at,
-              projectEndDate: currentProject.milestones[currentProject.milestones.length - 1]?.end_date || currentProject.created_at,
-              totalCost: currentProject.milestones[0]?.payment_plan?.total_project_cost || currentProject.accepted_bid?.proposed_cost || 0,
-              paymentMethod: currentProject.milestones[0]?.payment_plan?.payment_mode || 'milestone',
-              milestones: currentProject.milestones,
+              projectStartDate: (currentProject.milestones && currentProject.milestones[0])?.start_date || currentProject.created_at,
+              projectEndDate: (currentProject.milestones && currentProject.milestones[currentProject.milestones.length - 1])?.end_date || currentProject.created_at,
+              totalCost: (currentProject.milestones && currentProject.milestones[0])?.payment_plan?.total_project_cost || currentProject.accepted_bid?.proposed_cost || 0,
+              paymentMethod: (currentProject.milestones && currentProject.milestones[0])?.payment_plan?.payment_mode || 'milestone',
+              milestones: currentProject.milestones || [],
               userId: userId,
               userRole: userRole,
               projectStatus: currentProject.project_status,

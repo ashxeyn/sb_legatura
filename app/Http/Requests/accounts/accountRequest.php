@@ -95,7 +95,9 @@ class accountRequest extends FormRequest
                 'string',
                 'regex:/^09[0-9]{9}$/'
             ],
-            'years_of_experience' => 'required|integer|min:0',
+            // Note: `founded_date` is provided by the client date-picker
+            // but the server computes `years_of_experience` from that date
+            // and does not require a separate `founded_date` validation rule here.
             'contractor_type_id' => 'required|integer',
             'contractor_type_other_text' => 'nullable|string|max:255',
             'services_offered' => 'required|string',

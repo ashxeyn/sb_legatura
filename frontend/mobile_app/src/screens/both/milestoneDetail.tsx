@@ -753,7 +753,7 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
         )}
 
         {/* Contractor: Submit Progress Report */}
-        {isContractor && isApproved && (
+        {isContractor && isApproved && !isCompleted && itemStatus !== 'completed' && (
           <View style={styles.bottomRow}>
             <TouchableOpacity
               style={styles.submitReportButton}

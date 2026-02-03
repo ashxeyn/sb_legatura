@@ -357,7 +357,7 @@ export default function ProjectList({ userData, onClose }: ProjectListProps) {
   }
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.surface} />
 
       {/* Header */}

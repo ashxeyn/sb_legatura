@@ -93,15 +93,19 @@ export default function EditProfileScreen({ userData, onBackPress, onSaveSuccess
         return;
       }
 
+      const MEDIA_IMAGES = (ImagePicker.MediaType && ImagePicker.MediaType.Images)
+        || (ImagePicker.MediaTypeOptions && ImagePicker.MediaTypeOptions.Images)
+        || 'Images';
+
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: MEDIA_IMAGES,
         allowsEditing: true,
         quality: 0.8,
       });
 
-      if (!result.cancelled) {
-        if (forCover) setCoverPhoto(result.uri);
-        else setProfilePic(result.uri);
+      if (!result.cancelled && result.assets && result.assets[0]) {
+        if (forCover) setCoverPhoto(result.assets[0].uri);
+        else setProfilePic(result.assets[0].uri);
       }
     } catch (error) {
       console.error('Image picker error:', error);

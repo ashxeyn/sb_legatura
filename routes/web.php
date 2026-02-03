@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\authController;
 use App\Http\Controllers\contractor\cprocessController;
+use App\Http\Controllers\contractor\membersController;
 use App\Http\Controllers\both\disputeController;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\View;
@@ -110,6 +111,7 @@ Route::get('/contractor/profile', [\App\Http\Controllers\contractor\cprocessCont
 Route::get('/accounts/login', [authController::class, 'showLoginForm']);
 Route::post('/accounts/login', [authController::class, 'login']);
 Route::get('/accounts/signup', [authController::class, 'showSignupForm']);
+Route::post('/accounts/signup/select-role', [authController::class, 'selectRole']);
 Route::post('/accounts/logout', [authController::class, 'logout']);
 Route::get('/accounts/logout', [authController::class, 'logout']);
 
@@ -153,6 +155,12 @@ Route::post('/accounts/switch/owner/final', [authController::class, 'switchOwner
 Route::get('/api/psgc/provinces', [authController::class, 'getProvinces']);
 Route::get('/api/psgc/provinces/{provinceCode}/cities', [authController::class, 'getCitiesByProvince']);
 Route::get('/api/psgc/cities/{cityCode}/barangays', [authController::class, 'getBarangaysByCity']);
+
+// Contractor members API (simple JSON-backed implementation)
+Route::get('/api/contractor/members', [membersController::class, 'index']);
+Route::post('/api/contractor/members', [membersController::class, 'store']);
+Route::put('/api/contractor/members/{memberId}', [membersController::class, 'update']);
+Route::delete('/api/contractor/members/{memberId}', [membersController::class, 'destroy']);
 
 // Dashboard Routes
 Route::get('/admin/dashboard', function() {
@@ -325,6 +333,10 @@ Route::prefix('/api/admin/users')->group(function () {
     Route::get('/contractors/{id}', [userManagementController::class, 'getContractorApi'])->name('api.admin.contractor');
     Route::post('/contractors/{id}/verify', [userManagementController::class, 'verifyContractor'])->name('api.admin.contractor.verify');
     Route::post('/contractors/{id}/suspend', [userManagementController::class, 'suspendContractor'])->name('api.admin.contractor.suspend');
+    // Contractor members management (admin)
+    Route::post('/contractors/{id}/members', [userManagementController::class, 'addContractorMember'])->name('api.admin.contractor.addMember');
+    Route::put('/contractors/{id}/members/{memberId}', [userManagementController::class, 'updateContractorMember'])->name('api.admin.contractor.updateMember');
+    Route::delete('/contractors/{id}/members/{memberId}', [userManagementController::class, 'deleteContractorMember'])->name('api.admin.contractor.deleteMember');
 
     Route::get('/verification-requests', [userManagementController::class, 'getVerificationRequestsApi'])->name('api.admin.verificationRequests');
     Route::get('/verification-requests/{id}', [userManagementController::class, 'getVerificationRequestDetails'])->name('api.admin.verificationRequest.details');

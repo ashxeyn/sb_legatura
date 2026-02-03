@@ -1,5 +1,5 @@
 // API configuration for connecting to Laravel backend
-const API_BASE_URL = 'http://192.168.254.107:8084';
+const API_BASE_URL = 'http://192.168.254.115:8086'; //'https://legaturaph.com'
 
 import { storage_service } from '../utils/storage';
 
@@ -11,18 +11,18 @@ export const api_config = {
             signup_form: '/api/signup-form',
         },
         contractor: {
-            step1: '/accounts/signup/contractor/step1',
-            step2: '/accounts/signup/contractor/step2',
-            verify_otp: '/accounts/signup/contractor/step3/verify-otp',
-            step4: '/accounts/signup/contractor/step4',
-            final: '/accounts/signup/contractor/final',
+            step1: '/api/signup/contractor/step1',
+            step2: '/api/signup/contractor/step2',
+            verify_otp: '/api/signup/contractor/step3/verify-otp',
+            step4: '/api/signup/contractor/step4',
+            final: '/api/signup/contractor/final',
         },
         property_owner: {
-            step1: '/accounts/signup/owner/step1',
-            step2: '/accounts/signup/owner/step2',
-            verify_otp: '/accounts/signup/owner/step3/verify-otp',
-            step4: '/accounts/signup/owner/step4',
-            final: '/accounts/signup/owner/final',
+            step1: '/api/signup/owner/step1',
+            step2: '/api/signup/owner/step2',
+            verify_otp: '/api/signup/property-owner/step3/verify-otp',
+            step4: '/api/signup/owner/step4',
+            final: '/api/signup/owner/final',
         },
         address: {
             provinces: '/api/psgc/provinces',
@@ -31,6 +31,14 @@ export const api_config = {
         },
         contractors: {
             list: '/api/contractors',
+        }
+        ,
+        contractor_members: {
+            list: '/api/contractor/members',
+            create: '/api/contractor/members'
+            ,
+            update: (id: string) => `/api/contractor/members/${id}`,
+            delete: (id: string) => `/api/contractor/members/${id}`
         }
     }
 };
@@ -50,15 +58,34 @@ export const getCsrfToken = async (): Promise<string | null> => {
         console.log('CSRF response status:', response.status);
 
         if (response.ok) {
-            const setCookieHeader = response.headers.get('set-cookie');
-            if (setCookieHeader) {
-                const tokenMatch = setCookieHeader.match(/XSRF-TOKEN=([^;]+)/);
-                if (tokenMatch) {
-                    csrfToken = decodeURIComponent(tokenMatch[1]);
-                    console.log('CSRF token extracted from header:', csrfToken);
-                    return csrfToken;
+            // In browser environments the cookie `XSRF-TOKEN` will be set by Laravel
+            // but `Set-Cookie` is not exposed via fetch() response headers. Attempt
+            // to read it from `document.cookie` when available (web). In React
+            // Native (Expo) there is no `document.cookie`, so we avoid relying on
+            // JS access to cookies and simply return null — the cookie will still
+            // be stored by the fetch call if `credentials: 'include'` is honored.
+            try {
+                if (typeof document !== 'undefined' && document && document.cookie) {
+                    const cookieMatch = document.cookie.match(/XSRF-TOKEN=([^;]+)/);
+                    if (cookieMatch) {
+                        csrfToken = decodeURIComponent(cookieMatch[1]);
+                        console.log('CSRF token extracted from document.cookie:', csrfToken);
+                        return csrfToken;
+                    }
                 }
+            } catch (e) {
+                console.log('Could not read document.cookie:', e);
             }
+
+            // Some server setups may expose the token header; try common header names.
+            const headerToken = response.headers.get('x-xsrf-token') || response.headers.get('X-XSRF-TOKEN');
+            if (headerToken) {
+                csrfToken = headerToken;
+                console.log('CSRF token extracted from response header:', csrfToken);
+                return csrfToken;
+            }
+
+            console.log('CSRF cookie not accessible from JS environment; proceeding without CSRF token.');
         }
     } catch (error) {
         console.log('CSRF token fetch failed:', error);
@@ -70,26 +97,45 @@ export const api_request = async (endpoint: string, options: RequestInit = {}) =
     const url = get_api_url(endpoint);
     console.log(`Making API request to: ${url}`);
 
+    let hasAuthToken = false;
     try {
         const savedToken = await storage_service.get_auth_token();
         if (savedToken) {
+            hasAuthToken = true;
             options.headers = {
                 ...(options.headers || {}),
                 'Authorization': `Bearer ${savedToken}`,
             } as any;
             console.log('Auth token present (masked):', `${savedToken.substring(0, 8)}...`);
         }
+        // Include stored user id for backend routing if available
+        try {
+            const savedUser = await storage_service.get_user_data();
+            if (savedUser) {
+                const uid = savedUser.user_id || (savedUser.id as any) || (savedUser.user && savedUser.user.id) || savedUser.username || null;
+                if (uid) {
+                    options.headers = {
+                        ...(options.headers || {}),
+                        'X-User-Id': String(uid),
+                    } as any;
+                    console.log('Added X-User-Id header');
+                }
+            }
+        } catch (e) {
+            console.warn('Could not read user data from storage:', e);
+        }
     } catch (e) {
         console.warn('Could not read auth token from storage:', e);
     }
 
     const reqMethod = ((options.method || 'GET') as string).toString().toUpperCase();
+    // If we already have a Bearer token, we don't need to fetch Sanctum CSRF cookie
     if (reqMethod !== 'GET') {
-        if (!csrfToken) {
+        if (!csrfToken && !hasAuthToken) {
             console.log('Getting CSRF token for non-GET request to:', endpoint);
             await getCsrfToken();
         }
-        console.log('Using CSRF token for non-GET:', csrfToken ? 'Present' : 'Missing');
+        console.log('Using CSRF token for non-GET:', csrfToken ? 'Present' : (hasAuthToken ? 'Skipped (Bearer token present)' : 'Missing'));
     }
 
     const default_headers: any = {
@@ -108,9 +154,11 @@ export const api_request = async (endpoint: string, options: RequestInit = {}) =
         default_headers['X-XSRF-TOKEN'] = csrfToken;
     }
 
+    const credentialsMode = hasAuthToken ? 'omit' : 'include';
+    // If using Bearer token, don't send cookies (prevents CSRF middleware from triggering)
     const config: RequestInit = {
         ...options,
-        credentials: 'include',
+        credentials: credentialsMode as RequestCredentials,
         headers: {
             ...default_headers,
             ...options.headers,

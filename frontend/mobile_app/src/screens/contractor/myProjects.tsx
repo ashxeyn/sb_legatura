@@ -14,6 +14,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import ImageFallback from '../../components/ImageFallbackFixed';
 import MilestoneSetup from './milestoneSetup';
 import ProjectView from '../both/projectView';
 import { projects_service } from '../../services/projects_service';
@@ -158,7 +159,27 @@ export default function MyProjects({ userData, onClose }: MyProjectsProps) {
         const backendResponse = response.data;
         const projectsData = backendResponse?.data || backendResponse || [];
         const projectsArray = Array.isArray(projectsData) ? projectsData : [];
-        setProjects(projectsArray);
+        
+        // Normalize display_status for each project
+        const normalizedProjects = projectsArray.map((project: Project) => {
+          // Ensure display_status is set correctly based on project_status if missing or incorrect
+          if (!project.display_status || project.display_status === '') {
+            if (project.milestones_count === 0) {
+              project.display_status = 'waiting_milestone_setup';
+            } else if (project.project_status === 'completed') {
+              project.display_status = 'completed';
+            } else if (project.project_status === 'halt') {
+              project.display_status = 'on_hold';
+            } else if (project.project_status === 'in_progress') {
+              project.display_status = 'in_progress';
+            } else {
+              project.display_status = 'in_progress';
+            }
+          }
+          return project;
+        });
+        
+        setProjects(normalizedProjects);
       } else {
         console.log('API failed:', response.message);
         setError(response.message || 'Failed to load projects');
@@ -185,7 +206,7 @@ export default function MyProjects({ userData, onClose }: MyProjectsProps) {
     notStarted: projects.filter(p => p.display_status === 'waiting_milestone_setup').length,
     inProgress: projects.filter(p => p.display_status === 'in_progress').length,
     completed: projects.filter(p => p.display_status === 'completed').length,
-    onHold: projects.filter(p => p.project_status === 'on_hold').length,
+    onHold: projects.filter(p => p.display_status === 'on_hold').length,
   };
 
   // Filter projects
@@ -194,7 +215,7 @@ export default function MyProjects({ userData, onClose }: MyProjectsProps) {
     if (activeFilter === 'not_started') return p.display_status === 'waiting_milestone_setup';
     if (activeFilter === 'in_progress') return p.display_status === 'in_progress';
     if (activeFilter === 'completed') return p.display_status === 'completed';
-    if (activeFilter === 'on_hold') return p.project_status === 'on_hold';
+    if (activeFilter === 'on_hold') return p.display_status === 'on_hold';
     return true;
   });
 
@@ -420,7 +441,7 @@ export default function MyProjects({ userData, onClose }: MyProjectsProps) {
   }
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.surface} />
 
       {/* Header */}

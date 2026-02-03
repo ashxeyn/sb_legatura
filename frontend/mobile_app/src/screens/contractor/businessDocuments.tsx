@@ -309,8 +309,12 @@ export default function BusinessDocumentsScreen({ onBackPress, onNext, companyIn
                 return;
             }
 
+            const MEDIA_IMAGES = (ImagePicker.MediaType && ImagePicker.MediaType.Images)
+                || (ImagePicker.MediaTypeOptions && ImagePicker.MediaTypeOptions.Images)
+                || 'Images';
+
             const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                mediaTypes: MEDIA_IMAGES,
                 allowsEditing: true,
                 aspect: [4, 3],
                 quality: 0.8,

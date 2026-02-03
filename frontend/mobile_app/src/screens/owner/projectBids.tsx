@@ -4,6 +4,7 @@ import {
   View,
   Text,
   TouchableOpacity,
+  TextInput,
   StyleSheet,
   ScrollView,
   Image,
@@ -266,35 +267,43 @@ export default function ProjectBids({ project, userId, onClose, onBidAccepted }:
   };
 
   const handleRejectBid = (bid: Bid) => {
-    Alert.alert(
-      'Reject Bid',
-      `Are you sure you want to reject the bid from ${bid.company_name}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Reject',
-          style: 'destructive',
-          onPress: async () => {
-            setProcessingBidId(bid.bid_id);
-            try {
-              const response = await projects_service.reject_bid(project.project_id, bid.bid_id, userId);
+    // Open rejection reason modal for this bid
+    promptRejectBid(bid);
+  };
 
-              if (response.success) {
-                Alert.alert('Success', 'Bid rejected');
-                fetchBids(); // Refresh to show updated status
-              } else {
-                Alert.alert('Error', response.message || 'Failed to reject bid');
-              }
-            } catch (err) {
-              console.error('Error rejecting bid:', err);
-              Alert.alert('Error', 'Failed to reject bid. Please try again.');
-            } finally {
-              setProcessingBidId(null);
-            }
-          },
-        },
-      ]
-    );
+  // Rejection modal state
+  const [rejectModalVisible, setRejectModalVisible] = useState(false);
+  const [pendingRejectBid, setPendingRejectBid] = useState<Bid | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
+
+  const promptRejectBid = (bid: Bid) => {
+    setPendingRejectBid(bid);
+    setRejectReason('');
+    setRejectModalVisible(true);
+  };
+
+  const confirmReject = async () => {
+    if (!pendingRejectBid) return;
+    setProcessingBidId(pendingRejectBid.bid_id);
+    try {
+      const response = await projects_service.reject_bid(project.project_id, pendingRejectBid.bid_id, userId, rejectReason || null);
+      if (response.success) {
+        setRejectModalVisible(false);
+        Alert.alert('Success', 'Bid rejected');
+        fetchBids();
+        // close details modal if open
+        if (selectedBid && selectedBid.bid_id === pendingRejectBid.bid_id) {
+          closeBidDetails();
+        }
+      } else {
+        Alert.alert('Error', response.message || 'Failed to reject bid');
+      }
+    } catch (err) {
+      console.error('Error rejecting bid:', err);
+      Alert.alert('Error', 'Failed to reject bid. Please try again.');
+    } finally {
+      setProcessingBidId(null);
+    }
   };
 
   const getProfilePicUrl = (profilePic: string | undefined) => {
@@ -311,8 +320,25 @@ export default function ProjectBids({ project, userId, onClose, onBidAccepted }:
   };
 
   const openBidDetails = (bid: Bid) => {
+    console.log('Opening bid details for bid:', bid.bid_id);
+    console.log('Bid files:', bid.files);
+    console.log('File count:', bid.file_count);
     setSelectedBid(bid);
     setShowBidDetails(true);
+
+    // If backend only returns file_count but not files array, fetch files on demand
+    if ((bid.file_count && bid.file_count > 0) && (!bid.files || bid.files.length === 0)) {
+      (async () => {
+        try {
+          const resp = await projects_service.get_bid_files(project.project_id, bid.bid_id);
+          if (resp.success && Array.isArray(resp.data) && resp.data.length > 0) {
+            setSelectedBid(prev => prev ? { ...prev, files: resp.data } : prev);
+          }
+        } catch (err) {
+          console.warn('Failed to fetch bid files:', err);
+        }
+      })();
+    }
   };
 
   const closeBidDetails = () => {
@@ -627,6 +653,38 @@ export default function ProjectBids({ project, userId, onClose, onBidAccepted }:
                 </View>
               </View>
 
+              {/* Attachments Preview (compact) */}
+              {selectedBid.files && selectedBid.files.length > 0 && (
+                <View style={styles.modalSection}>
+                  <Text style={styles.sectionTitle}>Attachments</Text>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ paddingVertical: 8 }}
+                  >
+                    {selectedBid.files.slice(0, 3).map((file, idx) => (
+                      <TouchableOpacity
+                        key={file.file_id || idx}
+                        style={{ flexDirection: 'row', alignItems: 'center', marginRight: 12 }}
+                        onPress={() => handleOpenFile(file.file_path)}
+                      >
+                        <View style={styles.fileIcon}>
+                          <Feather name={file.file_name.endsWith('.pdf') ? 'file-text' : 'file'} size={20} color={COLORS.primary} />
+                        </View>
+                        <Text style={{ maxWidth: 140, marginLeft: 8, color: COLORS.text }} numberOfLines={1}>
+                          {file.file_name}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                    {selectedBid.files.length > 3 && (
+                      <View style={{ justifyContent: 'center', paddingLeft: 6 }}>
+                        <Text style={{ color: COLORS.textMuted }}>+{selectedBid.files.length - 3} more</Text>
+                      </View>
+                    )}
+                  </ScrollView>
+                </View>
+              )}
+
               {/* Bid Information */}
               <View style={styles.modalSection}>
                 <Text style={styles.sectionTitle}>Bid Information</Text>
@@ -734,63 +792,77 @@ export default function ProjectBids({ project, userId, onClose, onBidAccepted }:
                 </View>
               </View>
 
-              {/* Attached Documents */}
-              {selectedBid.files && selectedBid.files.length > 0 && (
-                <View style={styles.modalSection}>
-                  <Text style={styles.sectionTitle}>Attached Documents ({selectedBid.files.length})</Text>
-                  <View style={styles.filesCard}>
-                    {selectedBid.files.map((file, index) => (
-                      <TouchableOpacity
-                        key={file.file_id}
-                        style={[
-                          styles.fileItem,
-                          index === selectedBid.files!.length - 1 && { borderBottomWidth: 0 }
-                        ]}
-                        onPress={() => handleOpenFile(file.file_path)}
-                      >
-                        <View style={styles.fileIcon}>
-                          <Feather
-                            name={file.file_name.endsWith('.pdf') ? 'file-text' : 'file'}
-                            size={20}
-                            color={COLORS.primary}
-                          />
-                        </View>
-                        <View style={styles.fileInfo}>
-                          <Text style={styles.fileName} numberOfLines={1}>{file.file_name}</Text>
-                          {file.description && (
-                            <Text style={styles.fileDescription} numberOfLines={1}>{file.description}</Text>
-                          )}
-                        </View>
-                        <Feather name="download" size={18} color={COLORS.textMuted} />
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </View>
-              )}
 
-              {/* Action Buttons */}
+
+              {/* Bid Attachments & Actions */}
               {selectedBid.bid_status === 'submitted' && (
-                <View style={styles.modalActions}>
-                  <TouchableOpacity
-                    style={styles.modalAcceptButton}
-                    onPress={() => {
-                      closeBidDetails();
-                      handleAcceptBid(selectedBid);
-                    }}
-                  >
-                    <Feather name="check-circle" size={20} color="#FFFFFF" />
-                    <Text style={styles.modalAcceptText}>Accept This Bid</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.modalRejectButton}
-                    onPress={() => {
-                      closeBidDetails();
-                      handleRejectBid(selectedBid);
-                    }}
-                  >
-                    <Feather name="x-circle" size={20} color={COLORS.error} />
-                    <Text style={styles.modalRejectText}>Reject Bid</Text>
-                  </TouchableOpacity>
+                <View style={styles.modalSection}>
+                  {/* Attachments Section - Always show */}
+                  <View style={styles.attachmentsContainer}>
+                    <View style={styles.attachmentsHeader}>
+                      <Feather name="paperclip" size={18} color={COLORS.primary} />
+                      <Text style={styles.attachmentsTitle}>
+                        Attachments {selectedBid.files && selectedBid.files.length > 0 ? `(${selectedBid.files.length})` : ''}
+                      </Text>
+                    </View>
+                    
+                    {selectedBid.files && selectedBid.files.length > 0 ? (
+                      <View style={styles.attachmentsGrid}>
+                        {selectedBid.files.map((file, idx) => (
+                          <TouchableOpacity
+                            key={file.file_id || idx}
+                            style={styles.attachmentCard}
+                            onPress={() => handleOpenFile(file.file_path)}
+                          >
+                            <View style={styles.attachmentIcon}>
+                              <Feather 
+                                name={file.file_name && file.file_name.endsWith('.pdf') ? 'file-text' : 'file'} 
+                                size={20} 
+                                color={COLORS.primary} 
+                              />
+                            </View>
+                            <View style={styles.attachmentInfo}>
+                              <Text style={styles.attachmentName} numberOfLines={1}>{file.file_name}</Text>
+                              {file.description && (
+                                <Text style={styles.attachmentDesc} numberOfLines={1}>{file.description}</Text>
+                              )}
+                            </View>
+                            <Feather name="external-link" size={16} color={COLORS.textMuted} />
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    ) : (
+                      <View style={styles.noAttachmentsContainer}>
+                        <Feather name="file-minus" size={24} color={COLORS.textMuted} />
+                        <Text style={styles.noAttachmentsText}>No attachments provided</Text>
+                        <Text style={styles.noAttachmentsSubtext}>The contractor did not include any files with this bid</Text>
+                      </View>
+                    )}
+                  </View>
+
+                  {/* Action Buttons */}
+                  <View style={styles.actionButtonsContainer}>
+                    <TouchableOpacity
+                      style={styles.modalAcceptButton}
+                      onPress={() => {
+                        closeBidDetails();
+                        handleAcceptBid(selectedBid);
+                      }}
+                    >
+                      <Feather name="check-circle" size={20} color="#FFFFFF" />
+                      <Text style={styles.modalAcceptText}>Accept This Bid</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.modalRejectButton}
+                      onPress={() => {
+                        closeBidDetails();
+                        handleRejectBid(selectedBid);
+                      }}
+                    >
+                      <Feather name="x-circle" size={20} color={COLORS.error} />
+                      <Text style={styles.modalRejectText}>Reject Bid</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               )}
 
@@ -798,6 +870,55 @@ export default function ProjectBids({ project, userId, onClose, onBidAccepted }:
             </ScrollView>
           </View>
         )}
+      </Modal>
+
+      {/* Reject Reason Modal */}
+      <Modal
+        visible={rejectModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setRejectModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContainer, { margin: 20, borderRadius: 12, padding: 16 }]}>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: COLORS.text, marginBottom: 6 }}>Reject Bid</Text>
+            {pendingRejectBid && (
+              <Text style={{ color: COLORS.textSecondary, marginBottom: 12 }}>Rejecting bid from {pendingRejectBid.company_name}</Text>
+            )}
+
+            <TextInput
+              placeholder="Optional reason for rejection (helpful for contractors)"
+              value={rejectReason}
+              onChangeText={setRejectReason}
+              multiline
+              numberOfLines={4}
+              style={{
+                height: 100,
+                borderWidth: 1,
+                borderColor: COLORS.border,
+                borderRadius: 8,
+                padding: 10,
+                textAlignVertical: 'top',
+                backgroundColor: COLORS.surface,
+              }}
+            />
+
+            <View style={{ flexDirection: 'row', marginTop: 14 }}>
+              <TouchableOpacity
+                style={[styles.modalRejectButton, { flex: 1, marginRight: 8 }]}
+                onPress={() => setRejectModalVisible(false)}
+              >
+                <Text style={styles.modalRejectText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalAcceptButton, { flex: 1 }]}
+                onPress={confirmReject}
+              >
+                <Text style={styles.modalAcceptText}>Confirm Reject</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
       </Modal>
     </View>
   );
@@ -1476,7 +1597,85 @@ const styles = StyleSheet.create({
   modalActions: {
     flexDirection: 'row',
     gap: 12,
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.borderLight,
+  },
+  // New improved attachment styles
+  attachmentsContainer: {
+    backgroundColor: COLORS.primaryLight,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 20,
+  },
+  attachmentsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  attachmentsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.primary,
+    marginLeft: 8,
+  },
+  attachmentsGrid: {
+    gap: 8,
+  },
+  attachmentCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  attachmentIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: COLORS.primaryLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  attachmentInfo: {
+    flex: 1,
+  },
+  attachmentName: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: COLORS.text,
+    marginBottom: 2,
+  },
+  attachmentDesc: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+  },
+  actionButtonsContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+  },
+  noAttachmentsContainer: {
+    alignItems: 'center',
+    paddingVertical: 20,
+  },
+  noAttachmentsText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: COLORS.textSecondary,
     marginTop: 8,
+    marginBottom: 4,
+  },
+  noAttachmentsSubtext: {
+    fontSize: 12,
+    color: COLORS.textMuted,
+    textAlign: 'center',
   },
   modalAcceptText: {
     color: '#FFFFFF',

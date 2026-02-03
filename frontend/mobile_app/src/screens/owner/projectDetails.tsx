@@ -9,12 +9,14 @@ import {
   Image,
   Dimensions,
   StatusBar,
+  Linking,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import EditProject from './editProject';
 import ProjectBids from './projectBids';
+import { api_config } from '../../config/api';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -117,6 +119,17 @@ export default function ProjectDetails({ project, userId, onClose, onProjectUpda
     });
   };
 
+  const getFileUrl = (filePath: string) => {
+    if (!filePath) return '';
+    if (filePath.startsWith('http')) return filePath;
+    return `${api_config.base_url}/storage/${filePath}`;
+  };
+
+  const handleOpenFile = (filePath: string) => {
+    const url = getFileUrl(filePath);
+    if (url) Linking.openURL(url);
+  };
+
   const getStatusConfig = (status: string, postStatus: string) => {
     if (postStatus === 'under_review') return { color: COLORS.warning, bg: COLORS.warningLight, label: 'Under Review', icon: 'clock' };
     if (postStatus === 'rejected') return { color: COLORS.error, bg: '#FEE2E2', label: 'Rejected', icon: 'x-circle' };
@@ -188,7 +201,7 @@ export default function ProjectDetails({ project, userId, onClose, onProjectUpda
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.surface} />
       {/* Header */}
       <View style={styles.header}>
@@ -357,6 +370,31 @@ export default function ProjectDetails({ project, userId, onClose, onProjectUpda
                 </View>
               </View>
             </View>
+
+              {/* Attached Documents for Accepted Bid */}
+              {currentProject.accepted_bid && (currentProject as any).accepted_bid.files && (currentProject as any).accepted_bid.files.length > 0 && (
+                <View style={styles.sectionCompact}>
+                  <Text style={styles.sectionTitle}>Attached Documents</Text>
+                  <View style={styles.filesCard}>
+                    {(currentProject as any).accepted_bid.files.map((file: any, idx: number) => (
+                      <TouchableOpacity
+                        key={file.file_id || idx}
+                        style={[styles.fileItem, idx === (currentProject as any).accepted_bid.files.length - 1 && { borderBottomWidth: 0 }]}
+                        onPress={() => handleOpenFile(file.file_path)}
+                      >
+                        <View style={styles.fileIcon}>
+                          <Feather name={file.file_name && file.file_name.endsWith('.pdf') ? 'file-text' : 'file'} size={20} color={COLORS.primary} />
+                        </View>
+                        <View style={styles.fileInfo}>
+                          <Text style={styles.fileName} numberOfLines={1}>{file.file_name}</Text>
+                          {file.description && <Text style={styles.fileDescription} numberOfLines={1}>{file.description}</Text>}
+                        </View>
+                        <Feather name="download" size={18} color={COLORS.textMuted} />
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              )}
           </View>
         )}
 
@@ -515,6 +553,41 @@ const styles = StyleSheet.create({
   },
   sectionCompact: {
     marginBottom: 10,
+  },
+  filesCard: {
+    backgroundColor: COLORS.background,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  fileItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  fileIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    backgroundColor: COLORS.primaryLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  fileInfo: {
+    flex: 1,
+    marginRight: 8,
+  },
+  fileName: {
+    fontSize: 14,
+    color: COLORS.text,
+    fontWeight: '600',
+  },
+  fileDescription: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    marginTop: 4,
   },
   sectionTitle: {
     fontSize: 14,

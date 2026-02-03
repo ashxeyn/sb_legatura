@@ -22,4 +22,6 @@ class DatabaseSeeder extends Seeder
             'email' => 'test@example.com',
         ]);
     }
-}
+        // Seed contractor lookup tables needed by tests and migrations
+        $this->call([\Database\Seeders\ContractorLookupSeeder::class]);
+    }

@@ -22,6 +22,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { projects_service } from '../../services/projects_service';
 import MyProjects from './myProjects';
 import MyBids from './myBids';
+import Members from './members';
 import MilestoneSetup from './milestoneSetup';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -109,15 +110,15 @@ export default function ContractorDashboard({
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [pinnedBid, setPinnedBid] = useState<Bid | null>(null);
+  // pinned bid feature removed
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [showMilestoneSetup, setShowMilestoneSetup] = useState(false);
   const [isLoadingProject, setIsLoadingProject] = useState(false);
-  const [showPinModal, setShowPinModal] = useState(false);
-  const [showPinOptions, setShowPinOptions] = useState(false);
+  // pin modals removed
   const [avatarError, setAvatarError] = useState(false);
   const [showMyProjects, setShowMyProjects] = useState(false);
   const [showMyBids, setShowMyBids] = useState(false);
+  const [showMembers, setShowMembers] = useState(false);
   const scrollY = useRef(new Animated.Value(0)).current;
 
   // Get status bar height (top inset)
@@ -336,6 +337,16 @@ export default function ContractorDashboard({
     );
   }
 
+  // Show Members screen if selected
+  if (showMembers) {
+    return (
+      <Members
+        userData={userData}
+        onClose={() => setShowMembers(false)}
+      />
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar hidden={true} />
@@ -422,67 +433,7 @@ export default function ContractorDashboard({
           </LinearGradient>
         </Animated.View>
 
-        {/* Pinned Bid Section */}
-        <View style={styles.pinnedSection}>
-          <View style={styles.sectionHeader}>
-            <View style={styles.sectionTitleRow}>
-              <Feather name="bookmark" size={18} color={COLORS.primary} />
-              <Text style={styles.sectionTitle}>Pinned Bid</Text>
-            </View>
-          </View>
-
-          {pinnedBid ? (
-            <TouchableOpacity
-              style={styles.pinnedCard}
-              activeOpacity={0.7}
-              onPress={() => {
-                // Navigate to bid details
-              }}
-            >
-              <View style={styles.pinnedProjectContent}>
-                <View style={styles.pinnedProjectInfo}>
-                  <Text style={styles.pinnedProjectTitle} numberOfLines={1}>
-                    {pinnedBid.project_title}
-                  </Text>
-                  {pinnedBid.project_location && (
-                    <Text style={styles.pinnedProjectLocation} numberOfLines={1}>
-                      <Feather name="map-pin" size={12} color={COLORS.textMuted} /> {pinnedBid.project_location}
-                    </Text>
-                  )}
-                  <View style={styles.pinnedProjectMeta}>
-                    <View style={[styles.pinnedStatusBadge, { backgroundColor: getBidStatusConfig(pinnedBid.bid_status).bg }]}>
-                      <Text style={[styles.pinnedStatusText, { color: getBidStatusConfig(pinnedBid.bid_status).color }]}>
-                        {getBidStatusConfig(pinnedBid.bid_status).label}
-                      </Text>
-                    </View>
-                    <Text style={styles.pinnedBudget}>
-                      {formatCost(pinnedBid.proposed_cost)}
-                    </Text>
-                  </View>
-                </View>
-                <TouchableOpacity
-                  style={styles.pinnedOptionsButton}
-                  onPress={() => setShowPinOptions(true)}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                  <Feather name="more-vertical" size={20} color={COLORS.textSecondary} />
-                </TouchableOpacity>
-              </View>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              style={styles.pinnedCard}
-              activeOpacity={0.7}
-              onPress={() => setShowPinModal(true)}
-            >
-              <View style={styles.pinnedEmpty}>
-                <Feather name="bookmark" size={32} color={COLORS.border} />
-                <Text style={styles.pinnedEmptyText}>No pinned bid</Text>
-                <Text style={styles.pinnedEmptySubtext}>Tap to pin a bid for quick access</Text>
-              </View>
-            </TouchableOpacity>
-          )}
-        </View>
+        {/* Pinned bid feature removed */}
 
         {/* My Projects & My Bids Navigation Section */}
         <View style={styles.projectsNavSection}>
@@ -515,6 +466,21 @@ export default function ContractorDashboard({
               <View style={styles.navButtonContent}>
                 <Text style={styles.navButtonTitle}>My Bids</Text>
                 <Text style={styles.navButtonSubtitle}>{stats.totalBids} bids submitted</Text>
+              </View>
+              <Feather name="chevron-right" size={22} color={COLORS.textMuted} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.navButton}
+              activeOpacity={0.7}
+              onPress={() => setShowMembers(true)}
+            >
+              <View style={[styles.navButtonIcon, { backgroundColor: '#E8F6FF' }]}>
+                <Feather name="users" size={24} color={COLORS.info} />
+              </View>
+              <View style={styles.navButtonContent}>
+                <Text style={styles.navButtonTitle}>Members</Text>
+                <Text style={styles.navButtonSubtitle}>Manage your team</Text>
               </View>
               <Feather name="chevron-right" size={22} color={COLORS.textMuted} />
             </TouchableOpacity>
@@ -663,119 +629,7 @@ export default function ContractorDashboard({
         </View>
       </Animated.ScrollView>
 
-      {/* Pin Bid Modal */}
-      <Modal
-        visible={showPinModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowPinModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.pinModalContainer}>
-            <View style={styles.pinModalHeader}>
-              <Text style={styles.pinModalTitle}>Select Bid to Pin</Text>
-              <TouchableOpacity
-                onPress={() => setShowPinModal(false)}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
-                <Feather name="x" size={24} color={COLORS.textSecondary} />
-              </TouchableOpacity>
-            </View>
-
-            {myBids.length === 0 ? (
-              <View style={styles.pinModalEmpty}>
-                <Feather name="file-text" size={48} color={COLORS.border} />
-                <Text style={styles.pinModalEmptyText}>No bids available</Text>
-                <Text style={styles.pinModalEmptySubtext}>Submit a bid first to pin it</Text>
-              </View>
-            ) : (
-              <FlatList
-                data={myBids}
-                keyExtractor={(item) => item.bid_id.toString()}
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={styles.pinModalList}
-                renderItem={({ item }) => {
-                  const statusConfig = getBidStatusConfig(item.bid_status);
-                  return (
-                    <TouchableOpacity
-                      style={[
-                        styles.pinModalItem,
-                        pinnedBid?.bid_id === item.bid_id && styles.pinModalItemSelected
-                      ]}
-                      activeOpacity={0.7}
-                      onPress={() => {
-                        setPinnedBid(item);
-                        setShowPinModal(false);
-                      }}
-                    >
-                      <View style={styles.pinModalItemContent}>
-                        <Text style={styles.pinModalItemTitle} numberOfLines={1}>
-                          {item.project_title}
-                        </Text>
-                        <Text style={styles.pinModalItemLocation} numberOfLines={1}>
-                          {formatCost(item.proposed_cost)} • {item.estimated_timeline} {item.estimated_timeline === 1 ? 'month' : 'months'}
-                        </Text>
-                        <View style={[styles.pinModalItemStatus, { backgroundColor: statusConfig.bg }]}>
-                          <Text style={[styles.pinModalItemStatusText, { color: statusConfig.color }]}>
-                            {statusConfig.label}
-                          </Text>
-                        </View>
-                      </View>
-                      <View style={styles.pinModalItemAction}>
-                        <Feather
-                          name={pinnedBid?.bid_id === item.bid_id ? "check-circle" : "circle"}
-                          size={22}
-                          color={pinnedBid?.bid_id === item.bid_id ? COLORS.primary : COLORS.border}
-                        />
-                      </View>
-                    </TouchableOpacity>
-                  );
-                }}
-              />
-            )}
-          </View>
-        </View>
-      </Modal>
-
-      {/* Pin Options Modal */}
-      <Modal
-        visible={showPinOptions}
-        animationType="fade"
-        transparent={true}
-        onRequestClose={() => setShowPinOptions(false)}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowPinOptions(false)}
-        >
-          <View style={styles.pinOptionsContainer}>
-            <TouchableOpacity
-              style={styles.pinOptionItem}
-              activeOpacity={0.7}
-              onPress={() => {
-                setShowPinOptions(false);
-                setShowPinModal(true);
-              }}
-            >
-              <Feather name="repeat" size={20} color={COLORS.text} />
-              <Text style={styles.pinOptionText}>Change Pinned Bid</Text>
-            </TouchableOpacity>
-            <View style={styles.pinOptionDivider} />
-            <TouchableOpacity
-              style={styles.pinOptionItem}
-              activeOpacity={0.7}
-              onPress={() => {
-                setPinnedBid(null);
-                setShowPinOptions(false);
-              }}
-            >
-              <Feather name="bookmark" size={20} color={COLORS.error} />
-              <Text style={[styles.pinOptionText, { color: COLORS.error }]}>Unpin Bid</Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </Modal>
+      {/* Pinned bid modals removed */}
     </SafeAreaView>
   );
 }

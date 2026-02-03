@@ -4,6 +4,7 @@ const STORAGE_KEYS = {
   USER_DATA: '@legatura_user_data',
   AUTH_TOKEN: '@legatura_auth_token',
   IS_AUTHENTICATED: '@legatura_is_authenticated',
+  // PINNED_PROJECT removed
 };
 
 export class storage_service {
@@ -83,4 +84,7 @@ export class storage_service {
       return null;
     }
   }
+
+  // Save pinned project for a specific user
+  // NOTE: pinned project helpers removed
 }

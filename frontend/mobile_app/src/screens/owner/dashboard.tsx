@@ -11,14 +11,13 @@ import {
   RefreshControl,
   Animated,
   Dimensions,
-  Modal,
-  FlatList,
 } from 'react-native';
 import { View as SafeAreaView, StatusBar, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons, Ionicons, Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { projects_service } from '../../services/projects_service';
+import { storage_service } from '../../utils/storage';
 import ProjectDetails from './projectDetails';
 import ProjectList from './projectList';
 import CreateProject from './createProject';
@@ -88,9 +87,7 @@ export default function PropertyOwnerDashboard({ userData, onNavigateToMessages 
   const [showProjectList, setShowProjectList] = useState(false);
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [showSearchScreen, setShowSearchScreen] = useState(false);
-  const [pinnedProject, setPinnedProject] = useState<Project | null>(null);
-  const [showPinModal, setShowPinModal] = useState(false);
-  const [showPinOptions, setShowPinOptions] = useState(false);
+  // pinned project feature removed
   const [avatarError, setAvatarError] = useState(false);
   const [contractorTypes, setContractorTypes] = useState<any[]>([]);
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -105,6 +102,7 @@ export default function PropertyOwnerDashboard({ userData, onNavigateToMessages 
     setAvatarError(false); // Reset avatar error when userData changes
     fetchProjects();
     fetchContractorTypes();
+    // pinned project loading removed
   }, [userData?.user_id]);
 
   const fetchContractorTypes = async () => {
@@ -137,8 +135,6 @@ export default function PropertyOwnerDashboard({ userData, onNavigateToMessages 
       console.log('API Response:', JSON.stringify(response, null, 2));
 
       if (response.success) {
-        // The api_request wraps the response, so response.data contains the backend response
-        // Backend returns: { success: true, message: '...', data: [...projects] }
         const backendResponse = response.data;
         const projectsData = backendResponse?.data || backendResponse || [];
         const projectsArray = Array.isArray(projectsData) ? projectsData : [];
@@ -488,64 +484,7 @@ export default function PropertyOwnerDashboard({ userData, onNavigateToMessages 
           </LinearGradient>
         </Animated.View>
 
-        {/* Pinned Project Section */}
-        <View style={styles.pinnedSection}>
-          <View style={styles.sectionHeader}>
-            <View style={styles.sectionTitleRow}>
-              <Feather name="bookmark" size={18} color={COLORS.primary} />
-              <Text style={styles.sectionTitle}>Pinned Project</Text>
-            </View>
-          </View>
-
-          {/* Show pinned project or empty state */}
-          {pinnedProject ? (
-            <TouchableOpacity
-              style={styles.pinnedCard}
-              activeOpacity={0.7}
-              onPress={() => setSelectedProject(pinnedProject)}
-            >
-              <View style={styles.pinnedProjectContent}>
-                <View style={styles.pinnedProjectInfo}>
-                  <Text style={styles.pinnedProjectTitle} numberOfLines={1}>
-                    {pinnedProject.project_title}
-                  </Text>
-                  <Text style={styles.pinnedProjectLocation} numberOfLines={1}>
-                    <Feather name="map-pin" size={12} color={COLORS.textMuted} /> {pinnedProject.project_location}
-                  </Text>
-                  <View style={styles.pinnedProjectMeta}>
-                    <View style={[styles.pinnedStatusBadge, { backgroundColor: getStatusConfig(pinnedProject.project_status, pinnedProject.project_post_status).bg }]}>
-                      <Text style={[styles.pinnedStatusText, { color: getStatusConfig(pinnedProject.project_status, pinnedProject.project_post_status).color }]}>
-                        {getStatusConfig(pinnedProject.project_status, pinnedProject.project_post_status).label}
-                      </Text>
-                    </View>
-                    <Text style={styles.pinnedBudget}>
-                      {formatBudget(pinnedProject.budget_range_min, pinnedProject.budget_range_max)}
-                    </Text>
-                  </View>
-                </View>
-                <TouchableOpacity
-                  style={styles.pinnedOptionsButton}
-                  onPress={() => setShowPinOptions(true)}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                  <Feather name="more-vertical" size={20} color={COLORS.textSecondary} />
-                </TouchableOpacity>
-              </View>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              style={styles.pinnedCard}
-              activeOpacity={0.7}
-              onPress={() => setShowPinModal(true)}
-            >
-              <View style={styles.pinnedEmpty}>
-                <Feather name="bookmark" size={32} color={COLORS.border} />
-                <Text style={styles.pinnedEmptyText}>No pinned project</Text>
-                <Text style={styles.pinnedEmptySubtext}>Tap to pin a project for quick access</Text>
-              </View>
-            </TouchableOpacity>
-          )}
-        </View>
+        {/* Pinned Project feature removed */}
 
         {/* Projects Navigation Section */}
         <View style={styles.projectsNavSection}>
@@ -630,116 +569,7 @@ export default function PropertyOwnerDashboard({ userData, onNavigateToMessages 
         </View>
       </Animated.ScrollView>
 
-      {/* Pin Project Modal */}
-      <Modal
-        visible={showPinModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowPinModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.pinModalContainer}>
-            <View style={styles.pinModalHeader}>
-              <Text style={styles.pinModalTitle}>Select Project to Pin</Text>
-              <TouchableOpacity
-                onPress={() => setShowPinModal(false)}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
-                <Feather name="x" size={24} color={COLORS.textSecondary} />
-              </TouchableOpacity>
-            </View>
-
-            {projects.length === 0 ? (
-              <View style={styles.pinModalEmpty}>
-                <Feather name="folder" size={48} color={COLORS.border} />
-                <Text style={styles.pinModalEmptyText}>No projects available</Text>
-                <Text style={styles.pinModalEmptySubtext}>Create a project first to pin it</Text>
-              </View>
-            ) : (
-              <FlatList
-                data={projects}
-                keyExtractor={(item) => item.project_id.toString()}
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={styles.pinModalList}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    style={[
-                      styles.pinModalItem,
-                      pinnedProject?.project_id === item.project_id && styles.pinModalItemSelected
-                    ]}
-                    activeOpacity={0.7}
-                    onPress={() => {
-                      setPinnedProject(item);
-                      setShowPinModal(false);
-                    }}
-                  >
-                    <View style={styles.pinModalItemContent}>
-                      <Text style={styles.pinModalItemTitle} numberOfLines={1}>
-                        {item.project_title}
-                      </Text>
-                      <Text style={styles.pinModalItemLocation} numberOfLines={1}>
-                        <Feather name="map-pin" size={11} color={COLORS.textMuted} /> {item.project_location}
-                      </Text>
-                      <View style={[styles.pinModalItemStatus, { backgroundColor: getStatusConfig(item.project_status, item.project_post_status).bg }]}>
-                        <Text style={[styles.pinModalItemStatusText, { color: getStatusConfig(item.project_status, item.project_post_status).color }]}>
-                          {getStatusConfig(item.project_status, item.project_post_status).label}
-                        </Text>
-                      </View>
-                    </View>
-                    <View style={styles.pinModalItemAction}>
-                      <Feather
-                        name={pinnedProject?.project_id === item.project_id ? "check-circle" : "circle"}
-                        size={22}
-                        color={pinnedProject?.project_id === item.project_id ? COLORS.primary : COLORS.border}
-                      />
-                    </View>
-                  </TouchableOpacity>
-                )}
-              />
-            )}
-          </View>
-        </View>
-      </Modal>
-
-      {/* Pin Options Modal (Unpin / Change) */}
-      <Modal
-        visible={showPinOptions}
-        animationType="fade"
-        transparent={true}
-        onRequestClose={() => setShowPinOptions(false)}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowPinOptions(false)}
-        >
-          <View style={styles.pinOptionsContainer}>
-            <TouchableOpacity
-              style={styles.pinOptionItem}
-              activeOpacity={0.7}
-              onPress={() => {
-                setShowPinOptions(false);
-                setShowPinModal(true);
-              }}
-            >
-              <Feather name="repeat" size={20} color={COLORS.text} />
-              <Text style={styles.pinOptionText}>Change Pinned Project</Text>
-            </TouchableOpacity>
-            <View style={styles.pinOptionDivider} />
-            <TouchableOpacity
-              style={styles.pinOptionItem}
-              activeOpacity={0.7}
-              onPress={() => {
-                setPinnedProject(null);
-                setShowPinOptions(false);
-              }}
-            >
-              <Feather name="bookmark" size={20} color={COLORS.error} />
-              <Text style={[styles.pinOptionText, { color: COLORS.error }]}>Unpin Project</Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </Modal>
+      {/* Pinned project modals removed */}
     </SafeAreaView>
   );
 }

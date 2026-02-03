@@ -15,12 +15,13 @@ import {
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { auth_service } from '../../services/auth_service';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 // Company Info interface for contractor step 1
 export interface CompanyInfo {
     companyName: string;
     companyPhone: string;
-    yearsOfExperience: string;
+    foundedDate: string; // ISO date YYYY-MM-DD
     contractorTypeId: string;
     contractorTypeOtherText: string;
     servicesOffered: string;
@@ -44,7 +45,7 @@ export default function CompanyInfoScreen({ onBackPress, onNext, formData, initi
     const [isLoading, setIsLoading] = useState(false);
     const [companyName, setCompanyName] = useState(initialData?.companyName || '');
     const [companyPhone, setCompanyPhone] = useState(initialData?.companyPhone || '');
-    const [yearsOfExperience, setYearsOfExperience] = useState(initialData?.yearsOfExperience || '');
+    const [foundedDate, setFoundedDate] = useState(initialData?.foundedDate || '');
     const [contractorTypeId, setContractorTypeId] = useState(initialData?.contractorTypeId || '');
     const [contractorTypeOtherText, setContractorTypeOtherText] = useState(initialData?.contractorTypeOtherText || '');
     const [servicesOffered, setServicesOffered] = useState(initialData?.servicesOffered || '');
@@ -61,7 +62,7 @@ export default function CompanyInfoScreen({ onBackPress, onNext, formData, initi
         if (initialData) {
             setCompanyName(initialData.companyName || '');
             setCompanyPhone(initialData.companyPhone || '');
-            setYearsOfExperience(initialData.yearsOfExperience || '');
+            setFoundedDate(initialData.foundedDate || '');
             setContractorTypeId(initialData.contractorTypeId || '');
             setContractorTypeOtherText(initialData.contractorTypeOtherText || '');
             setServicesOffered(initialData.servicesOffered || '');
@@ -150,6 +151,8 @@ export default function CompanyInfoScreen({ onBackPress, onNext, formData, initi
         }
     }, [businessAddressCity]);
 
+    const [showDatePicker, setShowDatePicker] = useState(false);
+
     const handleNext = async () => {
         // Validation
         if (!companyName.trim()) {
@@ -160,8 +163,8 @@ export default function CompanyInfoScreen({ onBackPress, onNext, formData, initi
             Alert.alert('Error', 'Please enter company phone');
             return;
         }
-        if (!yearsOfExperience.trim()) {
-            Alert.alert('Error', 'Please enter years of experience');
+        if (!foundedDate.trim()) {
+            Alert.alert('Error', 'Please select founding date using the calendar');
             return;
         }
         if (!contractorTypeId) {
@@ -207,7 +210,7 @@ export default function CompanyInfoScreen({ onBackPress, onNext, formData, initi
         const companyInfo: CompanyInfo = {
             companyName: companyName.trim(),
             companyPhone: companyPhone.trim(),
-            yearsOfExperience: yearsOfExperience.trim(),
+            foundedDate: foundedDate.trim(),
             contractorTypeId,
             contractorTypeOtherText: contractorTypeOtherText.trim(),
             servicesOffered: servicesOffered.trim(),
@@ -230,7 +233,7 @@ export default function CompanyInfoScreen({ onBackPress, onNext, formData, initi
     const isFormValid = () => {
         return companyName.trim() !== '' &&
             companyPhone.trim() !== '' &&
-            yearsOfExperience.trim() !== '' &&
+            foundedDate.trim() !== '' &&
             contractorTypeId !== '' &&
             (contractorTypeId !== '9' || contractorTypeOtherText.trim() !== '') &&
             servicesOffered.trim() !== '' &&
@@ -256,10 +259,10 @@ export default function CompanyInfoScreen({ onBackPress, onNext, formData, initi
         return contractorTypes[contractorTypeId] || '';
     };
 
-    // Access contractor types from nested data structure
-    // formData structure from userTypeSelection: { data: { contractor_types: [...], ... } }
-    // So we need to access formData.data.contractor_types
-    const [contractorTypesList, setContractorTypesList] = useState<any[]>(formData?.data?.contractor_types || []);
+    // Access contractor types from nested or unwrapped data structure
+    // formData may be { data: { contractor_types: [...] } } or { contractor_types: [...] }
+    const initialContractorTypes = formData?.contractor_types || formData?.data?.contractor_types || [];
+    const [contractorTypesList, setContractorTypesList] = useState<any[]>(initialContractorTypes);
 
     // Load contractor types if not available in formData
     useEffect(() => {
@@ -277,14 +280,14 @@ export default function CompanyInfoScreen({ onBackPress, onNext, formData, initi
                 console.log('Contractor types API response:', response);
 
                 if (response.success) {
-                    // Handle nested data structure: response.data.data.contractor_types
-                    const types = response.data?.data?.contractor_types;
-                    if (Array.isArray(types) && types.length > 0) {
-                        console.log('Setting contractor types:', types);
-                        setContractorTypesList(types);
-                    } else {
-                        console.error('Contractor types not found in expected format:', response);
-                    }
+                        // Handle nested or unwrapped data structure
+                        const types = response.data?.contractor_types || response.data?.data?.contractor_types;
+                        if (Array.isArray(types) && types.length > 0) {
+                            console.log('Setting contractor types:', types);
+                            setContractorTypesList(types);
+                        } else {
+                            console.error('Contractor types not found in expected format:', response);
+                        }
                 }
             } catch (error) {
                 console.error('Failed to load contractor types:', error);
@@ -348,14 +351,40 @@ export default function CompanyInfoScreen({ onBackPress, onNext, formData, initi
                     </View>
 
                     <View style={styles.inputContainer}>
-                        <TextInput
-                            style={styles.input}
-                            value={yearsOfExperience}
-                            onChangeText={setYearsOfExperience}
-                            placeholder="Years of Experience *"
-                            placeholderTextColor="#999"
-                            keyboardType="numeric"
-                        />
+                        <TouchableOpacity onPress={() => setShowDatePicker(true)} style={[styles.input, styles.dateInput]}> 
+                            <View style={styles.dateInner}>
+                                <Text style={[styles.inputText, foundedDate ? styles.inputValue : styles.placeholderText]}>
+                                    {foundedDate ? (() => {
+                                        // compute years difference for display
+                                        const sel = new Date(foundedDate);
+                                        const now = new Date();
+                                        let years = now.getFullYear() - sel.getFullYear();
+                                        if (now.getMonth() < sel.getMonth() || (now.getMonth() === sel.getMonth() && now.getDate() < sel.getDate())) {
+                                            years -= 1;
+                                        }
+                                        return `${years} years (selected ${foundedDate})`;
+                                    })() : 'Years of Experience *'}
+                                </Text>
+                                <MaterialIcons name="event" size={20} color="#666666" style={styles.calendarIcon} />
+                            </View>
+                        </TouchableOpacity>
+                        {showDatePicker && (
+                            <DateTimePicker
+                                value={foundedDate ? new Date(foundedDate) : new Date()}
+                                mode="date"
+                                display="calendar"
+                                maximumDate={new Date()}
+                                onChange={(event: any, selectedDate?: Date) => {
+                                    setShowDatePicker(false);
+                                    if (selectedDate) {
+                                        const yyyy = selectedDate.getFullYear();
+                                        const mm = String(selectedDate.getMonth() + 1).padStart(2, '0');
+                                        const dd = String(selectedDate.getDate()).padStart(2, '0');
+                                        setFoundedDate(`${yyyy}-${mm}-${dd}`);
+                                    }
+                                }}
+                            />
+                        )}
                     </View>
 
                     <View style={styles.inputContainer}>
@@ -749,6 +778,25 @@ const styles = StyleSheet.create({
         paddingVertical: 16,
         fontSize: 16,
         color: '#333333',
+    },
+    dateInput: {
+        paddingHorizontal: 12,
+        paddingVertical: 12,
+    },
+    dateInner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    inputText: {
+        fontSize: 16,
+        flex: 1,
+    },
+    inputValue: {
+        color: '#333333',
+    },
+    calendarIcon: {
+        marginLeft: 12,
     },
     textArea: {
         height: 100,

@@ -10,6 +10,15 @@ use App\Http\Controllers\contractor\progressUploadController;
 use App\Http\Controllers\owner\paymentUploadController;
 use App\Http\Controllers\projectPosting\projectPostingController;
 use App\Http\Controllers\both\disputeController;
+
+// At the very top of api.php
+Log::info('=== INCOMING API REQUEST ===', [
+    'url' => request()->fullUrl(),
+    'method' => request()->method(),
+    'has_auth_header' => request()->hasHeader('Authorization'),
+    'auth_header' => request()->header('Authorization') ? 'Bearer ***' : 'missing'
+]);
+
 // Test endpoint for mobile app
 Route::get('/test', [authController::class, 'apiTest']);
 
@@ -37,6 +46,24 @@ Route::get('/signup-form', [authController::class, 'showSignupForm']);
 // Public routes (no authentication required)
 Route::post('/login', [authController::class, 'apiLogin']);
 Route::post('/register', [authController::class, 'apiRegister']);
+
+// Mobile API signup routes (mirror web signup but stateless API paths for mobile clients)
+Route::post('/signup/contractor/step1', [authController::class, 'contractorStep1']);
+Route::post('/signup/contractor/step2', [authController::class, 'contractorStep2']);
+Route::post('/signup/contractor/step3/verify-otp', [authController::class, 'contractorVerifyOtp']);
+Route::post('/signup/contractor/step4', [authController::class, 'contractorStep4']);
+Route::post('/signup/contractor/final', [authController::class, 'contractorFinalStep']);
+
+// Temporary debug route to lookup users by email (do not expose in production)
+Route::get('/debug/user', [authController::class, 'debugGetUserByEmail']);
+
+Route::post('/signup/owner/step1', [authController::class, 'propertyOwnerStep1']);
+Route::post('/signup/owner/step2', [authController::class, 'propertyOwnerStep2']);
+Route::post('/signup/owner/step3/verify-otp', [authController::class, 'propertyOwnerVerifyOtp']);
+// New route alias for property-owner (explicit naming for mobile frontend)
+Route::post('/signup/property-owner/step3/verify-otp', [authController::class, 'propertyOwnerVerifyOtp']);
+Route::post('/signup/owner/step4', [authController::class, 'propertyOwnerStep4']);
+Route::post('/signup/owner/final', [authController::class, 'propertyOwnerFinalStep']);
 
 // PSGC API Routes (public)
 Route::get('/psgc/provinces', [authController::class, 'getProvinces']);
@@ -101,6 +128,12 @@ Route::get('/test-auth', function (Request $request) {
     ]);
 })->middleware('auth:sanctum');
 
+// Lightweight debug ping (no auth) to verify server reachability from mobile
+Route::get('/debug/ping', function (Request $request) {
+    Log::debug('debug/ping called', ['ip' => $request->ip(), 'headers' => $request->headers->all()]);
+    return response()->json(['success' => true, 'message' => 'pong', 'time' => now()]);
+});
+
 // Protected routes (require authentication via Sanctum)
 Route::middleware('auth:sanctum')->group(function () {
 
@@ -146,6 +179,15 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/role/add/owner/step2', [authController::class, 'switchOwnerStep2']);
     Route::post('/role/add/owner/final', [authController::class, 'switchOwnerFinal']);
 
+    // Contractor members (staff) management - use DB-backed controller
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::get('/contractor/members', [\App\Http\Controllers\contractor\membersController::class, 'index']);
+        Route::post('/contractor/members', [\App\Http\Controllers\contractor\membersController::class, 'store']);
+        // Regenerate temporary credentials (cached, not persisted)
+        Route::post('/contractor/members/{id}/regenerate-credentials', [\App\Http\Controllers\contractor\membersController::class, 'regenerateCredentials']);
+        Route::get('/contractor/members/{id}/temp-credentials', [\App\Http\Controllers\contractor\membersController::class, 'getTempCredentials']);
+    });
+
     // Dashboard
     Route::get('/dashboard', [projectsController::class, 'showDashboard']);
 
@@ -162,6 +204,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/{id}/bids', [biddingController::class, 'store']);
         Route::post('/{id}/bids/{bidId}/accept', [biddingController::class, 'acceptBid']);
     });
+
+    // NOTE: pinned project endpoints removed
 
     // Milestones (Contractor)
     Route::prefix('milestones')->group(function () {
@@ -237,3 +281,20 @@ Route::prefix('disputes')->group(function () {
 // Progress approve/reject routes - outside middleware group so controller can handle auth manually
 Route::post('/progress/{id}/approve', [progressUploadController::class, 'approveProgress']);
 Route::post('/progress/{id}/reject', [progressUploadController::class, 'rejectProgress']);
+
+// Debugging route to log and catch errors for troubleshooting
+Route::get('/contractor/members', function() {
+    Log::info('Route started');
+
+    try {
+        // Your existing code here
+        Log::info('Processing step 1');
+        // ... more code
+        Log::info('Processing step 2');
+
+    } catch (\Throwable $e) {
+        Log::error('Error: ' . $e->getMessage());
+        Log::error('Stack trace: ' . $e->getTraceAsString());
+        return response()->json(['error' => $e->getMessage()], 500);
+    }
+});

@@ -104,8 +104,12 @@ export default function ProfilePictureScreen({
   const openCamera = useCallback(async () => {
     setIsLoading(true);
     try {
+      const MEDIA_IMAGES = (ImagePicker.MediaType && ImagePicker.MediaType.Images)
+        || (ImagePicker.MediaTypeOptions && ImagePicker.MediaTypeOptions.Images)
+        || 'Images';
+
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: MEDIA_IMAGES,
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
@@ -141,8 +145,12 @@ export default function ProfilePictureScreen({
   const openGallery = useCallback(async () => {
     setIsLoading(true);
     try {
+      const MEDIA_IMAGES = (ImagePicker.MediaType && ImagePicker.MediaType.Images)
+        || (ImagePicker.MediaTypeOptions && ImagePicker.MediaTypeOptions.Images)
+        || 'Images';
+
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: MEDIA_IMAGES,
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,

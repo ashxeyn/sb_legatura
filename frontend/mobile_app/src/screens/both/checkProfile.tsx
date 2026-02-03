@@ -15,7 +15,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { api_config } from '../../config/api';
-import ImageFallback from '../../components/ImageFallback';
+import ImageFallback from '../../components/ImageFallbackFixed';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 

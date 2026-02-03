@@ -5,27 +5,32 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "sdkVersion": "54.0.0",
+    "icon": "./assets/images/icons/app-icon.png",
     "platforms": [
-      "ios",
       "android",
       "web"
     ],
     "userInterfaceStyle": "light",
-    "statusBar": {
-      "hidden": true
-    },
     "assetBundlePatterns": [
       "**/*"
     ],
-    "ios": {
-      "supportsTablet": true
-    },
     "android": {
       "package": "com.legatura.mobile",
-      "usesCleartextTraffic": true
+      "icon": "./assets/images/icons/app-icon.png"
+    },
+    "ios": {
+      "icon": "./assets/images/icons/app-icon.png"
     },
     "web": {
       "bundler": "metro"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "ae2aaa48-b348-43da-b3b1-ec8debee58f1"
+      }
+    },
+    "plugins": [
+      "expo-font"
+    ]
   }
 }

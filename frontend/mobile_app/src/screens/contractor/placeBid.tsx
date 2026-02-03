@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons, Feather, Ionicons } from '@expo/vector-icons';
+import * as DocumentPicker from 'expo-document-picker';
 import { projects_service } from '../../services/projects_service';
 
 // Color palette
@@ -71,6 +72,7 @@ export default function PlaceBid({ project, userId, onClose, onBidSubmitted }: P
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [existingBid, setExistingBid] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [bidFiles, setBidFiles] = useState<Array<any>>([]);
 
   const statusBarHeight = insets.top || (Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 44);
 
@@ -129,6 +131,13 @@ export default function PlaceBid({ project, userId, onClose, onBidSubmitted }: P
     return new Intl.NumberFormat('en-PH').format(parseInt(numericValue, 10));
   };
 
+  const formatFileSize = (bytes: number) => {
+    if (!bytes) return '';
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  };
+
   // Handle proposed cost change with formatting
   const handleProposedCostChange = (text: string) => {
     const formatted = formatNumberWithCommas(text);
@@ -174,6 +183,46 @@ export default function PlaceBid({ project, userId, onClose, onBidSubmitted }: P
     return true;
   };
 
+  const handlePickFiles = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['image/*', 'application/pdf'],
+        copyToCacheDirectory: true,
+        multiple: true,
+      });
+
+      if (!result.canceled && result.assets) {
+        const newFiles = result.assets.map((asset) => ({
+          uri: asset.uri,
+          name: asset.name,
+          type: asset.mimeType || 'application/octet-stream',
+          size: asset.size || 0,
+        }));
+
+        const totalFiles = bidFiles.length + newFiles.length;
+        if (totalFiles > 5) {
+          Alert.alert('Too Many Files', 'You can upload a maximum of 5 files for a bid.');
+          return;
+        }
+
+        const oversized = newFiles.filter((f) => f.size > 5 * 1024 * 1024);
+        if (oversized.length > 0) {
+          Alert.alert('File Too Large', `Some files exceed 5MB: ${oversized.map(f => f.name).join(', ')}`);
+          return;
+        }
+
+        setBidFiles([...bidFiles, ...newFiles]);
+      }
+    } catch (error) {
+      console.error('Error picking bid files:', error);
+      Alert.alert('Error', 'Failed to pick files. Please try again.');
+    }
+  };
+
+  const handleRemoveBidFile = (index: number) => {
+    setBidFiles(bidFiles.filter((_, i) => i !== index));
+  };
+
   const handleSubmit = async () => {
     if (!validateForm()) return;
 
@@ -190,6 +239,7 @@ export default function PlaceBid({ project, userId, onClose, onBidSubmitted }: P
         proposed_cost: parseFloat(proposedCost.replace(/,/g, '')),
         estimated_timeline: estimatedTimeline,
         contractor_notes: contractorNotes.trim() || undefined,
+        bidFiles: bidFiles,
       });
 
       if (response.success) {
@@ -355,6 +405,31 @@ export default function PlaceBid({ project, userId, onClose, onBidSubmitted }: P
               </Text>
             </View>
 
+            {/* Attachments */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Attachments (optional)</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <TouchableOpacity style={styles.addFileButton} onPress={handlePickFiles} activeOpacity={0.8}>
+                  <Feather name="paperclip" size={16} color={COLORS.text} />
+                  <Text style={{ marginLeft: 8, color: COLORS.text }}>Add Files</Text>
+                </TouchableOpacity>
+                <Text style={styles.inputHint}>Max 5 files, 5MB each</Text>
+              </View>
+
+              {bidFiles.length > 0 && (
+                <View style={{ marginTop: 12, gap: 8 }}>
+                  {bidFiles.map((file, idx) => (
+                    <View key={idx} style={styles.fileRow}>
+                      <Text style={styles.fileName}>{file.name} • {formatFileSize(file.size)}</Text>
+                      <TouchableOpacity onPress={() => handleRemoveBidFile(idx)} style={styles.removeFileButton}>
+                        <Feather name="x" size={16} color={COLORS.error} />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+
             {/* Contractor Notes */}
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Additional Notes (Optional)</Text>
@@ -373,7 +448,7 @@ export default function PlaceBid({ project, userId, onClose, onBidSubmitted }: P
             </View>
           </View>
 
-          {/* Tips Section */}
+            {/* Tips Section */}
           <View style={styles.tipsCard}>
             <Text style={styles.tipsTitle}>
               <MaterialIcons name="lightbulb-outline" size={18} color={COLORS.info} /> Tips for a Winning Bid
@@ -614,6 +689,36 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: COLORS.textSecondary,
     lineHeight: 20,
+  },
+  addFileButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  fileRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: COLORS.background,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  fileName: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    flex: 1,
+  },
+  removeFileButton: {
+    marginLeft: 12,
+    padding: 6,
   },
   submitContainer: {
     position: 'absolute',

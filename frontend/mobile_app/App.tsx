@@ -175,7 +175,9 @@ export default function App() {
             const response = await auth_service.property_owner_step2(accountSetup);
 
             if (response.success) {
-                set_po_account_setup(accountSetup);
+                // Preserve otp_token returned by backend so we can include it in verification
+                const otpToken = response.data?.otp_token || response.otp_token || null;
+                set_po_account_setup({ ...accountSetup, otpToken });
                 set_app_state('po_email_verification');
                 Alert.alert('Success', 'OTP has been sent to your email. Please check your inbox.');
             } else {
@@ -335,25 +337,40 @@ export default function App() {
                     onBackPress={() => set_app_state('po_account_setup')}
                     onComplete={async (verificationCode: string) => {
                         try {
-                            const response = await auth_service.property_owner_verify_otp(verificationCode);
+                            console.log('Verifying OTP with token:', po_account_setup?.otpToken);
+                            const response = await auth_service.property_owner_verify_otp(
+                                verificationCode,
+                                po_account_setup?.otpToken,
+                                po_account_setup?.email
+                            );
                             if (response.success) {
                                 set_app_state('po_role_verification');
                             } else {
-                                Alert.alert('Error', response.message || 'Invalid OTP. Please try again.');
+                                Alert.alert('Verification Failed', response.message || 'Invalid OTP. Please try again.');
                             }
                         } catch (error) {
+                            console.error('OTP verification error:', error);
                             Alert.alert('Error', 'Network error. Please check your connection and try again.');
                         }
                     }}
                     onResendOtp={async () => {
                         try {
+                            console.log('Resending OTP for email:', po_account_setup?.email);
+                            // Request a new OTP by calling step2 again
                             const response = await auth_service.property_owner_step2(po_account_setup);
                             if (response.success) {
-                                Alert.alert('Success', 'New OTP has been sent to your email.');
+                                // Update the OTP token with the new one from the response
+                                const newOtpToken = response.data?.otp_token || null;
+                                if (newOtpToken) {
+                                    console.log('Updated OTP token:', newOtpToken);
+                                    set_po_account_setup({ ...po_account_setup, otpToken: newOtpToken });
+                                }
+                                Alert.alert('Success', 'A new OTP has been sent to your email. Please enter the new code.');
                             } else {
                                 Alert.alert('Error', response.message || 'Failed to resend OTP. Please try again.');
                             }
                         } catch (error) {
+                            console.error('Resend OTP error:', error);
                             Alert.alert('Error', 'Network error. Please check your connection and try again.');
                         }
                     }}
@@ -421,7 +438,15 @@ export default function App() {
                         try {
                             console.log('🔥 App.tsx - Profile picture complete, calling final step');
                             // Complete registration with profile picture
-                            const response = await auth_service.property_owner_final(profileInfo);
+                            // Include all previous step data so server can process stateless mobile flow
+                            const payload = {
+                                profileImageUri: profileInfo.profileImageUri,
+                                step1_data: po_personal_info,
+                                step2_data: po_account_setup,
+                                step4_data: po_verification_info,
+                                otp_token: po_account_setup?.otpToken || null
+                            };
+                            const response = await auth_service.property_owner_final(payload);
 
                             console.log('🔥 App.tsx - Final step response:', response);
 
@@ -443,7 +468,13 @@ export default function App() {
                     onSkip={async () => {
                         try {
                             // Complete registration without profile picture
-                            const response = await auth_service.property_owner_final({});
+                            const payload = {
+                                step1_data: po_personal_info,
+                                step2_data: po_account_setup,
+                                step4_data: po_verification_info,
+                                otp_token: po_account_setup?.otpToken || null
+                            };
+                            const response = await auth_service.property_owner_final(payload);
 
                             if (response.success) {
                                 Alert.alert('Success', 'Registration completed successfully! Please login to continue.', [
@@ -599,7 +630,9 @@ export default function App() {
                             const response = await auth_service.contractor_step2(accountInfo);
 
                             if (response.success) {
-                                set_contractor_account_info(accountInfo);
+                                // Preserve otp_token returned by backend so we can include it in final request
+                                const otpToken = response.data?.otp_token || response.otp_token || null;
+                                set_contractor_account_info({ ...accountInfo, otpToken });
                                 set_app_state('contractor_email_verification');
                                 Alert.alert('Success', 'OTP has been sent to your email. Please check your inbox.');
                             } else {
@@ -623,16 +656,9 @@ export default function App() {
                     email={contractor_account_info?.companyEmail || ''}
                     onBackPress={() => set_app_state('contractor_account_setup')}
                     onComplete={async (verificationCode: string) => {
-                        try {
-                            const response = await auth_service.contractor_verify_otp(verificationCode);
-                            if (response.success) {
-                                set_app_state('contractor_business_documents');
-                            } else {
-                                Alert.alert('Error', response.message || 'Invalid OTP. Please try again.');
-                            }
-                        } catch (error) {
-                            Alert.alert('Error', 'Network error. Please check your connection and try again.');
-                        }
+                        // Child `EmailVerificationScreen` already verifies the OTP and
+                        // only calls this callback on success — just advance the flow.
+                        set_app_state('contractor_business_documents');
                     }}
                     onResendOtp={async () => {
                         try {
@@ -685,7 +711,13 @@ export default function App() {
                     onBackPress={() => set_app_state('contractor_business_documents')}
                     onComplete={async (profileInfo: any) => {
                         try {
-                            const response = await auth_service.contractor_final(profileInfo);
+                            const payload = {
+                                companyInfo: contractor_company_info,
+                                accountInfo: contractor_account_info,
+                                documentsInfo: contractor_documents_info,
+                                profileInfo
+                            };
+                            const response = await auth_service.contractor_final(payload);
 
                             if (response.success) {
                                 Alert.alert('Success', 'Registration completed successfully!', [
@@ -700,7 +732,13 @@ export default function App() {
                     }}
                     onSkip={async () => {
                         try {
-                            const response = await auth_service.contractor_final({});
+                            const payload = {
+                                companyInfo: contractor_company_info,
+                                accountInfo: contractor_account_info,
+                                documentsInfo: contractor_documents_info,
+                                profileInfo: null
+                            };
+                            const response = await auth_service.contractor_final(payload);
 
                             if (response.success) {
                                 Alert.alert('Success', 'Registration completed successfully!', [

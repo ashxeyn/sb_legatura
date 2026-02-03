@@ -1,0 +1,23 @@
+# Exclude backend and storage to avoid symlink and large server files
+/backend
+backend/
+**/storage
+**/public/storage
+
+# Node modules and build artifacts
+node_modules
+**/node_modules
+npm-debug.log
+yarn-error.log
+pnpm-lock.yaml
+package-lock.json
+
+# Git and editor metadata
+.git
+.gitignore
+.vscode
+.idea
+
+# mac/windows temp
+*.DS_Store
+Thumbs.db

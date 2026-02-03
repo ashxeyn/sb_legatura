@@ -171,7 +171,7 @@ export default function EmailVerificationScreen({
     setIsVerifying(true);
 
     try {
-      // Show success animation
+      // Show success animation while parent handles verification
       Animated.parallel([
         Animated.spring(scaleAnim, {
           toValue: 1,
@@ -186,25 +186,15 @@ export default function EmailVerificationScreen({
         }),
       ]).start();
 
-      // Simulate verification delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
+      // Let the parent component handle the actual verification via onComplete
+      // The parent knows which user type (contractor or property_owner) to verify
       onComplete(code);
     } catch (error) {
+      // unexpected error handler
       showErrorAnimation();
       setIsComplete(false);
       setIsVerifying(false);
-
-      Alert.alert(
-        'Verification Failed',
-        'Invalid verification code. Please try again.',
-        [{
-          text: 'OK', onPress: () => {
-            setVerificationCode(new Array(OTP_LENGTH).fill(''));
-            inputRefs.current[0]?.focus();
-          }
-        }]
-      );
+      Alert.alert('Verification Failed', 'An error occurred. Please try again.');
     }
   }, [onComplete, scaleAnim, opacityAnim, showErrorAnimation]);
 
@@ -332,6 +322,13 @@ export default function EmailVerificationScreen({
               }
             ]}
           >
+            <TouchableOpacity
+              style={styles.successCloseButton}
+              onPress={onBackPress}
+              activeOpacity={0.8}
+            >
+              <MaterialIcons name="close" size={24} color="#374151" />
+            </TouchableOpacity>
             <View style={styles.successContent}>
               <View style={styles.successIconContainer}>
                 <MaterialIcons name="check-circle" size={80} color="#10B981" />
@@ -567,5 +564,22 @@ const styles = StyleSheet.create({
   successSubtext: {
     fontSize: 16,
     color: '#6B7280',
+  },
+  successCloseButton: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 56 : 40,
+    right: 20,
+    zIndex: 1010,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 4,
   },
 });

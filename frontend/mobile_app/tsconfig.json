@@ -1,4 +1,8 @@
 {
-  "compilerOptions": {},
-  "extends": "./node_modules/expo/tsconfig.base.json"
+  "compilerOptions": {
+    "skipLibCheck": true,
+    "types": ["react", "react-native"]
+  },
+  "extends": "./node_modules/expo/tsconfig.base.json",
+  "exclude": ["node_modules"]
 }

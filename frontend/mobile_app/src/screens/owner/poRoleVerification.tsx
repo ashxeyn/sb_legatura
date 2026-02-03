@@ -106,9 +106,10 @@ export default function VerificationScreen({ onBackPress, onComplete, personalIn
     if (text.trim() === '') {
       setFilteredIdTypes(localValidIds || []);
     } else {
-      const filtered = (localValidIds || []).filter(id =>
-        id.valid_id_name.toLowerCase().includes(text.toLowerCase())
-      );
+      const filtered = (localValidIds || []).filter(id => {
+        const idName = id.valid_id_name || id.name || '';
+        return idName.toLowerCase().includes(text.toLowerCase());
+      });
       setFilteredIdTypes(filtered);
     }
   };
@@ -163,8 +164,12 @@ export default function VerificationScreen({ onBackPress, onComplete, personalIn
       return;
     }
 
+    const MEDIA_IMAGES = (ImagePicker.MediaType && ImagePicker.MediaType.Images)
+      || (ImagePicker.MediaTypeOptions && ImagePicker.MediaTypeOptions.Images)
+      || 'Images';
+
     const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: MEDIA_IMAGES,
       allowsEditing: true,
       aspect: [4, 3],
       quality: 0.8,
@@ -176,8 +181,12 @@ export default function VerificationScreen({ onBackPress, onComplete, personalIn
   };
 
   const openGallery = async (imageType: 'front' | 'back' | 'police') => {
+    const MEDIA_IMAGES = (ImagePicker.MediaType && ImagePicker.MediaType.Images)
+      || (ImagePicker.MediaTypeOptions && ImagePicker.MediaTypeOptions.Images)
+      || 'Images';
+
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: MEDIA_IMAGES,
       allowsEditing: true,
       aspect: [4, 3],
       quality: 0.8,
@@ -224,7 +233,7 @@ export default function VerificationScreen({ onBackPress, onComplete, personalIn
 
     const verificationInfo: VerificationInfo = {
       valid_id_id: selectedValidId.id,
-      idTypeName: selectedValidId.valid_id_name,
+      idTypeName: selectedValidId.valid_id_name || selectedValidId.name || '',
       idFrontImage,
       idBackImage,
       policeClearanceImage,
@@ -277,7 +286,7 @@ export default function VerificationScreen({ onBackPress, onComplete, personalIn
             <TouchableOpacity style={styles.dropdownContainer} onPress={openIdTypeModal}>
               <View style={styles.dropdownInputWrapper}>
                   <Text style={[styles.dropdownInputText, !selectedValidId && styles.placeholderText]}>
-                    {selectedValidId ? selectedValidId.valid_id_name : 'Type of Valid ID'}
+                    {selectedValidId ? (selectedValidId.valid_id_name || selectedValidId.name) : 'Type of Valid ID'}
                 </Text>
                 <MaterialIcons name="keyboard-arrow-down" size={24} color="#666666" style={styles.dropdownIcon} />
               </View>
@@ -421,7 +430,7 @@ export default function VerificationScreen({ onBackPress, onComplete, personalIn
                   style={styles.idTypeItem}
                   onPress={() => selectIdType(item)}
                 >
-                    <Text style={styles.idTypeText}>{item.valid_id_name}</Text>
+                    <Text style={styles.idTypeText}>{item.valid_id_name || item.name}</Text>
                 </TouchableOpacity>
               )}
               style={styles.idTypeList}

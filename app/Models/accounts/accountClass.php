@@ -3,63 +3,117 @@
 namespace App\Models\accounts;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class accountClass
 {
     public function getContractorTypes()
     {
-        return DB::table('contractor_types')
-            ->orderByRaw("CASE WHEN LOWER(type_name) = 'others' THEN 1 ELSE 0 END, type_name ASC")
-            ->get();
+        try {
+            return DB::table('contractor_types')
+                ->orderByRaw("CASE WHEN LOWER(type_name) = 'others' THEN 1 ELSE 0 END, type_name ASC")
+                ->get();
+        } catch (\Exception $e) {
+            Log::warning('getContractorTypes failed: ' . $e->getMessage());
+            // Provide a small fallback list so UI can still render meaningful options
+            $defaults = [
+                (object)['id' => 1, 'type_name' => 'General Contractor'],
+                (object)['id' => 2, 'type_name' => 'Electrical'],
+                (object)['id' => 3, 'type_name' => 'Plumbing'],
+                (object)['id' => 4, 'type_name' => 'Others']
+            ];
+            return collect($defaults);
+        }
     }
 
     public function getOccupations()
     {
-        return DB::table('occupations')
-            ->orderByRaw("CASE WHEN LOWER(occupation_name) = 'others' THEN 1 ELSE 0 END, occupation_name ASC")
-            ->get();
+        try {
+            return DB::table('occupations')
+                ->orderByRaw("CASE WHEN LOWER(occupation_name) = 'others' THEN 1 ELSE 0 END, occupation_name ASC")
+                ->get();
+        } catch (\Exception $e) {
+            Log::warning('getOccupations failed: ' . $e->getMessage());
+            $defaults = [
+                (object)['id' => 1, 'occupation_name' => 'Engineer'],
+                (object)['id' => 2, 'occupation_name' => 'Architect'],
+                (object)['id' => 3, 'occupation_name' => 'Foreman'],
+                (object)['id' => 4, 'occupation_name' => 'Others']
+            ];
+            return collect($defaults);
+        }
     }
 
     public function getValidIds()
     {
-        return DB::table('valid_ids')->orderBy('valid_id_name', 'asc')->get();
+        try {
+            return DB::table('valid_ids')->orderBy('valid_id_name', 'asc')->get();
+        } catch (\Exception $e) {
+            Log::warning('getValidIds failed: ' . $e->getMessage());
+            $defaults = [
+                (object)['id' => 1, 'valid_id_name' => 'Passport'],
+                (object)['id' => 2, 'valid_id_name' => 'Driver License'],
+                (object)['id' => 3, 'valid_id_name' => 'National ID']
+            ];
+            return collect($defaults);
+        }
     }
 
     public function getPicabCategories()
     {
-        $result = DB::select("SHOW COLUMNS FROM contractors WHERE Field = 'picab_category'");
-        if (empty($result)) {
+        try {
+            $result = DB::select("SHOW COLUMNS FROM contractors WHERE Field = 'picab_category'");
+            if (empty($result)) {
+                return [];
+            }
+
+            $type = $result[0]->Type;
+            preg_match('/^enum\((.*)\)$/', $type, $matches);
+
+            if (empty($matches[1])) {
+                return [];
+            }
+
+            $values = str_getcsv($matches[1], ',', "'");
+            return $values;
+        } catch (\Exception $e) {
+            Log::warning('getPicabCategories failed: ' . $e->getMessage());
             return [];
         }
-
-        $type = $result[0]->Type;
-        preg_match('/^enum\((.*)\)$/', $type, $matches);
-
-        if (empty($matches[1])) {
-            return [];
-        }
-
-        $values = str_getcsv($matches[1], ',', "'");
-        return $values;
     }
 
     public function usernameExists($username)
     {
-        $userExists = DB::table('users')->where('username', $username)->exists();
-        $adminExists = DB::table('admin_users')->where('username', $username)->exists();
-        return $userExists || $adminExists;
+        try {
+            $userExists = DB::table('users')->where('username', $username)->exists();
+            $adminExists = DB::table('admin_users')->where('username', $username)->exists();
+            return $userExists || $adminExists;
+        } catch (\Exception $e) {
+            Log::warning('usernameExists failed: ' . $e->getMessage());
+            return false;
+        }
     }
 
     public function emailExists($email)
     {
-        $userExists = DB::table('users')->where('email', $email)->exists();
-        $adminExists = DB::table('admin_users')->where('email', $email)->exists();
-        return $userExists || $adminExists;
+        try {
+            $userExists = DB::table('users')->where('email', $email)->exists();
+            $adminExists = DB::table('admin_users')->where('email', $email)->exists();
+            return $userExists || $adminExists;
+        } catch (\Exception $e) {
+            Log::warning('emailExists failed: ' . $e->getMessage());
+            return false;
+        }
     }
 
     public function companyEmailExists($companyEmail)
     {
-        return DB::table('contractors')->where('company_email', $companyEmail)->exists();
+        try {
+            return DB::table('contractors')->where('company_email', $companyEmail)->exists();
+        } catch (\Exception $e) {
+            Log::warning('companyEmailExists failed: ' . $e->getMessage());
+            return false;
+        }
     }
 
     public function createUser($data)

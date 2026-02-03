@@ -121,39 +121,40 @@ export class projects_service {
         formData.append('title_of_land', titleFile as any);
       }
 
-      // Add optional blueprint files
+      // Add optional blueprint files (send as array fields 'blueprint[]')
       if (projectData.blueprint && projectData.blueprint.length > 0) {
         projectData.blueprint.forEach((file, index) => {
-          const blueprintFile = {
-            uri: file.uri,
-            type: file.mimeType || 'application/octet-stream',
-            name: file.name || `blueprint_${index}.pdf`,
-          };
-          formData.append('blueprint', blueprintFile as any);
+          const uri = file.uri || file.uri;
+          const derivedName = (file.fileName as string) || (file.name as string) || uri.split('/').pop() || `blueprint_${index}.jpg`;
+          const name = derivedName.includes('.') ? derivedName : `${derivedName}.jpg`;
+          const type = file.mimeType || (file.type as string) || (name.endsWith('.png') ? 'image/png' : 'image/jpeg');
+          const blueprintFile = { uri, type, name };
+          // Append with array notation for Laravel
+          formData.append('blueprint[]', blueprintFile as any);
         });
       }
 
       // Add optional desired design files
       if (projectData.desired_design && projectData.desired_design.length > 0) {
         projectData.desired_design.forEach((file, index) => {
-          const designFile = {
-            uri: file.uri,
-            type: file.mimeType || 'application/octet-stream',
-            name: file.name || `design_${index}.pdf`,
-          };
-          formData.append('desired_design', designFile as any);
+          const uri = file.uri || file.uri;
+          const derivedName = (file.fileName as string) || (file.name as string) || uri.split('/').pop() || `design_${index}.jpg`;
+          const name = derivedName.includes('.') ? derivedName : `${derivedName}.jpg`;
+          const type = file.mimeType || (file.type as string) || (name.endsWith('.png') ? 'image/png' : 'image/jpeg');
+          const designFile = { uri, type, name };
+          formData.append('desired_design[]', designFile as any);
         });
       }
 
       // Add optional other files
       if (projectData.others && projectData.others.length > 0) {
         projectData.others.forEach((file, index) => {
-          const otherFile = {
-            uri: file.uri,
-            type: file.mimeType || 'application/octet-stream',
-            name: file.name || `other_${index}.pdf`,
-          };
-          formData.append('others', otherFile as any);
+          const uri = file.uri || file.uri;
+          const derivedName = (file.fileName as string) || (file.name as string) || uri.split('/').pop() || `other_${index}.jpg`;
+          const name = derivedName.includes('.') ? derivedName : `${derivedName}.jpg`;
+          const type = file.mimeType || (file.type as string) || (name.endsWith('.png') ? 'image/png' : 'image/jpeg');
+          const otherFile = { uri, type, name };
+          formData.append('others[]', otherFile as any);
         });
       }
 
@@ -213,6 +214,7 @@ export class projects_service {
       };
     }
   }
+
 
   /**
    * Update an existing project
@@ -343,10 +345,59 @@ export class projects_service {
   }
 
   /**
+   * Try to fetch files for a specific bid. Some API versions return files inline,
+   * but if not present we attempt a few likely endpoints and return an array.
+   */
+  static async get_bid_files(projectId: number, bidId: number): Promise<ApiResponse<any[]>> {
+    const candidates = [
+      `/api/owner/projects/${projectId}/bids/${bidId}`,
+      `/api/owner/projects/${projectId}/bids/${bidId}/files`,
+      `/api/bids/${bidId}/files`,
+      `/api/bids/${bidId}`,
+    ];
+
+    for (const path of candidates) {
+      try {
+        const response = await api_request(path, {
+          method: 'GET',
+          headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        });
+
+        if (!response || !response.success) continue;
+
+        // Normalize various shapes: response.data may be array or object with data.files
+        const payload = response.data ?? {};
+        if (Array.isArray(payload)) {
+          return { success: true, data: payload, status: response.status };
+        }
+
+        // nested data
+        const nested = payload.data ?? payload;
+        if (Array.isArray(nested)) return { success: true, data: nested, status: response.status };
+        if (Array.isArray(nested.files)) return { success: true, data: nested.files, status: response.status };
+        if (Array.isArray(payload.files)) return { success: true, data: payload.files, status: response.status };
+      } catch (err) {
+        // try next candidate
+        continue;
+      }
+    }
+
+    return { success: false, data: [], message: 'No files found', status: 404 };
+  }
+
+  /**
    * Reject a bid for a project
    */
   static async reject_bid(projectId: number, bidId: number, userId: number): Promise<ApiResponse> {
     try {
+      // Accept optional rejection reason
+      const body: any = { user_id: userId };
+      // If a fourth argument 'reason' was provided, include it
+      const args = Array.from(arguments) as any[];
+      if (args.length >= 4 && args[3]) {
+        body.reason = args[3];
+      }
+
       const response = await api_request(`/api/owner/projects/${projectId}/bids/${bidId}/reject`, {
         method: 'POST',
         headers: {
@@ -354,7 +405,7 @@ export class projects_service {
           'Content-Type': 'application/json',
           'X-Requested-With': 'XMLHttpRequest',
         },
-        body: JSON.stringify({ user_id: userId }),
+        body: JSON.stringify(body),
       });
 
       // Unwrap the nested response structure
@@ -413,9 +464,48 @@ export class projects_service {
       proposed_cost: number;
       estimated_timeline: string;
       contractor_notes?: string;
+      bidFiles?: Array<any>;
     }
   ): Promise<ApiResponse> {
     try {
+      // If files are provided, send as FormData (Laravel expects bid_files[])
+      if (bidData.bidFiles && Array.isArray(bidData.bidFiles) && bidData.bidFiles.length > 0) {
+        const formData = new FormData();
+        formData.append('user_id', userId.toString());
+        formData.append('proposed_cost', bidData.proposed_cost.toString());
+        formData.append('estimated_timeline', bidData.estimated_timeline);
+        if (bidData.contractor_notes) formData.append('contractor_notes', bidData.contractor_notes);
+
+        bidData.bidFiles.forEach((file: any, index: number) => {
+          const uri = file.uri;
+          const derivedName = file.name || file.fileName || (uri && uri.split('/').pop()) || `bid_file_${index}`;
+          const name = derivedName.includes('.') ? derivedName : `${derivedName}.jpg`;
+          const type = file.type || file.mimeType || (name.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
+          const fileObj: any = { uri, name, type };
+          formData.append('bid_files[]', fileObj as any);
+        });
+
+        const url = `${api_config.base_url}/api/contractor/projects/${projectId}/bid`;
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+          body: formData,
+        });
+
+        const data = await response.json();
+
+        return {
+          success: response.ok && (data.success !== false),
+          message: data.message || (response.ok ? 'Bid submitted' : 'Failed to submit bid'),
+          data: data,
+          status: response.status,
+        };
+      }
+
+      // Otherwise fallback to JSON POST
       const response = await api_request(`/api/contractor/projects/${projectId}/bid`, {
         method: 'POST',
         headers: {
@@ -425,7 +515,9 @@ export class projects_service {
         },
         body: JSON.stringify({
           user_id: userId,
-          ...bidData,
+          proposed_cost: bidData.proposed_cost,
+          estimated_timeline: bidData.estimated_timeline,
+          contractor_notes: bidData.contractor_notes,
         }),
       });
 

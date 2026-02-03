@@ -1,4 +1,4 @@
-import { api_config, api_request } from '../config/api';
+import { api_config, api_request, getCsrfToken } from '../config/api';
 
 // Type definitions based on Laravel backend forms
 export interface login_data {
@@ -26,7 +26,8 @@ export interface occupation {
 
 export interface valid_id {
   id: number;
-  valid_id_name: string;
+  valid_id_name?: string;
+  name?: string; // API returns 'name' but we also support 'valid_id_name'
 }
 
 export interface province {
@@ -213,11 +214,79 @@ export class auth_service {
     });
   }
 
-  static async property_owner_verify_otp(otp: string): Promise<api_response> {
-    return await api_request(api_config.endpoints.property_owner.verify_otp, {
-      method: 'POST',
-      body: JSON.stringify({ otp }),
-    });
+  /**
+   * Verify Property Owner OTP
+   * 
+   * This method fetches the CSRF token first, then sends the OTP verification request
+   * with credentials (cookies) enabled.
+   * 
+   * @param otp - The OTP code entered by the user
+   * @param otpToken - Optional OTP token returned from step2 for stateless clients
+   * @param email - Optional email address for fallback lookup
+   * @returns Success response if OTP is valid, or descriptive error if OTP is missing/expired
+   */
+  static async property_owner_verify_otp(otp: string, otpToken?: string, email?: string): Promise<api_response> {
+    try {
+      // Validate OTP is provided
+      if (!otp || otp.trim() === '') {
+        return {
+          success: false,
+          data: null,
+          status: 422,
+          message: 'OTP is required. Please enter the verification code sent to your email.',
+        };
+      }
+
+      // Fetch CSRF token before making the OTP verification request
+      console.log('Fetching CSRF token for OTP verification...');
+      await getCsrfToken();
+
+      const body: any = { otp: otp.trim() };
+      if (otpToken) body.otp_token = otpToken;
+      if (email) body.email = email;
+
+      console.log('Sending OTP verification request to:', api_config.endpoints.property_owner.verify_otp);
+      const response = await api_request(api_config.endpoints.property_owner.verify_otp, {
+        method: 'POST',
+        body: JSON.stringify(body),
+      });
+
+      // Provide descriptive error messages based on error codes
+      if (!response.success && response.data) {
+        const errorCode = response.data.error_code;
+        if (errorCode === 'otp_not_found') {
+          return {
+            ...response,
+            message: 'OTP not found or expired. Please request a new verification code.',
+          };
+        } else if (errorCode === 'otp_expired') {
+          return {
+            ...response,
+            message: 'Your OTP has expired. Please request a new verification code.',
+          };
+        } else if (errorCode === 'invalid_otp') {
+          return {
+            ...response,
+            message: 'Invalid OTP. Please check the code and try again.',
+          };
+        } else if (errorCode === 'otp_identifier_missing') {
+          return {
+            ...response,
+            message: 'Session expired. Please go back and re-enter your account information.',
+          };
+        }
+      }
+
+      return response;
+    } catch (error) {
+      console.error('OTP verification error:', error);
+      return {
+        success: false,
+        data: null,
+        status: 0,
+        message: error instanceof Error ? error.message : 'Network error occurred during OTP verification.',
+      };
+    }
   }
 
   static async property_owner_step4(verificationInfo: any): Promise<api_response> {
@@ -285,6 +354,55 @@ export class auth_service {
         formData.append('skip_profile', 'true');
       }
 
+      // Include step data for stateless/mobile clients if provided
+      try {
+        if (profileInfo.step1_data) {
+          formData.append('step1_data', JSON.stringify(profileInfo.step1_data));
+        }
+        if (profileInfo.step2_data) {
+          formData.append('step2_data', JSON.stringify(profileInfo.step2_data));
+        }
+        if (profileInfo.step4_data) {
+          formData.append('step4_data', JSON.stringify({
+            valid_id_id: profileInfo.step4_data.valid_id_id,
+            // Don't include file URIs in JSON - they will be sent as separate files
+          }));
+          
+          // Include the image files from step4_data for mobile stateless flow
+          // These need to be uploaded in the final step since mobile doesn't have sessions
+          if (profileInfo.step4_data.idFrontImage) {
+            console.log('🔥 Adding valid_id_photo from step4_data');
+            formData.append('valid_id_photo', {
+              uri: profileInfo.step4_data.idFrontImage,
+              type: 'image/jpeg',
+              name: 'id_front.jpg',
+            } as any);
+          }
+          if (profileInfo.step4_data.idBackImage) {
+            console.log('🔥 Adding valid_id_back_photo from step4_data');
+            formData.append('valid_id_back_photo', {
+              uri: profileInfo.step4_data.idBackImage,
+              type: 'image/jpeg',
+              name: 'id_back.jpg',
+            } as any);
+          }
+          if (profileInfo.step4_data.policeClearanceImage) {
+            console.log('🔥 Adding police_clearance from step4_data');
+            formData.append('police_clearance', {
+              uri: profileInfo.step4_data.policeClearanceImage,
+              type: 'image/jpeg',
+              name: 'police_clearance.jpg',
+            } as any);
+          }
+        }
+        // Also include otp_token if present (useful when owner used token flow)
+        if (profileInfo.otp_token) {
+          formData.append('otp_token', profileInfo.otp_token);
+        }
+      } catch (err) {
+        console.warn('Failed to append step data to FormData:', err);
+      }
+
       console.log('🔥 Calling endpoint:', api_config.endpoints.property_owner.final);
 
       // If no profile picture, just send empty form data
@@ -316,7 +434,7 @@ export class auth_service {
     const requestData: any = {
       company_name: companyInfo.companyName,
       company_phone: cleanedPhone,
-      years_of_experience: parseInt(companyInfo.yearsOfExperience) || 0, // Convert to integer as required by backend
+      founded_date: companyInfo.foundedDate || '', // ISO date (YYYY-MM-DD)
       contractor_type_id: parseInt(companyInfo.contractorTypeId) || 0, // Convert to integer as required by backend
       contractor_type_other_text: companyInfo.contractorTypeOtherText || null,
       services_offered: companyInfo.servicesOffered,
@@ -366,10 +484,12 @@ export class auth_service {
     });
   }
 
-  static async contractor_verify_otp(otp: string): Promise<api_response> {
+  static async contractor_verify_otp(otp: string, companyEmail?: string): Promise<api_response> {
+    const body: any = { otp };
+    if (companyEmail) body.company_email = companyEmail;
     return await api_request(api_config.endpoints.contractor.verify_otp, {
       method: 'POST',
-      body: JSON.stringify({ otp }),
+      body: JSON.stringify(body),
     });
   }
 
@@ -401,27 +521,81 @@ export class auth_service {
     });
   }
 
-  static async contractor_final(profileInfo: any = {}): Promise<api_response> {
-    console.log('🔥 CONTRACTOR FINAL - Profile Info:', profileInfo);
+  static async contractor_final(payload: any = {}): Promise<api_response> {
+    // payload may include: companyInfo, accountInfo, documentsInfo, profileInfo
+    console.log('🔥 CONTRACTOR FINAL - Payload:', payload);
 
     try {
-      // Don't refresh CSRF token here - we should already have it from previous steps
-      // Refreshing might create a new session and lose the session data
-      console.log('🔥 Using existing CSRF token for final step');
+      const { companyInfo, accountInfo, documentsInfo, profileInfo } = payload;
 
-      // Create FormData for file upload if profile picture exists
+      // Build FormData including step data so stateless/mobile clients don't rely on server session
       const formData = new FormData();
 
-      if (profileInfo.profileImageUri) {
-        console.log('🔥 Adding profile picture to FormData');
+      // Attach JSON-encoded step data
+      if (companyInfo) {
+        formData.append('step1_data', JSON.stringify({
+          company_name: companyInfo.companyName,
+          company_phone: companyInfo.companyPhone,
+          founded_date: companyInfo.foundedDate || '',
+          contractor_type_id: companyInfo.contractorTypeId || 0,
+          contractor_type_other: companyInfo.contractorTypeOtherText || null,
+          services_offered: companyInfo.servicesOffered || '',
+          business_address_street: companyInfo.businessAddressStreet || '',
+          business_address_province: companyInfo.businessAddressProvince || '',
+          business_address_city: companyInfo.businessAddressCity || '',
+          business_address_barangay: companyInfo.businessAddressBarangay || '',
+          business_address_postal: companyInfo.businessAddressPostal || '',
+          company_website: companyInfo.companyWebsite || null,
+          company_social_media: companyInfo.companySocialMedia || null,
+        }));
+      }
+
+      if (accountInfo) {
+        formData.append('step2_data', JSON.stringify({
+          first_name: accountInfo.firstName,
+          middle_name: accountInfo.middleName || null,
+          last_name: accountInfo.lastName,
+          username: accountInfo.username,
+          company_email: accountInfo.companyEmail,
+          password: accountInfo.password,
+          password_confirmation: accountInfo.confirmPassword
+        }));
+        // If OTP token was returned earlier, include it so server can lookup OTP hash
+        if (accountInfo.otpToken) {
+          formData.append('otp_token', accountInfo.otpToken);
+        }
+      }
+
+      if (documentsInfo) {
+        formData.append('step4_data', JSON.stringify({
+          picab_number: documentsInfo.picabNumber || '',
+          picab_category: documentsInfo.picabCategory || '',
+          picab_expiration_date: documentsInfo.picabExpirationDate || '',
+          business_permit_number: documentsInfo.businessPermitNumber || '',
+          business_permit_city: documentsInfo.businessPermitCity || '',
+          business_permit_expiration: documentsInfo.businessPermitExpiration || '',
+          tin_business_reg_number: documentsInfo.tinBusinessRegNumber || ''
+        }));
+
+        // Attach DTI/SEC photo if present
+        if (documentsInfo.dtiSecRegistrationPhoto) {
+          formData.append('dti_sec_registration_photo', {
+            uri: documentsInfo.dtiSecRegistrationPhoto,
+            type: 'image/jpeg',
+            name: 'dti_sec_registration.jpg',
+          } as any);
+        }
+      }
+
+      // Profile picture (optional)
+      if (profileInfo && profileInfo.profileImageUri) {
         formData.append('profile_pic', {
           uri: profileInfo.profileImageUri,
           type: 'image/jpeg',
           name: 'profile.jpg',
         } as any);
       } else {
-        console.log('🔥 No profile picture - sending empty FormData');
-        // Add a dummy field to ensure FormData is not completely empty
+        // Ensure we send at least one field to avoid empty body issues
         formData.append('skip_profile', 'true');
       }
 
@@ -430,7 +604,6 @@ export class auth_service {
       const result = await api_request(api_config.endpoints.contractor.final, {
         method: 'POST',
         body: formData,
-        // Don't set Content-Type for FormData - let the browser set it with boundary
       });
 
       console.log('🔥 CONTRACTOR FINAL RESULT:', result);

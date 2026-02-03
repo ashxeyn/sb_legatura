@@ -3,25 +3,25 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
-  TextInput,
+  Image,
   TouchableOpacity,
+  Dimensions,
   StyleSheet,
   SafeAreaView,
   ScrollView,
-  Image,
-  FlatList,
-  Dimensions,
   ActivityIndicator,
   Alert,
-  StatusBar,
   Platform,
+  StatusBar,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { MaterialIcons, Ionicons, Feather } from '@expo/vector-icons';
-import { contractors_service, Contractor as ContractorType } from '../../services/contractors_service';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+import Feather from 'react-native-vector-icons/Feather';
+import ImageFallback from '../../components/ImageFallbackFixed';
 import { projects_service, ContractorType as ContractorTypeOption } from '../../services/projects_service';
 import { api_config } from '../../config/api';
-import ImageFallback from '../../components/ImageFallback';
+import { contractors_service } from '../../services/contractors_service';
 
 // Helper to build full storage URL for profile/cover images
 const getStorageUrl = (filePath?: string, defaultSubfolder = 'profiles') => {
@@ -61,6 +61,9 @@ import SearchScreen from './searchScreen';
 // Import place bid screen
 import PlaceBid from '../contractor/placeBid';
 
+// Import project post detail screen
+import ProjectPostDetail from './projectPostDetail';
+
 // Import notifications screen
 import Notifications from './notifications';
 
@@ -68,6 +71,7 @@ import Notifications from './notifications';
 const defaultCoverPhoto = require('../../../assets/images/pictures/cp_default.jpg');
 const defaultContractorAvatar = require('../../../assets/images/pictures/contractor_default.png');
 const defaultOwnerAvatar = require('../../../assets/images/pictures/property_owner_default.png');
+const watermarkImage = require('../../../assets/images/pictures/legatura_watermark.png');
 
 const { width } = Dimensions.get('window');
 
@@ -468,152 +472,201 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
   const renderProjectImages = (files: string[]) => {
     if (!files || files.length === 0) return null;
 
-    // Helper to check if file is an image
     const isImage = (filePath: string) => {
-      // If it's already a full URL (http/https), treat as image
+      if (!filePath) return false;
       if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
-        return true;
+        // Treat http(s) urls as images if they have an image extension
+        return /\.(jpg|jpeg|png|gif|webp)$/i.test(filePath);
       }
       const ext = filePath.toLowerCase().split('.').pop();
       return ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext || '');
     };
 
-    // Build full URLs
-    const fileUrls = files.map(file => {
-      // If file is already a full URL, use it directly
-      const url = (file.startsWith('http://') || file.startsWith('https://')) 
-        ? file 
-        : `${api_config.base_url}/storage/${file}`;
+    const isProtectedDocument = (fileUrl: string) => {
+      if (!fileUrl) return false;
+      const lower = fileUrl.toLowerCase();
+      // Normalize separators to spaces so variants like title-of-land, title_of_land, title of land match
+      const normalized = lower.replace(/[^a-z0-9]+/g, ' ');
+      const tokens = normalized.split(/\s+/).filter(Boolean);
+      const has = (w: string) => tokens.includes(w);
+
+      // Detect building permit (building + permit)
+      if (has('building') && has('permit')) return true;
+      // Detect title of land (title + land)
+      if (has('title') && has('land')) return true;
+      // Also catch explicit phrases or common filename patterns
+      if (/(building_permit|building-permit|title_of_land|title-of-land)/.test(lower)) return true;
+      return false;
+    };
+
+    // Accept file_type hints from backend: fileType may contain words like 'building_permit' or 'title_of_land'
+    const isProtectedByType = (fileType: string) => {
+      if (!fileType) return false;
+      const lower = fileType.toLowerCase();
+      return /building_permit|building-permit|building permit|title_of_land|title-of-land|title/.test(lower);
+    };
+
+    const displayFiles = files.map((f) => {
+      // Support both string file paths and objects returned by backend
+      if (f && typeof f === 'object') {
+        const path = (f.file_path || f.file || f.url || '').toString();
+        const type = (f.file_type || f.type || '').toString();
+        const raw = path;
+        const url = path.startsWith('http') ? path : `${api_config.base_url}/storage/${path}`;
+        return {
+          raw,
+          url,
+          isImage: isImage(path),
+          fileType: type,
+        };
+      }
+
+      const raw = String(f);
       return {
-        url,
-        isImage: isImage(file),
+        raw,
+        url: raw.startsWith('http') ? raw : `${api_config.base_url}/storage/${raw}`,
+        isImage: isImage(raw),
+        fileType: '',
       };
     });
 
-    // Filter to only images, or show document placeholders
-    const displayFiles = fileUrls;
-    
-    if (displayFiles.length === 0) return null;
+    // Prioritize optional images when available: blueprint > desired design > others
+    const blueprints = displayFiles.filter(d => (d.fileType || '').toLowerCase().includes('blueprint') || d.raw.toLowerCase().includes('blueprint'));
+    const desiredDesigns = displayFiles.filter(d => (d.fileType || '').toLowerCase().includes('desired') || d.raw.toLowerCase().includes('desired'));
+    const othersImages = displayFiles.filter(d => (d.fileType || '').toLowerCase().includes('other') || d.raw.toLowerCase().includes('other'));
+
+    // Permit and title (protected docs)
+    const permits = displayFiles.filter(d => ((d.fileType || '').toLowerCase().includes('building') && (d.fileType || '').toLowerCase().includes('permit')) || d.raw.toLowerCase().includes('permit') || d.raw.toLowerCase().includes('building_permit'));
+    const titles = displayFiles.filter(d => (d.fileType || '').toLowerCase().includes('title') || d.raw.toLowerCase().includes('title'));
+
+    // Combine optional images in priority order
+    const optionalCombined = [...blueprints, ...desiredDesigns, ...othersImages];
+
+    // If any optional images exist, use them; otherwise fall back to permit/title in that order
+    const usedFiles = optionalCombined.length > 0
+      ? optionalCombined
+      : [...permits, ...titles];
+
+    // Collage sizing (match ProjectPostDetail rules)
+    const H_PADDING = 16;
+    const GAP = 2;
+    const usableWidth = width - H_PADDING * 2;
+    const halfSize = Math.floor((usableWidth - GAP) / 2);
+    const largeWidth = Math.floor(usableWidth * 0.66);
+    const smallColumnWidth = usableWidth - largeWidth - GAP;
+    const singleHeight = Math.floor(usableWidth * 0.56);
 
     // Single file
-    if (displayFiles.length === 1) {
+    if (usedFiles.length === 1) {
+      const f = usedFiles[0];
       return (
-        <View style={styles.imageCollageContainer}>
-          {displayFiles[0].isImage ? (
-            <Image source={{ uri: displayFiles[0].url }} style={styles.imageSingle} resizeMode="cover" />
-          ) : (
-            <View style={[styles.imageSingle, styles.documentPlaceholder]}>
-              <MaterialIcons name="insert-drive-file" size={48} color="#999" />
-              <Text style={styles.documentText}>Project Document</Text>
-            </View>
-          )}
-        </View>
-      );
-    }
-
-    // Two files - side by side
-    if (displayFiles.length === 2) {
-      return (
-        <View style={styles.imageCollageContainer}>
-          <View style={styles.imageRowTwo}>
-            {displayFiles[0].isImage ? (
-              <Image source={{ uri: displayFiles[0].url }} style={styles.imageHalf} resizeMode="cover" />
+        <View style={[styles.imageCollageContainer, { paddingHorizontal: H_PADDING }]}> 
+          <View style={{ position: 'relative' }}>
+            {f.isImage ? (
+              <Image source={{ uri: f.url }} style={{ width: usableWidth, height: singleHeight, borderRadius: 8 }} resizeMode="cover" />
             ) : (
-              <View style={[styles.imageHalf, styles.documentPlaceholder]}>
-                <MaterialIcons name="insert-drive-file" size={32} color="#999" />
+              <View style={[{ width: usableWidth, height: singleHeight, borderRadius: 8 }, styles.documentPlaceholder]}>
+                <MaterialIcons name="insert-drive-file" size={48} color="#999" />
+                <Text style={styles.documentText}>Project Document</Text>
               </View>
             )}
-            {displayFiles[1].isImage ? (
-              <Image source={{ uri: displayFiles[1].url }} style={styles.imageHalf} resizeMode="cover" />
-            ) : (
-              <View style={[styles.imageHalf, styles.documentPlaceholder]}>
-                <MaterialIcons name="insert-drive-file" size={32} color="#999" />
-              </View>
+            {f.isImage && (isProtectedDocument(f.raw) || isProtectedByType(f.fileType)) && (
+              <Image source={watermarkImage} style={styles.watermark} resizeMode="cover" />
             )}
           </View>
         </View>
       );
     }
 
-    // Three files - one large on left, two stacked on right
-    if (displayFiles.length === 3) {
+    // Two files (responsive row)
+    if (usedFiles.length === 2) {
       return (
-        <View style={styles.imageCollageContainer}>
-          <View style={styles.imageRowThree}>
-            {displayFiles[0].isImage ? (
-              <Image source={{ uri: displayFiles[0].url }} style={styles.imageThreeLarge} resizeMode="cover" />
-            ) : (
-              <View style={[styles.imageThreeLarge, styles.documentPlaceholder]}>
-                <MaterialIcons name="insert-drive-file" size={40} color="#999" />
+        <View style={[styles.imageCollageContainer, { paddingHorizontal: H_PADDING }]}> 
+          <View style={{ flexDirection: 'row' }}>
+            {usedFiles.map((f, i) => (
+              <View key={i} style={{ position: 'relative', flex: 1, height: halfSize, borderRadius: 8, overflow: 'hidden', marginRight: i === 0 ? GAP : 0 }}>
+                {f.isImage ? (
+                  <Image source={{ uri: f.url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                ) : (
+                  <View style={[{ width: '100%', height: '100%' }, styles.documentPlaceholder]}>
+                    <MaterialIcons name="insert-drive-file" size={36} color="#999" />
+                  </View>
+                )}
+                {f.isImage && (isProtectedDocument(f.raw) || isProtectedByType(f.fileType)) && (
+                  <Image source={watermarkImage} style={styles.watermarkSmall} resizeMode="cover" />
+                )}
               </View>
-            )}
-            <View style={styles.imageThreeStack}>
-              {displayFiles[1].isImage ? (
-                <Image source={{ uri: displayFiles[1].url }} style={styles.imageThreeSmall} resizeMode="cover" />
+            ))}
+          </View>
+        </View>
+      );
+    }
+
+    // Three files: large left, two stacked right
+    if (usedFiles.length === 3) {
+      return (
+        <View style={[styles.imageCollageContainer, { paddingHorizontal: H_PADDING }]}> 
+          <View style={{ flexDirection: 'row' }}>
+            <View style={{ position: 'relative', flex: 2, height: largeWidth, marginRight: GAP, borderRadius: 8, overflow: 'hidden' }}>
+              {usedFiles[0].isImage ? (
+                <Image source={{ uri: usedFiles[0].url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
               ) : (
-                <View style={[styles.imageThreeSmall, styles.documentPlaceholder]}>
-                  <MaterialIcons name="insert-drive-file" size={28} color="#999" />
+                <View style={[{ width: '100%', height: '100%' }, styles.documentPlaceholder]}>
+                  <MaterialIcons name="insert-drive-file" size={40} color="#999" />
                 </View>
               )}
-              {displayFiles[2].isImage ? (
-                <Image source={{ uri: displayFiles[2].url }} style={styles.imageThreeSmall} resizeMode="cover" />
-              ) : (
-                <View style={[styles.imageThreeSmall, styles.documentPlaceholder]}>
-                  <MaterialIcons name="insert-drive-file" size={28} color="#999" />
-                </View>
+              {usedFiles[0].isImage && (isProtectedDocument(usedFiles[0].raw) || isProtectedByType(usedFiles[0].fileType)) && (
+                <Image source={watermarkImage} style={styles.watermark} resizeMode="cover" />
               )}
+            </View>
+            <View style={{ flex: 1, height: largeWidth }}>
+              {usedFiles.slice(1).map((f, i) => (
+                <View key={i} style={{ position: 'relative', width: '100%', height: (largeWidth - GAP) / 2, marginBottom: i === 0 ? GAP : 0, borderRadius: 8, overflow: 'hidden' }}>
+                  {f.isImage ? (
+                    <Image source={{ uri: f.url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                  ) : (
+                    <View style={[{ width: '100%', height: '100%' }, styles.documentPlaceholder]}>
+                      <MaterialIcons name="insert-drive-file" size={28} color="#999" />
+                    </View>
+                  )}
+                  {f.isImage && (isProtectedDocument(f.raw) || isProtectedByType(f.fileType)) && (
+                    <Image source={watermarkImage} style={styles.watermarkSmall} resizeMode="cover" />
+                  )}
+                </View>
+              ))}
             </View>
           </View>
         </View>
       );
     }
 
-    // Four or more files - 2x2 grid, show +N on last item if more than 4
-    const displayItems = displayFiles.slice(0, 4);
-    const remainingCount = displayFiles.length - 4;
-
+    // Four or more: 2x2 grid
+    const grid = usedFiles.slice(0, 4);
+    const extra = usedFiles.length - 4;
     return (
-      <View style={styles.imageCollageContainer}>
-        <View style={styles.imageGrid}>
-          <View style={styles.imageGridRow}>
-            {displayItems[0].isImage ? (
-              <Image source={{ uri: displayItems[0].url }} style={styles.imageQuarter} resizeMode="cover" />
-            ) : (
-              <View style={[styles.imageQuarter, styles.documentPlaceholder]}>
-                <MaterialIcons name="insert-drive-file" size={24} color="#999" />
+      <View style={[styles.imageCollageContainer, { paddingHorizontal: H_PADDING }]}> 
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+          {grid.map((f, i) => (
+            <View key={i} style={{ position: 'relative', width: '50%', paddingRight: i % 2 === 0 ? GAP : 0, paddingTop: i >= 2 ? GAP : 0 }}>
+              <View style={{ width: '100%', height: halfSize, borderRadius: 8, overflow: 'hidden' }}>
+                {f.isImage ? (
+                  <Image source={{ uri: f.url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                ) : (
+                  <View style={[{ width: '100%', height: '100%' }, styles.documentPlaceholder]}>
+                    <MaterialIcons name="insert-drive-file" size={24} color="#999" />
+                  </View>
+                )}
+                {f.isImage && (isProtectedDocument(f.raw) || isProtectedByType(f.fileType)) && (
+                  <Image source={watermarkImage} style={styles.watermarkSmall} resizeMode="cover" />
+                )}
+                {i === 3 && extra > 0 && (
+                  <View style={styles.imageOverlay}>
+                    <Text style={styles.imageOverlayText}>+{extra}</Text>
+                  </View>
+                )}
               </View>
-            )}
-            {displayItems[1].isImage ? (
-              <Image source={{ uri: displayItems[1].url }} style={styles.imageQuarter} resizeMode="cover" />
-            ) : (
-              <View style={[styles.imageQuarter, styles.documentPlaceholder]}>
-                <MaterialIcons name="insert-drive-file" size={24} color="#999" />
-              </View>
-            )}
-          </View>
-          <View style={styles.imageGridRow}>
-            {displayItems[2].isImage ? (
-              <Image source={{ uri: displayItems[2].url }} style={styles.imageQuarter} resizeMode="cover" />
-            ) : (
-              <View style={[styles.imageQuarter, styles.documentPlaceholder]}>
-                <MaterialIcons name="insert-drive-file" size={24} color="#999" />
-              </View>
-            )}
-            <View style={styles.imageQuarterWrapper}>
-              {displayItems[3].isImage ? (
-                <Image source={{ uri: displayItems[3].url }} style={styles.imageQuarter} resizeMode="cover" />
-              ) : (
-                <View style={[styles.imageQuarter, styles.documentPlaceholder]}>
-                  <MaterialIcons name="insert-drive-file" size={24} color="#999" />
-                </View>
-              )}
-              {remainingCount > 0 && (
-                <View style={styles.imageOverlay}>
-                  <Text style={styles.imageOverlayText}>+{remainingCount}</Text>
-                </View>
-              )}
             </View>
-          </View>
+          ))}
         </View>
       </View>
     );
@@ -684,16 +737,16 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
         {/* Project Title */}
         <Text style={styles.projectTitleText}>{project.project_title}</Text>
 
-        {/* Project Type Badge */}
-        <View style={styles.projectTypeBadge}>
-          <MaterialIcons name="business" size={14} color="#EC7E00" />
-          <Text style={styles.projectTypeText}>{project.type_name}</Text>
-        </View>
-
         {/* Project Description */}
         <Text style={styles.projectDescriptionText} numberOfLines={2}>
           {project.project_description}
         </Text>
+
+        {/* Project Type Badge (moved below description) */}
+        <View style={styles.projectTypeBadge}>
+          <MaterialIcons name="business" size={14} color="#EC7E00" />
+          <Text style={styles.projectTypeText}>{project.type_name}</Text>
+        </View>
 
         {/* Project Details */}
         <View style={styles.projectDetailsContainer}>
@@ -803,20 +856,12 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
       >
         {/* User Profile and Project Input */}
         <View style={styles.profileSection}>
-          {profileImageUrl && !profileImageError ? (
-            <Image
-              source={{ uri: profileImageUrl }}
-              style={styles.profileImage}
-              onError={(e) => {
-                console.log('Image load error:', e.nativeEvent.error);
-                setProfileImageError(true);
-              }}
-            />
-          ) : (
-            <View style={styles.profileImagePlaceholder}>
-              <Ionicons name="person" size={28} color="#999999" />
-            </View>
-          )}
+          <ImageFallback
+            uri={profileImageUrl}
+            defaultImage={require('../../../assets/images/pictures/property_owner_default.png')}
+            style={styles.profileImage}
+            resizeMode="cover"
+          />
           <TouchableOpacity
             style={styles.projectInput}
             onPress={() => setShowCreateProject(true)}
@@ -901,20 +946,12 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
       >
         {/* User Profile and Search */}
         <View style={styles.profileSection}>
-          {profileImageUrl && !profileImageError ? (
-            <Image
-              source={{ uri: profileImageUrl }}
-              style={styles.profileImage}
-              onError={(e) => {
-                console.log('Image load error:', e.nativeEvent.error);
-                setProfileImageError(true);
-              }}
-            />
-          ) : (
-            <View style={styles.profileImagePlaceholder}>
-              <Ionicons name="person" size={28} color="#999999" />
-            </View>
-          )}
+          <ImageFallback
+            uri={profileImageUrl}
+            defaultImage={require('../../../assets/images/pictures/contractor_default.png')}
+            style={styles.profileImage}
+            resizeMode="cover"
+          />
           <View style={styles.searchBarContainer}>
             <Feather name="search" size={18} color="#999999" />
             <Text style={styles.searchBarText}>Find projects to bid on...</Text>
@@ -1096,6 +1133,22 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
         return renderHomeContent();
     }
   };
+
+  // If viewing a project detail, show ProjectPostDetail screen
+  if (selectedProject) {
+    return (
+      <ProjectPostDetail
+        project={selectedProject}
+        userRole={effectiveUserType === 'contractor' ? 'contractor' : 'owner'}
+        onClose={() => setSelectedProject(null)}
+        onPlaceBid={() => {
+          setBidProject(selectedProject);
+          setSelectedProject(null);
+          setShowPlaceBid(true);
+        }}
+      />
+    );
+  }
 
   // If viewing a contractor profile, show CheckProfile screen
   if (selectedContractor) {
@@ -1946,5 +1999,25 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#999',
     marginTop: 8,
+  },
+  watermark: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100%',
+    height: '100%',
+    opacity: 0.12,
+  },
+  watermarkSmall: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100%',
+    height: '100%',
+    opacity: 0.12,
   },
 });

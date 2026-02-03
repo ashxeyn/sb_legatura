@@ -13,7 +13,7 @@ import {
 import { View as SafeAreaView, StatusBar, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
-import ImageFallback from '../../components/ImageFallback';
+import ImageFallback from '../../components/ImageFallbackFixed';
 
 // Default images
 const defaultCoverPhoto = require('../../../assets/images/pictures/cp_default.jpg');

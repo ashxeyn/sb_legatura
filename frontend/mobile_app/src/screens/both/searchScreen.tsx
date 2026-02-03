@@ -14,7 +14,7 @@ import {
   Platform,
   Keyboard,
 } from 'react-native';
-import ImageFallback from '../../components/ImageFallback';
+import ImageFallback from '../../components/ImageFallbackFixed';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons, Ionicons, Feather } from '@expo/vector-icons';
 import { api_config } from '../../config/api';

@@ -319,10 +319,13 @@ document.addEventListener('DOMContentLoaded', function() {
     // Property Owner Add
     const ownerProvince = document.getElementById('owner_address_province');
     if (ownerProvince) {
+        console.debug('account.js: owner_address_province element found');
         ownerProvince.addEventListener('change', function() {
             const provinceCode = this.value;
             const citySelect = document.getElementById('owner_address_city');
             const barangaySelect = document.getElementById('owner_address_barangay');
+
+            console.debug('account.js: owner selected provinceCode=', provinceCode);
 
             citySelect.innerHTML = '<option value="">Loading...</option>';
             citySelect.disabled = true;
@@ -333,6 +336,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 fetch('/api/psgc/provinces/' + provinceCode + '/cities')
                     .then(response => response.json())
                     .then(data => {
+                        console.debug('account.js: cities fetched for province', provinceCode, data && data.length ? data.length : 0);
                         citySelect.innerHTML = '<option value="">Select City/Municipality</option>';
                         data.forEach(function(city) {
                             const option = document.createElement('option');
@@ -344,6 +348,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         citySelect.disabled = false;
                     })
                     .catch(error => {
+                        console.error('account.js: failed to load cities for province', provinceCode, error);
                         citySelect.innerHTML = '<option value="">Error loading cities</option>';
                     });
             } else {

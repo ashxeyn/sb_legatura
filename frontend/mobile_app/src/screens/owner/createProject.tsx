@@ -171,8 +171,12 @@ export default function CreateProjectScreen({ onBackPress, onSubmit, contractorT
       return;
     }
 
+    const MEDIA_IMAGES = (ImagePicker.MediaType && ImagePicker.MediaType.Images)
+      || (ImagePicker.MediaTypeOptions && ImagePicker.MediaTypeOptions.Images)
+      || 'Images';
+
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: MEDIA_IMAGES,
       allowsEditing: false,
       quality: 0.8,
     });
@@ -195,8 +199,12 @@ export default function CreateProjectScreen({ onBackPress, onSubmit, contractorT
       return;
     }
 
+    const MEDIA_IMAGES = (ImagePicker.MediaType && ImagePicker.MediaType.Images)
+      || (ImagePicker.MediaTypeOptions && ImagePicker.MediaTypeOptions.Images)
+      || 'Images';
+
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: MEDIA_IMAGES,
       allowsEditing: false,
       quality: 0.8,
     });

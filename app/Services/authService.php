@@ -11,7 +11,13 @@ class authService
     // Generate a 6-digit OTP
     public function generateOtp()
     {
-        return str_pad(rand(0, 999999), 6, '0', STR_PAD_LEFT);
+        try {
+            $num = random_int(0, 999999);
+        } catch (\Throwable $e) {
+            // Fallback to less secure generator if random_int is unavailable
+            $num = mt_rand(0, 999999);
+        }
+        return str_pad((string)$num, 6, '0', STR_PAD_LEFT);
     }
 
     public function hashOtp($otp)
@@ -52,10 +58,18 @@ class authService
 
     public function attemptUserLogin($username, $password)
     {
-        $user = DB::table('users')
-            ->where('username', $username)
-            ->orWhere('email', $username)
-            ->first();
+        try {
+            $user = DB::table('users')
+                ->where('username', $username)
+                ->orWhere('email', $username)
+                ->first();
+        } catch (\Exception $e) {
+            \Log::warning('attemptUserLogin DB lookup failed: ' . $e->getMessage());
+            return [
+                'success' => false,
+                'message' => 'Invalid credentials'
+            ];
+        }
 
         if ($user && $this->verifyPassword($password, $user->password_hash)) {
 
@@ -152,10 +166,18 @@ class authService
 
     public function attemptAdminLogin($username, $password)
     {
-        $admin = DB::table('admin_users')
-            ->where('username', $username)
-            ->orWhere('email', $username)
-            ->first();
+        try {
+            $admin = DB::table('admin_users')
+                ->where('username', $username)
+                ->orWhere('email', $username)
+                ->first();
+        } catch (\Exception $e) {
+            \Log::warning('attemptAdminLogin DB lookup failed: ' . $e->getMessage());
+            return [
+                'success' => false,
+                'message' => 'Invalid credentials'
+            ];
+        }
 
         if ($admin && $this->verifyPassword($password, $admin->password_hash)) {
             if ($admin->is_active) {
@@ -185,13 +207,18 @@ class authService
             return $userLogin;
         }
 
-        $user = DB::table('users')
-            ->where('username', $username)
-            ->orWhere('email', $username)
-            ->first();
+        try {
+            $user = DB::table('users')
+                ->where('username', $username)
+                ->orWhere('email', $username)
+                ->first();
 
-        if ($user) {
-            return $userLogin;
+            if ($user) {
+                return $userLogin;
+            }
+        } catch (\Exception $e) {
+            \Log::warning('login user existence lookup failed: ' . $e->getMessage());
+            // proceed to admin lookup; treat as non-existent user on DB error
         }
 
         $adminLogin = $this->attemptAdminLogin($username, $password);

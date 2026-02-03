@@ -19,6 +19,7 @@ import { MaterialIcons, Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { projects_service } from '../../services/projects_service';
 import MilestoneSetup from './milestoneSetup';
+import { api_config } from '../../config/api';
 
 interface Bid {
   bid_id: number;
@@ -226,6 +227,17 @@ export default function MyBids({ userData, onClose }: MyBidsProps) {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
+  const getFileUrl = (filePath: string) => {
+    if (!filePath) return '';
+    if (filePath.startsWith('http')) return filePath;
+    return `${api_config.base_url}/storage/${filePath}`;
+  };
+
+  const handleOpenFile = (filePath: string) => {
+    const url = getFileUrl(filePath);
+    if (url) Linking.openURL(url);
   };
 
   const getBidStatusConfig = (status: string) => {
@@ -707,6 +719,32 @@ export default function MyBids({ userData, onClose }: MyBidsProps) {
                   </View>
                 </View>
               </View>
+
+              {/* Attached Documents for this Bid */}
+              {selectedBid.files && selectedBid.files.length > 0 && (
+                <View style={styles.modalSection}>
+                  <Text style={styles.modalSectionTitle}>Attached Documents ({selectedBid.files.length})</Text>
+                  <View style={styles.filesCard}>
+                    {selectedBid.files.map((file, idx) => (
+                      <TouchableOpacity
+                        key={file.file_id || idx}
+                        style={[styles.fileItem, idx === selectedBid.files.length - 1 && { borderBottomWidth: 0 }]}
+                        onPress={() => handleOpenFile(file.file_path)}
+                      >
+                        <View style={styles.fileIcon}>
+                          <Feather name={file.file_name && file.file_name.endsWith('.pdf') ? 'file-text' : 'file'} size={20} color={COLORS.primary} />
+                        </View>
+                        <View style={styles.fileInfo}>
+                          <Text style={styles.fileName} numberOfLines={1}>{file.file_name}</Text>
+                          {file.description && <Text style={styles.fileDescription} numberOfLines={1}>{file.description}</Text>}
+                        </View>
+                        <Feather name="download" size={18} color={COLORS.textMuted} />
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              )}
+
             </ScrollView>
           </View>
         )}
