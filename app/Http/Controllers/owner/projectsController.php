@@ -28,8 +28,11 @@ class projectsController extends Controller
             return redirect('/accounts/login');
         }
 
-        $currentRole = session('current_role', $user->user_type);
-        $userType = $user->user_type;
+        // Safely resolve role and type from session with fallbacks
+        $sessionCurrentRole = session('current_role');
+        $sessionUserType = session('userType'); // e.g., 'user' or 'admin'
+        $userType = isset($user->user_type) ? $user->user_type : ($sessionCurrentRole ?? null);
+        $currentRole = $sessionCurrentRole ?? $userType ?? $sessionUserType ?? null;
 
         // Determine if user is owner
         $isOwner = ($userType === 'property_owner' || $userType === 'both') &&
@@ -59,11 +62,13 @@ class projectsController extends Controller
             $feedItems = $this->projectsClass->getApprovedProjects();
             $feedType = 'projects';
 
-            // Get contractor projects for milestone setup (projects where contractor is selected and no milestone exists)
-            $contractor = DB::table('contractors')->where('user_id', $user->user_id)->first();
-            if ($contractor) {
-                $contractorClass = new \App\Models\contractor\contractorClass();
-                $contractorProjectsForMilestone = $contractorClass->getContractorProjects($contractor->contractor_id);
+            // Get contractor projects for milestone setup only if user is contractor/both
+            if ($userType === 'contractor' || $userType === 'both') {
+                $contractor = DB::table('contractors')->where('user_id', $user->user_id)->first();
+                if ($contractor) {
+                    $contractorClass = new \App\Models\contractor\contractorClass();
+                    $contractorProjectsForMilestone = $contractorClass->getContractorProjects($contractor->contractor_id);
+                }
             }
         }
 
@@ -1370,6 +1375,7 @@ class projectsController extends Controller
                     'pr.project_post_status',
                     'pr.bidding_due as bidding_deadline',
                     DB::raw('DATE(pr.created_at) as created_at'),
+                    'pr.owner_id as owner_id',
                     DB::raw("CONCAT(po.first_name, ' ', po.last_name) as owner_name"),
                     'u.profile_pic as owner_profile_pic',
                     'u.user_id as owner_user_id'
@@ -1682,6 +1688,18 @@ class projectsController extends Controller
             }
 
             // Update milestone item status to 'completed'
+            // If already completed, return success early
+            if (($milestoneItem->item_status ?? '') === 'completed') {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Milestone item already marked as complete.',
+                    'data' => [
+                        'item_id' => $milestoneItem->item_id,
+                        'item_status' => 'completed'
+                    ]
+                ]);
+            }
+
             // Ensure all progress reports for this milestone item are approved
             $nonApprovedCount = DB::table('progress')
                 ->where('milestone_item_id', $milestoneItem->item_id)
@@ -1701,6 +1719,22 @@ class projectsController extends Controller
             \Log::info('apiSetMilestoneItemComplete update result', ['rows_affected' => $updated]);
 
             if ($updated === 0) {
+                // Some DBs report 0 rows affected when value remains same; re-check state
+                $checkItem = DB::table('milestone_items')
+                    ->where('item_id', $milestoneItem->item_id)
+                    ->first();
+
+                if ($checkItem && ($checkItem->item_status ?? '') === 'completed') {
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Milestone item marked as complete successfully.',
+                        'data' => [
+                            'item_id' => $checkItem->item_id,
+                            'item_status' => 'completed'
+                        ]
+                    ]);
+                }
+
                 return response()->json([
                     'success' => false,
                     'message' => 'Failed to update milestone item status for ID: ' . $milestoneItem->item_id,

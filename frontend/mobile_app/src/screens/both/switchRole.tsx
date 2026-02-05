@@ -8,6 +8,7 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
+  TextInput,
 } from 'react-native';
 import { StatusBar, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -17,6 +18,7 @@ import { role_service } from '../../services/role_service';
 interface SwitchRoleScreenProps {
   onBack: () => void;
   onRoleChanged: () => void;
+  onStartAddRole?: (targetRole: 'contractor' | 'owner') => void;
   userData?: {
     username?: string;
     email?: string;
@@ -24,12 +26,21 @@ interface SwitchRoleScreenProps {
   };
 }
 
-export default function SwitchRoleScreen({ onBack, onRoleChanged, userData }: SwitchRoleScreenProps) {
+export default function SwitchRoleScreen({ onBack, onRoleChanged, onStartAddRole, userData }: SwitchRoleScreenProps) {
   const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [switching, setSwitching] = useState(false);
   const [currentRole, setCurrentRole] = useState<'contractor' | 'owner' | null>(null);
   const [canSwitchRoles, setCanSwitchRoles] = useState(false);
+  // Registration UI moved to a dedicated screen. Local form states removed.
+
+  const normalizeRole = (val: any): 'contractor' | 'owner' | null => {
+    if (val === null || val === undefined) return null;
+    const v = String(val).toLowerCase().trim();
+    if (v === 'contractor') return 'contractor';
+    if (v === 'owner' || v === 'property_owner' || v === 'property owner') return 'owner';
+    return null;
+  };
 
   // Get status bar height
   const statusBarHeight = insets.top || (Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 44);
@@ -42,10 +53,22 @@ export default function SwitchRoleScreen({ onBack, onRoleChanged, userData }: Sw
     try {
       setLoading(true);
       const response = await role_service.get_current_role();
-      
+
+      // Log exactly what this component receives from the service
+      console.log('Component received:', response);
+
       if (response.success) {
-        setCurrentRole(response.current_role || null);
-        setCanSwitchRoles(response.can_switch_roles || false);
+        const roleValue = (response as any).current_role
+          || (response as any).data?.current_role
+          || (response as any).user_type;
+
+        const canSwitch = ((response as any).can_switch_roles
+          ?? (response as any).data?.can_switch_roles
+          ?? false) as boolean;
+
+        const normalized = normalizeRole(roleValue);
+        setCurrentRole(normalized);
+        setCanSwitchRoles(!!canSwitch);
       } else {
         Alert.alert('Error', 'Failed to load current role information');
       }
@@ -76,9 +99,11 @@ export default function SwitchRoleScreen({ onBack, onRoleChanged, userData }: Sw
             setSwitching(true);
             try {
               const response = await role_service.switch_role(targetRole);
-              
+
               if (response.success) {
                 setCurrentRole(targetRole);
+                // Re-fetch from server to ensure consistency
+                await loadCurrentRole();
                 Alert.alert(
                   'Success',
                   response.message || `Successfully switched to ${roleLabel} role`,
@@ -108,62 +133,13 @@ export default function SwitchRoleScreen({ onBack, onRoleChanged, userData }: Sw
     );
   };
 
-  const handleAddRole = async () => {
-    const targetRole = currentRole === 'contractor' ? 'Property Owner' : 'Contractor';
-    
-    Alert.alert(
-      `Add ${targetRole} Role`,
-      `To add the ${targetRole} role to your account, you'll need to complete a registration form. This will allow you to switch between both roles.`,
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Start Registration',
-          onPress: async () => {
-            try {
-              // Get form data from backend
-              const formData = await role_service.get_switch_form_data();
-              
-              if (formData.success) {
-                Alert.alert(
-                  'Registration Form',
-                  `The ${targetRole} registration form will open. You'll need to provide:\n\n${
-                    targetRole === 'Contractor' 
-                      ? '• Company information\n• Business documents\n• PICAB details'
-                      : '• Personal information\n• Valid ID documents\n• Police clearance'
-                  }`,
-                  [
-                    {
-                      text: 'OK',
-                      onPress: () => {
-                        // TODO: Navigate to registration form screen
-                        // For now, show that it uses existing backend endpoints
-                        Alert.alert(
-                          'Backend Ready',
-                          `The backend endpoints are ready:\n\n${
-                            targetRole === 'Contractor'
-                              ? '/api/role/add/contractor/step1\n/api/role/add/contractor/step2\n/api/role/add/contractor/final'
-                              : '/api/role/add/owner/step1\n/api/role/add/owner/step2\n/api/role/add/owner/final'
-                          }\n\nThe registration form UI will be implemented next.`,
-                          [{ text: 'OK' }]
-                        );
-                      },
-                    },
-                  ]
-                );
-              } else {
-                Alert.alert('Error', formData.message || 'Failed to load registration form data');
-              }
-            } catch (error) {
-              console.error('Get form data error:', error);
-              Alert.alert('Error', 'Failed to load registration form');
-            }
-          },
-        },
-      ]
-    );
+  const handleAddRole = () => {
+    const nextRole = currentRole === 'contractor' ? 'owner' : 'contractor';
+    if (onStartAddRole) {
+      onStartAddRole(nextRole);
+    } else {
+      Alert.alert('Info', 'Registration form will open on a dedicated screen.');
+    }
   };
 
   if (loading) {
@@ -181,7 +157,7 @@ export default function SwitchRoleScreen({ onBack, onRoleChanged, userData }: Sw
   return (
     <View style={[styles.container, { paddingTop: statusBarHeight }]}>
       <StatusBar hidden={true} />
-      
+
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
@@ -213,12 +189,14 @@ export default function SwitchRoleScreen({ onBack, onRoleChanged, userData }: Sw
               </View>
               <View style={styles.roleInfo}>
                 <Text style={styles.roleName}>
-                  {currentRole === 'contractor' ? 'Contractor' : 'Property Owner'}
+                  {currentRole === 'contractor' ? 'Contractor' : currentRole === 'owner' ? 'Property Owner' : 'Role Unknown'}
                 </Text>
                 <Text style={styles.roleDescription}>
-                  {currentRole === 'contractor' 
-                    ? 'Bid on projects and manage contracts' 
-                    : 'Post projects and manage properties'}
+                  {currentRole === 'contractor'
+                    ? 'Bid on projects and manage contracts'
+                    : currentRole === 'owner'
+                    ? 'Post projects and manage properties'
+                    : 'We could not determine your role yet'}
                 </Text>
               </View>
               <View style={styles.activeBadge}>
@@ -284,6 +262,9 @@ export default function SwitchRoleScreen({ onBack, onRoleChanged, userData }: Sw
                 onPress={handleAddRole}
                 activeOpacity={0.7}
               >
+                {/** Compute next role/label dynamically from currentRole */}
+
+
                 <View style={[
                   styles.roleIconContainer,
                   currentRole === 'contractor' ? styles.ownerBg : styles.contractorBg
@@ -315,6 +296,8 @@ export default function SwitchRoleScreen({ onBack, onRoleChanged, userData }: Sw
                 You currently only have one role. Add another role to switch between contractor and property owner views.
               </Text>
             </View>
+
+            {/* Registration form is now a separate screen; no inline form here. */}
           </View>
         )}
 
@@ -515,6 +498,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F0F0F0',
     marginLeft: 48,
   },
+  // Form input styles removed as form is on another screen
 });
 
 

@@ -159,26 +159,29 @@ export default function MyProjects({ userData, onClose }: MyProjectsProps) {
         const backendResponse = response.data;
         const projectsData = backendResponse?.data || backendResponse || [];
         const projectsArray = Array.isArray(projectsData) ? projectsData : [];
-        
-        // Normalize display_status for each project
+
+        // Normalize display_status for each project based on true backend status
         const normalizedProjects = projectsArray.map((project: Project) => {
-          // Ensure display_status is set correctly based on project_status if missing or incorrect
+          const status = (project.project_status || '').toLowerCase();
+          const hasMilestones = typeof project.milestones_count === 'number' ? project.milestones_count > 0 : Array.isArray(project.milestones) && project.milestones.length > 0;
+
           if (!project.display_status || project.display_status === '') {
-            if (project.milestones_count === 0) {
+            if (!hasMilestones) {
               project.display_status = 'waiting_milestone_setup';
-            } else if (project.project_status === 'completed') {
+            } else if (status === 'in_progress') {
+              project.display_status = 'in_progress';
+            } else if (status === 'completed') {
               project.display_status = 'completed';
-            } else if (project.project_status === 'halt') {
+            } else if (status === 'halt' || status === 'on_hold') {
               project.display_status = 'on_hold';
-            } else if (project.project_status === 'in_progress') {
-              project.display_status = 'in_progress';
             } else {
-              project.display_status = 'in_progress';
+              // Unknown or pending states should not inflate in-progress counts
+              project.display_status = status || 'pending';
             }
           }
           return project;
         });
-        
+
         setProjects(normalizedProjects);
       } else {
         console.log('API failed:', response.message);
@@ -200,22 +203,28 @@ export default function MyProjects({ userData, onClose }: MyProjectsProps) {
     setRefreshing(false);
   };
 
-  // Calculate stats
+  // Calculate stats (use true backend status for in-progress)
   const stats = {
     total: projects.length,
     notStarted: projects.filter(p => p.display_status === 'waiting_milestone_setup').length,
-    inProgress: projects.filter(p => p.display_status === 'in_progress').length,
-    completed: projects.filter(p => p.display_status === 'completed').length,
-    onHold: projects.filter(p => p.display_status === 'on_hold').length,
+    inProgress: projects.filter(p => {
+      const status = (p.project_status || '').toLowerCase();
+      const hasMilestones = typeof p.milestones_count === 'number' ? p.milestones_count > 0 : Array.isArray(p.milestones) && p.milestones.length > 0;
+      return status === 'in_progress' && hasMilestones;
+    }).length,
+    completed: projects.filter(p => (p.project_status || '').toLowerCase() === 'completed').length,
+    onHold: projects.filter(p => (p.project_status || '').toLowerCase() === 'halt' || p.display_status === 'on_hold').length,
   };
 
-  // Filter projects
+  // Filter projects (ensure 'In Progress' shows only truly ongoing projects)
   const filteredProjects = projects.filter(p => {
+    const status = (p.project_status || '').toLowerCase();
+    const hasMilestones = typeof p.milestones_count === 'number' ? p.milestones_count > 0 : Array.isArray(p.milestones) && p.milestones.length > 0;
     if (activeFilter === 'all') return true;
     if (activeFilter === 'not_started') return p.display_status === 'waiting_milestone_setup';
-    if (activeFilter === 'in_progress') return p.display_status === 'in_progress';
-    if (activeFilter === 'completed') return p.display_status === 'completed';
-    if (activeFilter === 'on_hold') return p.display_status === 'on_hold';
+    if (activeFilter === 'in_progress') return status === 'in_progress' && hasMilestones;
+    if (activeFilter === 'completed') return status === 'completed';
+    if (activeFilter === 'on_hold') return status === 'halt' || p.display_status === 'on_hold';
     return true;
   });
 
@@ -226,18 +235,30 @@ export default function MyProjects({ userData, onClose }: MyProjectsProps) {
   };
 
   const getStatusConfig = (status: string) => {
-    switch (status) {
-      case 'waiting_milestone_setup':
-        return { color: COLORS.warning, bg: COLORS.warningLight, label: 'Needs Setup', icon: 'alert-circle' };
-      case 'in_progress':
-        return { color: COLORS.info, bg: COLORS.infoLight, label: 'In Progress', icon: 'trending-up' };
-      case 'completed':
-        return { color: COLORS.success, bg: COLORS.successLight, label: 'Completed', icon: 'check-circle' };
-      case 'on_hold':
-        return { color: COLORS.warning, bg: COLORS.warningLight, label: 'On Hold', icon: 'pause-circle' };
-      default:
-        return { color: COLORS.textMuted, bg: COLORS.borderLight, label: status, icon: 'circle' };
+    const s = (status || '').toLowerCase();
+    if (s === 'waiting_milestone_setup' || s === 'not_started' || s === 'pending_setup') {
+      return { color: COLORS.warning, bg: COLORS.warningLight, label: 'Needs Setup', icon: 'alert-circle' };
     }
+    if (s === 'in_progress' || s === 'ongoing') {
+      return { color: COLORS.info, bg: COLORS.infoLight, label: 'In Progress', icon: 'trending-up' };
+    }
+    if (s === 'completed' || s === 'complete' || s === 'finished' || s === 'done') {
+      return { color: COLORS.success, bg: COLORS.successLight, label: 'Completed', icon: 'check-circle' };
+    }
+    if (s === 'on_hold' || s === 'halt' || s === 'paused') {
+      return { color: COLORS.warning, bg: COLORS.warningLight, label: 'On Hold', icon: 'pause-circle' };
+    }
+    return { color: COLORS.textMuted, bg: COLORS.borderLight, label: status, icon: 'circle' };
+  };
+
+  const isCompleted = (status?: string) => {
+    const s = (status || '').toLowerCase();
+    return s === 'completed' || s === 'complete' || s === 'finished' || s === 'done';
+  };
+
+  const isInProgress = (status?: string) => {
+    const s = (status || '').toLowerCase();
+    return s === 'in_progress' || s === 'ongoing';
   };
 
   const getDaysRemaining = (endDate: string) => {
@@ -351,7 +372,7 @@ export default function MyProjects({ userData, onClose }: MyProjectsProps) {
         </View>
 
         {/* Progress Bar (for in-progress projects) */}
-        {project.project_status === 'in_progress' && project.progress_percentage !== undefined && (
+        {isInProgress(project.project_status) && project.progress_percentage !== undefined && (
           <View style={styles.progressSection}>
             <View style={styles.progressHeader}>
               <Text style={styles.progressLabel}>Progress</Text>
@@ -371,7 +392,7 @@ export default function MyProjects({ userData, onClose }: MyProjectsProps) {
                 <Text style={styles.newProjectText}>Awaiting Setup</Text>
               </View>
             )}
-            {daysRemaining !== null && project.project_status === 'in_progress' && (
+            {daysRemaining !== null && isInProgress(project.project_status) && (
               <View style={[styles.deadlineInfo, daysRemaining <= 7 && styles.deadlineUrgent]}>
                 <Feather
                   name="calendar"
@@ -383,7 +404,7 @@ export default function MyProjects({ userData, onClose }: MyProjectsProps) {
                 </Text>
               </View>
             )}
-            {project.project_status === 'completed' && (
+            {isCompleted(project.project_status) && (
               <View style={styles.completedInfo}>
                 <Feather name="check" size={14} color={COLORS.success} />
                 <Text style={styles.completedText}>Completed</Text>

@@ -47,6 +47,8 @@ interface Project {
   project_status: string;
   project_post_status: string;
   bidding_deadline?: string;
+  // Some API responses may use 'bidding_due'; keep both for safety
+  bidding_due?: string;
   created_at: string;
 }
 
@@ -74,9 +76,30 @@ export default function EditProject({ project, userId, onClose, onSave }: EditPr
   const [lotSize, setLotSize] = useState(project.lot_size?.toString() || '');
   const [floorArea, setFloorArea] = useState(project.floor_area?.toString() || '');
   const [propertyType, setPropertyType] = useState(project.property_type);
-  const [selectedTypeId, setSelectedTypeId] = useState<number | null>(project.type_id || null);
-  const [biddingDeadline, setBiddingDeadline] = useState(
-    project.bidding_deadline ? new Date(project.bidding_deadline) : new Date()
+  const [selectedTypeId, setSelectedTypeId] = useState<number | null>(
+    typeof project.type_id === 'number'
+      ? project.type_id
+      : project.type_id != null
+        ? Number(project.type_id)
+        : null
+  );
+
+  // Parse API date safely: handle YYYY-MM-DD without timezone shifts
+  const parseAPIDate = (value?: string): Date | null => {
+    if (!value) return null;
+    // If a timestamp is provided, slice the date portion
+    const base = value.length >= 10 ? value.slice(0, 10) : value;
+    const m = base.match(/^\d{4}-\d{2}-\d{2}$/);
+    if (m) {
+      const [y, mm, d] = base.split('-').map((v) => parseInt(v, 10));
+      return new Date(y, mm - 1, d);
+    }
+    const dt = new Date(value);
+    return isNaN(dt.getTime()) ? null : dt;
+  };
+
+  const [biddingDeadline, setBiddingDeadline] = useState<Date | null>(
+    parseAPIDate(project.bidding_deadline || (project as any).bidding_due)
   );
   const [showDatePicker, setShowDatePicker] = useState(false);
 
@@ -98,7 +121,27 @@ export default function EditProject({ project, userId, onClose, onSave }: EditPr
       if (response.success && response.data) {
         // Handle nested data structure from API
         const typesData = response.data?.data || response.data || [];
-        setContractorTypes(Array.isArray(typesData) ? typesData : []);
+        const rawList = Array.isArray(typesData) ? typesData : [];
+        // Normalize possible field names to { type_id, type_name }
+        const list = rawList
+          .map((t: any) => ({
+            type_id:
+              t?.type_id ?? t?.id ?? t?.typeId ?? t?.contractor_type_id ?? null,
+            type_name:
+              t?.type_name ?? t?.name ?? t?.typeName ?? t?.contractor_type_name ?? '',
+          }))
+          .filter((t: ContractorType) => t.type_id != null && !!t.type_name);
+
+        setContractorTypes(list);
+
+        // If no explicit type_id on project, try to match using type_name
+        if (!selectedTypeId && project?.type_name) {
+          const target = project.type_name.toLowerCase().trim();
+          const match = list.find(
+            (t) => (t.type_name || '').toLowerCase().trim() === target
+          );
+          if (match?.type_id != null) setSelectedTypeId(match.type_id);
+        }
       } else {
         setContractorTypes([]);
       }
@@ -137,7 +180,8 @@ export default function EditProject({ project, userId, onClose, onSave }: EditPr
     }
   };
 
-  const formatDate = (date: Date) => {
+  const formatDate = (date: Date | null) => {
+    if (!date) return 'Set due date';
     return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
@@ -193,7 +237,7 @@ export default function EditProject({ project, userId, onClose, onSave }: EditPr
         floor_area: floorArea ? parseInt(floorArea, 10) : null,
         property_type: propertyType,
         type_id: selectedTypeId,
-        bidding_deadline: biddingDeadline.toISOString().split('T')[0],
+        bidding_deadline: biddingDeadline ? biddingDeadline.toISOString().split('T')[0] : '',
       };
 
       // Call API to update project
@@ -410,7 +454,7 @@ export default function EditProject({ project, userId, onClose, onSave }: EditPr
 
         {showDatePicker && (
           <DateTimePicker
-            value={biddingDeadline}
+            value={biddingDeadline || new Date()}
             mode="date"
             display={Platform.OS === 'ios' ? 'spinner' : 'default'}
             onChange={handleDateChange}

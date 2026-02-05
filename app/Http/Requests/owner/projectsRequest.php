@@ -16,6 +16,7 @@ class projectsRequest extends FormRequest
 
     public function rules()
     {
+        $isCreate = $this->isMethod('post');
         $rules = [
             'project_title' => 'required|string|max:200',
             'project_description' => 'required|string',
@@ -26,9 +27,9 @@ class projectsRequest extends FormRequest
             'floor_area' => 'required|integer|min:1',
             'property_type' => 'required|in:Residential,Commercial,Industrial,Agricultural',
             'type_id' => 'required|integer|exists:contractor_types,type_id',
-            'bidding_deadline' => 'required|date|after:now',
-            'building_permit' => 'required|file|mimes:jpg,jpeg,png|max:10240',
-            'title_of_land' => 'required|file|mimes:jpg,jpeg,png|max:10240',
+            'bidding_deadline' => ($isCreate ? 'required' : 'nullable') . '|date|after:now',
+            'building_permit' => ($isCreate ? 'required' : 'nullable') . '|file|mimes:jpg,jpeg,png|max:10240',
+            'title_of_land' => ($isCreate ? 'required' : 'nullable') . '|file|mimes:jpg,jpeg,png|max:10240',
             'blueprint' => 'nullable|array',
             'blueprint.*' => 'file|mimes:pdf,doc,docx,jpg,jpeg,png|max:10240',
             'desired_design' => 'nullable|array',
@@ -78,10 +79,10 @@ class projectsRequest extends FormRequest
             'bidding_deadline.required' => 'Bidding deadline is required.',
             'bidding_deadline.date' => 'Bidding deadline must be a valid date.',
             'bidding_deadline.after' => 'Bidding deadline must be in the future.',
-            'building_permit.required' => 'Building permit file is required.',
+            'building_permit.required' => 'Building permit file is required for new posts.',
             'building_permit.file' => 'Building permit must be a valid file.',
             'building_permit.mimes' => 'Building permit must be a photo (JPG, JPEG, or PNG format).',
-            'title_of_land.required' => 'Title of land file is required.',
+            'title_of_land.required' => 'Title of land file is required for new posts.',
             'title_of_land.file' => 'Title of land must be a valid file.',
             'title_of_land.mimes' => 'Title of land must be a photo (JPG, JPEG, or PNG format).',
             'blueprint.array' => 'Blueprint must be an array.',

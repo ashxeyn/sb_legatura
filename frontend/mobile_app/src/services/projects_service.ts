@@ -234,6 +234,15 @@ export class projects_service {
     bidding_deadline: string;
   }): Promise<ApiResponse> {
     try {
+      // Backend expects 'bidding_due' field; map accordingly
+      const payload: any = {
+        ...projectData,
+      };
+      if (projectData.bidding_deadline) {
+        payload.bidding_due = projectData.bidding_deadline;
+      }
+      delete payload.bidding_deadline;
+
       const response = await api_request(`/api/owner/projects/${projectData.project_id}`, {
         method: 'PUT',
         headers: {
@@ -241,7 +250,7 @@ export class projects_service {
           'Content-Type': 'application/json',
           'X-Requested-With': 'XMLHttpRequest',
         },
-        body: JSON.stringify(projectData),
+        body: JSON.stringify(payload),
       });
 
       return response;

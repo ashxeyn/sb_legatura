@@ -56,6 +56,53 @@ class authController extends Controller
         return view('accounts.login');
     }
 
+    // Web Login wrapper (delegates to API for JSON requests)
+    public function login(Request $request)
+    {
+        // If client expects JSON, reuse API login
+        if ($request->expectsJson()) {
+            return $this->apiLogin($request);
+        }
+
+        // Validate basic fields
+        $request->validate([
+            'username' => 'required|string',
+            'password' => 'required|string',
+        ]);
+
+        try {
+            $result = $this->authService->login($request->username, $request->password);
+
+            if (!empty($result['success'])) {
+                // Persist session user for web flows
+                Session::put('user', $result['user'] ?? null);
+
+                // Also store the high-level user type (e.g., 'user' or 'admin')
+                if (isset($result['userType'])) {
+                    Session::put('userType', $result['userType']);
+                }
+
+                // Default current role to user_type if present, else fall back to userType
+                if (!empty($result['user']) && isset($result['user']->user_type)) {
+                    Session::put('current_role', $result['user']->user_type);
+                } elseif (!empty($result['userType'])) {
+                    Session::put('current_role', $result['userType']);
+                }
+
+                // Route admins to the Admin dashboard, users to the main dashboard
+                if (!empty($result['userType']) && $result['userType'] === 'admin') {
+                    return redirect('/admin/dashboard')->with('success', 'Logged in successfully');
+                }
+                return redirect('/dashboard')->with('success', 'Logged in successfully');
+            }
+
+            return back()->with('error', $result['message'] ?? 'Invalid credentials')->withInput();
+        } catch (\Exception $e) {
+            \Log::error('Web login error: ' . $e->getMessage());
+            return back()->with('error', 'An error occurred during login')->withInput();
+        }
+    }
+
     // Show signup form
     public function showSignupForm()
     {
@@ -1394,32 +1441,32 @@ class authController extends Controller
         // Handle file uploads from mobile clients (stateless flow)
         // Mobile clients send all images in the final step since they don't have persistent sessions
         if ($request->hasFile('valid_id_photo')) {
-            try { 
-                $path = $request->file('valid_id_photo')->store('validID', 'public'); 
-                $step4['valid_id_photo'] = $path; 
+            try {
+                $path = $request->file('valid_id_photo')->store('validID', 'public');
+                $step4['valid_id_photo'] = $path;
                 \Log::info('Stored valid_id_photo from final request: ' . $path);
-            } catch (\Throwable $e) { 
-                \Log::warning('Failed to store valid_id_photo from final request (owner): ' . $e->getMessage()); 
+            } catch (\Throwable $e) {
+                \Log::warning('Failed to store valid_id_photo from final request (owner): ' . $e->getMessage());
             }
         }
 
         if ($request->hasFile('valid_id_back_photo')) {
-            try { 
-                $path = $request->file('valid_id_back_photo')->store('validID', 'public'); 
-                $step4['valid_id_back_photo'] = $path; 
+            try {
+                $path = $request->file('valid_id_back_photo')->store('validID', 'public');
+                $step4['valid_id_back_photo'] = $path;
                 \Log::info('Stored valid_id_back_photo from final request: ' . $path);
-            } catch (\Throwable $e) { 
-                \Log::warning('Failed to store valid_id_back_photo from final request (owner): ' . $e->getMessage()); 
+            } catch (\Throwable $e) {
+                \Log::warning('Failed to store valid_id_back_photo from final request (owner): ' . $e->getMessage());
             }
         }
 
         if ($request->hasFile('police_clearance')) {
-            try { 
-                $path = $request->file('police_clearance')->store('policeClearance', 'public'); 
-                $step4['police_clearance'] = $path; 
+            try {
+                $path = $request->file('police_clearance')->store('policeClearance', 'public');
+                $step4['police_clearance'] = $path;
                 \Log::info('Stored police_clearance from final request: ' . $path);
-            } catch (\Throwable $e) { 
-                \Log::warning('Failed to store police_clearance from final request (owner): ' . $e->getMessage()); 
+            } catch (\Throwable $e) {
+                \Log::warning('Failed to store police_clearance from final request (owner): ' . $e->getMessage());
             }
         }
 
@@ -1764,6 +1811,17 @@ class authController extends Controller
     {
         // Support both session and Sanctum token authentication
         $user = Session::get('user') ?: $request->user();
+        // Fallback: resolve user from Bearer token if middleware/user failed
+        if (!$user && $request->bearerToken()) {
+            try {
+                $token = \Laravel\Sanctum\PersonalAccessToken::findToken($request->bearerToken());
+                if ($token && $token->tokenable) {
+                    $user = $token->tokenable;
+                }
+            } catch (\Throwable $e) {
+                // ignore, handled below
+            }
+        }
 
         if (!$user) {
             return response()->json(['success' => false, 'errors' => ['Authentication required. Please login again.']], 401);
@@ -1810,7 +1868,12 @@ class authController extends Controller
 
         Session::put('switch_contractor_step1', $step1Data);
 
-        return response()->json(['success' => true, 'message' => 'Information saved']);
+        return response()->json([
+            'success' => true,
+            'message' => 'Information saved',
+            'step' => 2,
+            'next_step' => 'documents'
+        ]);
     }
 
     // Switch to Contractor Step 2
@@ -1818,6 +1881,17 @@ class authController extends Controller
     {
         // Support both session and Sanctum token authentication
         $user = Session::get('user') ?: $request->user();
+        // Fallback: resolve user from Bearer token if middleware/user failed
+        if (!$user && $request->bearerToken()) {
+            try {
+                $token = \Laravel\Sanctum\PersonalAccessToken::findToken($request->bearerToken());
+                if ($token && $token->tokenable) {
+                    $user = $token->tokenable;
+                }
+            } catch (\Throwable $e) {
+                // ignore, handled below
+            }
+        }
 
         if (!$user) {
             return response()->json(['success' => false, 'errors' => ['Authentication required. Please login again.']], 401);
@@ -1833,7 +1907,20 @@ class authController extends Controller
         }
 
         Session::put('switch_contractor_step2', $validated);
-        return response()->json(['success' => true, 'message' => 'Documents uploaded successfully']);
+        return response()->json([
+            'success' => true,
+            'message' => 'Documents uploaded successfully',
+            'saved' => [
+                'picab_number' => $validated['picab_number'] ?? null,
+                'picab_category' => $validated['picab_category'] ?? null,
+                'picab_expiration_date' => $validated['picab_expiration_date'] ?? null,
+                'business_permit_number' => $validated['business_permit_number'] ?? null,
+                'business_permit_city' => $validated['business_permit_city'] ?? null,
+                'business_permit_expiration' => $validated['business_permit_expiration'] ?? null,
+                'tin_business_reg_number' => $validated['tin_business_reg_number'] ?? null,
+                'dti_sec_registration_photo' => $validated['dti_sec_registration_photo'] ?? null,
+            ]
+        ]);
     }
 
     // Switch to Contractor Final
@@ -1841,6 +1928,17 @@ class authController extends Controller
     {
         // Support both session and Sanctum token authentication
         $user = Session::get('user') ?: $request->user();
+        // Fallback: resolve user from Bearer token if middleware/user failed
+        if (!$user && $request->bearerToken()) {
+            try {
+                $token = \Laravel\Sanctum\PersonalAccessToken::findToken($request->bearerToken());
+                if ($token && $token->tokenable) {
+                    $user = $token->tokenable;
+                }
+            } catch (\Throwable $e) {
+                // ignore, handled below
+            }
+        }
 
         if (!$user) {
             return response()->json(['success' => false, 'errors' => ['Authentication required. Please login again.']], 401);
@@ -1850,6 +1948,42 @@ class authController extends Controller
         // For web, use session data
         $step1 = $request->input('step1_data') ?: Session::get('switch_contractor_step1');
         $step2 = $request->input('step2_data') ?: Session::get('switch_contractor_step2');
+
+        // Normalize step arrays
+        if (!is_array($step1)) { $step1 = is_object($step1) ? (array)$step1 : []; }
+        if (!is_array($step2)) { $step2 = is_object($step2) ? (array)$step2 : []; }
+
+        // Ensure DTI/SEC path is available for strict NOT NULL column
+        if (empty($step2['dti_sec_registration_photo'])) {
+            // Accept file upload in final as a fallback
+            if ($request->hasFile('dti_sec_registration_photo')) {
+                try {
+                    $file = $request->file('dti_sec_registration_photo');
+                    $filename = time() . '_dti_sec_' . $file->getClientOriginalName();
+                    $path = $file->storeAs('contractor_documents', $filename, 'public');
+                    $step2['dti_sec_registration_photo'] = $path;
+                } catch (\Throwable $e) {
+                    // ignore; handled by validation below
+                }
+            }
+            // Or accept a plain string path provided by the client
+            if (empty($step2['dti_sec_registration_photo'])) {
+                $inlinePath = $request->input('dti_sec_registration_photo')
+                    ?: $request->input('dti_sec_registration_photo_path');
+                if (!empty($inlinePath) && is_string($inlinePath)) {
+                    $step2['dti_sec_registration_photo'] = $inlinePath;
+                }
+            }
+        }
+
+        // If still missing, return a clear validation error instead of DB exception
+        if (empty($step2['dti_sec_registration_photo'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => ['dti_sec_registration_photo' => ['DTI/SEC registration photo is required']]
+            ], 422);
+        }
 
         if (!$step1 || !$step2) {
             return response()->json(['success' => false, 'errors' => ['Previous steps not completed. Please complete all steps.']], 400);
@@ -1953,8 +2087,22 @@ class authController extends Controller
     // Switch to Owner Step 1 (Account Setup)
     public function switchOwnerStep1(accountRequest $request)
     {
-        // Support both session and Sanctum token authentication
+        // Support session auth, Sanctum middleware, and explicit Bearer fallback
         $user = Session::get('user') ?: $request->user();
+        if (!$user) {
+            try {
+                $bearer = $request->bearerToken();
+                if ($bearer) {
+                    $pat = \Laravel\Sanctum\PersonalAccessToken::findToken($bearer);
+                    if ($pat) {
+                        $userModel = \App\Models\User::find($pat->tokenable_id);
+                        if ($userModel) { $user = $userModel; }
+                    }
+                }
+            } catch (\Throwable $e) {
+                Log::warning('switchOwnerStep1 bearer fallback failed: ' . $e->getMessage());
+            }
+        }
 
         if (!$user) {
             return response()->json(['success' => false, 'errors' => ['Authentication required. Please login again.']], 401);
@@ -1981,8 +2129,22 @@ class authController extends Controller
     // Switch to Owner Step 2
     public function switchOwnerStep2(accountRequest $request)
     {
-        // Support both session and Sanctum token authentication
+        // Support session auth, Sanctum middleware, and explicit Bearer fallback
         $user = Session::get('user') ?: $request->user();
+        if (!$user) {
+            try {
+                $bearer = $request->bearerToken();
+                if ($bearer) {
+                    $pat = \Laravel\Sanctum\PersonalAccessToken::findToken($bearer);
+                    if ($pat) {
+                        $userModel = \App\Models\User::find($pat->tokenable_id);
+                        if ($userModel) { $user = $userModel; }
+                    }
+                }
+            } catch (\Throwable $e) {
+                Log::warning('switchOwnerStep2 bearer fallback failed: ' . $e->getMessage());
+            }
+        }
 
         if (!$user) {
             return response()->json(['success' => false, 'errors' => ['Authentication required. Please login again.']], 401);
@@ -2017,15 +2179,35 @@ class authController extends Controller
             'success' => true,
             'message' => 'Documents uploaded successfully',
             'step' => 3,
-            'next_step' => 'final'
+            'next_step' => 'final',
+            'saved' => [
+                'valid_id_id' => $validated['valid_id_id'] ?? null,
+                'valid_id_photo' => $validated['valid_id_photo'] ?? null,
+                'valid_id_back_photo' => $validated['valid_id_back_photo'] ?? null,
+                'police_clearance' => $validated['police_clearance'] ?? null,
+            ]
         ]);
     }
 
     // Switch to Owner Final
     public function switchOwnerFinal(accountRequest $request)
     {
-        // Support both session and Sanctum token authentication
+        // Support session auth, Sanctum middleware, and explicit Bearer fallback
         $user = Session::get('user') ?: $request->user();
+        if (!$user) {
+            try {
+                $bearer = $request->bearerToken();
+                if ($bearer) {
+                    $pat = \Laravel\Sanctum\PersonalAccessToken::findToken($bearer);
+                    if ($pat) {
+                        $userModel = \App\Models\User::find($pat->tokenable_id);
+                        if ($userModel) { $user = $userModel; }
+                    }
+                }
+            } catch (\Throwable $e) {
+                Log::warning('switchOwnerFinal bearer fallback failed: ' . $e->getMessage());
+            }
+        }
 
         if (!$user) {
             return response()->json(['success' => false, 'errors' => ['Authentication required. Please login again.']], 401);
@@ -2033,20 +2215,53 @@ class authController extends Controller
 
         $validated = $request->validated();
 
-        // For mobile API, allow passing step data directly in request
-        // For web, use session data
-        $ownerStep1 = $request->input('owner_step1_data') ?: Session::get('owner_step1');
-        $switchStep1 = $request->input('switch_step1_data') ?: Session::get('switch_owner_step1');
-        $switchStep2 = $request->input('switch_step2_data') ?: Session::get('switch_owner_step2');
+        // For mobile API, allow passing step data directly in request; for web, use session data
+        $ownerStep1Raw = $request->input('owner_step1_data') ?: Session::get('owner_step1');
+        if (is_string($ownerStep1Raw)) {
+            $decoded = json_decode($ownerStep1Raw, true);
+            if (json_last_error() === JSON_ERROR_NONE) { $ownerStep1Raw = $decoded; }
+        }
+        $ownerStep1 = is_array($ownerStep1Raw) ? $ownerStep1Raw : [];
 
-        if (!$ownerStep1) {
+        $switchStep1Raw = $request->input('switch_step1_data') ?: Session::get('switch_owner_step1');
+        if (is_string($switchStep1Raw)) {
+            $decoded = json_decode($switchStep1Raw, true);
+            if (json_last_error() === JSON_ERROR_NONE) { $switchStep1Raw = $decoded; }
+        }
+        $switchStep1 = is_array($switchStep1Raw) ? $switchStep1Raw : [];
+
+        $switchStep2Raw = $request->input('switch_step2_data') ?: Session::get('switch_owner_step2');
+        if (is_string($switchStep2Raw)) {
+            $decoded = json_decode($switchStep2Raw, true);
+            if (json_last_error() === JSON_ERROR_NONE) { $switchStep2Raw = $decoded; }
+        }
+        $switchStep2 = is_array($switchStep2Raw) ? $switchStep2Raw : [];
+
+        // If client sent nested 'saved' doc map from Step 2, unwrap it
+        $switchStep2Docs = (isset($switchStep2['saved']) && is_array($switchStep2['saved'])) ? $switchStep2['saved'] : $switchStep2;
+
+        if (empty($ownerStep1)) {
             if ($request->expectsJson()) {
                 return response()->json(['success' => false, 'errors' => ['Personal information missing. Please start again.']], 400);
             }
         }
 
-        // Validate valid_id_id from switchStep2 to avoid FK constraint failures
-        $switchValidId = $switchStep2['valid_id_id'] ?? null;
+        // Normalize document fields from either nested step2 or flat top-level payload keys
+        $docs = [
+            'valid_id_id' => $switchStep2Docs['valid_id_id'] ?? $request->input('valid_id_id'),
+            'valid_id_photo' => $switchStep2Docs['valid_id_photo'] ?? $request->input('valid_id_photo'),
+            'valid_id_back_photo' => $switchStep2Docs['valid_id_back_photo'] ?? $request->input('valid_id_back_photo'),
+            'police_clearance' => $switchStep2Docs['police_clearance'] ?? $request->input('police_clearance'),
+        ];
+
+        Log::info('switchOwnerFinal payload normalization', [
+            'has_owner_step1' => !empty($ownerStep1),
+            'has_switch_step2' => !empty($switchStep2),
+            'doc_keys' => array_keys(array_filter($docs))
+        ]);
+
+        // Validate valid_id_id to avoid FK constraint failures when provided
+        $switchValidId = $docs['valid_id_id'] ?? null;
         if (!empty($switchValidId)) {
             $exists = DB::table('valid_ids')->where('id', $switchValidId)->exists();
             if (!$exists) {
@@ -2062,6 +2277,15 @@ class authController extends Controller
             }
         }
 
+        // If no documents resolved, return a 422 rather than 500
+        if (empty($docs['valid_id_photo']) && empty($docs['valid_id_back_photo']) && empty($docs['police_clearance'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => ['documents' => ['Owner documents missing. Please upload in step 2 or include saved paths in final.']]
+            ], 422);
+        }
+
         try {
             DB::beginTransaction();
 
@@ -2072,25 +2296,25 @@ class authController extends Controller
                 DB::table('users')->where('user_id', $user->user_id)->update(['profile_pic' => $profilePicPath]);
             }
 
-            // Get existing contractor user data
+            // Get existing contractor user data (optional fallback)
             $contractorUser = DB::table('contractor_users')->where('user_id', $user->user_id)->first();
 
-            // Create property owner record using personal info from step1 and documents from step2
+            // Create property owner record using validated top-level fields with fallbacks
             DB::table('property_owners')->insert([
                 'user_id' => $user->user_id,
-                'last_name' => $contractorUser->authorized_rep_lname,
-                'middle_name' => $contractorUser->authorized_rep_mname,
-                'first_name' => $contractorUser->authorized_rep_fname,
-                'phone_number' => $contractorUser->phone_number,
-                'valid_id_id' => $switchStep2['valid_id_id'],
-                'valid_id_back_photo' => $switchStep2['valid_id_back_photo'], // Using back photo instead of number
-                'valid_id_photo' => $switchStep2['valid_id_photo'],
-                'police_clearance' => $switchStep2['police_clearance'],
-                'date_of_birth' => $ownerStep1['date_of_birth'],
-                'age' => $ownerStep1['age'],
-                'occupation_id' => $ownerStep1['occupation_id'],
-                'occupation_other' => $ownerStep1['occupation_other'] ?? null,
-                'address' => $ownerStep1['address'],
+                'last_name' => $validated['last_name'] ?? ($contractorUser->authorized_rep_lname ?? null),
+                'middle_name' => $validated['middle_name'] ?? ($contractorUser->authorized_rep_mname ?? null),
+                'first_name' => $validated['first_name'] ?? ($contractorUser->authorized_rep_fname ?? null),
+                'phone_number' => $validated['phone_number'] ?? ($contractorUser->phone_number ?? null),
+                'valid_id_id' => $docs['valid_id_id'] ?? null,
+                'valid_id_back_photo' => $docs['valid_id_back_photo'] ?? null,
+                'valid_id_photo' => $docs['valid_id_photo'] ?? null,
+                'police_clearance' => $docs['police_clearance'] ?? null,
+                'date_of_birth' => $validated['date_of_birth'] ?? ($ownerStep1['date_of_birth'] ?? null),
+                'age' => $ownerStep1['age'] ?? null,
+                'occupation_id' => $validated['occupation_id'] ?? ($ownerStep1['occupation_id'] ?? null),
+                'occupation_other' => $validated['occupation_other'] ?? ($ownerStep1['occupation_other'] ?? null),
+                'address' => $validated['address'] ?? ($ownerStep1['address'] ?? null),
                 'verification_status' => 'pending',
                 'verification_date' => null,
                 'created_at' => now(),

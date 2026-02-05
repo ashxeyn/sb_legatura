@@ -13,6 +13,7 @@ import {
   Alert,
   Platform,
   StatusBar,
+  AppState,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
@@ -22,6 +23,7 @@ import ImageFallback from '../../components/ImageFallbackFixed';
 import { projects_service, ContractorType as ContractorTypeOption } from '../../services/projects_service';
 import { api_config } from '../../config/api';
 import { contractors_service } from '../../services/contractors_service';
+import { role_service } from '../../services/role_service';
 
 // Helper to build full storage URL for profile/cover images
 const getStorageUrl = (filePath?: string, defaultSubfolder = 'profiles') => {
@@ -107,6 +109,7 @@ interface Project {
   created_at: string;
   owner_name?: string;
   owner_profile_pic?: string;
+  owner_id?: number;
   owner_user_id?: number;
   bids_count?: number;
   files?: string[];
@@ -131,6 +134,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
   const [error, setError] = useState<string | null>(null);
   const [profileImageError, setProfileImageError] = useState(false);
   const [isFullScreenMode, setIsFullScreenMode] = useState(false);
+  const [currentRole, setCurrentRole] = useState<'contractor' | 'owner' | null>(null);
 
   // Create project screen state
   const [showCreateProject, setShowCreateProject] = useState(false);
@@ -157,7 +161,41 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
   const statusBarHeight = insets.top || (Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 44);
 
   // Resolve effective user type: prefer explicit userData.user_type when available
-  const effectiveUserType = userData?.user_type || userType;
+  const effectiveUserType = useMemo(() => {
+    if (currentRole === 'owner') return 'property_owner';
+    if (currentRole === 'contractor') return 'contractor';
+    return userData?.user_type || userType;
+  }, [currentRole, userData?.user_type, userType]);
+
+  // Refresh current role from API on mount and when app comes to foreground
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchCurrentRole = async () => {
+      try {
+        const res = await role_service.get_current_role();
+        if (res?.success) {
+          const roleVal = (res as any).current_role || (res as any).data?.current_role || (res as any).user_type;
+          const v = String(roleVal || '').toLowerCase();
+          const role = v.includes('owner') ? 'owner' : v.includes('contractor') ? 'contractor' : null;
+          if (isMounted) setCurrentRole(role as any);
+        }
+      } catch (e) {
+        // Silent failure; keep existing role
+      }
+    };
+
+    fetchCurrentRole();
+
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') fetchCurrentRole();
+    });
+
+    return () => {
+      isMounted = false;
+      sub.remove();
+    };
+  }, []);
 
   // Handle logout - calls the parent callback
   const handleLogout = () => {
@@ -560,7 +598,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
     if (usedFiles.length === 1) {
       const f = usedFiles[0];
       return (
-        <View style={[styles.imageCollageContainer, { paddingHorizontal: H_PADDING }]}> 
+        <View style={[styles.imageCollageContainer, { paddingHorizontal: H_PADDING }]}>
           <View style={{ position: 'relative' }}>
             {f.isImage ? (
               <Image source={{ uri: f.url }} style={{ width: usableWidth, height: singleHeight, borderRadius: 8 }} resizeMode="cover" />
@@ -581,7 +619,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
     // Two files (responsive row)
     if (usedFiles.length === 2) {
       return (
-        <View style={[styles.imageCollageContainer, { paddingHorizontal: H_PADDING }]}> 
+        <View style={[styles.imageCollageContainer, { paddingHorizontal: H_PADDING }]}>
           <View style={{ flexDirection: 'row' }}>
             {usedFiles.map((f, i) => (
               <View key={i} style={{ position: 'relative', flex: 1, height: halfSize, borderRadius: 8, overflow: 'hidden', marginRight: i === 0 ? GAP : 0 }}>
@@ -605,7 +643,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
     // Three files: large left, two stacked right
     if (usedFiles.length === 3) {
       return (
-        <View style={[styles.imageCollageContainer, { paddingHorizontal: H_PADDING }]}> 
+        <View style={[styles.imageCollageContainer, { paddingHorizontal: H_PADDING }]}>
           <View style={{ flexDirection: 'row' }}>
             <View style={{ position: 'relative', flex: 2, height: largeWidth, marginRight: GAP, borderRadius: 8, overflow: 'hidden' }}>
               {usedFiles[0].isImage ? (
@@ -644,7 +682,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
     const grid = usedFiles.slice(0, 4);
     const extra = usedFiles.length - 4;
     return (
-      <View style={[styles.imageCollageContainer, { paddingHorizontal: H_PADDING }]}> 
+      <View style={[styles.imageCollageContainer, { paddingHorizontal: H_PADDING }]}>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
           {grid.map((f, i) => (
             <View key={i} style={{ position: 'relative', width: '50%', paddingRight: i % 2 === 0 ? GAP : 0, paddingTop: i >= 2 ? GAP : 0 }}>
@@ -691,6 +729,11 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
 
     // Days remaining
     const daysRemaining = project.bidding_deadline ? getDaysRemaining(project.bidding_deadline) : null;
+
+    const isOwnProject = (
+      (typeof project.owner_id === 'number' && userData?.owner_id && project.owner_id === userData.owner_id) ||
+      (typeof project.owner_user_id === 'number' && userData?.user_id && project.owner_user_id === userData.user_id)
+    );
 
     return (
       <TouchableOpacity
@@ -769,19 +812,33 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
         {/* Project Images Collage */}
         {project.files && project.files.length > 0 && renderProjectImages(project.files)}
 
-        {/* Footer: Place Bid Button */}
+        {/* Footer: Manage vs Place Bid */}
         <View style={styles.projectCardFooter}>
-          <TouchableOpacity
-            style={styles.placeBidButton}
-            activeOpacity={0.8}
-            onPress={() => {
-              setBidProject(project);
-              setShowPlaceBid(true);
-            }}
-          >
-            <MaterialIcons name="gavel" size={18} color="#FFFFFF" />
-            <Text style={styles.placeBidButtonText}>Place Bid</Text>
-          </TouchableOpacity>
+          {isOwnProject ? (
+            <TouchableOpacity
+              style={[styles.placeBidButton, { backgroundColor: '#3B82F6' }]}
+              activeOpacity={0.8}
+              onPress={() => {
+                // Open project as owner for management
+                setSelectedProject(project);
+              }}
+            >
+              <MaterialIcons name="edit" size={18} color="#FFFFFF" />
+              <Text style={styles.placeBidButtonText}>Manage Project</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={styles.placeBidButton}
+              activeOpacity={0.8}
+              onPress={() => {
+                setBidProject(project);
+                setShowPlaceBid(true);
+              }}
+            >
+              <MaterialIcons name="gavel" size={18} color="#FFFFFF" />
+              <Text style={styles.placeBidButtonText}>Place Bid</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </TouchableOpacity>
     );
@@ -1136,10 +1193,14 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
 
   // If viewing a project detail, show ProjectPostDetail screen
   if (selectedProject) {
+    const isOwn = (
+      (typeof selectedProject.owner_id === 'number' && userData?.owner_id && selectedProject.owner_id === userData.owner_id) ||
+      (typeof selectedProject.owner_user_id === 'number' && userData?.user_id && selectedProject.owner_user_id === userData.user_id)
+    );
     return (
       <ProjectPostDetail
         project={selectedProject}
-        userRole={effectiveUserType === 'contractor' ? 'contractor' : 'owner'}
+        userRole={isOwn ? 'owner' : (effectiveUserType === 'contractor' ? 'contractor' : 'owner')}
         onClose={() => setSelectedProject(null)}
         onPlaceBid={() => {
           setBidProject(selectedProject);
@@ -1563,7 +1624,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  
+
   contractorTypeBadgeContainer: {
     backgroundColor: '#FFF3E6',
     paddingHorizontal: 10,

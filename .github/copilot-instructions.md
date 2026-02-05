@@ -5,6 +5,7 @@ This is a Laravel 12 (PHP 8.2) web application scaffolded from the Laravel start
 Key places to read first:
 - `routes/web.php` — app routing and important debug/storage fallback routes (see `/debug/check-projects` and `/storage/{path}` handlers).
 - `app/Http/Controllers/authController.php` — heavy use of session-based multi-step signup flows, in-controller validation rules, and the Windows/XAMPP storage fallback serving method.
+- `app/Http/Controllers/contractor/cprocessController.php` — role switching persists `preferred_role` in `users` for stateless clients; `getCurrentRole` reads DB when session is absent.
 - `app/Services/authService.php` and `app/Services/psgcApiService.php` — business logic for authentication, OTP/email sending, and the PSGC external API adapter (with built-in caching and fallback data).
 - `app/Models` and `database/migrations` — database shape and where to find fields referenced in controllers (e.g. `users`, `contractors`, `property_owners`, `projects`).
 - `composer.json` and `package.json` — developer scripts for setup, dev and test workflows.
@@ -52,6 +53,8 @@ Important implementation notes and gotchas:
 
 What to update here and how to ask for clarification
 - If you change any session keys, validation rules, external API cache keys, or database column names, update this file with a one-line note and a reference to the modified files.
+- Role switching persistence added: `preferred_role` is written on switch and read in `getCurrentRole` for Sanctum. See `app/Http/Controllers/contractor/cprocessController.php`.
+ - Session keys update: `userType` (high-level type, e.g., `user`/`admin`) is stored on web login and `current_role` now falls back to `userType` when `user.user_type` is absent. See updates in `app/Http/Controllers/authController.php` and guarded checks in `app/Http/Controllers/owner/projectsController.php`.
 - If behavior depends on a platform (Windows/XAMPP vs Linux), include a short test plan: commands to run, expected outputs, and any files to inspect.
 
 Files that exemplify the most important patterns:

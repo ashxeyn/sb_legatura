@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,9 +10,10 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { View as SafeAreaView, StatusBar, Platform } from 'react-native';
+import { View as SafeAreaView, StatusBar, Platform, AppState } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
+import { role_service } from '../../services/role_service';
 
 interface ProfileScreenProps {
   onLogout: () => void;
@@ -44,6 +45,7 @@ interface MenuItem {
 export default function ProfileScreen({ onLogout, onViewProfile, onEditProfile, onOpenHelp, onOpenSwitchRole, userData }: ProfileScreenProps) {
   const insets = useSafeAreaInsets();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [roleLabel, setRoleLabel] = useState<string>('Property Owner');
 
   // Get status bar height (top inset)
   const statusBarHeight = insets.top || (Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 44);
@@ -78,6 +80,30 @@ export default function ProfileScreen({ onLogout, onViewProfile, onEditProfile, 
       ]
     );
   };
+
+  // Refresh current role on mount and focus to update badge
+  useEffect(() => {
+    let isMounted = true;
+    const fetchRole = async () => {
+      try {
+        const res = await role_service.get_current_role();
+        if (res?.success) {
+          const roleVal = (res as any).current_role || (res as any).data?.current_role || (res as any).user_type;
+          const v = String(roleVal || '').toLowerCase();
+          const label = v.includes('contractor') ? 'Contractor' : v.includes('owner') ? 'Property Owner' : 'Property Owner';
+          if (isMounted) setRoleLabel(label);
+        }
+      } catch {}
+    };
+    fetchRole();
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') fetchRole();
+    });
+    return () => {
+      isMounted = false;
+      sub.remove();
+    };
+  }, []);
 
   // Menu items configuration
   const menuSections: { title: string; items: MenuItem[] }[] = [
@@ -252,8 +278,8 @@ export default function ProfileScreen({ onLogout, onViewProfile, onEditProfile, 
             <Text style={styles.userEmail}>{userData?.email || 'user@example.com'}</Text>
 
             <View style={styles.userTypeBadge}>
-              <MaterialIcons name="home" size={14} color="#EC7E00" />
-              <Text style={styles.userTypeText}>Property Owner</Text>
+              <MaterialIcons name={roleLabel === 'Contractor' ? 'business' : 'home'} size={14} color="#EC7E00" />
+              <Text style={styles.userTypeText}>{roleLabel}</Text>
             </View>
           </View>
         </View>

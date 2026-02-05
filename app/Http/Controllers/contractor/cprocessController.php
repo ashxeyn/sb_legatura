@@ -114,7 +114,18 @@ class cprocessController extends Controller
         // Support both session and Sanctum token authentication
         // $request->user() is set by Sanctum middleware
         $user = Session::get('user') ?: $request->user();
-        
+        // Fallback: resolve user from Bearer token for stateless mobile clients
+        if (!$user && $request->bearerToken()) {
+            try {
+                $token = \Laravel\Sanctum\PersonalAccessToken::findToken($request->bearerToken());
+                if ($token && $token->tokenable) {
+                    $user = $token->tokenable; // Eloquent User model
+                }
+            } catch (\Throwable $e) {
+                \Log::warning('switchRole bearer fallback failed: ' . $e->getMessage());
+            }
+        }
+
         if (!$user) {
             return response()->json([
                 'success' => false,
@@ -149,6 +160,26 @@ class cprocessController extends Controller
 
         Session::put('current_role', $targetRole);
 
+        // Persist active role for stateless clients using Sanctum
+        try {
+            if (is_object($user) && method_exists($user, 'save')) {
+                // Eloquent model
+                $user->preferred_role = $targetRole;
+                $user->save();
+            } else {
+                // Session user (stdClass/array) — update via query builder
+                $userId = is_object($user) ? ($user->user_id ?? null) : ($user['user_id'] ?? null);
+                if ($userId) {
+                    DB::table('users')->where('user_id', $userId)->update([
+                        'preferred_role' => $targetRole,
+                        'updated_at' => now(),
+                    ]);
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('switchRole persist preferred_role failed: ' . $e->getMessage());
+        }
+
         if ($request->expectsJson()) {
 
             return response()->json([
@@ -168,12 +199,12 @@ class cprocessController extends Controller
         try {
             // Support both session and Sanctum token authentication
             $user = Session::get('user');
-            
+
             // If no session user, try Sanctum
             if (!$user && $request->user()) {
                 $user = $request->user();
             }
-            
+
             // If still no user, try to get from token manually
             if (!$user && $request->bearerToken()) {
                 $token = \Laravel\Sanctum\PersonalAccessToken::findToken($request->bearerToken());
@@ -181,7 +212,7 @@ class cprocessController extends Controller
                     $user = $token->tokenable;
                 }
             }
-            
+
             if (!$user) {
                 return response()->json([
                     'success' => false,
@@ -194,9 +225,24 @@ class cprocessController extends Controller
             // For session users, get from session
             $currentRole = Session::get('current_role');
             if (!$currentRole) {
-                // Default: if user_type is 'both', default to contractor, otherwise use their user_type
-                $userType = is_object($user) ? $user->user_type : ($user['user_type'] ?? null);
-                $currentRole = $userType === 'both' ? 'contractor' : $userType;
+                // Try persisted preferred_role for Sanctum/stateless clients
+                $userId = is_object($user) ? ($user->user_id ?? null) : ($user['user_id'] ?? null);
+                if ($userId) {
+                    try {
+                        $preferred = DB::table('users')->where('user_id', $userId)->value('preferred_role');
+                        if (!empty($preferred)) {
+                            $currentRole = $preferred;
+                        }
+                    } catch (\Throwable $e) {
+                        Log::warning('getCurrentRole fetch preferred_role failed: ' . $e->getMessage());
+                    }
+                }
+
+                // Fallback: if user_type is 'both', default to contractor, otherwise use their user_type
+                if (!$currentRole) {
+                    $userType = is_object($user) ? $user->user_type : ($user['user_type'] ?? null);
+                    $currentRole = $userType === 'both' ? 'contractor' : $userType;
+                }
             }
 
             // Normalize current_role format (convert 'owner' to 'contractor' for consistency)
@@ -220,6 +266,64 @@ class cprocessController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'An error occurred: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Return the contractor profile for the authenticated user (stateless-friendly)
+     */
+    public function apiGetMyContractorProfile(Request $request)
+    {
+        try {
+            // Resolve user (session, Sanctum, or bearer token)
+            $user = Session::get('user') ?: $request->user();
+            if (!$user && $request->bearerToken()) {
+                $token = \Laravel\Sanctum\PersonalAccessToken::findToken($request->bearerToken());
+                if ($token && $token->tokenable) {
+                    $user = $token->tokenable;
+                }
+            }
+
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Authentication required',
+                ], 401);
+            }
+
+            $userId = is_object($user) ? ($user->user_id ?? null) : ($user['user_id'] ?? null);
+            if (!$userId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid user context',
+                ], 400);
+            }
+
+            $contractor = $this->contractorClass->getContractorByUserId($userId);
+            if (!$contractor) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Contractor profile not found',
+                ], 404);
+            }
+
+            // Minimal profile payload (extend later as needed)
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'contractor_id' => $contractor->contractor_id ?? null,
+                    'company_name' => $contractor->company_name ?? null,
+                    'years_of_experience' => $contractor->years_of_experience ?? null,
+                    'business_address' => $contractor->business_address ?? null,
+                    'cover_photo' => $contractor->cover_photo ?? null,
+                ],
+            ], 200);
+        } catch (\Throwable $e) {
+            Log::error('apiGetMyContractorProfile error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred: ' . $e->getMessage(),
             ], 500);
         }
     }

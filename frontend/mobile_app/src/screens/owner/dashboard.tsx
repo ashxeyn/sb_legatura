@@ -11,6 +11,7 @@ import {
   RefreshControl,
   Animated,
   Dimensions,
+  Alert,
 } from 'react-native';
 import { View as SafeAreaView, StatusBar, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

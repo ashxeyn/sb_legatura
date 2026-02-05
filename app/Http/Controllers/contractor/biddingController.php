@@ -386,6 +386,28 @@ class biddingController extends Controller
                 ], 404);
             }
 
+            // Prevent bidding on one's own project
+            // Find owner for this user (if any)
+            $owner = DB::table('property_owners')
+                ->where('user_id', $userId)
+                ->first();
+
+            if ($owner) {
+                // Get project owner_id
+                $projectRel = DB::table('projects as p')
+                    ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
+                    ->where('p.project_id', $projectId)
+                    ->select('pr.owner_id')
+                    ->first();
+
+                if ($projectRel && $projectRel->owner_id === $owner->owner_id) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'You cannot bid on your own project.'
+                    ], 403);
+                }
+            }
+
             // Validate input
             $validated = $request->validate([
                 'proposed_cost' => 'required|numeric|min:0',
@@ -435,10 +457,10 @@ class biddingController extends Controller
                         $originalName = $file->getClientOriginalName();
                         $extension = $file->getClientOriginalExtension();
                         $uniqueName = time() . '_' . uniqid() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '_', $originalName);
-                        
+
                         // Store file in bid_attachments folder
                         $path = $file->storeAs('bid_attachments', $uniqueName, 'public');
-                        
+
                         // Insert into bid_files table
                         $fileId = DB::table('bid_files')->insertGetId([
                             'bid_id' => $bidId,

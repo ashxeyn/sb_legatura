@@ -174,8 +174,8 @@ Route::post('/contractor/milestone/setup/submit', [cprocessController::class, 's
 Route::post('/contractor/milestone/{milestoneId}/delete', [cprocessController::class, 'deleteMilestone']);
 
 // Role Management Routes for 'both' users
-Route::post('/api/role/switch', [cprocessController::class, 'switchRole']);
-Route::get('/api/role/current', [cprocessController::class, 'getCurrentRole']);
+// NOTE: API versions of these routes live in routes/api.php.
+// Removing duplicates here avoids CSRF errors for mobile clients.
 
 // Dispute Routes
 Route::get('/both/disputes', [disputeController::class, 'showDisputePage']);

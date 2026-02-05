@@ -18,6 +18,7 @@ import {
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
+import { projects_service } from '../../services/projects_service';
 
 interface CreateProjectScreenProps {
   onBackPress: () => void;
@@ -88,9 +89,13 @@ export default function CreateProjectScreen({ onBackPress, onSubmit, contractorT
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [barangays, setBarangays] = useState<any[]>([]);
   const [loadingBarangays, setLoadingBarangays] = useState(true);
+  const [localContractorTypes, setLocalContractorTypes] = useState<ContractorType[]>([]);
+  const [loadingContractorTypes, setLoadingContractorTypes] = useState(false);
 
   // Ensure contractorTypes is always an array
-  const safeContractorTypes = Array.isArray(contractorTypes) ? contractorTypes : [];
+  const safeContractorTypes = (Array.isArray(contractorTypes) && contractorTypes.length > 0)
+    ? contractorTypes
+    : localContractorTypes;
 
   // Check if selected contractor type is "Others"
   const isOthersSelected = () => {
@@ -102,6 +107,32 @@ export default function CreateProjectScreen({ onBackPress, onSubmit, contractorT
   useEffect(() => {
     loadBarangays();
   }, []);
+
+  // Load contractor types locally if not provided via props
+  useEffect(() => {
+    const shouldFetch = !Array.isArray(contractorTypes) || contractorTypes.length === 0;
+    if (!shouldFetch) return;
+
+    const fetchTypes = async () => {
+      try {
+        setLoadingContractorTypes(true);
+        const response = await projects_service.get_contractor_types();
+        if (response && response.success) {
+          const typesData: any = response.data?.data ?? response.data ?? [];
+          const list = Array.isArray(typesData) ? typesData : [];
+          setLocalContractorTypes(list);
+        } else {
+          setLocalContractorTypes([]);
+        }
+      } catch (e) {
+        setLocalContractorTypes([]);
+      } finally {
+        setLoadingContractorTypes(false);
+      }
+    };
+
+    fetchTypes();
+  }, [contractorTypes]);
 
   const loadBarangays = async () => {
     try {
@@ -784,7 +815,14 @@ export default function CreateProjectScreen({ onBackPress, onSubmit, contractorT
               )}
               ListEmptyComponent={
                 <View style={styles.emptyList}>
-                  <Text style={styles.emptyListText}>No contractor types available</Text>
+                  {loadingContractorTypes ? (
+                    <>
+                      <ActivityIndicator size="small" color="#EC7E00" />
+                      <Text style={styles.emptyListText}>Loading contractor types...</Text>
+                    </>
+                  ) : (
+                    <Text style={styles.emptyListText}>No contractor types available</Text>
+                  )}
                 </View>
               }
             />

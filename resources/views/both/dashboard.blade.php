@@ -320,8 +320,15 @@
 <body>
     @php
         $dashboardUser = session('user');
-        $currentRole = session('current_role', $dashboardUser ? $dashboardUser->user_type : 'guest');
-        $userType = $dashboardUser ? $dashboardUser->user_type : 'guest';
+        // Prefer controller-provided variables, then session fallbacks; avoid direct property access when absent.
+        $resolvedUserType = isset($userType) ? $userType : (
+            isset($dashboardUser) && isset($dashboardUser->user_type) ? $dashboardUser->user_type : (session('userType') ?? 'guest')
+        );
+        $resolvedCurrentRole = isset($currentRole) ? $currentRole : (session('current_role') ?? $resolvedUserType);
+
+        $userType = $resolvedUserType;
+        $currentRole = $resolvedCurrentRole ?? 'guest';
+
         $isOwner = ($userType === 'property_owner' || $userType === 'both') &&
                    ($currentRole === 'owner' || $currentRole === 'property_owner');
     @endphp

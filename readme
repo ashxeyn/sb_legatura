@@ -1,0 +1,8 @@
+//SWITCH ROLE
+What I Fixed
+
+Disabled broken routes: Commented out the contractor members routes in api.php:213-220 that referenced a missing App\Http\Controllers\contractor\membersController. These were causing a compile-time error (“Use of unknown class”) and preventing the backend from starting.
+Kept your test route public: The /api/role/switch-form test endpoint remains outside the Sanctum middleware and returns the expected JSON.
+Why It Was Hanging
+
+The backend wasn’t starting (exit code 1) due to the missing controller class in those members routes. Moving the test route was fine; the startup failure came from those unrelated, broken routes.

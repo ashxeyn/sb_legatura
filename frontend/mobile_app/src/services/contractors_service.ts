@@ -66,18 +66,18 @@ export class contractors_service {
   /**
    * Fetch all active contractors from the backend
    * This calls the backend endpoint that uses getActiveContractors() method
-   * 
+   *
    * IMPORTANT: The backend endpoint /api/contractors needs to be created.
    * The backend should add this route in routes/api.php:
    *   Route::get('/contractors', [projectsController::class, 'apiGetContractors']);
-   * 
+   *
    * And create a method in projectsController:
    *   public function apiGetContractors(Request $request) {
    *     $excludeUserId = $request->query('exclude_user_id');
    *     $contractors = $this->projectsClass->getActiveContractors($excludeUserId);
    *     return response()->json($contractors);
    *   }
-   * 
+   *
    * @param excludeUserId - Optional user ID to exclude from results (for 'both' users)
    * @returns Promise with API response containing array of contractors
    */
@@ -86,7 +86,7 @@ export class contractors_service {
       // Build query parameters if excludeUserId is provided
       const params = excludeUserId ? `?exclude_user_id=${excludeUserId}` : '';
       const endpoint = `${api_config.endpoints.contractors.list}${params}`;
-      
+
       const response = await api_request(endpoint, {
         method: 'GET',
         headers: {
@@ -110,7 +110,7 @@ export class contractors_service {
   /**
    * Transform backend contractor data to frontend format
    * Maps the backend structure to the frontend Contractor interface
-   * 
+   *
    * @param backendContractor - Contractor data from backend
    * @param baseUrl - Base URL for image assets (defaults to API base URL)
    * @returns Transformed contractor data for frontend display
@@ -119,7 +119,7 @@ export class contractors_service {
    * Transform backend contractor data to frontend format
    * Maps the backend structure to the frontend Contractor interface
    * This matches the exact data structure used in dashboard.blade.php
-   * 
+   *
    * @param backendContractor - Contractor data from backend
    * @param baseUrl - Base URL for image assets (defaults to API base URL)
    * @returns Transformed contractor data for frontend display
@@ -132,7 +132,7 @@ export class contractors_service {
     // Backend uses: asset('storage/' . $profilePic) - so we need to construct the full URL
     let logoUrl: string | undefined;
     let imageUrl: string | undefined;
-    
+
     if (backendContractor.profile_pic) {
       // Profile pic is stored in storage, construct full URL matching Laravel's asset() helper
       // Backend: asset('storage/' . $profilePic) becomes: baseUrl/storage/profile_pic_path
@@ -168,7 +168,7 @@ export class contractors_service {
 
   /**
    * Transform array of backend contractors to frontend format
-   * 
+   *
    * @param backendContractors - Array of contractor data from backend
    * @param baseUrl - Base URL for image assets
    * @returns Array of transformed contractor data
@@ -177,9 +177,33 @@ export class contractors_service {
     backendContractors: BackendContractor[],
     baseUrl: string = api_config.base_url
   ): Contractor[] {
-    return backendContractors.map(contractor => 
+    return backendContractors.map(contractor =>
       this.transform_contractor(contractor, baseUrl)
     );
+  }
+
+  /**
+   * Fetch the authenticated user's contractor profile (company_name, etc.)
+   */
+  static async get_my_contractor_profile(): Promise<api_response<{ company_name?: string; contractor_id?: number; years_of_experience?: number }>> {
+    try {
+      const endpoint = `/api/contractor/me`;
+      const response = await api_request(endpoint, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+      });
+      return response;
+    } catch (error) {
+      console.error('Error fetching my contractor profile:', error);
+      return {
+        success: false,
+        data: undefined,
+        status: 0,
+        message: error instanceof Error ? error.message : 'Failed to fetch contractor profile',
+      };
+    }
   }
 }
 

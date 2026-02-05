@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,10 +10,12 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { View as SafeAreaView, StatusBar, Platform } from 'react-native';
+import { View as SafeAreaView, StatusBar, Platform, AppState } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import ImageFallback from '../../components/ImageFallbackFixed';
+import { contractors_service } from '../../services/contractors_service';
+import { role_service } from '../../services/role_service';
 
 // Default images
 const defaultCoverPhoto = require('../../../assets/images/pictures/cp_default.jpg');
@@ -48,6 +50,8 @@ interface MenuItem {
 export default function ContractorProfileScreen({ onLogout, onOpenHelp, onOpenSwitchRole, userData }: ContractorProfileScreenProps) {
   const insets = useSafeAreaInsets();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [roleLabel, setRoleLabel] = useState<string>('Contractor');
+  const [companyName, setCompanyName] = useState<string | undefined>(userData?.company_name);
 
   // Get status bar height (top inset)
   const statusBarHeight = insets.top || (Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 44);
@@ -82,6 +86,49 @@ export default function ContractorProfileScreen({ onLogout, onOpenHelp, onOpenSw
       ]
     );
   };
+
+  // Refresh current role on mount and focus to update badge
+  useEffect(() => {
+    let isMounted = true;
+    const fetchRole = async () => {
+      try {
+        const res = await role_service.get_current_role();
+        if (res?.success) {
+          const roleVal = (res as any).current_role || (res as any).data?.current_role || (res as any).user_type;
+          const v = String(roleVal || '').toLowerCase();
+          const label = v.includes('owner') ? 'Property Owner' : v.includes('contractor') ? 'Contractor' : 'Contractor';
+          if (isMounted) setRoleLabel(label);
+        }
+      } catch {}
+    };
+    fetchRole();
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') fetchRole();
+    });
+    return () => {
+      isMounted = false;
+      sub.remove();
+    };
+  }, []);
+
+  // Fetch contractor profile to populate company name
+  useEffect(() => {
+    let isMounted = true;
+    const loadProfile = async () => {
+      try {
+        const res = await contractors_service.get_my_contractor_profile();
+        if (res?.success && res.data) {
+          const payload = res.data as any;
+          const name = payload?.data?.company_name ?? payload?.company_name;
+          if (isMounted) setCompanyName(name || userData?.company_name);
+        }
+      } catch (e) {
+        // Silent failure
+      }
+    };
+    loadProfile();
+    return () => { isMounted = false; };
+  }, []);
 
   // Menu items configuration for contractors
   const menuSections: { title: string; items: MenuItem[] }[] = [
@@ -271,14 +318,14 @@ export default function ContractorProfileScreen({ onLogout, onOpenHelp, onOpenSw
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.companyName}>{userData?.company_name || 'Company Name'}</Text>
+            <Text style={styles.companyName}>{companyName || userData?.company_name || 'Company Name'}</Text>
             <Text style={styles.userName}>@{userData?.username || 'contractor'}</Text>
             <Text style={styles.userEmail}>{userData?.email || 'contractor@example.com'}</Text>
 
             <View style={styles.badgeRow}>
               <View style={styles.userTypeBadge}>
-                <MaterialIcons name="business" size={14} color="#1877F2" />
-                <Text style={styles.userTypeText}>Contractor</Text>
+                <MaterialIcons name={roleLabel === 'Property Owner' ? 'home' : 'business'} size={14} color="#1877F2" />
+                <Text style={styles.userTypeText}>{roleLabel}</Text>
               </View>
 
               {userData?.contractor_type && (

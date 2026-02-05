@@ -22,6 +22,7 @@ import EditProfileScreen from './src/screens/both/editProfile';
 import ViewProfileScreen from './src/screens/both/viewProfile';
 import HelpCenterScreen from './src/screens/both/helpCenter';
 import SwitchRoleScreen from './src/screens/both/switchRole';
+import RoleAddScreen from './src/screens/both/addRoleRegistration';
 import { api_config } from './src/config/api';
 import EmailVerificationScreen from './src/screens/both/emailVerification';
 import ProfilePictureScreen from './src/screens/both/profilePic';
@@ -30,11 +31,11 @@ import { auth_service } from './src/services/auth_service';
 import { storage_service } from './src/utils/storage';
 
 type AppState = 'loading' | 'onboarding' | 'auth_choice' | 'login' | 'signup' | 'user_type_selection' |
-    // Contractor Flow  
+    // Contractor Flow
     'contractor_company_info' | 'contractor_account_setup' | 'contractor_email_verification' | 'contractor_business_documents' | 'contractor_profile_picture' |
     // Property Owner Flow
     'po_personal_info' | 'po_account_setup' | 'po_email_verification' | 'po_role_verification' | 'po_profile_picture' |
-    'main' | 'edit_profile' | 'view_profile' | 'help_center' | 'switch_role';
+    'main' | 'edit_profile' | 'view_profile' | 'help_center' | 'switch_role' | 'add_role_registration';
 
 
 
@@ -87,6 +88,7 @@ export default function App() {
 
 
     const [initial_home_tab, set_initial_home_tab] = useState<'home' | 'dashboard' | 'messages' | 'profile'>('home');
+    const [registration_target_role, set_registration_target_role] = useState<'contractor' | 'owner' | null>(null);
 
     // Form data from backend
     const [form_data, set_form_data] = useState<any>(null);
@@ -571,7 +573,7 @@ export default function App() {
                             const stored_user_data = await storage_service.get_user_data();
                             if (stored_user_data) {
                                 set_user_data(stored_user_data);
-                                
+
                                 // Update selected user type based on the switched role
                                 // Note: The backend will have updated the session's current_role
                                 // but user_data.user_type will still be 'both'
@@ -581,10 +583,29 @@ export default function App() {
                             console.error('Error reloading user data after role switch:', error);
                         }
                     }}
+                    onStartAddRole={(targetRole) => {
+                        set_registration_target_role(targetRole);
+                        set_app_state('add_role_registration');
+                    }}
                     userData={{
                         username: user_data?.username,
                         email: user_data?.email,
                         user_type: user_data?.user_type,
+                    }}
+                />
+            </SafeAreaProvider>
+        );
+    }
+
+    if (app_state === 'add_role_registration') {
+        return (
+            <SafeAreaProvider>
+                <RoleAddScreen
+                    targetRole={registration_target_role || 'contractor'}
+                    onBack={() => set_app_state('switch_role')}
+                    onComplete={() => {
+                        // After successful completion, return to switch role to allow switching
+                        set_app_state('switch_role');
                     }}
                 />
             </SafeAreaProvider>
