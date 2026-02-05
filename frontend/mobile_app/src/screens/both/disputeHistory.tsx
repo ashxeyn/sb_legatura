@@ -77,6 +77,7 @@ const TYPE_CONFIG = {
   Payment: { icon: 'dollar-sign', color: COLORS.success },
   Delay: { icon: 'clock', color: COLORS.warning },
   Quality: { icon: 'alert-triangle', color: COLORS.error },
+  'Request to Halt': { icon: 'pause-circle', color: COLORS.error },
   Others: { icon: 'more-horizontal', color: COLORS.info },
 };
 

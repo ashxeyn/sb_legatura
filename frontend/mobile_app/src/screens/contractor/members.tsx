@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
   ScrollView,
   Alert,
+  Switch,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, Ionicons, MaterialIcons } from '@expo/vector-icons';
@@ -28,25 +29,20 @@ const COLORS = {
   border: '#E6E9EE',
 };
 
-const mockMembers = [
-  {
-    id: '1',
-    name: 'Olivia Faith',
-    role: 'Secretary / Contact person',
-    phone: '+63 912 345 6789',
-    email: 'olivia_faith@gmail.com',
-    avatar: 'https://randomuser.me/api/portraits/women/44.jpg',
-  },
-  { id: '2', name: 'Juan Dela Cruz', role: 'Project Manager', phone: '+63 912 111 2222', email: 'juan@example.com', avatar: '' },
-];
-
 export default function Members({ userData, onClose }: { userData?: any; onClose?: () => void }) {
   const insets = useSafeAreaInsets();
-  const [members, setMembers] = useState(mockMembers);
+  const [members, setMembers] = useState([]);
+  const [filteredMembers, setFilteredMembers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  
+  // Search and filter states
+  const [searchQuery, setSearchQuery] = useState('');
+  const [roleFilter, setRoleFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [showFilters, setShowFilters] = useState(false);
 
   const [form, setForm] = useState({
     first_name: '',
@@ -67,18 +63,80 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
     fetchMembers();
   }, []);
 
+  // Apply filters whenever search query, role filter, or status filter changes
+  useEffect(() => {
+    applyFilters();
+  }, [searchQuery, roleFilter, statusFilter, members]);
+
   const fetchMembers = async () => {
     setLoading(true);
     try {
-      const res = await api_request(api_config.endpoints.contractor_members.list, { method: 'GET' });
+      // Get user_id from stored user data
+      const storedUser = await storage_service.get_user_data();
+      const userId = storedUser?.user_id || storedUser?.id;
+      
+      if (!userId) {
+        console.warn('No user_id found');
+        return;
+      }
+      
+      const endpoint = `${api_config.endpoints.contractor_members.list}?user_id=${userId}`;
+      const res = await api_request(endpoint, { method: 'GET' });
       if (res.success && res.data) {
-        setMembers(res.data.data || res.data);
+        const membersData = res.data.data || res.data;
+        console.log('Fetched members:', membersData.map(m => ({ 
+          id: m.id, 
+          name: m.first_name, 
+          profile_pic: m.profile_pic,
+          updated_at: m.updated_at 
+        })));
+        setMembers(membersData);
+        setFilteredMembers(membersData);
       }
     } catch (e) {
       console.warn('Failed fetching members', e);
     } finally {
       setLoading(false);
     }
+  };
+
+  const applyFilters = () => {
+    let filtered = [...members];
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(member => {
+        const fullName = `${member.first_name || ''} ${member.middle_name || ''} ${member.last_name || ''}`.toLowerCase();
+        const email = (member.email || '').toLowerCase();
+        const phone = (member.phone || member.phone_number || '').toLowerCase();
+        const username = (member.username || '').toLowerCase();
+        
+        return fullName.includes(query) || 
+               email.includes(query) || 
+               phone.includes(query) ||
+               username.includes(query);
+      });
+    }
+
+    // Apply role filter
+    if (roleFilter !== 'all') {
+      filtered = filtered.filter(member => member.role === roleFilter);
+    }
+
+    // Apply status filter
+    if (statusFilter !== 'all') {
+      const isActive = statusFilter === 'active';
+      filtered = filtered.filter(member => !!member.is_active === isActive);
+    }
+
+    setFilteredMembers(filtered);
+  };
+
+  const clearFilters = () => {
+    setSearchQuery('');
+    setRoleFilter('all');
+    setStatusFilter('all');
   };
 
   const renderMember = ({ item }) => (
@@ -91,7 +149,7 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
             const ts = new Date(item.updated_at).getTime();
             uri = `${uri}?t=${ts}`;
           }
-          return <MemberImage uri={uri} style={styles.avatar} fallback={require('../../../assets/images/pictures/members_default.png')} />;
+          return <MemberImage key={uri} uri={uri} style={styles.avatar} fallback={require('../../../assets/images/pictures/members_default.png')} />;
         })()
       }
 
@@ -106,6 +164,11 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
       </View>
 
       <View style={styles.actionsRight}>
+        <View style={[styles.statusBadge, { backgroundColor: item.is_active ? '#DCFCE7' : '#F3F4F6' }]}>
+          <Text style={[styles.statusText, { color: item.is_active ? '#16A34A' : '#6B7280' }]}>
+            {item.is_active ? 'Active' : 'Inactive'}
+          </Text>
+        </View>
         <TouchableOpacity style={styles.iconBtn} accessibilityLabel="edit" onPress={() => openEdit(item)}>
           <Ionicons name="pencil" size={18} color={COLORS.primary} />
         </TouchableOpacity>
@@ -115,6 +178,33 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
       </View>
     </View>
   );
+
+  const toggleMemberActive = async (memberId: any, newActiveStatus: boolean) => {
+    try {
+      const storedUser = await storage_service.get_user_data();
+      const userId = storedUser?.user_id || storedUser?.id;
+      
+      const endpoint = `${api_config.endpoints.contractor_members.toggle_active(memberId)}?user_id=${userId}`;
+      const res = await api_request(endpoint, { method: 'PATCH' });
+      
+      if (res.success) {
+        // Update local state immediately for better UX
+        setMembers(prev => prev.map(m => 
+          (m.id || m.contractor_user_id) === memberId 
+            ? { ...m, is_active: res.data?.is_active ?? newActiveStatus }
+            : m
+        ));
+        return true;
+      } else {
+        Alert.alert('Error', res.message || 'Failed to update status');
+        return false;
+      }
+    } catch (e) {
+      console.warn('Toggle active failed', e);
+      Alert.alert('Error', 'Network error updating status');
+      return false;
+    }
+  };
   const openCreate = () => {
     setForm({
       first_name: '',
@@ -125,6 +215,7 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
       role: 'manager',
       role_other: '',
       profile_pic: null,
+      _pickedFile: null,
     });
     setEditingId(null);
     setModalVisible(true);
@@ -132,6 +223,14 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
 
   const openEdit = (item) => {
     setEditingId(item.id || item.contractor_user_id || null);
+    
+    // Add cache buster to profile_pic URL for latest image
+    let profilePicUri = item.profile_pic || item.avatar || null;
+    if (profilePicUri && item.updated_at && !String(profilePicUri).startsWith('http') && !String(profilePicUri).startsWith('data:') && !String(profilePicUri).startsWith('file:') && !String(profilePicUri).startsWith('content:')) {
+      const ts = new Date(item.updated_at).getTime();
+      profilePicUri = `${profilePicUri}?t=${ts}`;
+    }
+    
     setForm({
       first_name: item.first_name || item.name?.split(' ')[0] || '',
       middle_name: item.middle_name || '',
@@ -140,11 +239,13 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
       phone_number: item.phone || item.phone_number || '',
       role: item.role || 'manager',
       role_other: item.role_other || '',
-      profile_pic: item.profile_pic || item.avatar || null,
+      profile_pic: profilePicUri,
       _pickedFile: null,
       username: item.username || '',
       password: '',
-      password_confirm: ''
+      password_confirm: '',
+      is_active: !!item.is_active,
+      _originalItem: item
     });
     setModalVisible(true);
   };
@@ -160,7 +261,12 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
   const deleteMember = async (id) => {
     try {
       setLoading(true);
-      const res = await api_request(api_config.endpoints.contractor_members.delete(id), { method: 'DELETE' });
+      // Get user_id from stored user data
+      const storedUser = await storage_service.get_user_data();
+      const userId = storedUser?.user_id || storedUser?.id;
+      
+      const endpoint = `${api_config.endpoints.contractor_members.delete(id)}?user_id=${userId}`;
+      const res = await api_request(endpoint, { method: 'DELETE' });
       if (res.success) {
         fetchMembers();
         Alert.alert('Deleted', 'Member deleted');
@@ -184,6 +290,26 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
 
     setSubmitting(true);
     try {
+      // Get user_id from stored user data
+      const storedUser = await storage_service.get_user_data();
+      const userId = storedUser?.user_id || storedUser?.id;
+      
+      if (!userId) {
+        Alert.alert('Error', 'User not authenticated');
+        setSubmitting(false);
+        return;
+      }
+
+      // Check if user picked a NEW local file (not just an existing URL)
+      const hasNewImageFile = form._pickedFile && 
+        typeof form._pickedFile === 'object' && 
+        form._pickedFile.uri && 
+        (form._pickedFile.uri.startsWith('file:') || 
+         form._pickedFile.uri.startsWith('content:') || 
+         form._pickedFile.uri.includes('/cache/') ||
+         form._pickedFile.uri.includes('/tmp/'));
+
+      // Build payload - only include profile_pic if we're uploading a new file
       const payload = {
         first_name: form.first_name,
         middle_name: form.middle_name,
@@ -192,13 +318,26 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
         phone_number: form.phone_number,
         role: form.role,
         role_other: form.role_other,
-        profile_pic: form.profile_pic,
       };
+
+      // Only include profile_pic in JSON payload if not uploading a file
+      // (if uploading via FormData, it's handled separately)
+      if (!hasNewImageFile && !editingId) {
+        // Only for new members without a picked file
+        payload.profile_pic = null;
+      }
 
       let res;
 
+      console.log('Submit form state:', {
+        hasNewImageFile,
+        _pickedFile: form._pickedFile,
+        profile_pic: form.profile_pic,
+        editingId,
+      });
+
       // If user picked a local file, send multipart/form-data
-      if (form._pickedFile && form._pickedFile.uri) {
+      if (hasNewImageFile) {
         const fd = new FormData();
         fd.append('first_name', payload.first_name);
         fd.append('middle_name', payload.middle_name || '');
@@ -207,6 +346,7 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
         fd.append('phone_number', payload.phone_number || '');
         fd.append('role', payload.role);
         fd.append('role_other', payload.role_other || '');
+        fd.append('user_id', String(userId));
 
         const uri = form._pickedFile.uri;
         const split = uri.split('/');
@@ -217,34 +357,61 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
         fd.append('profile_pic', { uri, name, type });
 
         if (editingId) {
-          res = await api_request(api_config.endpoints.contractor_members.update(editingId), {
-            method: 'PUT',
+          // Use POST with _method override for better Laravel compatibility
+          fd.append('_method', 'PUT');
+          res = await api_request(`${api_config.endpoints.contractor_members.update(editingId)}?user_id=${userId}`, {
+            method: 'POST',
             body: fd,
           });
         } else {
-          res = await api_request(api_config.endpoints.contractor_members.create, {
+          res = await api_request(`${api_config.endpoints.contractor_members.create}?user_id=${userId}`, {
             method: 'POST',
             body: fd,
           });
         }
       } else {
+        // Send as JSON (no file upload)
+        console.log('Sending JSON payload:', JSON.stringify(payload));
         if (editingId) {
-          res = await api_request(api_config.endpoints.contractor_members.update(editingId), {
+          res = await api_request(`${api_config.endpoints.contractor_members.update(editingId)}?user_id=${userId}`, {
             method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
             body: JSON.stringify(payload),
           });
         } else {
-          res = await api_request(api_config.endpoints.contractor_members.create, {
+          res = await api_request(`${api_config.endpoints.contractor_members.create}?user_id=${userId}`, {
             method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
             body: JSON.stringify(payload),
           });
         }
       }
 
       if (res.success) {
+        // If editing and activation status changed, update it
+        if (isEditing && form._originalItem && form.is_active !== !!form._originalItem.is_active) {
+          await toggleMemberActive(editingId, form.is_active);
+        }
+        
+        // Update local state immediately with returned data to show new profile pic
+        if (isEditing && res.data) {
+          setMembers(prev => prev.map(m => 
+            (m.id || m.contractor_user_id) === editingId 
+              ? { ...m, ...res.data, contractor_user_id: editingId }
+              : m
+          ));
+        }
+        
         setModalVisible(false);
         setEditingId(null);
+        
+        // Refetch to ensure consistency
         fetchMembers();
+        
         const username = res.data && (res.data.username || res.data.user && res.data.user.username) ? (res.data.username || res.data.user.username) : null;
         if (isEditing) {
           // Edited
@@ -315,20 +482,127 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
       </View>
 
       <View style={styles.searchRow}>
-        <TextInput placeholder="Search members" placeholderTextColor="#9AA0A6" style={styles.searchInput} />
-        <TouchableOpacity style={[styles.newUserBtn, styles.newUserBtnWithIcon]} accessibilityLabel="new-member" onPress={openCreate}>
+        <View style={{ flex: 1, marginRight: 8 }}>
+          <TextInput 
+            placeholder="Search members" 
+            placeholderTextColor="#9AA0A6" 
+            style={styles.searchInput}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+        </View>
+        <TouchableOpacity 
+          style={[styles.filterBtn, (roleFilter !== 'all' || statusFilter !== 'all') && styles.filterBtnActive]} 
+          onPress={() => setShowFilters(!showFilters)}
+          accessibilityLabel="toggle-filters"
+        >
+          <Feather name="filter" size={18} color={(roleFilter !== 'all' || statusFilter !== 'all') ? '#fff' : COLORS.text} />
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.newUserBtn, styles.newUserBtnWithIcon]} 
+          accessibilityLabel="new-member" 
+          onPress={openCreate}
+        >
           <Feather name="plus" size={16} color="#fff" style={{ marginRight: 8 }} />
-          <Text style={styles.newUserText}>Add Member</Text>
+          <Text style={styles.newUserText}>Add</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Filter Panel */}
+      {showFilters && (
+        <View style={styles.filterPanel}>
+          <View style={styles.filterHeader}>
+            <Text style={styles.filterTitle}>Filters</Text>
+            <TouchableOpacity onPress={clearFilters}>
+              <Text style={styles.clearFiltersText}>Clear All</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.filterSection}>
+            <Text style={styles.filterLabel}>Role</Text>
+            <View style={styles.filterChips}>
+              {[
+                { label: 'All', value: 'all' },
+                { label: 'Owner', value: 'owner' },
+                { label: 'Manager', value: 'manager' },
+                { label: 'Engineer', value: 'engineer' },
+                { label: 'Architect', value: 'architect' },
+                { label: 'Representative', value: 'representative' },
+                { label: 'Others', value: 'others' },
+              ].map(({ label, value }) => (
+                <TouchableOpacity
+                  key={value}
+                  style={[
+                    styles.filterChip,
+                    roleFilter === value && styles.filterChipActive
+                  ]}
+                  onPress={() => setRoleFilter(value)}
+                >
+                  <Text style={[
+                    styles.filterChipText,
+                    roleFilter === value && styles.filterChipTextActive
+                  ]}>
+                    {label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          <View style={styles.filterSection}>
+            <Text style={styles.filterLabel}>Status</Text>
+            <View style={styles.filterChips}>
+              {[
+                { label: 'All', value: 'all' },
+                { label: 'Active', value: 'active' },
+                { label: 'Inactive', value: 'inactive' },
+              ].map(({ label, value }) => (
+                <TouchableOpacity
+                  key={value}
+                  style={[
+                    styles.filterChip,
+                    statusFilter === value && styles.filterChipActive
+                  ]}
+                  onPress={() => setStatusFilter(value)}
+                >
+                  <Text style={[
+                    styles.filterChipText,
+                    statusFilter === value && styles.filterChipTextActive
+                  ]}>
+                    {label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          <View style={styles.filterResults}>
+            <Text style={styles.filterResultsText}>
+              Showing {filteredMembers.length} of {members.length} members
+            </Text>
+          </View>
+        </View>
+      )}
 
       {loading ? (
         <View style={{ padding: 16 }}>
           <ActivityIndicator />
         </View>
+      ) : filteredMembers.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Feather name="users" size={48} color={COLORS.border} />
+          <Text style={styles.emptyStateText}>
+            {members.length === 0 ? 'No members yet' : 'No members match your filters'}
+          </Text>
+          {members.length > 0 && (
+            <TouchableOpacity onPress={clearFilters} style={styles.clearFiltersButton}>
+              <Text style={styles.clearFiltersButtonText}>Clear Filters</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       ) : (
         <FlatList
-          data={members}
+          data={filteredMembers}
           keyExtractor={(item) => (item.user_id ? String(item.user_id) : item.id)}
           contentContainerStyle={{ padding: 8 }}
           renderItem={renderMember}
@@ -344,7 +618,7 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
 
               <View style={{ alignItems: 'center', marginBottom: 12 }}>
                 <TouchableOpacity onPress={pickImage} style={styles.avatarLargeWrap} accessibilityLabel="edit-photo">
-                  <MemberImage uri={form.profile_pic} style={styles.avatarLarge} fallback={require('../../../assets/images/pictures/members_default.png')} />
+                  <MemberImage key={form.profile_pic} uri={form.profile_pic} style={styles.avatarLarge} fallback={require('../../../assets/images/pictures/members_default.png')} />
                   <View style={styles.avatarEditWrap} pointerEvents="none">
                     <View style={styles.avatarEditBtn}>
                       <Ionicons name="pencil" size={14} color="#fff" />
@@ -381,6 +655,29 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
 
               {form.role === 'others' && (
                 <TextInput placeholder="Role (other)" value={form.role_other} onChangeText={(t) => setForm({ ...form, role_other: t })} style={styles.input} />
+              )}
+
+              {/* Activation Status Toggle - only show when editing */}
+              {editingId && form._originalItem?.role !== 'owner' && (
+                <View style={styles.activationSection}>
+                  <Text style={styles.sectionHeader}>Member Status</Text>
+                  <View style={styles.activationRow}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 14, fontWeight: '600', color: COLORS.text }}>
+                        {form.is_active ? 'Active' : 'Inactive'}
+                      </Text>
+                      <Text style={{ fontSize: 12, color: COLORS.textSecondary, marginTop: 2 }}>
+                        {form.is_active ? 'Member can access the system' : 'Member cannot access the system'}
+                      </Text>
+                    </View>
+                    <Switch
+                      value={form.is_active}
+                      onValueChange={(value) => setForm({ ...form, is_active: value })}
+                      trackColor={{ false: '#E5E7EB', true: '#BBF7D0' }}
+                      thumbColor={form.is_active ? '#22C55E' : '#9CA3AF'}
+                    />
+                  </View>
+                </View>
               )}
 
               <View style={styles.noteBox}>
@@ -420,7 +717,9 @@ function getProfileImageUrl(path?: string) {
   if (!path) return 'https://via.placeholder.com/64';
   if (path.startsWith('http') || path.startsWith('data:') || path.startsWith('file:') || path.startsWith('content:')) return path;
   // Backend stores images in `storage/` and api_config.base_url points to server root
-  return `${api_config.base_url}/storage/${path}`;
+  const fullUrl = `${api_config.base_url}/storage/${path}`;
+  console.log('Profile image URL:', { path, fullUrl });
+  return fullUrl;
 }
 
 function MemberImage({ uri, style, fallback }: { uri?: string | null; style?: any; fallback: any }) {
@@ -431,6 +730,8 @@ function MemberImage({ uri, style, fallback }: { uri?: string | null; style?: an
     setErrored(false);
   }, [uri]);
 
+  console.log('MemberImage render:', { uri, errored, finalUrl: uri ? getProfileImageUrl(uri) : 'none' });
+
   if (!uri || errored) {
     return <Image source={fallback} style={style} />;
   }
@@ -439,7 +740,10 @@ function MemberImage({ uri, style, fallback }: { uri?: string | null; style?: an
     <Image
       source={{ uri: getProfileImageUrl(uri) }}
       style={style}
-      onError={() => setErrored(true)}
+      onError={(error) => {
+        console.log('Image load error:', { uri, finalUrl: getProfileImageUrl(uri), error });
+        setErrored(true);
+      }}
     />
   );
 }
@@ -498,10 +802,116 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F7FA',
     borderRadius: 8,
     paddingHorizontal: 10,
-    marginRight: 8,
     borderWidth: 1,
     borderColor: COLORS.border,
     fontSize: 13,
+  },
+  filterBtn: {
+    width: 40,
+    height: 40,
+    backgroundColor: '#F5F7FA',
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  filterBtnActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  filterPanel: {
+    backgroundColor: COLORS.surface,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  filterHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  filterTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  clearFiltersText: {
+    fontSize: 13,
+    color: COLORS.primary,
+    fontWeight: '600',
+  },
+  filterSection: {
+    marginBottom: 12,
+  },
+  filterLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginBottom: 8,
+  },
+  filterChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  filterChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: '#F5F7FA',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  filterChipActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  filterChipText: {
+    fontSize: 12,
+    color: COLORS.text,
+    fontWeight: '600',
+  },
+  filterChipTextActive: {
+    color: '#fff',
+  },
+  filterResults: {
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+  },
+  filterResultsText: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+  },
+  emptyState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+  },
+  emptyStateText: {
+    fontSize: 15,
+    color: COLORS.textSecondary,
+    marginTop: 12,
+    textAlign: 'center',
+  },
+  clearFiltersButton: {
+    marginTop: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: COLORS.primary,
+    borderRadius: 8,
+  },
+  clearFiltersButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 14,
   },
   input: {
     height: 44,
@@ -662,8 +1072,43 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     marginLeft: 12,
   },
+  toggleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  toggleLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginRight: 4,
+  },
   iconBtn: {
     padding: 6,
     marginLeft: 8,
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginRight: 8,
+  },
+  statusText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  activationSection: {
+    marginBottom: 12,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+  },
+  activationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F9FAFB',
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 8,
   },
 });

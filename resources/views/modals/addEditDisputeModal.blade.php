@@ -99,6 +99,7 @@
                     <option value="Payment">Payment</option>
                     <option value="Delay">Delay</option>
                     <option value="Quality">Quality</option>
+                    <option value="Request to Halt">Request to Halt</option>
                     <option value="Others">Others</option>
                 </select>
             </div>

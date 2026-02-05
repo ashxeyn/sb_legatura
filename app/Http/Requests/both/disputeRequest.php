@@ -129,7 +129,7 @@ class disputeRequest extends FormRequest
                     }
                 }
             ],
-            'dispute_type' => 'required|string|in:Payment,Delay,Quality,Others',
+            'dispute_type' => 'required|string|in:Payment,Delay,Quality,Request to Halt,Others',
             'dispute_desc' => 'required|string|max:2000',
             'if_others_distype' => 'nullable|required_if:dispute_type,Others|string|max:255',
             'evidence_file' => [
@@ -164,7 +164,7 @@ class disputeRequest extends FormRequest
             'milestone_item_id.exists' => 'The selected milestone item does not exist.',
 
             'dispute_type.required' => 'Please select a dispute type.',
-            'dispute_type.in' => 'Invalid dispute type selected. Must be Payment, Delay, Quality, or Others.',
+            'dispute_type.in' => 'Invalid dispute type selected. Must be Payment, Delay, Quality, Request to Halt, or Others.',
 
             'dispute_desc.required' => 'Please provide a detailed description of the dispute.',
             'dispute_desc.max' => 'Dispute description cannot exceed 2000 characters.',

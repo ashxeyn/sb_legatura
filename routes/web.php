@@ -156,11 +156,8 @@ Route::get('/api/psgc/provinces', [authController::class, 'getProvinces']);
 Route::get('/api/psgc/provinces/{provinceCode}/cities', [authController::class, 'getCitiesByProvince']);
 Route::get('/api/psgc/cities/{cityCode}/barangays', [authController::class, 'getBarangaysByCity']);
 
-// Contractor members API (simple JSON-backed implementation)
-Route::get('/api/contractor/members', [membersController::class, 'index']);
-Route::post('/api/contractor/members', [membersController::class, 'store']);
-Route::put('/api/contractor/members/{memberId}', [membersController::class, 'update']);
-Route::delete('/api/contractor/members/{memberId}', [membersController::class, 'destroy']);
+// NOTE: Contractor members API routes are in routes/api.php (not here)
+// Mobile app uses /api/contractor/members endpoints with Bearer token auth
 
 // Dashboard Routes
 Route::get('/admin/dashboard', function() {
@@ -400,4 +397,29 @@ Route::prefix('/api/admin')->group(function () {
     Route::apiResource('payments', App\Http\Controllers\Admin\PaymentController::class);
 });
 
-Route::get('/storage/{path}', [authController::class, 'serve'])->where('path', '.*')->name('storage.serve');
+// Windows/XAMPP storage fallback route - serves files from storage/app/public/
+Route::get('/storage/{path}', function ($path) {
+    // Remove query parameters from path (e.g., ?t=timestamp)
+    $cleanPath = strtok($path, '?');
+    $fullPath = storage_path('app/public/' . $cleanPath);
+    
+    \Log::info('Storage serve request', [
+        'raw_path' => $path,
+        'clean_path' => $cleanPath,
+        'full_path' => $fullPath,
+        'exists' => file_exists($fullPath),
+        'is_readable' => file_exists($fullPath) ? is_readable($fullPath) : false
+    ]);
+    
+    if (!file_exists($fullPath)) {
+        \Log::warning('File not found in storage', ['path' => $fullPath]);
+        abort(404, 'File not found');
+    }
+    
+    $mimeType = mime_content_type($fullPath);
+    
+    return response()->file($fullPath, [
+        'Content-Type' => $mimeType,
+        'Cache-Control' => 'public, max-age=31536000',
+    ]);
+})->where('path', '.*')->name('storage.serve');

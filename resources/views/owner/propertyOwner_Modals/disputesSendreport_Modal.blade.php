@@ -90,6 +90,16 @@
                             </div>
                         </button>
 
+                        <button type="button" class="dispute-option" data-value="request-to-halt">
+                            <div class="option-icon halt">
+                                <i class="fi fi-rr-pause-circle"></i>
+                            </div>
+                            <div class="option-content">
+                                <h4 class="option-title">Request to Halt</h4>
+                                <p class="option-description">Request to halt or pause the project</p>
+                            </div>
+                        </button>
+
                         <button type="button" class="dispute-option" data-value="other-issue">
                             <div class="option-icon other">
                                 <i class="fi fi-rr-menu-dots"></i>

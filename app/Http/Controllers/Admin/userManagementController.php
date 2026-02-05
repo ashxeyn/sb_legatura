@@ -1413,6 +1413,12 @@ class userManagementController extends authController
             ]);
 
         if ($updated) {
+            // Also activate the contractor owner in contractor_users table
+            DB::table('contractor_users')
+                ->where('user_id', $id)
+                ->where('role', 'owner')
+                ->update(['is_active' => 1]);
+            
             \Log::info("Contractor verification approved for user_id: {$id}");
             return response()->json([
                 'success' => true,

@@ -162,6 +162,106 @@ Route::get('/debug/ping', function (Request $request) {
     return response()->json(['success' => true, 'message' => 'pong', 'time' => now()]);
 });
 
+// Debug: Check token validity (no auth required)
+Route::get('/debug/token-check', function (Request $request) {
+    $token = $request->bearerToken();
+    if (!$token) {
+        return response()->json(['error' => 'No bearer token provided']);
+    }
+    
+    // Check if token exists in database
+    $tokenRecord = DB::table('personal_access_tokens')
+        ->where('token', hash('sha256', $token))
+        ->first();
+    
+    if (!$tokenRecord) {
+        return response()->json(['error' => 'Token not found in database']);
+    }
+    
+    // Try to get the user
+    $user = DB::table('users')->where('user_id', $tokenRecord->tokenable_id)->first();
+    
+    return response()->json([
+        'token_found' => true,
+        'tokenable_type' => $tokenRecord->tokenable_type,
+        'tokenable_id' => $tokenRecord->tokenable_id,
+        'user_found' => $user ? true : false,
+        'user_id' => $user ? $user->user_id : null,
+        'username' => $user ? $user->username : null,
+        'user_type' => $user ? $user->user_type : null,
+        'token_name' => $tokenRecord->name,
+        'token_last_used' => $tokenRecord->last_used_at,
+    ]);
+});
+
+// Debug: Check contractor status
+Route::get('/debug/contractor-status', function (Request $request) {
+    $userId = $request->query('user_id');
+    if (!$userId) {
+        return response()->json(['error' => 'user_id required']);
+    }
+    
+    $contractor = DB::table('contractors')->where('user_id', $userId)->first();
+    $contractorUsers = DB::table('contractor_users')->where('user_id', $userId)->get();
+    $allMembers = $contractor ? DB::table('contractor_users')
+        ->where('contractor_id', $contractor->contractor_id)
+        ->where('is_deleted', 0)
+        ->get() : [];
+    
+    return response()->json([
+        'contractor' => $contractor,
+        'contractor_users_for_this_user' => $contractorUsers,
+        'all_members' => $allMembers
+    ]);
+});
+
+// Contractor members (staff) management - uses user_id from query/header
+Route::get('/contractor/members', [\App\Http\Controllers\contractor\membersController::class, 'index']);
+Route::post('/contractor/members', [\App\Http\Controllers\contractor\membersController::class, 'store']);
+Route::put('/contractor/members/{id}', [\App\Http\Controllers\contractor\membersController::class, 'update']);
+Route::delete('/contractor/members/{id}', [\App\Http\Controllers\contractor\membersController::class, 'delete']);
+Route::patch('/contractor/members/{id}/toggle-active', [\App\Http\Controllers\contractor\membersController::class, 'toggleActive']);
+
+// Debug: Check all member statuses for a contractor
+Route::get('/debug/member-statuses', function (\Illuminate\Http\Request $request) {
+    $userId = $request->query('user_id');
+    if (!$userId) {
+        return response()->json(['error' => 'user_id required']);
+    }
+    
+    $contractor = DB::table('contractors')->where('user_id', $userId)->first();
+    if (!$contractor) {
+        return response()->json(['error' => 'Contractor not found for user_id: ' . $userId]);
+    }
+    
+    $members = DB::table('contractor_users')
+        ->join('users', 'contractor_users.user_id', '=', 'users.user_id')
+        ->where('contractor_users.contractor_id', $contractor->contractor_id)
+        ->select(
+            'contractor_users.contractor_user_id',
+            'contractor_users.user_id',
+            'contractor_users.authorized_rep_fname as first_name',
+            'contractor_users.authorized_rep_lname as last_name',
+            'contractor_users.role',
+            'contractor_users.is_active',
+            'contractor_users.is_deleted',
+            'contractor_users.deletion_reason',
+            'users.email',
+            'users.username'
+        )
+        ->get();
+    
+    return response()->json([
+        'contractor_id' => $contractor->contractor_id,
+        'contractor_name' => $contractor->company_name ?? 'N/A',
+        'total_members' => count($members),
+        'active_count' => $members->where('is_active', 1)->where('is_deleted', 0)->count(),
+        'inactive_count' => $members->where('is_active', 0)->where('is_deleted', 0)->count(),
+        'deleted_count' => $members->where('is_deleted', 1)->count(),
+        'members' => $members
+    ]);
+});
+
 // Protected routes (require authentication via Sanctum)
 Route::middleware('auth:sanctum')->group(function () {
 
@@ -206,15 +306,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/role/add/owner/step1', [authController::class, 'switchOwnerStep1']);
     Route::post('/role/add/owner/step2', [authController::class, 'switchOwnerStep2']);
     Route::post('/role/add/owner/final', [authController::class, 'switchOwnerFinal']);
-
-    // Contractor members (staff) management - use DB-backed controller
-    Route::middleware('auth:sanctum')->group(function () {
-        Route::get('/contractor/members', [\App\Http\Controllers\contractor\membersController::class, 'index']);
-        Route::post('/contractor/members', [\App\Http\Controllers\contractor\membersController::class, 'store']);
-        // Regenerate temporary credentials (cached, not persisted)
-        Route::post('/contractor/members/{id}/regenerate-credentials', [\App\Http\Controllers\contractor\membersController::class, 'regenerateCredentials']);
-        Route::get('/contractor/members/{id}/temp-credentials', [\App\Http\Controllers\contractor\membersController::class, 'getTempCredentials']);
-    });
 
     // Dashboard
     Route::get('/dashboard', [projectsController::class, 'showDashboard']);
@@ -309,20 +400,3 @@ Route::prefix('disputes')->group(function () {
 // Progress approve/reject routes - outside middleware group so controller can handle auth manually
 Route::post('/progress/{id}/approve', [progressUploadController::class, 'approveProgress']);
 Route::post('/progress/{id}/reject', [progressUploadController::class, 'rejectProgress']);
-
-// Debugging route to log and catch errors for troubleshooting
-Route::get('/contractor/members', function() {
-    Log::info('Route started');
-
-    try {
-        // Your existing code here
-        Log::info('Processing step 1');
-        // ... more code
-        Log::info('Processing step 2');
-
-    } catch (\Throwable $e) {
-        Log::error('Error: ' . $e->getMessage());
-        Log::error('Stack trace: ' . $e->getTraceAsString());
-        return response()->json(['error' => $e->getMessage()], 500);
-    }
-});

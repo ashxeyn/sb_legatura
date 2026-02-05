@@ -7,11 +7,11 @@ use Laravel\Sanctum\PersonalAccessToken as SanctumPersonalAccessToken;
 class PersonalAccessToken extends SanctumPersonalAccessToken
 {
     /**
-     * Override to ensure it works with custom primary key (user_id)
+     * Get the tokenable model that the access token belongs to.
      */
     public function tokenable()
     {
-        return $this->morphTo('tokenable');
+        return $this->morphTo(__FUNCTION__, 'tokenable_type', 'tokenable_id');
     }
 }
 
