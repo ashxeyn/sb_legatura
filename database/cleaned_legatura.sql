@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jan 29, 2026 at 06:03 AM
+-- Generation Time: Feb 05, 2026 at 08:36 PM
 -- Server version: 11.4.5-MariaDB
 -- PHP Version: 8.2.12
 
@@ -175,7 +175,7 @@ CREATE TABLE `disputes` (
   `against_user_id` int(11) NOT NULL,
   `milestone_id` int(11) DEFAULT NULL,
   `milestone_item_id` int(11) DEFAULT NULL,
-  `dispute_type` enum('Payment','Delay','Quality','Others') NOT NULL,
+  `dispute_type` enum('Payment','Delay','Quality','Others','Halt') NOT NULL,
   `title` varchar(255) DEFAULT NULL,
   `if_others_distype` varchar(255) DEFAULT NULL,
   `dispute_desc` text NOT NULL,
@@ -233,18 +233,6 @@ CREATE TABLE `messages` (
 -- --------------------------------------------------------
 
 --
--- Table structure for table `migrations`
---
-
-CREATE TABLE `migrations` (
-  `id` int(10) UNSIGNED NOT NULL,
-  `migration` varchar(255) NOT NULL,
-  `batch` int(11) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
-
---
 -- Table structure for table `milestones`
 --
 
@@ -255,7 +243,8 @@ CREATE TABLE `milestones` (
   `plan_id` int(11) NOT NULL,
   `milestone_name` varchar(200) NOT NULL,
   `milestone_description` text NOT NULL,
-  `milestone_status` enum('not_started','in_progress','rejected','delayed','cancelled') DEFAULT 'not_started',
+  `milestone_status` enum('not_started','in_progress','rejected','delayed','cancelled','deleted') DEFAULT 'not_started',
+  `previous_status` varchar(50) DEFAULT NULL,
   `start_date` datetime NOT NULL,
   `end_date` datetime NOT NULL,
   `is_deleted` tinyint(1) DEFAULT NULL,
@@ -280,8 +269,10 @@ CREATE TABLE `milestone_items` (
   `milestone_item_title` varchar(255) NOT NULL,
   `milestone_item_description` text DEFAULT NULL,
   `milestone_item_cost` decimal(12,2) NOT NULL,
-  `item_status` enum('not_started','in_progress','delayed','completed','cancelled') NOT NULL DEFAULT 'not_started',
-  `date_to_finish` datetime NOT NULL
+  `item_status` enum('not_started','in_progress','delayed','completed','cancelled','halt','deleted') NOT NULL DEFAULT 'not_started',
+  `previous_status` varchar(50) DEFAULT NULL,
+  `date_to_finish` datetime NOT NULL,
+  `updated_at` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -441,9 +432,10 @@ CREATE TABLE `projects` (
   `type_id` int(11) NOT NULL,
   `if_others_ctype` varchar(255) DEFAULT NULL,
   `to_finish` int(11) DEFAULT NULL,
-  `project_status` enum('open','bidding_closed','in_progress','completed','terminated','deleted_post','halt') DEFAULT 'open',
-  `stat_reason` text NOT NULL DEFAULT '',
-  `remarks` text NOT NULL DEFAULT '',
+  `project_status` enum('open','bidding_closed','in_progress','completed','terminated','deleted_post','halt','deleted') DEFAULT 'open',
+  `previous_status` varchar(50) DEFAULT NULL,
+  `stat_reason` text DEFAULT NULL,
+  `remarks` text DEFAULT NULL,
   `selected_contractor_id` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -677,12 +669,6 @@ ALTER TABLE `messages`
   ADD KEY `receiver_id` (`receiver_id`);
 
 --
--- Indexes for table `migrations`
---
-ALTER TABLE `migrations`
-  ADD PRIMARY KEY (`id`);
-
---
 -- Indexes for table `milestones`
 --
 ALTER TABLE `milestones`
@@ -893,12 +879,6 @@ ALTER TABLE `dispute_files`
 --
 ALTER TABLE `messages`
   MODIFY `message_id` int(11) NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT for table `migrations`
---
-ALTER TABLE `migrations`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `milestones`

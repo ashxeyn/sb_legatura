@@ -1,5 +1,5 @@
   <!-- Ongoing Project Modal -->
-  <div id="ongoingProjectModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden transition-opacity duration-300">
+  <div id="ongoingProjectModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden transition-opacity duration-300" data-project-id="{{ $project->project_id ?? '' }}">
     <div class="absolute inset-0 flex items-start justify-center overflow-y-auto py-8 px-4">
       <div class="bg-white w-full max-w-6xl rounded-2xl shadow-2xl relative my-4 transform transition-all duration-300 scale-100 hover:shadow-3xl">
         @isset($project)
@@ -236,7 +236,7 @@
                   </svg>
                   Details
                 </h3>
-                <button class="text-amber-600 hover:text-amber-700 p-2 rounded-lg hover:bg-amber-50 transition-colors">
+                <button id="editOngoingMilestoneBtn" onclick="openEditMilestoneModal(window.selectedMilestoneItemId)" class="text-amber-600 hover:text-amber-700 p-2 rounded-lg hover:bg-amber-50 transition-colors hidden">
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
                   </svg>
@@ -331,7 +331,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                   </svg>
                 </div>
-                <p class="text-xl font-bold text-gray-900">{{ $project->approved_payments_count ?? 0 }}</p>
+                <p class="text-xl font-bold text-gray-900">{{ $project->approved_payments_count ?? 0 }}/{{ $project->total_milestone_items ?? 0 }}</p>
               </div>
               <div class="bg-gradient-to-br from-amber-50 to-orange-50 rounded-lg p-4 border border-amber-200 hover:shadow-md transition-all duration-200 group">
                 <div class="flex items-center justify-between mb-2">
@@ -412,7 +412,13 @@
 
 
         <!-- Footer -->
-        <div class="border-t border-gray-200 px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-b-2xl flex justify-end gap-3">
+        <div class="border-t border-gray-200 px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-b-2xl flex justify-between items-center gap-3">
+          <button onclick="showHaltProjectModal({{ $project->project_id }})" class="px-6 py-2.5 text-sm font-semibold rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105 flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            Halt Project
+          </button>
           <button onclick="hideOngoingProjectModal()" class="px-6 py-2.5 text-sm font-semibold rounded-lg border-2 border-gray-300 text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 shadow-sm hover:shadow-md transform hover:scale-105 flex items-center gap-2">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>

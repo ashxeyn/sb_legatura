@@ -403,7 +403,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                   </svg>
                 </div>
-                <p class="text-xl font-bold text-gray-900">{{ $project->total_milestones_paid }}</p>
+                <p class="text-xl font-bold text-gray-900">{{ $project->total_milestones_paid }}/{{ $project->total_milestone_items ?? 0 }}</p>
               </div>
               <div class="bg-gradient-to-br from-gray-50 to-slate-50 rounded-lg p-4 border border-gray-200 hover:shadow-md transition-all duration-200 group">
                 <div class="flex items-center justify-between mb-2">

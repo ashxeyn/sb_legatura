@@ -172,7 +172,17 @@
         </div>
 
         <!-- Modal Actions -->
-        <div class="flex justify-end gap-3 pt-4">
+        <div class="flex justify-between items-center gap-3 pt-4">
+          @if($project->project_status === 'bidding_closed')
+          <button onclick="showHaltProjectModal({{ $project->project_id }})" class="px-5 py-2 text-sm font-medium rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white transition shadow-md hover:shadow-lg flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            Halt Project
+          </button>
+          @else
+          <div></div>
+          @endif
           <button onclick="hideBiddingModal()" class="px-5 py-2 text-sm font-medium rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition">Close</button>
         </div>
       </div>

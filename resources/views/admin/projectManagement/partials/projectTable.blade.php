@@ -57,6 +57,7 @@
                 'bidding_closed' => 'bg-amber-100 text-amber-700',
                 'halt' => 'bg-red-100 text-red-700',
                 'terminated' => 'bg-gray-100 text-gray-700',
+                'deleted' => 'bg-red-100 text-red-700',
                 default => 'bg-gray-100 text-gray-700'
             };
             $progressLabel = match($progressStatus) {
@@ -82,9 +83,15 @@
             <button class="action-btn edit-btn p-2 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 transition" title="Edit" data-id="{{ $project->project_id }}">
               <i class="fi fi-rr-pencil"></i>
             </button>
+            @if($project->project_status === 'deleted')
+            <button class="action-btn restore-btn p-2 rounded-lg bg-green-50 text-green-600 hover:bg-green-100 transition" title="Restore" data-id="{{ $project->project_id }}">
+              <i class="fi fi-rr-refresh"></i>
+            </button>
+            @else
             <button class="action-btn delete-btn p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition" title="Delete" data-id="{{ $project->project_id }}">
               <i class="fi fi-rr-trash"></i>
             </button>
+            @endif
           </div>
         </td>
       </tr>

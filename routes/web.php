@@ -268,26 +268,49 @@ Route::get('/admin/global-management/ai-management', [globalManagementController
 Route::get('/admin/global-management/posting-management', [globalManagementController::class, 'postingManagement'])->name('admin.globalManagement.postingManagement');
 
 // Project Management Routes
+// Specific routes first (to avoid conflict with {id} parameter)
 Route::get('/admin/project-management/list-of-projects', [projectManagementController::class, 'listOfProjects'])->name('admin.projectManagement.listOfProjects');
-Route::get('/admin/project-management/{id}/details', [projectManagementController::class, 'getProjectDetails'])->name('admin.projectManagement.projectDetails');
-Route::get('/admin/project-management/{id}/completed-details', [projectManagementController::class, 'getCompletedDetails'])->name('admin.projectManagement.completedDetails');
-Route::get('/admin/project-management/{id}/completion-details', [projectManagementController::class, 'getCompletionDetails'])->name('admin.projectManagement.completionDetails');
-Route::get('/admin/project-management/{id}/ongoing-details', [projectManagementController::class, 'getOngoingDetails'])->name('admin.projectManagement.ongoingDetails');
-Route::get('/admin/project-management/{id}/open-details', [projectManagementController::class, 'getOpenDetails'])->name('admin.projectManagement.openDetails');
+Route::get('/admin/project-management/subscriptions', [ProjectAdminController::class, 'subscriptions'])->name('admin.projectManagement.subscriptions');
+Route::get('/admin/project-management/disputes-reports', [projectManagementController::class, 'disputesReports'])->name('admin.projectManagement.disputesReports');
+Route::get('/admin/project-management/messages', [ProjectAdminController::class, 'messages'])->name('admin.projectManagement.messages');
+
+// Bid routes
 Route::get('/admin/project-management/bids/{bid_id}/details', [projectManagementController::class, 'getBidDetails'])->name('admin.projectManagement.bidDetails');
 Route::get('/admin/project-management/bids/{bid_id}/accept-summary', [projectManagementController::class, 'getAcceptBidSummary'])->name('admin.projectManagement.acceptBidSummary');
 Route::post('/admin/project-management/bids/{bid_id}/accept', [projectManagementController::class, 'acceptBid'])->name('admin.projectManagement.acceptBid');
 Route::get('/admin/project-management/bids/{bid_id}/reject-summary', [projectManagementController::class, 'getRejectBidSummary'])->name('admin.projectManagement.rejectBidSummary');
 Route::post('/admin/project-management/bids/{bid_id}/reject', [projectManagementController::class, 'rejectBid'])->name('admin.projectManagement.rejectBid');
-Route::get('/admin/project-management/{id}/terminated-details', [projectManagementController::class, 'getTerminatedDetails'])->name('admin.projectManagement.terminatedDetails');
-Route::get('/admin/project-management/subscriptions', [ProjectAdminController::class, 'subscriptions'])->name('admin.projectManagement.subscriptions');
-Route::get('/admin/project-management/disputes-reports', [projectManagementController::class, 'disputesReports'])->name('admin.projectManagement.disputesReports');
+
+// Dispute routes
 Route::get('/admin/project-management/disputes/{id}/details', [projectManagementController::class, 'getDisputeDetails'])->name('admin.projectManagement.disputeDetails');
-// Dispute actions: approve for review, reject (cancel), finalize resolution
-Route::post('/admin/project-management/disputes/{id}/approve', [projectManagementController::class, 'approveForReview'])->name('admin.projectManagement.dispute.approve');
-Route::post('/admin/project-management/disputes/{id}/reject', [projectManagementController::class, 'rejectDispute'])->name('admin.projectManagement.dispute.reject');
-Route::post('/admin/project-management/disputes/{id}/finalize', [projectManagementController::class, 'finalizeResolution'])->name('admin.projectManagement.dispute.finalize');
-Route::get('/admin/project-management/messages', [ProjectAdminController::class, 'messages'])->name('admin.projectManagement.messages');
+Route::post('/admin/project-management/disputes/{id}/approve', [projectManagementController::class, 'approveForReview'])->name('admin.projectManagement.approveDispute');
+Route::post('/admin/project-management/disputes/{id}/reject', [projectManagementController::class, 'rejectDispute'])->name('admin.projectManagement.rejectDispute');
+Route::post('/admin/project-management/disputes/{id}/finalize', [projectManagementController::class, 'finalizeResolution'])->name('admin.projectManagement.finalizeDispute');
+
+// Project detail routes (specific paths before {id})
+Route::get('/admin/project-management/{id}/details', [projectManagementController::class, 'getProjectDetails'])->name('admin.projectManagement.projectDetails');
+Route::get('/admin/project-management/{id}/completed-details', [projectManagementController::class, 'getCompletedDetails'])->name('admin.projectManagement.completedDetails');
+Route::get('/admin/project-management/{id}/completion-details', [projectManagementController::class, 'getCompletionDetails'])->name('admin.projectManagement.completionDetails');
+Route::get('/admin/project-management/{id}/ongoing-details', [projectManagementController::class, 'getOngoingDetails'])->name('admin.projectManagement.ongoingDetails');
+Route::get('/admin/project-management/{id}/open-details', [projectManagementController::class, 'getOpenDetails'])->name('admin.projectManagement.openDetails');
+Route::get('/admin/project-management/{id}/terminated-details', [projectManagementController::class, 'getTerminatedDetails'])->name('admin.projectManagement.terminatedDetails');
+Route::get('/admin/project-management/{id}/halted-details', [projectManagementController::class, 'getHaltedDetails'])->name('admin.projectManagement.haltedDetails');
+Route::get('/admin/project-management/{id}/halt-details', [projectManagementController::class, 'getHaltDetails'])->name('admin.projectManagement.haltDetails');
+Route::get('/admin/project-management/{id}/edit', [projectManagementController::class, 'getEditProject'])->name('admin.projectManagement.editProject');
+Route::get('/admin/project-management/{id}/delete-summary', [projectManagementController::class, 'getDeleteSummary'])->name('admin.projectManagement.deleteSummary');
+Route::get('/admin/project-management/{id}/restore-summary', [projectManagementController::class, 'getRestoreSummary'])->name('admin.projectManagement.restoreSummary');
+Route::get('/admin/project-management/{id}/halt-summary', [projectManagementController::class, 'getHaltSummary'])->name('admin.projectManagement.haltSummary');
+Route::get('/admin/project-management/milestone-item/{itemId}/edit', [projectManagementController::class, 'getMilestoneItemForEdit'])->name('admin.projectManagement.editMilestoneItem');
+
+// Project action routes
+Route::post('/admin/project-management/{id}/cancel-halt', [projectManagementController::class, 'cancelHalt'])->name('admin.projectManagement.cancelHalt');
+Route::post('/admin/project-management/{id}/resume-halt', [projectManagementController::class, 'resumeHalt'])->name('admin.projectManagement.resumeHalt');
+Route::post('/admin/project-management/{id}/halt', [projectManagementController::class, 'haltProject'])->name('admin.projectManagement.haltProject');
+Route::post('/admin/project-management/{id}/resume', [projectManagementController::class, 'resumeProject'])->name('admin.projectManagement.resumeProject');
+Route::put('/admin/project-management/{id}', [projectManagementController::class, 'updateProject'])->name('admin.projectManagement.updateProject');
+Route::delete('/admin/project-management/{id}', [projectManagementController::class, 'deleteProject'])->name('admin.projectManagement.deleteProject');
+Route::post('/admin/project-management/{id}/restore', [projectManagementController::class, 'restoreProject'])->name('admin.projectManagement.restoreProject');
+Route::put('/admin/project-management/milestone-item/{itemId}', [projectManagementController::class, 'updateMilestoneItem'])->name('admin.projectManagement.updateMilestoneItem');
 
 // Settings Routes
 Route::get('/admin/settings/notifications', function() {

@@ -319,12 +319,37 @@
   @include('admin.projectManagement.partials.cancelHaltConfirmModal')
   @include('admin.projectManagement.partials.resumeHaltConfirmModal')
   @include('admin.projectManagement.partials.completionDetailsModal')
-  @include('admin.projectManagement.partials.editMilestoneModal')
   @include('admin.projectManagement.partials.editProgressReportModal')
   @include('admin.projectManagement.partials.cancelledProjectModal')
-  @include('admin.projectManagement.partials.editProjectModal')
+
+  <!-- Edit Milestone Modal Container -->
+  <div id="editMilestoneModalContainer">
+    <!-- Modal content loaded via AJAX -->
+  </div>
+
+  <!-- Edit Project Modal -->
+  <div id="editProjectModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden transition-opacity duration-300">
+    <div class="absolute inset-0 flex items-center justify-center p-4">
+      <!-- Content loaded via AJAX -->
+    </div>
+  </div>
+
   @include('admin.projectManagement.partials.editProjectConfirmModal')
-  @include('admin.projectManagement.partials.deleteProjectModal')
+
+  <!-- Delete Project Modal Container -->
+  <div id="deleteProjectModalContainer">
+    <!-- Modal content loaded via AJAX -->
+  </div>
+
+  <!-- Restore Project Modal Container -->
+  <div id="restoreProjectModalContainer">
+    <!-- Modal content loaded via AJAX -->
+  </div>
+
+  <!-- Halt Project Modal Container -->
+  <div id="haltProjectModalContainer">
+    <!-- Modal content loaded via AJAX -->
+  </div>
 
   <script src="{{ asset('js/admin/reusables/filters.js') }}" defer></script>
   <script src="{{ asset('js/admin/projectManagement/listOfProjects.js') }}" defer></script>

@@ -95,6 +95,34 @@ class disputeClass
             ->first();
     }
 
+    /**
+     * Get open halt-type disputes for a specific project
+     * Used when admin is halting a project - must select which dispute triggered the halt
+     *
+     * @param int $projectId
+     * @return \Illuminate\Support\Collection
+     */
+    public static function getOpenHaltDisputesForProject($projectId)
+    {
+        return DB::table('disputes')
+            ->leftJoin('users as reporter', 'disputes.raised_by_user_id', '=', 'reporter.user_id')
+            ->leftJoin('users as against', 'disputes.against_user_id', '=', 'against.user_id')
+            ->select(
+                'disputes.dispute_id',
+                'disputes.title',
+                'disputes.dispute_desc',
+                'disputes.dispute_type',
+                'disputes.created_at',
+                'reporter.username as reporter_username',
+                'against.username as against_username'
+            )
+            ->where('disputes.project_id', $projectId)
+            ->where('disputes.dispute_type', 'Halt')
+            ->where('disputes.dispute_status', 'open')
+            ->orderBy('disputes.created_at', 'desc')
+            ->get();
+    }
+
     public static function getEvidence($id)
     {
         if (!Schema::hasTable('dispute_files')) return collect();

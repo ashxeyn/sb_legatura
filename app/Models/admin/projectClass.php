@@ -3,6 +3,7 @@ namespace App\Models\admin;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Log;
 
 class projectClass
 {
@@ -443,6 +444,7 @@ class projectClass
             ->first();
 
         $totalMilestoneItems = count($groupedItems);
+        $project->total_milestone_items = $totalMilestoneItems;
         $project->total_milestones_paid = $paymentSummary->total_milestones_paid ?? 0;
         $project->total_amount_paid = $paymentSummary->total_amount_paid ?? 0;
         $project->last_payment_date = $paymentSummary->last_payment_date;
@@ -750,6 +752,8 @@ class projectClass
             ->where('payment_status', 'approved')
             ->first();
 
+        $totalMilestoneItems = count($groupedItems);
+        $project->total_milestone_items = $totalMilestoneItems;
         $project->approved_payments_count = $paymentSummary->approved_count ?? 0;
         $project->total_amount_paid = $paymentSummary->total_amount ?? 0;
         $project->last_payment_date = $paymentSummary->last_payment_date;
@@ -1242,6 +1246,7 @@ class projectClass
             ->first();
 
         $totalMilestoneItems = count($groupedItems);
+        $project->total_milestone_items = $totalMilestoneItems;
         $project->total_milestones_paid = $paymentSummary->total_milestones_paid ?? 0;
         $project->total_amount_paid = $paymentSummary->total_amount_paid ?? 0;
         $project->last_payment_date = $paymentSummary->last_payment_date;
@@ -1266,5 +1271,894 @@ class projectClass
         $project->payments = $payments;
 
         return $project;
+    }
+
+    public function fetchHaltedProjectDetails($id)
+    {
+        // Main project query with all joins (same as completed modal)
+        $project = DB::table('projects')
+            ->leftJoin('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
+            ->leftJoin('property_owners', 'project_relationships.owner_id', '=', 'property_owners.owner_id')
+            ->leftJoin('users as owner_users', 'property_owners.user_id', '=', 'owner_users.user_id')
+            ->leftJoin('contractors', 'projects.selected_contractor_id', '=', 'contractors.contractor_id')
+            ->leftJoin('contractor_users', function($join) {
+                $join->on('contractors.contractor_id', '=', 'contractor_users.contractor_id')
+                     ->on('contractors.user_id', '=', 'contractor_users.user_id');
+            })
+            ->leftJoin('users as contractor_user_email', 'contractors.user_id', '=', 'contractor_user_email.user_id')
+            ->select(
+                'projects.*',
+                'project_relationships.bidding_due',
+                'project_relationships.created_at as relationship_created_at',
+                // Owner info
+                'property_owners.first_name as owner_first_name',
+                'property_owners.middle_name as owner_middle_name',
+                'property_owners.last_name as owner_last_name',
+                'owner_users.profile_pic as owner_profile_pic',
+                // Contractor info
+                DB::raw("CONCAT(contractor_users.authorized_rep_fname, ' ', contractor_users.authorized_rep_lname) as contractor_name"),
+                'contractors.company_name',
+                'contractor_user_email.email as contractor_email',
+                'contractors.picab_number as contractor_pcab',
+                'contractors.picab_category as contractor_category',
+                'contractors.picab_expiration_date as contractor_pcab_expiry',
+                'contractors.business_permit_number as contractor_permit',
+                'contractors.business_permit_city as contractor_city',
+                'contractors.business_permit_expiration as contractor_permit_expiry',
+                'contractors.tin_business_reg_number as contractor_tin'
+            )
+            ->where('projects.project_id', $id)
+            ->first();
+
+        if (!$project) {
+            return null;
+        }
+
+        // Format owner name
+        $project->owner_name = trim(($project->owner_first_name ?? '') . ' ' . ($project->owner_middle_name ?? '') . ' ' . ($project->owner_last_name ?? ''));
+        if (empty($project->owner_name)) {
+            $project->owner_name = 'Unknown Owner';
+        }
+
+        // Get halted date (use relationship_created_at as fallback)
+        $project->halted_at = $project->relationship_created_at ?? now();
+
+        // Calculate target timeline from milestones
+        $timelineData = DB::table('milestones')
+            ->where('project_id', $id)
+            ->selectRaw('MIN(start_date) as timeline_start, MAX(end_date) as timeline_end')
+            ->first();
+
+        $project->timeline_start = $timelineData->timeline_start ?? null;
+        $project->timeline_end = $timelineData->timeline_end ?? null;
+
+        // Get project files
+        $projectFiles = DB::table('project_files')
+            ->where('project_id', $id)
+            ->select('file_id', 'file_type', 'file_path', 'uploaded_at')
+            ->get();
+        $project->project_files = $projectFiles;
+
+        // Get milestone items with progress files
+        $milestoneItems = DB::table('milestone_items')
+            ->join('milestones', 'milestone_items.milestone_id', '=', 'milestones.milestone_id')
+            ->leftJoin('progress', 'milestone_items.item_id', '=', 'progress.milestone_item_id')
+            ->leftJoin('progress_files', 'progress.progress_id', '=', 'progress_files.progress_id')
+            ->where('milestones.project_id', $id)
+            ->select(
+                'milestone_items.*',
+                'milestones.milestone_id',
+                'progress.progress_id',
+                'progress.purpose',
+                'progress.progress_status',
+                'progress.submitted_at',
+                'progress_files.file_id as progress_file_id',
+                'progress_files.file_path as progress_file_path'
+            )
+            ->orderBy('milestone_items.sequence_order')
+            ->get();
+
+        // Group milestone items by item_id with their progress files
+        $groupedItems = [];
+        foreach ($milestoneItems as $item) {
+            $itemId = $item->item_id;
+            if (!isset($groupedItems[$itemId])) {
+                $groupedItems[$itemId] = $item;
+                $groupedItems[$itemId]->progress_reports = [];
+            }
+
+            // Add progress report with files if exists
+            if ($item->progress_id) {
+                $progressKey = $item->progress_id;
+                if (!isset($groupedItems[$itemId]->progress_reports[$progressKey])) {
+                    $groupedItems[$itemId]->progress_reports[$progressKey] = [
+                        'progress_id' => $item->progress_id,
+                        'purpose' => $item->purpose,
+                        'progress_status' => $item->progress_status,
+                        'submitted_at' => $item->submitted_at,
+                        'files' => []
+                    ];
+                }
+                if ($item->progress_file_id) {
+                    $groupedItems[$itemId]->progress_reports[$progressKey]['files'][] = [
+                        'file_id' => $item->progress_file_id,
+                        'file_path' => $item->progress_file_path
+                    ];
+                }
+            }
+        }
+
+        // Convert progress_reports associative array to indexed array
+        foreach ($groupedItems as $itemId => $item) {
+            $groupedItems[$itemId]->progress_reports = array_values($item->progress_reports);
+        }
+
+        $project->milestone_items = array_values($groupedItems);
+
+        // Payment summary calculations - approved/paid only
+        $paymentSummary = DB::table('milestone_payments')
+            ->where('project_id', $id)
+            ->whereIn('payment_status', ['approved', 'paid'])
+            ->selectRaw('COUNT(*) as total_milestones_paid')
+            ->selectRaw('SUM(amount) as total_amount_paid')
+            ->selectRaw('MAX(transaction_date) as last_payment_date')
+            ->first();
+
+        $totalMilestoneItems = count($groupedItems);
+        $project->total_milestone_items = $totalMilestoneItems;
+        $project->total_milestones_paid = $paymentSummary->total_milestones_paid ?? 0;
+        $project->total_amount_paid = $paymentSummary->total_amount_paid ?? 0;
+        $project->last_payment_date = $paymentSummary->last_payment_date;
+        $project->overall_payment_status = ($project->total_milestones_paid > 0)
+            ? 'Partially Paid'
+            : 'No Payments';
+
+        // Get payment records for table - approved/paid only
+        $payments = DB::table('milestone_payments')
+            ->leftJoin('milestone_items', 'milestone_payments.item_id', '=', 'milestone_items.item_id')
+            ->leftJoin('milestones', 'milestone_items.milestone_id', '=', 'milestones.milestone_id')
+            ->where('milestone_payments.project_id', $id)
+            ->whereIn('milestone_payments.payment_status', ['approved', 'paid'])
+            ->select(
+                'milestone_payments.*',
+                'milestone_items.milestone_item_title',
+                'milestone_items.sequence_order',
+                'milestone_items.date_to_finish',
+                'milestones.start_date',
+                'milestones.end_date'
+            )
+            ->orderBy('milestone_items.sequence_order', 'asc')
+            ->get();
+
+        $project->payments = $payments;
+
+        return $project;
+    }
+
+    public function fetchHaltDetails($id)
+    {
+        // Get the most recent dispute for this project that caused the halt
+        $haltDispute = DB::table('disputes')
+            ->leftJoin('users as raised_user', 'disputes.raised_by_user_id', '=', 'raised_user.user_id')
+            ->leftJoin('property_owners', 'raised_user.user_id', '=', 'property_owners.user_id')
+            ->leftJoin('contractors', 'raised_user.user_id', '=', 'contractors.user_id')
+            ->leftJoin('milestone_items', 'disputes.milestone_item_id', '=', 'milestone_items.item_id')
+            ->leftJoin('projects', 'disputes.project_id', '=', 'projects.project_id')
+            ->where('disputes.project_id', $id)
+            ->whereIn('disputes.dispute_status', ['open', 'under_review'])
+            ->select(
+                'disputes.*',
+                'disputes.project_id',
+                'raised_user.user_type',
+                'property_owners.first_name as owner_first_name',
+                'property_owners.last_name as owner_last_name',
+                'contractors.company_name as contractor_name',
+                'milestone_items.milestone_item_title',
+                'projects.remarks as project_remarks'
+            )
+            ->orderBy('disputes.created_at', 'desc')
+            ->first();
+
+        if (!$haltDispute) {
+            return null;
+        }
+
+        // Format initiated_by based on user_type
+        if ($haltDispute->user_type === 'property_owner') {
+            $haltDispute->initiated_by = trim(($haltDispute->owner_first_name ?? '') . ' ' . ($haltDispute->owner_last_name ?? ''));
+        } else if ($haltDispute->user_type === 'contractor') {
+            $haltDispute->initiated_by = $haltDispute->contractor_name ?? 'Unknown Contractor';
+        } else {
+            $haltDispute->initiated_by = 'Unknown User';
+        }
+
+        // Get supporting files for this dispute
+        $supportingFiles = DB::table('dispute_files')
+            ->where('dispute_id', $haltDispute->dispute_id)
+            ->select('file_id', 'storage_path', 'original_name', 'mime_type', 'size', 'uploaded_at')
+            ->get();
+
+        $haltDispute->supporting_files = $supportingFiles;
+
+        return $haltDispute;
+    }
+
+    public function cancelHaltedProject($id, $remarks)
+    {
+        // Update all halt and non-completed milestone items to cancelled
+        DB::table('milestone_items')
+            ->join('milestones', 'milestone_items.milestone_id', '=', 'milestones.milestone_id')
+            ->where('milestones.project_id', $id)
+            ->whereIn('milestone_items.item_status', ['halt', 'not_started', 'in_progress', 'delayed'])
+            ->update([
+                'milestone_items.item_status' => 'cancelled'
+            ]);
+
+        // Close all open/under_review disputes for this project
+        DB::table('disputes')
+            ->where('project_id', $id)
+            ->whereIn('dispute_status', ['open', 'under_review'])
+            ->update([
+                'dispute_status' => 'closed'
+            ]);
+
+        // Update project status to terminated with remarks
+        $updated = DB::table('projects')
+            ->where('project_id', $id)
+            ->update([
+                'project_status' => 'terminated',
+                'stat_reason' => $remarks
+            ]);
+
+        return $updated > 0;
+    }
+
+    public function resumeHaltedProject($id)
+    {
+        // Update all halted milestone items to not_started
+        DB::table('milestone_items')
+            ->join('milestones', 'milestone_items.milestone_id', '=', 'milestones.milestone_id')
+            ->where('milestones.project_id', $id)
+            ->where('milestone_items.item_status', 'halt')
+            ->update([
+                'milestone_items.item_status' => 'not_started'
+            ]);
+
+        // Close all open/under_review disputes for this project
+        DB::table('disputes')
+            ->where('project_id', $id)
+            ->whereIn('dispute_status', ['open', 'under_review'])
+            ->update([
+                'dispute_status' => 'closed'
+            ]);
+
+        // Update project status to in_progress
+        $updated = DB::table('projects')
+            ->where('project_id', $id)
+            ->update([
+                'project_status' => 'in_progress'
+            ]);
+
+        return $updated > 0;
+    }
+
+    public function fetchProjectForEdit($id)
+    {
+        // Main project query with current contractor details
+        $project = DB::table('projects')
+            ->leftJoin('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
+            ->leftJoin('property_owners', 'project_relationships.owner_id', '=', 'property_owners.owner_id')
+            ->leftJoin('contractors', 'projects.selected_contractor_id', '=', 'contractors.contractor_id')
+            ->leftJoin('contractor_types', 'contractors.type_id', '=', 'contractor_types.type_id')
+            ->select(
+                'projects.project_id',
+                'projects.project_title',
+                'projects.project_description',
+                'projects.property_type',
+                'projects.lot_size',
+                'projects.floor_area',
+                'projects.project_location',
+                'projects.selected_contractor_id',
+                'projects.project_status',
+                // Owner details
+                DB::raw("CONCAT(property_owners.first_name, ' ', COALESCE(property_owners.middle_name, ''), ' ', property_owners.last_name) as owner_name"),
+                // Current contractor details
+                'contractors.company_name',
+                'contractors.company_email as contractor_email',
+                'contractors.company_phone as contractor_phone',
+                'contractors.business_address as contractor_address',
+                'contractors.picab_number as pcab_license_no',
+                'contractors.picab_category',
+                'contractors.business_permit_number as business_permit',
+                'contractors.business_permit_city',
+                'contractors.tin_business_reg_number as tin_no',
+                'contractors.years_of_experience',
+                'contractor_types.type_name as contractor_type'
+            )
+            ->where('projects.project_id', $id)
+            ->first();
+
+        if (!$project) {
+            return null;
+        }
+
+        // Get project files
+        $files = DB::table('project_files')
+            ->select('file_id', 'file_path', 'file_type')
+            ->where('project_id', $id)
+            ->get();
+
+        $project->files = $files;
+
+        // Get alternative contractors (bidders who were NOT selected)
+        $alternativeContractors = DB::table('bids')
+            ->join('contractors', 'bids.contractor_id', '=', 'contractors.contractor_id')
+            ->leftJoin('contractor_types', 'contractors.type_id', '=', 'contractor_types.type_id')
+            ->select(
+                'contractors.contractor_id',
+                'contractors.company_name',
+                'contractors.company_email as email',
+                'contractors.company_phone as phone_number',
+                'contractors.business_address as address',
+                'contractors.picab_number as pcab_license_no',
+                'contractors.picab_category',
+                'contractors.business_permit_number as business_permit',
+                'contractors.business_permit_city',
+                'contractors.tin_business_reg_number as tin_no',
+                'contractors.years_of_experience',
+                'contractor_types.type_name as contractor_type',
+                'bids.bid_id',
+                'bids.proposed_cost',
+                'bids.estimated_timeline',
+                'bids.contractor_notes',
+                'bids.bid_status'
+            )
+            ->where('bids.project_id', $id)
+            ->where('bids.bid_status', '!=', 'accepted')
+            ->get();
+
+        // Fetch bid files for each alternative contractor
+        foreach ($alternativeContractors as $contractor) {
+            $contractor->bid_files = DB::table('bid_files')
+                ->select('file_id', 'file_name', 'file_path', 'description')
+                ->where('bid_id', $contractor->bid_id)
+                ->get();
+        }
+
+        $project->alternative_contractors = $alternativeContractors;
+
+        return $project;
+    }
+
+    public function fetchDeleteSummary($id)
+    {
+        $project = DB::table('projects')
+            ->join('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
+            ->leftJoin('property_owners', 'project_relationships.owner_id', '=', 'property_owners.owner_id')
+            ->leftJoin('contractors', 'projects.selected_contractor_id', '=', 'contractors.contractor_id')
+            ->select(
+                'projects.project_id',
+                'projects.project_title',
+                'projects.project_status',
+                DB::raw("CONCAT(property_owners.first_name, ' ', COALESCE(property_owners.middle_name, ''), ' ', property_owners.last_name) as owner_name"),
+                'contractors.company_name as contractor_name'
+            )
+            ->where('projects.project_id', $id)
+            ->first();
+
+        return $project;
+    }
+
+    public function deleteProject($id, $reason)
+    {
+        try {
+            DB::beginTransaction();
+
+            // Get current project status before deletion
+            $project = DB::table('projects')->where('project_id', $id)->first();
+
+            if (!$project) {
+                DB::rollBack();
+                return [
+                    'success' => false,
+                    'message' => 'Project not found'
+                ];
+            }
+
+            // Save current status and update to deleted
+            DB::table('projects')
+                ->where('project_id', $id)
+                ->update([
+                    'previous_status' => $project->project_status,
+                    'project_status' => 'deleted',
+                    'stat_reason' => $reason
+                ]);
+
+            // Save and update all milestones to deleted status
+            $milestones = DB::table('milestones')
+                ->where('project_id', $id)
+                ->get();
+
+            foreach ($milestones as $milestone) {
+                DB::table('milestones')
+                    ->where('milestone_id', $milestone->milestone_id)
+                    ->update([
+                        'previous_status' => $milestone->milestone_status,
+                        'milestone_status' => 'deleted'
+                    ]);
+            }
+
+            // Save and update all milestone items to deleted status
+            $milestoneIds = $milestones->pluck('milestone_id')->toArray();
+
+            if (!empty($milestoneIds)) {
+                $items = DB::table('milestone_items')
+                    ->whereIn('milestone_id', $milestoneIds)
+                    ->get();
+
+                foreach ($items as $item) {
+                    DB::table('milestone_items')
+                        ->where('item_id', $item->item_id)
+                        ->update([
+                            'previous_status' => $item->item_status,
+                            'item_status' => 'deleted'
+                        ]);
+                }
+            }
+
+            DB::commit();
+
+            return [
+                'success' => true,
+                'message' => 'Project deleted successfully'
+            ];
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return [
+                'success' => false,
+                'message' => 'Error deleting project: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    public function fetchMilestoneItemForEdit($itemId)
+    {
+        $item = DB::table('milestone_items')
+            ->join('milestones', 'milestone_items.milestone_id', '=', 'milestones.milestone_id')
+            ->select(
+                'milestone_items.*',
+                'milestones.milestone_name'
+            )
+            ->where('milestone_items.item_id', $itemId)
+            ->first();
+
+        return $item;
+    }
+
+    public function fetchHaltSummary($id)
+    {
+        $project = DB::table('projects')
+            ->join('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
+            ->leftJoin('property_owners', 'project_relationships.owner_id', '=', 'property_owners.owner_id')
+            ->leftJoin('contractors', 'projects.selected_contractor_id', '=', 'contractors.contractor_id')
+            ->select(
+                'projects.project_id',
+                'projects.project_title',
+                'projects.project_status',
+                DB::raw("CONCAT(property_owners.first_name, ' ', COALESCE(property_owners.middle_name, ''), ' ', property_owners.last_name) as owner_name"),
+                'contractors.company_name as contractor_name'
+            )
+            ->where('projects.project_id', $id)
+            ->first();
+
+        // Fetch open halt disputes for this project
+        $disputes = \App\Models\admin\disputeClass::getOpenHaltDisputesForProject($id);
+
+        return [
+            'project' => $project,
+            'disputes' => $disputes
+        ];
+    }
+
+    public function haltProject($id, $data)
+    {
+        try {
+            DB::beginTransaction();
+
+            // Get current project
+            $project = DB::table('projects')->where('project_id', $id)->first();
+
+            if (!$project) {
+                DB::rollBack();
+                return [
+                    'success' => false,
+                    'message' => 'Project not found'
+                ];
+            }
+
+            // Only allow halting in_progress or bidding_closed projects
+            if (!in_array($project->project_status, ['in_progress', 'bidding_closed'])) {
+                DB::rollBack();
+                return [
+                    'success' => false,
+                    'message' => 'Only ongoing or bidding closed projects can be halted'
+                ];
+            }
+
+            // Verify the dispute exists and is valid for halting
+            $dispute = DB::table('disputes')
+                ->where('dispute_id', $data['dispute_id'])
+                ->where('project_id', $id)
+                ->where('dispute_type', 'Halt')
+                ->where('dispute_status', 'open')
+                ->first();
+
+            if (!$dispute) {
+                DB::rollBack();
+                return [
+                    'success' => false,
+                    'message' => 'Invalid or closed dispute selected'
+                ];
+            }
+
+            // Save current status and update to halted
+            DB::table('projects')
+                ->where('project_id', $id)
+                ->update([
+                    'previous_status' => $project->project_status,
+                    'project_status' => 'halt',
+                    'stat_reason' => $data['halt_reason'],
+                    'remarks' => $data['project_remarks'] ?? null
+                ]);
+
+            // Update the associated dispute status to under_review
+            DB::table('disputes')
+                ->where('dispute_id', $data['dispute_id'])
+                ->update([
+                    'dispute_status' => 'under_review',
+                    'admin_response' => 'Project halted based on this dispute. Halt reason: ' . $data['halt_reason']
+                ]);
+
+            // Update all milestone items to halt status
+            $milestones = DB::table('milestones')
+                ->where('project_id', $id)
+                ->get();
+
+            if ($milestones->isNotEmpty()) {
+                $milestoneIds = $milestones->pluck('milestone_id')->toArray();
+
+                // Get all milestone items for this project that are not completed
+                $items = DB::table('milestone_items')
+                    ->whereIn('milestone_id', $milestoneIds)
+                    ->where('item_status', '!=', 'completed')
+                    ->get();
+
+                // Update each non-completed milestone item to halt status
+                foreach ($items as $item) {
+                    DB::table('milestone_items')
+                        ->where('item_id', $item->item_id)
+                        ->update([
+                            'previous_status' => $item->item_status,
+                            'item_status' => 'halt'
+                        ]);
+                }
+            }
+
+            DB::commit();
+
+            return [
+                'success' => true,
+                'message' => 'Project halted successfully and dispute updated'
+            ];
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error halting project: ' . $e->getMessage());
+            return [
+                'success' => false,
+                'message' => 'Failed to halt project: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    public function resumeProject($id)
+    {
+        try {
+            DB::beginTransaction();
+
+            // Get current project
+            $project = DB::table('projects')->where('project_id', $id)->first();
+
+            if (!$project) {
+                DB::rollBack();
+                return [
+                    'success' => false,
+                    'message' => 'Project not found'
+                ];
+            }
+
+            // Only allow resuming halted projects
+            if ($project->project_status !== 'halt') {
+                DB::rollBack();
+                return [
+                    'success' => false,
+                    'message' => 'Only halted projects can be resumed'
+                ];
+            }
+
+            // Check if previous_status exists
+            if (empty($project->previous_status)) {
+                DB::rollBack();
+                return [
+                    'success' => false,
+                    'message' => 'Cannot resume project: previous status not found'
+                ];
+            }
+
+            // Restore project to previous status
+            DB::table('projects')
+                ->where('project_id', $id)
+                ->update([
+                    'project_status' => $project->previous_status,
+                    'previous_status' => null,
+                    'stat_reason' => null,
+                    'remarks' => null
+                ]);
+
+            // Restore all milestone items to their previous status
+            $milestones = DB::table('milestones')
+                ->where('project_id', $id)
+                ->get();
+
+            if ($milestones->isNotEmpty()) {
+                $milestoneIds = $milestones->pluck('milestone_id')->toArray();
+
+                // Get all milestone items that are currently halted
+                $items = DB::table('milestone_items')
+                    ->whereIn('milestone_id', $milestoneIds)
+                    ->where('item_status', 'halt')
+                    ->get();
+
+                // Restore each halted milestone item to its previous status
+                foreach ($items as $item) {
+                    if (!empty($item->previous_status)) {
+                        DB::table('milestone_items')
+                            ->where('item_id', $item->item_id)
+                            ->update([
+                                'item_status' => $item->previous_status,
+                                'previous_status' => null
+                            ]);
+                    }
+                }
+            }
+
+            DB::commit();
+
+            return [
+                'success' => true,
+                'message' => 'Project resumed successfully'
+            ];
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error resuming project: ' . $e->getMessage());
+            return [
+                'success' => false,
+                'message' => 'Failed to resume project: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    public function updateMilestoneItem($itemId, $data)
+    {
+        try {
+            DB::beginTransaction();
+
+            $updated = DB::table('milestone_items')
+                ->where('item_id', $itemId)
+                ->update([
+                    'milestone_item_title' => $data['milestone_item_title'],
+                    'milestone_item_description' => $data['milestone_item_description'],
+                    'date_to_finish' => $data['date_to_finish'],
+                    'milestone_item_cost' => $data['milestone_item_cost'],
+                    'item_status' => $data['item_status']
+                ]);
+
+            DB::commit();
+
+            return [
+                'success' => true,
+                'message' => 'Milestone item updated successfully'
+            ];
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return [
+                'success' => false,
+                'message' => 'Error updating milestone item: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    public function fetchRestoreSummary($id)
+    {
+        $project = DB::table('projects')
+            ->join('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
+            ->leftJoin('property_owners', 'project_relationships.owner_id', '=', 'property_owners.owner_id')
+            ->leftJoin('contractors', 'projects.selected_contractor_id', '=', 'contractors.contractor_id')
+            ->select(
+                'projects.project_id',
+                'projects.project_title',
+                'projects.project_status',
+                'projects.stat_reason',
+                DB::raw("CONCAT(property_owners.first_name, ' ', COALESCE(property_owners.middle_name, ''), ' ', property_owners.last_name) as owner_name"),
+                'contractors.company_name as contractor_name'
+            )
+            ->where('projects.project_id', $id)
+            ->first();
+
+        return $project;
+    }
+
+    public function restoreProject($id)
+    {
+        try {
+            DB::beginTransaction();
+
+            // Get current project to check if it's deleted
+            $project = DB::table('projects')->where('project_id', $id)->first();
+
+            if (!$project || $project->project_status !== 'deleted') {
+                DB::rollBack();
+                return [
+                    'success' => false,
+                    'message' => 'Project is not in deleted status'
+                ];
+            }
+
+            // Check if previous status exists
+            if (!$project->previous_status) {
+                DB::rollBack();
+                return [
+                    'success' => false,
+                    'message' => 'Cannot restore: previous status not found'
+                ];
+            }
+
+            // Restore project to previous status
+            DB::table('projects')
+                ->where('project_id', $id)
+                ->update([
+                    'project_status' => $project->previous_status,
+                    'previous_status' => null,
+                    'stat_reason' => null
+                ]);
+
+            // Restore all milestones to their previous status
+            $milestones = DB::table('milestones')
+                ->where('project_id', $id)
+                ->get();
+
+            foreach ($milestones as $milestone) {
+                $restoreStatus = $milestone->previous_status ?? 'pending';
+                DB::table('milestones')
+                    ->where('milestone_id', $milestone->milestone_id)
+                    ->update([
+                        'milestone_status' => $restoreStatus,
+                        'previous_status' => null
+                    ]);
+            }
+
+            // Restore all milestone items to their previous status
+            $milestoneIds = $milestones->pluck('milestone_id')->toArray();
+
+            if (!empty($milestoneIds)) {
+                $items = DB::table('milestone_items')
+                    ->whereIn('milestone_id', $milestoneIds)
+                    ->get();
+
+                foreach ($items as $item) {
+                    $restoreStatus = $item->previous_status ?? 'pending';
+                    DB::table('milestone_items')
+                        ->where('item_id', $item->item_id)
+                        ->update([
+                            'item_status' => $restoreStatus,
+                            'previous_status' => null
+                        ]);
+                }
+            }
+
+            DB::commit();
+
+            return [
+                'success' => true,
+                'message' => 'Project restored successfully'
+            ];
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return [
+                'success' => false,
+                'message' => 'Error restoring project: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    public function updateProject($id, $data)
+    {
+        try {
+            DB::beginTransaction();
+
+            // Prepare project update data (basic fields only)
+            $updateData = [
+                'project_title' => $data['project_title'],
+                'project_description' => $data['project_description'],
+                'property_type' => $data['property_type'],
+                'lot_size' => $data['lot_size'],
+                'floor_area' => $data['floor_area'],
+                'project_location' => $data['project_location']
+            ];
+
+            // Only update contractor if explicitly provided and different
+            if (isset($data['selected_contractor_id']) && $data['selected_contractor_id'] !== null && $data['selected_contractor_id'] !== '') {
+                $updateData['selected_contractor_id'] = $data['selected_contractor_id'];
+            }
+
+            // Update project details
+            // Note: update() returns 0 if no changes were made (data is identical)
+            // This is still a success case - don't treat it as an error
+            DB::table('projects')
+                ->where('project_id', $id)
+                ->update($updateData);
+
+            // Handle contractor change (only if contractor was actually changed)
+            if (isset($data['selected_contractor_id']) && $data['selected_contractor_id'] && $data['selected_contractor_id'] != $data['old_contractor_id']) {
+                // Update new contractor's bid to accepted
+                DB::table('bids')
+                    ->where('project_id', $id)
+                    ->where('contractor_id', $data['selected_contractor_id'])
+                    ->update([
+                        'bid_status' => 'accepted',
+                        'decision_date' => now()
+                    ]);
+
+                // Update old contractor's bid to rejected (if exists)
+                if ($data['old_contractor_id']) {
+                    DB::table('bids')
+                        ->where('project_id', $id)
+                        ->where('contractor_id', $data['old_contractor_id'])
+                        ->update([
+                            'bid_status' => 'rejected',
+                            'decision_date' => now(),
+                            'reason' => 'Contractor changed by administrator'
+                        ]);
+
+                    // Update milestones to new contractor
+                    DB::table('milestones')
+                        ->where('project_id', $id)
+                        ->update(['contractor_id' => $data['selected_contractor_id']]);
+                }
+
+                DB::commit();
+                return [
+                    'success' => true,
+                    'message' => 'Project updated successfully and contractor changed'
+                ];
+            }
+
+            DB::commit();
+            return [
+                'success' => true,
+                'message' => 'Project updated successfully'
+            ];
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return [
+                'success' => false,
+                'message' => 'Error updating project: ' . $e->getMessage()
+            ];
+        }
     }
 }

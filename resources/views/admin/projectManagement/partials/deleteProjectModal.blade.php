@@ -1,5 +1,5 @@
   <!-- Delete Project Confirmation Modal -->
-  <div id="deleteProjectModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden transition-opacity duration-300">
+  <div id="deleteProjectModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden transition-opacity duration-300" data-project-id="{{ $project->project_id }}">
     <div class="absolute inset-0 flex items-center justify-center p-4">
       <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl relative transform transition-all duration-300 scale-100">
         <!-- Header -->
@@ -17,13 +17,55 @@
 
         <!-- Content -->
         <div class="p-6">
-          <div class="bg-rose-50 rounded-lg p-4 mb-6">
-            <p class="text-sm text-rose-900 font-medium mb-3">Are you sure you want to permanently delete this project?</p>
+          <!-- Project Info -->
+          <div class="bg-gray-50 rounded-lg p-4 mb-4">
+            <div class="space-y-2">
+              <div>
+                <span class="text-xs font-semibold text-gray-600">Project Title</span>
+                <p class="text-sm text-gray-900 font-medium">{{ $project->project_title }}</p>
+              </div>
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <span class="text-xs font-semibold text-gray-600">Owner</span>
+                  <p class="text-sm text-gray-900">{{ $project->owner_name ?? '—' }}</p>
+                </div>
+                <div>
+                  <span class="text-xs font-semibold text-gray-600">Status</span>
+                  <p class="text-sm text-gray-900">{{ ucfirst(str_replace('_', ' ', $project->project_status)) }}</p>
+                </div>
+              </div>
+              @if($project->contractor_name)
+              <div>
+                <span class="text-xs font-semibold text-gray-600">Contractor</span>
+                <p class="text-sm text-gray-900">{{ $project->contractor_name }}</p>
+              </div>
+              @endif
+            </div>
+          </div>
+
+          <!-- Warning Box -->
+          <div class="bg-rose-50 rounded-lg p-4 mb-4">
+            <p class="text-sm text-rose-900 font-medium mb-3">Deleting this project will:</p>
             <ul class="text-xs text-rose-800 space-y-1.5 ml-4 list-disc">
-              <li>All project data will be removed from the system</li>
-              <li>All associated bids will be deleted</li>
-              <li>This action is irreversible</li>
+              <li>Mark the project status as deleted</li>
+              <li>Mark all milestones as deleted</li>
+              <li>Mark all milestone items as deleted</li>
+              <li>Record the deletion reason</li>
             </ul>
+          </div>
+
+          <!-- Deletion Reason -->
+          <div class="mb-4">
+            <label for="deleteReason" class="block text-sm font-semibold text-gray-900 mb-2">
+              Deletion Reason <span class="text-rose-600">*</span>
+            </label>
+            <textarea
+              id="deleteReason"
+              rows="3"
+              class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent resize-none"
+              placeholder="Please provide a reason for deleting this project (minimum 10 characters)..."
+            ></textarea>
+            <p class="text-xs text-red-600 mt-1 hidden" id="error-delete-reason"></p>
           </div>
 
           <!-- Action Buttons -->

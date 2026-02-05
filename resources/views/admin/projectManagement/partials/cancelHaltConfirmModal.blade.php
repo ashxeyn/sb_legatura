@@ -18,12 +18,17 @@
           </button>
         </div>
         <div class="p-6 space-y-4">
-          <p class="text-sm text-gray-600">Are you sure you want to mark this halted project as <span class="font-semibold text-gray-900">cancelled</span>? This action is irreversible and will archive all related data.</p>
-          <p class="text-xs text-gray-500"><strong>Note:</strong> Stakeholders will be notified about the cancellation status update.</p>
+          <p class="text-sm text-gray-600">Are you sure you want to mark this halted project as <span class="font-semibold text-gray-900">terminated</span>? This action is irreversible and will archive all related data.</p>
+          <p class="text-xs text-gray-500 mb-3"><strong>Note:</strong> Stakeholders will be notified about the termination status update.</p>
+          <div>
+            <label for="cancelHaltRemarks" class="block text-sm font-semibold text-gray-700 mb-2">Reason for Termination <span class="text-red-500">*</span></label>
+            <textarea id="cancelHaltRemarks" rows="4" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent resize-none" placeholder="Provide a detailed reason for terminating this halted project..." required></textarea>
+            <p id="cancelHaltRemarksError" class="text-xs text-red-600 mt-1 hidden"></p>
+          </div>
         </div>
         <div class="flex items-center justify-end gap-3 px-6 py-4 bg-gray-50 border-t border-gray-200 rounded-b-xl">
           <button onclick="hideCancelHaltConfirm()" class="px-4 py-2.5 text-sm font-medium rounded-lg border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 transition">No, Keep Halt</button>
-          <button onclick="confirmCancelHalt()" class="px-4 py-2.5 text-sm font-medium rounded-lg bg-rose-600 hover:bg-rose-700 text-white transition shadow-md">Yes, Cancel Project</button>
+          <button onclick="confirmCancelHalt()" class="px-4 py-2.5 text-sm font-medium rounded-lg bg-rose-600 hover:bg-rose-700 text-white transition shadow-md">Yes, Terminate Project</button>
         </div>
       </div>
     </div>

@@ -1,5 +1,5 @@
   <!-- Completed Project Modal -->
-  <div id="completedProjectModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden transition-opacity duration-300">
+  <div id="completedProjectModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden transition-opacity duration-300" data-project-id="{{ $project->project_id ?? '' }}">
     <div class="absolute inset-0 flex items-center justify-center overflow-y-auto py-8 px-4">
       <div class="bg-white w-full max-w-5xl rounded-2xl shadow-2xl relative my-4 transform transition-all duration-300 scale-100">
         <!-- Header with Owner Info -->
@@ -171,7 +171,7 @@
                   </svg>
                   Details
                 </h3>
-                <button onclick="openEditCompletedMilestoneModal()" class="text-amber-600 hover:text-amber-700 hover:scale-105 transition-transform text-xs font-semibold flex items-center gap-1" title="Edit Details">
+                <button id="editMilestoneBtn" onclick="openEditMilestoneModal(window.selectedMilestoneItemId)" class="text-amber-600 hover:text-amber-700 hover:scale-105 transition-transform text-xs font-semibold flex items-center gap-1 hidden" title="Edit Details">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
                   </svg>

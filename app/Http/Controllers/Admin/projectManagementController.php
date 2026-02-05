@@ -558,4 +558,415 @@ class projectManagementController extends Controller
             ], 500);
         }
     }
+
+    public function getHaltedDetails($id)
+    {
+        try {
+            $projectModel = new \App\Models\admin\projectClass();
+            $project = $projectModel->fetchHaltedProjectDetails($id);
+
+            if (!$project) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Project not found'
+                ], 404);
+            }
+
+            $html = view('admin.projectManagement.partials.haltedProjectModal', compact('project'))->render();
+
+            return response()->json([
+                'success' => true,
+                'html' => $html
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error fetching halted project details: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load project details: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getHaltDetails($id)
+    {
+        try {
+            $projectModel = new \App\Models\admin\projectClass();
+            $project = $projectModel->fetchHaltDetails($id);
+
+            if (!$project) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Project not found'
+                ], 404);
+            }
+
+            $html = view('admin.projectManagement.partials.haltDetailsModal', compact('project'))->render();
+
+            return response()->json([
+                'success' => true,
+                'html' => $html
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error fetching halt details: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load project details: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function cancelHalt(\App\Http\Requests\admin\cancelHaltedProjectsRequest $request, $id)
+    {
+        try {
+            $projectModel = new \App\Models\admin\projectClass();
+            $success = $projectModel->cancelHaltedProject($id, $request->remarks);
+
+            if (!$success) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Project not found'
+                ], 404);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Project terminated successfully'
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error terminating halted project: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to terminate project: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function resumeHalt($id)
+    {
+        try {
+            $projectModel = new \App\Models\admin\projectClass();
+            $success = $projectModel->resumeHaltedProject($id);
+
+            if (!$success) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Project not found'
+                ], 404);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Project resumed successfully'
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error resuming halted project: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to resume project: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getEditProject($id)
+    {
+        try {
+            $projectModel = new projectClass();
+            $project = $projectModel->fetchProjectForEdit($id);
+
+            if (!$project) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Project not found'
+                ], 404);
+            }
+
+            // Debug log to check contractor data
+            Log::info('Edit Project Data', [
+                'project_id' => $project->project_id,
+                'selected_contractor_id' => $project->selected_contractor_id,
+                'company_name' => $project->company_name ?? 'NULL',
+                'contractor_email' => $project->contractor_email ?? 'NULL'
+            ]);
+
+            $html = view('admin.projectManagement.partials.editProjectModal', compact('project'))->render();
+
+            return response()->json([
+                'success' => true,
+                'html' => $html
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error fetching project for edit: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Server error: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getDeleteSummary($id)
+    {
+        try {
+            $projectModel = new projectClass();
+            $project = $projectModel->fetchDeleteSummary($id);
+
+            if (!$project) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Project not found'
+                ], 404);
+            }
+
+            $html = view('admin.projectManagement.partials.deleteProjectModal', compact('project'))->render();
+
+            return response()->json([
+                'success' => true,
+                'html' => $html
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error fetching delete project summary: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load project summary: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function deleteProject(\App\Http\Requests\admin\deleteProjectRequest $request, $id)
+    {
+        try {
+            $reason = $request->input('reason');
+            $projectModel = new projectClass();
+            $result = $projectModel->deleteProject($id, $reason);
+
+            return response()->json($result);
+
+        } catch (\Exception $e) {
+            Log::error('Error deleting project: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete project: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getRestoreSummary($id)
+    {
+        try {
+            $projectModel = new projectClass();
+            $project = $projectModel->fetchRestoreSummary($id);
+
+            if (!$project) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Project not found'
+                ], 404);
+            }
+
+            $html = view('admin.projectManagement.partials.restoreProjectModal', compact('project'))->render();
+
+            return response()->json([
+                'success' => true,
+                'html' => $html
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error fetching restore project summary: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load project summary: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function restoreProject($id)
+    {
+        try {
+            $projectModel = new projectClass();
+            $result = $projectModel->restoreProject($id);
+
+            return response()->json($result);
+
+        } catch (\Exception $e) {
+            Log::error('Error restoring project: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to restore project: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getHaltSummary($id)
+    {
+        try {
+            $projectModel = new projectClass();
+            $data = $projectModel->fetchHaltSummary($id);
+
+            if (!$data || !isset($data['project'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Project not found'
+                ], 404);
+            }
+
+            $project = $data['project'];
+            $disputes = $data['disputes'];
+
+            $html = view('admin.projectManagement.partials.haltProjectModal', compact('project', 'disputes'))->render();
+
+            return response()->json([
+                'success' => true,
+                'html' => $html
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error fetching halt project summary: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load project summary: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function haltProject(\App\Http\Requests\admin\haltProjectRequest $request, $id)
+    {
+        try {
+            $projectModel = new projectClass();
+            $result = $projectModel->haltProject($id, [
+                'dispute_id' => $request->dispute_id,
+                'halt_reason' => $request->halt_reason,
+                'project_remarks' => $request->project_remarks
+            ]);
+
+            return response()->json($result);
+
+        } catch (\Exception $e) {
+            Log::error('Error halting project: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to halt project: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function resumeProject($id)
+    {
+        try {
+            $projectModel = new projectClass();
+            $result = $projectModel->resumeProject($id);
+
+            return response()->json($result);
+
+        } catch (\Exception $e) {
+            Log::error('Error resuming project: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to resume project: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getMilestoneItemForEdit($itemId)
+    {
+        try {
+            $projectModel = new projectClass();
+            $item = $projectModel->fetchMilestoneItemForEdit($itemId);
+
+            if (!$item) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Milestone item not found'
+                ], 404);
+            }
+
+            $html = view('admin.projectManagement.partials.editMilestoneModal', compact('item'))->render();
+
+            return response()->json([
+                'success' => true,
+                'html' => $html
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error fetching milestone item for edit: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load milestone item: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function updateMilestoneItem(\App\Http\Requests\admin\editMilestoneRequest $request, $itemId)
+    {
+        try {
+            $projectModel = new projectClass();
+            $result = $projectModel->updateMilestoneItem($itemId, [
+                'milestone_item_title' => $request->milestone_item_title,
+                'milestone_item_description' => $request->milestone_item_description,
+                'date_to_finish' => $request->date_to_finish,
+                'milestone_item_cost' => $request->milestone_item_cost,
+                'item_status' => $request->item_status
+            ]);
+
+            return response()->json($result);
+
+        } catch (\Exception $e) {
+            Log::error('Error updating milestone item: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update milestone item: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function updateProject(\App\Http\Requests\admin\editProjectRequest $request, $id)
+    {
+        try {
+            $projectModel = new projectClass();
+            $currentProject = DB::table('projects')
+                ->where('project_id', $id)
+                ->first();
+
+            if (!$currentProject) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Project not found'
+                ], 404);
+            }
+
+            $result = $projectModel->updateProject($id, [
+                'project_title' => $request->project_title,
+                'project_description' => $request->project_description,
+                'property_type' => $request->property_type,
+                'lot_size' => $request->lot_size,
+                'floor_area' => $request->floor_area,
+                'project_location' => $request->project_location,
+                'selected_contractor_id' => $request->selected_contractor_id,
+                'old_contractor_id' => $currentProject->selected_contractor_id
+            ]);
+
+            if ($result['success']) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $result['message']
+                ]);
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => $result['message']
+                ], 400);
+            }
+
+        } catch (\Exception $e) {
+            Log::error('Error updating project: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update project: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }
