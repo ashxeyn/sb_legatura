@@ -26,7 +26,7 @@ Route::get('/intro', function () {
 
 // Owner web login screen
 Route::get('/login', function () {
-    return view('accounts.logIn');
+    return view('accounts.login');
 });
 
 // Owner account type selection screen
@@ -117,12 +117,12 @@ Route::get('/accounts/logout', [authController::class, 'logout']);
 
 // Admin Authentication Routes
 Route::get('/admin/login', function() {
-    return view('admin.logIn_signUp.logIn');
+    return view('accounts.login');
 })->name('admin.login');
 Route::post('/admin/login', [authController::class, 'login'])->name('admin.login.post');
 
 Route::get('/admin/signup', function() {
-    return view('admin.logIn_signUp.signUp');
+    return view('accounts.signup');
 })->name('admin.signup');
 Route::post('/admin/signup', [authController::class, 'adminSignup'])->name('admin.signup.post');
 
