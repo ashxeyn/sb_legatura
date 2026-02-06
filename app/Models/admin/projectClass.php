@@ -254,6 +254,7 @@ class projectClass
             'title' => $project->project_title,
             'description' => $project->project_description,
             'projectStatus' => $project->project_status,
+            'previousStatus' => $project->previous_status ?? null,
             'submittedAt' => $project->submitted_at,
             'projectPostStatus' => $project->project_post_status,
             'biddingDue' => $project->bidding_due,

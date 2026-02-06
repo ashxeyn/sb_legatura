@@ -125,8 +125,13 @@ document.addEventListener('DOMContentLoaded', function() {
       if (result.success && result.data) {
         const data = result.data;
 
+        // If project is deleted, use previous status to determine modal
+        const statusToUse = (data.projectStatus === 'deleted' && data.previousStatus)
+          ? data.previousStatus
+          : data.projectStatus;
+
         // Determine which modal to open based on project status
-        switch(data.projectStatus) {
+        switch(statusToUse) {
           case 'open':
           case 'bidding_closed':
             showOpenProjectModal(projectId);
