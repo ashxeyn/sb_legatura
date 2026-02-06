@@ -80,6 +80,20 @@ class projectsController extends Controller
 
     public function showHomepage(Request $request)
     {
+        $user = Session::get('user');
+        if (!$user) {
+            return redirect('/accounts/login');
+        }
+
+        $currentRole = session('current_role', $user->user_type ?? null);
+        $userType = $user->user_type ?? null;
+        $isOwner = ($userType === 'property_owner' || $userType === 'both') &&
+            ($currentRole === 'owner' || $currentRole === 'property_owner');
+
+        if (!$isOwner) {
+            return redirect('/dashboard')->with('error', 'Only property owners can access this page.');
+        }
+
         // Get contractor types for modal dropdown
         $contractorTypes = $this->projectsClass->getContractorTypes();
         return view('owner.propertyOwner_Homepage', compact('contractorTypes'));

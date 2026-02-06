@@ -89,11 +89,27 @@ class authController extends Controller
                     Session::put('current_role', $result['userType']);
                 }
 
-                // Route admins to the Admin dashboard, users to the main dashboard
+                // Route admins to the Admin dashboard, owners/contractors to their homepages, users to main dashboard
                 if (!empty($result['userType']) && $result['userType'] === 'admin') {
                     return redirect('/admin/dashboard')->with('success', 'Logged in successfully');
                 }
+                if (!empty($result['user']) && isset($result['user']->user_type) && $result['user']->user_type === 'property_owner') {
+                    return redirect('/owner/homepage')->with('success', 'Logged in successfully');
+                }
+                if (!empty($result['user']) && isset($result['user']->user_type) && $result['user']->user_type === 'contractor') {
+                    return redirect('/contractor/homepage')->with('success', 'Logged in successfully');
+                }
                 return redirect('/dashboard')->with('success', 'Logged in successfully');
+            }
+
+            if (!empty($result['errors'])) {
+                $hasUsernameError = array_key_exists('username', $result['errors']);
+                $hasPasswordError = array_key_exists('password', $result['errors']);
+                if ($hasUsernameError && !$hasPasswordError) {
+                    $request->session()->forget('_old_input');
+                    return back()->withErrors($result['errors']);
+                }
+                return back()->withErrors($result['errors'])->withInput();
             }
 
             return back()->with('error', $result['message'] ?? 'Invalid credentials')->withInput();

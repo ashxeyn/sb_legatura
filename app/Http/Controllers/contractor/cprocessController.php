@@ -22,6 +22,11 @@ class cprocessController extends Controller
 
     public function showHomepage(Request $request)
     {
+        $accessCheck = $this->checkContractorAccess($request);
+        if ($accessCheck) {
+            return $accessCheck; // Return error response
+        }
+
         return view('contractor.contractor_Homepage');
     }
 

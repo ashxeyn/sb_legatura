@@ -16,7 +16,7 @@ use App\Http\Controllers\Admin\projectManagementController;
 
 
 Route::get('/', function () {
-    return view('startPoint');
+    return view('signUp_logIN.introduction');
 });
 
 // Splash / introduction screen for owner signup/login
@@ -26,7 +26,7 @@ Route::get('/intro', function () {
 
 // Owner web login screen
 Route::get('/login', function () {
-    return view('signUp_logIN.logIn');
+    return view('accounts.logIn');
 });
 
 // Owner account type selection screen

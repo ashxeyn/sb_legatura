@@ -213,9 +213,21 @@ class authService
             ];
         }
 
+        // Return specific error based on whether user exists
+        if ($user) {
+            return [
+                'success' => false,
+                'errors' => [
+                    'password' => 'Invalid password'
+                ]
+            ];
+        }
+
         return [
             'success' => false,
-            'message' => 'Invalid credentials'
+            'errors' => [
+                'username' => 'Invalid username'
+            ]
         ];
     }
 
@@ -249,10 +261,23 @@ class authService
             }
         }
 
+        // Return specific error based on whether admin exists
+        if ($admin) {
+            return [
+                'success' => false,
+                'errors' => [
+                    'password' => 'Invalid password'
+                ]
+            ];
+        }
+
         return [
             'success' => false,
-            'message' => 'Invalid credentials'
+            'errors' => [
+                'username' => 'Invalid username'
+            ]
         ];
+
     }
 
     public function login($username, $password)
@@ -281,10 +306,7 @@ class authService
             return $adminLogin;
         }
 
-        return [
-            'success' => false,
-            'message' => 'Invalid username or password'
-        ];
+        return $adminLogin;
     }
 
     public function validatePasswordStrength($password)

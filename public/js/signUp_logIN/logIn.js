@@ -14,4 +14,12 @@ document.addEventListener('DOMContentLoaded', () => {
 			toggle.setAttribute('aria-label', isHidden ? 'Hide password' : 'Show password');
 		});
 	}
+
+	// Keep error messages visible - don't auto-hide them
+	// Error messages will persist until user corrects the form and resubmits
+	const alerts = document.querySelectorAll('.alert');
+	alerts.forEach(alert => {
+		// Messages will stay visible for the user to read and act on
+		alert.style.display = 'flex';
+	});
 });
