@@ -24,6 +24,7 @@ import { projects_service, ContractorType as ContractorTypeOption } from '../../
 import { api_config } from '../../config/api';
 import { contractors_service } from '../../services/contractors_service';
 import { role_service } from '../../services/role_service';
+import { useContractorAuth } from '../../hooks/useContractorAuth';
 
 // Helper to build full storage URL for profile/cover images
 const getStorageUrl = (filePath?: string, defaultSubfolder = 'profiles') => {
@@ -157,14 +158,26 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
   // Notifications screen state
   const [showNotifications, setShowNotifications] = useState(false);
 
+  // Contractor authorization - for role-based feature access
+  // canBid: only owner/representative can bid
+  // canManageMilestones: only owner/representative can manage milestones
+  const { canBid, canManageMilestones, role: contractorRole, isLoading: authLoading } = useContractorAuth();
+
   // Get status bar height (top inset)
   const statusBarHeight = insets.top || (Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 44);
 
   // Resolve effective user type: prefer explicit userData.user_type when available
+  // IMPORTANT: Staff users should be treated as contractors
   const effectiveUserType = useMemo(() => {
     if (currentRole === 'owner') return 'property_owner';
     if (currentRole === 'contractor') return 'contractor';
-    return userData?.user_type || userType;
+    
+    const rawType = userData?.user_type || userType;
+    // Staff users operate in contractor context
+    if (rawType === 'staff' || rawType === 'contractor') {
+      return 'contractor';
+    }
+    return rawType === 'property_owner' || rawType === 'both' ? 'property_owner' : userType;
   }, [currentRole, userData?.user_type, userType]);
 
   // Refresh current role from API on mount and when app comes to foreground
@@ -826,7 +839,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
               <MaterialIcons name="edit" size={18} color="#FFFFFF" />
               <Text style={styles.placeBidButtonText}>Manage Project</Text>
             </TouchableOpacity>
-          ) : (
+          ) : canBid ? (
             <TouchableOpacity
               style={styles.placeBidButton}
               activeOpacity={0.8}
@@ -838,6 +851,11 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
               <MaterialIcons name="gavel" size={18} color="#FFFFFF" />
               <Text style={styles.placeBidButtonText}>Place Bid</Text>
             </TouchableOpacity>
+          ) : (
+            <View style={[styles.placeBidButton, { backgroundColor: '#94A3B8' }]}>
+              <MaterialIcons name="visibility" size={18} color="#FFFFFF" />
+              <Text style={styles.placeBidButtonText}>View Only</Text>
+            </View>
           )}
         </View>
       </TouchableOpacity>
@@ -848,7 +866,8 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
   useEffect(() => {
     console.log('Homepage userData:', userData);
     console.log('Profile pic:', userData?.profile_pic);
-  }, [userData]);
+    console.log('Contractor role:', contractorRole, 'Can bid:', canBid);
+  }, [userData, contractorRole, canBid]);
 
   // Memoize contractors for search to prevent infinite re-renders
   const searchContractors = useMemo(() => {
@@ -1201,12 +1220,13 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
       <ProjectPostDetail
         project={selectedProject}
         userRole={isOwn ? 'owner' : (effectiveUserType === 'contractor' ? 'contractor' : 'owner')}
+        canBid={canBid}
         onClose={() => setSelectedProject(null)}
-        onPlaceBid={() => {
+        onPlaceBid={canBid ? () => {
           setBidProject(selectedProject);
           setSelectedProject(null);
           setShowPlaceBid(true);
-        }}
+        } : undefined}
       />
     );
   }

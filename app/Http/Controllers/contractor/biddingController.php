@@ -374,10 +374,37 @@ class biddingController extends Controller
                 ], 400);
             }
 
-            // Get contractor info
+            // Authorization check: Only owner/representative can place bids
+            $authService = app(\App\Services\ContractorAuthorizationService::class);
+            $authError = $authService->validateBiddingAccess($userId);
+            if ($authError) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $authError,
+                    'error_code' => 'UNAUTHORIZED_BIDDING'
+                ], 403);
+            }
+
+            // Get contractor info - check both direct contractor ownership and staff membership (for representatives)
             $contractor = DB::table('contractors')
                 ->where('user_id', $userId)
                 ->first();
+
+            // If not a direct contractor owner, check if user is a staff member (representative)
+            if (!$contractor) {
+                $contractorUser = DB::table('contractor_users')
+                    ->where('user_id', $userId)
+                    ->where('is_active', 1)
+                    ->where('is_deleted', 0)
+                    ->first();
+
+                if ($contractorUser) {
+                    // Get the contractor this staff member belongs to
+                    $contractor = DB::table('contractors')
+                        ->where('contractor_id', $contractorUser->contractor_id)
+                        ->first();
+                }
+            }
 
             if (!$contractor) {
                 return response()->json([
@@ -574,10 +601,26 @@ class biddingController extends Controller
                 ], 400);
             }
 
-            // Get contractor info
+            // Get contractor info - check both direct contractor ownership and staff membership
             $contractor = DB::table('contractors')
                 ->where('user_id', $userId)
                 ->first();
+
+            // If not a direct contractor owner, check if user is a staff member
+            if (!$contractor) {
+                $contractorUser = DB::table('contractor_users')
+                    ->where('user_id', $userId)
+                    ->where('is_active', 1)
+                    ->where('is_deleted', 0)
+                    ->first();
+
+                if ($contractorUser) {
+                    // Get the contractor this staff member belongs to
+                    $contractor = DB::table('contractors')
+                        ->where('contractor_id', $contractorUser->contractor_id)
+                        ->first();
+                }
+            }
 
             if (!$contractor) {
                 return response()->json([

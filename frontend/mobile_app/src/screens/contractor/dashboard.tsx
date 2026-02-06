@@ -20,6 +20,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons, Ionicons, Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { projects_service } from '../../services/projects_service';
+import { api_config } from '../../config/api';
+import { useContractorAuth } from '../../hooks/useContractorAuth';
 import MyProjects from './myProjects';
 import MyBids from './myBids';
 import Members from './members';
@@ -121,6 +123,9 @@ export default function ContractorDashboard({
   const [showMembers, setShowMembers] = useState(false);
   const scrollY = useRef(new Animated.Value(0)).current;
 
+  // Contractor member authorization - controls access to Members feature and milestones
+  const { canManageMembers, canManageMilestones, canBid, isActive, role } = useContractorAuth();
+
   // Get status bar height (top inset)
   const statusBarHeight = insets.top || (Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 44);
 
@@ -205,6 +210,16 @@ export default function ContractorDashboard({
   };
 
   const handleAcceptedBidClick = async (bid: Bid) => {
+    // Check if user can manage milestones
+    if (!canManageMilestones) {
+      Alert.alert(
+        'Permission Denied',
+        'Only owners and representatives can manage milestones. You can view project details instead.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
     try {
       setIsLoadingProject(true);
       // Fetch contractor projects to get the full project data
@@ -380,23 +395,6 @@ export default function ContractorDashboard({
             <View style={styles.heroContent}>
               <View style={styles.heroTop}>
                 <View style={styles.userInfo}>
-                  <View style={styles.avatarContainer}>
-                    {userData?.profile_pic && !avatarError ? (
-                      <Image
-                        source={{ uri: userData.profile_pic }}
-                        style={styles.avatar}
-                        onError={() => setAvatarError(true)}
-                      />
-                    ) : (
-                      <View style={styles.avatarPlaceholder}>
-                        <Text style={styles.avatarText}>
-                          {userData?.company_name?.charAt(0).toUpperCase() ||
-                            userData?.username?.charAt(0).toUpperCase() || 'C'}
-                        </Text>
-                      </View>
-                    )}
-                    <View style={styles.onlineIndicator} />
-                  </View>
                   <View style={styles.greetingContainer}>
                     <Text style={styles.greeting}>{getGreeting()}</Text>
                     <Text style={styles.userName}>{userData?.company_name || userData?.username || 'Contractor'}</Text>
@@ -470,20 +468,23 @@ export default function ContractorDashboard({
               <Feather name="chevron-right" size={22} color={COLORS.textMuted} />
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.navButton}
-              activeOpacity={0.7}
-              onPress={() => setShowMembers(true)}
-            >
-              <View style={[styles.navButtonIcon, { backgroundColor: '#E8F6FF' }]}>
-                <Feather name="users" size={24} color={COLORS.info} />
-              </View>
-              <View style={styles.navButtonContent}>
-                <Text style={styles.navButtonTitle}>Members</Text>
-                <Text style={styles.navButtonSubtitle}>Manage your team</Text>
-              </View>
-              <Feather name="chevron-right" size={22} color={COLORS.textMuted} />
-            </TouchableOpacity>
+            {/* Members button - only visible to owner and representative roles */}
+            {canManageMembers && (
+              <TouchableOpacity
+                style={styles.navButton}
+                activeOpacity={0.7}
+                onPress={() => setShowMembers(true)}
+              >
+                <View style={[styles.navButtonIcon, { backgroundColor: '#E8F6FF' }]}>
+                  <Feather name="users" size={24} color={COLORS.info} />
+                </View>
+                <View style={styles.navButtonContent}>
+                  <Text style={styles.navButtonTitle}>Members</Text>
+                  <Text style={styles.navButtonSubtitle}>Manage your team</Text>
+                </View>
+                <Feather name="chevron-right" size={22} color={COLORS.textMuted} />
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 

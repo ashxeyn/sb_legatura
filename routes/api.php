@@ -98,6 +98,7 @@ Route::get('/signup-form', [authController::class, 'showSignupForm']);
 // Public routes (no authentication required)
 Route::post('/login', [authController::class, 'apiLogin']);
 Route::post('/register', [authController::class, 'apiRegister']);
+Route::post('/force-change-password', [authController::class, 'apiForceChangePassword']);
 
 // Mobile API signup routes (mirror web signup but stateless API paths for mobile clients)
 Route::post('/signup/contractor/step1', [authController::class, 'contractorStep1']);
@@ -285,6 +286,59 @@ Route::get('/debug/member-statuses', function (\Illuminate\Http\Request $request
         'inactive_count' => $members->where('is_active', 0)->where('is_deleted', 0)->count(),
         'deleted_count' => $members->where('is_deleted', 1)->count(),
         'members' => $members
+    ]);
+});
+
+// Debug: Check a user's login data by username
+Route::get('/debug/check-user-login', function (\Illuminate\Http\Request $request) {
+    $username = $request->query('username');
+    if (!$username) {
+        return response()->json(['error' => 'username required']);
+    }
+    
+    $user = DB::table('users')
+        ->where('username', $username)
+        ->orWhere('email', $username)
+        ->first();
+    
+    if (!$user) {
+        return response()->json(['error' => 'User not found: ' . $username]);
+    }
+    
+    $contractorUser = DB::table('contractor_users')->where('user_id', $user->user_id)->first();
+    $contractor = null;
+    if ($contractorUser) {
+        $contractor = DB::table('contractors')->where('contractor_id', $contractorUser->contractor_id)->first();
+    }
+    
+    $propertyOwner = DB::table('property_owners')->where('user_id', $user->user_id)->first();
+    
+    return response()->json([
+        'user' => [
+            'user_id' => $user->user_id,
+            'username' => $user->username,
+            'email' => $user->email,
+            'user_type' => $user->user_type,
+        ],
+        'contractor_user' => $contractorUser ? [
+            'contractor_user_id' => $contractorUser->contractor_user_id,
+            'contractor_id' => $contractorUser->contractor_id,
+            'role' => $contractorUser->role,
+            'is_active' => $contractorUser->is_active,
+        ] : null,
+        'parent_contractor' => $contractor ? [
+            'contractor_id' => $contractor->contractor_id,
+            'company_name' => $contractor->company_name ?? null,
+            'verification_status' => $contractor->verification_status,
+        ] : null,
+        'property_owner' => $propertyOwner ? [
+            'owner_id' => $propertyOwner->owner_id ?? $propertyOwner->id ?? null,
+            'verification_status' => $propertyOwner->verification_status,
+            'is_active' => $propertyOwner->is_active,
+        ] : null,
+        'expected_login_behavior' => $user->user_type === 'staff' 
+            ? 'Should login as contractor (determinedRole=contractor)' 
+            : 'Login as ' . $user->user_type,
     ]);
 });
 

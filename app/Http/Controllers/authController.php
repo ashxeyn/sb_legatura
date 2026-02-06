@@ -2413,13 +2413,70 @@ class authController extends Controller
                 // Create Sanctum token for mobile app
                 $token = $eloquentUser->createToken('mobile-app')->plainTextToken;
 
-                return response()->json([
+                // Build response data
+                $responseData = [
                     'success' => true,
                     'message' => 'Login successful',
-                    'user' => $userData, // Return original user data
+                    'user' => $userData,
                     'userType' => $result['userType'],
-                    'token' => $token
-                ], 200);
+                    'token' => $token,
+                    'must_change_password' => (bool) ($eloquentUser->must_change_password ?? false),
+                ];
+
+                /**
+                 * DASHBOARD ROUTING RULES:
+                 * - user_type === 'staff' → contractor dashboard (staff are contractor team members)
+                 * - user_type === 'contractor' → contractor dashboard
+                 * - determinedRole === 'contractor' → contractor dashboard
+                 * - user_type === 'property_owner' → property_owner dashboard
+                 * - user_type === 'both' → property_owner dashboard (default)
+                 */
+                $isContractorUser = $userData->user_type === 'staff'
+                    || $userData->user_type === 'contractor'
+                    || ($result['determinedRole'] ?? null) === 'contractor';
+
+                \Log::info('Login dashboard routing', [
+                    'user_id' => $userData->user_id ?? $userData->id,
+                    'username' => $userData->username,
+                    'user_type' => $userData->user_type,
+                    'determinedRole_from_authService' => $result['determinedRole'] ?? null,
+                    'isContractorUser' => $isContractorUser,
+                ]);
+
+                // For contractor users (including staff), include member authorization context
+                if ($isContractorUser) {
+                    $contractorAuthService = app(\App\Services\ContractorAuthorizationService::class);
+                    $userId = $userData->user_id ?? $userData->id;
+                    
+                    $memberContext = $contractorAuthService->getAuthorizationContext($userId);
+                    
+                    // Always set determinedRole for contractor/staff users
+                    $responseData['determinedRole'] = 'contractor';
+                    
+                    if ($memberContext) {
+                        $responseData['contractor_member'] = $memberContext;
+                        
+                        // Block login if member is inactive
+                        if (!$memberContext['is_active']) {
+                            // Delete the just-created token since they can't use it
+                            $eloquentUser->tokens()->where('name', 'mobile-app')->delete();
+                            
+                            return response()->json([
+                                'success' => false,
+                                'message' => 'Your contractor member account is inactive. Please contact the contractor owner.',
+                                'error_code' => 'MEMBER_INACTIVE'
+                            ], 403);
+                        }
+                    } else {
+                        // Staff user without contractor_users record - log warning but allow login
+                        \Illuminate\Support\Facades\Log::warning('Staff user without contractor_users record', [
+                            'user_id' => $userId,
+                            'username' => $userData->username ?? null
+                        ]);
+                    }
+                }
+
+                return response()->json($responseData, 200);
             } else {
                 return response()->json([
                     'success' => false,
@@ -2433,6 +2490,7 @@ class authController extends Controller
                 'errors' => $e->errors()
             ], 422);
         } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('apiLogin exception: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
             return response()->json([
                 'success' => false,
                 'message' => 'An error occurred during login'
@@ -2503,5 +2561,80 @@ class authController extends Controller
             'timestamp' => now(),
             'server' => 'Laravel ' . app()->version()
         ], 200);
+    }
+
+    /**
+     * API: Force change password (for first-time member login)
+     * 
+     * Password rules:
+     * - At least 8 characters
+     * - At least one uppercase letter
+     * - At least one number
+     * - At least one special character (!@#$%^&*(),.?":{}|<>)
+     */
+    public function apiForceChangePassword(Request $request)
+    {
+        try {
+            $request->validate([
+                'user_id' => 'required|integer',
+                'new_password' => 'required|string|min:8',
+                'new_password_confirmation' => 'required|string|same:new_password',
+            ]);
+
+            $userId = $request->user_id;
+
+            // Validate password strength using authService rules
+            $strengthCheck = $this->authService->validatePasswordStrength($request->new_password);
+            if (!$strengthCheck['valid']) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $strengthCheck['message'],
+                ], 422);
+            }
+
+            // Check user exists and must_change_password is true
+            $user = \App\Models\User::find($userId);
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User not found',
+                ], 404);
+            }
+
+            if (!$user->must_change_password) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Password change is not required for this account',
+                ], 400);
+            }
+
+            // Update password and clear the flag
+            $user->password_hash = bcrypt($request->new_password);
+            $user->must_change_password = false;
+            $user->updated_at = now();
+            $user->save();
+
+            \Illuminate\Support\Facades\Log::info('Force password change completed', [
+                'user_id' => $userId,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Password changed successfully',
+            ]);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Force password change error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while changing password',
+            ], 500);
+        }
     }
 }

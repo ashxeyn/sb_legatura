@@ -62,6 +62,23 @@ export default function LoginScreen({ on_back, on_login_success, on_signup }: Lo
             console.warn('Failed to save auth token:', e);
           }
         }
+        
+        // Include contractor_member context if present (for contractor users including staff)
+        if (response.data?.contractor_member) {
+          userData.contractor_member = response.data.contractor_member;
+          console.log('Contractor member context included:', response.data.contractor_member);
+        }
+        
+        // Include determinedRole if present
+        if (response.data?.determinedRole) {
+          userData.determinedRole = response.data.determinedRole;
+        }
+        
+        // Include must_change_password flag if present
+        if (response.data?.must_change_password) {
+          userData.must_change_password = true;
+        }
+        
         console.log('Extracted userData:', userData);
         console.log('userData.profile_pic:', userData?.profile_pic);
         Alert.alert('Success', 'Login successful!', [

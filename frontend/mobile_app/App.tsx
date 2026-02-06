@@ -27,6 +27,7 @@ import { api_config } from './src/config/api';
 import EmailVerificationScreen from './src/screens/both/emailVerification';
 import ProfilePictureScreen from './src/screens/both/profilePic';
 import HomepageScreen from './src/screens/both/homepage';
+import ChangePasswordScreen from './src/screens/both/changePassword';
 import { auth_service } from './src/services/auth_service';
 import { storage_service } from './src/utils/storage';
 
@@ -35,6 +36,7 @@ type AppState = 'loading' | 'onboarding' | 'auth_choice' | 'login' | 'signup' | 
     'contractor_company_info' | 'contractor_account_setup' | 'contractor_email_verification' | 'contractor_business_documents' | 'contractor_profile_picture' |
     // Property Owner Flow
     'po_personal_info' | 'po_account_setup' | 'po_email_verification' | 'po_role_verification' | 'po_profile_picture' |
+    'force_change_password' |
     'main' | 'edit_profile' | 'view_profile' | 'help_center' | 'switch_role' | 'add_role_registration';
 
 
@@ -48,6 +50,32 @@ export default function App() {
         check_stored_auth();
     }, []);
 
+    /**
+     * Determine the dashboard type for a user.
+     * RULES:
+     * - user_type === 'staff' → contractor (staff are contractor team members)
+     * - user_type === 'contractor' → contractor
+     * - determinedRole === 'contractor' → contractor
+     * - user_type === 'property_owner' → property_owner
+     * - user_type === 'both' → property_owner (default, can switch later)
+     */
+    const getDashboardType = (userData: any): 'contractor' | 'property_owner' => {
+        // RULE 1: Staff users ALWAYS go to contractor dashboard
+        if (userData?.user_type === 'staff') {
+            return 'contractor';
+        }
+        // RULE 2: Contractor users go to contractor dashboard
+        if (userData?.user_type === 'contractor') {
+            return 'contractor';
+        }
+        // RULE 3: If backend explicitly set determinedRole to contractor
+        if (userData?.determinedRole === 'contractor') {
+            return 'contractor';
+        }
+        // RULE 4: Property owners and 'both' users default to property_owner
+        return 'property_owner';
+    };
+
     const check_stored_auth = async () => {
         try {
             const is_authenticated = await storage_service.is_authenticated();
@@ -56,16 +84,21 @@ export default function App() {
             if (is_authenticated && stored_user_data) {
                 // User was logged in, restore their session
                 console.log('Restoring user session:', stored_user_data.username);
+                console.log('User type:', stored_user_data.user_type, 'Determined role:', stored_user_data.determinedRole);
                 set_user_data(stored_user_data);
 
-                // Set user type based on stored data
-                if (stored_user_data.user_type === 'contractor') {
-                    set_selected_user_type('contractor');
-                } else if (stored_user_data.user_type === 'property_owner' || stored_user_data.user_type === 'both') {
-                    set_selected_user_type('property_owner');
-                }
+                // Set dashboard type based on clear rules
+                const dashboardType = getDashboardType(stored_user_data);
+                console.log('Dashboard type resolved to:', dashboardType);
+                set_selected_user_type(dashboardType);
 
-                set_app_state('main');
+                // If user still needs to change password, redirect there
+                if (stored_user_data.must_change_password) {
+                    console.log('Stored user must change password');
+                    set_app_state('force_change_password');
+                } else {
+                    set_app_state('main');
+                }
             } else {
                 // No stored auth, proceed with normal flow
                 console.log('No stored authentication found');
@@ -209,12 +242,20 @@ export default function App() {
             // Save to persistent storage
             await storage_service.save_user_data(userData);
             console.log('User data saved to storage on login');
+            console.log('userData.user_type:', userData.user_type);
+            console.log('userData.determinedRole:', userData.determinedRole);
+            console.log('userData.contractor_member:', userData.contractor_member);
 
-            // Set user type based on user data
-            if (userData.user_type === 'contractor') {
-                set_selected_user_type('contractor');
-            } else if (userData.user_type === 'property_owner' || userData.user_type === 'both') {
-                set_selected_user_type('property_owner');
+            // Set dashboard type based on clear rules
+            const dashboardType = getDashboardType(userData);
+            console.log('Dashboard type resolved to:', dashboardType);
+            set_selected_user_type(dashboardType);
+
+            // Check if user must change password (first-time member login)
+            if (userData.must_change_password) {
+                console.log('User must change password before proceeding');
+                set_app_state('force_change_password');
+                return;
             }
         }
         set_app_state('main');
@@ -287,6 +328,26 @@ export default function App() {
                     on_back={handle_back_to_auth_choice}
                     on_login_success={handle_login_success}
                     on_signup={handle_register}
+                />
+            </SafeAreaProvider>
+        );
+    }
+
+    if (app_state === 'force_change_password') {
+        return (
+            <SafeAreaProvider>
+                <ChangePasswordScreen
+                    userData={user_data}
+                    onPasswordChanged={() => {
+                        // Clear the flag from local state and proceed to main
+                        if (user_data) {
+                            const updated = { ...user_data, must_change_password: false };
+                            set_user_data(updated);
+                            storage_service.save_user_data(updated);
+                        }
+                        set_app_state('main');
+                    }}
+                    onLogout={handle_logout}
                 />
             </SafeAreaProvider>
         );

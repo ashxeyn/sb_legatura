@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons, Ionicons, Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { projects_service } from '../../services/projects_service';
+import { api_config } from '../../config/api';
 import { storage_service } from '../../utils/storage';
 import ProjectDetails from './projectDetails';
 import ProjectList from './projectList';
@@ -432,26 +433,6 @@ export default function PropertyOwnerDashboard({ userData, onNavigateToMessages 
             <View style={styles.heroContent}>
               <View style={styles.heroTop}>
                 <View style={styles.userInfo}>
-                  <View style={styles.avatarContainer}>
-                    {userData?.profile_pic && !avatarError ? (
-                      <Image
-                        source={{ uri: userData.profile_pic }}
-                        style={styles.avatar}
-                        onError={(e) => {
-                          console.log('Avatar load error:', e.nativeEvent.error, 'URL:', userData.profile_pic);
-                          setAvatarError(true);
-                        }}
-                        onLoad={() => console.log('Avatar loaded successfully:', userData.profile_pic)}
-                      />
-                    ) : (
-                      <View style={styles.avatarPlaceholder}>
-                        <Text style={styles.avatarText}>
-                          {userData?.username?.charAt(0).toUpperCase() || 'U'}
-                        </Text>
-                      </View>
-                    )}
-                    <View style={styles.onlineIndicator} />
-                  </View>
                   <View style={styles.greetingContainer}>
                     <Text style={styles.greeting}>{getGreeting()}</Text>
                     <Text style={styles.userName}>{userData?.username || 'Property Owner'}</Text>

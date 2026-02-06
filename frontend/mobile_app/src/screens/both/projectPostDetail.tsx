@@ -46,9 +46,10 @@ interface ProjectPostDetailProps {
   onClose: () => void;
   onPlaceBid?: () => void;
   userRole?: 'owner' | 'contractor';
+  canBid?: boolean; // Whether user has permission to bid (owner/representative only)
 }
 
-export default function ProjectPostDetail({ project, onClose, onPlaceBid, userRole = 'contractor' }: ProjectPostDetailProps) {
+export default function ProjectPostDetail({ project, onClose, onPlaceBid, userRole = 'contractor', canBid = true }: ProjectPostDetailProps) {
   const insets = useSafeAreaInsets();
   const [imageViewerVisible, setImageViewerVisible] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
@@ -354,13 +355,20 @@ export default function ProjectPostDetail({ project, onClose, onPlaceBid, userRo
         )}
       </ScrollView>
 
-      {/* Bottom Action Button */}
-      {userRole === 'contractor' && onPlaceBid && (
+      {/* Bottom Action Button - Only show Place Bid if user has permission */}
+      {userRole === 'contractor' && (
         <View style={styles.bottomBar}>
-          <TouchableOpacity style={styles.bidButton} onPress={onPlaceBid} activeOpacity={0.8}>
-            <MaterialIcons name="gavel" size={20} color="#FFFFFF" />
-            <Text style={styles.bidButtonText}>Place Bid</Text>
-          </TouchableOpacity>
+          {canBid && onPlaceBid ? (
+            <TouchableOpacity style={styles.bidButton} onPress={onPlaceBid} activeOpacity={0.8}>
+              <MaterialIcons name="gavel" size={20} color="#FFFFFF" />
+              <Text style={styles.bidButtonText}>Place Bid</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={[styles.bidButton, { backgroundColor: '#94A3B8' }]}>
+              <MaterialIcons name="visibility" size={20} color="#FFFFFF" />
+              <Text style={styles.bidButtonText}>View Only</Text>
+            </View>
+          )}
         </View>
       )}
 

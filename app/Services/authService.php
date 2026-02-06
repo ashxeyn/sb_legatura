@@ -76,9 +76,52 @@ class authService
             // Check verification status based on user type
             $isVerified = false;
             $rejectionReason = null;
+            $determinedRole = null;
+
+            \Log::info('User login attempt', [
+                'user_id' => $user->user_id,
+                'username' => $user->username,
+                'user_type' => $user->user_type,
+            ]);
 
             if ($user->user_type === 'admin') {
                 $isVerified = true;
+            } elseif ($user->user_type === 'staff') {
+                // Staff members (contractor team members) - verify via contractor_users and parent contractor
+                \Log::info('Staff user detected, checking contractor_users table', ['user_id' => $user->user_id]);
+                $contractorUser = DB::table('contractor_users')->where('user_id', $user->user_id)->first();
+                \Log::info('contractor_users lookup result', ['found' => $contractorUser ? 'yes' : 'no']);
+                \Log::info('contractor_users lookup result', ['found' => $contractorUser ? 'yes' : 'no']);
+                
+                if ($contractorUser && $contractorUser->is_active == 1 && $contractorUser->is_deleted == 0) {
+                    // Check if parent contractor is approved
+                    $contractor = DB::table('contractors')->where('contractor_id', $contractorUser->contractor_id)->first();
+                    \Log::info('Parent contractor lookup', [
+                        'contractor_id' => $contractorUser->contractor_id,
+                        'found' => $contractor ? 'yes' : 'no',
+                        'verification_status' => $contractor->verification_status ?? 'N/A'
+                    ]);
+                    
+                    if ($contractor && $contractor->verification_status === 'approved') {
+                        $isVerified = true;
+                        $determinedRole = 'contractor'; // Staff members operate under contractor context
+                        \Log::info('Staff user verified, determinedRole set to contractor');
+                    } elseif ($contractor && $contractor->verification_status === 'rejected') {
+                        $rejectionReason = 'The contractor account has been rejected: ' . $contractor->rejection_reason;
+                        \Log::info('Staff user - contractor rejected', ['reason' => $rejectionReason]);
+                    } else {
+                        $rejectionReason = 'The contractor account is pending verification';
+                        \Log::info('Staff user - contractor pending verification');
+                    }
+                } elseif ($contractorUser && $contractorUser->is_active == 0) {
+                    $rejectionReason = 'Your team member account has been deactivated by the contractor';
+                    \Log::info('Staff user - contractor_users record inactive');
+                } elseif ($contractorUser && $contractorUser->is_deleted == 1) {
+                    $rejectionReason = 'Your team member account has been removed';
+                    \Log::info('Staff user - contractor_users record deleted');
+                } else {
+                    \Log::warning('Staff user has NO contractor_users record', ['user_id' => $user->user_id]);
+                }
             } elseif ($user->user_type === 'contractor') {
                 $contractor = DB::table('contractors')->where('user_id', $user->user_id)->first();
                 $contractorUser = DB::table('contractor_users')->where('user_id', $user->user_id)->first();
@@ -144,11 +187,23 @@ class authService
                     $message = "Your account has been rejected due to the reason: {$rejectionReason}. Please contact support.";
                 }
 
+                \Log::info('Login failed - not verified', [
+                    'user_id' => $user->user_id,
+                    'rejectionReason' => $rejectionReason
+                ]);
+
                 return [
                     'success' => false,
                     'message' => $message
                 ];
             }
+
+            \Log::info('Login successful', [
+                'user_id' => $user->user_id,
+                'user_type' => $user->user_type,
+                'determinedRole' => $determinedRole ?? 'null',
+                'isVerified' => $isVerified
+            ]);
 
             return [
                 'success' => true,

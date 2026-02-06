@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { api_config, api_request } from '../../config/api';
 import { storage_service } from '../../utils/storage';
+import { useContractorAuth } from '../../hooks/useContractorAuth';
 import * as ImagePicker from 'expo-image-picker';
 
 const COLORS = {
@@ -27,6 +28,7 @@ const COLORS = {
   text: '#0F172A',
   textSecondary: '#6B7280',
   border: '#E6E9EE',
+  error: '#EF4444',
 };
 
 export default function Members({ userData, onClose }: { userData?: any; onClose?: () => void }) {
@@ -44,6 +46,9 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
   const [statusFilter, setStatusFilter] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
 
+  // Authorization hook - check if user can manage members
+  const { canManageMembers, isLoading: authLoading, role } = useContractorAuth();
+
   const [form, setForm] = useState({
     first_name: '',
     middle_name: '',
@@ -59,15 +64,7 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
     _pickedFile: null,
   });
 
-  useEffect(() => {
-    fetchMembers();
-  }, []);
-
-  // Apply filters whenever search query, role filter, or status filter changes
-  useEffect(() => {
-    applyFilters();
-  }, [searchQuery, roleFilter, statusFilter, members]);
-
+  // Define functions before any early returns
   const fetchMembers = async () => {
     setLoading(true);
     try {
@@ -133,6 +130,70 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
     setFilteredMembers(filtered);
   };
 
+  useEffect(() => {
+    // Only fetch members if authorized
+    if (!authLoading && canManageMembers) {
+      fetchMembers();
+    }
+  }, [authLoading, canManageMembers]);
+
+  // Apply filters whenever search query, role filter, or status filter changes
+  useEffect(() => {
+    applyFilters();
+  }, [searchQuery, roleFilter, statusFilter, members]);
+
+  // Authorization guard - block unauthorized access
+  if (authLoading) {
+    return (
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+          <Text style={styles.loadingText}>Checking permissions...</Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (!canManageMembers) {
+    return (
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={onClose} style={styles.headerBack}>
+            <Feather name="arrow-left" size={22} color={COLORS.text} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Members</Text>
+          <View style={{ width: 40 }} />
+        </View>
+
+        {/* Unauthorized Access Message */}
+        <View style={styles.unauthorizedContainer}>
+          <View style={styles.unauthorizedIcon}>
+            <Feather name="lock" size={48} color={COLORS.error} />
+          </View>
+          <Text style={styles.unauthorizedTitle}>Access Restricted</Text>
+          <Text style={styles.unauthorizedMessage}>
+            You don't have permission to manage contractor members.
+            {'\n\n'}
+            Only owners and representatives can access this feature.
+          </Text>
+          {role && (
+            <Text style={styles.unauthorizedRole}>
+              Your current role: <Text style={styles.roleHighlight}>{role}</Text>
+            </Text>
+          )}
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={onClose}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.backButtonText}>Go Back</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
   const clearFilters = () => {
     setSearchQuery('');
     setRoleFilter('all');
@@ -169,12 +230,17 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
             {item.is_active ? 'Active' : 'Inactive'}
           </Text>
         </View>
-        <TouchableOpacity style={styles.iconBtn} accessibilityLabel="edit" onPress={() => openEdit(item)}>
-          <Ionicons name="pencil" size={18} color={COLORS.primary} />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.iconBtn} accessibilityLabel="remove" onPress={() => confirmDelete(item)}>
-          <Ionicons name="trash" size={18} color="#E53935" />
-        </TouchableOpacity>
+        {/* Representatives cannot edit or delete owners */}
+        {!(role === 'representative' && item.role === 'owner') && (
+          <>
+            <TouchableOpacity style={styles.iconBtn} accessibilityLabel="edit" onPress={() => openEdit(item)}>
+              <Ionicons name="pencil" size={18} color={COLORS.primary} />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.iconBtn} accessibilityLabel="remove" onPress={() => confirmDelete(item)}>
+              <Ionicons name="trash" size={18} color="#E53935" />
+            </TouchableOpacity>
+          </>
+        )}
       </View>
     </View>
   );
@@ -473,7 +539,7 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
   return (
     <View style={[styles.container, { paddingTop: 12 }]}> 
       <View style={styles.header}>
-        <TouchableOpacity onPress={onClose} style={styles.backButton}>
+        <TouchableOpacity onPress={onClose} style={styles.headerBack}>
           <Feather name="arrow-left" size={20} color={COLORS.text} />
         </TouchableOpacity>
 
@@ -529,7 +595,11 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
                 { label: 'Architect', value: 'architect' },
                 { label: 'Representative', value: 'representative' },
                 { label: 'Others', value: 'others' },
-              ].map(({ label, value }) => (
+              ].filter(({ value }) => {
+                // Representatives cannot see/filter by owner
+                if (role === 'representative' && value === 'owner') return false;
+                return true;
+              }).map(({ label, value }) => (
                 <TouchableOpacity
                   key={value}
                   style={[
@@ -643,7 +713,13 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
                 </TouchableOpacity>
                 {form.showRoleOptions && (
                   <View style={{ marginTop: 6, borderWidth: 1, borderColor: COLORS.border, borderRadius: 6, overflow: 'hidden' }}>
-                    {['owner','manager','engineer','architect','representative','others'].map((r) => (
+                    {['owner','manager','engineer','architect','representative','others']
+                      .filter(r => {
+                        // Representatives cannot assign owner role
+                        if (role === 'representative' && r === 'owner') return false;
+                        return true;
+                      })
+                      .map((r) => (
                       <TouchableOpacity key={r} onPress={() => setForm({ ...form, role: r, showRoleOptions: false })} style={{ padding: 10, backgroundColor: form.role === r ? '#F5F7FA' : '#FFF' }}>
                         <Text style={{ color: COLORS.text }}>{r.charAt(0).toUpperCase() + r.slice(1)}</Text>
                       </TouchableOpacity>
@@ -781,6 +857,12 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: COLORS.text,
+  },
+  headerBack: {
+    width: 40,
+    alignItems: 'flex-start',
+    padding: 6,
+    backgroundColor: 'transparent',
   },
   headerSpacer: {
     width: 40,
@@ -1110,5 +1192,66 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 8,
     marginTop: 8,
+  },
+  // Authorization guard styles
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: COLORS.textSecondary,
+  },
+  unauthorizedContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  unauthorizedIcon: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: '#FEE2E2',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  unauthorizedTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  unauthorizedMessage: {
+    fontSize: 15,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 16,
+  },
+  unauthorizedRole: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    marginBottom: 24,
+  },
+  roleHighlight: {
+    fontWeight: '700',
+    color: COLORS.text,
+    textTransform: 'capitalize',
+  },
+  backButton: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 8,
+  },
+  backButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

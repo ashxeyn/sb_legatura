@@ -716,8 +716,19 @@ class cprocessController extends Controller
             ], 400);
         }
 
-        // Get contractor by user_id
-        $contractor = $this->contractorClass->getContractorByUserId($userId);
+        // Authorization check: Only owner/representative can create milestones
+        $authService = app(\App\Services\ContractorAuthorizationService::class);
+        $authError = $authService->validateMilestoneAccess($userId);
+        if ($authError) {
+            return response()->json([
+                'success' => false,
+                'message' => $authError,
+                'error_code' => 'UNAUTHORIZED_MILESTONE'
+            ], 403);
+        }
+
+        // Get contractor by user_id - use helper that handles both owner and staff
+        $contractor = $authService->getContractorForUser($userId);
         if (!$contractor) {
             return response()->json([
                 'success' => false,
@@ -858,7 +869,19 @@ class cprocessController extends Controller
             return response()->json(['success' => false, 'message' => 'User ID is required'], 400);
         }
 
-        $contractor = $this->contractorClass->getContractorByUserId($userId);
+        // Authorization check: Only owner/representative can update milestones
+        $authService = app(\App\Services\ContractorAuthorizationService::class);
+        $authError = $authService->validateMilestoneAccess($userId);
+        if ($authError) {
+            return response()->json([
+                'success' => false,
+                'message' => $authError,
+                'error_code' => 'UNAUTHORIZED_MILESTONE'
+            ], 403);
+        }
+
+        // Get contractor by user_id - use helper that handles both owner and staff
+        $contractor = $authService->getContractorForUser($userId);
         if (!$contractor) {
             return response()->json(['success' => false, 'message' => 'Contractor not found'], 404);
         }
@@ -1065,10 +1088,26 @@ class cprocessController extends Controller
                 ], 400);
             }
 
-            // Get contractor info
+            // Get contractor info - check both direct contractor ownership and staff membership
             $contractor = DB::table('contractors')
                 ->where('user_id', $userId)
                 ->first();
+
+            // If not a direct contractor owner, check if user is a staff member
+            if (!$contractor) {
+                $contractorUser = DB::table('contractor_users')
+                    ->where('user_id', $userId)
+                    ->where('is_active', 1)
+                    ->where('is_deleted', 0)
+                    ->first();
+
+                if ($contractorUser) {
+                    // Get the contractor this staff member belongs to
+                    $contractor = DB::table('contractors')
+                        ->where('contractor_id', $contractorUser->contractor_id)
+                        ->first();
+                }
+            }
 
             if (!$contractor) {
                 return response()->json([

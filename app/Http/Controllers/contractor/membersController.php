@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\contractor;
 
 use App\Http\Controllers\Controller;
+use App\Services\ContractorAuthorizationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -10,6 +11,13 @@ use Illuminate\Support\Facades\Mail;
 
 class membersController extends Controller
 {
+    protected ContractorAuthorizationService $authService;
+
+    public function __construct(ContractorAuthorizationService $authService)
+    {
+        $this->authService = $authService;
+    }
+
     /**
      * Helper to get user_id from request (query param or header)
      */
@@ -45,7 +53,26 @@ class membersController extends Controller
                 ], 400);
             }
 
-            $contractor = $this->getContractor($userId);
+            // Authorization: Check if user is an active contractor member
+            $memberContext = $this->authService->getMemberContext($userId);
+            if (!$memberContext) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Contractor member record not found',
+                    'error_code' => 'MEMBER_NOT_FOUND'
+                ], 403);
+            }
+
+            if (!$memberContext->is_active) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Your contractor member account is inactive',
+                    'error_code' => 'MEMBER_INACTIVE'
+                ], 403);
+            }
+
+            // Get contractor - works for both owners and team members
+            $contractor = $this->authService->getContractorForUser($userId);
 
             if (!$contractor) {
                 return response()->json([
@@ -59,6 +86,11 @@ class membersController extends Controller
                 ->join('users', 'contractor_users.user_id', '=', 'users.user_id')
                 ->where('contractor_users.contractor_id', $contractor->contractor_id)
                 ->where('contractor_users.is_deleted', 0);
+            
+            // Representatives cannot see owners
+            if ($memberContext->role === 'representative') {
+                $query->where('contractor_users.role', '!=', 'owner');
+            }
 
             // Search filter (name, email, phone)
             if ($request->has('search') && !empty($request->search)) {
@@ -125,6 +157,7 @@ class membersController extends Controller
 
     /**
      * Create a new team member
+     * Only owner and representative roles can create members.
      */
     public function store(Request $request)
     {
@@ -138,7 +171,22 @@ class membersController extends Controller
                 ], 400);
             }
 
-            $contractor = $this->getContractor($userId);
+            // Authorization: Only owner and representative can add members
+            $authError = $this->authService->validateMemberManagementAccess($userId);
+            if ($authError) {
+                Log::warning('Unauthorized member creation attempt', [
+                    'user_id' => $userId,
+                    'error' => $authError
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'message' => $authError,
+                    'error_code' => 'INSUFFICIENT_PERMISSIONS'
+                ], 403);
+            }
+
+            // Get contractor - works for both owners and team members
+            $contractor = $this->authService->getContractorForUser($userId);
 
             if (!$contractor) {
                 return response()->json([
@@ -181,6 +229,7 @@ class membersController extends Controller
                 'username' => $username,
                 'email' => $validated['email'],
                 'password_hash' => bcrypt('teammember123@!'),
+                'must_change_password' => true,
                 'OTP_hash' => 'contractor_created',
                 'user_type' => 'staff',
                 'created_at' => now(),
@@ -246,6 +295,7 @@ class membersController extends Controller
 
     /**
      * Update an existing team member
+     * Only owner and representative roles can update members.
      */
     public function update(Request $request, $id)
     {
@@ -270,15 +320,7 @@ class membersController extends Controller
                     $request->merge($jsonData);
                 }
             }
-            
-            // Debug: Log incoming request data
-            Log::info('Update member request', [
-                'id' => $id,
-                'method' => $request->method(),
-                'content_type' => $contentType,
-                'all_input' => $request->all(),
-            ]);
-            
+
             $userId = $this->getUserId($request);
             
             if (!$userId) {
@@ -288,7 +330,31 @@ class membersController extends Controller
                 ], 400);
             }
 
-            $contractor = $this->getContractor($userId);
+            // Authorization: Only owner and representative can update members
+            $authError = $this->authService->validateMemberManagementAccess($userId);
+            if ($authError) {
+                Log::warning('Unauthorized member update attempt', [
+                    'user_id' => $userId,
+                    'member_id' => $id,
+                    'error' => $authError
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'message' => $authError,
+                    'error_code' => 'INSUFFICIENT_PERMISSIONS'
+                ], 403);
+            }
+            
+            // Debug: Log incoming request data
+            Log::info('Update member request', [
+                'id' => $id,
+                'method' => $request->method(),
+                'content_type' => $contentType,
+                'all_input' => $request->all(),
+            ]);
+
+            // Get contractor - works for both owners and team members
+            $contractor = $this->authService->getContractorForUser($userId);
 
             if (!$contractor) {
                 return response()->json([
@@ -308,6 +374,18 @@ class membersController extends Controller
                     'success' => false,
                     'message' => 'Team member not found'
                 ], 404);
+            }
+
+            // Get requester's role
+            $requesterContext = $this->authService->getMemberContext($userId);
+            
+            // Prevent representatives from editing owners
+            if ($requesterContext && $requesterContext->role === 'representative' && $contractorUser->role === 'owner') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Representatives cannot edit the company owner',
+                    'error_code' => 'CANNOT_EDIT_OWNER'
+                ], 403);
             }
 
             // Validate request
@@ -401,6 +479,7 @@ class membersController extends Controller
 
     /**
      * Delete (soft delete) a team member
+     * Only owner and representative roles can delete members.
      */
     public function delete(Request $request, $id)
     {
@@ -414,7 +493,23 @@ class membersController extends Controller
                 ], 400);
             }
 
-            $contractor = $this->getContractor($userId);
+            // Authorization: Only owner and representative can delete members
+            $authError = $this->authService->validateMemberManagementAccess($userId);
+            if ($authError) {
+                Log::warning('Unauthorized member deletion attempt', [
+                    'user_id' => $userId,
+                    'member_id' => $id,
+                    'error' => $authError
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'message' => $authError,
+                    'error_code' => 'INSUFFICIENT_PERMISSIONS'
+                ], 403);
+            }
+
+            // Get contractor - works for both owners and team members
+            $contractor = $this->authService->getContractorForUser($userId);
 
             if (!$contractor) {
                 return response()->json([
@@ -444,6 +539,18 @@ class membersController extends Controller
                 ], 400);
             }
 
+            // Get requester's role
+            $requesterContext = $this->authService->getMemberContext($userId);
+            
+            // Prevent representatives from deleting owners (redundant check but safe)
+            if ($requesterContext && $requesterContext->role === 'representative' && $contractorUser->role === 'owner') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Representatives cannot delete the company owner',
+                    'error_code' => 'CANNOT_DELETE_OWNER'
+                ], 403);
+            }
+
             // Soft delete
             DB::table('contractor_users')
                 ->where('contractor_user_id', $id)
@@ -469,6 +576,7 @@ class membersController extends Controller
 
     /**
      * Toggle member activation status
+     * Only owner and representative roles can toggle member status.
      */
     public function toggleActive(Request $request, $id)
     {
@@ -482,7 +590,23 @@ class membersController extends Controller
                 ], 400);
             }
 
-            $contractor = $this->getContractor($userId);
+            // Authorization: Only owner and representative can toggle member status
+            $authError = $this->authService->validateMemberManagementAccess($userId);
+            if ($authError) {
+                Log::warning('Unauthorized member status toggle attempt', [
+                    'user_id' => $userId,
+                    'member_id' => $id,
+                    'error' => $authError
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'message' => $authError,
+                    'error_code' => 'INSUFFICIENT_PERMISSIONS'
+                ], 403);
+            }
+
+            // Get contractor - works for both owners and team members
+            $contractor = $this->authService->getContractorForUser($userId);
 
             if (!$contractor) {
                 return response()->json([
@@ -503,6 +627,18 @@ class membersController extends Controller
                     'success' => false,
                     'message' => 'Team member not found'
                 ], 404);
+            }
+
+            // Get requester's role
+            $requesterContext = $this->authService->getMemberContext($userId);
+            
+            // Prevent representatives from toggling owner status
+            if ($requesterContext && $requesterContext->role === 'representative' && $contractorUser->role === 'owner') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Representatives cannot change the company owner status',
+                    'error_code' => 'CANNOT_TOGGLE_OWNER'
+                ], 403);
             }
 
             // Prevent deactivating owner
