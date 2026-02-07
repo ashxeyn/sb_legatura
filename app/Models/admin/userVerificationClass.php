@@ -73,12 +73,24 @@ class userVerificationClass
 
         // Update Profile table based on user type
         if ($user->user_type === 'contractor' || $user->user_type === 'both') {
-            DB::table('contractors')
-                ->where('user_id', $userId)
-                ->update([
-                    'verification_status' => 'approved',
-                    'verification_date' => now()
-                ]);
+            // Start a transaction to ensure both updates happen together
+            DB::transaction(function () use ($userId) {
+
+                // 1. Update the contractors table
+                DB::table('contractors')
+                    ->where('user_id', $userId)
+                    ->update([
+                        'verification_status' => 'approved',
+                        'verification_date' => now()
+                    ]);
+
+                // 2. Update the users table
+                DB::table('contractor_users')
+                    ->where('id', $userId)
+                    ->update([
+                        'is_active' => 1
+                    ]);
+            });
         }
 
         if ($user->user_type === 'property_owner' || $user->user_type === 'both') {
@@ -86,7 +98,8 @@ class userVerificationClass
                 ->where('user_id', $userId)
                 ->update([
                     'verification_status' => 'approved',
-                    'verification_date' => now()
+                    'verification_date' => now(),
+                    'is_active' => 1
                 ]);
         }
 
