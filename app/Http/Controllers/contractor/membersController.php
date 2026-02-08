@@ -224,12 +224,13 @@ class membersController extends Controller
             } while (DB::table('users')->where('username', $username)->exists());
 
             // Create user record
+            // Default password is 'teammember123@!' — login detects this via
+            // Hash::check and forces the user to change it (no DB column needed).
             $newUserId = DB::table('users')->insertGetId([
                 'profile_pic' => $profilePicPath,
                 'username' => $username,
                 'email' => $validated['email'],
                 'password_hash' => bcrypt('teammember123@!'),
-                'must_change_password' => true,
                 'OTP_hash' => 'contractor_created',
                 'user_type' => 'staff',
                 'created_at' => now(),

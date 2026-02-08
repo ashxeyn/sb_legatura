@@ -10,6 +10,7 @@ return new class extends Migration {
         Schema::create('project_files', function (Blueprint $table) {
             $table->id('file_id');
             $table->foreignId('project_id')->constrained('projects', 'project_id')->cascadeOnDelete();
+            $table->enum('file_type', ['building permit', 'blueprint', 'desired design', 'title', 'others']);
             $table->string('file_path', 255);
             $table->timestamp('uploaded_at')->useCurrent();
         });

@@ -13,6 +13,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons, Feather, Ionicons } from '@expo/vector-icons';
@@ -73,6 +74,9 @@ export default function PlaceBid({ project, userId, onClose, onBidSubmitted }: P
   const [existingBid, setExistingBid] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [bidFiles, setBidFiles] = useState<Array<any>>([]);
+  const [showBudgetWarning, setShowBudgetWarning] = useState(false);
+  const [budgetWarningMessage, setBudgetWarningMessage] = useState<{type: 'high' | 'low', message: string} | null>(null);
+  const [pendingSubmission, setPendingSubmission] = useState(false);
 
   const statusBarHeight = insets.top || (Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 44);
 
@@ -223,6 +227,31 @@ export default function PlaceBid({ project, userId, onClose, onBidSubmitted }: P
     setBidFiles(bidFiles.filter((_, i) => i !== index));
   };
 
+  const checkBudgetRange = (): { outOfRange: boolean; type?: 'high' | 'low'; message?: string } => {
+    const cost = parseFloat(proposedCost.replace(/,/g, ''));
+    const minBudget = project.budget_range_min;
+    const maxBudget = project.budget_range_max;
+
+    // Only check if budget range is defined
+    if (minBudget || maxBudget) {
+      if (maxBudget && cost > maxBudget) {
+        return {
+          outOfRange: true,
+          type: 'high',
+          message: `Your bid of ${formatCurrency(cost)} is higher than the maximum budget of ${formatCurrency(maxBudget)}. The property owner may prefer lower bids.`
+        };
+      } else if (minBudget && cost < minBudget) {
+        return {
+          outOfRange: true,
+          type: 'low',
+          message: `Your bid of ${formatCurrency(cost)} is lower than the minimum budget of ${formatCurrency(minBudget)}. This may raise concerns about quality or scope.`
+        };
+      }
+    }
+
+    return { outOfRange: false };
+  };
+
   const handleSubmit = async () => {
     if (!validateForm()) return;
 
@@ -232,7 +261,27 @@ export default function PlaceBid({ project, userId, onClose, onBidSubmitted }: P
       return;
     }
 
+    // Check budget range before submitting
+    const budgetCheck = checkBudgetRange();
+    if (budgetCheck.outOfRange) {
+      // Show warning modal and block submission
+      setBudgetWarningMessage({
+        type: budgetCheck.type!,
+        message: budgetCheck.message!
+      });
+      setShowBudgetWarning(true);
+      setPendingSubmission(true);
+      return;
+    }
+
+    // Proceed with submission
+    proceedWithSubmission();
+  };
+
+  const proceedWithSubmission = async () => {
     setIsSubmitting(true);
+    setShowBudgetWarning(false);
+    setPendingSubmission(false);
 
     try {
       const response = await projects_service.submit_bid(project.project_id, userId, {
@@ -267,6 +316,16 @@ export default function PlaceBid({ project, userId, onClose, onBidSubmitted }: P
     }
   };
 
+  const handleEditBid = () => {
+    setShowBudgetWarning(false);
+    setPendingSubmission(false);
+    // User stays on the form to edit
+  };
+
+  const handleContinueSubmission = () => {
+    proceedWithSubmission();
+  };
+
   const daysRemaining = getDaysRemaining();
 
   if (isLoading) {
@@ -284,6 +343,56 @@ export default function PlaceBid({ project, userId, onClose, onBidSubmitted }: P
   return (
     <SafeAreaView style={[styles.container, { paddingTop: statusBarHeight }]}>
       <StatusBar hidden={true} />
+
+      {/* Budget Warning Modal */}
+      <Modal
+        visible={showBudgetWarning}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowBudgetWarning(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={[styles.modalIconContainer, { backgroundColor: budgetWarningMessage?.type === 'high' ? COLORS.warningLight : COLORS.infoLight }]}>
+              <MaterialIcons 
+                name={budgetWarningMessage?.type === 'high' ? 'trending-up' : 'trending-down'} 
+                size={32} 
+                color={budgetWarningMessage?.type === 'high' ? COLORS.warning : COLORS.info} 
+              />
+            </View>
+            
+            <Text style={styles.modalTitle}>
+              {budgetWarningMessage?.type === 'high' ? 'Bid Above Budget Range' : 'Bid Below Budget Range'}
+            </Text>
+            
+            <Text style={styles.modalMessage}>
+              {budgetWarningMessage?.message}
+            </Text>
+            
+            <Text style={styles.modalHint}>
+              Would you like to continue with this bid amount or go back to edit it?
+            </Text>
+            
+            <View style={styles.modalButtonsRow}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalButtonSecondary]}
+                onPress={handleEditBid}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.modalButtonText, styles.modalButtonTextSecondary]}>Edit</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalButtonPrimary]}
+                onPress={handleContinueSubmission}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.modalButtonText}>Continue</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Header */}
       <View style={styles.header}>
@@ -760,5 +869,83 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: COLORS.success,
+  },
+  // Budget Warning Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  modalIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: COLORS.text,
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  modalMessage: {
+    fontSize: 15,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 12,
+  },
+  modalHint: {
+    fontSize: 13,
+    color: COLORS.textMuted,
+    textAlign: 'center',
+    fontStyle: 'italic',
+    marginBottom: 20,
+  },
+  modalButtonsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  modalButtonPrimary: {
+    backgroundColor: COLORS.primary,
+  },
+  modalButtonSecondary: {
+    backgroundColor: COLORS.background,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  modalButtonText: {
+    color: COLORS.surface,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  modalButtonTextSecondary: {
+    color: COLORS.text,
   },
 });

@@ -2430,13 +2430,17 @@ class authController extends Controller
                 $token = $eloquentUser->createToken('mobile-app')->plainTextToken;
 
                 // Build response data
+                // Detect whether the user still has the default staff password
+                // instead of relying on a dedicated DB column.
+                $mustChangePassword = \Illuminate\Support\Facades\Hash::check('teammember123@!', $eloquentUser->password_hash);
+
                 $responseData = [
                     'success' => true,
                     'message' => 'Login successful',
                     'user' => $userData,
                     'userType' => $result['userType'],
                     'token' => $token,
-                    'must_change_password' => (bool) ($eloquentUser->must_change_password ?? false),
+                    'must_change_password' => $mustChangePassword,
                 ];
 
                 /**
@@ -2608,7 +2612,7 @@ class authController extends Controller
                 ], 422);
             }
 
-            // Check user exists and must_change_password is true
+            // Check user exists and still has the default password
             $user = \App\Models\User::find($userId);
             if (!$user) {
                 return response()->json([
@@ -2617,16 +2621,16 @@ class authController extends Controller
                 ], 404);
             }
 
-            if (!$user->must_change_password) {
+            if (!\Illuminate\Support\Facades\Hash::check('teammember123@!', $user->password_hash)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Password change is not required for this account',
                 ], 400);
             }
 
-            // Update password and clear the flag
+            // Update password (changing away from the default automatically
+            // clears the "must change" state — no flag column needed).
             $user->password_hash = bcrypt($request->new_password);
-            $user->must_change_password = false;
             $user->updated_at = now();
             $user->save();
 

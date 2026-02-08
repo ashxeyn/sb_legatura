@@ -1412,12 +1412,20 @@ class projectsController extends Controller
                     ->whereNotIn('bid_status', ['cancelled'])
                     ->count();
                 $project->bids_count = $bidCount;
-                // Attach project files (only desired design images for collage display)
+                // Attach all project files with type info so the frontend can
+                // display optional images (blueprint, desired design, others) and
+                // hide sensitive documents (building permit, title).
                 $fileRows = DB::table('project_files')
                     ->where('project_id', $project->project_id)
-                    ->where('file_type', 'desired design')
                     ->orderBy('file_id', 'asc')
-                    ->pluck('file_path')
+                    ->select('file_id', 'file_type', 'file_path')
+                    ->get()
+                    ->map(fn ($f) => [
+                        'file_id'   => $f->file_id,
+                        'file_type' => $f->file_type,
+                        'file_path' => $f->file_path,
+                    ])
+                    ->values()
                     ->toArray();
 
                 $project->files = $fileRows;

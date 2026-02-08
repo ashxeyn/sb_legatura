@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,13 +10,16 @@ import {
   Dimensions,
   StatusBar,
   Modal,
+  FlatList,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import ImageFallback from '../../components/ImageFallbackFixed';
 import { api_config } from '../../config/api';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const defaultOwnerAvatar = require('../../../assets/images/pictures/property_owner_default.png');
 const watermarkImage = require('../../../assets/images/pictures/legatura_watermark.png');
@@ -49,10 +52,31 @@ interface ProjectPostDetailProps {
   canBid?: boolean; // Whether user has permission to bid (owner/representative only)
 }
 
+/**
+ * Classify whether a file is an important/protected document (building permit, land title).
+ * These are shown ONLY in the expanded detail view with watermark overlay.
+ */
+const classifyImportant = (fileType: string, rawPath: string): boolean => {
+  const type = (fileType || '').toLowerCase();
+  const path = (rawPath || '').toLowerCase();
+  if (/building.?permit|title_of_land|title-of-land|land.?title/i.test(type)) return true;
+  if (type === 'building permit' || type === 'title') return true;
+  const normalized = path.replace(/[^a-z0-9]+/g, ' ');
+  const tokens = normalized.split(/\s+/).filter(Boolean);
+  const has = (w: string) => tokens.includes(w);
+  if (has('building') && has('permit')) return true;
+  if (has('title') && has('land')) return true;
+  if (/(building_permit|building-permit|title_of_land|title-of-land)/.test(path)) return true;
+  return false;
+};
+
 export default function ProjectPostDetail({ project, onClose, onPlaceBid, userRole = 'contractor', canBid = true }: ProjectPostDetailProps) {
   const insets = useSafeAreaInsets();
   const [imageViewerVisible, setImageViewerVisible] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [docViewerVisible, setDocViewerVisible] = useState(false);
+  const [docViewerIndex, setDocViewerIndex] = useState(0);
+  const docFlatListRef = useRef<FlatList>(null);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-PH', {
@@ -83,32 +107,39 @@ export default function ProjectPostDetail({ project, onClose, onPlaceBid, userRo
 
   const daysRemaining = getDaysRemaining(project.bidding_deadline);
 
-  // Process files for display
+  // Check if file is an image by extension OR by known project file_type
+  const isImageFile = (path: string, fileType?: string) => {
+    if (!path) return false;
+    // Files from project_files table are always images (form only accepts images)
+    if (fileType && ['building permit', 'title', 'blueprint', 'desired design', 'others'].includes(fileType.toLowerCase())) {
+      return true;
+    }
+    const imagePath = path.toLowerCase();
+    return imagePath.match(/\.(jpg|jpeg|png|gif|webp|bmp)(\?|$)/i) !== null ||
+           (imagePath.startsWith('http') && !imagePath.includes('.pdf'));
+  };
+
+  // Process files for display — classify into optional (design) and important (protected)
   const processFiles = () => {
     if (!project.files || project.files.length === 0) return [];
     
+    console.log('[ProjectPostDetail] Raw project.files:', JSON.stringify(project.files).substring(0, 500));
+    
     return project.files.map((file: any) => {
-      const raw = typeof file === 'string' ? file : (file.file_path || file);
-      const fileType = typeof file === 'object' ? file.file_type : '';
-      
-      const isImage = (path: string) => {
-        if (!path) return false;
-        const imagePath = path.toLowerCase();
-        return imagePath.match(/\.(jpg|jpeg|png|gif|webp|bmp)(\?|$)/i) !== null ||
-               (imagePath.startsWith('http') && !imagePath.includes('.pdf'));
-      };
+      const raw = typeof file === 'string' ? file : (file.file_path || '');
+      const fileType = typeof file === 'object' ? (file.file_type || '') : '';
 
       const url = raw.startsWith('http') 
         ? raw 
         : `${api_config.base_url}/storage/${raw}`;
 
-      const isProtected = fileType && ['building permit', 'title'].includes(fileType.toLowerCase());
-      const isDesign = fileType && ['blueprint', 'desired design', 'others'].includes(fileType.toLowerCase());
+      const isProtected = classifyImportant(fileType, raw);
+      const isDesign = !isProtected; // Everything that isn't protected is optional/design
 
       return {
         raw,
         url,
-        isImage: isImage(raw),
+        isImage: isImageFile(raw, fileType),
         fileType,
         isProtected,
         isDesign,
@@ -117,15 +148,40 @@ export default function ProjectPostDetail({ project, onClose, onPlaceBid, userRo
   };
 
   const allFiles = processFiles().filter(f => f.isImage);
+  console.log('[ProjectPostDetail] allFiles:', allFiles.length, '| design:', allFiles.filter(f => f.isDesign).length, '| protected:', allFiles.filter(f => f.isProtected).length);
+  // Optional documents — shown in the main Facebook-style collage
   const designImages = allFiles.filter(f => f.isDesign);
+  // Important/protected documents — shown ONLY in the expanded section with watermark
   const requiredDocuments = allFiles.filter(f => f.isProtected);
   const [currentGallery, setCurrentGallery] = useState<any[]>([]);
 
   const openImageViewer = (index: number, gallery: 'design' | 'docs' = 'design') => {
-    const galleryItems = gallery === 'design' ? designImages : requiredDocuments;
+    if (gallery === 'docs') {
+      // Important documents use the dedicated overlay viewer
+      setDocViewerIndex(index);
+      setDocViewerVisible(true);
+      return;
+    }
+    const galleryItems = designImages;
     setCurrentGallery(galleryItems);
     setSelectedImageIndex(index);
     setImageViewerVisible(true);
+  };
+
+  /** Handle scroll in document viewer to track current page */
+  const onDocViewerScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const offsetX = e.nativeEvent.contentOffset.x;
+    const page = Math.round(offsetX / SCREEN_WIDTH);
+    setDocViewerIndex(page);
+  }, []);
+
+  /** Get friendly label for a document based on fileType */
+  const getDocumentLabel = (fileType: string): string => {
+    const t = (fileType || '').toLowerCase();
+    if (t.includes('building') && t.includes('permit')) return 'Building Permit';
+    if (t.includes('title')) return 'Land Title';
+    if (t.includes('permit')) return 'Building Permit';
+    return 'Important Document';
   };
 
   // Collage sizing (Facebook-like rules)
@@ -330,27 +386,48 @@ export default function ProjectPostDetail({ project, onClose, onPlaceBid, userRo
           </View>
         )}
 
-        {/* Required Documents (Building Permit & Title) */}
+        {/* Required Documents (Building Permit & Title) — overlay-style viewer */}
+        {/* Important documents are shown AFTER optional images, with watermark overlay */}
         {requiredDocuments.length > 0 && (
           <View style={styles.documentsSection}>
-            <Text style={styles.sectionTitle}>Required Documents</Text>
+            <Text style={styles.sectionTitle}>Important Documents</Text>
+            <Text style={styles.documentNotice}>
+              These documents are view-only and protected. Tap to view.
+            </Text>
             <View style={styles.documentsGrid}>
-              {requiredDocuments.map((doc, index) => (
-                  <TouchableOpacity key={index} style={styles.documentCard} onPress={() => openImageViewer(index, 'docs')} activeOpacity={0.9}>
-                    <View style={styles.documentImageContainer}>
-                        <Image source={{ uri: doc.url }} style={styles.documentImage} resizeMode="cover" />
-                        <View style={styles.thumbnailWatermarkWrapper} pointerEvents="none">
-                          <Image source={watermarkImage} style={styles.thumbnailWatermark} resizeMode="contain" />
-                        </View>
-                        <View style={styles.documentLabelOverlay}>
-                          <Text style={styles.documentLabelText}>
-                            {doc.fileType === 'building permit' ? 'Building Permit' : 'Land Title'}
-                          </Text>
-                        </View>
-                      </View>
-                  </TouchableOpacity>
-                ))}
+              {requiredDocuments.slice(0, 22).map((doc, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={styles.documentCard}
+                  onPress={() => openImageViewer(index, 'docs')}
+                  activeOpacity={0.9}
+                >
+                  <View style={styles.documentImageContainer}>
+                    <Image source={{ uri: doc.url }} style={styles.documentImage} resizeMode="cover" />
+                    {/* Watermark always rendered on top — scales responsively */}
+                    <View style={styles.thumbnailWatermarkWrapper} pointerEvents="none">
+                      <Image source={watermarkImage} style={styles.thumbnailWatermark} resizeMode="cover" />
+                    </View>
+                    {/* Label overlay */}
+                    <View style={styles.documentLabelOverlay}>
+                      <MaterialIcons name="lock-outline" size={14} color="#FFFFFF" style={{ marginRight: 4 }} />
+                      <Text style={styles.documentLabelText}>
+                        {getDocumentLabel(doc.fileType)}
+                      </Text>
+                    </View>
+                    {/* View icon indicator */}
+                    <View style={styles.documentViewIcon}>
+                      <MaterialIcons name="visibility" size={20} color="#FFFFFF" />
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))}
             </View>
+            {requiredDocuments.length > 6 && (
+              <Text style={styles.documentCountHint}>
+                {requiredDocuments.length} document{requiredDocuments.length > 1 ? 's' : ''} available
+              </Text>
+            )}
           </View>
         )}
       </ScrollView>
@@ -372,7 +449,7 @@ export default function ProjectPostDetail({ project, onClose, onPlaceBid, userRo
         </View>
       )}
 
-      {/* Image Viewer Modal */}
+      {/* Image Viewer Modal — for optional/design images */}
       <Modal visible={imageViewerVisible} transparent={true} animationType="fade">
         <View style={styles.imageViewerContainer}>
           <TouchableOpacity style={styles.imageViewerClose} onPress={() => setImageViewerVisible(false)} accessibilityLabel="Close image viewer">
@@ -388,9 +465,6 @@ export default function ProjectPostDetail({ project, onClose, onPlaceBid, userRo
               <View key={index} style={styles.imageViewerPage}>
                 <View style={{ width: SCREEN_WIDTH, alignItems: 'center', justifyContent: 'center' }}>
                   <Image source={{ uri: file.url }} style={styles.fullScreenImage} resizeMode="contain" />
-                  {file.isProtected && (
-                    <Image source={watermarkImage} style={[styles.fullScreenWatermark]} resizeMode="cover" />
-                  )}
                 </View>
               </View>
             ))}
@@ -400,6 +474,103 @@ export default function ProjectPostDetail({ project, onClose, onPlaceBid, userRo
               {selectedImageIndex + 1} / {(currentGallery.length > 0 ? currentGallery.length : designImages.length)}
             </Text>
           </View>
+        </View>
+      </Modal>
+
+      {/* ============================================================ */}
+      {/* Document Viewer Modal — overlay-style for important documents */}
+      {/* Supports up to 22 documents, paginated, view-only, watermark */}
+      {/* ============================================================ */}
+      <Modal
+        visible={docViewerVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setDocViewerVisible(false)}
+      >
+        <StatusBar hidden />
+        <View style={styles.docViewerContainer}>
+          {/* Close button */}
+          <TouchableOpacity
+            style={styles.docViewerClose}
+            onPress={() => setDocViewerVisible(false)}
+            accessibilityLabel="Close document viewer"
+          >
+            <View style={styles.docViewerCloseCircle}>
+              <Ionicons name="close" size={28} color="#FFFFFF" />
+            </View>
+          </TouchableOpacity>
+
+          {/* Document label at top */}
+          <View style={styles.docViewerHeader}>
+            <MaterialIcons name="lock-outline" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+            <Text style={styles.docViewerHeaderText}>
+              {requiredDocuments[docViewerIndex]
+                ? getDocumentLabel(requiredDocuments[docViewerIndex].fileType)
+                : 'Important Document'}
+            </Text>
+          </View>
+
+          {/* View-only notice */}
+          <View style={styles.docViewerNotice}>
+            <MaterialIcons name="info-outline" size={14} color="rgba(255,255,255,0.7)" />
+            <Text style={styles.docViewerNoticeText}>View only — downloading is disabled</Text>
+          </View>
+
+          {/* Paginated document viewer — FlatList for performance with many images */}
+          <FlatList
+            ref={docFlatListRef}
+            data={requiredDocuments.slice(0, 22)}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            initialScrollIndex={docViewerIndex}
+            getItemLayout={(_, index) => ({
+              length: SCREEN_WIDTH,
+              offset: SCREEN_WIDTH * index,
+              index,
+            })}
+            onMomentumScrollEnd={onDocViewerScroll}
+            keyExtractor={(_, i) => `doc-${i}`}
+            renderItem={({ item: doc }) => (
+              <View style={styles.docViewerPage}>
+                {/* Document image */}
+                <Image
+                  source={{ uri: doc.url }}
+                  style={styles.docViewerImage}
+                  resizeMode="contain"
+                />
+                {/* Watermark — always fixed on top, scales responsively */}
+                <Image
+                  source={watermarkImage}
+                  style={styles.docViewerWatermark}
+                  resizeMode="cover"
+                  pointerEvents="none"
+                />
+              </View>
+            )}
+          />
+
+          {/* Page counter */}
+          <View style={styles.docViewerCounter}>
+            <Text style={styles.docViewerCounterText}>
+              {Math.min(docViewerIndex + 1, requiredDocuments.length)} / {Math.min(requiredDocuments.length, 22)}
+            </Text>
+          </View>
+
+          {/* Dot indicators for quick navigation (show max 12 dots, then compress) */}
+          {requiredDocuments.length > 1 && requiredDocuments.length <= 12 && (
+            <View style={styles.docViewerDots}>
+              {requiredDocuments.slice(0, 12).map((_, i) => (
+                <View
+                  key={i}
+                  style={[
+                    styles.docViewerDot,
+                    i === docViewerIndex && styles.docViewerDotActive,
+                  ]}
+                />
+              ))}
+            </View>
+          )}
         </View>
       </Modal>
     </View>
@@ -561,9 +732,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   thumbnailWatermark: {
-    width: '140%',
-    height: '140%',
-    opacity: 0.52,
+    width: '100%',
+    height: '100%',
+    opacity: 0.45,
     zIndex: 3,
   },
   moreOverlay: {
@@ -615,21 +786,31 @@ const styles = StyleSheet.create({
   urgentText: {
     color: '#E74C3C',
   },
+  // ── Important Documents section ──
   documentsSection: {
     paddingHorizontal: 16,
     paddingVertical: 16,
     borderTopWidth: 8,
     borderTopColor: '#F0F0F0',
   },
+  documentNotice: {
+    fontSize: 13,
+    color: '#888888',
+    marginTop: -8,
+    marginBottom: 14,
+    fontStyle: 'italic',
+  },
   documentsGrid: {
     flexDirection: 'row',
-    gap: 12,
+    flexWrap: 'wrap',
+    gap: 10,
   },
   documentCard: {
-    flex: 1,
+    width: '48%',
     backgroundColor: '#F8F9FA',
     borderRadius: 8,
     overflow: 'hidden',
+    marginBottom: 4,
   },
   documentImageContainer: {
     position: 'relative',
@@ -651,16 +832,36 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: 'rgba(0,0,0,0.6)',
     paddingVertical: 8,
+    paddingHorizontal: 8,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
   },
   documentLabelText: {
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
   },
+  documentViewIcon: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    borderRadius: 14,
+    width: 28,
+    height: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  documentCountHint: {
+    fontSize: 12,
+    color: '#999999',
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  // ── Bottom bar ──
   bottomBar: {
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -682,6 +883,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     marginLeft: 8,
   },
+  // ── Optional image viewer (design images) ──
   imageViewerContainer: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.95)',
@@ -737,5 +939,112 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '600',
+  },
+  // ── Important Document Viewer (overlay modal) ──
+  docViewerContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.97)',
+    justifyContent: 'center',
+  },
+  docViewerClose: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    zIndex: 999,
+  },
+  docViewerCloseCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  docViewerHeader: {
+    position: 'absolute',
+    top: 24,
+    left: 0,
+    right: 70,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  docViewerHeaderText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  docViewerNotice: {
+    position: 'absolute',
+    top: 52,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+    gap: 4,
+  },
+  docViewerNoticeText: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 12,
+  },
+  docViewerPage: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  docViewerImage: {
+    width: SCREEN_WIDTH - 32,
+    height: SCREEN_HEIGHT * 0.7,
+  },
+  docViewerWatermark: {
+    position: 'absolute',
+    top: '15%',
+    left: 16,
+    right: 16,
+    bottom: '15%',
+    width: SCREEN_WIDTH - 32,
+    height: SCREEN_HEIGHT * 0.7,
+    opacity: 0.2,
+    zIndex: 5,
+  },
+  docViewerCounter: {
+    position: 'absolute',
+    bottom: 50,
+    alignSelf: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 20,
+    zIndex: 10,
+  },
+  docViewerCounterText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  docViewerDots: {
+    position: 'absolute',
+    bottom: 30,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    gap: 6,
+    zIndex: 10,
+  },
+  docViewerDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+  },
+  docViewerDotActive: {
+    backgroundColor: '#EC7E00',
+    width: 20,
+    borderRadius: 4,
   },
 });
