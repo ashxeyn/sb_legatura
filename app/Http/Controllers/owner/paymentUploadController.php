@@ -167,16 +167,30 @@ class paymentUploadController extends Controller
 			return response()->json(['success' => false, 'message' => 'Contractor user not found for this project. Please contact support.'], 403);
 		}
 
-			// Prevent multiple active submissions for the same milestone item.
-			// Only allow a new upload if existing payments for this item are all 'rejected' or 'deleted'.
-			$existingCount = DB::table('milestone_payments')
+			// Allow multiple partial payments for the same milestone item.
+			// Log a warning if cumulative amount exceeds milestone item cost, but still allow submission.
+			$existingTotal = DB::table('milestone_payments')
 				->where('item_id', $validated['item_id'])
-			->where('owner_id', $ownerId)
+				->where('owner_id', $ownerId)
 				->whereNotIn('payment_status', ['rejected', 'deleted'])
-				->count();
+				->sum('amount');
 
-			if ($existingCount > 0) {
-				return response()->json(['success' => false, 'message' => 'You already have a payment validation submitted for this milestone. Only payments with status rejected or deleted can be re-submitted.'], 403);
+			// Get the expected cost for this milestone item
+			$milestoneItem = DB::table('milestone_items')
+				->where('item_id', $validated['item_id'])
+				->first();
+
+			$expectedAmount = $milestoneItem ? (float) ($milestoneItem->milestone_item_cost ?? 0) : 0;
+			$newTotal = $existingTotal + (float) $validated['amount'];
+
+			if ($expectedAmount > 0 && $newTotal > $expectedAmount) {
+				\Log::warning('Payment exceeds milestone item cost', [
+					'item_id' => $validated['item_id'],
+					'expected_amount' => $expectedAmount,
+					'existing_total' => $existingTotal,
+					'new_payment' => (float) $validated['amount'],
+					'new_total' => $newTotal,
+				]);
 			}
 
 			// Ensure that a contractor progress report for this milestone item exists and has been approved by the owner
@@ -498,17 +512,33 @@ class paymentUploadController extends Controller
 					'mi.milestone_item_title',
 					'mi.sequence_order',
 					'mi.percentage_progress',
+					'mi.milestone_item_cost',
 					DB::raw('CONCAT(po.first_name, " ", po.last_name) as owner_name')
 				)
 				->orderBy('mp.transaction_date', 'desc')
 				->orderBy('mp.payment_id', 'desc')
 				->get();
 
+			// Calculate payment summary for partial payments support
+			$milestoneItem = DB::table('milestone_items')->where('item_id', $itemId)->first();
+			$expectedAmount = $milestoneItem ? (float) ($milestoneItem->milestone_item_cost ?? 0) : 0;
+
+			$totalPaid = $payments->whereIn('payment_status', ['approved'])->sum('amount');
+			$totalSubmitted = $payments->whereIn('payment_status', ['submitted'])->sum('amount');
+			$rawRemaining = $expectedAmount - $totalPaid - $totalSubmitted;
+			$remainingBalance = max(0, $rawRemaining);
+			$overAmount = $rawRemaining < 0 ? abs($rawRemaining) : 0;
+
 			return response()->json([
 				'success' => true,
 				'data' => [
 					'payments' => $payments,
-					'total_count' => $payments->count()
+					'total_count' => $payments->count(),
+					'expected_amount' => $expectedAmount,
+					'total_paid' => (float) $totalPaid,
+					'total_submitted' => (float) $totalSubmitted,
+					'remaining_balance' => $remainingBalance,
+					'over_amount' => (float) $overAmount,
 				]
 			]);
 		} catch (\Exception $e) {

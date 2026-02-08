@@ -121,6 +121,15 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
   // Payments
   const [payments, setPayments] = useState<any[]>([]);
   const [loadingPayments, setLoadingPayments] = useState(true);
+  const [expectedAmount, setExpectedAmount] = useState<number>(0);
+  const [totalPaid, setTotalPaid] = useState<number>(0);
+  const [totalSubmitted, setTotalSubmitted] = useState<number>(0);
+  const [remainingBalance, setRemainingBalance] = useState<number>(0);
+  const [overAmount, setOverAmount] = useState<number>(0);
+  const [rejectReason, setRejectReason] = useState('');
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectingPaymentId, setRejectingPaymentId] = useState<number | null>(null);
+  const [actionLoading, setActionLoading] = useState<number | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -211,6 +220,92 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
     return () => { isMounted = false; };
   }, [userId, milestoneItem.item_id]);
 
+  // Helper to refresh payments list
+  const refreshPayments = () => {
+    setLoadingPayments(true);
+    payment_service.get_payments_by_item(milestoneItem.item_id)
+      .then(res => {
+        if (res.success) {
+          const paymentsData = res.data?.payments || res.data?.data?.payments || res.payments || [];
+          setPayments(Array.isArray(paymentsData) ? paymentsData : []);
+          // Extract payment summary for partial payments
+          const data = res.data?.data || res.data || {};
+          setExpectedAmount(parseFloat(data.expected_amount) || parseFloat(milestoneItem.milestone_item_cost) || 0);
+          setTotalPaid(parseFloat(data.total_paid) || 0);
+          setTotalSubmitted(parseFloat(data.total_submitted) || 0);
+          setRemainingBalance(parseFloat(data.remaining_balance) || 0);
+          setOverAmount(parseFloat(data.over_amount) || 0);
+        } else {
+          setPayments([]);
+        }
+      })
+      .catch(err => {
+        console.error('Payment fetch error:', err);
+        setPayments([]);
+      })
+      .finally(() => setLoadingPayments(false));
+  };
+
+  // Contractor approve/reject handlers
+  const handleApprovePayment = async (paymentId: number) => {
+    Alert.alert(
+      'Approve Payment Receipt',
+      'Confirm that you have received this payment?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Approve',
+          onPress: async () => {
+            try {
+              setActionLoading(paymentId);
+              const response = await payment_service.approve_payment(paymentId, userId);
+              if (response.success) {
+                Alert.alert('Success', 'Payment receipt approved');
+                refreshPayments();
+              } else {
+                Alert.alert('Error', response.message || 'Failed to approve receipt');
+              }
+            } catch (error) {
+              Alert.alert('Error', 'An error occurred');
+            } finally {
+              setActionLoading(null);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleRejectPayment = (paymentId: number) => {
+    setRejectingPaymentId(paymentId);
+    setRejectReason('');
+    setShowRejectModal(true);
+  };
+
+  const submitRejectPayment = async () => {
+    if (!rejectReason.trim()) {
+      Alert.alert('Error', 'Please provide a rejection reason');
+      return;
+    }
+    if (rejectingPaymentId === null) return;
+    try {
+      setActionLoading(rejectingPaymentId);
+      setShowRejectModal(false);
+      const response = await payment_service.reject_payment(rejectingPaymentId, userId, rejectReason.trim());
+      if (response.success) {
+        Alert.alert('Success', 'Payment receipt rejected');
+        refreshPayments();
+      } else {
+        Alert.alert('Error', response.message || 'Failed to reject receipt');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'An error occurred');
+    } finally {
+      setActionLoading(null);
+      setRejectingPaymentId(null);
+    }
+  };
+
   // Fetch payments for this milestone item
   useEffect(() => {
     let isMounted = true;
@@ -223,8 +318,15 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
         if (isMounted) {
           if (res.success) {
             // Handle different response structures
-            const payments = res.data?.payments || res.data?.data?.payments || res.payments || [];
-            setPayments(Array.isArray(payments) ? payments : []);
+            const paymentsData = res.data?.payments || res.data?.data?.payments || res.payments || [];
+            setPayments(Array.isArray(paymentsData) ? paymentsData : []);
+            // Extract payment summary for partial payments
+            const data = res.data?.data || res.data || {};
+            setExpectedAmount(parseFloat(data.expected_amount) || parseFloat(milestoneItem.milestone_item_cost) || 0);
+            setTotalPaid(parseFloat(data.total_paid) || 0);
+            setTotalSubmitted(parseFloat(data.total_submitted) || 0);
+            setRemainingBalance(parseFloat(data.remaining_balance) || 0);
+            setOverAmount(parseFloat(data.over_amount) || 0);
           } else {
             console.warn('Payment API returned unsuccessful response:', res.message);
             setPayments([]);
@@ -286,7 +388,8 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
   // Check if there's at least one approved payment receipt by contractor
   const hasApprovedPayment = payments.some((p) => p.payment_status === 'approved');
   
-  // Debug button visibility
+  // Allow partial payments: show button if owner, approved, has approved progress, and not completed.
+  // Over-balance payments are allowed (frontend shows a warning modal).
   const shouldShowPaymentButton = isOwner && isApproved && progressReports.some(p => p.progress_status === 'approved') && itemStatus !== 'completed';
   console.log('Payment button visibility check:', {
     isOwner,
@@ -298,7 +401,11 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
     shouldShow: shouldShowPaymentButton,
     hasApprovedPayment,
     paymentsCount: payments.length,
-    paymentStatuses: payments.map(p => p.payment_status)
+    paymentStatuses: payments.map(p => p.payment_status),
+    expectedAmount,
+    totalPaid,
+    totalSubmitted,
+    remainingBalance,
   });
 
   // Get attachment from milestone item (from database)
@@ -572,6 +679,44 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
             <View style={styles.paymentsSection}>
               <Text style={styles.sectionTitle}>Payment Receipts</Text>
 
+              {/* Payment Balance Summary */}
+              {expectedAmount > 0 && (
+                <View style={styles.paymentBalanceSummary}>
+                  <View style={styles.paymentBalanceRow}>
+                    <Text style={styles.paymentBalanceLabel}>Expected</Text>
+                    <Text style={styles.paymentBalanceValue}>
+                      ₱{expectedAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                    </Text>
+                  </View>
+                  <View style={styles.paymentBalanceRow}>
+                    <Text style={styles.paymentBalanceLabel}>Paid (Approved)</Text>
+                    <Text style={[styles.paymentBalanceValue, { color: COLORS.success }]}>
+                      ₱{totalPaid.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                    </Text>
+                  </View>
+                  {totalSubmitted > 0 && (
+                    <View style={styles.paymentBalanceRow}>
+                      <Text style={styles.paymentBalanceLabel}>Pending</Text>
+                      <Text style={[styles.paymentBalanceValue, { color: COLORS.warning }]}>
+                        ₱{totalSubmitted.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                      </Text>
+                    </View>
+                  )}
+                  <View style={[styles.paymentBalanceRow, { borderTopWidth: 1, borderTopColor: COLORS.border, marginTop: 8, paddingTop: 8 }]}>
+                    <Text style={[styles.paymentBalanceLabel, { fontWeight: '700' }]}>Remaining</Text>
+                    <Text style={[styles.paymentBalanceValue, { fontWeight: '700', color: overAmount > 0 ? '#e74c3c' : remainingBalance > 0 ? COLORS.accent : COLORS.success }]}>
+                      {overAmount > 0
+                        ? `₱0.00 (₱${overAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })} over)`
+                        : `₱${remainingBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
+                    </Text>
+                  </View>
+                  {/* Progress bar */}
+                  <View style={styles.balanceProgressBg}>
+                    <View style={[styles.balanceProgressFill, { width: `${Math.min(100, expectedAmount > 0 ? ((totalPaid + totalSubmitted) / expectedAmount) * 100 : 0)}%` }]} />
+                  </View>
+                </View>
+              )}
+
               {payments.map((payment: any) => {
                 const statusColor = payment.payment_status === 'approved' ? COLORS.success :
                                    payment.payment_status === 'rejected' ? COLORS.error :
@@ -646,6 +791,40 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
                           style={styles.paymentReceiptImage}
                           resizeMode="contain"
                         />
+                      </View>
+                    )}
+
+                    {/* Contractor: Approve/Reject buttons for submitted payments */}
+                    {isContractor && payment.payment_status === 'submitted' && (
+                      <View style={styles.paymentActionButtons}>
+                        <TouchableOpacity
+                          style={styles.paymentRejectBtn}
+                          onPress={() => handleRejectPayment(payment.payment_id)}
+                          disabled={actionLoading === payment.payment_id}
+                        >
+                          {actionLoading === payment.payment_id ? (
+                            <ActivityIndicator size="small" color={COLORS.error} />
+                          ) : (
+                            <>
+                              <Feather name="x" size={16} color={COLORS.error} />
+                              <Text style={styles.paymentRejectBtnText}>Reject</Text>
+                            </>
+                          )}
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.paymentApproveBtn}
+                          onPress={() => handleApprovePayment(payment.payment_id)}
+                          disabled={actionLoading === payment.payment_id}
+                        >
+                          {actionLoading === payment.payment_id ? (
+                            <ActivityIndicator size="small" color={COLORS.surface} />
+                          ) : (
+                            <>
+                              <Feather name="check" size={16} color={COLORS.surface} />
+                              <Text style={styles.paymentApproveBtnText}>Approve</Text>
+                            </>
+                          )}
+                        </TouchableOpacity>
                       </View>
                     )}
                   </View>
@@ -792,18 +971,17 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
           milestoneItemId={milestoneItem.item_id}
           projectId={projectId}
           milestoneTitle={`Milestone ${milestoneNumber}: ${milestoneItem.milestone_item_title}`}
+          expectedAmount={expectedAmount}
+          totalPaid={totalPaid}
+          totalSubmitted={totalSubmitted}
+          remainingBalance={remainingBalance}
+          overAmount={overAmount}
           onClose={() => setShowPaymentForm(false)}
           onSuccess={() => {
             setShowPaymentForm(false);
             Alert.alert('Success', 'Payment receipt submitted successfully!');
-            // Refresh payments list
-            payment_service.get_payments_by_item(milestoneItem.item_id)
-              .then(res => {
-                if (res.success && res.data?.payments) {
-                  setPayments(res.data.payments);
-                }
-              })
-              .catch(err => console.error('Error refreshing payments:', err));
+            // Refresh payments list with updated summary
+            refreshPayments();
           }}
         />
       </Modal>
@@ -859,6 +1037,45 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
           />
         </Modal>
       )}
+
+      {/* Reject Payment Reason Modal */}
+      <Modal
+        visible={showRejectModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowRejectModal(false)}
+      >
+        <View style={styles.rejectModalOverlay}>
+          <View style={styles.rejectModalContent}>
+            <Text style={styles.rejectModalTitle}>Reject Payment</Text>
+            <Text style={styles.rejectModalSubtitle}>Please provide a reason for rejection:</Text>
+            <TextInput
+              style={styles.rejectModalInput}
+              value={rejectReason}
+              onChangeText={setRejectReason}
+              placeholder="Enter rejection reason..."
+              placeholderTextColor={COLORS.textMuted}
+              multiline
+              numberOfLines={3}
+              textAlignVertical="top"
+            />
+            <View style={styles.rejectModalActions}>
+              <TouchableOpacity
+                style={styles.rejectModalCancelBtn}
+                onPress={() => { setShowRejectModal(false); setRejectingPaymentId(null); }}
+              >
+                <Text style={styles.rejectModalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.rejectModalConfirmBtn}
+                onPress={submitRejectPayment}
+              >
+                <Text style={styles.rejectModalConfirmText}>Reject</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -1321,6 +1538,12 @@ const styles = StyleSheet.create({
   paymentsSection: {
     marginTop: 24,
   },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: 16,
+  },
   paymentCard: {
     backgroundColor: COLORS.surface,
     borderRadius: 16,
@@ -1436,5 +1659,148 @@ const styles = StyleSheet.create({
     height: 200,
     borderRadius: 12,
     backgroundColor: COLORS.borderLight,
+  },
+
+  // Payment Balance Summary
+  paymentBalanceSummary: {
+    backgroundColor: COLORS.primaryLight,
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  paymentBalanceRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  paymentBalanceLabel: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+  },
+  paymentBalanceValue: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  balanceProgressBg: {
+    height: 5,
+    backgroundColor: COLORS.border,
+    borderRadius: 3,
+    marginTop: 10,
+    overflow: 'hidden',
+  },
+  balanceProgressFill: {
+    height: '100%',
+    backgroundColor: COLORS.success,
+    borderRadius: 3,
+  },
+
+  // Contractor payment action buttons
+  paymentActionButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 12,
+  },
+  paymentRejectBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderRadius: 10,
+    paddingVertical: 12,
+    borderWidth: 2,
+    borderColor: COLORS.error,
+    backgroundColor: COLORS.surface,
+  },
+  paymentRejectBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.error,
+  },
+  paymentApproveBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderRadius: 10,
+    paddingVertical: 12,
+    backgroundColor: COLORS.success,
+  },
+  paymentApproveBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.surface,
+  },
+
+  // Reject modal
+  rejectModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  rejectModalContent: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 20,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+  },
+  rejectModalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: 8,
+  },
+  rejectModalSubtitle: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    marginBottom: 16,
+  },
+  rejectModalInput: {
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 15,
+    color: COLORS.text,
+    backgroundColor: COLORS.borderLight,
+    minHeight: 80,
+    marginBottom: 20,
+  },
+  rejectModalActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  rejectModalCancelBtn: {
+    flex: 1,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: COLORS.border,
+  },
+  rejectModalCancelText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.textSecondary,
+  },
+  rejectModalConfirmBtn: {
+    flex: 1,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    backgroundColor: COLORS.error,
+  },
+  rejectModalConfirmText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.surface,
   },
 });
