@@ -15,5 +15,7 @@ class VerifyCsrfToken extends Middleware
         'accounts/switch/*',
         // Public storage/file serving used by mobile app
         'storage/*',
+        // Broadcasting authentication endpoint (handled by custom auth)
+        'broadcasting/auth',
     ];
 }

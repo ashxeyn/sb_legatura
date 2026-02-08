@@ -32,7 +32,7 @@ class cprocessController extends Controller
 
     public function showMessages(Request $request)
     {
-        return view('contractor.contractor_Messages');
+        return view('both.messages');
     }
 
     public function showProfile(Request $request)
@@ -86,27 +86,31 @@ class cprocessController extends Controller
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Access denied. Only contractors can access milestone setup.',
+                    'message' => 'Access denied. Only contractors can access this page.',
                     'redirect_url' => '/dashboard'
                 ], 403);
             } else {
-                return redirect('/dashboard')->with('error', 'Access denied. Only contractors can access milestone setup.');
+                return redirect('/dashboard')->with('error', 'Access denied. Only contractors can access this page.');
             }
         }
 
-        // For 'both' users, check current active role
+        // For 'both' users, auto-switch to contractor role when accessing contractor pages
         if ($user->user_type === 'both') {
             $currentRole = Session::get('current_role', 'contractor');
             if ($currentRole !== 'contractor') {
-                if ($request->expectsJson()) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Access denied. Please switch to contractor role to access milestone setup.',
-                        'redirect_url' => '/dashboard',
-                        'suggested_action' => 'switch_to_contractor'
-                    ], 403);
-                } else {
-                    return redirect('/dashboard')->with('error', 'Please switch to contractor role to access milestone setup.');
+                // Auto-switch to contractor role
+                Session::put('current_role', 'contractor');
+
+                // Update preferred_role in database for persistence
+                try {
+                    DB::table('users')
+                        ->where('user_id', $user->user_id)
+                        ->update(['preferred_role' => 'contractor']);
+                } catch (\Exception $e) {
+                    Log::warning('Failed to update preferred_role in database', [
+                        'user_id' => $user->user_id,
+                        'error' => $e->getMessage()
+                    ]);
                 }
             }
         }

@@ -1,11 +1,37 @@
 /**
- * Admin Messages Page - Real-time Chat with Pusher
+ * Messages Page - Real-time Chat with Pusher
  * Legatura Platform
+ * Supports: Admin, Contractor, and Property Owner roles
  */
 
 let currentConversationId = null;
+let currentConversationData = null; // Store conversation metadata
 let currentReceiverId = null;
 let selectedRecipients = [];
+
+/**
+ * Detect current user role and return appropriate API prefix
+ * Based on current URL path
+ */
+function getApiPrefix() {
+    const path = window.location.pathname;
+    if (path.includes('/admin/')) {
+        return '/admin/messages';
+    } else if (path.includes('/contractor/')) {
+        return '/contractor/messages/api';
+    } else if (path.includes('/owner/')) {
+        return '/owner/messages/api';
+    }
+    // Fallback to admin if no match
+    return '/admin/messages';
+}
+
+/**
+ * Check if current user is admin
+ */
+function isAdmin() {
+    return window.location.pathname.includes('/admin/');
+}
 
 /**
  * Format relative time (like "2 minutes ago")
@@ -74,7 +100,12 @@ function updateAllTimestamps() {
 
 document.addEventListener('DOMContentLoaded', () => {
     initializePusher();
-    loadDashboardStats();
+
+    // Load dashboard stats only for admin users
+    if (isAdmin()) {
+        loadDashboardStats();
+    }
+
     loadInbox();
     setupEventListeners();
 
@@ -90,26 +121,90 @@ function initializePusher() {
         // Import Laravel Echo and Pusher from CDN (add to blade template)
         if (typeof window.Echo === 'undefined') {
             console.error('Laravel Echo not loaded. Add CDN scripts to template.');
+            updatePusherStatus('disconnected', 'Real-time disabled');
             return;
         }
 
         const userId = getUserId();
 
-        if (!userId) return;
+        if (!userId) {
+            // console.log('Pusher: No user ID found, skipping initialization');
+            updatePusherStatus('disconnected', 'Not authenticated');
+            return;
+        }
+
+        // console.log('Pusher: Initializing for user ID:', userId);
+        // console.log('Pusher: Subscribing to channel:', `chat.${userId}`);
+        updatePusherStatus('connecting', 'Connecting...');
 
         // Listen for incoming messages on user's private channel
         window.Echo.private(`chat.${userId}`)
             .listen('.message.sent', (event) => {
+                // console.log('Pusher: Message received!', event);
                 handleIncomingMessage(event);
             })
-            .subscribed(() => {})
+            .listen('.messages.read', (event) => {
+                // console.log('Pusher: Messages marked as read!', event);
+                handleMessagesRead(event);
+            })
+            .listen('.conversation.suspended', (event) => {
+                // console.log('Pusher: Conversation suspended/unsuspended!', event);
+                handleConversationSuspension(event);
+            })
+            .subscribed(() => {
+                // console.log('Pusher: Successfully subscribed to channel chat.' + userId);
+                updatePusherStatus('connected', 'Real-time enabled');
+            })
             .error((error) => {
                 console.error('Pusher channel subscription failed:', error);
                 // console.info('Tip: Make sure PUSHER credentials are set in .env and queue worker is running');
+                updatePusherStatus('error', 'Connection failed');
             });
 
+        // console.log('Pusher: Listener attached for .message.sent and .messages.read events');
+
     } catch (error) {
-        console.error('Failed to initialize Pusher:', error);
+        // console.error('Failed to initialize Pusher:', error);
+        updatePusherStatus('error', 'Setup failed');
+    }
+}
+
+/**
+ * Update Pusher connection status indicator
+ */
+function updatePusherStatus(status, message) {
+    const statusEl = document.getElementById('pusherStatus');
+    if (!statusEl) return;
+
+    const statusDot = statusEl.querySelector('.status-dot');
+    const statusText = statusEl.querySelector('.status-text');
+
+    // Show the status indicator
+    statusEl.classList.remove('hidden');
+
+    // Reset classes
+    statusEl.className = 'mb-3 px-3 py-2 rounded-lg text-xs font-medium';
+    statusDot.className = 'status-dot w-2 h-2 rounded-full';
+
+    switch (status) {
+        case 'connected':
+            statusEl.classList.add('bg-green-50', 'text-green-700', 'border', 'border-green-200');
+            statusDot.classList.add('bg-green-500', 'animate-pulse');
+            statusText.textContent = message;
+            // Auto-hide after 3 seconds
+            setTimeout(() => statusEl.classList.add('hidden'), 3000);
+            break;
+        case 'connecting':
+            statusEl.classList.add('bg-yellow-50', 'text-yellow-700', 'border', 'border-yellow-200');
+            statusDot.classList.add('bg-yellow-500', 'animate-pulse');
+            statusText.textContent = message;
+            break;
+        case 'disconnected':
+        case 'error':
+            statusEl.classList.add('bg-gray-50', 'text-gray-600', 'border', 'border-gray-200');
+            statusDot.classList.add('bg-gray-400');
+            statusText.textContent = message;
+            break;
     }
 }
 
@@ -118,8 +213,11 @@ function initializePusher() {
  */
 async function loadDashboardStats() {
     try {
-        const response = await fetch('/admin/messages/stats', {
-            headers: getAuthHeaders()
+        const cacheBuster = `?_=${Date.now()}`;
+        const response = await fetch(`${getApiPrefix()}/stats${cacheBuster}`, {
+            headers: getAuthHeaders(),
+            credentials: 'include',
+            cache: 'no-store' // Prevent browser caching
         });
 
         if (!response.ok) throw new Error('Failed to load stats');
@@ -136,7 +234,7 @@ async function loadDashboardStats() {
         updateFilterBadge('suspended', data.totalSuspended);
 
     } catch (error) {
-        console.error('Error loading stats:', error);
+        // console.error('Error loading stats:', error);
     }
 }
 
@@ -145,8 +243,22 @@ async function loadDashboardStats() {
  */
 async function loadInbox() {
     try {
-        const response = await fetch('/admin/messages/', {
-            headers: getAuthHeaders()
+        let endpoint = getApiPrefix();
+
+        // ADMIN: Use specific endpoints for flagged/suspended filters
+        if (isAdmin() && currentFilter === 'flagged') {
+            endpoint = '/admin/messages/flagged';
+        } else if (isAdmin() && currentFilter === 'suspended') {
+            endpoint = '/admin/messages/suspended';
+        }
+
+        // Add cache-busting parameter to ensure fresh data
+        const cacheBuster = `?_=${Date.now()}`;
+
+        const response = await fetch(endpoint + cacheBuster, {
+            headers: getAuthHeaders(),
+            credentials: 'include',
+            cache: 'no-store' // Prevent browser caching
         });
 
         if (!response.ok) throw new Error('Failed to load inbox');
@@ -154,11 +266,21 @@ async function loadInbox() {
         const { data } = await response.json();
         renderConversations(data);
 
-        // Update "All" filter badge with total count
-        updateFilterBadge('all', data.length);
+        // Update filter badge counts
+        if (currentFilter === 'all') {
+            updateFilterBadge('all', data.length);
+        } else if (currentFilter === 'flagged') {
+            updateFilterBadge('flagged', data.length);
+        } else if (currentFilter === 'suspended') {
+            updateFilterBadge('suspended', data.length);
+        }
+
+        // Calculate and update total unread count
+        const totalUnread = data.reduce((sum, conv) => sum + (conv.unread_count || 0), 0);
+        updateUnreadBadge(totalUnread);
 
     } catch (error) {
-        console.error('Error loading inbox:', error);
+        // console.error('Error loading inbox:', error);
     }
 }
 
@@ -166,7 +288,7 @@ async function loadInbox() {
  * Render conversations list in sidebar
  */
 function renderConversations(conversations) {
-    const list = document.getElementById('conversationsList');
+    const list = document.getElementById('conversationList');
 
     if (!conversations || conversations.length === 0) {
         list.innerHTML = '<p class="text-center text-gray-400 py-8">No conversations yet</p>';
@@ -174,9 +296,12 @@ function renderConversations(conversations) {
     }
 
     list.innerHTML = conversations.map(conv => `
-        <div class="conversation-item ${conv.is_flagged ? 'flagged' : ''} ${(conv.status === 'suspended' || conv.is_suspended) ? 'suspended' : ''}"
+        <div class="conversation-item ${conv.unread_count > 0 ? 'unread' : ''} ${conv.is_flagged ? 'flagged' : ''} ${(conv.status === 'suspended' || conv.is_suspended) ? 'suspended' : ''}"
              data-conversation-id="${conv.conversation_id}"
-             data-receiver-id="${conv.other_user.id}">
+             data-receiver-id="${conv.other_user.id}"
+             data-receiver-name="${conv.other_user.name}"
+             data-receiver-avatar="${conv.other_user.avatar}"
+             data-receiver-type="${conv.other_user.type}">
             <div class="flex items-start gap-3 cursor-pointer p-3 hover:bg-gray-50 rounded-lg transition">
                 <div class="relative flex-shrink-0">
                     <img src="${conv.other_user.avatar}"
@@ -190,6 +315,7 @@ function renderConversations(conversations) {
                             <h4 class="conversation-name font-semibold text-gray-800 truncate">${conv.other_user.name}</h4>
                             ${conv.is_flagged ? '<i class="fi fi-sr-flag text-amber-500 text-xs"></i>' : ''}
                             ${(conv.status === 'suspended' || conv.is_suspended) ? '<i class="fi fi-sr-ban text-red-500 text-xs"></i>' : ''}
+                            ${(conv.no_suspends && conv.no_suspends > 0) ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800" title="Offense count">${conv.no_suspends}x</span>` : ''}
                         </div>
                         <span class="text-xs text-gray-400 flex-shrink-0 relative-time" data-timestamp="${conv.last_message.sent_at_timestamp}">${formatRelativeTime(conv.last_message.sent_at_timestamp)}</span>
                     </div>
@@ -224,13 +350,72 @@ async function selectConversation(conversationId, receiverId) {
     document.querySelectorAll('.conversation-item').forEach(item => {
         item.classList.remove('active');
     });
-    document.querySelector(`[data-conversation-id="${conversationId}"]`)?.classList.add('active');
+    const selectedConversation = document.querySelector(`[data-conversation-id="${conversationId}"]`);
+    selectedConversation?.classList.add('active');
+
+    // Update conversation header with receiver info
+    if (selectedConversation) {
+        const receiverName = selectedConversation.dataset.receiverName;
+        const receiverAvatar = selectedConversation.dataset.receiverAvatar;
+        const receiverType = selectedConversation.dataset.receiverType;
+
+        // Update header name (contractor/owner uses headerName, admin uses selectedName)
+        const headerName = document.getElementById('headerName') || document.getElementById('selectedName');
+        if (headerName) headerName.textContent = receiverName;
+
+        // Update header avatar
+        const headerAvatar = document.getElementById('headerAvatar');
+        const selectedAvatar = document.getElementById('selectedAvatar');
+
+        if (headerAvatar) {
+            headerAvatar.innerHTML = `<img src="${receiverAvatar}" alt="${receiverName}" class="w-10 h-10 rounded-full object-cover">`;
+        }
+        if (selectedAvatar) {
+            selectedAvatar.src = receiverAvatar;
+            selectedAvatar.alt = receiverName;
+        }
+
+        // Update header project/type (contractor/owner uses headerProject, admin uses selectedProject)
+        const headerProject = document.getElementById('headerProject') || document.getElementById('selectedProject');
+        if (headerProject) headerProject.textContent = receiverType;
+    }
 
     // Show message panel
     document.getElementById('emptyState')?.classList.add('hidden');
     const messageContent = document.getElementById('messageContent');
     messageContent?.classList.remove('hidden');
     messageContent?.classList.add('flex');
+
+    // Initialize action buttons for admin (only show in flagged filter)
+    if (isAdmin()) {
+        const suspendBtn = document.getElementById('suspendConversationBtn');
+        const restoreBtn = document.getElementById('restoreConversationBtn');
+        const messageInputContainer = document.getElementById('messageInputContainer');
+
+        // console.log('Admin user - initializing action buttons', {
+        //     suspendBtn: !!suspendBtn,
+        //     restoreBtn: !!restoreBtn,
+        //     currentFilter: currentFilter
+        // });
+
+        // Only show suspend/unsuspend buttons in flagged or suspended filters
+        if (currentFilter === 'flagged') {
+            suspendBtn?.classList.remove('hidden');
+            restoreBtn?.classList.add('hidden');
+            // Hide message input - admin is moderating, not participating
+            messageInputContainer?.classList.add('hidden');
+        } else if (currentFilter === 'suspended') {
+            suspendBtn?.classList.add('hidden');
+            restoreBtn?.classList.remove('hidden');
+            // Hide message input - admin is moderating, not participating
+            messageInputContainer?.classList.add('hidden');
+        } else {
+            suspendBtn?.classList.add('hidden');
+            restoreBtn?.classList.add('hidden');
+            // Show message input - admin can chat with users in "all" filter
+            messageInputContainer?.classList.remove('hidden');
+        }
+    }
 
     // Load conversation history
     await loadConversationHistory(conversationId);
@@ -240,6 +425,8 @@ async function selectConversation(conversationId, receiverId) {
     const unreadBadge = conversationItem?.querySelector('.unread-badge');
     if (unreadBadge) {
         unreadBadge.remove();
+        // Also remove 'unread' class from conversation item
+        conversationItem?.classList.remove('unread');
     }
 }
 
@@ -248,22 +435,60 @@ async function selectConversation(conversationId, receiverId) {
  */
 async function loadConversationHistory(conversationId) {
     try {
-        const response = await fetch(`/admin/messages/${conversationId}`, {
-            headers: getAuthHeaders()
+        const response = await fetch(`${getApiPrefix()}/${conversationId}`, {
+            headers: getAuthHeaders(),
+            credentials: 'include'
         });
 
         if (!response.ok) throw new Error('Failed to load conversation');
 
         const { data } = await response.json();
 
-        renderMessages(data.messages);
+        // Store conversation metadata (for admin viewing user-to-user conversations)
+        currentConversationData = data.conversation;
 
-        // Check suspension status
+        renderMessages(data.messages, currentConversationData);
+
+        // Check suspension and flag status
         checkAndHandleSuspension(conversationId);
+        checkAndHandleFlagStatus(conversationId);
 
     } catch (error) {
-        console.error('Error loading conversation:', error);
+        // console.error('Error loading conversation:', error);
         toast('Failed to load messages', 'error');
+    }
+}
+
+/**
+ * Check if conversation is flagged and handle UI accordingly
+ */
+async function checkAndHandleFlagStatus(conversationId) {
+    try {
+        // Get conversation details from inbox to check flag status
+        const inbox = await fetch(getApiPrefix(), {
+            headers: getAuthHeaders(),
+            credentials: 'include'
+        }).then(r => r.json());
+
+        const conversation = inbox.data.find(conv => String(conv.conversation_id) === String(conversationId));
+
+        if (!conversation) return;
+
+        const flagBtn = document.getElementById('flagConversationBtn');
+        const unflagBtn = document.getElementById('unflagConversationBtn');
+
+        if (conversation.is_flagged) {
+            // Hide flag button, show unflag button
+            flagBtn?.classList.add('hidden');
+            unflagBtn?.classList.remove('hidden');
+        } else {
+            // Show flag button, hide unflag button
+            flagBtn?.classList.remove('hidden');
+            unflagBtn?.classList.add('hidden');
+        }
+
+    } catch (error) {
+        // console.error('Error checking flag status:', error);
     }
 }
 
@@ -272,25 +497,79 @@ async function loadConversationHistory(conversationId) {
  */
 async function checkAndHandleSuspension(conversationId) {
     try {
-        // Get conversation details from inbox to check suspension
-        const inbox = await fetch('/admin/messages/', {
-            headers: getAuthHeaders()
+        // Get conversation details - try current filter endpoint first
+        let endpoint = getApiPrefix();
+
+        // If we're on flagged or suspended filter, use those endpoints
+        if (isAdmin() && currentFilter === 'flagged') {
+            endpoint = '/admin/messages/flagged';
+        } else if (isAdmin() && currentFilter === 'suspended') {
+            endpoint = '/admin/messages/suspended';
+        }
+
+        const inbox = await fetch(endpoint, {
+            headers: getAuthHeaders(),
+            credentials: 'include'
         }).then(r => r.json());
 
         const conversation = inbox.data?.find(c => c.conversation_id == conversationId);
 
-        if (!conversation) return;
+        if (!conversation) {
+            // console.log('Conversation not found in current filter, checking regular inbox');
+            // Fallback to regular inbox
+            const regularInbox = await fetch(getApiPrefix(), {
+                headers: getAuthHeaders(),
+                credentials: 'include'
+            }).then(r => r.json());
 
-        const messageInput = document.getElementById('messageInput');
-        const sendBtn = document.getElementById('sendMessageBtn');
-        const inputContainer = messageInput?.parentElement?.parentElement;
+            const fallbackConv = regularInbox.data?.find(c => c.conversation_id == conversationId);
+            if (!fallbackConv) return;
 
-        // Remove existing suspension notice if any
-        const existingNotice = document.getElementById('suspensionNotice');
-        if (existingNotice) existingNotice.remove();
+            return checkSuspensionState(fallbackConv);
+        }
 
-        // Check if suspended
+        checkSuspensionState(conversation);
+
+    } catch (error) {
+        // console.error('Error checking suspension:', error);
+    }
+}
+
+/**
+ * Helper: Check suspension state and update UI
+ */
+function checkSuspensionState(conversation) {
+    const messageInput = document.getElementById('messageInput');
+    const sendBtn = document.getElementById('sendMessageBtn');
+    const attachmentBtn = document.getElementById('attachmentBtn');
+    const inputContainer = document.getElementById('messageInputContainer');
+
+    // Remove existing suspension notice if any
+    const existingNotice = document.getElementById('suspensionNotice');
+    if (existingNotice) existingNotice.remove();
+
+    // For admin viewing flagged/suspended conversations, hide the entire input container
+    if (isAdmin() && (currentFilter === 'flagged' || currentFilter === 'suspended')) {
+        inputContainer?.classList.add('hidden');
+
+        // Show appropriate moderation buttons
         if (conversation.status === 'suspended' || conversation.is_suspended) {
+            document.getElementById('suspendConversationBtn')?.classList.add('hidden');
+            document.getElementById('restoreConversationBtn')?.classList.remove('hidden');
+        } else {
+            if (currentFilter === 'flagged') {
+                document.getElementById('suspendConversationBtn')?.classList.remove('hidden');
+            }
+            document.getElementById('restoreConversationBtn')?.classList.add('hidden');
+        }
+        return;
+    }
+
+    // Show input container for non-admin or admin in "all" filter
+    inputContainer?.classList.remove('hidden');
+
+    // Check if suspended
+    if (conversation.status === 'suspended' || conversation.is_suspended) {
             // Disable input
             if (messageInput) {
                 messageInput.disabled = true;
@@ -301,13 +580,17 @@ async function checkAndHandleSuspension(conversationId) {
                 sendBtn.disabled = true;
                 sendBtn.classList.add('opacity-50', 'cursor-not-allowed');
             }
+            if (attachmentBtn) {
+                attachmentBtn.disabled = true;
+                attachmentBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            }
 
             // Show suspension notice
             const notice = document.createElement('div');
             notice.id = 'suspensionNotice';
             notice.className = 'px-4 py-3 bg-red-50 border-l-4 border-red-500 text-sm text-red-800';
 
-            let suspensionMessage = '⚠️ This conversation has been suspended.';
+            let suspensionMessage = 'This conversation has been suspended.';
 
             // Check if there's a suspended_until date
             if (conversation.suspended_until) {
@@ -322,10 +605,10 @@ async function checkAndHandleSuspension(conversationId) {
                         hour: '2-digit',
                         minute: '2-digit'
                     };
-                    suspensionMessage = `⚠️ This conversation is suspended until ${suspendedUntil.toLocaleDateString('en-US', options)}. No messages can be sent during this period.`;
+                    suspensionMessage = `This conversation is suspended until ${suspendedUntil.toLocaleDateString('en-US', options)}. No messages can be sent during this period.`;
                 }
             } else {
-                suspensionMessage = '⚠️ This conversation has been permanently suspended. No messages can be sent.';
+                suspensionMessage = 'This conversation has been permanently suspended. No messages can be sent.';
             }
 
             if (conversation.reason) {
@@ -333,31 +616,22 @@ async function checkAndHandleSuspension(conversationId) {
             }
 
             notice.innerHTML = suspensionMessage;
-            inputContainer?.parentElement?.insertBefore(notice, inputContainer);
+            const messagesDisplay = document.getElementById('messagesDisplay');
+            if (messagesDisplay && inputContainer) {
+                messagesDisplay.parentElement?.insertBefore(notice, inputContainer);
+            }
 
-            // Show restore button, hide suspend button
+            // Show unsuspend button only in flagged or suspended filter, hide suspend button
+            // console.log('Conversation is suspended - showing unsuspend button');
             document.getElementById('suspendConversationBtn')?.classList.add('hidden');
-
-            // Create restore button if it doesn't exist
-            let restoreBtn = document.getElementById('restoreConversationBtn');
-            if (!restoreBtn) {
-                restoreBtn = document.createElement('button');
-                restoreBtn.id = 'restoreConversationBtn';
-                restoreBtn.className = 'px-4 py-2 rounded-lg border-2 border-emerald-300 text-emerald-700 hover:bg-emerald-50 transition text-sm font-semibold flex items-center gap-2';
-                restoreBtn.innerHTML = '<i class="fi fi-rr-check-circle"></i><span>Restore</span>';
-                restoreBtn.addEventListener('click', () => openRestoreModal());
-
-                // Insert after flag button
-                const flagBtn = document.getElementById('flagConversationBtn');
-                if (flagBtn && flagBtn.parentElement) {
-                    flagBtn.parentElement.insertBefore(restoreBtn, flagBtn.nextSibling);
-                }
+            if (currentFilter === 'flagged' || currentFilter === 'suspended') {
+                document.getElementById('restoreConversationBtn')?.classList.remove('hidden');
             } else {
-                restoreBtn.classList.remove('hidden');
+                document.getElementById('restoreConversationBtn')?.classList.add('hidden');
             }
 
         } else {
-            // Enable input
+            // Enable input (conversation not suspended)
             if (messageInput) {
                 messageInput.disabled = false;
                 messageInput.placeholder = 'Type your message...';
@@ -367,15 +641,20 @@ async function checkAndHandleSuspension(conversationId) {
                 sendBtn.disabled = false;
                 sendBtn.classList.remove('opacity-50', 'cursor-not-allowed');
             }
+            if (attachmentBtn) {
+                attachmentBtn.disabled = false;
+                attachmentBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
 
-            // Show suspend button, hide restore button
-            document.getElementById('suspendConversationBtn')?.classList.remove('hidden');
+            // Show suspend button only in flagged filter, hide restore button
+            // console.log('Conversation is NOT suspended - showing suspend button');
+            if (currentFilter === 'flagged') {
+                document.getElementById('suspendConversationBtn')?.classList.remove('hidden');
+            } else {
+                document.getElementById('suspendConversationBtn')?.classList.add('hidden');
+            }
             document.getElementById('restoreConversationBtn')?.classList.add('hidden');
         }
-
-    } catch (error) {
-        console.error('Error checking suspension:', error);
-    }
 }
 
 /**
@@ -384,19 +663,20 @@ async function checkAndHandleSuspension(conversationId) {
 async function markConversationAsRead(conversationId) {
     try {
         // Just fetch the conversation - backend marks as read automatically
-        await fetch(`/admin/messages/${conversationId}`, {
-            headers: getAuthHeaders()
+        await fetch(`${getApiPrefix()}/${conversationId}`, {
+            headers: getAuthHeaders(),
+            credentials: 'include'
         });
     } catch (error) {
-        console.error('Error marking conversation as read:', error);
+        // console.error('Error marking conversation as read:', error);
     }
 }
 
 /**
  * Render messages in conversation view
  */
-function renderMessages(messages) {
-    const container = document.getElementById('messagesContainer');
+function renderMessages(messages, conversationData = null) {
+    const container = document.getElementById('messagesDisplay');
     const userId = getUserId();
 
     if (!messages || messages.length === 0) {
@@ -404,24 +684,51 @@ function renderMessages(messages) {
         return;
     }
 
+    // Check if current user is a participant in the conversation
+    // If not (e.g., admin viewing user-to-user chat), use sender_id for alignment
+    let alignmentUserId = userId;
+    let isAdminView = false;
+    if (conversationData) {
+        const isParticipant = conversationData.sender_id === userId || conversationData.receiver_id === userId;
+        if (!isParticipant && conversationData.sender_id) {
+            // Admin viewing: align by sender_id (sender on left, receiver on right)
+            alignmentUserId = conversationData.sender_id;
+            isAdminView = true;
+        }
+    }
+
     container.innerHTML = messages.map(msg => {
-        const isSent = msg.sender.id === userId;
+        const isSent = msg.sender.id === alignmentUserId;
         const bubbleClass = isSent ? 'message-bubble-sent' : 'message-bubble-received';
         const alignClass = isSent ? 'justify-end' : 'justify-start';
+
+        // Flagged message styling and tooltip
+        let flaggedStyle = '';
+        let flaggedTooltip = '';
+        if (msg.is_flagged) {
+            flaggedStyle = 'border-2 border-amber-500 bg-amber-50';
+            flaggedTooltip = msg.flag_reason || 'Flagged';
+        }
 
         return `
             <div class="flex ${alignClass} mb-4" data-message-id="${msg.message_id}">
                 ${!isSent ? `<img src="${msg.sender.avatar}" class="w-8 h-8 rounded-full mr-2" alt="${msg.sender.name}">` : ''}
                 <div class="max-w-[70%]">
-                    <div class="${bubbleClass} ${msg.is_flagged ? 'border-2 border-amber-500' : ''}">
+                    <div class="${bubbleClass} ${flaggedStyle} relative" ${msg.is_flagged ? `title="🚩 ${flaggedTooltip}"` : ''}>
                         <p class="text-sm">${escapeHtml(msg.content)}</p>
                         ${msg.attachments.length > 0 ? renderAttachments(msg.attachments) : ''}
+                        ${msg.is_flagged && isAdmin() ? `
+                            <div class="mt-1 pt-1 border-t border-amber-200 text-xs text-amber-700">
+                                <i class="fi fi-sr-flag"></i> ${escapeHtml(flaggedTooltip)}
+                            </div>
+                        ` : ''}
                     </div>
                     <div class="flex items-center gap-1 mt-1 ${isSent ? 'justify-end' : 'justify-start'}">
+                        ${isAdminView ? `<span class="text-xs text-gray-500 font-medium">${msg.sender.name}</span>` : ''}
                         <p class="text-xs text-gray-400 relative-time" data-timestamp="${msg.sent_at}">
                             ${formatRelativeTime(msg.sent_at)}
                         </p>
-                        ${isSent ? `<span class="text-xs ${msg.is_read ? 'text-blue-500' : 'text-gray-400'}" title="${msg.is_read ? 'Seen' : 'Sent'}">✓${msg.is_read ? '✓' : ''}</span>` : ''}
+                        ${isSent ? `<span class="read-indicator text-xs ${msg.is_read ? 'text-blue-500' : 'text-gray-400'}" title="${msg.is_read ? 'Seen' : 'Sent'}">✓${msg.is_read ? '✓' : ''}</span>` : ''}
                     </div>
                 </div>
                 ${isSent ? `<img src="${msg.sender.avatar}" class="w-8 h-8 rounded-full ml-2" alt="${msg.sender.name}">` : ''}
@@ -496,17 +803,25 @@ async function sendMessage() {
     }
 
     try {
-        const response = await fetch('/admin/messages/', {
+        const response = await fetch(getApiPrefix(), {
             method: 'POST',
             headers: {
                 'Accept': 'application/json',
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
                 ...(getAuthToken() && { 'Authorization': `Bearer ${getAuthToken()}` })
             },
+            credentials: 'include',
             body: formData
         });
 
         const result = await response.json();
+
+        // SECURITY: Handle blocked message (422 - Contact info detected)
+        if (response.status === 422) {
+            toast(result.message || 'Message contains prohibited content', 'error');
+            // Don't clear input so user can edit and resend
+            return;
+        }
 
         if (!response.ok) {
             console.error('Server error:', result);
@@ -540,8 +855,8 @@ async function sendMessage() {
         toast('Message sent', 'success');
 
     } catch (error) {
-        console.error('Error sending message:', error);
-        toast('Failed to send message', 'error');
+        // console.error('Error sending message:', error);
+        toast(error.message || 'Failed to send message', 'error');
     }
 }
 
@@ -613,48 +928,217 @@ function renderFilePreview(files) {
  * Handle incoming real-time message from Pusher
  */
 function handleIncomingMessage(event) {
-    // Handle incoming message
+    // console.log('Pusher: Handling incoming message', {
+    //     conversation_id: event.conversation_id,
+    //     sender: event.sender.name,
+    //     current_conversation: currentConversationId,
+    //     message_preview: event.content?.substring(0, 50),
+    //     type_event: typeof event.conversation_id,
+    //     type_current: typeof currentConversationId,
+    //     comparison_result: event.conversation_id == currentConversationId
+    // });
+
+    const userId = getUserId();
+    const isMessageFromMe = event.sender.id === userId;
+
+    // Skip messages sent by current user (already added via sendMessage())
+    if (isMessageFromMe) {
+        // console.log('Pusher: Skipping own message (already in UI)');
+        // Just reload inbox to update conversation preview
+        loadInbox();
+        return;
+    }
 
     // If message is for current conversation, append it and mark as read
-    if (event.conversation_id === currentConversationId) {
+    // Use loose equality (==) to handle both string and number conversation IDs
+    if (String(event.conversation_id) === String(currentConversationId)) {
+        // console.log('Pusher: Message is for active conversation, appending to UI');
         appendMessage(event);
         // Mark as read immediately since user is viewing the conversation
         markConversationAsRead(event.conversation_id);
+    } else {
+        // console.log('Pusher: Message is for different conversation, updating inbox only');
     }
 
-    // Reload inbox to update preview
+    // Reload inbox to update preview and unread counts
+    // console.log('Reloading inbox to show new message...');
     loadInbox();
 
-    // Reload stats
-    loadDashboardStats();
+    // Reload stats for admin
+    if (isAdmin()) {
+        loadDashboardStats();
+    }
 
-    // Show notification
-    toast(`New message from ${event.sender.name}`, 'info');
+    // Show notification only if message is from someone else
+    if (!isMessageFromMe) {
+        toast(`New message from ${event.sender.name}`, 'info');
+    }
+}
+
+/**
+ * Handle messages marked as read event
+ */
+function handleMessagesRead(event) {
+    // console.log('Pusher: Messages marked as read', {
+    //     conversation_id: event.conversation_id,
+    //     read_by_user_id: event.read_by_user_id,
+    //     current_conversation: currentConversationId,
+    //     type_event: typeof event.conversation_id,
+    //     type_current: typeof currentConversationId,
+    //     comparison_result: String(event.conversation_id) === String(currentConversationId)
+    // });
+
+    // If we're viewing this conversation, update the read receipts
+    // Use String() conversion to handle both string and number conversation IDs
+    if (String(event.conversation_id) === String(currentConversationId)) {
+        // console.log('Updating read receipts in current conversation');
+        updateReadReceipts(event.conversation_id);
+    }
+
+    // Reload inbox to update unread counts
+    loadInbox();
+}
+
+/**
+ * Handle conversation suspension/restoration event from Pusher
+ */
+function handleConversationSuspension(event) {
+    // console.log('Pusher: Conversation status changed', {
+    //     conversation_id: event.conversation_id,
+    //     status: event.status,
+    //     is_suspended: event.is_suspended,
+    //     reason: event.reason
+    // });
+
+    // Reload inbox to update conversation list with new status
+    loadInbox();
+
+    // Reload dashboard stats
+    if (isAdmin()) {
+        loadDashboardStats();
+    }
+
+    // If we're currently viewing this conversation
+    if (String(event.conversation_id) === String(currentConversationId)) {
+        // console.log('Current conversation status changed');
+
+        if (event.status === 'suspended') {
+            // Conversation was suspended
+            if (currentFilter === 'flagged') {
+                // In flagged filter, conversation moves to suspended list - clear view
+                currentConversationId = null;
+                currentReceiverId = null;
+                document.getElementById('emptyState')?.classList.remove('hidden');
+                document.getElementById('messageContent')?.classList.add('hidden');
+            } else {
+                // Show suspension notice and update UI
+                loadConversationHistory(event.conversation_id);
+                toast(`This conversation has been suspended. ${event.reason || ''}`, 'warning');
+            }
+        } else if (event.status === 'active') {
+            // Conversation was unsuspended
+            if (currentFilter === 'suspended') {
+                // In suspended filter, conversation moves to all/flagged list - clear view
+                currentConversationId = null;
+                currentReceiverId = null;
+                document.getElementById('emptyState')?.classList.remove('hidden');
+                document.getElementById('messageContent')?.classList.add('hidden');
+                toast('Conversation has been unsuspended', 'success');
+            } else {
+                // Reload conversation to show updated status
+                loadConversationHistory(event.conversation_id);
+                toast('Conversation has been unsuspended', 'success');
+            }
+        }
+    } else {
+        // Not viewing this conversation, just show a toast if it affects current filter
+        if (event.status === 'suspended' && currentFilter === 'all') {
+            toast(`A conversation has been suspended`, 'info');
+        } else if (event.status === 'active' && currentFilter === 'suspended') {
+            toast(`A conversation has been unsuspended`, 'info');
+        }
+    }
+}
+
+/**
+ * Update read receipts for messages in current conversation
+ */
+function updateReadReceipts(conversationId) {
+    const userId = getUserId();
+    const messagesContainer = document.getElementById('messagesDisplay');
+    if (!messagesContainer) return;
+
+    // Find all read indicators for sent messages
+    const readIndicators = messagesContainer.querySelectorAll('.read-indicator');
+
+    readIndicators.forEach(readIndicator => {
+        // Update to double checkmark blue (read)
+        readIndicator.className = 'read-indicator text-xs text-blue-500';
+        readIndicator.title = 'Seen';
+        readIndicator.textContent = '✓✓';
+    });
+
+    // console.log(`Updated ${readIndicators.length} read receipts`);
 }
 
 /**
  * Append single message to conversation
  */
 function appendMessage(messageData) {
-    const container = document.getElementById('messagesContainer');
+    const container = document.getElementById('messagesDisplay');
     const userId = getUserId();
-    const isSent = messageData.sender.id === userId;
+
+    // Check if current user is a participant in the conversation
+    // If not (e.g., admin viewing user-to-user chat), use sender_id for alignment
+    let alignmentUserId = userId;
+    let isAdminView = false;
+    if (currentConversationData) {
+        const isParticipant = currentConversationData.sender_id === userId || currentConversationData.receiver_id === userId;
+        if (!isParticipant && currentConversationData.sender_id) {
+            // Admin viewing: align by sender_id (sender on left, receiver on right)
+            alignmentUserId = currentConversationData.sender_id;
+            isAdminView = true;
+        }
+    }
+
+    const isSent = messageData.sender.id === alignmentUserId;
     const bubbleClass = isSent ? 'message-bubble-sent' : 'message-bubble-received';
     const alignClass = isSent ? 'justify-end' : 'justify-start';
+
+    // Flagged message styling
+    let flaggedStyle = '';
+    let flaggedTooltip = '';
+    if (messageData.is_flagged) {
+        flaggedStyle = 'border-2 border-amber-500 bg-amber-50';
+        flaggedTooltip = messageData.flag_reason || 'Flagged';
+    }
 
     const messageHtml = `
         <div class="flex ${alignClass} mb-4" data-message-id="${messageData.message_id}">
             ${!isSent ? `<img src="${messageData.sender.avatar}" class="w-8 h-8 rounded-full mr-2" alt="${messageData.sender.name}">` : ''}
             <div class="max-w-[70%]">
-                <div class="${bubbleClass}">
+                <div class="${bubbleClass} ${flaggedStyle} relative group" ${messageData.is_flagged ? `title="🚩 ${flaggedTooltip}"` : ''}>
                     <p class="text-sm">${escapeHtml(messageData.content)}</p>
                     ${messageData.attachments?.length > 0 ? renderAttachments(messageData.attachments) : ''}
+                    ${messageData.is_flagged && isAdmin() ? `
+                        <div class="mt-1 pt-1 border-t border-amber-200 text-xs text-amber-700">
+                            <i class="fi fi-sr-flag"></i> ${escapeHtml(flaggedTooltip)}
+                        </div>
+                    ` : ''}
+                    ${!isSent && !isAdminView ? `
+                        <button class="report-message-btn absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity bg-red-500 hover:bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs"
+                                data-message-id="${messageData.message_id}"
+                                title="Report this message">
+                            <i class="fi fi-rr-flag text-xs"></i>
+                        </button>
+                    ` : ''}
                 </div>
                 <div class="flex items-center gap-1 mt-1 ${isSent ? 'justify-end' : 'justify-start'}">
+                    ${isAdminView ? `<span class="text-xs text-gray-500 font-medium">${messageData.sender.name}</span>` : ''}
                     <p class="text-xs text-gray-400 relative-time" data-timestamp="${messageData.sent_at || new Date().toISOString()}">
                         ${formatRelativeTime(messageData.sent_at || new Date().toISOString())}
                     </p>
-                    ${isSent ? `<span class="text-xs ${messageData.is_read ? 'text-blue-500' : 'text-gray-400'}" title="${messageData.is_read ? 'Seen' : 'Sent'}">✓${messageData.is_read ? '✓' : ''}</span>` : ''}
+                    ${isSent ? `<span class="read-indicator text-xs ${messageData.is_read ? 'text-blue-500' : 'text-gray-400'}" title="${messageData.is_read ? 'Seen' : 'Sent'}">✓${messageData.is_read ? '✓' : ''}</span>` : ''}
                 </div>
             </div>
             ${isSent ? `<img src="${messageData.sender.avatar}" class="w-8 h-8 rounded-full ml-2" alt="${messageData.sender.name}">` : ''}
@@ -662,6 +1146,13 @@ function appendMessage(messageData) {
     `;
 
     container.insertAdjacentHTML('beforeend', messageHtml);
+
+    // Attach report button event listener (only for non-admin view)
+    if (!isSent && !isAdminView) {
+        const reportBtn = container.querySelector(`[data-message-id="${messageData.message_id}"] .report-message-btn`);
+        reportBtn?.addEventListener('click', () => reportMessage(messageData.message_id));
+    }
+
     scrollToBottom();
 }
 
@@ -693,8 +1184,9 @@ function setupEventListeners() {
         }
     });
 
-    // Compose new message
+    // Compose new message (admin uses composeBtn, contractor/owner uses newMessageBtn)
     document.getElementById('composeBtn')?.addEventListener('click', showComposeModal);
+    document.getElementById('newMessageBtn')?.addEventListener('click', showComposeModal);
 
     // Compose modal recipient search
     document.getElementById('composeRecipientSearch')?.addEventListener('input', (e) => {
@@ -767,8 +1259,10 @@ function setupEventListeners() {
     // Send compose message
     document.getElementById('sendComposeBtn')?.addEventListener('click', async () => {
         const content = document.getElementById('composeMessage')?.value.trim();
-        if (!content) {
-            toast('Please enter a message', 'warning');
+        const fileInput = document.getElementById('composeAttachmentInput');
+
+        if (!content && (!fileInput || !fileInput.files.length)) {
+            toast('Please enter a message or attach a file', 'warning');
             return;
         }
         if (selectedRecipients.length === 0) {
@@ -778,20 +1272,29 @@ function setupEventListeners() {
 
         try {
             // Send message to each recipient
-            const sendPromises = selectedRecipients.map(recipient =>
-                fetch('/admin/messages/', {
+            const sendPromises = selectedRecipients.map(recipient => {
+                const formData = new FormData();
+                formData.append('receiver_id', recipient.id);
+                formData.append('content', content || '');
+
+                // Append files if any
+                if (fileInput && fileInput.files.length > 0) {
+                    for (let i = 0; i < fileInput.files.length; i++) {
+                        formData.append('attachments[]', fileInput.files[i]);
+                    }
+                }
+
+                return fetch(getApiPrefix(), {
                     method: 'POST',
                     headers: {
                         'Accept': 'application/json',
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                        ...(getAuthToken() && { 'Authorization': `Bearer ${getAuthToken()}` })
                     },
-                    body: JSON.stringify({
-                        receiver_id: recipient.id,
-                        content: content
-                    })
-                })
-            );
+                    credentials: 'include',
+                    body: formData
+                });
+            });
 
             await Promise.all(sendPromises);
 
@@ -804,7 +1307,6 @@ function setupEventListeners() {
             // Reset
             const searchInput = document.getElementById('composeRecipientSearch');
             const messageInput = document.getElementById('composeMessage');
-            const fileInput = document.getElementById('composeAttachmentInput');
             const filePreview = document.getElementById('composeAttachmentPreview');
             if (searchInput) searchInput.value = '';
             if (messageInput) messageInput.value = '';
@@ -828,9 +1330,11 @@ function setupEventListeners() {
     document.getElementById('suspendBtn')?.addEventListener('click', suspendCurrentConversation);
     document.getElementById('restoreBtn')?.addEventListener('click', restoreCurrentConversation);
 
-    // Flag/Suspend conversation buttons
+    // Flag/Unflag/Suspend conversation buttons
     document.getElementById('flagConversationBtn')?.addEventListener('click', () => openModal('flagConfirmModal'));
+    document.getElementById('unflagConversationBtn')?.addEventListener('click', () => openUnflagModal());
     document.getElementById('suspendConversationBtn')?.addEventListener('click', () => openModal('suspendConfirmModal'));
+    document.getElementById('restoreConversationBtn')?.addEventListener('click', () => openModal('restoreConfirmModal'));
 
     // Modal confirm buttons
     document.getElementById('confirmFlagBtn')?.addEventListener('click', flagCurrentConversation);
@@ -877,8 +1381,8 @@ function setupEventListeners() {
     // Search
     document.getElementById('searchInput')?.addEventListener('input', debounce(searchMessages, 300));
 
-    // Filter tabs
-    document.querySelectorAll('.filter-tab').forEach(tab => {
+    // Filter tabs (admin uses .filter-tab, contractor/owner uses .filter-btn)
+    document.querySelectorAll('.filter-tab, .filter-btn').forEach(tab => {
         tab.addEventListener('click', handleFilterChange);
     });
 }
@@ -892,14 +1396,23 @@ function handleFilterChange(e) {
     const filter = e.currentTarget.dataset.filter;
     currentFilter = filter;
 
-    // Update active state
-    document.querySelectorAll('.filter-tab').forEach(tab => {
+    // Update active state (handle both .filter-tab and .filter-btn)
+    document.querySelectorAll('.filter-tab, .filter-btn').forEach(tab => {
         tab.classList.remove('active');
     });
     e.currentTarget.classList.add('active');
 
-    // Apply filter
-    filterConversations(filter);
+    // ADMIN: Reload inbox with specific endpoint for flagged/suspended/all
+    // OR if switching to 'all' from any other filter (to reset the conversation list)
+    if (isAdmin() && (filter === 'flagged' || filter === 'suspended' || filter === 'all')) {
+        loadInbox(); // Will use the correct endpoint based on currentFilter
+    } else if (filter === 'all') {
+        // Non-admin: reload inbox to get all conversations
+        loadInbox();
+    } else {
+        // Apply filter client-side for other cases (unread, etc.)
+        filterConversations(filter);
+    }
 }
 
 /**
@@ -910,14 +1423,16 @@ function filterConversations(filter) {
     let visibleCount = 0;
 
     // Clear search results message if exists
-    const container = document.getElementById('conversationsList');
+    const container = document.getElementById('conversationList');
     const searchNoResults = container.querySelector('.no-search-results');
     if (searchNoResults) searchNoResults.remove();
 
     conversationItems.forEach(item => {
         let show = true;
 
-        if (filter === 'flagged') {
+        if (filter === 'unread') {
+            show = item.classList.contains('unread');
+        } else if (filter === 'flagged') {
             show = item.classList.contains('flagged');
         } else if (filter === 'suspended') {
             show = item.classList.contains('suspended');
@@ -945,7 +1460,10 @@ function filterConversations(filter) {
         let icon = 'fi-rr-inbox';
         let message = 'No conversations found';
 
-        if (filter === 'flagged') {
+        if (filter === 'unread') {
+            icon = 'fi-rr-envelope';
+            message = 'No unread conversations';
+        } else if (filter === 'flagged') {
             icon = 'fi-rr-flag';
             message = 'No flagged conversations';
         } else if (filter === 'suspended') {
@@ -980,7 +1498,7 @@ async function searchMessages(e) {
     let visibleCount = 0;
 
     // Clear filter results message if exists
-    const container = document.getElementById('conversationsList');
+    const container = document.getElementById('conversationList');
     const filterNoResults = container.querySelector('.no-filter-results');
     if (filterNoResults) filterNoResults.remove();
 
@@ -1032,8 +1550,9 @@ let availableUsers = [];
 async function showComposeModal() {
     try {
         // Load available users
-        const response = await fetch('/admin/messages/users', {
-            headers: getAuthHeaders()
+        const response = await fetch(`${getApiPrefix()}/users`, {
+            headers: getAuthHeaders(),
+            credentials: 'include'
         });
 
         if (!response.ok) throw new Error('Failed to load users');
@@ -1148,7 +1667,7 @@ function renderRecipientChips() {
         chip.className = 'recipient-chip flex items-center gap-1.5 bg-indigo-100 text-indigo-700 px-2.5 py-1 rounded-full text-sm font-medium';
         chip.innerHTML = `
             <span>${escapeHtml(user.name)}</span>
-            <button class="remove-recipient hover:bg-indigo-200 rounded-full w-4 h-4 flex items-center justify-center text-xs" data-user-id="${user.id}">
+            <button class="remove-recipient hover:bg-indigo-200 rounded-full w-4 h-4 flex items-center justify-center text-sm" data-user-id="${user.id}">
                 ×
             </button>
         `;
@@ -1250,8 +1769,9 @@ async function openRestoreModal() {
 
     try {
         // Get conversation details from inbox
-        const response = await fetch('/admin/messages/', {
-            headers: getAuthHeaders()
+        const response = await fetch(getApiPrefix(), {
+            headers: getAuthHeaders(),
+            credentials: 'include'
         });
 
         if (!response.ok) throw new Error('Failed to load inbox');
@@ -1282,6 +1802,7 @@ async function openRestoreModal() {
  * Admin: Flag conversation
  */
 async function flagCurrentConversation() {
+    if (!isAdmin()) return; // Admin-only feature
     if (!currentConversationId) return;
 
     let reason = document.getElementById('flagReason')?.value;
@@ -1309,6 +1830,7 @@ async function flagCurrentConversation() {
                 ...getAuthHeaders(),
                 'Content-Type': 'application/json'
             },
+            credentials: 'include',
             body: JSON.stringify({ reason, notes })
         });
 
@@ -1337,15 +1859,51 @@ async function flagCurrentConversation() {
 }
 
 /**
+ * Open unflag modal and populate with conversation data
+ */
+async function openUnflagModal() {
+    if (!currentConversationId) return;
+
+    try {
+        // Get conversation details from inbox
+        const inbox = await fetch(getApiPrefix(), {
+            headers: getAuthHeaders(),
+            credentials: 'include'
+        }).then(r => r.json());
+
+        const conversation = inbox.data.find(conv => String(conv.conversation_id) === String(currentConversationId));
+
+        if (conversation) {
+            // Populate modal with conversation name/participants
+            const convNameElement = document.getElementById('unflagConvName');
+            if (convNameElement) {
+                convNameElement.textContent = conversation.name || 'Unknown';
+            }
+        }
+
+        // Open modal
+        const modal = document.getElementById('unflagConfirmModal');
+        modal?.classList.remove('hidden');
+        modal?.classList.add('flex');
+
+    } catch (error) {
+        console.error('Error opening unflag modal:', error);
+        toast('Failed to load conversation details', 'error');
+    }
+}
+
+/**
  * Admin: Unflag conversation
  */
 async function unflagCurrentConversation() {
+    if (!isAdmin()) return; // Admin-only feature
     if (!currentConversationId) return;
 
     try {
         const response = await fetch(`/admin/messages/conversation/${currentConversationId}/unflag`, {
             method: 'POST',
-            headers: getAuthHeaders()
+            headers: getAuthHeaders(),
+            credentials: 'include'
         });
 
         if (!response.ok) throw new Error('Failed to unflag');
@@ -1356,9 +1914,10 @@ async function unflagCurrentConversation() {
         document.getElementById('unflagConfirmModal')?.classList.add('hidden');
         document.getElementById('unflagConfirmModal')?.classList.remove('flex');
 
-        // Reload data
+        // Reload data and update button states
         loadInbox();
         loadDashboardStats();
+        checkAndHandleFlagStatus(currentConversationId);
 
     } catch (error) {
         console.error('Error unflagging:', error);
@@ -1370,12 +1929,22 @@ async function unflagCurrentConversation() {
  * Admin: Suspend conversation
  */
 async function suspendCurrentConversation() {
+    if (!isAdmin()) return; // Admin-only feature
     if (!currentConversationId) return;
 
-    let reason = document.getElementById('suspendReason')?.value;
-    const otherReasonText = document.getElementById('otherSuspendReasonText')?.value;
-    const duration = document.getElementById('suspendDuration')?.value;
-    const notes = document.getElementById('suspendNotes')?.value || '';
+    // Get form elements with null checks
+    const suspendReasonEl = document.getElementById('suspendReason');
+    const otherReasonTextEl = document.getElementById('otherSuspendReasonText');
+    const notesEl = document.getElementById('suspendNotes');
+
+    if (!suspendReasonEl) {
+        console.error('Suspend reason dropdown not found');
+        return;
+    }
+
+    let reason = suspendReasonEl.value;
+    const otherReasonText = otherReasonTextEl?.value || '';
+    const notes = notesEl?.value || '';
 
     if (!reason) {
         toast('Please select a reason for suspension', 'warning');
@@ -1391,30 +1960,6 @@ async function suspendCurrentConversation() {
         reason = otherReasonText.trim();
     }
 
-    if (!duration) {
-        toast('Please select suspension duration', 'warning');
-        return;
-    }
-
-    // Calculate suspended_until based on duration
-    let suspendedUntil = null;
-    const now = new Date();
-
-    if (duration === '24h') {
-        now.setHours(now.getHours() + 24);
-        suspendedUntil = now.toISOString().slice(0, 19).replace('T', ' ');
-    } else if (duration === '7d') {
-        now.setDate(now.getDate() + 7);
-        suspendedUntil = now.toISOString().slice(0, 19).replace('T', ' ');
-    } else if (duration === '30d') {
-        now.setDate(now.getDate() + 30);
-        suspendedUntil = now.toISOString().slice(0, 19).replace('T', ' ');
-    } else if (duration === 'permanent') {
-        // Set to 100 years from now
-        now.setFullYear(now.getFullYear() + 100);
-        suspendedUntil = now.toISOString().slice(0, 19).replace('T', ' ');
-    }
-
     const fullReason = notes ? `${reason}: ${notes}` : reason;
 
     try {
@@ -1424,33 +1969,46 @@ async function suspendCurrentConversation() {
                 ...getAuthHeaders(),
                 'Content-Type': 'application/json'
             },
+            credentials: 'include',
             body: JSON.stringify({
-                reason: fullReason,
-                suspended_until: suspendedUntil
+                reason: fullReason
             })
         });
 
         if (!response.ok) throw new Error('Failed to suspend');
 
-        toast('Conversation suspended', 'success');
+        const result = await response.json();
+
+        toast(`Conversation suspended - ${result.offense_level}`, 'success');
 
         // Close modal
         document.getElementById('suspendConfirmModal')?.classList.add('hidden');
         document.getElementById('suspendConfirmModal')?.classList.remove('flex');
 
-        // Reset form
-        document.getElementById('suspendReason').value = '';
-        document.getElementById('suspendDuration').value = '24h';
-        document.getElementById('suspendNotes').value = '';
-        document.getElementById('otherSuspendReasonText').value = '';
-        document.getElementById('otherSuspendReasonContainer')?.classList.add('hidden');
+        // Reset form with null checks
+        const suspendReasonEl = document.getElementById('suspendReason');
+        const suspendDurationEl = document.getElementById('suspendDuration');
+        const suspendNotesEl = document.getElementById('suspendNotes');
+        const otherReasonTextEl = document.getElementById('otherSuspendReasonText');
+        const otherReasonContainerEl = document.getElementById('otherSuspendReasonContainer');
 
-        loadInbox();
+        if (suspendReasonEl) suspendReasonEl.value = '';
+        if (suspendDurationEl) suspendDurationEl.value = '24h';
+        if (suspendNotesEl) suspendNotesEl.value = '';
+        if (otherReasonTextEl) otherReasonTextEl.value = '';
+        if (otherReasonContainerEl) otherReasonContainerEl.classList.add('hidden');
+
+        // Reload inbox and stats
+        await loadInbox();
         loadDashboardStats();
 
-        // Reload current conversation to show suspended state
-        if (currentConversationId) {
-            selectConversation(currentConversationId, currentReceiverId);
+        // Clear current conversation since it's now suspended and removed from flagged list
+        if (currentFilter === 'flagged') {
+            // Conversation moved to suspended list, clear the view
+            currentConversationId = null;
+            currentReceiverId = null;
+            document.getElementById('emptyState')?.classList.remove('hidden');
+            document.getElementById('messageContent')?.classList.add('hidden');
         }
 
     } catch (error) {
@@ -1463,33 +2021,38 @@ async function suspendCurrentConversation() {
  * Admin: Restore conversation
  */
 async function restoreCurrentConversation() {
+    if (!isAdmin()) return; // Admin-only feature
     if (!currentConversationId) return;
 
     try {
         const response = await fetch(`/admin/messages/conversation/${currentConversationId}/restore`, {
             method: 'POST',
-            headers: getAuthHeaders()
+            headers: getAuthHeaders(),
+            credentials: 'include'
         });
 
-        if (!response.ok) throw new Error('Failed to restore');
+        if (!response.ok) throw new Error('Failed to unsuspend');
 
-        toast('Conversation restored', 'success');
-
+        // Success - toast will be shown by Pusher event handler
         // Close modal
         document.getElementById('restoreConfirmModal')?.classList.add('hidden');
         document.getElementById('restoreConfirmModal')?.classList.remove('flex');
 
-        loadInbox();
+        // Reload inbox and stats
+        await loadInbox();
         loadDashboardStats();
 
-        // Reload current conversation to remove suspended state
-        if (currentConversationId) {
-            selectConversation(currentConversationId, currentReceiverId);
+        // Clear current conversation since it's no longer in suspended list
+        if (currentFilter === 'suspended') {
+            currentConversationId = null;
+            currentReceiverId = null;
+            document.getElementById('emptyState')?.classList.remove('hidden');
+            document.getElementById('messageContent')?.classList.add('hidden');
         }
 
     } catch (error) {
-        console.error('Error restoring:', error);
-        toast('Failed to restore conversation', 'error');
+        console.error('Error unsuspending:', error);
+        toast('Failed to unsuspend conversation', 'error');
     }
 }
 
@@ -1519,13 +2082,32 @@ function getAuthToken() {
     return document.querySelector('meta[name="api-token"]')?.content || '';
 }
 
+/**
+ * Update unread count badge and document title
+ */
+function updateUnreadBadge(count) {
+    // Update unread filter badge
+    const unreadCountEl = document.getElementById('unreadCount');
+    if (unreadCountEl) {
+        unreadCountEl.textContent = count;
+    }
+
+    // Update document title with unread count
+    const baseTitle = 'Messages - Legatura';
+    if (count > 0) {
+        document.title = `(${count}) ${baseTitle}`;
+    } else {
+        document.title = baseTitle;
+    }
+}
+
 function getUserId() {
     // Get from session/meta tag
     return parseInt(document.querySelector('meta[name="user-id"]')?.content) || null;
 }
 
 function scrollToBottom() {
-    const container = document.getElementById('messagesContainer');
+    const container = document.getElementById('messagesDisplay');
     if (container) {
         container.scrollTop = container.scrollHeight;
     }
@@ -1555,10 +2137,59 @@ function debounce(func, wait) {
 function updateFilterBadge(filter, count) {
     const button = document.querySelector(`[data-filter="${filter}"]`);
     if (button) {
-        const badge = button.querySelector('span');
+        // Try to find span with filter-count class (contractor/owner), or last span (admin)
+        const badge = button.querySelector('span.filter-count') || button.querySelector('span:last-of-type');
         if (badge) {
             badge.textContent = count;
         }
+    }
+}
+
+/**
+ * SECURITY: Report a message for inappropriate content
+ */
+async function reportMessage(messageId) {
+    // Prompt user for reason
+    const reason = prompt('Please describe why you are reporting this message:');
+
+    if (!reason || reason.trim() === '') {
+        toast('Report cancelled', 'info');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${getApiPrefix()}/report`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                ...(getAuthToken() && { 'Authorization': `Bearer ${getAuthToken()}` })
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+                message_id: messageId,
+                reason: reason.trim()
+            })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(result.message || 'Failed to report message');
+        }
+
+        toast(result.message || 'Message reported successfully', 'success');
+
+        // Optionally hide the report button after reporting
+        const reportBtn = document.querySelector(`[data-message-id="${messageId}"] .report-message-btn`);
+        if (reportBtn) {
+            reportBtn.remove();
+        }
+
+    } catch (error) {
+        console.error('Error reporting message:', error);
+        toast(error.message || 'Failed to report message', 'error');
     }
 }
 

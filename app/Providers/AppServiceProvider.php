@@ -22,5 +22,7 @@ class AppServiceProvider extends ServiceProvider
     {
         // Use custom PersonalAccessToken model to handle user_id primary key
         Sanctum::usePersonalAccessTokenModel(\App\Models\PersonalAccessToken::class);
+
+        // DO NOT register default Broadcast::routes() - using custom implementation
     }
 }

@@ -4,22 +4,91 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Dashboard - Legatura</title>
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  @php
+    $currentUser = session('user') ?? auth()->user();
+    // Admin users: admin_id, Regular users: user_id or id
+    $userId = $currentUser->admin_id ?? ($currentUser->user_id ?? ($currentUser->id ?? null));
+    $apiToken = '';
+    if ($currentUser && method_exists($currentUser, 'currentAccessToken')) {
+        $token = $currentUser->currentAccessToken();
+        $apiToken = $token ? $token->plainTextToken : '';
+    }
+  @endphp
+  <meta name="api-token" content="{{ $apiToken }}">
+  <meta name="user-id" content="{{ $userId ?? '' }}">
+  <title>Messages - Admin Dashboard - Legatura</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+
+  <!-- Laravel Echo & Pusher for Real-time Chat -->
+  <script src="https://cdn.jsdelivr.net/npm/pusher-js@8.3.0/dist/web/pusher.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/laravel-echo@1.15.3/dist/echo.iife.js"></script>
+
   <link rel="stylesheet" href="{{ asset('css/admin/home/mainComponents.css') }}">
   <link rel="stylesheet" href="{{ asset('css/admin/projectManagement/messages.css') }}">
-  
+
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-solid-straight/css/uicons-solid-straight.css'>
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-solid-rounded/css/uicons-solid-rounded.css'>
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-bold-rounded/css/uicons-bold-rounded.css'>
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-regular-rounded/css/uicons-regular-rounded.css'>
-  
 
   <script src="{{ asset('js/admin/home/mainComponents.js') }}" defer></script>
 
-  
+  @if(env('PUSHER_APP_KEY'))
+  <script>
+    // Initialize Laravel Echo with Pusher (Session-based authentication for web dashboard)
+    window.Echo = new Echo({
+        broadcaster: 'pusher',
+        key: '{{ env("PUSHER_APP_KEY") }}',
+        cluster: '{{ env("PUSHER_APP_CLUSTER", 'mt1') }}',
+        forceTLS: true,
+        encrypted: true,
+        authEndpoint: '/broadcasting/auth',
+        auth: {
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Accept': 'application/json'
+            }
+        },
+        // Enable cookies for session-based authentication
+        authorizer: (channel, options) => {
+            return {
+                authorize: (socketId, callback) => {
+                    fetch(options.authEndpoint, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'Accept': 'application/json',
+                            'X-Socket-ID': socketId
+                        },
+                        credentials: 'same-origin', // Important: sends cookies
+                        body: JSON.stringify({
+                            socket_id: socketId,
+                            channel_name: channel.name
+                        })
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`Authorization failed: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        callback(null, data);
+                    })
+                    .catch(error => {
+                        // console.warn('Pusher auth failed (fallback to polling):', error);
+                        callback(error, null);
+                    });
+                }
+            };
+        }
+    });
+  </script>
+  @endif
 </head>
 
 <body class="bg-gray-50 text-gray-800 font-sans">
@@ -170,16 +239,6 @@
         <h1 class="text-2xl font-semibold text-gray-800">Messages</h1>
 
         <div class="flex items-center gap-6">
-          <div class="relative w-64" style="width: 600px;">
-            <input 
-              type="text" 
-              placeholder="Search..." 
-              class="border border-gray-300 rounded-lg px-4 py-2 pr-10 focus:ring-2 focus:ring-indigo-400 focus:outline-none w-full"
-            >
-            <i class="fi fi-rr-search absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-          </div>
-
-
           <div class="relative">
             <button id="notificationBell" class="cursor-pointer w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition">
               <i class="fi fi-ss-bell-notification-social-media" style="font-size: 20px;"></i>
@@ -250,7 +309,7 @@
             <div class="flex items-start justify-between mb-4">
               <div>
                 <p class="text-sm text-gray-500 font-medium mb-1">Total Suspended Chats</p>
-                <h3 class="text-4xl font-bold text-gray-800">42</h3>
+                <h3 id="totalSuspended" class="text-4xl font-bold text-gray-800">0</h3>
               </div>
               <div class="w-14 h-14 rounded-full bg-gradient-to-br from-red-100 to-rose-200 flex items-center justify-center">
                 <i class="fi fi-sr-comment-slash text-2xl text-red-600"></i>
@@ -270,7 +329,7 @@
             <div class="flex items-start justify-between mb-4">
               <div>
                 <p class="text-sm text-gray-500 font-medium mb-1">Active Conversations</p>
-                <h3 class="text-4xl font-bold text-gray-800">238</h3>
+                <h3 id="activeConversations" class="text-4xl font-bold text-gray-800">0</h3>
               </div>
               <div class="w-14 h-14 rounded-full bg-gradient-to-br from-emerald-100 to-teal-200 flex items-center justify-center">
                 <i class="fi fi-sr-messages text-2xl text-emerald-600"></i>
@@ -285,12 +344,12 @@
             </div>
           </div>
 
-          <!-- Flagged Messages -->
+          <!-- Flagged Conversations -->
           <div class="stat-card bg-white rounded-2xl shadow-md border border-gray-200 p-6 hover:shadow-xl transition-all duration-300">
             <div class="flex items-start justify-between mb-4">
               <div>
-                <p class="text-sm text-gray-500 font-medium mb-1">Flagged Messages</p>
-                <h3 class="text-4xl font-bold text-gray-800">17</h3>
+                <p class="text-sm text-gray-500 font-medium mb-1">Flagged Conversations</p>
+                <h3 id="flaggedMessages" class="text-4xl font-bold text-gray-800">0</h3>
               </div>
               <div class="w-14 h-14 rounded-full bg-gradient-to-br from-amber-100 to-orange-200 flex items-center justify-center">
                 <i class="fi fi-sr-flag text-2xl text-amber-600"></i>
@@ -305,25 +364,6 @@
             </div>
           </div>
 
-          <!-- Response Time -->
-          <div class="stat-card bg-white rounded-2xl shadow-md border border-gray-200 p-6 hover:shadow-xl transition-all duration-300">
-            <div class="flex items-start justify-between mb-4">
-              <div>
-                <p class="text-sm text-gray-500 font-medium mb-1">Avg Response Time</p>
-                <h3 class="text-4xl font-bold text-gray-800">2.4<span class="text-xl text-gray-500">h</span></h3>
-              </div>
-              <div class="w-14 h-14 rounded-full bg-gradient-to-br from-blue-100 to-indigo-200 flex items-center justify-center">
-                <i class="fi fi-sr-time-fast text-2xl text-blue-600"></i>
-              </div>
-            </div>
-            <div class="flex items-center gap-2 text-sm">
-              <span class="flex items-center gap-1 text-emerald-600 font-semibold">
-                <i class="fi fi-rr-arrow-trend-up"></i>
-                <span>12%</span>
-              </span>
-              <span class="text-gray-400">faster</span>
-            </div>
-          </div>
         </div>
 
         <!-- Messages Interface -->
@@ -335,13 +375,13 @@
               <div class="px-4 py-4 border-b border-gray-200 bg-gradient-to-r from-indigo-50 to-purple-50">
                 <div class="flex items-center gap-2 bg-white rounded-xl p-1 shadow-sm">
                   <button class="filter-tab active flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all" data-filter="all">
-                    All <span class="ml-1 text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">238</span>
+                    All <span class="ml-1 text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">0</span>
                   </button>
                   <button class="filter-tab flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all" data-filter="flagged">
-                    Flagged <span class="ml-1 text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">17</span>
+                    Flagged <span class="ml-1 text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">0</span>
                   </button>
                   <button class="filter-tab flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all" data-filter="suspended">
-                    Suspended <span class="ml-1 text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">42</span>
+                    Suspended <span class="ml-1 text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">0</span>
                   </button>
                 </div>
               </div>
@@ -349,13 +389,13 @@
               <!-- Search -->
               <div class="px-4 py-3 border-b border-gray-200">
                 <div class="relative">
-                  <input type="text" id="conversationSearch" placeholder="Search conversations..." class="w-full px-4 py-2.5 pl-10 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 transition text-sm">
+                  <input type="text" id="searchInput" placeholder="Search conversations..." class="w-full px-4 py-2.5 pl-10 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 transition text-sm">
                   <i class="fi fi-rr-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
                 </div>
               </div>
 
               <!-- Conversation Items -->
-              <div class="flex-1 overflow-y-auto" id="conversationsList">
+              <div class="flex-1 overflow-y-auto" id="conversationList">
                 <!-- Conversation items will be rendered here -->
               </div>
             </div>
@@ -388,42 +428,49 @@
                         <p id="selectedProject" class="text-sm text-gray-500"></p>
                       </div>
                     </div>
+                    <!-- Admin Action Buttons -->
                     <div class="flex items-center gap-2">
-                      <button id="flagConversationBtn" class="px-4 py-2 rounded-lg border-2 border-gray-300 text-gray-700 hover:bg-gray-50 transition text-sm font-semibold flex items-center gap-2">
-                        <i class="fi fi-rr-flag"></i>
-                        <span>Flag</span>
-                      </button>
-                      <button id="suspendConversationBtn" class="px-4 py-2 rounded-lg border-2 border-red-300 text-red-700 hover:bg-red-50 transition text-sm font-semibold flex items-center gap-2">
+                      <button id="suspendConversationBtn" class="hidden px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium text-sm shadow-md hover:shadow-lg transition-all flex items-center gap-2">
                         <i class="fi fi-rr-ban"></i>
                         <span>Suspend</span>
+                      </button>
+                      <button id="restoreConversationBtn" class="hidden px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm shadow-md hover:shadow-lg transition-all flex items-center gap-2">
+                        <i class="fi fi-rr-check-circle"></i>
+                        <span>Unsuspend</span>
                       </button>
                     </div>
                   </div>
                 </div>
 
                 <!-- Messages Area -->
-                <div class="flex-1 overflow-y-auto p-6 bg-gray-50" id="messagesArea">
-                  <!-- Messages will be rendered here -->
+                <div class="flex-1 overflow-y-auto p-6 bg-gray-50" id="messagesDisplay">
+                  <!-- Messages will be rendered here dynamically -->
                 </div>
 
-                <!-- Message Info Footer -->
-                <div class="px-6 py-4 border-t border-gray-200 bg-white">
-                  <div class="flex items-center justify-between text-sm text-gray-600">
-                    <div class="flex items-center gap-4">
-                      <span class="flex items-center gap-2">
-                        <i class="fi fi-rr-calendar text-indigo-600"></i>
-                        <span id="conversationDate">Started: Nov 20, 2025</span>
-                      </span>
-                      <span class="flex items-center gap-2">
-                        <i class="fi fi-rr-comment text-indigo-600"></i>
-                        <span id="messageCount">45 messages</span>
-                      </span>
-                    </div>
-                    <button id="viewFullHistoryBtn" class="text-indigo-600 hover:text-indigo-700 font-semibold flex items-center gap-1">
-                      View Full History
-                      <i class="fi fi-rr-arrow-right"></i>
+                <!-- Message Input -->
+                <div id="messageInputContainer" class="px-6 py-4 border-t border-gray-200 bg-white">
+                  <div class="flex items-center gap-3">
+                    <button id="attachmentBtn" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition text-gray-600">
+                      <i class="fi fi-rr-paperclip-vertical text-xl"></i>
+                    </button>
+                    <input type="file" id="attachmentInput" multiple accept="image/*,.pdf,.doc,.docx,.txt" class="hidden">
+
+                    <textarea
+                      id="messageInput"
+                      rows="1"
+                      class="flex-1 px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 transition resize-none text-sm"
+                      placeholder="Type your message..."
+                      style="max-height: 120px;"
+                    ></textarea>
+
+                    <button id="sendMessageBtn" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold text-sm shadow-md hover:shadow-lg transition-all flex items-center gap-2">
+                      <i class="fi fi-rr-paper-plane"></i>
+                      Send
                     </button>
                   </div>
+
+                  <!-- File Preview Area -->
+                  <div id="filePreviewArea" class="hidden mt-3 flex flex-wrap gap-2"></div>
                 </div>
               </div>
             </div>
@@ -453,7 +500,7 @@
                 <p class="text-xs text-amber-800">Flagged conversations will be marked for review. The users will not be notified of this action.</p>
               </div>
             </div>
-            
+
             <div class="space-y-3">
               <div>
                 <label class="block text-sm font-semibold text-gray-800 mb-2">Reason for Flagging *</label>
@@ -465,6 +512,10 @@
                   <option value="scam">Potential Scam</option>
                   <option value="other">Other</option>
                 </select>
+              </div>
+              <div id="otherReasonContainer" class="hidden">
+                <label class="block text-sm font-semibold text-gray-800 mb-2">Specify Other Reason *</label>
+                <input type="text" id="otherReasonText" class="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-300 focus:border-amber-300 transition" placeholder="Please specify the reason...">
               </div>
               <div>
                 <label class="block text-sm font-semibold text-gray-800 mb-2">Additional Notes (Optional)</label>
@@ -507,7 +558,20 @@
                 <p class="text-xs text-red-800">Suspending this conversation will prevent both parties from sending further messages. They will be notified of the suspension.</p>
               </div>
             </div>
-            
+
+            <div class="flex items-start gap-4 p-4 bg-blue-50 border-l-4 border-blue-500 rounded-lg">
+              <i class="fi fi-rr-info text-blue-600 text-xl mt-0.5"></i>
+              <div class="flex-1">
+                <p class="text-sm text-blue-900 font-semibold mb-1">Progressive Ban System</p>
+                <div class="text-xs text-blue-800 space-y-1">
+                  <p>• 1st offense: 7 days ban</p>
+                  <p>• 2nd offense: 15 days ban</p>
+                  <p>• 3rd offense: 30 days ban</p>
+                  <p>• 4th offense: Permanent ban</p>
+                </div>
+              </div>
+            </div>
+
             <div class="space-y-3">
               <div>
                 <label class="block text-sm font-semibold text-gray-800 mb-2">Reason for Suspension *</label>
@@ -520,14 +584,9 @@
                   <option value="other">Other</option>
                 </select>
               </div>
-              <div>
-                <label class="block text-sm font-semibold text-gray-800 mb-2">Suspension Duration *</label>
-                <select id="suspendDuration" class="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-red-300 focus:border-red-300 transition">
-                  <option value="24h">24 Hours</option>
-                  <option value="7d">7 Days</option>
-                  <option value="30d">30 Days</option>
-                  <option value="permanent">Permanent</option>
-                </select>
+              <div id="otherSuspendReasonContainer" class="hidden">
+                <label class="block text-sm font-semibold text-gray-800 mb-2">Specify Other Reason *</label>
+                <input type="text" id="otherSuspendReasonText" class="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-red-300 focus:border-red-300 transition" placeholder="Please specify the reason...">
               </div>
               <div>
                 <label class="block text-sm font-semibold text-gray-800 mb-2">Additional Details (Optional)</label>
@@ -548,7 +607,7 @@
         </div>
       </div>
 
-      <!-- Restore Confirmation Modal -->
+      <!-- Unsuspend Confirmation Modal -->
       <div id="restoreConfirmModal" class="modal-overlay fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
         <div class="modal-content bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
           <div class="px-6 py-5 bg-gradient-to-r from-emerald-600 to-teal-600">
@@ -557,7 +616,7 @@
                 <div class="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center animate-pulse-slow">
                   <i class="fi fi-sr-check-circle text-white text-xl"></i>
                 </div>
-                <h3 class="text-xl font-bold text-white">Restore This Conversation?</h3>
+                <h3 class="text-xl font-bold text-white">Unsuspend This Conversation?</h3>
               </div>
               <button class="modal-close text-white/80 hover:text-white transition text-2xl leading-none">&times;</button>
             </div>
@@ -566,8 +625,8 @@
             <div class="flex items-start gap-4 p-4 bg-emerald-50 border-l-4 border-emerald-500 rounded-lg">
               <i class="fi fi-rr-info-circle text-emerald-600 text-xl mt-0.5"></i>
               <div class="flex-1">
-                <p class="text-sm text-emerald-900 font-semibold mb-1">You are about to restore this conversation</p>
-                <p class="text-xs text-emerald-800">Restoring will allow both parties to resume messaging. Any previous suspension or flag will be removed.</p>
+                <p class="text-sm text-emerald-900 font-semibold mb-1">You are about to unsuspend this conversation</p>
+                <p class="text-xs text-emerald-800">Unsuspending will allow both parties to resume messaging. The suspension will be lifted immediately.</p>
               </div>
             </div>
 
@@ -587,18 +646,13 @@
                 </div>
               </div>
             </div>
-            
-            <div>
-              <label class="block text-sm font-semibold text-gray-800 mb-2">Restoration Notes (Optional)</label>
-              <textarea id="restoreNotes" rows="3" class="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-300 focus:border-emerald-300 transition resize-none" placeholder="Add notes about why this conversation is being restored..."></textarea>
-            </div>
 
             <div class="flex items-center justify-end gap-3 pt-3 border-t border-gray-200">
               <button class="modal-close px-6 py-2.5 rounded-xl border-2 border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition-all transform hover:scale-105">Cancel</button>
               <button id="confirmRestoreBtn" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold shadow-md hover:shadow-lg transition-all transform hover:scale-105">
                 <span class="flex items-center gap-2">
                   <i class="fi fi-rr-check-circle"></i>
-                  <span>Restore Conversation</span>
+                  <span>Unsuspend Conversation</span>
                 </span>
               </button>
             </div>
@@ -632,10 +686,6 @@
             <div class="bg-gray-50 rounded-xl p-4 border border-gray-200">
               <div class="space-y-2 text-sm">
                 <div class="flex items-center justify-between">
-                  <span class="text-gray-600">Conversation:</span>
-                  <span class="font-semibold text-gray-800" id="unflagConvName">-</span>
-                </div>
-                <div class="flex items-center justify-between">
                   <span class="text-gray-600">Current Status:</span>
                   <span class="font-semibold text-amber-600">Flagged</span>
                 </div>
@@ -668,25 +718,15 @@
             <button class="modal-close text-white/80 hover:text-white transition text-2xl leading-none">&times;</button>
           </div>
           <div class="p-6 space-y-4 overflow-y-auto flex-1">
-            <!-- Recipient Type Tabs -->
-            <div class="flex items-center gap-2 bg-gray-100 rounded-xl p-1">
-              <button class="compose-tab active flex-1 px-4 py-2 rounded-lg text-sm font-semibold" data-type="contractor">Contractor</button>
-              <button class="compose-tab flex-1 px-4 py-2 rounded-lg text-sm font-semibold" data-type="property_owner">Property Owner</button>
-            </div>
-
             <!-- Recipients & Context -->
             <div class="space-y-4">
               <div>
                 <label class="block text-sm font-semibold text-gray-700 mb-2">To *</label>
                 <div id="composeRecipientsWrapper" class="compose-recipients-wrapper w-full flex flex-wrap gap-2 px-3 py-2 border-2 border-gray-200 rounded-xl focus-within:ring-2 focus-within:ring-indigo-300 focus-within:border-indigo-300 bg-white cursor-text">
-                  <input id="composeRecipientSearch" type="text" class="flex-1 min-w-[140px] outline-none text-sm bg-transparent" placeholder="Type a name or press Enter..." autocomplete="off">
+                  <input id="composeRecipientSearch" type="text" class="flex-1 min-w-[140px] outline-none text-sm bg-transparent" placeholder="Search for a person..." autocomplete="off">
                 </div>
                 <div id="composeRecipientDropdown" class="compose-recipient-dropdown hidden mt-2 bg-white border border-gray-200 rounded-xl shadow-lg max-h-48 overflow-y-auto text-sm"></div>
-                <p class="text-xs text-gray-500 mt-1">Add multiple recipients. Press Enter or comma to add. Max 8.</p>
-              </div>
-              <div>
-                <label class="block text-sm font-semibold text-gray-700 mb-2">Project / Context (Optional)</label>
-                <input id="composeProject" type="text" class="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 transition text-sm" placeholder="Project or discussion context">
+                <p class="text-xs text-gray-500 mt-1">Start typing to search for recipients</p>
               </div>
             </div>
 
@@ -711,7 +751,7 @@
               </div>
             </div>
           </div>
-          
+
           <!-- Actions (Fixed Footer) -->
           <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 flex-shrink-0">
             <div class="flex items-center justify-between">
@@ -732,9 +772,9 @@
       </div>
 
     </main>
-  
 
-  <script src="{{ asset('js/admin/projectManagement/messages.js') }}" defer></script>
+
+  <script src="{{ asset('js/message/messages.js') }}" defer></script>
 
 </body>
 

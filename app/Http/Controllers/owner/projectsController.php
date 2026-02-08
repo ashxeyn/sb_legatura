@@ -324,7 +324,7 @@ class projectsController extends Controller
         // If in testing mode and no user, allow access anyway
         if ($isLocalOrTesting && !$user) {
             // Allow access without authentication for testing
-            return view('owner.propertyOwner_Messages');
+            return view('both.messages');
         }
 
         // Normal authentication flow for logged-in users
@@ -341,7 +341,7 @@ class projectsController extends Controller
             }
         }
 
-        return view('owner.propertyOwner_Messages');
+        return view('both.messages');
     }
 
     public function showCreatePostPage(Request $request)
