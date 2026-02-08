@@ -75,18 +75,18 @@ class userVerificationClass
         if ($user->user_type === 'contractor' || $user->user_type === 'both') {
             // Start a transaction to ensure both updates happen together
             DB::transaction(function () use ($userId) {
-
                 // 1. Update the contractors table
                 DB::table('contractors')
                     ->where('user_id', $userId)
                     ->update([
                         'verification_status' => 'approved',
-                        'verification_date' => now()
+                        'verification_date' => now(),
+                        'is_active' => 1
                     ]);
 
-                // 2. Update the users table
+                // 2. Update the contractor_users table
                 DB::table('contractor_users')
-                    ->where('id', $userId)
+                    ->where('user_id', $userId)
                     ->update([
                         'is_active' => 1
                     ]);
@@ -119,13 +119,25 @@ class userVerificationClass
 
         // Update Profile table with rejection reason
         if ($user->user_type === 'contractor' || $user->user_type === 'both') {
-            DB::table('contractors')
-                ->where('user_id', $userId)
-                ->update([
-                    'verification_status' => 'rejected',
-                    'rejection_reason' => $reason,
-                    'verification_date' => now()
-                ]);
+            // Start a transaction to ensure both updates happen together
+            DB::transaction(function () use ($userId, $reason) {
+                // 1. Update the contractors table
+                DB::table('contractors')
+                    ->where('user_id', $userId)
+                    ->update([
+                        'verification_status' => 'rejected',
+                        'rejection_reason' => $reason,
+                        'verification_date' => now(),
+                        'is_active' => 0
+                    ]);
+
+                // 2. Update the contractor_users table
+                DB::table('contractor_users')
+                    ->where('user_id', $userId)
+                    ->update([
+                        'is_active' => 0
+                    ]);
+            });
         }
 
         if ($user->user_type === 'property_owner' || $user->user_type === 'both') {
@@ -134,7 +146,8 @@ class userVerificationClass
                 ->update([
                     'verification_status' => 'rejected',
                     'rejection_reason' => $reason,
-                    'verification_date' => now()
+                    'verification_date' => now(),
+                    'is_active' => 0
                 ]);
         }
 
