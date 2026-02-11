@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use App\Models\contractor\contractorClass;
+use App\Services\NotificationService;
 
 class cprocessController extends Controller
 {
@@ -698,6 +699,22 @@ class cprocessController extends Controller
 
         $message = $isEditing ? 'Milestone plan updated successfully!' : 'Milestone plan created successfully!';
 
+        // Notify project owner about milestone submission/update
+        $ownerUserId = DB::table('projects as p')
+            ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
+            ->join('property_owners as po', 'pr.owner_id', '=', 'po.owner_id')
+            ->where('p.project_id', $step1['project_id'])
+            ->value('po.user_id');
+        if ($ownerUserId) {
+            $projTitle = DB::table('projects')->where('project_id', $step1['project_id'])->value('project_title');
+            $subType = $isEditing ? 'milestone_updated' : 'milestone_submitted';
+            $title = $isEditing ? 'Milestone Updated' : 'Milestone Submitted';
+            $msg = $isEditing
+                ? "Contractor updated a milestone for \"{$projTitle}\". Please review."
+                : "Contractor submitted a milestone plan for \"{$projTitle}\". Please review.";
+            NotificationService::create($ownerUserId, $subType, $title, $msg, 'normal', 'milestone', (int)$milestoneId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int)$step1['project_id'], 'tab' => 'milestones']]);
+        }
+
         if ($request->expectsJson()) {
             return response()->json([
                 'success' => true,
@@ -849,6 +866,17 @@ class cprocessController extends Controller
 
             DB::commit();
 
+            // Notify project owner about new milestone submission
+            $ownerUserId = DB::table('projects as p')
+                ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
+                ->join('property_owners as po', 'pr.owner_id', '=', 'po.owner_id')
+                ->where('p.project_id', $projectId)
+                ->value('po.user_id');
+            if ($ownerUserId) {
+                $projTitle = $project->project_title ?? '';
+                NotificationService::create($ownerUserId, 'milestone_submitted', 'Milestone Submitted', "Contractor submitted a milestone plan for \"{$projTitle}\". Please review.", 'normal', 'milestone', (int)$milestoneId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int)$projectId, 'tab' => 'milestones']]);
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Milestone plan created successfully!',
@@ -981,6 +1009,17 @@ class cprocessController extends Controller
 
             DB::commit();
 
+            // Notify project owner about milestone update
+            $ownerUserId = DB::table('projects as p')
+                ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
+                ->join('property_owners as po', 'pr.owner_id', '=', 'po.owner_id')
+                ->where('p.project_id', $projectId)
+                ->value('po.user_id');
+            if ($ownerUserId) {
+                $projTitle = DB::table('projects')->where('project_id', $projectId)->value('project_title');
+                NotificationService::create($ownerUserId, 'milestone_updated', 'Milestone Updated', "Contractor updated a milestone for \"{$projTitle}\". Please review.", 'normal', 'milestone', (int)$milestoneId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int)$projectId, 'tab' => 'milestones']]);
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Milestone updated successfully!',
@@ -1068,6 +1107,17 @@ class cprocessController extends Controller
                     // Re-throw if it's a different error
                     throw $e;
                 }
+            }
+
+            // Notify project owner about milestone deletion
+            $ownerUserId = DB::table('projects as p')
+                ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
+                ->join('property_owners as po', 'pr.owner_id', '=', 'po.owner_id')
+                ->where('p.project_id', $milestone->project_id)
+                ->value('po.user_id');
+            if ($ownerUserId) {
+                $projTitle = DB::table('projects')->where('project_id', $milestone->project_id)->value('project_title');
+                NotificationService::create($ownerUserId, 'milestone_deleted', 'Milestone Deleted', "Contractor deleted a milestone for \"{$projTitle}\".", 'normal', 'milestone', (int)$milestoneId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int)$milestone->project_id, 'tab' => 'milestones']]);
             }
 
             return response()->json([

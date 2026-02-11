@@ -2,6 +2,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -45,7 +46,29 @@ class projectAdminController extends Controller
             'project_status' => 'open',
             'updated_at' => now()
         ]);
+
+        // Notify property owner
+        $ownerUserId = DB::table('projects as p')
+            ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
+            ->join('property_owners as po', 'pr.owner_id', '=', 'po.owner_id')
+            ->where('p.project_id', $projectId)
+            ->value('po.user_id');
+        if ($ownerUserId) {
+            $projTitle = DB::table('projects')->where('project_id', $projectId)->value('project_title');
+            NotificationService::create(
+                (int) $ownerUserId,
+                'project_update',
+                'Project Approved',
+                "Your project \"{$projTitle}\" has been approved and is now open for bidding.",
+                'high',
+                'project',
+                (int) $projectId,
+                ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int) $projectId]]
+            );
+        }
+
         // create audit log
+        $user = session('user');
         DB::table('admin_audit_logs')->insert([
             'admin_user_id' => $user->admin_user_id ?? $user->id ?? null,
             'action' => "Approved project {$projectId}",
@@ -62,13 +85,34 @@ class projectAdminController extends Controller
             'project_status' => 'rejected',
             'updated_at' => now()
         ]);
+
+        // Notify property owner
+        $ownerUserId = DB::table('projects as p')
+            ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
+            ->join('property_owners as po', 'pr.owner_id', '=', 'po.owner_id')
+            ->where('p.project_id', $projectId)
+            ->value('po.user_id');
+        if ($ownerUserId) {
+            $projTitle = DB::table('projects')->where('project_id', $projectId)->value('project_title');
+            NotificationService::create(
+                (int) $ownerUserId,
+                'project_update',
+                'Project Rejected',
+                "Your project \"{$projTitle}\" has been rejected. Reason: {$reason}",
+                'high',
+                'project',
+                (int) $projectId,
+                ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int) $projectId]]
+            );
+        }
+
+        $user = session('user');
         DB::table('admin_audit_logs')->insert([
            'admin_user_id' => $user->admin_user_id ?? $user->id ?? null,
             'action' => "Rejected project {$projectId}",
             'meta' => json_encode(['project_id'=>$projectId,'reason'=>$reason]),
             'created_at'=>now()
         ]);
-        // Optionally notify owner via email/notification
         return back()->with('success','Project rejected.');
     }
 

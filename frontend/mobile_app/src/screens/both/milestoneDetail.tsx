@@ -63,6 +63,7 @@ interface MilestoneDetailProps {
       isCompleted?: boolean;
       userRole: 'owner' | 'contractor';
       userId: number;
+      isPreviousItemComplete?: boolean;
     };
   };
   navigation: any;
@@ -81,6 +82,7 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
     isCompleted,
     userRole,
     userId,
+    isPreviousItemComplete = true,
   } = route.params;
 
   // Debug: log the milestone item to see its structure
@@ -839,8 +841,20 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
 
       {/* Unified Bottom Bar: stack multiple buttons to avoid overlap */}
       <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 16 }]}>
+        {/* Sequential lock banner — shown when previous milestone item is not yet completed */}
+        {!isPreviousItemComplete && itemStatus !== 'completed' && (
+          <View style={[styles.bottomRow, { marginBottom: 0 }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.warningLight, borderRadius: 12, padding: 14, width: '100%' }}>
+              <Feather name="lock" size={18} color={COLORS.warning} style={{ marginRight: 10 }} />
+              <Text style={{ color: COLORS.warning, fontSize: 13, fontWeight: '600', flex: 1 }}>
+                Complete the previous milestone item first to unlock this one.
+              </Text>
+            </View>
+          </View>
+        )}
+
         {/* Owner: Send payment (show if any approved) */}
-        {shouldShowPaymentButton && (
+        {shouldShowPaymentButton && isPreviousItemComplete && (
           <View style={styles.bottomRow}>
             <TouchableOpacity 
               style={styles.sendPaymentButton}
@@ -853,7 +867,7 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
         )}
 
         {/* Owner: Set as Complete (appears when at least one progress report is approved AND at least one payment is approved by contractor) */}
-        {isOwner && isApproved && hasAnyApproved && hasApprovedPayment && itemStatus !== 'completed' && (
+        {isOwner && isApproved && hasAnyApproved && hasApprovedPayment && itemStatus !== 'completed' && isPreviousItemComplete && (
           <View style={styles.bottomRow}>
             <TouchableOpacity
               style={styles.completeButton}
@@ -928,7 +942,7 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
         )}
 
         {/* Contractor: Submit Progress Report */}
-        {isContractor && isApproved && !isCompleted && itemStatus !== 'completed' && (
+        {isContractor && isApproved && !isCompleted && itemStatus !== 'completed' && isPreviousItemComplete && (
           <View style={styles.bottomRow}>
             <TouchableOpacity
               style={styles.submitReportButton}
