@@ -143,12 +143,109 @@ class cprocessController extends Controller
 
     public function showDashboard(Request $request)
     {
-        return view('contractor.contractor_Dashboard');
+        $accessCheck = $this->checkContractorAccess($request);
+        if ($accessCheck) {
+            return $accessCheck;
+        }
+
+        // Resolve user id from session or sanctum
+        $user = Session::get('user') ?: $request->user();
+        $userId = is_object($user) ? ($user->user_id ?? null) : ($user['user_id'] ?? null);
+        $userName = null;
+        if (is_object($user)) {
+            if (!empty($user->first_name) || !empty($user->last_name)) {
+                $userName = trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? ''));
+            } else {
+                $userName = $user->username ?? ($user->name ?? null);
+            }
+        }
+
+        $projects = collect([]);
+        $stats = [
+            'total' => 0,
+            'pending' => 0,
+            'active' => 0,
+            'inProgress' => 0,
+            'completed' => 0
+        ];
+
+        if ($userId) {
+            try {
+                // Create a synthetic request to reuse the API method
+                $req = new Request();
+                $req->query->set('user_id', $userId);
+                $resp = $this->apiGetContractorProjects($req);
+                $data = [];
+                if (is_object($resp) && method_exists($resp, 'getData')) {
+                    $content = $resp->getData();
+                    $data = $content->data ?? [];
+                } elseif (is_array($resp)) {
+                    $data = $resp['data'] ?? [];
+                }
+
+                $projects = collect($data);
+
+                // Compute stats similar to JS mapping
+                $totalBids = $projects->reduce(function($acc, $p) { return $acc + ((isset($p->bid_id) && $p->bid_id) ? 1 : 0); }, 0);
+                $pendingBids = $projects->reduce(function($acc, $p) { return $acc + ((isset($p->bid_status) && $p->bid_status && $p->bid_status !== 'accepted') ? 1 : 0); }, 0);
+                $wonBids = $projects->reduce(function($acc, $p) { return $acc + ((isset($p->bid_status) && $p->bid_status === 'accepted') ? 1 : 0); }, 0);
+                $activeProjects = $projects->filter(function($p){ return (isset($p->display_status) && $p->display_status === 'in_progress'); })->count();
+                $completedCount = $projects->filter(function($p){ return (isset($p->display_status) && $p->display_status === 'completed'); })->count();
+
+                $stats = [
+                    'total' => $totalBids,
+                    'pending' => $pendingBids,
+                    'active' => $wonBids,
+                    'inProgress' => $activeProjects,
+                    'completed' => $completedCount
+                ];
+
+            } catch (\Exception $e) {
+                Log::error('showDashboard: failed to load projects: ' . $e->getMessage());
+                $projects = collect([]);
+            }
+        }
+
+        return view('contractor.contractor_Dashboard', [
+            'projects' => $projects,
+            'stats' => $stats,
+            'userName' => $userName
+        ]);
     }
 
     public function showMyProjects(Request $request)
     {
-        return view('contractor.contractor_Myprojects');
+        $accessCheck = $this->checkContractorAccess($request);
+        if ($accessCheck) {
+            return $accessCheck;
+        }
+
+        // Resolve user id from session or sanctum
+        $user = Session::get('user') ?: $request->user();
+        $userId = is_object($user) ? ($user->user_id ?? null) : ($user['user_id'] ?? null);
+
+        $projects = [];
+        if ($userId) {
+            try {
+                $subReq = new Request();
+                $subReq->merge(['user_id' => $userId]);
+                $resp = $this->apiGetContractorProjects($subReq);
+                if ($resp instanceof \Illuminate\Http\JsonResponse) {
+                    $respData = $resp->getData(true);
+                    $projects = $respData['data'] ?? [];
+                } elseif (is_array($resp)) {
+                    $projects = $resp['data'] ?? [];
+                }
+            } catch (\Throwable $e) {
+                \Log::warning('showMyProjects apiGetContractorProjects failed: ' . $e->getMessage());
+                $projects = [];
+            }
+        }
+
+        return view('contractor.contractor_Myprojects', [
+            'projects' => $projects,
+            'userId' => $userId
+        ]);
     }
 
     public function showMyBids(Request $request)

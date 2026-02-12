@@ -24,14 +24,22 @@
             <div class="navbar-col navbar-col-4">
                 <div class="navbar-right">
                     @php
-                        $authUser = Auth::user();
-                        $displayName = session('contractor_name') ?? ($authUser?->company_name ?? $authUser?->username ?? 'Contractor');
-                        $usernameHandle = session('contractor_handle') ?? ('@' . ($authUser?->username ?? 'contractor'));
-                        $profilePic = session('contractor_profile_pic') ?? $authUser?->profile_pic ?? null;
+                        // Use session('user') only (array or object)
+                        $sess = session('user');
+                        $user = null;
+                        if ($sess) {
+                            $user = is_object($sess) ? $sess : (object)$sess;
+                        }
+
+                        $displayName = $user->company_name ?? $user->name ?? $user->username ?? 'Contractor';
+                        $rawHandle = $user->username ?? $user->user_name ?? null;
+                        $usernameHandle = $rawHandle ? ('@' . ltrim($rawHandle, '@')) : '@contractor';
+                        $profilePic = $user->profile_pic ?? null;
+
                         $initials = 'C';
-                        if(trim($displayName)) {
-                            $parts = preg_split('/\s+/', $displayName);
-                            $initials = strtoupper(substr($parts[0],0,1) . (isset($parts[1]) ? substr($parts[1],0,1) : ''));
+                        if (is_string($displayName) && trim($displayName) !== '') {
+                            $parts = preg_split('/\s+/', trim($displayName));
+                            $initials = strtoupper(substr(($parts[0] ?? '') . ($parts[1] ?? ''), 0, 2)) ?: 'C';
                         }
                     @endphp
                     <div class="navbar-user">

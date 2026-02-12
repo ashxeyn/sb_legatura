@@ -18,8 +18,26 @@
                     <div class="profile-info">
                         <p class="greeting" id="greeting">Good Evening</p>
                         <div class="profile-user-info">
-                            <span class="profile-user-name" id="profileUserName">BuildRight Construction</span>
-                            <span class="profile-user-role" id="profileUserRole">@buildRight_Construction</span>
+                            <span class="profile-user-name" id="profileUserName">{{ $userName ?? 'BuildRight Construction' }}</span>
+                            @php
+                                $handle = null;
+                                if (Session::has('user')) {
+                                    $suser = Session::get('user');
+                                    if (is_object($suser)) {
+                                        $handle = $suser->username ?? $suser->user_name ?? null;
+                                    } elseif (is_array($suser)) {
+                                        $handle = $suser['username'] ?? $suser['user_name'] ?? null;
+                                    }
+                                }
+                                if (!$handle && optional(auth()->user())->username) {
+                                    $handle = optional(auth()->user())->username;
+                                }
+                                if (!$handle && isset($userName) && $userName) {
+                                    $handle = strtolower(str_replace(' ', '_', $userName));
+                                }
+                                $handle = $handle ? ('@' . ltrim($handle, '@')) : '@buildRight_Construction';
+                            @endphp
+                            <span class="profile-user-role" id="profileUserRole">{{ $handle }}</span>
                         </div>
                     </div>
                 </div>
@@ -28,22 +46,22 @@
                 <div class="stats-card">
                     <div class="stat-item">
                         <i class="fi fi-rr-chart-histogram stat-icon"></i>
-                        <div class="stat-number" id="statTotal">10</div>
+                        <div class="stat-number" id="statTotal">{{ $stats['total'] ?? 0 }}</div>
                         <div class="stat-label">Total Bids</div>
                     </div>
                     <div class="stat-item">
                         <i class="fi fi-rr-clock stat-icon"></i>
-                        <div class="stat-number" id="statPending">6</div>
+                        <div class="stat-number" id="statPending">{{ $stats['pending'] ?? 0 }}</div>
                         <div class="stat-label">Pending</div>
                     </div>
                     <div class="stat-item">
                         <i class="fi fi-rr-check-circle stat-icon"></i>
-                        <div class="stat-number" id="statActive">2</div>
+                        <div class="stat-number" id="statActive">{{ $stats['active'] ?? 0 }}</div>
                         <div class="stat-label">Won Bids</div>
                     </div>
                     <div class="stat-item">
                         <i class="fi fi-rr-settings stat-icon"></i>
-                        <div class="stat-number" id="statInProgress">3</div>
+                        <div class="stat-number" id="statInProgress">{{ $stats['inProgress'] ?? 0 }}</div>
                         <div class="stat-label">Active</div>
                     </div>
                 </div>
@@ -75,10 +93,94 @@
                                 </button>
                             </div>
                         </div>
-                        
+
                         <!-- Pinned Projects List -->
-                        <div id="pinnedProjectsList" class="pinned-projects-list"></div>
-                        
+                        <div id="pinnedProjectsList" class="pinned-projects-list">
+                            @if(isset($projects) && count($projects) > 0)
+                                @foreach($projects->slice(0,4) as $project)
+                                    @php
+                                        $ownerName = trim($project->owner_name ?? '');
+                                        $initials = collect(explode(' ', $ownerName))->filter()->map(function($w){ return strtoupper(substr($w,0,1)); })->take(2)->join('');
+                                        $budget = (isset($project->budget_range_min) && isset($project->budget_range_max) && $project->budget_range_min && $project->budget_range_max) ? '₱'.number_format($project->budget_range_min).' - ₱'.number_format($project->budget_range_max) : '-';
+                                    @endphp
+                                    <div class="pinned-content project-card bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-200" data-project-id="{{ $project->project_id ?? '' }}">
+                                        <div class="project-card-header p-5 border-b border-gray-100">
+                                            <div class="flex items-start justify-between gap-4">
+                                                <div class="flex-1 min-w-0">
+                                                    <h3 class="project-title text-xl font-bold text-gray-900 mb-2">{{ $project->project_title ?? 'Project' }}</h3>
+                                                    <div class="flex items-center gap-2 text-sm text-gray-600">
+                                                        <i class="fi fi-rr-briefcase"></i>
+                                                        <span class="project-type">{{ $project->type_name ?? ($project->property_type ?? '') }}</span>
+                                                    </div>
+                                                </div>
+                                                <div class="flex items-center gap-2 flex-shrink-0">
+                                                    <span class="status-badge px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 whitespace-nowrap">
+                                                        <span class="status-dot w-2 h-2 rounded-full"></span>
+                                                        <span class="status-text">{{ $project->display_status == 'waiting_milestone_setup' ? 'Needs Setup' : ( $project->display_status == 'in_progress' ? 'In Progress' : ( $project->display_status == 'completed' ? 'Completed' : ($project->project_post_status ?? ucfirst($project->project_status ?? '')))) }}</span>
+                                                    </span>
+                                                    <button class="pinned-unpin-btn" title="Unpin project">
+                                                        <i class="fi fi-rr-bookmark-slash"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="project-card-body p-5">
+                                            <div class="flex gap-4 mb-4">
+                                                <div class="project-image-container flex-shrink-0">
+                                                    <img class="project-image rounded-lg object-cover" src="{{ $project->project_image ?? 'https://via.placeholder.com/120x120/EEA24B/ffffff?text=Project' }}" alt="Project image" onerror="this.onerror=null; this.src='https://via.placeholder.com/120x120/EEA24B/ffffff?text=Project'">
+                                                </div>
+                                                <div class="flex-1 min-w-0">
+                                                    <p class="project-description text-gray-600 text-sm line-clamp-2">{{ Str::limit($project->project_description ?? '', 200) }}</p>
+                                                </div>
+                                            </div>
+                                            <div class="contractor-section mb-4 p-3 bg-gray-50 rounded-lg">
+                                                <div class="flex items-center gap-3">
+                                                    <div class="contractor-avatar w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">{{ $initials ?: 'PO' }}</div>
+                                                    <div class="flex-1 min-w-0">
+                                                        <p class="contractor-name font-medium text-gray-900 text-sm truncate">{{ $project->owner_name ?? '' }}</p>
+                                                        <p class="contractor-role text-xs text-gray-500">Property Owner</p>
+                                                    </div>
+                                                    <div class="contractor-rating flex items-center gap-1 text-xs text-gray-600">
+                                                        <i class="fi fi-rr-star text-yellow-400"></i>
+                                                        <span class="rating-value">{{ $project->owner_rating ?? '' }}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="project-details space-y-2 mb-4">
+                                                <div class="detail-item flex items-center gap-2 text-sm text-gray-600">
+                                                    <i class="fi fi-rr-marker text-orange-500"></i>
+                                                    <span class="project-location truncate">{{ $project->project_location ?? '' }}</span>
+                                                </div>
+                                                <div class="detail-item flex items-center gap-2 text-sm text-gray-600">
+                                                    <i class="fi fi-rr-money text-orange-500"></i>
+                                                    <span class="project-budget">{{ $budget }}</span>
+                                                </div>
+                                                <div class="detail-item flex items-center gap-2 text-sm text-gray-600">
+                                                    <i class="fi fi-rr-calendar text-orange-500"></i>
+                                                    <span class="project-date">{{ isset($project->created_at) ? \Carbon\Carbon::parse($project->created_at)->format('M d, Y') : '' }}</span>
+                                                </div>
+                                            </div>
+                                            <div class="progress-section mb-4">
+                                                <div class="flex items-center justify-between mb-2">
+                                                    <span class="text-xs font-medium text-gray-700">Progress</span>
+                                                    <span class="progress-percentage text-xs font-semibold text-orange-600">{{ isset($project->milestones) && count($project->milestones) ? round((collect($project->milestones)->whereIn('milestone_status', ['approved','completed'])->count() / count($project->milestones)) * 100) . '%' : '0%' }}</span>
+                                                </div>
+                                                <div class="w-full bg-gray-200 rounded-full h-2">
+                                                    <div class="progress-bar h-2 rounded-full transition-all duration-500 bg-gradient-to-r from-orange-400 to-orange-600" style="width: {{ isset($project->milestones) && count($project->milestones) ? round((collect($project->milestones)->whereIn('milestone_status', ['approved','completed'])->count() / count($project->milestones)) * 100) : 0 }}%;"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="project-card-footer p-5 bg-gray-50 border-t border-gray-100">
+                                            <button class="view-details-btn w-full px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors font-medium text-sm flex items-center justify-center gap-2">
+                                                <i class="fi fi-rr-eye"></i>
+                                                <span>View Details</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            @endif
+                        </div>
+
                         <!-- Template for Pinned Project Card -->
                         <template id="pinnedProjectTemplate">
                             <div class="pinned-content project-card bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-200" data-project-id="">
@@ -184,7 +286,7 @@
                                 </div>
                                 <div class="project-info">
                                     <h3 class="project-title">My Projects</h3>
-                                    <p class="project-subtitle"><span id="allProjectsCount">5</span> projects total</p>
+                                    <p class="project-subtitle"><span id="allProjectsCount">{{ isset($projects) ? count($projects) : 0 }}</span> projects total</p>
                                 </div>
                             </div>
                             <div class="project-card-right">
@@ -200,7 +302,7 @@
                                 </div>
                                 <div class="project-info">
                                     <h3 class="project-title">My Bids</h3>
-                                    <p class="project-subtitle"><span id="finishedProjectsCount">10</span> bids submitted</p>
+                                    <p class="project-subtitle"><span id="finishedProjectsCount">{{ $stats['completed'] ?? 0 }}</span> bids submitted</p>
                                 </div>
                             </div>
                             <div class="project-card-right">
@@ -237,9 +339,9 @@
                 <div class="pin-modal-search">
                     <div class="search-input-wrapper">
                         <i class="fi fi-rr-search"></i>
-                        <input type="text" 
-                               id="pinProjectSearch" 
-                               class="search-input" 
+                        <input type="text"
+                               id="pinProjectSearch"
+                               class="search-input"
                                placeholder="Search projects...">
                     </div>
                     <select id="pinProjectFilter" class="filter-select">
@@ -317,6 +419,10 @@
 @section('extra_js')
     <script src="{{ asset('js/contractor/contractor_Dashboard.js') }}?v={{ time() }}"></script>
     <script>
+        // Indicate server-side rendering to prevent JS from re-fetching
+        window.serverRendered = true;
+    </script>
+    <script>
         // Set Dashboard link as active when on contractor dashboard
         document.addEventListener('DOMContentLoaded', () => {
             const navbarLinks = document.querySelectorAll('.navbar-link');
@@ -326,7 +432,7 @@
                     link.classList.add('active');
                 }
             });
-            
+
             // Update navbar search placeholder
             const navbarSearchInput = document.querySelector('.navbar-search-input');
             if (navbarSearchInput) {
@@ -338,6 +444,12 @@
         window.contractorRoutes = {
             projects: '{{ route("contractor.projects") }}',
             bids: '{{ route("contractor.mybids") }}'
+        };
+
+        // Expose current user info for external JS to fetch dashboard data
+        window.currentUser = {
+            id: '{{ optional(Session::get("user"))->user_id ?? (auth()->user()->user_id ?? "") }}',
+            name: '{{ optional(Session::get("user"))->first_name ? (Session::get("user")->first_name . " " . Session::get("user")->last_name) : (optional(auth()->user())->name ?? (optional(Session::get("user"))->username ?? '')) }}'
         };
     </script>
 @endsection

@@ -12,123 +12,184 @@ class ContractorMyProjects {
             status: 'all',
             sort: 'newest'
         };
-        
+
         this.init();
     }
 
     init() {
-        // Load projects
-        this.loadProjects();
-        
-        // Setup event listeners
+        // Setup event listeners first
         this.setupEventListeners();
-        
-        // Update tab badge counts
-        this.updateTabBadgeCounts();
-        
-        // Initial render - start with needs_setup
-        this.applyTabFilter('needs_setup');
+
+        // Try to resolve user id from Blade/global and then load projects
+        this.resolveUserId();
+        this.loadProjects().then(() => {
+            // Update tab badge counts and render default tab after data loads
+            this.updateTabBadgeCounts();
+            this.applyTabFilter('needs_setup');
+        });
+    }
+
+    resolveUserId() {
+        // Allow Blade to provide window.currentUser.id or window.userId
+        this.userId = (window.currentUser && window.currentUser.id) || window.userId || null;
+        // Try parsing numeric id in case it's a string
+        if (this.userId && typeof this.userId === 'string' && this.userId.match(/^\d+$/)) {
+            this.userId = parseInt(this.userId, 10);
+        }
     }
 
     loadProjects() {
-        // Sample projects data
-        this.projects = [
-            {
-                id: 1,
-                title: 'Modern 2-Story Residential House',
-                type: 'General Contractor',
-                description: 'Complete construction of a modern 2-story residential house with 4 bedrooms, 3 bathrooms, living room, kitchen, and outdoor space.',
-                location: 'Brgy. Tumaga, Zamboanga City, Zamboanga del Sur',
-                budget: '₱2.92M',
-                status: 'needs_setup',
-                statusText: 'Needs Setup',
-                date: '2024-01-15',
-                progress: 0,
-                owner: {
-                    name: 'carl_saludo',
-                    avatar: 'CS'
-                },
-                image: 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=300&h=300&fit=crop',
-                awaitingSetup: true,
-                statusInfo: 'Awaiting Setup'
-            },
-            {
-                id: 2,
-                title: 'Office Building Renovation',
-                type: 'Commercial Contractor',
-                description: 'Renovation of a 3-story office building including modern facade and interior updates.',
-                location: 'Makati City, Metro Manila',
-                budget: '₱5.5M',
-                status: 'in_progress',
-                statusText: 'In Progress',
-                date: '2024-02-01',
-                progress: 45,
-                owner: {
-                    name: 'Maria Santos',
-                    avatar: 'MS'
-                },
-                image: 'https://images.unsplash.com/photo-1519974719765-e6559eac2575?w=300&h=300&fit=crop',
-                awaitingSetup: false,
-                statusInfo: 'Construction ongoing - Phase 2'
-            },
-            {
-                id: 3,
-                title: 'Luxury Villa Construction',
-                type: 'Residential Contractor',
-                description: 'High-end villa with infinity pool, garden, and smart home features.',
-                location: 'Tagaytay City, Cavite',
-                budget: '₱12.5M',
-                status: 'completed',
-                statusText: 'Completed',
-                date: '2023-12-20',
-                progress: 100,
-                owner: {
-                    name: 'Pedro Garcia',
-                    avatar: 'PG'
-                },
-                image: 'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=300&h=300&fit=crop',
-                awaitingSetup: false,
-                statusInfo: 'Project completed successfully'
-            },
-            {
-                id: 4,
-                title: 'Shopping Mall Extension',
-                type: 'Commercial Contractor',
-                description: 'Extension of existing shopping mall with new retail spaces and parking area.',
-                location: 'Cebu City, Cebu',
-                budget: '₱25M',
-                status: 'in_progress',
-                statusText: 'In Progress',
-                date: '2024-01-10',
-                progress: 30,
-                owner: {
-                    name: 'ABC Corporation',
-                    avatar: 'AC'
-                },
-                image: 'https://images.unsplash.com/photo-1519974719765-e6559eac2575?w=300&h=300&fit=crop',
-                awaitingSetup: false,
-                statusInfo: 'Foundation work in progress'
-            },
-            {
-                id: 5,
-                title: 'Residential Complex Phase 1',
-                type: 'Residential Contractor',
-                description: '20-unit townhouse development with modern amenities and green spaces.',
-                location: 'Quezon City, Metro Manila',
-                budget: '₱45M',
-                status: 'needs_setup',
-                statusText: 'Needs Setup',
-                date: '2024-02-05',
-                progress: 0,
-                owner: {
-                    name: 'Real Estate Dev Co.',
-                    avatar: 'RE'
-                },
-                image: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=300&h=300&fit=crop',
-                awaitingSetup: true,
-                statusInfo: 'Awaiting Setup'
+        // If server already rendered projects, prefer using them
+        if (window.serverRendered && Array.isArray(window.serverProjects)) {
+            const data = window.serverProjects;
+            this.projects = (Array.isArray(data) ? data : []).map(p => {
+                const milestones = Array.isArray(p.milestones) ? p.milestones : [];
+                const totalMs = milestones.length;
+                const doneMs = totalMs ? milestones.filter(m => (m.milestone_status === 'approved' || m.milestone_status === 'completed')).length : 0;
+                const progress = totalMs ? Math.round((doneMs / totalMs) * 100) : 0;
+
+                const ownerInfo = p.owner_info || null;
+                const ownerName = ownerInfo ? (ownerInfo.username || ((ownerInfo.first_name || '') + ' ' + (ownerInfo.last_name || ''))) : (p.owner_name || '');
+                const ownerAvatar = ownerInfo && ownerInfo.profile_pic ? ownerInfo.profile_pic : (ownerName ? ownerName.split(/\s+/).map(w => w.charAt(0)).slice(0,2).join('').toUpperCase() : 'PO');
+
+                let budget = '-';
+                if (p.budget_range_min && p.budget_range_max) {
+                    try { budget = '₱' + Number(p.budget_range_min).toLocaleString() + ' - ₱' + Number(p.budget_range_max).toLocaleString(); } catch (e) { budget = '-'; }
+                }
+
+                const display = p.display_status || p.project_status || '';
+                let status = 'in_progress';
+                let statusText = display;
+                let awaitingSetup = false;
+                if (display === 'waiting_milestone_setup') {
+                    status = 'needs_setup';
+                    statusText = 'Needs Setup';
+                    awaitingSetup = true;
+                } else if (display === 'in_progress') {
+                    status = 'in_progress';
+                    statusText = 'In Progress';
+                } else if (display === 'completed') {
+                    status = 'completed';
+                    statusText = 'Completed';
+                } else {
+                    status = display || (p.project_status || 'pending');
+                    statusText = (typeof status === 'string') ? status.replace(/_/g, ' ') : statusText;
+                }
+
+                return {
+                    id: p.project_id,
+                    title: p.project_title,
+                    type: p.type_name || p.property_type || '',
+                    description: p.project_description || '',
+                    location: p.project_location || '',
+                    budget: budget,
+                    status: status,
+                    statusText: statusText,
+                    date: p.created_at || '',
+                    progress: progress,
+                    owner: { name: ownerName, avatar: ownerAvatar, username: ownerInfo ? ownerInfo.username : null, profile_pic: ownerInfo ? ownerInfo.profile_pic : null },
+                    image: p.project_image || '',
+                    awaitingSetup: awaitingSetup,
+                    statusInfo: p.project_status || display || '' ,
+                    raw: p
+                };
+            });
+            this.filteredProjects = [...this.projects];
+            return Promise.resolve();
+        }
+
+        // Fallback to client fetch if server data not present
+        const userId = this.userId || (window.currentUser && window.currentUser.id) || null;
+        if (!userId) {
+            this.projects = [];
+            this.filteredProjects = [];
+            return Promise.resolve();
+        }
+
+        return (async () => {
+            try {
+                const csrf = document.querySelector('meta[name="csrf-token"]') ? document.querySelector('meta[name="csrf-token"]').getAttribute('content') : null;
+                const url = `/api/contractor/my-projects?user_id=${encodeURIComponent(userId)}`;
+                const res = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        ...(csrf ? { 'X-CSRF-TOKEN': csrf } : {})
+                    },
+                    credentials: 'same-origin'
+                });
+
+                if (!res.ok) {
+                    console.warn('Failed to fetch contractor projects', res.status);
+                    this.projects = [];
+                    this.filteredProjects = [];
+                    return;
+                }
+
+                const payload = await res.json();
+                const data = payload && payload.data ? payload.data : [];
+
+                this.projects = (Array.isArray(data) ? data : []).map(p => {
+                    const milestones = Array.isArray(p.milestones) ? p.milestones : [];
+                    const totalMs = milestones.length;
+                    const doneMs = totalMs ? milestones.filter(m => (m.milestone_status === 'approved' || m.milestone_status === 'completed')).length : 0;
+                    const progress = totalMs ? Math.round((doneMs / totalMs) * 100) : 0;
+
+                    const ownerInfo = p.owner_info || null;
+                    const ownerName = ownerInfo ? (ownerInfo.username || ((ownerInfo.first_name || '') + ' ' + (ownerInfo.last_name || ''))) : (p.owner_name || '');
+                    const ownerAvatar = ownerInfo && ownerInfo.profile_pic ? ownerInfo.profile_pic : (ownerName ? ownerName.split(/\s+/).map(w => w.charAt(0)).slice(0,2).join('').toUpperCase() : 'PO');
+
+                    let budget = '-';
+                    if (p.budget_range_min && p.budget_range_max) {
+                        try { budget = '₱' + Number(p.budget_range_min).toLocaleString() + ' - ₱' + Number(p.budget_range_max).toLocaleString(); } catch (e) { budget = '-'; }
+                    }
+
+                    const display = p.display_status || p.project_status || '';
+                    let status = 'in_progress';
+                    let statusText = display;
+                    let awaitingSetup = false;
+                    if (display === 'waiting_milestone_setup') {
+                        status = 'needs_setup';
+                        statusText = 'Needs Setup';
+                        awaitingSetup = true;
+                    } else if (display === 'in_progress') {
+                        status = 'in_progress';
+                        statusText = 'In Progress';
+                    } else if (display === 'completed') {
+                        status = 'completed';
+                        statusText = 'Completed';
+                    } else {
+                        status = display || (p.project_status || 'pending');
+                        statusText = (typeof status === 'string') ? status.replace(/_/g, ' ') : statusText;
+                    }
+
+                    return {
+                        id: p.project_id,
+                        title: p.project_title,
+                        type: p.type_name || p.property_type || '',
+                        description: p.project_description || '',
+                        location: p.project_location || '',
+                        budget: budget,
+                        status: status,
+                        statusText: statusText,
+                        date: p.created_at || '',
+                        progress: progress,
+                        owner: { name: ownerName, avatar: ownerAvatar, username: ownerInfo ? ownerInfo.username : null, profile_pic: ownerInfo ? ownerInfo.profile_pic : null },
+                        image: p.project_image || '',
+                        awaitingSetup: awaitingSetup,
+                        statusInfo: p.project_status || display || '' ,
+                        raw: p
+                    };
+                });
+
+                this.filteredProjects = [...this.projects];
+            } catch (err) {
+                console.error('Error loading projects:', err);
+                this.projects = [];
+                this.filteredProjects = [];
             }
-        ];
+        })();
     }
 
     setupEventListeners() {
@@ -165,13 +226,13 @@ class ContractorMyProjects {
 
     handleTabFilter(filter) {
         this.currentTabFilter = filter;
-        
+
         // Update active tab
         document.querySelectorAll('.tab-filter-btn').forEach(btn => {
             btn.classList.remove('active');
         });
         document.querySelector(`[data-filter="${filter}"]`)?.classList.add('active');
-        
+
         // Apply filter and render
         this.applyTabFilter(filter);
     }
@@ -179,17 +240,17 @@ class ContractorMyProjects {
     applyTabFilter(filter) {
         // Filter by status
         let filtered = this.projects.filter(project => project.status === filter);
-        
+
         // Apply sorting
         filtered = this.sortProjects(filtered);
-        
+
         this.filteredProjects = filtered;
         this.renderProjects();
     }
 
     sortProjects(projects) {
         const sortType = this.currentFilter.sort;
-        
+
         return projects.sort((a, b) => {
             switch (sortType) {
                 case 'newest':
@@ -212,18 +273,18 @@ class ContractorMyProjects {
             in_progress: 0,
             completed: 0
         };
-        
+
         this.projects.forEach(project => {
             if (counts.hasOwnProperty(project.status)) {
                 counts[project.status]++;
             }
         });
-        
+
         // Update tab badges
         const needsSetupBadge = document.getElementById('needsSetupBadge');
         const inProgressBadge = document.getElementById('inProgressBadge');
         const completedBadge = document.getElementById('completedBadge');
-        
+
         if (needsSetupBadge) needsSetupBadge.textContent = counts.needs_setup;
         if (inProgressBadge) inProgressBadge.textContent = counts.in_progress;
         if (completedBadge) completedBadge.textContent = counts.completed;
@@ -233,35 +294,35 @@ class ContractorMyProjects {
         const container = document.getElementById('projectsContainer');
         const emptyState = document.getElementById('emptyState');
         const template = document.getElementById('projectCardTemplate');
-        
+
         if (!container || !template) return;
-        
+
         container.innerHTML = '';
-        
+
         if (this.filteredProjects.length === 0) {
             container.classList.add('hidden');
             emptyState?.classList.remove('hidden');
             return;
         }
-        
+
         container.classList.remove('hidden');
         emptyState?.classList.add('hidden');
-        
+
         this.filteredProjects.forEach(project => {
             const card = template.content.cloneNode(true);
             const cardElement = card.querySelector('.project-card');
-            
+
             // Add needs-setup class if applicable
             if (project.awaitingSetup) {
                 cardElement.classList.add('needs-setup');
                 card.querySelector('.milestone-warning-banner')?.classList.remove('hidden');
             }
-            
+
             // Fill in project details
             card.querySelector('.project-type').textContent = project.type;
             card.querySelector('.project-title').textContent = project.title;
             card.querySelector('.project-description').textContent = project.description;
-            
+
             // Project image
             const projectImage = card.querySelector('.project-card-image');
             if (projectImage) {
@@ -274,23 +335,23 @@ class ContractorMyProjects {
                     projectImage.alt = 'Project placeholder';
                 }
             }
-            
+
             // Status badge
             const statusBadge = card.querySelector('.status-badge');
             statusBadge.classList.add(`status-${project.status}`);
             card.querySelector('.status-text').textContent = project.statusText;
-            
+
             // Owner info
             card.querySelector('.contractor-avatar').textContent = project.owner.avatar;
             card.querySelector('.contractor-name').textContent = project.owner.name;
-            
+
             // Project details
             card.querySelector('.project-location').textContent = project.location;
             card.querySelector('.project-budget').textContent = project.budget;
-            
+
             // Status info
             card.querySelector('.status-info-text').textContent = project.statusInfo;
-            
+
             // Action button
             const actionBtn = card.querySelector('.action-btn');
             if (project.awaitingSetup) {
@@ -306,7 +367,7 @@ class ContractorMyProjects {
                 actionBtn.querySelector('.action-btn-icon').className = 'fi fi-rr-eye action-btn-icon';
                 actionBtn.querySelector('.action-btn-text').textContent = 'View Details';
             }
-            
+
             // Click handlers
             const milestoneWarning = card.querySelector('.milestone-warning-banner');
             if (milestoneWarning) {
@@ -315,7 +376,7 @@ class ContractorMyProjects {
                     this.handleSetupMilestones(project);
                 });
             }
-            
+
             actionBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 if (project.awaitingSetup) {
@@ -324,11 +385,11 @@ class ContractorMyProjects {
                     this.handleViewDetails(project);
                 }
             });
-            
+
             cardElement.addEventListener('click', () => {
                 this.handleViewDetails(project);
             });
-            
+
             container.appendChild(card);
         });
     }
@@ -345,7 +406,7 @@ class ContractorMyProjects {
 
     handleViewDetails(project) {
         console.log('View details for project:', project);
-        
+
         // Check if the project details modal function exists
         if (typeof window.openProjectDetailsModal === 'function') {
             window.openProjectDetailsModal(project);
@@ -358,7 +419,7 @@ class ContractorMyProjects {
     toggleFilterDropdown() {
         const dropdown = document.getElementById('filterDropdown');
         const btn = document.getElementById('filterBtn');
-        
+
         if (dropdown) {
             dropdown.classList.toggle('active');
             btn?.classList.toggle('active');
@@ -368,7 +429,7 @@ class ContractorMyProjects {
     closeFilterDropdown() {
         const dropdown = document.getElementById('filterDropdown');
         const btn = document.getElementById('filterBtn');
-        
+
         dropdown?.classList.remove('active');
         btn?.classList.remove('active');
     }
@@ -376,10 +437,10 @@ class ContractorMyProjects {
     applyOldFilters() {
         const statusFilter = document.getElementById('statusFilter')?.value || 'all';
         const sortFilter = document.getElementById('sortFilter')?.value || 'newest';
-        
+
         this.currentFilter.status = statusFilter;
         this.currentFilter.sort = sortFilter;
-        
+
         this.applyTabFilter(this.currentTabFilter);
         this.closeFilterDropdown();
     }
@@ -387,12 +448,12 @@ class ContractorMyProjects {
     clearFilters() {
         document.getElementById('statusFilter').value = 'all';
         document.getElementById('sortFilter').value = 'newest';
-        
+
         this.currentFilter = {
             status: 'all',
             sort: 'newest'
         };
-        
+
         this.applyTabFilter(this.currentTabFilter);
         this.closeFilterDropdown();
     }
@@ -444,7 +505,7 @@ if (!document.getElementById('customAnimations')) {
                 opacity: 1;
             }
         }
-        
+
         @keyframes slideOutDown {
             from {
                 transform: translateY(0);

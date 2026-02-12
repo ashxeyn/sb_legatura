@@ -157,7 +157,7 @@ class authService
                 // Use 'exists' checks to find any APPROVED records. This prevents a newly-created
                 // PENDING record from masking an earlier APPROVED record (e.g., when adding a
                 // new role creates a pending row while an approved row still exists).
-                // Check contractors (primary contractor account) for approval
+                // Prefer the primary contractor record for verification status
                 $cApproved = DB::table('contractors')
                     ->where('user_id', $user->user_id)
                     ->where('verification_status', 'approved')
