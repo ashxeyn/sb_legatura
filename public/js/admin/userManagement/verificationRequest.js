@@ -39,6 +39,7 @@
 // Verification Modal Logic
 (function () {
     let currentUserId = null;
+    let currentUserType = null; // 'contractor' or 'property_owner'
 
     // Helper functions
     function setText(id, value) {
@@ -155,6 +156,7 @@
     // Fetch and Populate Data
     async function openVerificationModal(id, type) {
         currentUserId = id;
+        currentUserType = type;
         try {
             const response = await fetch(
                 `/api/admin/users/verification-requests/${id}`
@@ -333,8 +335,11 @@
                             "Content-Type": "application/json",
                             Accept: "application/json",
                         },
+                        body: JSON.stringify({ targetRole: currentUserType }),
                     }
                 );
+
+                const payload = await response.json().catch(() => null);
 
                 if (response.ok) {
                     toggleModal(acceptModal, false);
@@ -355,11 +360,9 @@
 
                     showNotification("Verification approved successfully!", "success");
                 } else {
-                    const err = await response.json();
-                    showNotification(
-                        err.message || "Failed to approve user.",
-                        "error"
-                    );
+                    console.error('Approve failed', response.status, payload);
+                    const errMsg = payload?.message || (payload?.errors ? Object.values(payload.errors).flat().join(' ') : null) || 'Failed to approve user.';
+                    showNotification(errMsg, 'error');
                 }
             } catch (error) {
                 console.error(error);
@@ -393,7 +396,7 @@
                             "Content-Type": "application/json",
                             Accept: "application/json",
                         },
-                        body: JSON.stringify({ reason }),
+                        body: JSON.stringify({ reason, targetRole: currentUserType }),
                     }
                 );
 

@@ -12,9 +12,54 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-
 class authController extends Controller
 {
+    // Resubmit (re-apply) for rejected contractor/owner
+    public function resubmitRoleApplication(Request $request)
+    {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => 'Authentication required.'], 401);
+        }
+
+        $role = $request->input('role'); // 'contractor' or 'owner'
+        if (!in_array($role, ['contractor', 'owner'])) {
+            return response()->json(['success' => false, 'message' => 'Invalid role.'], 422);
+        }
+
+        if ($role === 'contractor') {
+            $contractor = DB::table('contractors')->where('user_id', $user->user_id)->first();
+            if (!$contractor) {
+                return response()->json(['success' => false, 'message' => 'No contractor application found.'], 404);
+            }
+            if ($contractor->verification_status !== 'rejected') {
+                return response()->json(['success' => false, 'message' => 'Contractor application is not rejected.'], 400);
+            }
+            DB::table('contractors')->where('contractor_id', $contractor->contractor_id)
+                ->update([
+                    'verification_status' => 'pending',
+                    'rejection_reason' => null,
+                    'updated_at' => now(),
+                ]);
+            return response()->json(['success' => true, 'message' => 'Contractor application resubmitted.']);
+        } elseif ($role === 'owner') {
+            $owner = DB::table('property_owners')->where('user_id', $user->user_id)->first();
+            if (!$owner) {
+                return response()->json(['success' => false, 'message' => 'No owner application found.'], 404);
+            }
+            if ($owner->verification_status !== 'rejected') {
+                return response()->json(['success' => false, 'message' => 'Owner application is not rejected.'], 400);
+            }
+            DB::table('property_owners')->where('owner_id', $owner->owner_id)
+                ->update([
+                    'verification_status' => 'pending',
+                    'rejection_reason' => null,
+                    'updated_at' => now(),
+                ]);
+            return response()->json(['success' => true, 'message' => 'Owner application resubmitted.']);
+        }
+        return response()->json(['success' => false, 'message' => 'Unknown error.'], 500);
+    }
     protected $authService;
     protected $accountClass;
     protected $psgcService;
@@ -87,59 +132,6 @@ class authController extends Controller
                     Session::put('current_role', $result['user']->user_type);
                 } elseif (!empty($result['userType'])) {
                     Session::put('current_role', $result['userType']);
-                }
-
-                // Load contractor-specific display info into session for contractor/staff users
-                try {
-                    $userObj = $result['user'] ?? null;
-                    if ($userObj && in_array($userObj->user_type ?? '', ['contractor', 'both', 'staff'])) {
-                        // Prefer contractor record linked by user_id; fall back to contractor_users relationship
-                        $contractor = DB::table('contractors')->where('user_id', $userObj->user_id)->first();
-                        if (!$contractor) {
-                            $cu = DB::table('contractor_users')->where('user_id', $userObj->user_id)->first();
-                            if ($cu && isset($cu->contractor_id)) {
-                                $contractor = DB::table('contractors')->where('contractor_id', $cu->contractor_id)->first();
-                            }
-                        }
-
-                        if ($contractor) {
-                            Session::put('contractor_name', $contractor->company_name ?? ($userObj->username ?? null));
-                            // company_handle may not exist; build handle from username if missing
-                            $handle = $contractor->company_handle ?? ($userObj->username ?? null);
-                            if ($handle && strpos($handle, '@') !== 0) {
-                                $handle = '@' . $handle;
-                            }
-                            Session::put('contractor_handle', $handle);
-                            Session::put('contractor_profile_pic', $contractor->profile_pic ?? ($userObj->profile_pic ?? null));
-                        }
-                    }
-                } catch (\Exception $e) {
-                    \Log::warning('Failed to load contractor session data: ' . $e->getMessage());
-                }
-
-                // Load owner-specific display info into session for property_owner/both users
-                try {
-                    $userObj = $result['user'] ?? null;
-                    if ($userObj && in_array($userObj->user_type ?? '', ['property_owner', 'both'])) {
-                        $owner = DB::table('property_owners')->where('user_id', $userObj->user_id)->first();
-                        if ($owner) {
-                            // Build a full name if explicit full_name isn't present
-                            $fullName = $owner->full_name ?? trim(($owner->first_name ?? '') . ' ' . ($owner->middle_name ?? '') . ' ' . ($owner->last_name ?? ''));
-                            if (empty(trim($fullName))) {
-                                $fullName = $userObj->username ?? 'Owner';
-                            }
-                            Session::put('owner_name', $fullName);
-
-                            $handle = $owner->handle ?? $userObj->username ?? null;
-                            if ($handle && strpos($handle, '@') !== 0) {
-                                $handle = '@' . $handle;
-                            }
-                            Session::put('owner_handle', $handle);
-                            Session::put('owner_profile_pic', $owner->profile_pic ?? ($userObj->profile_pic ?? null));
-                        }
-                    }
-                } catch (\Exception $e) {
-                    \Log::warning('Failed to load owner session data: ' . $e->getMessage());
                 }
 
                 // Route admins to the Admin dashboard, owners/contractors to their homepages, users to main dashboard
@@ -969,19 +961,26 @@ class authController extends Controller
             try {
                 $existingContractor = DB::table('contractors')->where('user_id', $userId)->first();
                 if ($existingContractor) {
-                    return response()->json(['success' => true, 'message' => 'Account already exists', 'user_id' => $userId, 'contractor_id' => $existingContractor->contractor_id], 200);
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Account already exists',
+                        'user_id' => $userId,
+                        'contractor_id' => $existingContractor->contractor_id,
+                        'pending_role_request' => $existingContractor->verification_status === 'pending',
+                    ], 200);
                 }
             } catch (\Throwable $e) {
                 \Log::warning('Existing contractor lookup failed: ' . $e->getMessage());
             }
         } else {
+            // Do NOT set user_type to contractor yet; keep original user_type
             $userId = $this->accountClass->createUser([
                 'profile_pic' => $profilePicPath,
                 'username' => $step2['username'] ?? null,
                 'email' => $step2['company_email'] ?? ($step2['email'] ?? null),
                 'password_hash' => isset($step2['password']) ? $this->authService->hashPassword($step2['password']) : null,
                 'OTP_hash' => $step2['otp_hash'] ?? null,
-                'user_type' => 'contractor'
+                // 'user_type' => 'contractor' // Do NOT set yet
             ]);
 
             // Log creation result for debugging (temporary)
@@ -1013,7 +1012,8 @@ class authController extends Controller
             'business_permit_city' => $step4['business_permit_city'],
             'business_permit_expiration' => $step4['business_permit_expiration'],
             'tin_business_reg_number' => $step4['tin_business_reg_number'],
-            'dti_sec_registration_photo' => $step4['dti_sec_registration_photo']
+            'dti_sec_registration_photo' => $step4['dti_sec_registration_photo'],
+            'verification_status' => 'pending', // Mark as pending until admin approval
         ]);
 
         try {
@@ -1035,19 +1035,19 @@ class authController extends Controller
         Session::forget(['signup_user_type', 'signup_step', 'contractor_step1', 'contractor_step2', 'contractor_step4']);
 
         if ($request->expectsJson()) {
-
             return response()->json([
                 'success' => true,
                 'message' => 'Registration successful! Please wait for admin approval.',
                 'user_id' => $userId,
                 'contractor_id' => $contractorId,
+                'pending_role_request' => true,
                 'redirect_url' => '/accounts/login'
             ], 201);
         } else {
-
             return response()->json([
                 'success' => true,
                 'message' => 'Registration successful! Please wait for admin approval.',
+                'pending_role_request' => true,
                 'redirect' => '/accounts/login'
             ]);
         }
@@ -1616,17 +1616,24 @@ class authController extends Controller
             try {
                 $existingOwner = DB::table('property_owners')->where('user_id', $userId)->first();
                 if ($existingOwner) {
-                    return response()->json(['success' => true, 'message' => 'Account already exists', 'user_id' => $userId, 'owner_id' => $existingOwner->owner_id], 200);
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Account already exists',
+                        'user_id' => $userId,
+                        'owner_id' => $existingOwner->owner_id,
+                        'pending_role_request' => $existingOwner->verification_status === 'pending',
+                    ], 200);
                 }
             } catch (\Throwable $e) { \Log::warning('Existing owner lookup failed: ' . $e->getMessage()); }
         } else {
+            // Do NOT set user_type to property_owner yet; keep original user_type
             $userId = $this->accountClass->createUser([
                 'profile_pic' => $profilePicPath,
                 'username' => $step2['username'] ?? null,
                 'email' => $step2['email'] ?? null,
                 'password_hash' => isset($step2['password']) ? $this->authService->hashPassword($step2['password']) : null,
                 'OTP_hash' => $step2['otp_hash'] ?? null,
-                'user_type' => 'property_owner'
+                // 'user_type' => 'property_owner' // Do NOT set yet
             ]);
 
             try { \Log::info('propertyOwnerFinalStep: created user id -> ' . var_export($userId, true)); } catch (\Throwable $e) {}
@@ -1647,7 +1654,8 @@ class authController extends Controller
             'age' => $step1['age'],
             'occupation_id' => $step1['occupation_id'],
             'occupation_other' => $step1['occupation_other'] ?? null,
-            'address' => $step1['address']
+            'address' => $step1['address'],
+            'verification_status' => 'pending', // Mark as pending until admin approval
         ]);
 
         try { \Log::info('propertyOwnerFinalStep: created owner id -> ' . var_export($ownerId, true)); } catch (\Throwable $e) {}
@@ -1656,10 +1664,22 @@ class authController extends Controller
         Session::forget(['signup_user_type', 'signup_step', 'owner_step1', 'owner_step2', 'owner_step4']);
 
         if ($request->expectsJson()) {
-            return response()->json(['success' => true, 'message' => 'Registration successful! You can now login.', 'user_id' => $userId, 'owner_id' => $ownerId, 'redirect_url' => '/accounts/login'], 201);
+            return response()->json([
+                'success' => true,
+                'message' => 'Registration successful! Please wait for admin approval.',
+                'user_id' => $userId,
+                'owner_id' => $ownerId,
+                'pending_role_request' => true,
+                'redirect_url' => '/accounts/login'
+            ], 201);
         }
 
-        return response()->json(['success' => true, 'message' => 'Registration successful! Please wait for verification.', 'redirect' => '/accounts/login']);
+        return response()->json([
+            'success' => true,
+            'message' => 'Registration successful! Please wait for admin approval.',
+            'pending_role_request' => true,
+            'redirect' => '/accounts/login'
+        ]);
     }
 
     // Temporary debug helper: lookup a user by email for local testing
@@ -2553,7 +2573,10 @@ class authController extends Controller
             } else {
                 return response()->json([
                     'success' => false,
-                    'message' => $result['message']
+                    'message' => $result['message'],
+                    'data' => [
+                        'user' => $result['user'] ?? null
+                    ]
                 ], 401);
             }
         } catch (\Illuminate\Validation\ValidationException $e) {
@@ -2607,6 +2630,39 @@ class authController extends Controller
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
                 'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            // Log the actual error for debugging
+            \Illuminate\Support\Facades\Log::error('Registration error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred during registration: ' . $e->getMessage(),
+                'debug' => [
+                    'error' => $e->getMessage(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine()
+                ]
+            ], 500);
+        }
+    }
+
+    // API Test Connection
+    public function apiTest()
+    {
+        return response()->json([
+            'success' => true,
+            'message' => 'API connection successful',
+            'timestamp' => now(),
+            'server' => 'Laravel ' . app()->version()
+        ], 200);
+    }
+
+    /**
+     * API: Force change password (for first-time member login)
+     *
+e,
                 'message' => 'Validation failed',
                 'errors' => $e->errors()
             ], 422);

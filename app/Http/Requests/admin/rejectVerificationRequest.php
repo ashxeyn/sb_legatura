@@ -23,6 +23,7 @@ class rejectVerificationRequest extends FormRequest
     {
         return [
             'reason' => 'required|string|min:5|max:500',
+            'targetRole' => 'required|string|in:contractor,property_owner',
         ];
     }
 
@@ -36,6 +37,8 @@ class rejectVerificationRequest extends FormRequest
         return [
             'reason.required' => 'A rejection reason is required.',
             'reason.min' => 'The rejection reason must be at least 5 characters.',
+            'targetRole.required' => 'The role being rejected is required.',
+            'targetRole.in' => 'The role being rejected must be either contractor or property_owner.',
         ];
     }
 }

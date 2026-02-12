@@ -8,7 +8,6 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
-  TextInput,
 } from 'react-native';
 import { StatusBar, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -32,7 +31,12 @@ export default function SwitchRoleScreen({ onBack, onRoleChanged, onStartAddRole
   const [switching, setSwitching] = useState(false);
   const [currentRole, setCurrentRole] = useState<'contractor' | 'owner' | null>(null);
   const [canSwitchRoles, setCanSwitchRoles] = useState(false);
-  // Registration UI moved to a dedicated screen. Local form states removed.
+  const [pendingRoleRequest, setPendingRoleRequest] = useState(false);
+  const [rejectedRoleRequest, setRejectedRoleRequest] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [approvedRole, setApprovedRole] = useState<null | 'contractor' | 'owner'>(null);
+  // Track last switched role to force UI update after switch
+  const [lastSwitchedRole, setLastSwitchedRole] = useState<null | 'contractor' | 'owner'>(null);
 
   const normalizeRole = (val: any): 'contractor' | 'owner' | null => {
     if (val === null || val === undefined) return null;
@@ -42,7 +46,6 @@ export default function SwitchRoleScreen({ onBack, onRoleChanged, onStartAddRole
     return null;
   };
 
-  // Get status bar height
   const statusBarHeight = insets.top || (Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 44);
 
   useEffect(() => {
@@ -53,35 +56,68 @@ export default function SwitchRoleScreen({ onBack, onRoleChanged, onStartAddRole
     try {
       setLoading(true);
       const response = await role_service.get_current_role();
-
-      // Log exactly what this component receives from the service
-      console.log('Component received:', response);
-
+      console.log('[DEBUG] get_current_role response:', response);
+      // Helpful debug: surface nested role objects and top-level pending flag
+      try {
+        const d = response.data || response;
+        console.log('[DEBUG] contractor:', d.contractor, 'owner:', d.owner, 'pending_role_request:', d.pending_role_request);
+      } catch (e) {}
       if (response.success) {
-        const roleValue = (response as any).current_role
-          || (response as any).data?.current_role
-          || (response as any).user_type;
+        const data = response.data || response;
+        const canSwitch = data.can_switch_roles ?? false;
+        const pending = data.pending_role_request ?? false;
+        // Determine a reliable current role for display. Prefer explicit current_role; if absent and user_type is 'both',
+        // infer from which role is already approved (owner preferred if approved), otherwise fall back to null.
+        let inferredRoleRaw: any = data.current_role ?? data.user_type;
+        if ((inferredRoleRaw === null || inferredRoleRaw === undefined || String(inferredRoleRaw).toLowerCase() === 'both') && data.user_type === 'both') {
+          if (data.owner_role_approved) inferredRoleRaw = 'owner';
+          else if (data.contractor_role_approved) inferredRoleRaw = 'contractor';
+          else inferredRoleRaw = null;
+        }
+        const roleValue = inferredRoleRaw;
+        // Detect rejected state (check both contractor and owner for 'rejected')
+        let rejected = false;
+        let rejectionMsg = '';
+        let approved: null | 'contractor' | 'owner' = null;
+        const currentNormalized = normalizeRole(roleValue);
+        // Check for approved application for the other role (use normalized current role we just derived)
+        if (data.contractor && data.contractor.verification_status === 'approved' && currentNormalized !== 'contractor') {
+          approved = 'contractor';
+        }
+        if (data.owner && data.owner.verification_status === 'approved' && currentNormalized !== 'owner') {
+          approved = 'owner';
+        }
+        // Check for rejected status in both tables
+        if (data.contractor && data.contractor.verification_status === 'rejected') {
+          rejected = true;
+          rejectionMsg = data.contractor.rejection_reason || 'Your contractor application was rejected.';
+        }
+        if (data.owner && data.owner.verification_status === 'rejected') {
+          rejected = true;
+          rejectionMsg = data.owner.rejection_reason || 'Your property owner application was rejected.';
+        }
 
-        const canSwitch = ((response as any).can_switch_roles
-          ?? (response as any).data?.can_switch_roles
-          ?? false) as boolean;
+        // If the application was rejected, do not treat it as a pending request for the header/title.
+        const showPending = !!pending && !rejected;
 
-        const normalized = normalizeRole(roleValue);
-        setCurrentRole(normalized);
+        setCurrentRole(currentNormalized);
         setCanSwitchRoles(!!canSwitch);
+        setPendingRoleRequest(showPending);
+        setRejectedRoleRequest(rejected);
+        setRejectionReason(rejectionMsg);
+        setApprovedRole(approved);
       } else {
-        Alert.alert('Error', 'Failed to load current role information');
+        Alert.alert('Error', 'Failed to load role information');
       }
     } catch (error) {
       console.error('Load role error:', error);
-      Alert.alert('Error', 'An error occurred while loading role information');
     } finally {
       setLoading(false);
     }
   };
 
   const handleSwitchRole = async (targetRole: 'contractor' | 'owner') => {
-    if (switching) return;
+    if (switching || pendingRoleRequest) return;
 
     const roleLabel = targetRole === 'contractor' ? 'Contractor' : 'Property Owner';
 
@@ -89,40 +125,22 @@ export default function SwitchRoleScreen({ onBack, onRoleChanged, onStartAddRole
       `Switch to ${roleLabel}`,
       `Would you like to switch to the ${roleLabel} dashboard?`,
       [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
+        { text: 'Cancel', style: 'cancel' },
         {
           text: 'Switch',
           onPress: async () => {
             setSwitching(true);
             try {
               const response = await role_service.switch_role(targetRole);
-
               if (response.success) {
-                setCurrentRole(targetRole);
-                // Re-fetch from server to ensure consistency
-                await loadCurrentRole();
-                Alert.alert(
-                  'Success',
-                  response.message || `Successfully switched to ${roleLabel} role`,
-                  [
-                    {
-                      text: 'OK',
-                      onPress: () => {
-                        // Navigate to appropriate dashboard
-                        onRoleChanged();
-                        onBack();
-                      },
-                    },
-                  ]
-                );
+                setApprovedRole(null); // Clear approved status after switching
+                setLastSwitchedRole(targetRole); // Track last switched
+                onRoleChanged();
+                onBack();
               } else {
                 Alert.alert('Error', response.message || 'Failed to switch role');
               }
             } catch (error) {
-              console.error('Switch role error:', error);
               Alert.alert('Error', 'An error occurred while switching roles');
             } finally {
               setSwitching(false);
@@ -137,15 +155,12 @@ export default function SwitchRoleScreen({ onBack, onRoleChanged, onStartAddRole
     const nextRole = currentRole === 'contractor' ? 'owner' : 'contractor';
     if (onStartAddRole) {
       onStartAddRole(nextRole);
-    } else {
-      Alert.alert('Info', 'Registration form will open on a dedicated screen.');
     }
   };
 
   if (loading) {
     return (
       <View style={[styles.container, { paddingTop: statusBarHeight }]}>
-        <StatusBar hidden={true} />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#EC7E00" />
           <Text style={styles.loadingText}>Loading role information...</Text>
@@ -163,16 +178,15 @@ export default function SwitchRoleScreen({ onBack, onRoleChanged, onStartAddRole
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#333333" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Switch Role</Text>
+        <Text style={styles.headerTitle}>Account Settings</Text>
         <View style={styles.headerSpacer} />
       </View>
 
       <ScrollView
-        style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Current Role Card */}
+        {/* SECTION: Current Status */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>CURRENT ROLE</Text>
           <View style={styles.card}>
@@ -189,15 +203,9 @@ export default function SwitchRoleScreen({ onBack, onRoleChanged, onStartAddRole
               </View>
               <View style={styles.roleInfo}>
                 <Text style={styles.roleName}>
-                  {currentRole === 'contractor' ? 'Contractor' : currentRole === 'owner' ? 'Property Owner' : 'Role Unknown'}
+                  {currentRole === 'contractor' ? 'Contractor' : 'Property Owner'}
                 </Text>
-                <Text style={styles.roleDescription}>
-                  {currentRole === 'contractor'
-                    ? 'Bid on projects and manage contracts'
-                    : currentRole === 'owner'
-                    ? 'Post projects and manage properties'
-                    : 'We could not determine your role yet'}
-                </Text>
+                <Text style={styles.roleDescription}>Active Dashboard</Text>
               </View>
               <View style={styles.activeBadge}>
                 <Text style={styles.activeBadgeText}>ACTIVE</Text>
@@ -206,36 +214,69 @@ export default function SwitchRoleScreen({ onBack, onRoleChanged, onStartAddRole
           </View>
         </View>
 
-        {/* Switch Role Section */}
-        {canSwitchRoles ? (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>SWITCH TO</Text>
-            <View style={styles.card}>
+        {/* SECTION: Switch / Application Status */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>
+            {pendingRoleRequest ? 'APPLICATION STATUS' : 'SWITCH ROLE'}
+          </Text>
+
+          <View style={styles.card}>
+            {rejectedRoleRequest ? (
+              /* --- REJECTED VIEW: User's application was rejected --- */
+              <View style={styles.pendingCardContent}>
+                <View style={styles.pendingHeader}>
+                  <View style={[styles.roleIconContainer, { backgroundColor: '#FDECEA' }]}>
+                    <MaterialIcons
+                      name={currentRole === 'contractor' ? 'home' : 'business'}
+                      size={32}
+                      color="#E53935"
+                    />
+                  </View>
+                  <View style={styles.roleInfo}>
+                    <Text style={[styles.roleName, { color: '#E53935' }]}>
+                      {currentRole === 'contractor' ? 'Property Owner' : 'Contractor'}
+                    </Text>
+                    <View style={[styles.statusBadgePending, { backgroundColor: '#FDECEA', borderColor: '#FFCDD2' }]}>
+                      <Text style={[styles.statusBadgeText, { color: '#E53935' }]}>REJECTED</Text>
+                    </View>
+                  </View>
+                </View>
+                <View style={styles.dividerFull} />
+                <View style={styles.pendingFooter}>
+                  <Ionicons name="close-circle-outline" size={18} color="#E53935" />
+                  <Text style={[styles.pendingFooterText, { color: '#E53935' }]}>
+                    {rejectionReason || 'Your application was rejected.'}
+                  </Text>
+                </View>
+                <TouchableOpacity style={{marginTop: 18, alignSelf: 'center', backgroundColor: '#EC7E00', borderRadius: 8, paddingHorizontal: 24, paddingVertical: 10 }} onPress={handleAddRole}>
+                  <Text style={{color: '#FFF', fontWeight: 'bold', fontSize: 15}}>Re-apply</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (approvedRole && approvedRole !== currentRole) ? (
+              /* --- APPROVED VIEW: User's application for the other role is approved and not the current role --- */
               <TouchableOpacity
                 style={styles.switchRoleCard}
-                onPress={() => handleSwitchRole(currentRole === 'contractor' ? 'owner' : 'contractor')}
+                onPress={() => handleSwitchRole(approvedRole)}
                 disabled={switching}
-                activeOpacity={0.7}
               >
                 <View style={[
                   styles.roleIconContainer,
-                  currentRole === 'contractor' ? styles.ownerBg : styles.contractorBg
+                  approvedRole === 'contractor' ? styles.contractorBg : styles.ownerBg
                 ]}>
                   <MaterialIcons
-                    name={currentRole === 'contractor' ? 'home' : 'business'}
+                    name={approvedRole === 'contractor' ? 'business' : 'home'}
                     size={32}
                     color="#FFFFFF"
                   />
                 </View>
                 <View style={styles.roleInfo}>
                   <Text style={styles.roleName}>
-                    {currentRole === 'contractor' ? 'Property Owner' : 'Contractor'}
+                    {approvedRole === 'contractor' ? 'Contractor' : 'Property Owner'}
                   </Text>
-                  <Text style={styles.roleDescription}>
-                    {currentRole === 'contractor'
-                      ? 'Post projects and manage properties'
-                      : 'Bid on projects and manage contracts'}
-                  </Text>
+                  <View style={[styles.statusBadgePending, { backgroundColor: '#E8F5E9', borderColor: '#B2DFDB' }]}>
+                    <Text style={[styles.statusBadgeText, { color: '#42B883' }]}>APPROVED</Text>
+                  </View>
+                  <Text style={styles.roleDescription}>Your application is approved! Tap to switch.</Text>
                 </View>
                 {switching ? (
                   <ActivityIndicator color="#EC7E00" />
@@ -243,28 +284,41 @@ export default function SwitchRoleScreen({ onBack, onRoleChanged, onStartAddRole
                   <MaterialIcons name="chevron-right" size={28} color="#CCCCCC" />
                 )}
               </TouchableOpacity>
-            </View>
-
-            {/* Info Box */}
-            <View style={styles.infoBox}>
-              <Ionicons name="information-circle-outline" size={20} color="#1877F2" />
-              <Text style={styles.infoText}>
-                Switching roles will change your dashboard view. Your account data for both roles will remain intact.
-              </Text>
-            </View>
-          </View>
-        ) : (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>ADD ANOTHER ROLE</Text>
-            <View style={styles.card}>
+            ) : pendingRoleRequest ? (
+              /* --- PROACTIVE PENDING VIEW: User has applied and is waiting --- */
+              <View style={styles.pendingCardContent}>
+                <View style={styles.pendingHeader}>
+                  <View style={[styles.roleIconContainer, { backgroundColor: '#F0F0F0' }]}>
+                    <MaterialIcons
+                      name={currentRole === 'contractor' ? 'home' : 'business'}
+                      size={32}
+                      color="#999"
+                    />
+                  </View>
+                  <View style={styles.roleInfo}>
+                    <Text style={[styles.roleName, { color: '#999' }]}>
+                      {currentRole === 'contractor' ? 'Property Owner' : 'Contractor'}
+                    </Text>
+                    <View style={styles.statusBadgePending}>
+                      <Text style={styles.statusBadgeText}>UNDER REVIEW</Text>
+                    </View>
+                  </View>
+                </View>
+                <View style={styles.dividerFull} />
+                <View style={styles.pendingFooter}>
+                  <Ionicons name="time-outline" size={18} color="#F39C12" />
+                  <Text style={styles.pendingFooterText}>
+                    The administrator is currently reviewing your application. You will be able to switch roles once approved.
+                  </Text>
+                </View>
+              </View>
+            ) : canSwitchRoles ? (
+              /* --- STANDARD SWITCH VIEW: User is approved for both --- */
               <TouchableOpacity
-                style={styles.addRoleCard}
-                onPress={handleAddRole}
-                activeOpacity={0.7}
+                style={styles.switchRoleCard}
+                onPress={() => handleSwitchRole(currentRole === 'contractor' ? 'owner' : 'contractor')}
+                disabled={switching}
               >
-                {/** Compute next role/label dynamically from currentRole */}
-
-
                 <View style={[
                   styles.roleIconContainer,
                   currentRole === 'contractor' ? styles.ownerBg : styles.contractorBg
@@ -279,49 +333,53 @@ export default function SwitchRoleScreen({ onBack, onRoleChanged, onStartAddRole
                   <Text style={styles.roleName}>
                     {currentRole === 'contractor' ? 'Property Owner' : 'Contractor'}
                   </Text>
+                  <Text style={styles.roleDescription}>Switch to dashboard</Text>
+                </View>
+                {switching ? (
+                  <ActivityIndicator color="#EC7E00" />
+                ) : (
+                  <MaterialIcons name="chevron-right" size={28} color="#CCCCCC" />
+                )}
+              </TouchableOpacity>
+            ) : (
+              /* --- ADD ROLE VIEW: User has only one role --- */
+              <TouchableOpacity style={styles.switchRoleCard} onPress={handleAddRole}>
+                <View style={[styles.roleIconContainer, { backgroundColor: '#E8F5E9' }]}>
+                  <MaterialIcons name="add" size={32} color="#42B883" />
+                </View>
+                <View style={styles.roleInfo}>
+                  <Text style={styles.roleName}>Apply for Dual Role</Text>
                   <Text style={styles.roleDescription}>
-                    Register as {currentRole === 'contractor' ? 'a property owner' : 'a contractor'} to access both roles
+                    Become a {currentRole === 'contractor' ? 'Property Owner' : 'Contractor'}
                   </Text>
                 </View>
-                <View style={styles.addIconContainer}>
-                  <MaterialIcons name="add-circle" size={28} color="#42B883" />
-                </View>
+                <MaterialIcons name="chevron-right" size={28} color="#CCCCCC" />
               </TouchableOpacity>
-            </View>
-
-            {/* Info Box */}
-            <View style={styles.infoBoxWarning}>
-              <Ionicons name="alert-circle-outline" size={20} color="#F39C12" />
-              <Text style={styles.infoText}>
-                You currently only have one role. Add another role to switch between contractor and property owner views.
-              </Text>
-            </View>
-
-            {/* Registration form is now a separate screen; no inline form here. */}
+            )}
           </View>
-        )}
+        </View>
 
-        {/* User Info */}
+        {/* SECTION: Account Info */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>ACCOUNT INFORMATION</Text>
           <View style={styles.card}>
             <View style={styles.infoRow}>
-              <Ionicons name="person-outline" size={20} color="#666666" />
+              <Ionicons name="person-outline" size={20} color="#666" />
               <Text style={styles.infoLabel}>Username</Text>
               <Text style={styles.infoValue}>{userData?.username || 'N/A'}</Text>
             </View>
             <View style={styles.divider} />
             <View style={styles.infoRow}>
-              <Ionicons name="mail-outline" size={20} color="#666666" />
+              <Ionicons name="mail-outline" size={20} color="#666" />
               <Text style={styles.infoLabel}>Email</Text>
               <Text style={styles.infoValue}>{userData?.email || 'N/A'}</Text>
             </View>
             <View style={styles.divider} />
             <View style={styles.infoRow}>
-              <Ionicons name="shield-checkmark-outline" size={20} color="#666666" />
-              <Text style={styles.infoLabel}>Account Type</Text>
+              <Ionicons name="shield-checkmark-outline" size={20} color="#666" />
+              <Text style={styles.infoLabel}>Role Access</Text>
               <Text style={styles.infoValue}>
-                {userData?.user_type === 'both' ? 'Dual Role' : 'Single Role'}
+                {canSwitchRoles ? 'Dual Role' : 'Single Role'}
               </Text>
             </View>
           </View>
@@ -332,20 +390,9 @@ export default function SwitchRoleScreen({ onBack, onRoleChanged, onStartAddRole
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F5F5',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#666666',
-  },
+  container: { flex: 1, backgroundColor: '#F5F5F5' },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  loadingText: { marginTop: 16, fontSize: 14, color: '#666' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -354,153 +401,46 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5E5',
+    borderBottomColor: '#EEE'
   },
-  backButton: {
-    padding: 4,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333333',
-  },
-  headerSpacer: {
-    width: 32,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: 40,
-  },
-  section: {
-    marginTop: 24,
-    paddingHorizontal: 16,
-  },
-  sectionTitle: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#999999',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 12,
-    marginLeft: 4,
-  },
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  currentRoleCard: {
+  headerTitle: { fontSize: 18, fontWeight: 'bold', color: '#333' },
+  scrollContent: { paddingBottom: 40 },
+  section: { marginTop: 24, paddingHorizontal: 16 },
+  sectionTitle: { fontSize: 12, fontWeight: '700', color: '#999', marginBottom: 12, marginLeft: 4, letterSpacing: 1 },
+  card: { backgroundColor: '#FFFFFF', borderRadius: 16, elevation: 3, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, overflow: 'hidden' },
+  currentRoleCard: { flexDirection: 'row', alignItems: 'center', padding: 20 },
+  switchRoleCard: { flexDirection: 'row', alignItems: 'center', padding: 20 },
+  roleIconContainer: { width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center', marginRight: 16 },
+  contractorBg: { backgroundColor: '#1877F2' },
+  ownerBg: { backgroundColor: '#EC7E00' },
+  roleInfo: { flex: 1 },
+  roleName: { fontSize: 17, fontWeight: 'bold', color: '#333' },
+  roleDescription: { fontSize: 13, color: '#777', marginTop: 2 },
+  activeBadge: { backgroundColor: '#42B883', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  activeBadgeText: { fontSize: 10, fontWeight: '800', color: '#FFF' },
+
+  // Pending Styles
+  pendingCardContent: { padding: 20 },
+  pendingHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
+  statusBadgePending: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 20,
-  },
-  switchRoleCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 20,
-  },
-  addRoleCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 20,
-  },
-  roleIconContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  contractorBg: {
-    backgroundColor: '#1877F2',
-  },
-  ownerBg: {
-    backgroundColor: '#EC7E00',
-  },
-  roleInfo: {
-    flex: 1,
-  },
-  roleName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333333',
-    marginBottom: 4,
-  },
-  roleDescription: {
-    fontSize: 14,
-    color: '#666666',
-    lineHeight: 20,
-  },
-  activeBadge: {
-    backgroundColor: '#42B883',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  activeBadgeText: {
-    fontSize: 11,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    letterSpacing: 0.5,
-  },
-  addIconContainer: {
-    marginLeft: 8,
-  },
-  infoBox: {
-    flexDirection: 'row',
-    backgroundColor: '#EBF5FF',
-    padding: 16,
-    borderRadius: 12,
-    marginTop: 16,
-    alignItems: 'flex-start',
-  },
-  infoBoxWarning: {
-    flexDirection: 'row',
     backgroundColor: '#FFF8E5',
-    padding: 16,
-    borderRadius: 12,
-    marginTop: 16,
-    alignItems: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginTop: 6,
+    borderWidth: 1,
+    borderColor: '#FFE0B2',
+    alignSelf: 'flex-start'
   },
-  infoText: {
-    flex: 1,
-    fontSize: 13,
-    color: '#666666',
-    lineHeight: 20,
-    marginLeft: 12,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-  },
-  infoLabel: {
-    flex: 1,
-    fontSize: 15,
-    color: '#666666',
-    marginLeft: 12,
-  },
-  infoValue: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#333333',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#F0F0F0',
-    marginLeft: 48,
-  },
-  // Form input styles removed as form is on another screen
+  statusBadgeText: { color: '#EC7E00', fontSize: 11, fontWeight: '700' },
+  pendingFooter: { flexDirection: 'row', marginTop: 16, backgroundColor: '#FAFAFA', padding: 12, borderRadius: 8 },
+  pendingFooterText: { flex: 1, fontSize: 12, color: '#666', marginLeft: 8, lineHeight: 18 },
+
+  infoRow: { flexDirection: 'row', alignItems: 'center', padding: 16 },
+  infoLabel: { flex: 1, fontSize: 14, color: '#666', marginLeft: 12 },
+  infoValue: { fontSize: 14, fontWeight: '600', color: '#333' },
+  divider: { height: 1, backgroundColor: '#F0F0F0', marginLeft: 48 },
+  dividerFull: { height: 1, backgroundColor: '#F0F0F0' },
 });
-
-
-
-

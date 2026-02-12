@@ -168,6 +168,34 @@ class cprocessController extends Controller
             }
         }
 
+        // Check verification status before allowing switch
+        $userId = is_object($user) ? ($user->user_id ?? null) : ($user['user_id'] ?? null);
+        $roleApproved = false;
+        if ($targetRole === 'contractor') {
+            $contractor = DB::table('contractors')->where('user_id', $userId)->first();
+            if ($contractor && $contractor->verification_status === 'approved') {
+                $roleApproved = true;
+            }
+        } elseif ($targetRole === 'owner') {
+            $owner = DB::table('property_owners')->where('user_id', $userId)->first();
+            if ($owner && ($owner->verification_status === 'approved' || $owner->verification_status === 'verified')) {
+                $roleApproved = true;
+            }
+        }
+
+        if (!$roleApproved) {
+            $msg = 'You cannot switch to this role until your application is approved by the admin.';
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $msg,
+                    'pending_role_request' => true
+                ], 403);
+            } else {
+                return redirect('/dashboard')->with('error', $msg);
+            }
+        }
+
         Session::put('current_role', $targetRole);
 
         // Persist active role for stateless clients using Sanctum
@@ -178,7 +206,6 @@ class cprocessController extends Controller
                 $user->save();
             } else {
                 // Session user (stdClass/array) — update via query builder
-                $userId = is_object($user) ? ($user->user_id ?? null) : ($user['user_id'] ?? null);
                 if ($userId) {
                     DB::table('users')->where('user_id', $userId)->update([
                         'preferred_role' => $targetRole,
@@ -191,7 +218,6 @@ class cprocessController extends Controller
         }
 
         if ($request->expectsJson()) {
-
             return response()->json([
                 'success' => true,
                 'message' => "Successfully switched to {$targetRole} role",
@@ -199,7 +225,6 @@ class cprocessController extends Controller
                 'redirect_url' => '/dashboard'
             ]);
         } else {
-
             return redirect('/dashboard')->with('success', "Successfully switched to {$targetRole} role");
         }
     }
@@ -234,9 +259,24 @@ class cprocessController extends Controller
             // For Sanctum-authenticated users, check the database for current_role
             // For session users, get from session
             $currentRole = Session::get('current_role');
+            $userId = is_object($user) ? ($user->user_id ?? null) : ($user['user_id'] ?? null);
+            $roleApproved = [
+                'contractor' => false,
+                'owner' => false
+            ];
+            // Check contractor approval
+            $contractor = DB::table('contractors')->where('user_id', $userId)->first();
+            if ($contractor && $contractor->verification_status === 'approved') {
+                $roleApproved['contractor'] = true;
+            }
+            // Check owner approval
+            $owner = DB::table('property_owners')->where('user_id', $userId)->first();
+            if ($owner && ($owner->verification_status === 'approved' || $owner->verification_status === 'verified')) {
+                $roleApproved['owner'] = true;
+            }
+
             if (!$currentRole) {
                 // Try persisted preferred_role for Sanctum/stateless clients
-                $userId = is_object($user) ? ($user->user_id ?? null) : ($user['user_id'] ?? null);
                 if ($userId) {
                     try {
                         $preferred = DB::table('users')->where('user_id', $userId)->value('preferred_role');
@@ -255,9 +295,13 @@ class cprocessController extends Controller
                 }
             }
 
-            // Normalize current_role format (convert 'owner' to 'contractor' for consistency)
+            // Only allow current_role if approved
             $normalizedRole = $currentRole;
-            if ($currentRole === 'property_owner' || $currentRole === 'owner') {
+            if ($currentRole === 'contractor' && !$roleApproved['contractor']) {
+                $normalizedRole = null;
+            } elseif (($currentRole === 'property_owner' || $currentRole === 'owner') && !$roleApproved['owner']) {
+                $normalizedRole = null;
+            } elseif ($currentRole === 'property_owner' || $currentRole === 'owner') {
                 $normalizedRole = 'owner';
             } elseif ($currentRole === 'contractor') {
                 $normalizedRole = 'contractor';
@@ -265,11 +309,31 @@ class cprocessController extends Controller
 
             $userType = is_object($user) ? $user->user_type : ($user['user_type'] ?? null);
 
+            // Prepare contractor and owner info for frontend (null if not present)
+            $contractorInfo = $contractor ? [
+                'contractor_id' => $contractor->contractor_id,
+                'verification_status' => $contractor->verification_status,
+                'rejection_reason' => $contractor->rejection_reason ?? null,
+            ] : null;
+
+            $ownerInfo = $owner ? [
+                'owner_id' => $owner->owner_id,
+                'verification_status' => $owner->verification_status,
+                'rejection_reason' => $owner->rejection_reason ?? null,
+            ] : null;
+
             return response()->json([
                 'success' => true,
                 'user_type' => $userType,
                 'current_role' => $normalizedRole,
-                'can_switch_roles' => $userType === 'both'
+                'can_switch_roles' => $userType === 'both',
+                'contractor_role_approved' => $roleApproved['contractor'],
+                'owner_role_approved' => $roleApproved['owner'],
+                'pending_role_request' =>
+                    ($contractor && $contractor->verification_status === 'pending')
+                    || ($owner && $owner->verification_status === 'pending'),
+                'contractor' => $contractorInfo,
+                'owner' => $ownerInfo,
             ]);
         } catch (\Exception $e) {
             \Log::error('getCurrentRole error: ' . $e->getMessage());

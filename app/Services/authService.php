@@ -72,11 +72,24 @@ class authService
         }
 
         if ($user && $this->verifyPassword($password, $user->password_hash)) {
-
             // Check verification status based on user type
             $isVerified = false;
             $rejectionReason = null;
             $determinedRole = null;
+
+            // Check contractor_users and property_owners for verification_status = 'approved'
+            $contractorUserApproved = DB::table('contractor_users')
+                ->where('user_id', $user->user_id)
+                ->where('verification_status', 'approved')
+                ->first();
+            $propertyOwnerApproved = DB::table('property_owners')
+                ->where('user_id', $user->user_id)
+                ->where('verification_status', 'approved')
+                ->first();
+
+            if ($contractorUserApproved || $propertyOwnerApproved) {
+                $isVerified = true;
+            }
 
             \Log::info('User login attempt', [
                 'user_id' => $user->user_id,
@@ -92,7 +105,7 @@ class authService
                 $contractorUser = DB::table('contractor_users')->where('user_id', $user->user_id)->first();
                 \Log::info('contractor_users lookup result', ['found' => $contractorUser ? 'yes' : 'no']);
                 \Log::info('contractor_users lookup result', ['found' => $contractorUser ? 'yes' : 'no']);
-                
+
                 if ($contractorUser && $contractorUser->is_active == 1 && $contractorUser->is_deleted == 0) {
                     // Check if parent contractor is approved
                     $contractor = DB::table('contractors')->where('contractor_id', $contractorUser->contractor_id)->first();
@@ -101,7 +114,7 @@ class authService
                         'found' => $contractor ? 'yes' : 'no',
                         'verification_status' => $contractor->verification_status ?? 'N/A'
                     ]);
-                    
+
                     if ($contractor && $contractor->verification_status === 'approved') {
                         $isVerified = true;
                         $determinedRole = 'contractor'; // Staff members operate under contractor context
@@ -140,43 +153,78 @@ class authService
                     $rejectionReason = $owner->rejection_reason;
                 }
             } elseif ($user->user_type === 'both') {
-                $contractor = DB::table('contractors')->where('user_id', $user->user_id)->first();
-                $contractorUser = DB::table('contractor_users')->where('user_id', $user->user_id)->first();
-                $owner = DB::table('property_owners')->where('user_id', $user->user_id)->first();
+                // Robust status and rejection reason logic for BOTH
+                // Use 'exists' checks to find any APPROVED records. This prevents a newly-created
+                // PENDING record from masking an earlier APPROVED record (e.g., when adding a
+                // new role creates a pending row while an approved row still exists).
+                // Check both contractor_users (member records) and contractors (primary contractor account)
+                $cApproved = DB::table('contractor_users')
+                    ->where('user_id', $user->user_id)
+                    ->where('verification_status', 'approved')
+                    ->exists();
+                $primaryContractorApproved = DB::table('contractors')
+                    ->where('user_id', $user->user_id)
+                    ->where('verification_status', 'approved')
+                    ->exists();
+                $cApproved = $cApproved || $primaryContractorApproved;
+                $oApproved = DB::table('property_owners')
+                    ->where('user_id', $user->user_id)
+                    ->where('verification_status', 'approved')
+                    ->exists();
 
-                $isContractorValid = $contractor &&
-                                     $contractor->verification_status === 'approved' &&
-                                     $contractorUser &&
-                                     $contractorUser->is_active == 1 &&
-                                     $contractorUser->role === 'owner';
-
-                $isOwnerValid = $owner &&
-                                $owner->verification_status === 'approved' &&
-                                $owner->is_active == 1;
-
-                if ($isContractorValid && !$isOwnerValid) {
+                // If either is approved, allow login and set determinedRole
+                if ($cApproved && !$oApproved) {
                     $isVerified = true;
                     $determinedRole = 'contractor';
-                } elseif (!$isContractorValid && $isOwnerValid) {
+                } elseif ($oApproved && !$cApproved) {
                     $isVerified = true;
                     $determinedRole = 'property_owner';
-                } elseif ($isContractorValid && $isOwnerValid) {
+                } elseif ($cApproved && $oApproved) {
+                    // Both approved, choose by earliest created_at timestamp
+                    $contractorCreated = DB::table('contractors')->where('user_id', $user->user_id)->value('created_at');
+                    $ownerCreated = DB::table('property_owners')->where('user_id', $user->user_id)->value('created_at');
                     $isVerified = true;
-                    // Compare created_at (string comparison works for standard timestamps)
-                    if ($contractor->created_at < $owner->created_at) {
+                    if ($contractorCreated && $ownerCreated && $contractorCreated < $ownerCreated) {
                         $determinedRole = 'contractor';
                     } else {
                         $determinedRole = 'property_owner';
                     }
                 } else {
-                    // Both invalid. Check for rejection.
-                    if ($contractor && $contractor->verification_status === 'rejected') {
-                         $rejectionReason = "Contractor Account: " . $contractor->rejection_reason;
+                    // Neither role is approved. Build rejection/pending info from latest records.
+                    $cRejected = DB::table('contractor_users')
+                        ->where('user_id', $user->user_id)
+                        ->where('verification_status', 'rejected')
+                        ->exists();
+                    $oRejected = DB::table('property_owners')
+                        ->where('user_id', $user->user_id)
+                        ->where('verification_status', 'rejected')
+                        ->exists();
+
+                    $rejectionReason = null;
+                    if ($cRejected) {
+                        $reason = DB::table('contractor_users')
+                            ->where('user_id', $user->user_id)
+                            ->whereNotNull('rejection_reason')
+                            ->orderBy('updated_at', 'desc')
+                            ->value('rejection_reason');
+                        $rejectionReason = "Contractor: " . ($reason ?: 'rejected');
                     }
-                    if ($owner && $owner->verification_status === 'rejected') {
-                        $ownerReason = "Property Owner Account: " . $owner->rejection_reason;
-                        $rejectionReason = $rejectionReason ? $rejectionReason . " | " . $ownerReason : $ownerReason;
+                    if ($oRejected) {
+                        $reason = DB::table('property_owners')
+                            ->where('user_id', $user->user_id)
+                            ->whereNotNull('rejection_reason')
+                            ->orderBy('updated_at', 'desc')
+                            ->value('rejection_reason');
+                        $rejectionReason = $rejectionReason ? $rejectionReason . " | Owner: " . ($reason ?: 'rejected') : "Owner: " . ($reason ?: 'rejected');
                     }
+
+                    return [
+                        'success' => false,
+                        'message' => $rejectionReason ? "Rejected: $rejectionReason" : "Your account is pending verification",
+                        'user' => $user,
+                        'contractor_status' => $cApproved ? 'approved' : ($cRejected ? 'rejected' : 'pending'),
+                        'owner_status' => $oApproved ? 'approved' : ($oRejected ? 'rejected' : 'pending')
+                    ];
                 }
             }
 
@@ -192,6 +240,22 @@ class authService
                     'rejectionReason' => $rejectionReason
                 ]);
 
+                // If owner is verified, allow login and attach user object even if contractor role is pending
+                $owner = isset($owner) ? $owner : DB::table('property_owners')->where('user_id', $user->user_id)->first();
+                if ($owner && $owner->verification_status === 'approved' && $owner->is_active == 1) {
+
+                    // Prefer returning success so owners can still sign in when their contractor application is pending
+                    return [
+                        'success' => true,
+                        'user' => $user,
+                        'userType' => 'user',
+                        'determinedRole' => 'property_owner',
+                        'owner_status' => 'approved',
+                        'contractor_status' => ($contractor && $contractor->verification_status) ? $contractor->verification_status : null,
+                        'contractor_rejection_reason' => $contractor && $contractor->verification_status === 'rejected' ? $contractor->rejection_reason : null,
+                        'owner_rejection_reason' => $owner && $owner->verification_status === 'rejected' ? $owner->rejection_reason : null
+                    ];
+                }
                 return [
                     'success' => false,
                     'message' => $message

@@ -124,7 +124,10 @@ class accountClass
             'email' => $data['email'],
             'password_hash' => $data['password_hash'],
             'OTP_hash' => $data['OTP_hash'],
-            'user_type' => $data['user_type'],
+            // Default to 'property_owner' for mobile/web registrations when not provided.
+            // The `users.user_type` column uses an ENUM; using an invalid value like 'user'
+            // causes SQL truncation warnings. Use a valid enum member to avoid errors.
+            'user_type' => $data['user_type'] ?? 'property_owner',
             'created_at' => now(),
             'updated_at' => now()
         ]);
