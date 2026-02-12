@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\PersonalAccessToken;
+use App\Services\NotificationService;
 
 class paymentUploadController extends Controller
 {
@@ -193,6 +194,21 @@ class paymentUploadController extends Controller
 				]);
 			}
 
+			// ── Sequential enforcement: previous item must be completed first ──
+			$currentItemDetail = DB::table('milestone_items')
+				->where('item_id', $validated['item_id'])
+				->first();
+			if ($currentItemDetail) {
+				$prevItem = DB::table('milestone_items')
+					->where('milestone_id', $currentItemDetail->milestone_id)
+					->where('sequence_order', '<', $currentItemDetail->sequence_order)
+					->orderBy('sequence_order', 'desc')
+					->first();
+				if ($prevItem && ($prevItem->item_status ?? '') !== 'completed') {
+					return response()->json(['success' => false, 'message' => 'You must complete the previous milestone item first before uploading payment for this one.'], 422);
+				}
+			}
+
 			// Ensure that a contractor progress report for this milestone item exists and has been approved by the owner
 			$approvedProgress = DB::table('progress as pr')
 				->join('milestone_items as mi', 'pr.milestone_item_id', '=', 'mi.item_id')
@@ -228,6 +244,12 @@ class paymentUploadController extends Controller
 
 			$paymentId = $this->paymentClass->createPayment($data);
 			\Log::info('uploadPayment: Payment created successfully', ['payment_id' => $paymentId]);
+
+			// Notify contractor about payment upload
+			if ($project->contractor_user_id) {
+				$projTitle = $project->project_title ?? '';
+				NotificationService::create((int)$project->contractor_user_id, 'payment_submitted', 'Payment Uploaded', "Owner uploaded a payment for \"{$projTitle}\". Please review.", 'normal', 'payment', (int)$paymentId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int)$validated['project_id'], 'tab' => 'payments']]);
+			}
 
 			return response()->json(['success' => true, 'message' => 'Payment validation uploaded', 'payment_id' => $paymentId], 201);
 		} catch (\Exception $e) {

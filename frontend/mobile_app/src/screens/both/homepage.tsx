@@ -69,6 +69,7 @@ import ProjectPostDetail from './projectPostDetail';
 
 // Import notifications screen
 import Notifications from './notifications';
+import { notifications_service } from '../../services/notifications_service';
 
 // Default cover photo
 const defaultCoverPhoto = require('../../../assets/images/pictures/cp_default.jpg');
@@ -157,6 +158,31 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
 
   // Notifications screen state
   const [showNotifications, setShowNotifications] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  // Poll unread notification count every 30 seconds
+  useEffect(() => {
+    const fetchUnread = async () => {
+      try {
+        const res = await notifications_service.get_unread_count();
+        if (res.success && res.data) {
+          setUnreadCount(res.data.unread_count);
+        }
+      } catch (_) { /* silent */ }
+    };
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Refresh unread count when returning from notifications screen
+  useEffect(() => {
+    if (!showNotifications) {
+      notifications_service.get_unread_count().then(res => {
+        if (res.success && res.data) setUnreadCount(res.data.unread_count);
+      }).catch(() => {});
+    }
+  }, [showNotifications]);
 
   // Contractor authorization - for role-based feature access
   // canBid: only owner/representative can bid
@@ -1284,9 +1310,11 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
             </TouchableOpacity>
             <TouchableOpacity style={styles.iconButton} onPress={() => setShowNotifications(true)}>
               <MaterialIcons name="notifications" size={24} color="#333333" />
-              <View style={styles.notificationBadge}>
-                <Text style={styles.badgeText}>3</Text>
-              </View>
+              {unreadCount > 0 && (
+                <View style={styles.notificationBadge}>
+                  <Text style={styles.badgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+                </View>
+              )}
             </TouchableOpacity>
           </View>
         </View>

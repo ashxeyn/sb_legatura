@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Storage;
 use Exception;
 use Laravel\Sanctum\PersonalAccessToken;
+use App\Services\NotificationService;
 
 class disputeController extends Controller
 {
@@ -122,7 +123,7 @@ class disputeController extends Controller
                     'project_id' => 'required|integer|exists:projects,project_id',
                     'milestone_id' => 'required|integer|exists:milestones,milestone_id',
                     'milestone_item_id' => 'required|integer|exists:milestone_items,item_id',
-                    'dispute_type' => 'required|string|in:Payment,Delay,Quality,Others',
+                    'dispute_type' => 'required|string|in:Payment,Delay,Quality,Halt,Others',
                     'dispute_desc' => 'required|string|max:2000',
                     'if_others_distype' => 'nullable|required_if:dispute_type,Others|string|max:255',
                     'evidence_file' => 'nullable|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:5120',
@@ -352,6 +353,12 @@ class disputeController extends Controller
                     'dispute_id' => $disputeId,
                     'files_count' => count($uploadedFiles)
                 ]);
+
+                // Notify the other party about the dispute
+                if (isset($againstUserId) && $againstUserId) {
+                    $projTitle = DB::table('projects')->where('project_id', $validated['project_id'])->value('project_title');
+                    NotificationService::create((int)$againstUserId, 'dispute_opened', 'Dispute Filed', "A {$validated['dispute_type']} dispute has been filed against you on \"{$projTitle}\".", 'critical', 'dispute', (int)$disputeId, ['screen' => 'DisputeDetails', 'params' => ['disputeId' => (int)$disputeId]]);
+                }
 
                 if ($request->expectsJson()) {
                     return response()->json([
@@ -988,6 +995,12 @@ class disputeController extends Controller
                 }
             }
 
+            // Notify the other party about the dispute update
+            if (isset($dispute->against_user_id) && $dispute->against_user_id) {
+                $projTitle = DB::table('projects')->where('project_id', $dispute->project_id)->value('project_title');
+                NotificationService::create((int)$dispute->against_user_id, 'dispute_updated', 'Dispute Updated', "A dispute on \"{$projTitle}\" has been updated.", 'normal', 'dispute', (int)$disputeId, ['screen' => 'DisputeDetails', 'params' => ['disputeId' => (int)$disputeId]]);
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Dispute updated successfully',
@@ -1041,6 +1054,12 @@ class disputeController extends Controller
             }
 
             $this->disputeClass->cancelDispute($disputeId);
+
+            // Notify the other party about dispute cancellation
+            if (isset($dispute->against_user_id) && $dispute->against_user_id) {
+                $projTitle = DB::table('projects')->where('project_id', $dispute->project_id)->value('project_title');
+                NotificationService::create((int)$dispute->against_user_id, 'dispute_resolved', 'Dispute Cancelled', "A dispute on \"{$projTitle}\" has been cancelled.", 'normal', 'dispute', (int)$disputeId, ['screen' => 'DisputeDetails', 'params' => ['disputeId' => (int)$disputeId]]);
+            }
 
             return response()->json([
                 'success' => true,
@@ -1355,6 +1374,17 @@ class disputeController extends Controller
                     'updated_at' => now()
                 ]);
 
+            // Notify the property owner that their payment was approved
+            $ownerUserId = DB::table('projects as p')
+                ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
+                ->join('property_owners as po', 'pr.owner_id', '=', 'po.owner_id')
+                ->where('p.project_id', $payment->project_id)
+                ->value('po.user_id');
+            if ($ownerUserId) {
+                $projTitle = DB::table('projects')->where('project_id', $payment->project_id)->value('project_title');
+                NotificationService::create((int)$ownerUserId, 'payment_approved', 'Payment Approved', "Your payment for \"{$projTitle}\" has been approved by the contractor.", 'normal', 'payment', (int)$paymentId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int)$payment->project_id, 'tab' => 'payments']]);
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Payment approved successfully.'
@@ -1462,6 +1492,19 @@ class disputeController extends Controller
                     'reason' => $request->input('reason'),
                     'updated_at' => now()
                 ]);
+
+            // Notify the property owner that their payment was rejected
+            $ownerUserId = DB::table('projects as p')
+                ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
+                ->join('property_owners as po', 'pr.owner_id', '=', 'po.owner_id')
+                ->where('p.project_id', $payment->project_id)
+                ->value('po.user_id');
+            if ($ownerUserId) {
+                $projTitle = DB::table('projects')->where('project_id', $payment->project_id)->value('project_title');
+                $reason = $request->input('reason', '');
+                $reasonNote = $reason ? " Reason: {$reason}" : '';
+                NotificationService::create((int)$ownerUserId, 'payment_rejected', 'Payment Rejected', "Your payment for \"{$projTitle}\" was rejected by the contractor.{$reasonNote}", 'high', 'payment', (int)$paymentId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int)$payment->project_id, 'tab' => 'payments']]);
+            }
 
             return response()->json([
                 'success' => true,

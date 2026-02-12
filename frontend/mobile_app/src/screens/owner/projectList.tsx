@@ -100,15 +100,16 @@ interface ProjectListProps {
     username?: string;
   };
   onClose: () => void;
+  initialFilter?: string;
 }
 
-export default function ProjectList({ userData, onClose }: ProjectListProps) {
+export default function ProjectList({ userData, onClose, initialFilter = 'all' }: ProjectListProps) {
   const insets = useSafeAreaInsets();
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeFilter, setActiveFilter] = useState('all');
+  const [activeFilter, setActiveFilter] = useState(initialFilter);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
 
   useEffect(() => {
@@ -400,13 +401,35 @@ export default function ProjectList({ userData, onClose }: ProjectListProps) {
         </View>
       ) : filteredProjects.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Feather name="folder" size={64} color={COLORS.border} />
+          <Feather
+            name={activeFilter === 'all' ? 'folder' : activeFilter === 'completed' ? 'check-circle' : activeFilter === 'active' ? 'tool' : activeFilter === 'bidding' ? 'send' : 'clock'}
+            size={64}
+            color={COLORS.border}
+          />
           <Text style={styles.emptyTitle}>
-            {activeFilter === 'all' ? 'No Projects Yet' : 'No Projects Found'}
+            {activeFilter === 'all'
+              ? 'No Projects Yet'
+              : activeFilter === 'completed'
+              ? 'No Finished Projects'
+              : activeFilter === 'active'
+              ? 'No Active Projects'
+              : activeFilter === 'bidding'
+              ? 'No Projects in Bidding'
+              : activeFilter === 'pending_review'
+              ? 'No Pending Projects'
+              : 'No Projects Found'}
           </Text>
           <Text style={styles.emptyText}>
             {activeFilter === 'all'
               ? 'Create your first project to start finding contractors'
+              : activeFilter === 'completed'
+              ? 'You don\'t have any finished projects yet. Projects will appear here once they are marked as completed.'
+              : activeFilter === 'active'
+              ? 'No projects are currently in progress. Accept a bid to get started.'
+              : activeFilter === 'bidding'
+              ? 'No projects are currently open for bidding.'
+              : activeFilter === 'pending_review'
+              ? 'No projects are waiting for admin approval.'
               : 'Try selecting a different filter'}
           </Text>
         </View>

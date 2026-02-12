@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,9 +9,11 @@ import {
   RefreshControl,
   Animated,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, MaterialIcons, Ionicons } from '@expo/vector-icons';
+import { notifications_service, Notification as ApiNotification } from '../../services/notifications_service';
 
 const { width } = Dimensions.get('window');
 
@@ -36,21 +38,51 @@ const COLORS = {
   borderLight: '#F1F5F9',
 };
 
-// Notification type definitions
+// Notification type definitions — matches backend sub-types from NotificationService::$frontendTypeMap
 type NotificationType =
-  | 'project_approved'
-  | 'project_rejected'
-  | 'project_update'
-  | 'bid_received'
+  // Bid
   | 'bid_accepted'
   | 'bid_rejected'
-  | 'payment_due'
-  | 'payment_overdue'
-  | 'payment_received'
+  | 'bid_received'
+  // Milestone
+  | 'milestone_submitted'
+  | 'milestone_approved'
+  | 'milestone_rejected'
   | 'milestone_completed'
-  | 'message_received'
+  | 'milestone_item_completed'
+  | 'milestone_deleted'
+  | 'milestone_resubmitted'
+  | 'milestone_updated'
+  // Progress
+  | 'progress_submitted'
+  | 'progress_approved'
+  | 'progress_rejected'
+  | 'progress_updated'
+  // Payment
+  | 'payment_submitted'
+  | 'payment_approved'
+  | 'payment_rejected'
+  | 'payment_updated'
+  | 'payment_deleted'
+  | 'payment_due'
+  // Dispute
   | 'dispute_opened'
+  | 'dispute_updated'
+  | 'dispute_cancelled'
+  | 'dispute_under_review'
   | 'dispute_resolved'
+  | 'dispute_rejected'
+  // Project
+  | 'project_completed'
+  | 'project_halted'
+  | 'project_terminated'
+  | 'project_update'
+  // Team
+  | 'team_invite'
+  | 'team_removed'
+  | 'team_role_changed'
+  | 'team_access_changed'
+  // Fallback
   | 'general';
 
 type NotificationCategory = 'all' | 'projects' | 'bids' | 'payments' | 'messages';
@@ -60,10 +92,10 @@ interface Notification {
   type: NotificationType;
   title: string;
   message: string;
-  project_name?: string;
   timestamp: string;
   is_read: boolean;
   action_url?: string;
+  priority?: string;
 }
 
 interface NotificationsProps {
@@ -75,61 +107,188 @@ interface NotificationsProps {
 // Get notification icon and colors based on type
 const getNotificationStyle = (type: NotificationType) => {
   switch (type) {
-    case 'project_approved':
+    // ── Bids ── hammer/gavel icon ──
     case 'bid_accepted':
-    case 'milestone_completed':
-    case 'payment_received':
-    case 'dispute_resolved':
       return {
-        icon: 'checkbox-outline' as const,
+        icon: 'hammer-outline' as const,
         iconComponent: 'ionicons',
         bgColor: COLORS.successLight,
         iconColor: COLORS.success,
       };
-    case 'project_rejected':
     case 'bid_rejected':
       return {
-        icon: 'close-circle-outline' as const,
-        iconComponent: 'ionicons',
-        bgColor: COLORS.errorLight,
-        iconColor: COLORS.error,
-      };
-    case 'payment_due':
-      return {
-        icon: 'alert-circle-outline' as const,
-        iconComponent: 'ionicons',
-        bgColor: COLORS.warningLight,
-        iconColor: COLORS.warning,
-      };
-    case 'payment_overdue':
-    case 'dispute_opened':
-      return {
-        icon: 'alert-circle' as const,
+        icon: 'hammer-outline' as const,
         iconComponent: 'ionicons',
         bgColor: COLORS.errorLight,
         iconColor: COLORS.error,
       };
     case 'bid_received':
       return {
-        icon: 'document-text-outline' as const,
+        icon: 'hammer-outline' as const,
         iconComponent: 'ionicons',
         bgColor: COLORS.infoLight,
         iconColor: COLORS.info,
       };
-    case 'project_update':
+
+    // ── Milestones ── briefcase icon ──
+    case 'milestone_submitted':
+    case 'milestone_resubmitted':
+    case 'milestone_updated':
+      return {
+        icon: 'briefcase-outline' as const,
+        iconComponent: 'ionicons',
+        bgColor: COLORS.infoLight,
+        iconColor: COLORS.info,
+      };
+    case 'milestone_approved':
+    case 'milestone_completed':
+    case 'milestone_item_completed':
       return {
         icon: 'briefcase-outline' as const,
         iconComponent: 'ionicons',
         bgColor: COLORS.successLight,
         iconColor: COLORS.success,
       };
-    case 'message_received':
+    case 'milestone_rejected':
       return {
-        icon: 'chatbubble-outline' as const,
+        icon: 'briefcase-outline' as const,
+        iconComponent: 'ionicons',
+        bgColor: COLORS.errorLight,
+        iconColor: COLORS.error,
+      };
+    case 'milestone_deleted':
+      return {
+        icon: 'briefcase-outline' as const,
+        iconComponent: 'ionicons',
+        bgColor: COLORS.errorLight,
+        iconColor: COLORS.error,
+      };
+
+    // ── Payments ── Peso Sign ₱ ──
+    case 'payment_approved':
+      return {
+        icon: '₱' as const,
+        iconComponent: 'text',
+        bgColor: COLORS.successLight,
+        iconColor: COLORS.success,
+      };
+    case 'payment_rejected':
+      return {
+        icon: '₱' as const,
+        iconComponent: 'text',
+        bgColor: COLORS.errorLight,
+        iconColor: COLORS.error,
+      };
+    case 'payment_submitted':
+      return {
+        icon: '₱' as const,
+        iconComponent: 'text',
+        bgColor: COLORS.infoLight,
+        iconColor: COLORS.info,
+      };
+    case 'payment_updated':
+      return {
+        icon: '₱' as const,
+        iconComponent: 'text',
+        bgColor: COLORS.primaryLight,
+        iconColor: COLORS.primary,
+      };
+    case 'payment_due':
+      return {
+        icon: '₱' as const,
+        iconComponent: 'text',
+        bgColor: COLORS.warningLight,
+        iconColor: COLORS.warning,
+      };
+    case 'payment_deleted':
+      return {
+        icon: '₱' as const,
+        iconComponent: 'text',
+        bgColor: COLORS.errorLight,
+        iconColor: COLORS.error,
+      };
+
+    // ── Other Approved / Accepted / Completed ── green ──
+    case 'progress_approved':
+    case 'dispute_resolved':
+    case 'project_completed':
+      return {
+        icon: 'checkmark-circle' as const,
+        iconComponent: 'ionicons',
+        bgColor: COLORS.successLight,
+        iconColor: COLORS.success,
+      };
+
+    // ── Other Rejected / Denied ── red ──
+    case 'progress_rejected':
+    case 'dispute_rejected':
+      return {
+        icon: 'close-circle' as const,
+        iconComponent: 'ionicons',
+        bgColor: COLORS.errorLight,
+        iconColor: COLORS.error,
+      };
+
+    // ── Submitted / Pending review ── blue ──
+    case 'progress_submitted':
+      return {
+        icon: 'document-text-outline' as const,
+        iconComponent: 'ionicons',
+        bgColor: COLORS.infoLight,
+        iconColor: COLORS.info,
+      };
+
+    // ── Updates / Changes ── primary orange ──
+    case 'progress_updated':
+    case 'dispute_updated':
+    case 'dispute_under_review':
+    case 'project_update':
+      return {
+        icon: 'sync-outline' as const,
         iconComponent: 'ionicons',
         bgColor: COLORS.primaryLight,
         iconColor: COLORS.primary,
       };
+
+    // ── Deletions / Removals / Terminations ── red outline ──
+    case 'project_halted':
+    case 'project_terminated':
+    case 'team_removed':
+      return {
+        icon: 'trash-outline' as const,
+        iconComponent: 'ionicons',
+        bgColor: COLORS.errorLight,
+        iconColor: COLORS.error,
+      };
+
+    // ── Disputes opened / cancelled ── amber ──
+    case 'dispute_opened':
+      return {
+        icon: 'warning-outline' as const,
+        iconComponent: 'ionicons',
+        bgColor: COLORS.warningLight,
+        iconColor: COLORS.warning,
+      };
+    case 'dispute_cancelled':
+      return {
+        icon: 'ban-outline' as const,
+        iconComponent: 'ionicons',
+        bgColor: COLORS.borderLight,
+        iconColor: COLORS.textSecondary,
+      };
+
+    // ── Team / Members ── primary ──
+    case 'team_invite':
+    case 'team_role_changed':
+    case 'team_access_changed':
+      return {
+        icon: 'people-outline' as const,
+        iconComponent: 'ionicons',
+        bgColor: COLORS.primaryLight,
+        iconColor: COLORS.primary,
+      };
+
+    // ── Default / General ──
     default:
       return {
         icon: 'notifications-outline' as const,
@@ -140,10 +299,19 @@ const getNotificationStyle = (type: NotificationType) => {
   }
 };
 
+// Format a readable label from the sub-type key
+const getTypeLabel = (type: NotificationType): string => {
+  return type
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+};
+
 // Format relative time
 const formatRelativeTime = (timestamp: string): string => {
+  if (!timestamp) return '';
   const now = new Date();
-  const date = new Date(timestamp);
+  const date = new Date(timestamp.replace(' ', 'T')); // ensure ISO-like parse
+  if (isNaN(date.getTime())) return '';
   const diffMs = now.getTime() - date.getTime();
   const diffMins = Math.floor(diffMs / (1000 * 60));
   const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
@@ -166,7 +334,13 @@ const groupNotificationsByDate = (notifications: Notification[]) => {
   yesterday.setDate(yesterday.getDate() - 1);
 
   notifications.forEach((notification) => {
-    const date = new Date(notification.timestamp);
+    const date = new Date((notification.timestamp || '').replace(' ', 'T'));
+    if (isNaN(date.getTime())) {
+      // unparseable – put in EARLIER
+      if (!groups['EARLIER']) groups['EARLIER'] = [];
+      groups['EARLIER'].push(notification);
+      return;
+    }
     date.setHours(0, 0, 0, 0);
 
     let key: string;
@@ -191,25 +365,16 @@ const groupNotificationsByDate = (notifications: Notification[]) => {
 
 // Get notification category
 const getNotificationCategory = (type: NotificationType): NotificationCategory => {
-  switch (type) {
-    case 'project_approved':
-    case 'project_rejected':
-    case 'project_update':
-    case 'milestone_completed':
-      return 'projects';
-    case 'bid_received':
-    case 'bid_accepted':
-    case 'bid_rejected':
-      return 'bids';
-    case 'payment_due':
-    case 'payment_overdue':
-    case 'payment_received':
-      return 'payments';
-    case 'message_received':
-      return 'messages';
-    default:
-      return 'all';
-  }
+  if (type.startsWith('bid_')) return 'bids';
+  if (type.startsWith('payment_')) return 'payments';
+  if (
+    type.startsWith('project_') ||
+    type.startsWith('milestone_') ||
+    type.startsWith('progress_')
+  )
+    return 'projects';
+  if (type.startsWith('dispute_') || type.startsWith('team_')) return 'messages';
+  return 'all';
 };
 
 export default function Notifications({ userId, userType, onClose }: NotificationsProps) {
@@ -219,6 +384,9 @@ export default function Notifications({ userId, userType, onClose }: Notificatio
   const [selectedCategory, setSelectedCategory] = useState<NotificationCategory>('all');
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   const categories: { id: NotificationCategory; label: string }[] = [
     { id: 'all', label: 'All' },
@@ -236,16 +404,39 @@ export default function Notifications({ userId, userType, onClose }: Notificatio
     filterNotifications();
   }, [notifications, selectedCategory]);
 
-  const loadNotifications = async () => {
-    setLoading(true);
+  const loadNotifications = async (page: number = 1, append: boolean = false) => {
+    if (page === 1) setLoading(true);
+    else setLoadingMore(true);
     try {
-      // TODO: Replace with actual API call
-      // const response = await notifications_service.get_notifications(userId);
-      setNotifications([]);
+      const response = await notifications_service.get_notifications(page, 20);
+      if (response.success && response.data) {
+        const items = response.data.notifications || [];
+        const mapped: Notification[] = items.map((n: ApiNotification) => ({
+          id: n.id,
+          type: (n.type || 'general') as NotificationType,
+          title: n.title || '',
+          message: n.message,
+          timestamp: n.created_at || '',
+          is_read: n.is_read,
+          action_url: n.action_url || undefined,
+          priority: n.priority || 'normal',
+        }));
+        if (append) {
+          setNotifications(prev => [...prev, ...mapped]);
+        } else {
+          setNotifications(mapped);
+        }
+        setCurrentPage(page);
+        // API returns flat pagination: current_page, last_page (no nested pagination object)
+        const currentPg = response.data.current_page ?? page;
+        const lastPg = response.data.last_page ?? 1;
+        setHasMore(currentPg < lastPg);
+      }
     } catch (error) {
       console.error('Error loading notifications:', error);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   };
 
@@ -265,24 +456,36 @@ export default function Notifications({ userId, userType, onClose }: Notificatio
     setRefreshing(false);
   }, []);
 
-  const markAsRead = (notificationId: number) => {
+  const markAsRead = async (notificationId: number) => {
     setNotifications((prev) =>
       prev.map((n) => (n.id === notificationId ? { ...n, is_read: true } : n))
     );
-    // TODO: Call API to mark as read
+    try {
+      await notifications_service.mark_as_read(notificationId);
+    } catch (e) {
+      console.error('Failed to mark notification as read:', e);
+    }
   };
 
-  const markAllAsRead = (dateGroup?: string) => {
+  const markAllAsRead = async (dateGroup?: string) => {
     if (dateGroup) {
       const groupedNotifications = groupNotificationsByDate(filteredNotifications);
       const idsToMark = groupedNotifications[dateGroup]?.map((n) => n.id) || [];
       setNotifications((prev) =>
         prev.map((n) => (idsToMark.includes(n.id) ? { ...n, is_read: true } : n))
       );
+      // Mark each in the group individually via API
+      for (const id of idsToMark) {
+        try { await notifications_service.mark_as_read(id); } catch (e) { /* silent */ }
+      }
     } else {
       setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+      try {
+        await notifications_service.mark_all_as_read();
+      } catch (e) {
+        console.error('Failed to mark all as read:', e);
+      }
     }
-    // TODO: Call API to mark all as read
   };
 
   const handleNotificationPress = (notification: Notification) => {
@@ -325,16 +528,27 @@ export default function Notifications({ userId, userType, onClose }: Notificatio
 
   const renderNotificationItem = (notification: Notification) => {
     const style = getNotificationStyle(notification.type);
+    const typeLabel = getTypeLabel(notification.type);
 
     return (
       <TouchableOpacity
         key={notification.id}
-        style={[styles.notificationItem, !notification.is_read && styles.notificationItemUnread]}
+        style={[
+          styles.notificationItem,
+          !notification.is_read && styles.notificationItemUnread,
+          { borderLeftWidth: 4, borderLeftColor: style.iconColor },
+        ]}
         onPress={() => handleNotificationPress(notification)}
         activeOpacity={0.7}
       >
         <View style={[styles.notificationIcon, { backgroundColor: style.bgColor }]}>
-          <Ionicons name={style.icon} size={22} color={style.iconColor} />
+          {style.iconComponent === 'text' ? (
+            <Text style={{ fontSize: 24, fontWeight: 'bold', color: style.iconColor }}>
+              {style.icon}
+            </Text>
+          ) : (
+            <Ionicons name={style.icon} size={22} color={style.iconColor} />
+          )}
         </View>
         <View style={styles.notificationContent}>
           <View style={styles.notificationHeader}>
@@ -348,6 +562,16 @@ export default function Notifications({ userId, userType, onClose }: Notificatio
           <Text style={styles.notificationMessage} numberOfLines={2}>
             {notification.message}
           </Text>
+          <View style={[styles.typePill, { backgroundColor: style.bgColor }]}>
+            {style.iconComponent === 'text' ? (
+              <Text style={{ fontSize: 11, fontWeight: 'bold', color: style.iconColor, marginRight: 4 }}>
+                {style.icon}
+              </Text>
+            ) : (
+              <Ionicons name={style.icon} size={11} color={style.iconColor} style={{ marginRight: 4 }} />
+            )}
+            <Text style={[styles.typePillText, { color: style.iconColor }]}>{typeLabel}</Text>
+          </View>
         </View>
         {!notification.is_read && <View style={styles.unreadDot} />}
       </TouchableOpacity>
@@ -439,11 +663,26 @@ export default function Notifications({ userId, userType, onClose }: Notificatio
         ) : filteredNotifications.length === 0 ? (
           renderEmptyState()
         ) : (
-          dateOrder.map((dateLabel) => {
-            const items = groupedNotifications[dateLabel];
-            if (!items || items.length === 0) return null;
-            return renderDateGroup(dateLabel, items);
-          })
+          <>
+            {dateOrder.map((dateLabel) => {
+              const items = groupedNotifications[dateLabel];
+              if (!items || items.length === 0) return null;
+              return renderDateGroup(dateLabel, items);
+            })}
+            {hasMore && (
+              <TouchableOpacity
+                style={styles.loadMoreButton}
+                onPress={() => loadNotifications(currentPage + 1, true)}
+                disabled={loadingMore}
+              >
+                {loadingMore ? (
+                  <ActivityIndicator size="small" color={COLORS.primary} />
+                ) : (
+                  <Text style={styles.loadMoreText}>Load more</Text>
+                )}
+              </TouchableOpacity>
+            )}
+          </>
         )}
       </ScrollView>
     </SafeAreaView>
@@ -585,9 +824,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFBF5',
   },
   notificationIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 14,
@@ -617,6 +856,20 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.textSecondary,
     lineHeight: 20,
+    marginBottom: 6,
+  },
+  typePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    marginTop: 2,
+  },
+  typePillText: {
+    fontSize: 11,
+    fontWeight: '600',
   },
   unreadDot: {
     width: 8,
@@ -653,5 +906,15 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     textAlign: 'center',
     lineHeight: 20,
+  },
+  loadMoreButton: {
+    alignItems: 'center',
+    paddingVertical: 16,
+    marginTop: 8,
+  },
+  loadMoreText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.primary,
   },
 });

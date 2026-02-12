@@ -384,7 +384,11 @@ export default function PropertyOwnerDashboard({ userData, onNavigateToMessages 
     return (
       <ProjectList
         userData={userData}
-        onClose={() => setShowProjectList(false)}
+        onClose={() => {
+          setShowProjectList(false);
+          setActiveFilter('all');
+        }}
+        initialFilter={activeFilter}
       />
     );
   }

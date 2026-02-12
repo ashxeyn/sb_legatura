@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
+use App\Services\NotificationService;
 
 class biddingController extends Controller
 {
@@ -122,6 +123,17 @@ class biddingController extends Controller
                         'description' => null
                     ]);
                 }
+            }
+
+            // Notify project owner about new bid
+            $ownerUserId = DB::table('projects as p')
+                ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
+                ->join('property_owners as po', 'pr.owner_id', '=', 'po.owner_id')
+                ->where('p.project_id', $request->project_id)
+                ->value('po.user_id');
+            if ($ownerUserId) {
+                $projTitle = DB::table('projects')->where('project_id', $request->project_id)->value('project_title');
+                NotificationService::create((int)$ownerUserId, 'bid_received', 'New Bid Received', "A contractor has submitted a bid for \"{$projTitle}\".", 'normal', 'bid', (int)$bidId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int)$request->project_id, 'tab' => 'bids']]);
             }
 
             return response()->json([
@@ -504,6 +516,17 @@ class biddingController extends Controller
                         ];
                     }
                 }
+            }
+
+            // Notify project owner about new bid
+            $ownerUserId = DB::table('projects as p')
+                ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
+                ->join('property_owners as po', 'pr.owner_id', '=', 'po.owner_id')
+                ->where('p.project_id', $projectId)
+                ->value('po.user_id');
+            if ($ownerUserId) {
+                $projTitle = DB::table('projects')->where('project_id', $projectId)->value('project_title');
+                NotificationService::create((int)$ownerUserId, 'bid_received', 'New Bid Received', "A contractor has submitted a bid for \"{$projTitle}\".", 'normal', 'bid', (int)$bidId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int)$projectId, 'tab' => 'bids']]);
             }
 
             return response()->json([
