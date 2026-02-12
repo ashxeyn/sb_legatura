@@ -1,4 +1,4 @@
-><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -15,7 +15,7 @@
     <a href="/intro" class="hero-cta-button">
         <span>Get Started</span>
     </a>
-    
+
    <section class="hero">
         <div class="hero-image">
             <img src="{{ asset('img/landingpage.png') }}" alt="Construction and building projects">
@@ -23,45 +23,45 @@
         <div class="hero-logo">
             <img src="{{ asset('img/logo_legatura.svg') }}" alt="Legatura Logo">
         </div>
-    </section> 
-    
+    </section>
+
     <!-- About Section -->
     <section class="about py-16 md:py-20">
         <div class="w-full px-8 md:px-16 lg:px-24 text-center">
             <h2 class="text-3xl md:text-4xl font-extrabold mb-6 text-white">About Legatura</h2>
             <p class="text-base md:text-lg leading-relaxed mb-12 max-w-5xl mx-auto text-white/90">
-                Legatura is a comprehensive platform that bridges the gap between property owners and skilled contractors. 
-                It serves as a vital connection hub for construction projects, streamlining the bidding process, 
-                facilitating transparent communication, and ensuring quality project delivery. Committed to revolutionizing 
-                the construction industry, Legatura provides tools for project management, contractor verification, and 
-                competitive bidding that enhance efficiency, trust, and collaboration. Through innovative technology and 
-                active support, it strives to create a dynamic and reliable ecosystem, ensuring that every project is 
+                Legatura is a comprehensive platform that bridges the gap between property owners and skilled contractors.
+                It serves as a vital connection hub for construction projects, streamlining the bidding process,
+                facilitating transparent communication, and ensuring quality project delivery. Committed to revolutionizing
+                the construction industry, Legatura provides tools for project management, contractor verification, and
+                competitive bidding that enhance efficiency, trust, and collaboration. Through innovative technology and
+                active support, it strives to create a dynamic and reliable ecosystem, ensuring that every project is
                 completed with excellence and every stakeholder's needs are met.
             </p>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 px-4 md:px-8 lg:px-16">
                 <div class="about-card p-8 rounded-lg">
                     <h4 class="text-xl md:text-2xl font-bold mb-4 text-white">Empowering Project Success & Quality</h4>
                     <p class="text-sm md:text-base leading-relaxed text-white/85">
-                        Dedicated to fostering a transparent and efficient construction ecosystem, Legatura organizes 
-                        project workflows that promote quality, accountability, and professional excellence. Through 
-                        advanced bidding systems, contractor verification, and real-time project tracking, it enhances 
-                        stakeholder engagement, strengthens the construction community, and contributes to the continuous 
+                        Dedicated to fostering a transparent and efficient construction ecosystem, Legatura organizes
+                        project workflows that promote quality, accountability, and professional excellence. Through
+                        advanced bidding systems, contractor verification, and real-time project tracking, it enhances
+                        stakeholder engagement, strengthens the construction community, and contributes to the continuous
                         improvement of the building experience.
                     </p>
                 </div>
                 <div class="about-card p-8 rounded-lg">
                     <h4 class="text-xl md:text-2xl font-bold mb-4 text-white">Enhancing Trust & Collaboration</h4>
                     <p class="text-sm md:text-base leading-relaxed text-white/85">
-                        With a strong emphasis on transparency, collaboration, and industry development, Legatura serves 
-                        as a bridge between property owners and contractors. It ensures that project requirements are 
-                        clearly communicated, promotes a culture of trust and reliability, and helps shape a forward-thinking 
+                        With a strong emphasis on transparency, collaboration, and industry development, Legatura serves
+                        as a bridge between property owners and contractors. It ensures that project requirements are
+                        clearly communicated, promotes a culture of trust and reliability, and helps shape a forward-thinking
                         construction environment where quality craftsmanship and client satisfaction are paramount.
                     </p>
                 </div>
             </div>
         </div>
     </section>
-    
+
     <!-- Dual User Experience Section -->
     <section class="user-experience py-16 md:py-20">
         <div class="w-full px-8 md:px-16 lg:px-24 text-center">
@@ -290,7 +290,7 @@
                         <li><i class="fi fi-rr-check-circle"></i> Unlimited bids and boosted reach</li>
                         <li><i class="fi fi-rr-check-circle"></i> 7-day free trial on sign up</li>
                     </ul>
-                    
+
                 </div>
             </div>
         </div>
@@ -350,6 +350,6 @@
             </p>
         </div>
     </footer>
-     
+
 </body>
 </html>

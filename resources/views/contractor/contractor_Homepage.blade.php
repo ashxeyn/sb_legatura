@@ -100,7 +100,92 @@
 
                 <!-- Projects Grid -->
                 <div class="projects-grid" id="projectsGrid">
-                    <!-- Projects will be loaded here dynamically -->
+                    @if(isset($projects) && count($projects) > 0)
+                        @foreach($projects as $project)
+                            <div class="project-card">
+                                <div class="project-header">
+                                    <div class="project-owner-info">
+                                        <div class="project-owner-avatar">
+                                            @php
+                                                $ownerName = trim($project->owner_name ?? '');
+                                                $initials = collect(explode(' ', $ownerName))->filter()->map(function($w){ return strtoupper(substr($w,0,1)); })->take(2)->join('');
+                                            @endphp
+                                            <span class="owner-initials">{{ $initials ?: '—' }}</span>
+                                        </div>
+                                        <div class="project-owner-details">
+                                            <h3 class="project-owner-name">{{ $project->owner_name ?? '—' }}</h3>
+                                            <p class="project-posted-date">{{ isset($project->created_at) ? \Carbon\Carbon::parse($project->created_at)->format('M d, Y') : '—' }}</p>
+                                        </div>
+                                    </div>
+                                    <div class="project-status-badge">
+                                        <span class="status-text">{{ $project->project_post_status ?? ucfirst($project->project_status ?? '—') }}</span>
+                                    </div>
+                                </div>
+
+                                <div class="project-image-wrapper">
+                                    @php
+                                        $imageSrc = '';
+                                        if (!empty($project->files)) {
+                                            if (is_array($project->files) && count($project->files) > 0) {
+                                                $first = $project->files[0];
+                                            } elseif (method_exists($project->files, 'first')) {
+                                                $first = $project->files->first();
+                                            } else {
+                                                $first = null;
+                                            }
+
+                                            if (!empty($first)) {
+                                                $imagePath = is_string($first) ? $first : (is_array($first) ? ($first['file_path'] ?? '') : ($first->file_path ?? ''));
+                                                if ($imagePath) $imageSrc = asset('storage/' . ltrim($imagePath, '/'));
+                                            }
+                                        } elseif(!empty($project->image_path)) {
+                                            $imageSrc = asset('storage/' . ltrim($project->image_path, '/'));
+                                        }
+                                    @endphp
+                                    <img src="{{ $imageSrc }}" alt="" class="project-image" onerror="this.style.display='none';">
+                                </div>
+
+                                <div class="project-content">
+                                    <h3 class="project-title">{{ $project->project_title ?? '—' }}</h3>
+                                    <p class="project-description">{{ Str::limit($project->project_description ?? '', 200) }}</p>
+                                </div>
+
+                                <div class="project-details">
+                                    <div class="detail-item">
+                                        <i class="fi fi-rr-marker"></i>
+                                        <span class="detail-text location-text">{{ $project->project_location ?? '—' }}</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <i class="fi fi-rr-calendar"></i>
+                                        <span class="detail-text deadline-text">{{ ($project->bidding_due ?? $project->bidding_deadline) ? \Carbon\Carbon::parse($project->bidding_due ?? $project->bidding_deadline)->format('M d, Y') : '—' }}</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <i class="fi fi-rr-briefcase"></i>
+                                        <span class="detail-text type-text">{{ $project->type_name ?? $project->property_type ?? '—' }}</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <i class="fi fi-rr-dollar"></i>
+                                        <span class="detail-text budget-text">
+                                            @if(!empty($project->budget_range_min) && !empty($project->budget_range_max))
+                                                ₱{{ number_format($project->budget_range_min) }} - ₱{{ number_format($project->budget_range_max) }}
+                                            @else
+                                                —
+                                            @endif
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div class="project-actions">
+                                    <button class="apply-bid-button" data-project-id="{{ $project->project_id ?? '' }}">
+                                        <i class="fi fi-rr-hand-holding-usd"></i>
+                                        <span>Apply Bid</span>
+                                    </button>
+                                </div>
+                            </div>
+                        @endforeach
+                    @else
+                        {{-- No projects - keep empty state below visible via JS/CSS if needed --}}
+                    @endif
                 </div>
 
                 <!-- Empty State -->
@@ -129,16 +214,16 @@
                     <span class="status-text"></span>
                 </div>
             </div>
-            
+
             <div class="project-image-wrapper">
                 <img src="" alt="" class="project-image" onerror="this.style.display='none';">
             </div>
-            
+
             <div class="project-content">
                 <h3 class="project-title"></h3>
                 <p class="project-description"></p>
             </div>
-            
+
             <div class="project-details">
                 <div class="detail-item">
                     <i class="fi fi-rr-marker"></i>
@@ -177,6 +262,11 @@
 @endsection
 
 @section('extra_js')
+    @if(isset($jsProjects))
+        <script>
+            window.serverProjects = {!! json_encode($jsProjects, JSON_UNESCAPED_SLASHES) !!};
+        </script>
+    @endif
     <script src="{{ asset('js/contractor/contractor_Homepage.js') }}"></script>
     <script src="{{ asset('js/contractor/contractor_Modals/contractorApplybids_Modal.js') }}"></script>
     <script>
@@ -186,7 +276,7 @@
             if (navbarSearchInput) {
                 navbarSearchInput.placeholder = 'Search projects...';
             }
-            
+
             // Set Home link as active
             const navbarLinks = document.querySelectorAll('.navbar-link');
             navbarLinks.forEach(link => {

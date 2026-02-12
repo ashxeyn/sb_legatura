@@ -248,9 +248,7 @@ export default function SwitchRoleScreen({ onBack, onRoleChanged, onStartAddRole
                     {rejectionReason || 'Your application was rejected.'}
                   </Text>
                 </View>
-                <TouchableOpacity style={{marginTop: 18, alignSelf: 'center', backgroundColor: '#EC7E00', borderRadius: 8, paddingHorizontal: 24, paddingVertical: 10 }} onPress={handleAddRole}>
-                  <Text style={{color: '#FFF', fontWeight: 'bold', fontSize: 15}}>Re-apply</Text>
-                </TouchableOpacity>
+                {/* Re-apply button removed per design decision */}
               </View>
             ) : (approvedRole && approvedRole !== currentRole) ? (
               /* --- APPROVED VIEW: User's application for the other role is approved and not the current role --- */

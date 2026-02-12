@@ -1421,16 +1421,11 @@ class userManagementController extends authController
             ->where('user_id', $id)
             ->update([
                 'verification_status' => 'approved',
-                'verification_date' => now()
+                'verification_date' => now(),
+                'is_active' => 1
             ]);
 
         if ($updated) {
-            // Also activate the contractor owner in contractor_users table
-            DB::table('contractor_users')
-                ->where('user_id', $id)
-                ->where('role', 'owner')
-                ->update(['is_active' => 1]);
-
             \Log::info("Contractor verification approved for user_id: {$id}");
             return response()->json([
                 'success' => true,

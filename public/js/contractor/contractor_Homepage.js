@@ -11,7 +11,7 @@ class ContractorHomepage {
         this.projectsGrid = document.getElementById('projectsGrid');
         this.emptyState = document.getElementById('emptyState');
         this.cardTemplate = document.getElementById('projectCardTemplate');
-        
+
         // Filter elements
         this.filterIconBtn = document.getElementById('filterIconBtn');
         this.filterDropdown = document.getElementById('filterDropdown');
@@ -19,14 +19,14 @@ class ContractorHomepage {
         this.filterApplyBtn = document.getElementById('filterApplyBtn');
         this.filterClearBtn = document.getElementById('filterClearBtn');
         this.filterBadge = document.getElementById('filterBadge');
-        
+
         // Filter select elements
         this.filterProjectStatus = document.getElementById('filterProjectStatus');
         this.filterProvince = document.getElementById('filterProvince');
         this.filterCity = document.getElementById('filterCity');
         this.filterProjectType = document.getElementById('filterProjectType');
         this.filterBudget = document.getElementById('filterBudget');
-        
+
         // Filter state
         this.activeFilters = {
             projectStatus: '',
@@ -35,28 +35,32 @@ class ContractorHomepage {
             projectType: '',
             budget: ''
         };
-        
+
         // Search state
         this.currentSearchTerm = '';
-        
+
         this.init();
     }
 
     init() {
-        // Display mock data immediately while API loads
-        this.projects = this.getMockProjects();
+        // Prefer server-provided projects when available; otherwise display mock data immediately while API loads
+        if (window.serverProjects && Array.isArray(window.serverProjects) && window.serverProjects.length > 0) {
+            this.projects = window.serverProjects;
+        } else {
+            this.projects = this.getMockProjects();
+        }
         this.filteredProjects = [...this.projects];
-        
+
         // Setup filter functionality (must be before renderProjects to populate options)
         this.setupFilters();
-        
+
         // Render projects
         this.renderProjects();
-        
+
         // Setup navbar search functionality
         this.setupNavbarSearch();
-        
-        // Load projects from API in background
+
+        // Load projects from API in background (will override if API returns data)
         this.loadProjects();
     }
 
@@ -66,7 +70,7 @@ class ContractorHomepage {
             // Get the navbar search input
             const navbarSearchInput = document.querySelector('.navbar-search-input');
             const navbarSearchButton = document.querySelector('.navbar-search-btn');
-            
+
             if (!navbarSearchInput) {
                 console.warn('Navbar search input not found');
                 return;
@@ -146,13 +150,13 @@ class ContractorHomepage {
 
     handleSearch(query) {
         const searchTerm = query.toLowerCase().trim();
-        
+
         // Store search term for later use
         this.currentSearchTerm = searchTerm;
-        
+
         // Apply both search and filters together
         this.applySearchAndFilters();
-        
+
         // Update UI
         this.renderProjects();
         this.updateEmptyState();
@@ -160,7 +164,7 @@ class ContractorHomepage {
 
     updateEmptyState() {
         if (!this.emptyState) return;
-        
+
         if (this.filteredProjects.length === 0) {
             this.showEmptyState();
             // Update empty state message based on whether there's a search or filter
@@ -200,12 +204,12 @@ class ContractorHomepage {
     applySearchAndFilters() {
         // Start with all projects
         let projectsToFilter = [...this.projects];
-        
+
         // Apply active filters first
         if (this.hasActiveFilters()) {
             projectsToFilter = this.applyFilters(projectsToFilter);
         }
-        
+
         // Then apply search if there's a search term
         if (this.currentSearchTerm) {
             projectsToFilter = projectsToFilter.filter(project => {
@@ -215,16 +219,16 @@ class ContractorHomepage {
                 const location = this.formatLocation(project).toLowerCase();
                 const projectType = (project.project_type || project.type || '').toLowerCase();
                 const budget = (project.budget || project.estimated_budget || 0).toString();
-                
-                return title.includes(this.currentSearchTerm) || 
-                       description.includes(this.currentSearchTerm) || 
+
+                return title.includes(this.currentSearchTerm) ||
+                       description.includes(this.currentSearchTerm) ||
                        ownerName.includes(this.currentSearchTerm) ||
                        location.includes(this.currentSearchTerm) ||
                        projectType.includes(this.currentSearchTerm) ||
                        budget.includes(this.currentSearchTerm);
             });
         }
-        
+
         this.filteredProjects = projectsToFilter;
     }
 
@@ -255,7 +259,7 @@ class ContractorHomepage {
     createProjectCard(project) {
         // Clone the template
         const card = this.cardTemplate.content.cloneNode(true).querySelector('.project-card');
-        
+
         // Extract project data
         const projectTitle = project.title || project.project_title || 'Untitled Project';
         const ownerName = project.owner_name || project.owner || project.property_owner_name || 'Property Owner';
@@ -265,6 +269,8 @@ class ContractorHomepage {
         const deadline = project.deadline || project.bid_deadline || project.end_date || 'Not specified';
         const projectType = project.project_type || project.type || 'General';
         const budget = project.budget || project.estimated_budget || 0;
+        const budgetMin = project.budget_min ?? project.budgetMin ?? null;
+        const budgetMax = project.budget_max ?? project.budgetMax ?? null;
         const status = project.status || 'open';
         const postedDate = project.created_at || project.posted_date || new Date().toISOString();
         const projectId = project.id || project.project_id || '';
@@ -272,16 +278,24 @@ class ContractorHomepage {
         // Format dates
         const formattedDate = this.formatDate(postedDate);
         const formattedDeadline = this.formatDate(deadline);
-        const formattedBudget = this.formatBudget(budget);
+        let formattedBudget;
+        if (budgetMin !== null && budgetMax !== null) {
+            // Both min and max present — show range
+            const min = parseFloat(budgetMin) || 0;
+            const max = parseFloat(budgetMax) || 0;
+            formattedBudget = `${this.formatBudget(min)} - ${this.formatBudget(max)}`;
+        } else {
+            formattedBudget = this.formatBudget(budget);
+        }
 
         // Get project image
         const projectImage = project.image || project.project_image || project.photo || project.thumbnail || '';
         const imageElement = card.querySelector('.project-image');
         const imageWrapper = card.querySelector('.project-image-wrapper');
-        
+
         // Get avatar color class based on owner name
         const avatarColorClass = this.getAvatarColorClass(ownerName);
-        
+
         // Populate card data
         const avatarElement = card.querySelector('.project-owner-avatar');
         if (avatarElement) {
@@ -292,7 +306,7 @@ class ContractorHomepage {
         card.querySelector('.project-posted-date').textContent = `Posted ${formattedDate}`;
         card.querySelector('.status-text').textContent = this.formatStatus(status);
         card.querySelector('.status-text').classList.add(`status-${status}`);
-        
+
         // Set project image
         if (projectImage) {
             imageElement.src = projectImage;
@@ -304,14 +318,14 @@ class ContractorHomepage {
                 imageWrapper.style.display = 'none';
             }
         }
-        
+
         card.querySelector('.project-title').textContent = projectTitle;
         card.querySelector('.project-description').textContent = description;
         card.querySelector('.location-text').textContent = location;
         card.querySelector('.deadline-text').textContent = `Deadline: ${formattedDeadline}`;
         card.querySelector('.type-text').textContent = projectType;
         card.querySelector('.budget-text').textContent = formattedBudget;
-        
+
         const applyBidButton = card.querySelector('.apply-bid-button');
         applyBidButton.setAttribute('data-project-id', projectId);
         applyBidButton.setAttribute('data-project-data', JSON.stringify(project));
@@ -332,24 +346,24 @@ class ContractorHomepage {
         // Generate a consistent color based on the owner's name
         // This ensures the same owner always gets the same color
         if (!ownerName) return 'avatar-color-1';
-        
+
         // Special color assignments for specific owners
         const specialColors = {
             'Emmanuelle Santos': 'avatar-color-11'
         };
-        
+
         // Check if this owner has a special color assigned
         if (specialColors[ownerName]) {
             return specialColors[ownerName];
         }
-        
+
         // Simple hash function to convert name to a number
         let hash = 0;
         for (let i = 0; i < ownerName.length; i++) {
             hash = ownerName.charCodeAt(i) + ((hash << 5) - hash);
             hash = hash & hash; // Convert to 32bit integer
         }
-        
+
         // Map hash to a color class (1-10)
         const colorNumber = (Math.abs(hash) % 10) + 1;
         return `avatar-color-${colorNumber}`;
@@ -357,7 +371,7 @@ class ContractorHomepage {
 
     formatLocation(project) {
         const parts = [];
-        
+
         if (project.city) {
             parts.push(project.city);
         }
@@ -375,7 +389,7 @@ class ContractorHomepage {
             const now = new Date();
             const diffTime = Math.abs(now - date);
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            
+
             if (diffDays === 0) return 'today';
             if (diffDays === 1) return 'yesterday';
             if (diffDays < 7) return `${diffDays} days ago`;
@@ -430,10 +444,10 @@ class ContractorHomepage {
 
     handleApplyBidClick(projectId, event) {
         console.log('Apply bid for project:', projectId);
-        
+
         // Find the project data
         let project = this.projects.find(p => (p.id || p.project_id) == projectId);
-        
+
         // If not found, try to get from button data attribute
         if (!project && event && event.target) {
             const button = event.target.closest('.apply-bid-button');
@@ -448,7 +462,7 @@ class ContractorHomepage {
                 }
             }
         }
-        
+
         if (!project) {
             console.error('Project not found:', projectId);
             return;
@@ -521,8 +535,8 @@ class ContractorHomepage {
 
         // Close dropdown when clicking outside
         document.addEventListener('click', (e) => {
-            if (this.filterDropdown && 
-                !this.filterDropdown.contains(e.target) && 
+            if (this.filterDropdown &&
+                !this.filterDropdown.contains(e.target) &&
                 !this.filterIconBtn.contains(e.target)) {
                 this.closeFilterDropdown();
             }
@@ -590,7 +604,7 @@ class ContractorHomepage {
             option.textContent = city;
             this.filterCity.appendChild(option);
         });
-        
+
         // Reset city if province changed and city is no longer valid
         if (currentValue && !Array.from(cities).includes(currentValue)) {
             this.filterCity.value = '';
@@ -601,7 +615,7 @@ class ContractorHomepage {
 
     toggleFilterDropdown() {
         if (!this.filterDropdown) return;
-        
+
         const isActive = this.filterDropdown.classList.contains('active');
         if (isActive) {
             this.closeFilterDropdown();
@@ -634,7 +648,7 @@ class ContractorHomepage {
 
         // Apply both filters and search
         this.applySearchAndFilters();
-        
+
         // Update UI
         this.updateFilterBadge();
         this.renderProjects();
@@ -680,12 +694,12 @@ class ContractorHomepage {
             filtered = filtered.filter(project => {
                 const budget = parseFloat(project.budget || project.estimated_budget || 0);
                 const range = this.activeFilters.budget;
-                
+
                 if (range === '0-50000') return budget >= 0 && budget <= 50000;
                 if (range === '50000-100000') return budget > 50000 && budget <= 100000;
                 if (range === '100000-500000') return budget > 100000 && budget <= 500000;
                 if (range === '500000+') return budget > 500000;
-                
+
                 return true;
             });
         }
@@ -715,7 +729,7 @@ class ContractorHomepage {
 
         // Re-apply search (if any) after clearing filters
         this.applySearchAndFilters();
-        
+
         // Update UI
         this.updateFilterBadge();
         this.renderProjects();
