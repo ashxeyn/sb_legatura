@@ -89,6 +89,59 @@ class authController extends Controller
                     Session::put('current_role', $result['userType']);
                 }
 
+                // Load contractor-specific display info into session for contractor/staff users
+                try {
+                    $userObj = $result['user'] ?? null;
+                    if ($userObj && in_array($userObj->user_type ?? '', ['contractor', 'both', 'staff'])) {
+                        // Prefer contractor record linked by user_id; fall back to contractor_users relationship
+                        $contractor = DB::table('contractors')->where('user_id', $userObj->user_id)->first();
+                        if (!$contractor) {
+                            $cu = DB::table('contractor_users')->where('user_id', $userObj->user_id)->first();
+                            if ($cu && isset($cu->contractor_id)) {
+                                $contractor = DB::table('contractors')->where('contractor_id', $cu->contractor_id)->first();
+                            }
+                        }
+
+                        if ($contractor) {
+                            Session::put('contractor_name', $contractor->company_name ?? ($userObj->username ?? null));
+                            // company_handle may not exist; build handle from username if missing
+                            $handle = $contractor->company_handle ?? ($userObj->username ?? null);
+                            if ($handle && strpos($handle, '@') !== 0) {
+                                $handle = '@' . $handle;
+                            }
+                            Session::put('contractor_handle', $handle);
+                            Session::put('contractor_profile_pic', $contractor->profile_pic ?? ($userObj->profile_pic ?? null));
+                        }
+                    }
+                } catch (\Exception $e) {
+                    \Log::warning('Failed to load contractor session data: ' . $e->getMessage());
+                }
+
+                // Load owner-specific display info into session for property_owner/both users
+                try {
+                    $userObj = $result['user'] ?? null;
+                    if ($userObj && in_array($userObj->user_type ?? '', ['property_owner', 'both'])) {
+                        $owner = DB::table('property_owners')->where('user_id', $userObj->user_id)->first();
+                        if ($owner) {
+                            // Build a full name if explicit full_name isn't present
+                            $fullName = $owner->full_name ?? trim(($owner->first_name ?? '') . ' ' . ($owner->middle_name ?? '') . ' ' . ($owner->last_name ?? ''));
+                            if (empty(trim($fullName))) {
+                                $fullName = $userObj->username ?? 'Owner';
+                            }
+                            Session::put('owner_name', $fullName);
+
+                            $handle = $owner->handle ?? $userObj->username ?? null;
+                            if ($handle && strpos($handle, '@') !== 0) {
+                                $handle = '@' . $handle;
+                            }
+                            Session::put('owner_handle', $handle);
+                            Session::put('owner_profile_pic', $owner->profile_pic ?? ($userObj->profile_pic ?? null));
+                        }
+                    }
+                } catch (\Exception $e) {
+                    \Log::warning('Failed to load owner session data: ' . $e->getMessage());
+                }
+
                 // Route admins to the Admin dashboard, owners/contractors to their homepages, users to main dashboard
                 if (!empty($result['userType']) && $result['userType'] === 'admin') {
                     return redirect('/admin/dashboard')->with('success', 'Logged in successfully');
@@ -2467,20 +2520,20 @@ class authController extends Controller
                 if ($isContractorUser) {
                     $contractorAuthService = app(\App\Services\ContractorAuthorizationService::class);
                     $userId = $userData->user_id ?? $userData->id;
-                    
+
                     $memberContext = $contractorAuthService->getAuthorizationContext($userId);
-                    
+
                     // Always set determinedRole for contractor/staff users
                     $responseData['determinedRole'] = 'contractor';
-                    
+
                     if ($memberContext) {
                         $responseData['contractor_member'] = $memberContext;
-                        
+
                         // Block login if member is inactive
                         if (!$memberContext['is_active']) {
                             // Delete the just-created token since they can't use it
                             $eloquentUser->tokens()->where('name', 'mobile-app')->delete();
-                            
+
                             return response()->json([
                                 'success' => false,
                                 'message' => 'Your contractor member account is inactive. Please contact the contractor owner.',
@@ -2585,7 +2638,7 @@ class authController extends Controller
 
     /**
      * API: Force change password (for first-time member login)
-     * 
+     *
      * Password rules:
      * - At least 8 characters
      * - At least one uppercase letter
