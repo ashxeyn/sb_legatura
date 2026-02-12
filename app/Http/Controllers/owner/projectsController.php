@@ -95,9 +95,31 @@ class projectsController extends Controller
             return redirect('/dashboard')->with('error', 'Only property owners can access this page.');
         }
 
+        // Get active contractors (exclude current user if they're also a contractor)
+        $excludeUserId = ($userType === 'both') ? $user->user_id : null;
+        $contractors = $this->projectsClass->getActiveContractors($excludeUserId);
+
+        // Prepare contractors data for JavaScript (if needed for filtering)
+        $jsContractors = $contractors->map(function($contractor) {
+            return [
+                'contractor_id' => $contractor->contractor_id,
+                'company_name' => $contractor->company_name,
+                'contact_person' => $contractor->contact_person ?? '',
+                'years_of_experience' => $contractor->years_of_experience ?? 0,
+                'contractor_type_name' => $contractor->contractor_type_name ?? 'Contractor',
+                'city' => $contractor->city ?? '',
+                'province' => $contractor->province ?? '',
+                'average_rating' => $contractor->average_rating ?? 0,
+                'total_reviews' => $contractor->total_reviews ?? 0,
+                'completed_projects' => $contractor->completed_projects ?? 0,
+                'specialization' => $contractor->specialization ?? $contractor->contractor_type_name ?? '',
+            ];
+        });
+
         // Get contractor types for modal dropdown
         $contractorTypes = $this->projectsClass->getContractorTypes();
-        return view('owner.propertyOwner_Homepage', compact('contractorTypes'));
+        
+        return view('owner.propertyOwner_Homepage', compact('contractorTypes', 'contractors', 'jsContractors'));
     }
 
     public function showOwnerDashboard(Request $request)

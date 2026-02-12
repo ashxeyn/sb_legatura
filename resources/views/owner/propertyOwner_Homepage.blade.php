@@ -112,7 +112,56 @@
 
                 <!-- Contractors Grid -->
                 <div class="contractors-grid" id="contractorsGrid">
-                    <!-- Contractors will be loaded here dynamically -->
+                    @if(isset($contractors) && count($contractors) > 0)
+                        @foreach($contractors as $contractor)
+                            <div class="contractor-card">
+                                <div class="contractor-header">
+                                    <div class="contractor-avatar">
+                                        @php
+                                            $contractorName = trim($contractor->company_name ?? $contractor->contact_person ?? '');
+                                            $initials = collect(explode(' ', $contractorName))->filter()->map(function($w){ return strtoupper(substr($w,0,1)); })->take(2)->join('');
+                                        @endphp
+                                        <span class="contractor-initials">{{ $initials ?: '—' }}</span>
+                                    </div>
+                                    <div class="contractor-info">
+                                        <h3 class="contractor-name">{{ $contractor->company_name ?? '—' }}</h3>
+                                        <p class="contractor-experience">{{ $contractor->years_of_experience ?? 0 }} years experience</p>
+                                    </div>
+                                    <div class="contractor-badge">
+                                        <span class="badge-text">{{ $contractor->contractor_type_name ?? 'Contractor' }}</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="contractor-details">
+                                    <div class="detail-item">
+                                        <i class="fi fi-rr-marker"></i>
+                                        <span class="detail-text location-text">{{ $contractor->city ?? $contractor->province ?? '—' }}</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <i class="fi fi-rr-star"></i>
+                                        <span class="detail-text rating-text">{{ number_format($contractor->average_rating ?? 0, 1) }} ({{ $contractor->total_reviews ?? 0 }} reviews)</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <i class="fi fi-rr-briefcase"></i>
+                                        <span class="detail-text projects-text">{{ $contractor->completed_projects ?? 0 }} completed projects</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <i class="fi fi-rr-wrench"></i>
+                                        <span class="detail-text specialty-text">{{ $contractor->specialization ?? $contractor->contractor_type_name ?? '—' }}</span>
+                                    </div>
+                                </div>
+
+                                <div class="contractor-actions">
+                                    <button class="contact-button" data-contractor-id="{{ $contractor->contractor_id ?? '' }}">
+                                        <i class="fi fi-rr-envelope"></i>
+                                        <span>Contact</span>
+                                    </button>
+                                </div>
+                            </div>
+                        @endforeach
+                    @else
+                        {{-- No contractors - keep empty state below visible via JS/CSS if needed --}}
+                    @endif
                 </div>
 
                 <!-- Empty State -->
@@ -178,6 +227,11 @@
 @endsection
 
 @section('extra_js')
+    @if(isset($jsContractors))
+        <script>
+            window.serverContractors = {!! json_encode($jsContractors, JSON_UNESCAPED_SLASHES) !!};
+        </script>
+    @endif
     <script src="{{ asset('js/owner/propertyOwner_Homepage.js') }}"></script>
     <script src="{{ asset('js/owner/propertyOwner_Modals/ownerPosting_Modal.js') }}"></script>
     <script>
