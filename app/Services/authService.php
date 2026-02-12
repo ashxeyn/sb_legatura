@@ -77,8 +77,8 @@ class authService
             $rejectionReason = null;
             $determinedRole = null;
 
-            // Check contractor_users and property_owners for verification_status = 'approved'
-            $contractorUserApproved = DB::table('contractor_users')
+            // Check contractors and property_owners for verification_status = 'approved'
+            $contractorApproved = DB::table('contractors')
                 ->where('user_id', $user->user_id)
                 ->where('verification_status', 'approved')
                 ->first();
@@ -87,7 +87,7 @@ class authService
                 ->where('verification_status', 'approved')
                 ->first();
 
-            if ($contractorUserApproved || $propertyOwnerApproved) {
+            if ($contractorApproved || $propertyOwnerApproved) {
                 $isVerified = true;
             }
 
@@ -158,15 +158,11 @@ class authService
                 // PENDING record from masking an earlier APPROVED record (e.g., when adding a
                 // new role creates a pending row while an approved row still exists).
                 // Check both contractor_users (member records) and contractors (primary contractor account)
-                $cApproved = DB::table('contractor_users')
+                // Prefer the primary contractor record for verification status
+                $cApproved = DB::table('contractors')
                     ->where('user_id', $user->user_id)
                     ->where('verification_status', 'approved')
                     ->exists();
-                $primaryContractorApproved = DB::table('contractors')
-                    ->where('user_id', $user->user_id)
-                    ->where('verification_status', 'approved')
-                    ->exists();
-                $cApproved = $cApproved || $primaryContractorApproved;
                 $oApproved = DB::table('property_owners')
                     ->where('user_id', $user->user_id)
                     ->where('verification_status', 'approved')
@@ -191,7 +187,7 @@ class authService
                     }
                 } else {
                     // Neither role is approved. Build rejection/pending info from latest records.
-                    $cRejected = DB::table('contractor_users')
+                    $cRejected = DB::table('contractors')
                         ->where('user_id', $user->user_id)
                         ->where('verification_status', 'rejected')
                         ->exists();
@@ -202,7 +198,7 @@ class authService
 
                     $rejectionReason = null;
                     if ($cRejected) {
-                        $reason = DB::table('contractor_users')
+                        $reason = DB::table('contractors')
                             ->where('user_id', $user->user_id)
                             ->whereNotNull('rejection_reason')
                             ->orderBy('updated_at', 'desc')

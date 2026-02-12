@@ -78,21 +78,29 @@ class userVerificationClass
 
         // If a specific role was requested, only update that profile table
         if ($targetRole === 'contractor') {
-            DB::transaction(function () use ($userId) {
-                DB::table('contractors')
-                    ->where('user_id', $userId)
-                    ->update([
-                        'verification_status' => 'approved',
-                        'verification_date' => now()
-                    ]);
+            // Approve contractor profile and mark contractor as active
+            $affected = DB::table('contractors')
+                ->where('user_id', $userId)
+                ->update([
+                    'verification_status' => 'approved',
+                    'verification_date' => now(),
+                    'is_active' => 1
+                ]);
 
-                DB::table('contractor_users')
-                    ->where('user_id', $userId)
-                    ->update([
-                        'is_active' => 1
-                    ]);
-            });
+            \Log::info('ApproveVerification: contractors update', ['user_id' => $userId, 'affected_rows' => $affected]);
 
+            // Also activate any contractor_users record that represents this user for the contractor
+            try {
+                $contractorId = DB::table('contractors')->where('user_id', $userId)->value('contractor_id');
+                if ($contractorId) {
+                    DB::table('contractor_users')
+                        ->where('contractor_id', $contractorId)
+                        ->where('user_id', $userId)
+                        ->update(['is_active' => 1, 'is_deleted' => 0]);
+                }
+            } catch (\Throwable $e) {
+                \Log::warning('ApproveVerification: failed to activate contractor_users', ['user_id' => $userId, 'error' => $e->getMessage()]);
+            }
             // Ensure users.user_type reflects contractor (unless both)
             if ($user->user_type !== 'both' && $user->user_type !== 'contractor') {
                 DB::table('users')->where('user_id', $userId)->update(['user_type' => 'contractor']);
@@ -114,20 +122,27 @@ class userVerificationClass
             $hasOwner = DB::table('property_owners')->where('user_id', $userId)->exists();
 
             if ($hasContractor) {
-                DB::transaction(function () use ($userId) {
-                    DB::table('contractors')
-                        ->where('user_id', $userId)
-                        ->update([
-                            'verification_status' => 'approved',
-                            'verification_date' => now()
-                        ]);
+                $affected = DB::table('contractors')
+                    ->where('user_id', $userId)
+                    ->update([
+                        'verification_status' => 'approved',
+                        'verification_date' => now(),
+                        'is_active' => 1
+                    ]);
+                \Log::info('ApproveVerification: contractors update', ['user_id' => $userId, 'affected_rows' => $affected]);
 
-                    DB::table('contractor_users')
-                        ->where('user_id', $userId)
-                        ->update([
-                            'is_active' => 1
-                        ]);
-                });
+                // Activate any contractor_users record linking this user to the contractor
+                try {
+                    $contractorId = DB::table('contractors')->where('user_id', $userId)->value('contractor_id');
+                    if ($contractorId) {
+                        DB::table('contractor_users')
+                            ->where('contractor_id', $contractorId)
+                            ->where('user_id', $userId)
+                            ->update(['is_active' => 1, 'is_deleted' => 0]);
+                    }
+                } catch (\Throwable $e) {
+                    \Log::warning('ApproveVerification (auto): failed to activate contractor_users', ['user_id' => $userId, 'error' => $e->getMessage()]);
+                }
             }
 
             if ($hasOwner) {
@@ -168,26 +183,28 @@ class userVerificationClass
 
         // If target is contractor, ONLY update contractors table
         if ($targetRole === 'contractor') {
-            // Update contractors table
+            // Update contractors table only (verification fields moved here)
             $affectedContractors = DB::table('contractors')->where('user_id', $userId)->update([
                 'verification_status' => 'rejected',
-                'rejection_reason' => $reason
+                'rejection_reason' => $reason,
+                'is_active' => 0
             ]);
             \Log::info('RejectVerification: contractors update', [
                 'user_id' => $userId,
                 'affected_rows' => $affectedContractors
             ]);
-
-            // Update contractor_users table
-            $affectedContractorUsers = DB::table('contractor_users')->where('user_id', $userId)->update([
-                'verification_status' => 'rejected',
-                'rejection_reason' => $reason,
-                'is_active' => 0 // Deactivate them on rejection
-            ]);
-            \Log::info('RejectVerification: contractor_users update', [
-                'user_id' => $userId,
-                'affected_rows' => $affectedContractorUsers
-            ]);
+            // Also deactivate any contractor_users records for this user under the contractor
+            try {
+                $contractorId = DB::table('contractors')->where('user_id', $userId)->value('contractor_id');
+                if ($contractorId) {
+                    DB::table('contractor_users')
+                        ->where('contractor_id', $contractorId)
+                        ->where('user_id', $userId)
+                        ->update(['is_active' => 0]);
+                }
+            } catch (\Throwable $e) {
+                \Log::warning('RejectVerification: failed to deactivate contractor_users', ['user_id' => $userId, 'error' => $e->getMessage()]);
+            }
         }
         // If target is owner, ONLY update property_owners table
         elseif ($targetRole === 'property_owner') {

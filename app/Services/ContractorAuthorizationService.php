@@ -7,13 +7,13 @@ use Illuminate\Support\Facades\Log;
 
 /**
  * Service for contractor member authorization.
- * 
+ *
  * ROLE PERMISSIONS (based on contractor_users.role):
- * 
+ *
  * FULL ACCESS ROLES (can do everything):
  * - owner: contractor primary account - full privileges
  * - representative: can manage members, bid, milestones
- * 
+ *
  * LIMITED ACCESS ROLES:
  * - manager, engineer, architect, others:
  *   - CAN: View projects, upload progress, approve payment validations, view property owners
@@ -44,7 +44,7 @@ class ContractorAuthorizationService
     /**
      * Get the contractor record for a user (either direct owner or via staff membership).
      * This is useful for API endpoints that need to get the contractor_id for data lookups.
-     * 
+     *
      * @param int $userId The user ID
      * @return object|null The contractor record or null if not found
      */
@@ -96,6 +96,10 @@ class ContractorAuthorizationService
                 ->first();
 
             if ($memberRecord) {
+                // If the parent contractor is approved, ensure owner is treated as active
+                if (isset($contractor->verification_status) && $contractor->verification_status === 'approved' && ($memberRecord->role ?? null) === 'owner') {
+                    $memberRecord->is_active = 1;
+                }
                 $memberRecord->contractor_name = $contractor->company_name ?? null;
                 $memberRecord->is_contractor_owner = true;
                 return $memberRecord;
@@ -148,7 +152,7 @@ class ContractorAuthorizationService
     public function canManageMembers(int $userId): bool
     {
         $context = $this->getMemberContext($userId);
-        
+
         if (!$context || !$context->is_active) {
             return false;
         }
@@ -192,11 +196,11 @@ class ContractorAuthorizationService
                 // Member management - owner/representative only
                 'can_manage_members' => $hasFullAccess,
                 'can_view_members' => $isActive,
-                
+
                 // Bidding & Milestones - owner/representative only
                 'can_bid' => $hasFullAccess,
                 'can_manage_milestones' => $hasFullAccess, // create, edit, add milestones
-                
+
                 // All active members can do these
                 'can_upload_progress' => $isActive,
                 'can_approve_payments' => $isActive,
