@@ -645,6 +645,8 @@ html, body {
 
 .boost-panel .panel-card {
     border-color: rgba(2, 38, 68, 0.35);
+    margin-top: 50px;
+    margin-bottom: 60px;
 }
 
 .boost-panel .panel-card:hover {

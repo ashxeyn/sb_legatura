@@ -213,39 +213,24 @@
                         </div>
                         <div>
                             <h3 class="text-xl md:text-2xl font-bold text-black">Boosting for Property Owners</h3>
-                            <p class="text-sm md:text-base text-black/70">Increase reach and attract more qualified bids.</p>
+                            <p class="text-sm md:text-base text-black/70">Boost visibility and attract qualified contractors to your project.</p>
                         </div>
                     </div>
                     <div class="panel-card-grid">
                         <button class="panel-card" type="button">
-                            <div class="panel-card-emoji">👍</div>
-                            <div>
-                                <div class="panel-card-title">Basic Boost</div>
-                                <div class="panel-card-meta">1,000+ reach</div>
-                            </div>
-                            <span class="panel-card-price">₱250</span>
-                        </button>
-                        <button class="panel-card" type="button">
-                            <div class="panel-card-emoji">⚡</div>
-                            <div>
-                                <div class="panel-card-title">Most Popular</div>
-                                <div class="panel-card-meta">4,000+ reach</div>
-                            </div>
-                            <span class="panel-card-price">₱750</span>
-                        </button>
-                        <button class="panel-card" type="button">
                             <div class="panel-card-emoji">🔥</div>
                             <div>
-                                <div class="panel-card-title">Premium Boost</div>
-                                <div class="panel-card-meta">10,000+ reach</div>
+                                <div class="panel-card-title">Boost Your Project</div>
+                                <div class="panel-card-meta">Reach 10,000+ contractors</div>
                             </div>
-                            <span class="panel-card-price">₱1,500</span>
+                            <span class="panel-card-price">₱49<span style="font-size: 0.75em; font-weight: 400; opacity: 0.8;">/project</span></span>
                         </button>
                     </div>
                     <ul class="panel-list">
-                        <li><i class="fi fi-rr-check-circle"></i> Choose any project post to boost</li>
-                        <li><i class="fi fi-rr-check-circle"></i> Track reach and bid growth</li>
-                        <li><i class="fi fi-rr-check-circle"></i> 7-day boost duration</li>
+                        <li><i class="fi fi-rr-check-circle"></i> Instant visibility boost for your project</li>
+                        <li><i class="fi fi-rr-check-circle"></i> Attract more qualified contractor bids</li>
+                        <li><i class="fi fi-rr-check-circle"></i> Active boost duration of 3 days</li>
+                        <li><i class="fi fi-rr-check-circle"></i> Track engagement and bid metrics</li>
                     </ul>
                 </div>
 
