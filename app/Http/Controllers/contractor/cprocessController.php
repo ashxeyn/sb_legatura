@@ -28,7 +28,107 @@ class cprocessController extends Controller
             return $accessCheck; // Return error response
         }
 
-        return view('contractor.contractor_Homepage');
+        // Fetch approved projects that are open for bidding
+        try {
+            $projects = DB::table('projects')
+                ->join('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
+                ->join('contractor_types', 'projects.type_id', '=', 'contractor_types.type_id')
+                ->join('property_owners', 'project_relationships.owner_id', '=', 'property_owners.owner_id')
+                ->where('projects.project_status', 'open')
+                ->where('project_relationships.project_post_status', 'approved')
+                ->select(
+                    'projects.project_id',
+                    'projects.project_title',
+                    'projects.project_description',
+                    'projects.project_location',
+                    'projects.budget_range_min',
+                    'projects.budget_range_max',
+                    'projects.lot_size',
+                    'projects.floor_area',
+                    'projects.property_type',
+                    'projects.type_id',
+                    'contractor_types.type_name',
+                    'projects.project_status',
+                    'project_relationships.project_post_status',
+                    'project_relationships.bidding_due as bidding_due',
+                    'project_relationships.created_at',
+                    'property_owners.owner_id as owner_id',
+                    DB::raw("CONCAT(property_owners.first_name, ' ', COALESCE(property_owners.middle_name, ''), ' ', property_owners.last_name) as owner_name")
+                )
+                    ->orderBy('project_relationships.created_at', 'desc')
+                    ->get();
+
+                // attach files for each project (keep objects so Blade can use -> syntax)
+                $projects = $projects->map(function($proj) {
+                    $files = DB::table('project_files')
+                        ->where('project_id', $proj->project_id)
+                        ->get();
+                    $proj->files = $files;
+                    return $proj;
+                });
+        } catch (\Throwable $e) {
+            \Log::error('Failed to fetch projects for contractor homepage: ' . $e->getMessage());
+            $projects = collect([]);
+        }
+            // Fetch approved projects via the owner projectsClass (centralized logic)
+            try {
+                $projectsClass = new \App\Models\Owner\projectsClass();
+                $projects = $projectsClass->getApprovedProjects();
+
+                // attach files for each project using the same class helper
+                $projects = $projects->map(function($proj) use ($projectsClass) {
+                    $files = $projectsClass->getProjectFiles($proj->project_id);
+                    $proj->files = $files;
+                    return $proj;
+                });
+            } catch (\Throwable $e) {
+                \Log::error('Failed to fetch projects for contractor homepage via projectsClass: ' . $e->getMessage());
+                $projects = collect([]);
+            }
+
+        // Prepare a lightweight JS-friendly payload for the front-end script
+        try {
+            $jsProjects = $projects->map(function($p) {
+                // Safely get first file path for image (support array or collection)
+                $firstFilePath = null;
+                if (!empty($p->files)) {
+                    if (is_array($p->files) && count($p->files) > 0) {
+                        $first = $p->files[0];
+                    } elseif (method_exists($p->files, 'first')) {
+                        $first = $p->files->first();
+                    } else {
+                        $first = null;
+                    }
+                    if (!empty($first)) {
+                        $firstFilePath = is_string($first) ? $first : (is_array($first) ? ($first['file_path'] ?? null) : ($first->file_path ?? null));
+                    }
+                }
+
+                return (object)[
+                    'project_id' => $p->project_id,
+                    'title' => $p->project_title,
+                    'description' => $p->project_description,
+                    'city' => $p->project_location,
+                    'deadline' => $p->bidding_due ?? $p->bidding_deadline ?? null,
+                    'project_type' => $p->type_name ?? $p->property_type ?? null,
+                    'budget_min' => $p->budget_range_min ?? null,
+                    'budget_max' => $p->budget_range_max ?? null,
+                    'status' => $p->project_status ?? 'open',
+                    'created_at' => $p->created_at ?? null,
+                    'image' => $firstFilePath ? asset('storage/' . ltrim($firstFilePath, '/')) : null,
+                    'owner_name' => $p->owner_name ?? null,
+                    'project' => $p // keep original project object accessible if needed
+                ];
+            })->toArray();
+        } catch (\Throwable $e) {
+            \Log::warning('Failed to prepare jsProjects: ' . $e->getMessage());
+            $jsProjects = [];
+        }
+
+        return view('contractor.contractor_Homepage', [
+            'projects' => $projects,
+            'jsProjects' => $jsProjects
+        ]);
     }
 
     public function showMessages(Request $request)
@@ -43,7 +143,86 @@ class cprocessController extends Controller
 
     public function showDashboard(Request $request)
     {
-        return view('contractor.contractor_Dashboard');
+        $accessCheck = $this->checkContractorAccess($request);
+        if ($accessCheck) {
+            return $accessCheck;
+        }
+
+        // Resolve user id from session or sanctum
+        $user = Session::get('user') ?: $request->user();
+        $userId = is_object($user) ? ($user->user_id ?? null) : ($user['user_id'] ?? null);
+        $userName = null;
+
+        // Support both object (Eloquent/stdClass) and array session representations
+        if (is_object($user)) {
+            $first = $user->first_name ?? null;
+            $last = $user->last_name ?? null;
+            if (!empty($first) || !empty($last)) {
+                $userName = trim(($first ?? '') . ' ' . ($last ?? ''));
+            } else {
+                $userName = $user->username ?? $user->name ?? ($user->user_name ?? null);
+            }
+        } elseif (is_array($user)) {
+            $first = $user['first_name'] ?? null;
+            $last = $user['last_name'] ?? null;
+            if (!empty($first) || !empty($last)) {
+                $userName = trim(($first ?? '') . ' ' . ($last ?? ''));
+            } else {
+                $userName = $user['username'] ?? $user['name'] ?? $user['user_name'] ?? null;
+            }
+        }
+
+        $projects = collect([]);
+        $stats = [
+            'total' => 0,
+            'pending' => 0,
+            'active' => 0,
+            'inProgress' => 0,
+            'completed' => 0
+        ];
+
+        if ($userId) {
+            try {
+                // Create a synthetic request to reuse the API method
+                $req = new Request();
+                $req->query->set('user_id', $userId);
+                $resp = $this->apiGetContractorProjects($req);
+                $data = [];
+                if (is_object($resp) && method_exists($resp, 'getData')) {
+                    $content = $resp->getData();
+                    $data = $content->data ?? [];
+                } elseif (is_array($resp)) {
+                    $data = $resp['data'] ?? [];
+                }
+
+                $projects = collect($data);
+
+                // Compute stats similar to JS mapping
+                $totalBids = $projects->reduce(function($acc, $p) { return $acc + ((isset($p->bid_id) && $p->bid_id) ? 1 : 0); }, 0);
+                $pendingBids = $projects->reduce(function($acc, $p) { return $acc + ((isset($p->bid_status) && $p->bid_status && $p->bid_status !== 'accepted') ? 1 : 0); }, 0);
+                $wonBids = $projects->reduce(function($acc, $p) { return $acc + ((isset($p->bid_status) && $p->bid_status === 'accepted') ? 1 : 0); }, 0);
+                $activeProjects = $projects->filter(function($p){ return (isset($p->display_status) && $p->display_status === 'in_progress'); })->count();
+                $completedCount = $projects->filter(function($p){ return (isset($p->display_status) && $p->display_status === 'completed'); })->count();
+
+                $stats = [
+                    'total' => $totalBids,
+                    'pending' => $pendingBids,
+                    'active' => $wonBids,
+                    'inProgress' => $activeProjects,
+                    'completed' => $completedCount
+                ];
+
+            } catch (\Exception $e) {
+                Log::error('showDashboard: failed to load projects: ' . $e->getMessage());
+                $projects = collect([]);
+            }
+        }
+
+        return view('contractor.contractor_Dashboard', [
+            'projects' => $projects,
+            'stats' => $stats,
+            'userName' => $userName
+        ]);
     }
 
     public function showMyProjects(Request $request)

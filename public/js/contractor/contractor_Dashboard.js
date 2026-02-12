@@ -13,17 +13,17 @@ class ContractorDashboard {
             inProgress: this.getStatValue('statInProgress'),
             completed: 0
         };
-        
+
         // Initialize pinned projects array
         this.pinnedProjects = [];
         this.filteredPinnedProjects = [];
         this.searchQuery = '';
-        
+
         // Pin modal state
         this.pinModalListenersSetup = false;
         this.allProjectsForPinning = [];
         this.filteredProjectsForPinning = [];
-        
+
         this.init();
     }
 
@@ -39,25 +39,25 @@ class ContractorDashboard {
     init() {
         // Set greeting based on time of day
         this.setGreeting();
-        
+
         // Setup event listeners
         this.setupEventListeners();
-        
+
         // Load user data if available
         this.loadUserData();
-        
+
         // Initialize pinned project status styling
         this.initializePinnedProjectStatus();
-        
+
         // Initialize pinned card empty state class
         this.initializePinnedCardState();
-        
+
         // Load pinned projects if available
         this.loadPinnedProject();
-        
+
         // Setup navbar search
         this.setupNavbarSearch();
-        
+
         // Check if returning from pinning a project
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('pinned') === 'true') {
@@ -65,10 +65,20 @@ class ContractorDashboard {
             // Clean URL
             window.history.replaceState({}, document.title, window.location.pathname);
         }
-        
+
         // Initialize stats - only update if stats have been explicitly changed
         // This preserves the HTML values as the source of truth
         // Call updateStats() only when stats are updated from backend
+
+        // Fetch dashboard data from backend (uses window.currentUser set by Blade)
+        try {
+            if (!window.serverRendered && typeof this.fetchDashboardData === 'function') {
+                // call async but don't block init
+                this.fetchDashboardData();
+            }
+        } catch (e) {
+            console.warn('fetchDashboardData not available', e);
+        }
     }
 
     initializePinnedProjectStatus() {
@@ -119,7 +129,7 @@ class ContractorDashboard {
                 localStorage.removeItem('pinnedProjects');
             }
         }
-        
+
         // If no saved projects, show empty state
         this.pinnedProjects = [];
         this.filteredPinnedProjects = [];
@@ -144,7 +154,7 @@ class ContractorDashboard {
                 );
             });
         }
-        
+
         // Re-render with filtered results
         this.renderPinnedProjects();
     }
@@ -157,11 +167,11 @@ class ContractorDashboard {
         // Get the navbar search input
         const navbarSearchInput = document.querySelector('.navbar-search-input');
         const navbarSearchButton = document.querySelector('.navbar-search-btn');
-        
+
         if (navbarSearchInput) {
             // Update placeholder
             navbarSearchInput.placeholder = 'Search pinned projects...';
-            
+
             // Search on input (handles both typing and clearing)
             navbarSearchInput.addEventListener('input', (e) => {
                 const value = e.target.value.trim();
@@ -194,15 +204,15 @@ class ContractorDashboard {
         const pinnedList = document.getElementById('pinnedProjectsList');
         const emptyCard = document.getElementById('pinnedEmptyCard');
         const template = document.getElementById('pinnedProjectTemplate');
-        
+
         if (!pinnedList || !emptyCard || !template) return;
-        
+
         // Clear existing projects
         pinnedList.innerHTML = '';
-        
+
         // Use filtered projects if search is active, otherwise use all projects
         const projectsToRender = this.searchQuery ? this.filteredPinnedProjects : this.pinnedProjects;
-        
+
         if (projectsToRender.length === 0) {
             // Show empty state
             if (this.searchQuery) {
@@ -222,16 +232,16 @@ class ContractorDashboard {
             // Hide empty state
             emptyCard.classList.add('hidden');
             emptyCard.classList.remove('has-empty-state');
-            
+
             // Render each pinned project (newest first)
             projectsToRender.forEach((project, index) => {
                 const card = template.content.cloneNode(true);
                 const cardElement = card.querySelector('.pinned-content');
                 cardElement.setAttribute('data-project-id', project.id);
-                
+
                 // Set project data
                 this.populatePinnedProjectCard(cardElement, project, index);
-                
+
                 pinnedList.appendChild(card);
             });
         }
@@ -244,17 +254,17 @@ class ContractorDashboard {
         const statusEl = cardElement.querySelector('.status-badge');
         const statusText = cardElement.querySelector('.status-text');
         const unpinBtn = cardElement.querySelector('.pinned-unpin-btn');
-        
+
         if (titleEl) titleEl.textContent = project.title || 'Untitled Project';
         if (typeEl) typeEl.textContent = project.type || 'General';
-        
+
         // Status
         if (statusEl && statusText) {
             const normalizedStatus = (project.status || 'in_progress').toLowerCase().replace(/\s+/g, '_');
             statusText.textContent = (project.status || 'In Progress').replace('_', ' ');
             statusEl.className = `status-badge status-${normalizedStatus} px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 whitespace-nowrap`;
         }
-        
+
         // Unpin button
         if (unpinBtn) {
             unpinBtn.addEventListener('click', (e) => {
@@ -262,7 +272,7 @@ class ContractorDashboard {
                 this.unpinProject(project.id);
             });
         }
-        
+
         // Body
         const imageEl = cardElement.querySelector('.project-image');
         const descEl = cardElement.querySelector('.project-description');
@@ -276,21 +286,21 @@ class ContractorDashboard {
         const progressBar = cardElement.querySelector('.progress-bar');
         const progressPercentage = cardElement.querySelector('.progress-percentage');
         const viewBtn = cardElement.querySelector('.view-details-btn');
-        
+
         // Image
         if (imageEl) {
             imageEl.src = project.image || 'https://via.placeholder.com/120x120/EEA24B/ffffff?text=Project';
             imageEl.alt = project.title || 'Project image';
         }
-        
+
         // Description
         if (descEl) descEl.textContent = project.description || 'No description available.';
-        
+
         // Details
         if (locationEl) locationEl.textContent = project.location || 'Location not specified';
         if (budgetEl) budgetEl.textContent = project.budget || 'Budget not specified';
         if (dateEl) dateEl.textContent = project.date || '';
-        
+
         // Property Owner (for contractor dashboard) - Always show with defaults
         const owner = project.owner || {};
         if (contractorAvatar) {
@@ -305,7 +315,7 @@ class ContractorDashboard {
         if (ratingValue) {
             ratingValue.textContent = owner.rating || '0.0';
         }
-        
+
         // Progress
         if (progressBar && project.progress !== undefined) {
             progressBar.style.width = `${project.progress}%`;
@@ -313,7 +323,7 @@ class ContractorDashboard {
         if (progressPercentage && project.progress !== undefined) {
             progressPercentage.textContent = `${project.progress}%`;
         }
-        
+
         // View button
         if (viewBtn) {
             viewBtn.addEventListener('click', (e) => {
@@ -326,13 +336,13 @@ class ContractorDashboard {
     setGreeting() {
         const hour = new Date().getHours();
         let greeting = 'Good Morning';
-        
+
         if (hour >= 12 && hour < 17) {
             greeting = 'Good Afternoon';
         } else if (hour >= 17 || hour < 5) {
             greeting = 'Good Evening';
         }
-        
+
         const greetingElement = document.getElementById('greeting');
         if (greetingElement) {
             greetingElement.textContent = greeting;
@@ -344,11 +354,11 @@ class ContractorDashboard {
         const nameElement = document.getElementById('profileUserName');
         const roleElement = document.getElementById('profileUserRole');
         const avatarElement = document.getElementById('profileAvatar');
-        
+
         if (nameElement && avatarElement) {
             const currentName = nameElement.textContent.trim();
             const initialsElement = avatarElement.querySelector('.profile-initials');
-            
+
             // Extract initials from name
             if (initialsElement && currentName) {
                 const words = currentName.split(' ');
@@ -358,7 +368,7 @@ class ContractorDashboard {
                     initialsElement.textContent = currentName.substring(0, 2).toUpperCase();
                 }
             }
-            
+
             // If username/role is not set, extract from name
             if (roleElement && (!roleElement.textContent.trim() || roleElement.textContent.trim() === '@emmanuellesantos')) {
                 // Extract username from name (convert to lowercase, replace spaces with nothing, add @)
@@ -366,9 +376,249 @@ class ContractorDashboard {
                 roleElement.textContent = username;
             }
         }
-        
+
         // If you need to load user data from backend in the future, add it here
         // but make sure to check if name/username already exists before overriding
+    }
+
+    getCsrfToken() {
+        const m = document.querySelector('meta[name="csrf-token"]');
+        return m ? m.content : '';
+    }
+
+    formatCurrency(min, max) {
+        if (min == null && max == null) return '-';
+        try {
+            const opts = { style: 'currency', currency: 'PHP', maximumFractionDigits: 0 };
+            const f = new Intl.NumberFormat('en-PH', opts);
+            if (min != null && max != null) return `${f.format(min)} - ${f.format(max)}`;
+            return min != null ? f.format(min) : f.format(max);
+        } catch (e) { return `${min || ''} - ${max || ''}`; }
+    }
+
+    computeProgressFromMilestones(milestones) {
+        const ms = Array.isArray(milestones) ? milestones : [];
+        const total = ms.length;
+        if (total === 0) return 0;
+        const done = ms.filter(m => (m.milestone_status === 'approved' || m.milestone_status === 'completed')).length;
+        return Math.round((done / total) * 100);
+    }
+
+    setProfile(name) {
+        const elName = document.getElementById('profileUserName');
+        if (elName && name) elName.textContent = name;
+
+        const avatar = document.getElementById('profileAvatar');
+        if (avatar) {
+            const initialsEl = avatar.querySelector('.profile-initials');
+            if (initialsEl) {
+                const parts = (name || '').trim().split(/\s+/).filter(Boolean);
+                let initials = 'U';
+                if (parts.length === 1) initials = parts[0].slice(0,2).toUpperCase();
+                else if (parts.length >= 2) initials = (parts[0][0] + parts[1][0]).toUpperCase();
+                initialsEl.textContent = initials;
+            }
+        }
+    }
+
+    async fetchDashboardData() {
+        try {
+            const userId = window.currentUser && window.currentUser.id;
+            const displayName = window.currentUser && window.currentUser.name;
+            if (!userId) return;
+
+            const token = this.getCsrfToken();
+            const url = `/api/contractor/my-projects?user_id=${encodeURIComponent(userId)}`;
+            const res = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': token
+                },
+                credentials: 'same-origin'
+            });
+
+            if (!res.ok) {
+                console.warn('Failed to fetch contractor projects', res.status);
+                return;
+            }
+
+            const payload = await res.json();
+            const projects = payload && payload.data ? payload.data : [];
+
+            // Map API projects to UI-friendly format expected by render functions
+            const mapped = projects.map(p => {
+                const milestones = p.milestones || [];
+                const progress = this.computeProgressFromMilestones(milestones);
+                const ownerName = p.owner_name || '';
+                const ownerInitials = ownerName ? ownerName.split(/\s+/).map(s=>s[0]).slice(0,2).join('').toUpperCase() : 'PO';
+                const status = p.display_status || p.project_status || 'in_progress';
+                return {
+                    id: p.project_id,
+                    title: p.project_title,
+                    type: p.type_name || p.property_type || '',
+                    description: p.project_description,
+                    location: p.project_location,
+                    budget: this.formatCurrency(p.budget_range_min, p.budget_range_max),
+                    date: p.created_at ? new Date(p.created_at).toLocaleDateString() : '',
+                    progress: progress,
+                    owner: { name: ownerName, avatar: ownerInitials, rating: p.owner_rating || '' },
+                    image: p.project_image || '',
+                    status: status,
+                    statusText: (status === 'waiting_milestone_setup' ? 'Needs Setup' : (status === 'in_progress' ? 'In Progress' : (status === 'completed' ? 'Completed' : status))),
+                    bid_id: p.bid_id,
+                    bid_status: p.bid_status,
+                    raw: p
+                };
+            });
+
+            // If user hasn't pinned anything locally, seed from server (first 4)
+            if (!this.pinnedProjects || this.pinnedProjects.length === 0) {
+                this.pinnedProjects = mapped.slice(0, 4);
+                this.filteredPinnedProjects = [...this.pinnedProjects];
+            }
+
+            // Compute stats
+            const totalBids = projects.reduce((acc, p) => acc + (p.bid_id ? 1 : 0), 0);
+            const pendingBids = projects.reduce((acc, p) => acc + ((p.bid_status && p.bid_status !== 'accepted') ? 1 : 0), 0);
+            const wonBids = projects.reduce((acc, p) => acc + ((p.bid_status && p.bid_status === 'accepted') ? 1 : 0), 0);
+            const activeProjects = projects.filter(p => (p.display_status === 'in_progress')).length;
+            const completedCount = projects.filter(p => (p.display_status === 'completed')).length;
+
+            const newStats = {
+                total: totalBids,
+                pending: pendingBids,
+                active: wonBids,
+                inProgress: activeProjects,
+                completed: completedCount
+            };
+
+            // Update UI
+            if (displayName) this.setProfile(displayName);
+            this.updateStatsFromBackend(newStats);
+            this.renderPinnedProjects();
+            // Render main projects grid like Blade (@foreach $projects)
+            this.renderProjectsGrid(mapped);
+
+        } catch (err) {
+            console.error('fetchDashboardData error', err);
+        }
+    }
+
+    // Render projects grid using the hidden template (mimic Blade rendering)
+    renderProjectsGrid(projects) {
+        const grid = document.getElementById('projectsGrid');
+        const emptyState = document.getElementById('emptyState');
+        const template = document.getElementById('projectCardTemplate');
+        if (!grid || !template) return;
+
+        grid.innerHTML = '';
+
+        if (!projects || projects.length === 0) {
+            if (emptyState) emptyState.classList.remove('hidden');
+            return;
+        }
+
+        if (emptyState) emptyState.classList.add('hidden');
+
+        projects.forEach(p => {
+            const node = template.content.cloneNode(true);
+            const card = node.querySelector('.project-card');
+
+            // Owner initials (mimic PHP logic)
+            const ownerName = (p.owner && p.owner.name) ? p.owner.name.trim() : (p.raw && p.raw.owner_name ? (p.raw.owner_name+'').trim() : '');
+            const initials = ownerName ? ownerName.split(/\s+/).filter(Boolean).map(w => w.charAt(0).toUpperCase()).slice(0,2).join('') : '—';
+            const ownerInitialsEl = node.querySelector('.owner-initials');
+            if (ownerInitialsEl) ownerInitialsEl.textContent = initials || '—';
+
+            const ownerNameEl = node.querySelector('.project-owner-name');
+            if (ownerNameEl) ownerNameEl.textContent = ownerName || (p.owner && p.owner.name) || '—';
+
+            const postedDateEl = node.querySelector('.project-posted-date');
+            let posted = '';
+            if (p.raw && p.raw.created_at) {
+                posted = this.formatDateMDY(p.raw.created_at);
+            } else if (p.date) {
+                posted = p.date;
+            }
+            if (postedDateEl) postedDateEl.textContent = posted || '—';
+
+            // Status
+            const statusTextEl = node.querySelector('.status-text');
+            if (statusTextEl) statusTextEl.textContent = (p.statusText || (p.raw && (p.raw.project_post_status || p.raw.project_status)) || '—');
+
+            // Image selection (mimic Blade image selection rules)
+            const imgEl = node.querySelector('.project-image');
+            let imageSrc = '';
+            if (p.raw && p.raw.files) {
+                try {
+                    const files = p.raw.files;
+                    let first = null;
+                    if (Array.isArray(files) && files.length > 0) first = files[0];
+                    else if (files && typeof files.first === 'function') first = files.first();
+                    if (first) {
+                        const imagePath = (typeof first === 'string') ? first : (first.file_path || first.filePath || first.path || '');
+                        if (imagePath) imageSrc = '/storage/' + String(imagePath).replace(/^\//, '');
+                    }
+                } catch (e) { /* ignore */ }
+            }
+            if (!imageSrc && p.raw && p.raw.image_path) imageSrc = '/storage/' + String(p.raw.image_path).replace(/^\//, '');
+            if (imgEl) {
+                if (imageSrc) {
+                    imgEl.src = imageSrc;
+                    imgEl.style.display = '';
+                } else {
+                    imgEl.style.display = 'none';
+                }
+            }
+
+            // Title & description (truncate like Str::limit 200)
+            const titleEl = node.querySelector('.project-title');
+            if (titleEl) titleEl.textContent = p.title || '—';
+
+            const descEl = node.querySelector('.project-description');
+            if (descEl) descEl.textContent = this.truncate(p.description || '', 200);
+
+            // Details
+            const locEl = node.querySelector('.location-text');
+            if (locEl) locEl.textContent = p.location || (p.raw && p.raw.project_location) || '—';
+
+            const deadlineEl = node.querySelector('.deadline-text');
+            if (deadlineEl) deadlineEl.textContent = (p.raw && (p.raw.bidding_due || p.raw.bidding_deadline)) ? this.formatDateMDY(p.raw.bidding_due || p.raw.bidding_deadline) : '—';
+
+            const typeEl = node.querySelector('.type-text');
+            if (typeEl) typeEl.textContent = p.type || (p.raw && (p.raw.type_name || p.raw.property_type)) || '—';
+
+            const budgetEl = node.querySelector('.budget-text');
+            if (budgetEl) {
+                if (p.raw && p.raw.budget_range_min && p.raw.budget_range_max) {
+                    budgetEl.textContent = '₱' + Number(p.raw.budget_range_min).toLocaleString() + ' - ₱' + Number(p.raw.budget_range_max).toLocaleString();
+                } else {
+                    budgetEl.textContent = p.budget || '—';
+                }
+            }
+
+            // Apply bid button project id
+            const applyBtn = node.querySelector('.apply-bid-button');
+            if (applyBtn) applyBtn.setAttribute('data-project-id', p.id || '');
+
+            grid.appendChild(node);
+        });
+    }
+
+    formatDateMDY(value) {
+        try {
+            const d = new Date(value);
+            if (isNaN(d)) return '—';
+            const opts = { month: 'short', day: '2-digit', year: 'numeric' };
+            return new Intl.DateTimeFormat('en-US', opts).format(d);
+        } catch (e) { return '—'; }
+    }
+
+    truncate(text, length) {
+        if (!text) return '';
+        if (text.length <= length) return text;
+        return text.slice(0, length).trim().replace(/\s+$/, '') + '...';
     }
 
     updateStats() {
@@ -378,28 +628,28 @@ class ContractorDashboard {
         if (currentTotal !== this.stats.total) {
             this.animateNumber('statTotal', this.stats.total);
         }
-        
+
         const currentPending = this.getStatValue('statPending');
         if (currentPending !== this.stats.pending) {
             this.animateNumber('statPending', this.stats.pending);
         }
-        
+
         const currentActive = this.getStatValue('statActive');
         if (currentActive !== this.stats.active) {
             this.animateNumber('statActive', this.stats.active);
         }
-        
+
         const currentInProgress = this.getStatValue('statInProgress');
         if (currentInProgress !== this.stats.inProgress) {
             this.animateNumber('statInProgress', this.stats.inProgress);
         }
-        
+
         // Update project counts
         const allProjectsCount = document.getElementById('allProjectsCount');
         if (allProjectsCount) {
             allProjectsCount.textContent = this.stats.total;
         }
-        
+
         const finishedProjectsCount = document.getElementById('finishedProjectsCount');
         if (finishedProjectsCount) {
             finishedProjectsCount.textContent = this.stats.completed;
@@ -508,7 +758,7 @@ class ContractorDashboard {
 
     setupStatsInteractivity() {
         const statItems = document.querySelectorAll('.stat-item');
-        
+
         statItems.forEach((item, index) => {
             // Add click handler
             item.addEventListener('click', () => {
@@ -616,7 +866,7 @@ class ContractorDashboard {
         if (pinnedEmpty && !pinnedEmpty.classList.contains('hidden')) {
             // Show a toast/notification
             this.showNotification('Select a project to pin from your projects list');
-            
+
             // Add ripple effect
             this.createRippleEffect(event, pinnedCard);
         }
@@ -645,14 +895,14 @@ class ContractorDashboard {
             // Remove existing and add to top
             this.pinnedProjects.splice(existingIndex, 1);
         }
-        
+
         // Add to the beginning of the array (top of list)
         this.pinnedProjects.unshift(project);
 
         // Save and render
         this.savePinnedProjects();
         this.filterPinnedProjects(); // This will call renderPinnedProjects
-        
+
         this.showNotification(`Project "${project.title}" pinned successfully!`);
     }
 
@@ -669,11 +919,11 @@ class ContractorDashboard {
 
     handleAllProjectsClick(event) {
         const card = document.getElementById('allProjectsCard');
-        
+
         // Add click animation
         this.pulseAnimation(card);
         this.createRippleEffect(event, card);
-        
+
         // Navigate to my projects page
         const projectsUrl = window.contractorRoutes?.projects || '/contractor/projects';
         window.location.href = projectsUrl;
@@ -681,13 +931,13 @@ class ContractorDashboard {
 
     handleFinishedProjectsClick(event) {
         const card = document.getElementById('finishedProjectsCard');
-        
+
         // Add click animation
         this.pulseAnimation(card);
         if (event) {
         this.createRippleEffect(event, card);
         }
-        
+
         // Navigate to my bids page
         const bidsUrl = window.contractorRoutes?.bids || '/contractor/mybids';
         window.location.href = bidsUrl;
@@ -696,7 +946,7 @@ class ContractorDashboard {
     handleProfileClick() {
         // Navigate to profile page or open profile menu
         this.showNotification('Opening profile...');
-        
+
         // In a real implementation:
         // window.location.href = '/owner/profile';
     }
@@ -705,7 +955,7 @@ class ContractorDashboard {
         if (event) {
             event.stopPropagation();
         }
-        
+
         // Open the pin project modal
         this.openPinProjectModal();
     }
@@ -896,7 +1146,7 @@ class ContractorDashboard {
         // Filter projects
         this.filteredProjectsForPinning = this.allProjectsForPinning.filter(project => {
             // Search filter
-            const matchesSearch = searchQuery === '' || 
+            const matchesSearch = searchQuery === '' ||
                 project.title.toLowerCase().includes(searchQuery) ||
                 project.description.toLowerCase().includes(searchQuery) ||
                 project.location.toLowerCase().includes(searchQuery);
@@ -1073,7 +1323,7 @@ style.textContent = `
             opacity: 1;
         }
     }
-    
+
     @keyframes slideOutDown {
         from {
             transform: translateY(0);
