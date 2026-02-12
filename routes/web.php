@@ -16,8 +16,13 @@ use App\Http\Controllers\Admin\projectManagementController;
 
 
 Route::get('/', function () {
-    return view('signUp_logIN.introduction');
+    return view('signUp_logIN.landingPage');
 });
+
+// Landing page
+Route::get('/landing', function () {
+    return view('signUp_logIN.landingPage');
+})->name('landing');
 
 // Splash / introduction screen for owner signup/login
 Route::get('/intro', function () {
@@ -111,6 +116,9 @@ Route::get('/contractor/profile', [\App\Http\Controllers\contractor\cprocessCont
 Route::get('/accounts/login', [authController::class, 'showLoginForm']);
 Route::post('/accounts/login', [authController::class, 'login']);
 Route::get('/accounts/signup', [authController::class, 'showSignupForm']);
+Route::get('/owner/signup', function() {
+    return redirect('/account-type');
+})->name('owner.signup');
 Route::post('/accounts/signup/select-role', [authController::class, 'selectRole']);
 Route::post('/accounts/logout', [authController::class, 'logout']);
 Route::get('/accounts/logout', [authController::class, 'logout']);

@@ -6,8 +6,9 @@
 	/* ========== CAROUSEL VARIABLES ========== */
 	--carousel-bg-color: #ffffff;
 	--carousel-logo-size: 200px;
-	--carousel-logo-margin-top: 40px;
-	--carousel-image-height: 400px;
+	--carousel-logo-margin-top: 10px;
+	--carousel-image-margin-top: -150px;
+	--carousel-image-height: 580px;
 	--carousel-title-size: 20px;
 	--carousel-description-size: 16px;
 	--carousel-padding-top: 20px;
@@ -179,6 +180,7 @@ body {
 .carousel-image {
 	width: 100%;
 	height: var(--carousel-image-height);
+	margin-top: var(--carousel-image-margin-top);
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -195,6 +197,7 @@ body {
 	width: 100%;
 	padding: 0 16px;
 	max-width: 600px;
+	margin-top: -50px;
 }
 
 .carousel-title {
@@ -223,6 +226,7 @@ body {
 	justify-content: center;
 	gap: var(--dot-gap);
 	margin: 16px 0;
+	margin-top: -10px;
 }
 
 .carousel-dots button {
@@ -250,6 +254,33 @@ body {
 	color: var(--hint-color);
 	margin: 8px 0 0 0;
 	letter-spacing: 0.02em;
+}
+
+.carousel-skip {
+	margin-top: -10px;
+	padding: 12px 36px;
+	min-width: 160px;
+	border-radius: 20px;
+	border: 2px solid rgba(245, 124, 0, 0.65);
+	background: transparent;
+	color: var(--accent-color);
+	font-size: 14px;
+	font-weight: 600;
+	letter-spacing: 0.02em;
+	cursor: pointer;
+	transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.carousel-skip:hover {
+	background: linear-gradient(90deg, #f9a825, #f57c00);
+	color: #ffffff;
+	box-shadow: 0 8px 18px rgba(245, 124, 0, 0.35);
+	transform: translateY(-1px);
+}
+
+.carousel-skip:active {
+	transform: translateY(0);
+	box-shadow: 0 6px 14px rgba(245, 124, 0, 0.3);
 }
 
 .welcome-container {

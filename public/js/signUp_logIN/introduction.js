@@ -53,6 +53,7 @@
 		const dotsEl = document.getElementById('carouselDots');
 		const container = document.getElementById('carouselContainer');
 		const welcomeContainer = document.getElementById('welcomeContainer');
+		const skipBtn = document.getElementById('carouselSkip');
 
 		if (!imgEl || !titleEl || !descEl || !dotsEl || !container) return;
 
@@ -87,20 +88,31 @@
 			render();
 		};
 
+		const showWelcome = () => {
+			container.classList.add('hidden');
+			if (welcomeContainer) {
+				welcomeContainer.classList.remove('hidden');
+			}
+		};
+
 		const nextSlide = () => {
 			if (currentIndex < slides.length - 1) {
 				goToSlide(currentIndex + 1);
 			} else {
 				// Last slide - show welcome screen
-				container.classList.add('hidden');
-				if (welcomeContainer) {
-					welcomeContainer.classList.remove('hidden');
-				}
+				showWelcome();
 			}
 		};
 
 		// Click anywhere to advance
 		container.addEventListener('click', nextSlide);
+
+		if (skipBtn) {
+			skipBtn.addEventListener('click', (e) => {
+				e.stopPropagation();
+				showWelcome();
+			});
+		}
 
 		// Keyboard navigation
 		document.addEventListener('keydown', (e) => {
@@ -113,6 +125,10 @@
 				if (currentIndex > 0) {
 					goToSlide(currentIndex - 1);
 				}
+			}
+			if ((e.key === 'Enter' || e.key === ' ') && document.activeElement === skipBtn) {
+				e.preventDefault();
+				showWelcome();
 			}
 		});
 

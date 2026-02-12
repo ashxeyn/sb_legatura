@@ -45,8 +45,7 @@
 			<!-- Dots Navigation -->
 			<div class="carousel-dots" id="carouselDots" role="tablist"></div>
 
-			<!-- Hint -->
-			<p class="carousel-hint">Tap anywhere to next</p>
+			<button class="carousel-skip" id="carouselSkip" type="button">Skip</button>
 		</div>
 	</div>
 
