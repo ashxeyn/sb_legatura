@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use App\Services\NotificationService;
 
 class membersController extends Controller
 {
@@ -224,12 +225,13 @@ class membersController extends Controller
             } while (DB::table('users')->where('username', $username)->exists());
 
             // Create user record
+            // Default password is 'teammember123@!' — login detects this via
+            // Hash::check and forces the user to change it (no DB column needed).
             $newUserId = DB::table('users')->insertGetId([
                 'profile_pic' => $profilePicPath,
                 'username' => $username,
                 'email' => $validated['email'],
                 'password_hash' => bcrypt('teammember123@!'),
-                'must_change_password' => true,
                 'OTP_hash' => 'contractor_created',
                 'user_type' => 'staff',
                 'created_at' => now(),
@@ -267,6 +269,9 @@ class membersController extends Controller
             } catch (\Exception $e) {
                 Log::error('Failed to send team member email: ' . $e->getMessage());
             }
+
+            // Notify the new team member
+            NotificationService::create((int)$newUserId, 'team_member_added', 'Welcome to the Team', "You have been added as a {$validated['role']} to a contractor team.", 'normal', 'user', (int)$newUserId, ['screen' => 'Dashboard']);
 
             return response()->json([
                 'success' => true,
@@ -657,6 +662,12 @@ class membersController extends Controller
                 ->update([
                     'is_active' => $newStatus
                 ]);
+
+            // Notify the team member about their status change
+            if ($contractorUser->user_id) {
+                $statusLabel = $newStatus ? 'activated' : 'deactivated';
+                NotificationService::create((int)$contractorUser->user_id, 'team_member_status', "Account {$statusLabel}", "Your team member account has been {$statusLabel}.", $newStatus ? 'normal' : 'high', 'user', (int)$contractorUser->user_id, ['screen' => 'Dashboard']);
+            }
 
             return response()->json([
                 'success' => true,

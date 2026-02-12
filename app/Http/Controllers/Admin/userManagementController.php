@@ -1019,7 +1019,9 @@ class userManagementController extends authController
     public function approveVerification(Request $request, $id)
     {
         $verificationModel = new userVerificationClass();
-        $result = $verificationModel->approveVerification($id);
+        // Allow client to specify which role to approve (contractor | property_owner)
+        $targetRole = $request->input('targetRole') ?? null;
+        $result = $verificationModel->approveVerification($id, $targetRole);
 
         if (!$result['success']) {
             return response()->json($result, 404);
@@ -1034,8 +1036,18 @@ class userManagementController extends authController
     public function rejectVerification(rejectVerificationRequest $request, $id)
     {
         $validated = $request->validated();
+        // Safely obtain targetRole: prefer validated value, fall back to raw input
+        $targetRole = $validated['targetRole'] ?? $request->input('targetRole') ?? null;
+
+        if (!$targetRole) {
+            return response()->json([
+                'success' => false,
+                'message' => 'The role being rejected is required.'
+            ], 400);
+        }
+
         $verificationModel = new userVerificationClass();
-        $result = $verificationModel->rejectVerification($id, $validated['reason']);
+        $result = $verificationModel->rejectVerification($id, $validated['reason'], $targetRole);
 
         if (!$result['success']) {
             return response()->json($result, 404);
@@ -1418,7 +1430,7 @@ class userManagementController extends authController
                 ->where('user_id', $id)
                 ->where('role', 'owner')
                 ->update(['is_active' => 1]);
-            
+
             \Log::info("Contractor verification approved for user_id: {$id}");
             return response()->json([
                 'success' => true,

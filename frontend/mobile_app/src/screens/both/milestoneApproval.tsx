@@ -528,6 +528,13 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
 
   // If a milestone detail is selected, show the detail view
   if (selectedMilestoneDetail) {
+    // Determine if the previous item (by sequence_order) is completed
+    const currentSeq = selectedMilestoneDetail.item.sequence_order;
+    const prevItem = allMilestoneItems
+      .filter(i => i.sequence_order < currentSeq)
+      .sort((a, b) => b.sequence_order - a.sequence_order)[0];
+    const isPreviousItemComplete = !prevItem || prevItem.item_status === 'completed';
+
     return (
       <MilestoneDetail
         route={{
@@ -542,6 +549,7 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
             isCompleted: selectedMilestoneDetail.item.parentMilestoneStatus === 'completed',
             userRole,
             userId,
+            isPreviousItemComplete,
           },
         }}
         navigation={{
@@ -628,10 +636,16 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
 
             const isApproved = item.parentSetupStatus === 'approved';
 
+            // Sequential lock: check if previous item is completed
+            const prevItem = allMilestoneItems
+              .filter(i => i.sequence_order < item.sequence_order)
+              .sort((a, b) => b.sequence_order - a.sequence_order)[0];
+            const isLocked = prevItem && prevItem.item_status !== 'completed';
+
             return (
               <TouchableOpacity
                 key={item.item_id}
-                style={styles.timelineItem}
+                style={[styles.timelineItem, isLocked && { opacity: 0.55 }]}
                 onPress={() => handleMilestonePress(item, milestoneNumber, cumulativePercentage)}
                 activeOpacity={0.7}
               >
@@ -639,7 +653,12 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
                 <View style={[styles.timelineSide, styles.timelineLeft]}>
                   {isLeft && (
                     <View style={styles.milestoneContent}>
-                      <Text style={styles.milestoneLabel}>Milestone {milestoneNumber}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Text style={styles.milestoneLabel}>Milestone {milestoneNumber}</Text>
+                        {isLocked && (
+                          <Feather name="lock" size={12} color={COLORS.textMuted} style={{ marginLeft: 6 }} />
+                        )}
+                      </View>
                       <Text style={styles.milestoneTitle}>{item.milestone_item_title}</Text>
                       <Text style={styles.milestoneCost}>{formatCurrency(item.milestone_item_cost || 0)}</Text>
                       <Text style={styles.milestonePercent}>{itemPercentage.toFixed(2)}%</Text>
@@ -679,7 +698,12 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
                 <View style={[styles.timelineSide, styles.timelineRight]}>
                   {!isLeft && (
                     <View style={styles.milestoneContent}>
-                      <Text style={styles.milestoneLabel}>Milestone {milestoneNumber}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Text style={styles.milestoneLabel}>Milestone {milestoneNumber}</Text>
+                        {isLocked && (
+                          <Feather name="lock" size={12} color={COLORS.textMuted} style={{ marginLeft: 6 }} />
+                        )}
+                      </View>
                       <Text style={styles.milestoneTitle}>{item.milestone_item_title}</Text>
                       <Text style={styles.milestoneCost}>{formatCurrency(item.milestone_item_cost || 0)}</Text>
                       <Text style={styles.milestonePercent}>{itemPercentage.toFixed(2)}%</Text>

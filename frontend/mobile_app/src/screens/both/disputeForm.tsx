@@ -44,7 +44,7 @@ const DISPUTE_TYPES = [
   { value: 'Payment', label: 'Payment Issue', icon: 'dollar-sign', description: 'Payment not received or incorrect amount' },
   { value: 'Delay', label: 'Project Delay', icon: 'clock', description: 'Work not completed on time' },
   { value: 'Quality', label: 'Quality Issue', icon: 'alert-circle', description: 'Work quality below expectations' },
-  { value: 'Request to Halt', label: 'Request to Halt', icon: 'pause-circle', description: 'Request to halt or pause the project' },
+  { value: 'Halt', label: 'Request to Halt', icon: 'pause-circle', description: 'Request to halt or pause the project' },
   { value: 'Others', label: 'Other Issue', icon: 'more-horizontal', description: 'Specify other concerns' },
 ];
 

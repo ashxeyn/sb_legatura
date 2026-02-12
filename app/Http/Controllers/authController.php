@@ -12,9 +12,54 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-
 class authController extends Controller
 {
+    // Resubmit (re-apply) for rejected contractor/owner
+    public function resubmitRoleApplication(Request $request)
+    {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => 'Authentication required.'], 401);
+        }
+
+        $role = $request->input('role'); // 'contractor' or 'owner'
+        if (!in_array($role, ['contractor', 'owner'])) {
+            return response()->json(['success' => false, 'message' => 'Invalid role.'], 422);
+        }
+
+        if ($role === 'contractor') {
+            $contractor = DB::table('contractors')->where('user_id', $user->user_id)->first();
+            if (!$contractor) {
+                return response()->json(['success' => false, 'message' => 'No contractor application found.'], 404);
+            }
+            if ($contractor->verification_status !== 'rejected') {
+                return response()->json(['success' => false, 'message' => 'Contractor application is not rejected.'], 400);
+            }
+            DB::table('contractors')->where('contractor_id', $contractor->contractor_id)
+                ->update([
+                    'verification_status' => 'pending',
+                    'rejection_reason' => null,
+                    'updated_at' => now(),
+                ]);
+            return response()->json(['success' => true, 'message' => 'Contractor application resubmitted.']);
+        } elseif ($role === 'owner') {
+            $owner = DB::table('property_owners')->where('user_id', $user->user_id)->first();
+            if (!$owner) {
+                return response()->json(['success' => false, 'message' => 'No owner application found.'], 404);
+            }
+            if ($owner->verification_status !== 'rejected') {
+                return response()->json(['success' => false, 'message' => 'Owner application is not rejected.'], 400);
+            }
+            DB::table('property_owners')->where('owner_id', $owner->owner_id)
+                ->update([
+                    'verification_status' => 'pending',
+                    'rejection_reason' => null,
+                    'updated_at' => now(),
+                ]);
+            return response()->json(['success' => true, 'message' => 'Owner application resubmitted.']);
+        }
+        return response()->json(['success' => false, 'message' => 'Unknown error.'], 500);
+    }
     protected $authService;
     protected $accountClass;
     protected $psgcService;
@@ -916,19 +961,26 @@ class authController extends Controller
             try {
                 $existingContractor = DB::table('contractors')->where('user_id', $userId)->first();
                 if ($existingContractor) {
-                    return response()->json(['success' => true, 'message' => 'Account already exists', 'user_id' => $userId, 'contractor_id' => $existingContractor->contractor_id], 200);
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Account already exists',
+                        'user_id' => $userId,
+                        'contractor_id' => $existingContractor->contractor_id,
+                        'pending_role_request' => $existingContractor->verification_status === 'pending',
+                    ], 200);
                 }
             } catch (\Throwable $e) {
                 \Log::warning('Existing contractor lookup failed: ' . $e->getMessage());
             }
         } else {
+            // Do NOT set user_type to contractor yet; keep original user_type
             $userId = $this->accountClass->createUser([
                 'profile_pic' => $profilePicPath,
                 'username' => $step2['username'] ?? null,
                 'email' => $step2['company_email'] ?? ($step2['email'] ?? null),
                 'password_hash' => isset($step2['password']) ? $this->authService->hashPassword($step2['password']) : null,
                 'OTP_hash' => $step2['otp_hash'] ?? null,
-                'user_type' => 'contractor'
+                // 'user_type' => 'contractor' // Do NOT set yet
             ]);
 
             // Log creation result for debugging (temporary)
@@ -960,7 +1012,8 @@ class authController extends Controller
             'business_permit_city' => $step4['business_permit_city'],
             'business_permit_expiration' => $step4['business_permit_expiration'],
             'tin_business_reg_number' => $step4['tin_business_reg_number'],
-            'dti_sec_registration_photo' => $step4['dti_sec_registration_photo']
+            'dti_sec_registration_photo' => $step4['dti_sec_registration_photo'],
+            'verification_status' => 'pending', // Mark as pending until admin approval
         ]);
 
         try {
@@ -982,19 +1035,19 @@ class authController extends Controller
         Session::forget(['signup_user_type', 'signup_step', 'contractor_step1', 'contractor_step2', 'contractor_step4']);
 
         if ($request->expectsJson()) {
-
             return response()->json([
                 'success' => true,
                 'message' => 'Registration successful! Please wait for admin approval.',
                 'user_id' => $userId,
                 'contractor_id' => $contractorId,
+                'pending_role_request' => true,
                 'redirect_url' => '/accounts/login'
             ], 201);
         } else {
-
             return response()->json([
                 'success' => true,
                 'message' => 'Registration successful! Please wait for admin approval.',
+                'pending_role_request' => true,
                 'redirect' => '/accounts/login'
             ]);
         }
@@ -1563,17 +1616,24 @@ class authController extends Controller
             try {
                 $existingOwner = DB::table('property_owners')->where('user_id', $userId)->first();
                 if ($existingOwner) {
-                    return response()->json(['success' => true, 'message' => 'Account already exists', 'user_id' => $userId, 'owner_id' => $existingOwner->owner_id], 200);
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Account already exists',
+                        'user_id' => $userId,
+                        'owner_id' => $existingOwner->owner_id,
+                        'pending_role_request' => $existingOwner->verification_status === 'pending',
+                    ], 200);
                 }
             } catch (\Throwable $e) { \Log::warning('Existing owner lookup failed: ' . $e->getMessage()); }
         } else {
+            // Do NOT set user_type to property_owner yet; keep original user_type
             $userId = $this->accountClass->createUser([
                 'profile_pic' => $profilePicPath,
                 'username' => $step2['username'] ?? null,
                 'email' => $step2['email'] ?? null,
                 'password_hash' => isset($step2['password']) ? $this->authService->hashPassword($step2['password']) : null,
                 'OTP_hash' => $step2['otp_hash'] ?? null,
-                'user_type' => 'property_owner'
+                // 'user_type' => 'property_owner' // Do NOT set yet
             ]);
 
             try { \Log::info('propertyOwnerFinalStep: created user id -> ' . var_export($userId, true)); } catch (\Throwable $e) {}
@@ -1594,7 +1654,8 @@ class authController extends Controller
             'age' => $step1['age'],
             'occupation_id' => $step1['occupation_id'],
             'occupation_other' => $step1['occupation_other'] ?? null,
-            'address' => $step1['address']
+            'address' => $step1['address'],
+            'verification_status' => 'pending', // Mark as pending until admin approval
         ]);
 
         try { \Log::info('propertyOwnerFinalStep: created owner id -> ' . var_export($ownerId, true)); } catch (\Throwable $e) {}
@@ -1603,10 +1664,22 @@ class authController extends Controller
         Session::forget(['signup_user_type', 'signup_step', 'owner_step1', 'owner_step2', 'owner_step4']);
 
         if ($request->expectsJson()) {
-            return response()->json(['success' => true, 'message' => 'Registration successful! You can now login.', 'user_id' => $userId, 'owner_id' => $ownerId, 'redirect_url' => '/accounts/login'], 201);
+            return response()->json([
+                'success' => true,
+                'message' => 'Registration successful! Please wait for admin approval.',
+                'user_id' => $userId,
+                'owner_id' => $ownerId,
+                'pending_role_request' => true,
+                'redirect_url' => '/accounts/login'
+            ], 201);
         }
 
-        return response()->json(['success' => true, 'message' => 'Registration successful! Please wait for verification.', 'redirect' => '/accounts/login']);
+        return response()->json([
+            'success' => true,
+            'message' => 'Registration successful! Please wait for admin approval.',
+            'pending_role_request' => true,
+            'redirect' => '/accounts/login'
+        ]);
     }
 
     // Temporary debug helper: lookup a user by email for local testing
@@ -2430,13 +2503,17 @@ class authController extends Controller
                 $token = $eloquentUser->createToken('mobile-app')->plainTextToken;
 
                 // Build response data
+                // Detect whether the user still has the default staff password
+                // instead of relying on a dedicated DB column.
+                $mustChangePassword = \Illuminate\Support\Facades\Hash::check('teammember123@!', $eloquentUser->password_hash);
+
                 $responseData = [
                     'success' => true,
                     'message' => 'Login successful',
                     'user' => $userData,
                     'userType' => $result['userType'],
                     'token' => $token,
-                    'must_change_password' => (bool) ($eloquentUser->must_change_password ?? false),
+                    'must_change_password' => $mustChangePassword,
                 ];
 
                 /**
@@ -2463,20 +2540,20 @@ class authController extends Controller
                 if ($isContractorUser) {
                     $contractorAuthService = app(\App\Services\ContractorAuthorizationService::class);
                     $userId = $userData->user_id ?? $userData->id;
-                    
+
                     $memberContext = $contractorAuthService->getAuthorizationContext($userId);
-                    
+
                     // Always set determinedRole for contractor/staff users
                     $responseData['determinedRole'] = 'contractor';
-                    
+
                     if ($memberContext) {
                         $responseData['contractor_member'] = $memberContext;
-                        
+
                         // Block login if member is inactive
                         if (!$memberContext['is_active']) {
                             // Delete the just-created token since they can't use it
                             $eloquentUser->tokens()->where('name', 'mobile-app')->delete();
-                            
+
                             return response()->json([
                                 'success' => false,
                                 'message' => 'Your contractor member account is inactive. Please contact the contractor owner.',
@@ -2496,7 +2573,10 @@ class authController extends Controller
             } else {
                 return response()->json([
                     'success' => false,
-                    'message' => $result['message']
+                    'message' => $result['message'],
+                    'data' => [
+                        'user' => $result['user'] ?? null
+                    ]
                 ], 401);
             }
         } catch (\Illuminate\Validation\ValidationException $e) {
@@ -2581,7 +2661,40 @@ class authController extends Controller
 
     /**
      * API: Force change password (for first-time member login)
-     * 
+     *
+e,
+                'message' => 'Validation failed',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            // Log the actual error for debugging
+            \Illuminate\Support\Facades\Log::error('Registration error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred during registration: ' . $e->getMessage(),
+                'debug' => [
+                    'error' => $e->getMessage(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine()
+                ]
+            ], 500);
+        }
+    }
+
+    // API Test Connection
+    public function apiTest()
+    {
+        return response()->json([
+            'success' => true,
+            'message' => 'API connection successful',
+            'timestamp' => now(),
+            'server' => 'Laravel ' . app()->version()
+        ], 200);
+    }
+
+    /**
+     * API: Force change password (for first-time member login)
+     *
      * Password rules:
      * - At least 8 characters
      * - At least one uppercase letter
@@ -2608,7 +2721,7 @@ class authController extends Controller
                 ], 422);
             }
 
-            // Check user exists and must_change_password is true
+            // Check user exists and still has the default password
             $user = \App\Models\User::find($userId);
             if (!$user) {
                 return response()->json([
@@ -2617,16 +2730,16 @@ class authController extends Controller
                 ], 404);
             }
 
-            if (!$user->must_change_password) {
+            if (!\Illuminate\Support\Facades\Hash::check('teammember123@!', $user->password_hash)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Password change is not required for this account',
                 ], 400);
             }
 
-            // Update password and clear the flag
+            // Update password (changing away from the default automatically
+            // clears the "must change" state — no flag column needed).
             $user->password_hash = bcrypt($request->new_password);
-            $user->must_change_password = false;
             $user->updated_at = now();
             $user->save();
 

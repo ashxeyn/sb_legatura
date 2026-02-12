@@ -351,8 +351,8 @@
     <!-- Modal content loaded via AJAX -->
   </div>
 
-  <script src="{{ asset('js/admin/reusables/filters.js') }}" defer></script>
-  <script src="{{ asset('js/admin/projectManagement/listOfProjects.js') }}" defer></script>
+  <script src="{{ asset('js/admin/reusables/filters.js') }}"></script>
+  <script src="{{ asset('js/admin/projectManagement/listOfprojects.js') }}"></script>
 
 </body>
 

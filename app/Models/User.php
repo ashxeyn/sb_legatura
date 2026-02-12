@@ -43,7 +43,6 @@ class User extends Authenticatable
         'username',
         'email',
         'password_hash',
-        'must_change_password',
         'OTP_hash',
         'user_type',
         'is_verified',
@@ -70,7 +69,6 @@ class User extends Authenticatable
         return [
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
-            'must_change_password' => 'boolean',
         ];
     }
 

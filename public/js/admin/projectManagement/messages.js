@@ -1,721 +1,1582 @@
-// Messages page interactivity
+/**
+ * Admin Messages Page - Real-time Chat with Pusher
+ * Legatura Platform
+ */
 
-// Mock data for conversations
-const conversationsData = [
-  {
-    id: 1,
-    name: 'John Martinez',
-    avatar: 'https://ui-avatars.com/api/?name=John+Martinez&background=6366f1&color=fff',
-    project: 'Commercial Building Renovation',
-    lastMessage: 'Thanks for the update on the materials delivery.',
-    time: '2 min ago',
-    unread: 3,
-    status: 'active',
-    flagged: false,
-    suspended: false,
-    online: true,
-    messages: [
-      { text: 'Hi, I wanted to check on the project timeline', sent: false, time: '10:30 AM' },
-      { text: 'Hello! The timeline is on track. We should be done by next week.', sent: true, time: '10:32 AM' },
-      { text: 'Great! What about the materials?', sent: false, time: '10:35 AM' },
-      { text: 'Materials are scheduled for delivery tomorrow morning.', sent: true, time: '10:37 AM' },
-      { text: 'Thanks for the update on the materials delivery.', sent: false, time: '2 min ago' }
-    ],
-    startDate: 'Nov 20, 2025',
-    messageCount: 45
-  },
-  {
-    id: 2,
-    name: 'Sarah Chen',
-    avatar: 'https://ui-avatars.com/api/?name=Sarah+Chen&background=8b5cf6&color=fff',
-    project: 'Residential Home Extension',
-    lastMessage: 'Can we schedule a site visit?',
-    time: '15 min ago',
-    unread: 1,
-    status: 'active',
-    flagged: false,
-    suspended: false,
-    online: true,
-    messages: [
-      { text: 'Good morning! How is the extension coming along?', sent: false, time: '9:00 AM' },
-      { text: 'Morning! Everything is progressing well. We finished the foundation work.', sent: true, time: '9:15 AM' },
-      { text: 'Excellent news! When can I come see it?', sent: false, time: '9:20 AM' },
-      { text: 'Can we schedule a site visit?', sent: false, time: '15 min ago' }
-    ],
-    startDate: 'Nov 18, 2025',
-    messageCount: 32
-  },
-  {
-    id: 3,
-    name: 'David Park',
-    avatar: 'https://ui-avatars.com/api/?name=David+Park&background=f59e0b&color=fff',
-    project: 'Office Space Remodeling',
-    lastMessage: 'I need to discuss the payment terms.',
-    time: '1 hour ago',
-    unread: 0,
-    status: 'flagged',
-    flagged: true,
-    suspended: false,
-    online: false,
-    messages: [
-      { text: 'The initial quote seems higher than expected', sent: false, time: '8:00 AM' },
-      { text: 'I understand your concern. Let me break down the costs for you.', sent: true, time: '8:30 AM' },
-      { text: 'I need to discuss the payment terms.', sent: false, time: '1 hour ago' }
-    ],
-    startDate: 'Nov 15, 2025',
-    messageCount: 28
-  },
-  {
-    id: 4,
-    name: 'Lisa Anderson',
-    avatar: 'https://ui-avatars.com/api/?name=Lisa+Anderson&background=ef4444&color=fff',
-    project: 'Kitchen Renovation',
-    lastMessage: 'This is unacceptable! I want a refund!',
-    time: '2 hours ago',
-    unread: 0,
-    status: 'suspended',
-    flagged: false,
-    suspended: true,
-    online: false,
-    messages: [
-      { text: 'The cabinets you installed are the wrong color!', sent: false, time: 'Yesterday' },
-      { text: 'I apologize for the error. We can replace them at no additional cost.', sent: true, time: 'Yesterday' },
-      { text: 'This is unacceptable! I want a refund!', sent: false, time: '2 hours ago' }
-    ],
-    startDate: 'Nov 10, 2025',
-    messageCount: 56
-  },
-  {
-    id: 5,
-    name: 'Michael Torres',
-    avatar: 'https://ui-avatars.com/api/?name=Michael+Torres&background=10b981&color=fff',
-    project: 'Bathroom Remodeling',
-    lastMessage: 'The work looks amazing! Thank you.',
-    time: '3 hours ago',
-    unread: 0,
-    status: 'active',
-    flagged: false,
-    suspended: false,
-    online: true,
-    messages: [
-      { text: 'Just finished inspecting the bathroom. Looks great!', sent: false, time: '3 hours ago' },
-      { text: 'Thank you! We are glad you are satisfied with the work.', sent: true, time: '3 hours ago' },
-      { text: 'The work looks amazing! Thank you.', sent: false, time: '3 hours ago' }
-    ],
-    startDate: 'Nov 12, 2025',
-    messageCount: 41
-  },
-  {
-    id: 6,
-    name: 'Emma Wilson',
-    avatar: 'https://ui-avatars.com/api/?name=Emma+Wilson&background=3b82f6&color=fff',
-    project: 'Garden Landscaping',
-    lastMessage: 'When will the plants be delivered?',
-    time: '5 hours ago',
-    unread: 2,
-    status: 'active',
-    flagged: false,
-    suspended: false,
-    online: false,
-    messages: [
-      { text: 'I love the design you proposed!', sent: false, time: 'Yesterday' },
-      { text: 'Thank you! We will start installation next week.', sent: true, time: 'Yesterday' },
-      { text: 'When will the plants be delivered?', sent: false, time: '5 hours ago' }
-    ],
-    startDate: 'Nov 19, 2025',
-    messageCount: 23
-  },
-  {
-    id: 7,
-    name: 'Robert Kim',
-    avatar: 'https://ui-avatars.com/api/?name=Robert+Kim&background=f59e0b&color=fff',
-    project: 'Basement Finishing',
-    lastMessage: 'I have concerns about the electrical work.',
-    time: '1 day ago',
-    unread: 0,
-    status: 'flagged',
-    flagged: true,
-    suspended: false,
-    online: false,
-    messages: [
-      { text: 'The electrical outlets are not where I asked them to be', sent: false, time: '1 day ago' },
-      { text: 'I apologize. Let me review the plans and get back to you.', sent: true, time: '1 day ago' },
-      { text: 'I have concerns about the electrical work.', sent: false, time: '1 day ago' }
-    ],
-    startDate: 'Nov 8, 2025',
-    messageCount: 67
-  }
-];
+let currentConversationId = null;
+let currentReceiverId = null;
+let selectedRecipients = [];
 
-let currentFilter = 'all';
-let selectedConversation = null;
+/**
+ * Format relative time (like "2 minutes ago")
+ */
+function formatRelativeTime(timestamp) {
+    if (!timestamp) return 'just now';
+
+    const now = new Date();
+    const past = new Date(timestamp);
+
+    if (isNaN(past.getTime())) return 'just now';
+
+    const diffInSeconds = Math.floor((now - past) / 1000);
+
+    if (diffInSeconds < -600) return 'just now';
+
+    // If slightly in future or very recent, show as "just now"
+    if (diffInSeconds < 10) {
+        return 'just now';
+    }
+
+    if (diffInSeconds < 60) {
+        return `${diffInSeconds} seconds ago`;
+    }
+
+    const diffInMinutes = Math.floor(diffInSeconds / 60);
+    if (diffInMinutes < 60) {
+        return diffInMinutes === 1 ? '1 minute ago' : `${diffInMinutes} minutes ago`;
+    }
+
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    if (diffInHours < 24) {
+        return diffInHours === 1 ? '1 hour ago' : `${diffInHours} hours ago`;
+    }
+
+    const diffInDays = Math.floor(diffInHours / 24);
+    if (diffInDays < 7) {
+        return diffInDays === 1 ? '1 day ago' : `${diffInDays} days ago`;
+    }
+
+    const diffInWeeks = Math.floor(diffInDays / 7);
+    if (diffInWeeks < 4) {
+        return diffInWeeks === 1 ? '1 week ago' : `${diffInWeeks} weeks ago`;
+    }
+
+    const diffInMonths = Math.floor(diffInDays / 30);
+    if (diffInMonths < 12) {
+        return diffInMonths === 1 ? '1 month ago' : `${diffInMonths} months ago`;
+    }
+
+    const diffInYears = Math.floor(diffInDays / 365);
+    return diffInYears === 1 ? '1 year ago' : `${diffInYears} years ago`;
+}
+
+/**
+ * Update all relative timestamps on the page
+ */
+function updateAllTimestamps() {
+    document.querySelectorAll('.relative-time').forEach(element => {
+        const timestamp = element.getAttribute('data-timestamp');
+        if (timestamp) {
+            element.textContent = formatRelativeTime(timestamp);
+        }
+    });
+}
 
 document.addEventListener('DOMContentLoaded', () => {
-  renderConversations();
-  setupEventListeners();
+    initializePusher();
+    loadDashboardStats();
+    loadInbox();
+    setupEventListeners();
+
+    // Update timestamps every 30 seconds
+    setInterval(updateAllTimestamps, 30000);
 });
 
-// Render conversations list
-function renderConversations(filter = 'all') {
-  const list = document.getElementById('conversationsList');
-  let filtered = conversationsData;
+/**
+ * Initialize Laravel Echo with Pusher
+ */
+function initializePusher() {
+    try {
+        // Import Laravel Echo and Pusher from CDN (add to blade template)
+        if (typeof window.Echo === 'undefined') {
+            console.error('Laravel Echo not loaded. Add CDN scripts to template.');
+            return;
+        }
 
-  if (filter === 'flagged') {
-    filtered = conversationsData.filter(c => c.flagged);
-  } else if (filter === 'suspended') {
-    filtered = conversationsData.filter(c => c.suspended);
-  }
+        const userId = getUserId();
 
-  list.innerHTML = filtered.map(conv => `
-    <div class="conversation-item ${conv.flagged ? 'flagged' : ''} ${conv.suspended ? 'suspended' : ''}" data-id="${conv.id}">
-      <div class="flex items-start gap-3">
-        <div class="relative flex-shrink-0">
-          <img src="${conv.avatar}" alt="${conv.name}" class="w-12 h-12 rounded-full object-cover">
-          <span class="avatar-status ${conv.online ? 'online' : 'offline'}"></span>
-        </div>
-        <div class="flex-1 min-w-0">
-          <div class="flex items-start justify-between mb-1">
-            <div class="flex items-center gap-2">
-              <h4 class="font-semibold text-gray-800 truncate">${conv.name}</h4>
-              ${conv.flagged ? '<i class="fi fi-sr-flag text-amber-500 text-xs"></i>' : ''}
-              ${conv.suspended ? '<i class="fi fi-sr-ban text-red-500 text-xs"></i>' : ''}
-            </div>
-            <span class="text-xs text-gray-400 flex-shrink-0">${conv.time}</span>
-          </div>
-          <p class="text-xs text-gray-500 mb-1 truncate">${conv.project}</p>
-          <div class="flex items-center justify-between">
-            <p class="text-sm text-gray-600 truncate flex-1">${conv.lastMessage}</p>
-            ${conv.unread > 0 ? `<span class="unread-badge ml-2">${conv.unread}</span>` : ''}
-          </div>
-        </div>
-      </div>
-    </div>
-  `).join('');
+        if (!userId) return;
 
-  // Add click listeners
-  document.querySelectorAll('.conversation-item').forEach(item => {
-    item.addEventListener('click', () => {
-      const id = parseInt(item.dataset.id);
-      selectConversation(id);
-    });
-  });
+        // Listen for incoming messages on user's private channel
+        window.Echo.private(`chat.${userId}`)
+            .listen('.message.sent', (event) => {
+                handleIncomingMessage(event);
+            })
+            .subscribed(() => {})
+            .error((error) => {
+                console.error('Pusher channel subscription failed:', error);
+                // console.info('Tip: Make sure PUSHER credentials are set in .env and queue worker is running');
+            });
+
+    } catch (error) {
+        console.error('Failed to initialize Pusher:', error);
+    }
 }
 
-// Select and display conversation
-function selectConversation(id) {
-  selectedConversation = conversationsData.find(c => c.id === id);
-  if (!selectedConversation) return;
-
-  // Update active state
-  document.querySelectorAll('.conversation-item').forEach(item => {
-    item.classList.remove('active');
-  });
-  document.querySelector(`[data-id="${id}"]`).classList.add('active');
-
-  // Clear unread count
-  selectedConversation.unread = 0;
-
-  // Show message panel
-  document.getElementById('emptyState').classList.add('hidden');
-  document.getElementById('messageContent').classList.remove('hidden');
-  document.getElementById('messageContent').classList.add('flex');
-
-  // Update header
-  document.getElementById('selectedAvatar').src = selectedConversation.avatar;
-  document.getElementById('selectedName').textContent = selectedConversation.name;
-  document.getElementById('selectedProject').textContent = selectedConversation.project;
-  document.getElementById('selectedStatus').className = `absolute bottom-0 right-0 w-3.5 h-3.5 ${selectedConversation.online ? 'bg-emerald-500' : 'bg-gray-400'} border-2 border-white rounded-full`;
-
-  // Update footer
-  document.getElementById('conversationDate').textContent = `Started: ${selectedConversation.startDate}`;
-  document.getElementById('messageCount').textContent = `${selectedConversation.messageCount} messages`;
-
-  // Render messages
-  renderMessages();
-
-  // Update button states
-  updateActionButtons();
-}
-
-// Render messages in conversation
-function renderMessages() {
-  const area = document.getElementById('messagesArea');
-  area.innerHTML = selectedConversation.messages.map(msg => `
-    <div class="flex ${msg.sent ? 'justify-end' : 'justify-start'} mb-4">
-      <div class="message-bubble ${msg.sent ? 'sent' : 'received'}">
-        <div>${msg.text}</div>
-        <span class="message-time">${msg.time}</span>
-      </div>
-    </div>
-  `).join('');
-  area.scrollTop = area.scrollHeight;
-}
-
-// Update action button states
-function updateActionButtons() {
-  const flagBtn = document.getElementById('flagConversationBtn');
-  const suspendBtn = document.getElementById('suspendConversationBtn');
-
-  if (selectedConversation.flagged) {
-    flagBtn.innerHTML = '<i class="fi fi-rr-flag"></i><span>Unflag</span>';
-    flagBtn.classList.add('bg-amber-50', 'border-amber-400', 'text-amber-700');
-  } else {
-    flagBtn.innerHTML = '<i class="fi fi-rr-flag"></i><span>Flag</span>';
-    flagBtn.classList.remove('bg-amber-50', 'border-amber-400', 'text-amber-700');
-  }
-
-  if (selectedConversation.suspended) {
-    suspendBtn.innerHTML = '<i class="fi fi-rr-check-circle"></i><span>Restore</span>';
-    suspendBtn.classList.add('bg-emerald-50', 'border-emerald-400', 'text-emerald-700');
-    suspendBtn.classList.remove('border-red-300', 'text-red-700');
-  } else {
-    suspendBtn.innerHTML = '<i class="fi fi-rr-ban"></i><span>Suspend</span>';
-    suspendBtn.classList.remove('bg-emerald-50', 'border-emerald-400', 'text-emerald-700');
-    suspendBtn.classList.add('border-red-300', 'text-red-700');
-  }
-}
-
-// Setup event listeners
-function setupEventListeners() {
-  // Filter tabs
-  document.querySelectorAll('.filter-tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-      document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
-      tab.classList.add('active');
-      currentFilter = tab.dataset.filter;
-      renderConversations(currentFilter);
-    });
-  });
-
-  // Search
-  document.getElementById('conversationSearch').addEventListener('input', (e) => {
-    const query = e.target.value.toLowerCase();
-    document.querySelectorAll('.conversation-item').forEach(item => {
-      const name = item.querySelector('h4').textContent.toLowerCase();
-      const project = item.querySelector('.text-xs.text-gray-500').textContent.toLowerCase();
-      if (name.includes(query) || project.includes(query)) {
-        item.style.display = '';
-      } else {
-        item.style.display = 'none';
-      }
-    });
-  });
-
-  // Flag button
-  document.getElementById('flagConversationBtn').addEventListener('click', () => {
-    if (selectedConversation.flagged) {
-      // Show unflag confirmation modal
-      document.getElementById('unflagConvName').textContent = selectedConversation.name;
-      showModal('unflagConfirmModal');
-    } else {
-      // Show flag modal
-      showModal('flagConfirmModal');
-    }
-  });
-
-  // Suspend button
-  document.getElementById('suspendConversationBtn').addEventListener('click', () => {
-    if (selectedConversation.suspended) {
-      // Show restore confirmation modal
-      document.getElementById('restoreConvId').textContent = `#${selectedConversation.id}`;
-      document.getElementById('restoreConvName').textContent = selectedConversation.name;
-      document.getElementById('restoreConvStatus').textContent = selectedConversation.flagged ? 'Flagged & Suspended' : 'Suspended';
-      showModal('restoreConfirmModal');
-    } else {
-      // Show suspend modal
-      showModal('suspendConfirmModal');
-    }
-  });
-
-  // Confirm flag
-  document.getElementById('confirmFlagBtn').addEventListener('click', () => {
-    const reason = document.getElementById('flagReason').value;
-    if (!reason) {
-      toast('Please select a reason', 'error');
-      return;
-    }
-    selectedConversation.flagged = true;
-    hideModal('flagConfirmModal');
-    updateActionButtons();
-    renderConversations(currentFilter);
-    toast('Conversation flagged successfully', 'success');
-    // Reset form
-    document.getElementById('flagReason').value = '';
-    document.getElementById('flagNotes').value = '';
-  });
-
-  // Confirm unflag
-  document.getElementById('confirmUnflagBtn').addEventListener('click', () => {
-    selectedConversation.flagged = false;
-    hideModal('unflagConfirmModal');
-    updateActionButtons();
-    renderConversations(currentFilter);
-    toast('Flag removed successfully', 'info');
-  });
-
-  // Confirm suspend
-  document.getElementById('confirmSuspendBtn').addEventListener('click', () => {
-    const reason = document.getElementById('suspendReason').value;
-    if (!reason) {
-      toast('Please select a reason', 'error');
-      return;
-    }
-    selectedConversation.suspended = true;
-    hideModal('suspendConfirmModal');
-    updateActionButtons();
-    renderConversations(currentFilter);
-    toast('Conversation suspended successfully', 'success');
-    // Reset form
-    document.getElementById('suspendReason').value = '';
-    document.getElementById('suspendDuration').value = '24h';
-    document.getElementById('suspendNotes').value = '';
-  });
-
-  // Confirm restore
-  document.getElementById('confirmRestoreBtn').addEventListener('click', () => {
-    selectedConversation.suspended = false;
-    selectedConversation.flagged = false; // Also remove flag when restoring
-    hideModal('restoreConfirmModal');
-    updateActionButtons();
-    renderConversations(currentFilter);
-    toast('Conversation restored successfully', 'success');
-    // Reset form
-    document.getElementById('restoreNotes').value = '';
-  });
-
-  // Modal close buttons
-  document.querySelectorAll('.modal-close').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      const modal = e.target.closest('.modal-overlay');
-      if (modal) hideModal(modal.id);
-    });
-  });
-
-  // Close modal on overlay click
-  document.querySelectorAll('.modal-overlay').forEach(overlay => {
-    overlay.addEventListener('click', (e) => {
-      if (e.target === overlay) {
-        hideModal(overlay.id);
-      }
-    });
-  });
-
-  // Compose button & enhanced multi-recipient + attachments logic
-  const composeBtn = document.getElementById('composeBtn');
-  const sendComposeBtn = document.getElementById('sendComposeBtn');
-  const composeMessage = document.getElementById('composeMessage');
-  const composeProject = document.getElementById('composeProject');
-  const composeCharCount = document.getElementById('composeCharCount');
-  const recipientsWrapper = document.getElementById('composeRecipientsWrapper');
-  const recipientSearch = document.getElementById('composeRecipientSearch');
-  const recipientDropdown = document.getElementById('composeRecipientDropdown');
-  const attachmentInput = document.getElementById('composeAttachmentInput');
-  const attachmentDrop = document.getElementById('composeAttachmentDrop');
-  const attachmentPreview = document.getElementById('composeAttachmentPreview');
-
-  let selectedRecipients = []; // { name, email }
-  let selectedAttachments = []; // { file, url, isImage }
-  const MAX_RECIPIENTS = 8;
-  const MAX_ATTACHMENTS = 8;
-  const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-
-  // Build suggestion list from existing conversations (demo purpose)
-  const availableRecipients = Array.from(
-    new Map(
-      conversationsData.map(c => [c.name, {
-        name: c.name,
-        email: (c.name.split(' ').join('.').toLowerCase() + '@example.com')
-      }])
-    ).values()
-  );
-
-  if (composeBtn) {
-    composeBtn.addEventListener('click', () => {
-      resetComposeForm();
-      showModal('composeModal');
-      recipientSearch.focus();
-    });
-  }
-
-  // Compose tabs
-  document.querySelectorAll('.compose-tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-      document.querySelectorAll('.compose-tab').forEach(t => t.classList.remove('active'));
-      tab.classList.add('active');
-    });
-  });
-
-  // Recipient search & dropdown
-  if (recipientSearch) {
-    recipientSearch.addEventListener('input', () => {
-      renderRecipientDropdown(recipientSearch.value.trim().toLowerCase());
-    });
-
-    recipientSearch.addEventListener('keydown', (e) => {
-      const value = recipientSearch.value.trim();
-      if ((e.key === 'Enter' || e.key === ',') && value.length > 1) {
-        e.preventDefault();
-        addRecipient({
-          name: value.replace(/,$/, ''),
-          email: value.replace(/\s+/g, '.').toLowerCase() + '@example.com'
+/**
+ * Load dashboard analytics cards
+ */
+async function loadDashboardStats() {
+    try {
+        const response = await fetch('/admin/messages/stats', {
+            headers: getAuthHeaders()
         });
-        recipientSearch.value = '';
-        hideRecipientDropdown();
-      } else if (e.key === 'Backspace' && value === '' && selectedRecipients.length) {
-        // remove last recipient quickly
-        selectedRecipients.pop();
-        renderRecipientChips();
-        validateCompose();
-      }
-    });
 
-    recipientSearch.addEventListener('focus', () => {
-      if (recipientSearch.value.trim() === '') renderRecipientDropdown('');
-    });
-  }
+        if (!response.ok) throw new Error('Failed to load stats');
 
-  function renderRecipientDropdown(filter) {
-    if (!recipientDropdown) return;
-    const filtered = availableRecipients.filter(r => r.name.toLowerCase().includes(filter) && !selectedRecipients.some(s => s.name === r.name)).slice(0, 10);
-    if (filtered.length === 0) {
-      recipientDropdown.innerHTML = '<div class="dropdown-item text-gray-500">No matches</div>';
-    } else {
-      recipientDropdown.innerHTML = filtered.map(r => `<div class="dropdown-item" data-name="${r.name}"><i class="fi fi-rr-user text-indigo-500"></i><span>${r.name}</span></div>`).join('');
+        const { data } = await response.json();
+
+        // Update stats cards
+        document.getElementById('totalSuspended').textContent = data.totalSuspended;
+        document.getElementById('activeConversations').textContent = data.activeConversations;
+        document.getElementById('flaggedMessages').textContent = data.flaggedMessages;
+
+        // Update filter tab badges
+        updateFilterBadge('flagged', data.flaggedMessages);
+        updateFilterBadge('suspended', data.totalSuspended);
+
+    } catch (error) {
+        console.error('Error loading stats:', error);
     }
-    recipientDropdown.classList.remove('hidden');
-    recipientDropdown.querySelectorAll('.dropdown-item[data-name]').forEach(item => {
-      item.addEventListener('click', () => {
-        const name = item.dataset.name;
-        const rec = availableRecipients.find(r => r.name === name);
-        if (rec) addRecipient(rec);
-        recipientSearch.value = '';
-        hideRecipientDropdown();
-        recipientSearch.focus();
-      });
-    });
-  }
+}
 
-  function hideRecipientDropdown() {
-    if (recipientDropdown) recipientDropdown.classList.add('hidden');
-  }
+/**
+ * Load user's inbox/conversations
+ */
+async function loadInbox() {
+    try {
+        const response = await fetch('/admin/messages/', {
+            headers: getAuthHeaders()
+        });
 
-  document.addEventListener('click', (e) => {
-    if (recipientDropdown && !recipientDropdown.contains(e.target) && !recipientsWrapper.contains(e.target)) hideRecipientDropdown();
-  });
+        if (!response.ok) throw new Error('Failed to load inbox');
 
-  function addRecipient(r) {
-    if (selectedRecipients.length >= MAX_RECIPIENTS) {
-      toast('Max recipients reached', 'error');
-      return;
+        const { data } = await response.json();
+        renderConversations(data);
+
+        // Update "All" filter badge with total count
+        updateFilterBadge('all', data.length);
+
+    } catch (error) {
+        console.error('Error loading inbox:', error);
     }
-    if (!selectedRecipients.some(x => x.name === r.name)) {
-      selectedRecipients.push(r);
-      renderRecipientChips();
-      validateCompose();
+}
+
+/**
+ * Render conversations list in sidebar
+ */
+function renderConversations(conversations) {
+    const list = document.getElementById('conversationsList');
+
+    if (!conversations || conversations.length === 0) {
+        list.innerHTML = '<p class="text-center text-gray-400 py-8">No conversations yet</p>';
+        return;
     }
-  }
 
-  function renderRecipientChips() {
-    if (!recipientsWrapper) return;
-    // Preserve input element, clear chips first
-    const inputEl = recipientSearch;
-    recipientsWrapper.innerHTML = '';
-    selectedRecipients.forEach(rec => {
-      const chip = document.createElement('div');
-      chip.className = 'compose-recipient-chip';
-      chip.innerHTML = `<span>${rec.name}</span><button type="button" aria-label="Remove">&times;</button>`;
-      chip.querySelector('button').addEventListener('click', () => {
-        selectedRecipients = selectedRecipients.filter(r => r.name !== rec.name);
-        renderRecipientChips();
-        validateCompose();
-      });
-      recipientsWrapper.appendChild(chip);
-    });
-    recipientsWrapper.appendChild(inputEl);
-  }
+    list.innerHTML = conversations.map(conv => `
+        <div class="conversation-item ${conv.is_flagged ? 'flagged' : ''} ${(conv.status === 'suspended' || conv.is_suspended) ? 'suspended' : ''}"
+             data-conversation-id="${conv.conversation_id}"
+             data-receiver-id="${conv.other_user.id}">
+            <div class="flex items-start gap-3 cursor-pointer p-3 hover:bg-gray-50 rounded-lg transition">
+                <div class="relative flex-shrink-0">
+                    <img src="${conv.other_user.avatar}"
+                         alt="${conv.other_user.name}"
+                         class="w-12 h-12 rounded-full object-cover">
+                    ${conv.other_user.online ? '<span class="avatar-status online"></span>' : '<span class="avatar-status offline"></span>'}
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-start justify-between mb-1">
+                        <div class="flex items-center gap-2">
+                            <h4 class="conversation-name font-semibold text-gray-800 truncate">${conv.other_user.name}</h4>
+                            ${conv.is_flagged ? '<i class="fi fi-sr-flag text-amber-500 text-xs"></i>' : ''}
+                            ${(conv.status === 'suspended' || conv.is_suspended) ? '<i class="fi fi-sr-ban text-red-500 text-xs"></i>' : ''}
+                        </div>
+                        <span class="text-xs text-gray-400 flex-shrink-0 relative-time" data-timestamp="${conv.last_message.sent_at_timestamp}">${formatRelativeTime(conv.last_message.sent_at_timestamp)}</span>
+                    </div>
+                    <p class="text-xs text-gray-500 mb-1">${conv.other_user.type}</p>
+                    <div class="flex items-center justify-between">
+                        <p class="conversation-preview text-sm text-gray-600 truncate flex-1">${conv.last_message.content}</p>
+                        ${conv.unread_count > 0 ? `<span class="unread-badge ml-2">${conv.unread_count}</span>` : ''}
+                    </div>
+                </div>
+            </div>
+        </div>
+    `).join('');
 
-  // Attachments handling
-  if (attachmentDrop) {
-    attachmentDrop.addEventListener('click', () => attachmentInput && attachmentInput.click());
-    attachmentDrop.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      attachmentDrop.classList.add('dragover');
+    // Add click listeners
+    document.querySelectorAll('.conversation-item').forEach(item => {
+        item.addEventListener('click', () => {
+            const conversationId = item.dataset.conversationId; // Keep as string (could be "1_2")
+            const receiverId = parseInt(item.dataset.receiverId);
+            selectConversation(conversationId, receiverId);
+        });
     });
-    attachmentDrop.addEventListener('dragleave', () => attachmentDrop.classList.remove('dragover'));
-    attachmentDrop.addEventListener('drop', (e) => {
-      e.preventDefault();
-      attachmentDrop.classList.remove('dragover');
-      if (e.dataTransfer.files) handleFiles(e.dataTransfer.files);
-    });
-  }
+}
 
-  if (attachmentInput) {
-    attachmentInput.addEventListener('change', (e) => {
-      if (e.target.files) handleFiles(e.target.files);
-      attachmentInput.value = '';
-    });
-  }
+/**
+ * Select and load a conversation
+ */
+async function selectConversation(conversationId, receiverId) {
+    currentConversationId = conversationId;
+    currentReceiverId = receiverId;
 
-  function handleFiles(fileList) {
-    const files = Array.from(fileList);
-    for (const file of files) {
-      if (selectedAttachments.length >= MAX_ATTACHMENTS) {
-        toast('Max attachments reached', 'error');
-        break;
-      }
-      if (file.size > MAX_FILE_SIZE) {
-        toast(`${file.name} exceeds 5MB`, 'error');
-        continue;
-      }
-      const isImage = file.type.startsWith('image/');
-      const url = isImage ? URL.createObjectURL(file) : null;
-      selectedAttachments.push({ file, url, isImage });
+    // Update active state
+    document.querySelectorAll('.conversation-item').forEach(item => {
+        item.classList.remove('active');
+    });
+    document.querySelector(`[data-conversation-id="${conversationId}"]`)?.classList.add('active');
+
+    // Show message panel
+    document.getElementById('emptyState')?.classList.add('hidden');
+    const messageContent = document.getElementById('messageContent');
+    messageContent?.classList.remove('hidden');
+    messageContent?.classList.add('flex');
+
+    // Load conversation history
+    await loadConversationHistory(conversationId);
+
+    // Clear unread badge for this conversation (messages marked as read on backend)
+    const conversationItem = document.querySelector(`[data-conversation-id="${conversationId}"]`);
+    const unreadBadge = conversationItem?.querySelector('.unread-badge');
+    if (unreadBadge) {
+        unreadBadge.remove();
     }
-    renderAttachmentPreviews();
-    validateCompose();
-  }
+}
 
-  function renderAttachmentPreviews() {
-    if (!attachmentPreview) return;
-    attachmentPreview.innerHTML = selectedAttachments.map((att, idx) => {
-      if (att.isImage) {
-        return `<div class="attachment-item" data-idx="${idx}"><img src="${att.url}" alt="attachment"><div class="attachment-meta">${Math.round(att.file.size/1024)}KB</div><div class="remove-attachment" title="Remove">&times;</div></div>`;
-      }
-      const short = att.file.name.length > 14 ? att.file.name.slice(0,11)+'…' : att.file.name;
-      return `<div class="attachment-item" data-idx="${idx}"><div class="file-icon"><i class="fi fi-rr-file"></i><div>${short}</div></div><div class="attachment-meta">${Math.round(att.file.size/1024)}KB</div><div class="remove-attachment" title="Remove">&times;</div></div>`;
+/**
+ * Load conversation message history
+ */
+async function loadConversationHistory(conversationId) {
+    try {
+        const response = await fetch(`/admin/messages/${conversationId}`, {
+            headers: getAuthHeaders()
+        });
+
+        if (!response.ok) throw new Error('Failed to load conversation');
+
+        const { data } = await response.json();
+
+        renderMessages(data.messages);
+
+        // Check suspension status
+        checkAndHandleSuspension(conversationId);
+
+    } catch (error) {
+        console.error('Error loading conversation:', error);
+        toast('Failed to load messages', 'error');
+    }
+}
+
+/**
+ * Check if conversation is suspended and handle UI accordingly
+ */
+async function checkAndHandleSuspension(conversationId) {
+    try {
+        // Get conversation details from inbox to check suspension
+        const inbox = await fetch('/admin/messages/', {
+            headers: getAuthHeaders()
+        }).then(r => r.json());
+
+        const conversation = inbox.data?.find(c => c.conversation_id == conversationId);
+
+        if (!conversation) return;
+
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendMessageBtn');
+        const inputContainer = messageInput?.parentElement?.parentElement;
+
+        // Remove existing suspension notice if any
+        const existingNotice = document.getElementById('suspensionNotice');
+        if (existingNotice) existingNotice.remove();
+
+        // Check if suspended
+        if (conversation.status === 'suspended' || conversation.is_suspended) {
+            // Disable input
+            if (messageInput) {
+                messageInput.disabled = true;
+                messageInput.placeholder = 'This conversation is suspended';
+                messageInput.classList.add('bg-gray-100', 'cursor-not-allowed');
+            }
+            if (sendBtn) {
+                sendBtn.disabled = true;
+                sendBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            }
+
+            // Show suspension notice
+            const notice = document.createElement('div');
+            notice.id = 'suspensionNotice';
+            notice.className = 'px-4 py-3 bg-red-50 border-l-4 border-red-500 text-sm text-red-800';
+
+            let suspensionMessage = '⚠️ This conversation has been suspended.';
+
+            // Check if there's a suspended_until date
+            if (conversation.suspended_until) {
+                const suspendedUntil = new Date(conversation.suspended_until);
+                const now = new Date();
+
+                if (suspendedUntil > now) {
+                    const options = {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    };
+                    suspensionMessage = `⚠️ This conversation is suspended until ${suspendedUntil.toLocaleDateString('en-US', options)}. No messages can be sent during this period.`;
+                }
+            } else {
+                suspensionMessage = '⚠️ This conversation has been permanently suspended. No messages can be sent.';
+            }
+
+            if (conversation.reason) {
+                suspensionMessage += `<br><strong>Reason:</strong> ${conversation.reason}`;
+            }
+
+            notice.innerHTML = suspensionMessage;
+            inputContainer?.parentElement?.insertBefore(notice, inputContainer);
+
+            // Show restore button, hide suspend button
+            document.getElementById('suspendConversationBtn')?.classList.add('hidden');
+
+            // Create restore button if it doesn't exist
+            let restoreBtn = document.getElementById('restoreConversationBtn');
+            if (!restoreBtn) {
+                restoreBtn = document.createElement('button');
+                restoreBtn.id = 'restoreConversationBtn';
+                restoreBtn.className = 'px-4 py-2 rounded-lg border-2 border-emerald-300 text-emerald-700 hover:bg-emerald-50 transition text-sm font-semibold flex items-center gap-2';
+                restoreBtn.innerHTML = '<i class="fi fi-rr-check-circle"></i><span>Restore</span>';
+                restoreBtn.addEventListener('click', () => openRestoreModal());
+
+                // Insert after flag button
+                const flagBtn = document.getElementById('flagConversationBtn');
+                if (flagBtn && flagBtn.parentElement) {
+                    flagBtn.parentElement.insertBefore(restoreBtn, flagBtn.nextSibling);
+                }
+            } else {
+                restoreBtn.classList.remove('hidden');
+            }
+
+        } else {
+            // Enable input
+            if (messageInput) {
+                messageInput.disabled = false;
+                messageInput.placeholder = 'Type your message...';
+                messageInput.classList.remove('bg-gray-100', 'cursor-not-allowed');
+            }
+            if (sendBtn) {
+                sendBtn.disabled = false;
+                sendBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+
+            // Show suspend button, hide restore button
+            document.getElementById('suspendConversationBtn')?.classList.remove('hidden');
+            document.getElementById('restoreConversationBtn')?.classList.add('hidden');
+        }
+
+    } catch (error) {
+        console.error('Error checking suspension:', error);
+    }
+}
+
+/**
+ * Mark a conversation as read (helper function for real-time updates)
+ */
+async function markConversationAsRead(conversationId) {
+    try {
+        // Just fetch the conversation - backend marks as read automatically
+        await fetch(`/admin/messages/${conversationId}`, {
+            headers: getAuthHeaders()
+        });
+    } catch (error) {
+        console.error('Error marking conversation as read:', error);
+    }
+}
+
+/**
+ * Render messages in conversation view
+ */
+function renderMessages(messages) {
+    const container = document.getElementById('messagesContainer');
+    const userId = getUserId();
+
+    if (!messages || messages.length === 0) {
+        container.innerHTML = '<p class="text-center text-gray-400 py-8">No messages yet</p>';
+        return;
+    }
+
+    container.innerHTML = messages.map(msg => {
+        const isSent = msg.sender.id === userId;
+        const bubbleClass = isSent ? 'message-bubble-sent' : 'message-bubble-received';
+        const alignClass = isSent ? 'justify-end' : 'justify-start';
+
+        return `
+            <div class="flex ${alignClass} mb-4" data-message-id="${msg.message_id}">
+                ${!isSent ? `<img src="${msg.sender.avatar}" class="w-8 h-8 rounded-full mr-2" alt="${msg.sender.name}">` : ''}
+                <div class="max-w-[70%]">
+                    <div class="${bubbleClass} ${msg.is_flagged ? 'border-2 border-amber-500' : ''}">
+                        <p class="text-sm">${escapeHtml(msg.content)}</p>
+                        ${msg.attachments.length > 0 ? renderAttachments(msg.attachments) : ''}
+                    </div>
+                    <div class="flex items-center gap-1 mt-1 ${isSent ? 'justify-end' : 'justify-start'}">
+                        <p class="text-xs text-gray-400 relative-time" data-timestamp="${msg.sent_at}">
+                            ${formatRelativeTime(msg.sent_at)}
+                        </p>
+                        ${isSent ? `<span class="text-xs ${msg.is_read ? 'text-blue-500' : 'text-gray-400'}" title="${msg.is_read ? 'Seen' : 'Sent'}">✓${msg.is_read ? '✓' : ''}</span>` : ''}
+                    </div>
+                </div>
+                ${isSent ? `<img src="${msg.sender.avatar}" class="w-8 h-8 rounded-full ml-2" alt="${msg.sender.name}">` : ''}
+            </div>
+        `;
     }).join('');
-    attachmentPreview.querySelectorAll('.remove-attachment').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const parent = e.target.closest('.attachment-item');
-        const idx = parseInt(parent.dataset.idx);
-        const att = selectedAttachments[idx];
-        if (att && att.url) URL.revokeObjectURL(att.url);
-        selectedAttachments.splice(idx,1);
-        renderAttachmentPreviews();
-        validateCompose();
-      });
+
+    // Scroll to bottom
+    scrollToBottom();
+}
+
+/**
+ * Render message attachments
+ */
+function renderAttachments(attachments) {
+    return `
+        <div class="mt-2 space-y-2">
+            ${attachments.map(att => {
+                const isImage = att.is_image || /\.(jpg|jpeg|png|gif|webp)$/i.test(att.file_name);
+
+                if (isImage) {
+                    return `
+                        <a href="${att.file_url}" target="_blank">
+                            <img src="${att.file_url}" class="max-w-full rounded border" alt="${att.file_name}">
+                        </a>
+                    `;
+                } else {
+                    return `
+                        <a href="${att.file_url}" target="_blank"
+                           class="flex items-center gap-2 p-2 bg-gray-100 rounded hover:bg-gray-200">
+                            <i class="fi fi-rr-document text-indigo-600"></i>
+                            <span class="text-sm truncate">${att.file_name}</span>
+                        </a>
+                    `;
+                }
+            }).join('')}
+        </div>
+    `;
+}
+
+/**
+ * Send a new message
+ */
+async function sendMessage() {
+    const input = document.getElementById('messageInput');
+    const fileInput = document.getElementById('attachmentInput');
+    const content = input.value.trim();
+
+    if (!content && !fileInput.files.length) {
+        toast('Please enter a message or attach a file', 'warning');
+        return;
+    }
+
+    if (!currentReceiverId) {
+        toast('Please select a conversation', 'warning');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('receiver_id', currentReceiverId);
+    formData.append('content', content || '');
+
+    if (currentConversationId) {
+        formData.append('conversation_id', currentConversationId);
+    }
+
+    // Append files
+    if (fileInput.files.length > 0) {
+        for (let i = 0; i < fileInput.files.length; i++) {
+            formData.append('attachments[]', fileInput.files[i]);
+        }
+    }
+
+    try {
+        const response = await fetch('/admin/messages/', {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                ...(getAuthToken() && { 'Authorization': `Bearer ${getAuthToken()}` })
+            },
+            body: formData
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            console.error('Server error:', result);
+            throw new Error(result.message || 'Failed to send message');
+        }
+
+        const { data } = result;
+
+        // Clear inputs
+        input.value = '';
+        fileInput.value = '';
+
+        // Clear file preview
+        const previewArea = document.getElementById('filePreviewArea');
+        if (previewArea) {
+            previewArea.classList.add('hidden');
+            previewArea.innerHTML = '';
+        }
+
+        // Add message to UI immediately
+        appendMessage(data);
+
+        // Update conversation ID if new
+        if (!currentConversationId && data.conversation_id) {
+            currentConversationId = data.conversation_id;
+        }
+
+        // Reload stats
+        loadDashboardStats();
+
+        toast('Message sent', 'success');
+
+    } catch (error) {
+        console.error('Error sending message:', error);
+        toast('Failed to send message', 'error');
+    }
+}
+
+/**
+ * Render file preview with remove buttons
+ */
+function renderFilePreview(files) {
+    const previewArea = document.getElementById('filePreviewArea');
+    const fileInput = document.getElementById('attachmentInput');
+    if (!previewArea || !fileInput) return;
+
+    // Show preview area
+    previewArea.classList.remove('hidden');
+    previewArea.innerHTML = '';
+
+    // Create DataTransfer to manage files
+    const dataTransfer = new DataTransfer();
+
+    // Add all files to DataTransfer
+    Array.from(files).forEach(file => {
+        dataTransfer.items.add(file);
     });
-  }
 
-  // Textarea char count & auto-height
-  if (composeMessage) {
-    composeMessage.addEventListener('input', () => {
-      const max = 1000;
-      const len = composeMessage.value.length;
-      composeCharCount.textContent = `${len} / ${max}`;
-      composeCharCount.classList.remove('warn','error');
-      if (len > 900 && len <= max) composeCharCount.classList.add('warn');
-      if (len > max) composeCharCount.classList.add('error');
-      composeMessage.style.height = 'auto';
-      composeMessage.style.height = composeMessage.scrollHeight + 'px';
-      validateCompose();
+    // Render each file
+    Array.from(files).forEach((file, index) => {
+        const fileSize = (file.size / 1024).toFixed(1);
+        const isImage = file.type.startsWith('image/');
+
+        const fileChip = document.createElement('div');
+        fileChip.className = 'flex items-center gap-2 bg-indigo-50 border border-indigo-200 text-indigo-700 px-3 py-2 rounded-lg text-sm';
+        fileChip.innerHTML = `
+            <i class="fi fi-rr-${isImage ? 'image' : 'file'} text-indigo-500"></i>
+            <div class="flex flex-col">
+                <span class="font-medium max-w-[150px] truncate">${escapeHtml(file.name)}</span>
+                <span class="text-xs text-indigo-500">${fileSize} KB</span>
+            </div>
+            <button class="remove-file ml-2 hover:bg-indigo-200 rounded-full w-5 h-5 flex items-center justify-center text-sm" data-index="${index}">
+                ×
+            </button>
+        `;
+
+        previewArea.appendChild(fileChip);
+
+        // Add remove listener
+        fileChip.querySelector('.remove-file').addEventListener('click', () => {
+            // Remove file from DataTransfer
+            const newDataTransfer = new DataTransfer();
+            Array.from(dataTransfer.files).forEach((f, i) => {
+                if (i !== index) {
+                    newDataTransfer.items.add(f);
+                }
+            });
+
+            // Update file input
+            fileInput.files = newDataTransfer.files;
+
+            // Re-render preview
+            if (newDataTransfer.files.length > 0) {
+                renderFilePreview(newDataTransfer.files);
+            } else {
+                previewArea.classList.add('hidden');
+                previewArea.innerHTML = '';
+            }
+        });
     });
-  }
+}
 
-  function validateCompose() {
-    if (!sendComposeBtn) return;
-    const msgValid = composeMessage.value.trim().length > 0 && composeMessage.value.length <= 1000;
-    const recipientsValid = selectedRecipients.length > 0;
-    sendComposeBtn.disabled = !(msgValid && recipientsValid);
-  }
+/**
+ * Handle incoming real-time message from Pusher
+ */
+function handleIncomingMessage(event) {
+    // Handle incoming message
 
-  function resetComposeForm() {
-    selectedRecipients = [];
-    selectedAttachments.forEach(a => a.url && URL.revokeObjectURL(a.url));
-    selectedAttachments = [];
-    composeProject.value = '';
-    composeMessage.value = '';
-    composeMessage.style.height = '140px';
-    composeCharCount.textContent = '0 / 1000';
-    composeCharCount.className = composeCharCount.className.replace(/warn|error/g,'').trim();
+    // If message is for current conversation, append it and mark as read
+    if (event.conversation_id === currentConversationId) {
+        appendMessage(event);
+        // Mark as read immediately since user is viewing the conversation
+        markConversationAsRead(event.conversation_id);
+    }
+
+    // Reload inbox to update preview
+    loadInbox();
+
+    // Reload stats
+    loadDashboardStats();
+
+    // Show notification
+    toast(`New message from ${event.sender.name}`, 'info');
+}
+
+/**
+ * Append single message to conversation
+ */
+function appendMessage(messageData) {
+    const container = document.getElementById('messagesContainer');
+    const userId = getUserId();
+    const isSent = messageData.sender.id === userId;
+    const bubbleClass = isSent ? 'message-bubble-sent' : 'message-bubble-received';
+    const alignClass = isSent ? 'justify-end' : 'justify-start';
+
+    const messageHtml = `
+        <div class="flex ${alignClass} mb-4" data-message-id="${messageData.message_id}">
+            ${!isSent ? `<img src="${messageData.sender.avatar}" class="w-8 h-8 rounded-full mr-2" alt="${messageData.sender.name}">` : ''}
+            <div class="max-w-[70%]">
+                <div class="${bubbleClass}">
+                    <p class="text-sm">${escapeHtml(messageData.content)}</p>
+                    ${messageData.attachments?.length > 0 ? renderAttachments(messageData.attachments) : ''}
+                </div>
+                <div class="flex items-center gap-1 mt-1 ${isSent ? 'justify-end' : 'justify-start'}">
+                    <p class="text-xs text-gray-400 relative-time" data-timestamp="${messageData.sent_at || new Date().toISOString()}">
+                        ${formatRelativeTime(messageData.sent_at || new Date().toISOString())}
+                    </p>
+                    ${isSent ? `<span class="text-xs ${messageData.is_read ? 'text-blue-500' : 'text-gray-400'}" title="${messageData.is_read ? 'Seen' : 'Sent'}">✓${messageData.is_read ? '✓' : ''}</span>` : ''}
+                </div>
+            </div>
+            ${isSent ? `<img src="${messageData.sender.avatar}" class="w-8 h-8 rounded-full ml-2" alt="${messageData.sender.name}">` : ''}
+        </div>
+    `;
+
+    container.insertAdjacentHTML('beforeend', messageHtml);
+    scrollToBottom();
+}
+
+/**
+ * Setup event listeners
+ */
+function setupEventListeners() {
+    // Send message button
+    document.getElementById('sendMessageBtn')?.addEventListener('click', sendMessage);
+
+    // Enter key to send
+    document.getElementById('messageInput')?.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+
+    // Attachment button
+    document.getElementById('attachmentBtn')?.addEventListener('click', () => {
+        document.getElementById('attachmentInput')?.click();
+    });
+
+    // File selection handler
+    document.getElementById('attachmentInput')?.addEventListener('change', (e) => {
+        const files = e.target.files;
+        if (files.length > 0) {
+            renderFilePreview(files);
+        }
+    });
+
+    // Compose new message
+    document.getElementById('composeBtn')?.addEventListener('click', showComposeModal);
+
+    // Compose modal recipient search
+    document.getElementById('composeRecipientSearch')?.addEventListener('input', (e) => {
+        const query = e.target.value.toLowerCase().trim();
+        const dropdown = document.getElementById('composeRecipientDropdown');
+
+        if (query.length === 0) {
+            // Hide dropdown when search is empty (like Messenger)
+            dropdown?.classList.add('hidden');
+        } else {
+            // Show filtered suggestions based on search
+            const filtered = availableUsers.filter(user =>
+                user.name.toLowerCase().includes(query) ||
+                user.type.toLowerCase().includes(query)
+            );
+            showUserDropdown(filtered);
+        }
+    });
+
+    // Click on wrapper to focus search input (like Messenger)
+    document.getElementById('composeRecipientsWrapper')?.addEventListener('click', () => {
+        document.getElementById('composeRecipientSearch')?.focus();
+    });
+
+    // Hide dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        const searchInput = document.getElementById('composeRecipientSearch');
+        const dropdown = document.getElementById('composeRecipientDropdown');
+        const wrapper = document.getElementById('composeRecipientsWrapper');
+
+        if (searchInput && dropdown && wrapper) {
+            if (!wrapper.contains(e.target) && !dropdown.contains(e.target)) {
+                dropdown.classList.add('hidden');
+            }
+        }
+    });
+
+    // Compose modal file attachment
+    document.getElementById('composeAttachmentDrop')?.addEventListener('click', () => {
+        document.getElementById('composeAttachmentInput')?.click();
+    });
+
+    document.getElementById('composeAttachmentInput')?.addEventListener('change', (e) => {
+        const files = e.target.files;
+        if (files.length > 0) {
+            renderComposeFilePreview(files);
+        }
+    });
+
+    // Close compose modal
+    document.querySelectorAll('.modal-close').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.getElementById('composeModal')?.classList.add('hidden');
+            document.getElementById('composeModal')?.classList.remove('flex');
+            // Reset
+            const searchInput = document.getElementById('composeRecipientSearch');
+            const messageInput = document.getElementById('composeMessage');
+            const fileInput = document.getElementById('composeAttachmentInput');
+            const filePreview = document.getElementById('composeAttachmentPreview');
+            if (searchInput) searchInput.value = '';
+            if (messageInput) messageInput.value = '';
+            if (fileInput) fileInput.value = '';
+            if (filePreview) filePreview.innerHTML = '';
+            currentReceiverId = null;
+            selectedRecipients = [];
+            renderRecipientChips();
+        });
+    });
+
+    // Send compose message
+    document.getElementById('sendComposeBtn')?.addEventListener('click', async () => {
+        const content = document.getElementById('composeMessage')?.value.trim();
+        if (!content) {
+            toast('Please enter a message', 'warning');
+            return;
+        }
+        if (selectedRecipients.length === 0) {
+            toast('Please select at least one recipient', 'warning');
+            return;
+        }
+
+        try {
+            // Send message to each recipient
+            const sendPromises = selectedRecipients.map(recipient =>
+                fetch('/admin/messages/', {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                    },
+                    body: JSON.stringify({
+                        receiver_id: recipient.id,
+                        content: content
+                    })
+                })
+            );
+
+            await Promise.all(sendPromises);
+
+            const recipientCount = selectedRecipients.length;
+
+            // Close modal
+            document.getElementById('composeModal')?.classList.add('hidden');
+            document.getElementById('composeModal')?.classList.remove('flex');
+
+            // Reset
+            const searchInput = document.getElementById('composeRecipientSearch');
+            const messageInput = document.getElementById('composeMessage');
+            const fileInput = document.getElementById('composeAttachmentInput');
+            const filePreview = document.getElementById('composeAttachmentPreview');
+            if (searchInput) searchInput.value = '';
+            if (messageInput) messageInput.value = '';
+            if (fileInput) fileInput.value = '';
+            if (filePreview) filePreview.innerHTML = '';
+            selectedRecipients = [];
+            renderRecipientChips();
+
+            toast(`Message sent to ${recipientCount > 1 ? recipientCount + ' recipients' : 'recipient'}`, 'success');
+
+            // Reload inbox
+            loadInbox();
+
+        } catch (error) {
+            console.error('Error sending message:', error);
+            toast('Failed to send message', 'error');
+        }
+    });
+
+    // Flag/Suspend/Restore actions (admin moderation)
+    document.getElementById('suspendBtn')?.addEventListener('click', suspendCurrentConversation);
+    document.getElementById('restoreBtn')?.addEventListener('click', restoreCurrentConversation);
+
+    // Flag/Suspend conversation buttons
+    document.getElementById('flagConversationBtn')?.addEventListener('click', () => openModal('flagConfirmModal'));
+    document.getElementById('suspendConversationBtn')?.addEventListener('click', () => openModal('suspendConfirmModal'));
+
+    // Modal confirm buttons
+    document.getElementById('confirmFlagBtn')?.addEventListener('click', flagCurrentConversation);
+    document.getElementById('confirmUnflagBtn')?.addEventListener('click', unflagCurrentConversation);
+    document.getElementById('confirmSuspendBtn')?.addEventListener('click', suspendCurrentConversation);
+    document.getElementById('confirmRestoreBtn')?.addEventListener('click', restoreCurrentConversation);
+
+    // Show/hide "Other reason" input based on dropdown selection
+    document.getElementById('flagReason')?.addEventListener('change', function(e) {
+        const otherContainer = document.getElementById('otherReasonContainer');
+        const otherInput = document.getElementById('otherReasonText');
+
+        if (e.target.value === 'other') {
+            otherContainer?.classList.remove('hidden');
+            otherInput?.focus();
+        } else {
+            otherContainer?.classList.add('hidden');
+            if (otherInput) otherInput.value = '';
+        }
+    });
+
+    // Show/hide "Other reason" input for suspend modal
+    document.getElementById('suspendReason')?.addEventListener('change', function(e) {
+        const otherContainer = document.getElementById('otherSuspendReasonContainer');
+        const otherInput = document.getElementById('otherSuspendReasonText');
+
+        if (e.target.value === 'other') {
+            otherContainer?.classList.remove('hidden');
+            otherInput?.focus();
+        } else {
+            otherContainer?.classList.add('hidden');
+            if (otherInput) otherInput.value = '';
+        }
+    });
+
+    // Modal close handlers
+    document.querySelectorAll('.modal-close').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const modal = this.closest('.modal-overlay');
+            if (modal) modal.classList.add('hidden');
+        });
+    });
+
+    // Search
+    document.getElementById('searchInput')?.addEventListener('input', debounce(searchMessages, 300));
+
+    // Filter tabs
+    document.querySelectorAll('.filter-tab').forEach(tab => {
+        tab.addEventListener('click', handleFilterChange);
+    });
+}
+
+let currentFilter = 'all';
+
+/**
+ * Handle filter tab change
+ */
+function handleFilterChange(e) {
+    const filter = e.currentTarget.dataset.filter;
+    currentFilter = filter;
+
+    // Update active state
+    document.querySelectorAll('.filter-tab').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    e.currentTarget.classList.add('active');
+
+    // Apply filter
+    filterConversations(filter);
+}
+
+/**
+ * Filter conversations by status
+ */
+function filterConversations(filter) {
+    const conversationItems = document.querySelectorAll('.conversation-item');
+    let visibleCount = 0;
+
+    // Clear search results message if exists
+    const container = document.getElementById('conversationsList');
+    const searchNoResults = container.querySelector('.no-search-results');
+    if (searchNoResults) searchNoResults.remove();
+
+    conversationItems.forEach(item => {
+        let show = true;
+
+        if (filter === 'flagged') {
+            show = item.classList.contains('flagged');
+        } else if (filter === 'suspended') {
+            show = item.classList.contains('suspended');
+        }
+        // 'all' shows everything
+
+        if (show) {
+            item.style.display = '';
+            visibleCount++;
+        } else {
+            item.style.display = 'none';
+        }
+    });
+
+    // Show "no results" message if nothing matches
+    let noResults = container.querySelector('.no-filter-results');
+
+    if (visibleCount === 0) {
+        // Remove old message if exists
+        if (noResults) noResults.remove();
+
+        // Create new message
+        noResults = document.createElement('div');
+        noResults.className = 'no-filter-results text-center py-8 text-gray-500';
+        let icon = 'fi-rr-inbox';
+        let message = 'No conversations found';
+
+        if (filter === 'flagged') {
+            icon = 'fi-rr-flag';
+            message = 'No flagged conversations';
+        } else if (filter === 'suspended') {
+            icon = 'fi-rr-ban';
+            message = 'No suspended conversations';
+        }
+
+        noResults.innerHTML = `
+            <i class="fi ${icon} text-4xl mb-2 text-gray-300"></i>
+            <p class="text-sm">${message}</p>
+        `;
+        container.appendChild(noResults);
+    } else {
+        if (noResults) noResults.remove();
+    }
+}
+
+/**
+ * Search messages
+ */
+async function searchMessages(e) {
+    const query = e.target.value.trim().toLowerCase();
+
+    if (query.length < 2) {
+        // Reapply current filter instead of loading all
+        filterConversations(currentFilter);
+        return;
+    }
+
+    // Filter conversations already in the list (respecting current filter)
+    const conversationItems = document.querySelectorAll('.conversation-item');
+    let visibleCount = 0;
+
+    // Clear filter results message if exists
+    const container = document.getElementById('conversationsList');
+    const filterNoResults = container.querySelector('.no-filter-results');
+    if (filterNoResults) filterNoResults.remove();
+
+    conversationItems.forEach(item => {
+        const name = item.querySelector('.conversation-name')?.textContent.toLowerCase() || '';
+        const preview = item.querySelector('.conversation-preview')?.textContent.toLowerCase() || '';
+
+        const matchesSearch = name.includes(query) || preview.includes(query);
+
+        // Also check if it matches the current filter
+        let matchesFilter = true;
+        if (currentFilter === 'flagged') {
+            matchesFilter = item.classList.contains('flagged');
+        } else if (currentFilter === 'suspended') {
+            matchesFilter = item.classList.contains('suspended');
+        }
+
+        if (matchesSearch && matchesFilter) {
+            item.style.display = '';
+            visibleCount++;
+        } else {
+            item.style.display = 'none';
+        }
+    });
+
+    // Show "no results" message if nothing matches
+    let noResults = container.querySelector('.no-search-results');
+
+    if (visibleCount === 0) {
+        if (!noResults) {
+            noResults = document.createElement('div');
+            noResults.className = 'no-search-results text-center py-8 text-gray-500';
+            noResults.innerHTML = `
+                <i class="fi fi-rr-search text-4xl mb-2 text-gray-300"></i>
+                <p class="text-sm">No conversations found matching "${e.target.value}"</p>
+            `;
+            container.appendChild(noResults);
+        }
+    } else {
+        if (noResults) noResults.remove();
+    }
+}
+
+/**
+ * Show compose new message modal
+ */
+let availableUsers = [];
+
+async function showComposeModal() {
+    try {
+        // Load available users
+        const response = await fetch('/admin/messages/users', {
+            headers: getAuthHeaders()
+        });
+
+        if (!response.ok) throw new Error('Failed to load users');
+
+        const { data } = await response.json();
+        availableUsers = data;
+
+        // Show modal
+        const modal = document.getElementById('composeModal');
+        if (modal) {
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+
+            // Focus search input
+            document.getElementById('composeRecipientSearch')?.focus();
+
+            // Don't show dropdown initially - wait for user to type
+            document.getElementById('composeRecipientDropdown')?.classList.add('hidden');
+        } else {
+            console.error('Compose modal element not found');
+            toast('Compose modal not available', 'error');
+        }
+
+    } catch (error) {
+        console.error('Error loading users:', error);
+        toast('Failed to load users', 'error');
+    }
+}
+
+/**
+ * Show user dropdown with filtered users
+ */
+function showUserDropdown(users) {
+    const dropdown = document.getElementById('composeRecipientDropdown');
+    if (!dropdown) return;
+
+    if (users.length === 0) {
+        dropdown.innerHTML = '<div class="p-3 text-gray-500 text-center">No users found</div>';
+        dropdown.classList.remove('hidden');
+        return;
+    }
+
+    dropdown.innerHTML = users.map(user => `
+        <div class="user-option p-3 hover:bg-indigo-50 cursor-pointer flex items-center gap-3 transition" data-user-id="${user.id}">
+            <img src="${user.avatar}" class="w-8 h-8 rounded-full" alt="${user.name}">
+            <div class="flex-1">
+                <div class="font-semibold text-gray-800">${user.name}</div>
+                <div class="text-xs text-gray-500">${user.type}</div>
+            </div>
+        </div>
+    `).join('');
+
+    dropdown.classList.remove('hidden');
+
+    // Add click listeners
+    dropdown.querySelectorAll('.user-option').forEach(option => {
+        option.addEventListener('click', () => {
+            const userId = parseInt(option.dataset.userId);
+            selectRecipient(userId);
+        });
+    });
+}
+
+/**
+ * Select a recipient from compose modal
+ */
+function selectRecipient(userId) {
+    const user = availableUsers.find(u => u.id === userId);
+    if (!user) return;
+
+    // Check if already selected
+    if (selectedRecipients.find(r => r.id === userId)) {
+        toast('Recipient already selected', 'warning');
+        return;
+    }
+
+    // Add to selected recipients
+    selectedRecipients.push(user);
+
+    // Clear search input
+    const searchInput = document.getElementById('composeRecipientSearch');
+    if (searchInput) {
+        searchInput.value = '';
+    }
+
+    // Hide dropdown
+    const dropdown = document.getElementById('composeRecipientDropdown');
+    if (dropdown) {
+        dropdown.classList.add('hidden');
+    }
+
+    // Render recipient chips
     renderRecipientChips();
-    renderAttachmentPreviews();
-    validateCompose();
-  }
 
-  if (sendComposeBtn) {
-    sendComposeBtn.addEventListener('click', () => {
-      if (sendComposeBtn.disabled) return;
-      const typeTab = document.querySelector('.compose-tab.active');
-      const type = typeTab ? typeTab.dataset.type : 'contractor';
-      const project = composeProject.value.trim() || 'General Inquiry';
-      const messageText = composeMessage.value.trim();
-      const id = Math.max(0, ...conversationsData.map(c => c.id)) + 1;
-      const backgroundMap = { contractor:'6366f1', property_owner:'10b981' };
-      const bg = backgroundMap[type] || '6366f1';
-      const now = new Date();
-      const timeString = 'just now';
-      const startDate = now.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    // Add recipient to selection
+}
 
-      // Conversation display name logic for multi-recipient
-      const displayName = selectedRecipients.length === 1 
-        ? selectedRecipients[0].name 
-        : `${selectedRecipients[0].name} + ${selectedRecipients.length - 1} others`;
+/**
+ * Render recipient chips (like Messenger)
+ */
+function renderRecipientChips() {
+    const wrapper = document.getElementById('composeRecipientsWrapper');
+    const searchInput = document.getElementById('composeRecipientSearch');
+    if (!wrapper || !searchInput) return;
 
-      const newConv = {
-        id,
-        name: displayName,
-        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedRecipients[0].name)}&background=${bg}&color=fff`,
-        project,
-        lastMessage: messageText,
-        time: timeString,
-        unread: 0,
-        status: 'active',
-        flagged: false,
-        suspended: false,
-        online: true,
-        messages: [
-          { text: messageText, sent: true, time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }
-        ],
-        attachments: selectedAttachments.map(a => ({ name:a.file.name, type:a.file.type, size:a.file.size, isImage:a.isImage })),
-        recipients: selectedRecipients,
-        startDate,
-        messageCount: 1
-      };
-      conversationsData.unshift(newConv);
-      hideModal('composeModal');
-      renderConversations(currentFilter);
-      selectConversation(id);
-      toast('Message sent successfully', 'success');
+    // Remove existing chips
+    wrapper.querySelectorAll('.recipient-chip').forEach(chip => chip.remove());
+
+    // Add chips for each selected recipient
+    selectedRecipients.forEach(user => {
+        const chip = document.createElement('div');
+        chip.className = 'recipient-chip flex items-center gap-1.5 bg-indigo-100 text-indigo-700 px-2.5 py-1 rounded-full text-sm font-medium';
+        chip.innerHTML = `
+            <span>${escapeHtml(user.name)}</span>
+            <button class="remove-recipient hover:bg-indigo-200 rounded-full w-4 h-4 flex items-center justify-center text-xs" data-user-id="${user.id}">
+                ×
+            </button>
+        `;
+        wrapper.insertBefore(chip, searchInput);
+
+        // Add remove listener
+        chip.querySelector('.remove-recipient').addEventListener('click', (e) => {
+            e.stopPropagation();
+            removeRecipient(user.id);
+        });
     });
-  }
 }
 
-// Modal helpers
-function showModal(id) {
-  const modal = document.getElementById(id);
-  modal.classList.remove('hidden');
-  modal.classList.add('flex');
+/**
+ * Remove a recipient chip
+ */
+function removeRecipient(userId) {
+    selectedRecipients = selectedRecipients.filter(r => r.id !== userId);
+    renderRecipientChips();
 }
 
-function hideModal(id) {
-  const modal = document.getElementById(id);
-  modal.classList.add('hidden');
-  modal.classList.remove('flex');
+/**
+ * Render compose modal file preview
+ */
+function renderComposeFilePreview(files) {
+    const previewArea = document.getElementById('composeAttachmentPreview');
+    const fileInput = document.getElementById('composeAttachmentInput');
+    if (!previewArea || !fileInput) return;
+
+    previewArea.innerHTML = '';
+
+    // Create DataTransfer to manage files
+    const dataTransfer = new DataTransfer();
+
+    // Add all files to DataTransfer
+    Array.from(files).forEach(file => {
+        dataTransfer.items.add(file);
+    });
+
+    // Render each file
+    Array.from(files).forEach((file, index) => {
+        const fileSize = (file.size / 1024).toFixed(1);
+        const isImage = file.type.startsWith('image/');
+
+        const fileChip = document.createElement('div');
+        fileChip.className = 'flex items-center gap-2 bg-indigo-50 border border-indigo-200 text-indigo-700 px-3 py-2 rounded-lg text-sm';
+        fileChip.innerHTML = `
+            <i class="fi fi-rr-${isImage ? 'image' : 'file'} text-indigo-500"></i>
+            <div class="flex flex-col">
+                <span class="font-medium max-w-[150px] truncate">${escapeHtml(file.name)}</span>
+                <span class="text-xs text-indigo-500">${fileSize} KB</span>
+            </div>
+            <button class="remove-compose-file ml-2 hover:bg-indigo-200 rounded-full w-5 h-5 flex items-center justify-center text-sm" data-index="${index}">
+                ×
+            </button>
+        `;
+
+        previewArea.appendChild(fileChip);
+
+        // Add remove listener
+        fileChip.querySelector('.remove-compose-file').addEventListener('click', () => {
+            // Remove file from DataTransfer
+            const newDataTransfer = new DataTransfer();
+            Array.from(dataTransfer.files).forEach((f, i) => {
+                if (i !== index) {
+                    newDataTransfer.items.add(f);
+                }
+            });
+
+            // Update file input
+            fileInput.files = newDataTransfer.files;
+
+            // Re-render preview
+            if (newDataTransfer.files.length > 0) {
+                renderComposeFilePreview(newDataTransfer.files);
+            } else {
+                previewArea.innerHTML = '';
+            }
+        });
+    });
 }
 
-// Toast notification
+/**
+ * Open modal
+ */
+function openModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+}
+
+/**
+ * Open restore modal with conversation details
+ */
+async function openRestoreModal() {
+    if (!currentConversationId) return;
+
+    try {
+        // Get conversation details from inbox
+        const response = await fetch('/admin/messages/', {
+            headers: getAuthHeaders()
+        });
+
+        if (!response.ok) throw new Error('Failed to load inbox');
+
+        const { data } = await response.json();
+        const conversation = data.find(c => c.conversation_id == currentConversationId);
+
+        if (!conversation) {
+            toast('Conversation not found', 'error');
+            return;
+        }
+
+        // Populate modal fields
+        document.getElementById('restoreConvId').textContent = currentConversationId;
+        document.getElementById('restoreConvName').textContent = conversation.other_user.name;
+        document.getElementById('restoreConvStatus').textContent = conversation.status || 'Suspended';
+
+        // Open the modal
+        openModal('restoreConfirmModal');
+
+    } catch (error) {
+        console.error('Error opening restore modal:', error);
+        toast('Failed to load conversation details', 'error');
+    }
+}
+
+/**
+ * Admin: Flag conversation
+ */
+async function flagCurrentConversation() {
+    if (!currentConversationId) return;
+
+    let reason = document.getElementById('flagReason')?.value;
+    const notes = document.getElementById('flagNotes')?.value;
+
+    if (!reason) {
+        toast('Please select a reason for flagging', 'warning');
+        return;
+    }
+
+    // If "other" is selected, validate and use the custom reason
+    if (reason === 'other') {
+        const otherReasonText = document.getElementById('otherReasonText')?.value?.trim();
+        if (!otherReasonText) {
+            toast('Please specify the other reason', 'warning');
+            return;
+        }
+        reason = `Other: ${otherReasonText}`;
+    }
+
+    try {
+        const response = await fetch(`/admin/messages/conversation/${currentConversationId}/flag`, {
+            method: 'POST',
+            headers: {
+                ...getAuthHeaders(),
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ reason, notes })
+        });
+
+        if (!response.ok) throw new Error('Failed to flag');
+
+        toast('Conversation flagged successfully', 'success');
+
+        // Close modal
+        document.getElementById('flagConfirmModal')?.classList.add('hidden');
+        document.getElementById('flagConfirmModal')?.classList.remove('flex');
+
+        // Clear form
+        document.getElementById('flagReason').value = '';
+        document.getElementById('flagNotes').value = '';
+        document.getElementById('otherReasonText').value = '';
+        document.getElementById('otherReasonContainer')?.classList.add('hidden');
+
+        // Reload data
+        loadInbox();
+        loadDashboardStats();
+
+    } catch (error) {
+        console.error('Error flagging:', error);
+        toast('Failed to flag conversation', 'error');
+    }
+}
+
+/**
+ * Admin: Unflag conversation
+ */
+async function unflagCurrentConversation() {
+    if (!currentConversationId) return;
+
+    try {
+        const response = await fetch(`/admin/messages/conversation/${currentConversationId}/unflag`, {
+            method: 'POST',
+            headers: getAuthHeaders()
+        });
+
+        if (!response.ok) throw new Error('Failed to unflag');
+
+        toast('Conversation unflagged successfully', 'success');
+
+        // Close modal
+        document.getElementById('unflagConfirmModal')?.classList.add('hidden');
+        document.getElementById('unflagConfirmModal')?.classList.remove('flex');
+
+        // Reload data
+        loadInbox();
+        loadDashboardStats();
+
+    } catch (error) {
+        console.error('Error unflagging:', error);
+        toast('Failed to unflag conversation', 'error');
+    }
+}
+
+/**
+ * Admin: Suspend conversation
+ */
+async function suspendCurrentConversation() {
+    if (!currentConversationId) return;
+
+    let reason = document.getElementById('suspendReason')?.value;
+    const otherReasonText = document.getElementById('otherSuspendReasonText')?.value;
+    const duration = document.getElementById('suspendDuration')?.value;
+    const notes = document.getElementById('suspendNotes')?.value || '';
+
+    if (!reason) {
+        toast('Please select a reason for suspension', 'warning');
+        return;
+    }
+
+    // If "other" is selected, use the custom reason
+    if (reason === 'other') {
+        if (!otherReasonText || otherReasonText.trim() === '') {
+            toast('Please specify the reason for suspension', 'warning');
+            return;
+        }
+        reason = otherReasonText.trim();
+    }
+
+    if (!duration) {
+        toast('Please select suspension duration', 'warning');
+        return;
+    }
+
+    // Calculate suspended_until based on duration
+    let suspendedUntil = null;
+    const now = new Date();
+
+    if (duration === '24h') {
+        now.setHours(now.getHours() + 24);
+        suspendedUntil = now.toISOString().slice(0, 19).replace('T', ' ');
+    } else if (duration === '7d') {
+        now.setDate(now.getDate() + 7);
+        suspendedUntil = now.toISOString().slice(0, 19).replace('T', ' ');
+    } else if (duration === '30d') {
+        now.setDate(now.getDate() + 30);
+        suspendedUntil = now.toISOString().slice(0, 19).replace('T', ' ');
+    } else if (duration === 'permanent') {
+        // Set to 100 years from now
+        now.setFullYear(now.getFullYear() + 100);
+        suspendedUntil = now.toISOString().slice(0, 19).replace('T', ' ');
+    }
+
+    const fullReason = notes ? `${reason}: ${notes}` : reason;
+
+    try {
+        const response = await fetch(`/admin/messages/conversation/${currentConversationId}/suspend`, {
+            method: 'POST',
+            headers: {
+                ...getAuthHeaders(),
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                reason: fullReason,
+                suspended_until: suspendedUntil
+            })
+        });
+
+        if (!response.ok) throw new Error('Failed to suspend');
+
+        toast('Conversation suspended', 'success');
+
+        // Close modal
+        document.getElementById('suspendConfirmModal')?.classList.add('hidden');
+        document.getElementById('suspendConfirmModal')?.classList.remove('flex');
+
+        // Reset form
+        document.getElementById('suspendReason').value = '';
+        document.getElementById('suspendDuration').value = '24h';
+        document.getElementById('suspendNotes').value = '';
+        document.getElementById('otherSuspendReasonText').value = '';
+        document.getElementById('otherSuspendReasonContainer')?.classList.add('hidden');
+
+        loadInbox();
+        loadDashboardStats();
+
+        // Reload current conversation to show suspended state
+        if (currentConversationId) {
+            selectConversation(currentConversationId, currentReceiverId);
+        }
+
+    } catch (error) {
+        console.error('Error suspending:', error);
+        toast('Failed to suspend conversation', 'error');
+    }
+}
+
+/**
+ * Admin: Restore conversation
+ */
+async function restoreCurrentConversation() {
+    if (!currentConversationId) return;
+
+    try {
+        const response = await fetch(`/admin/messages/conversation/${currentConversationId}/restore`, {
+            method: 'POST',
+            headers: getAuthHeaders()
+        });
+
+        if (!response.ok) throw new Error('Failed to restore');
+
+        toast('Conversation restored', 'success');
+
+        // Close modal
+        document.getElementById('restoreConfirmModal')?.classList.add('hidden');
+        document.getElementById('restoreConfirmModal')?.classList.remove('flex');
+
+        loadInbox();
+        loadDashboardStats();
+
+        // Reload current conversation to remove suspended state
+        if (currentConversationId) {
+            selectConversation(currentConversationId, currentReceiverId);
+        }
+
+    } catch (error) {
+        console.error('Error restoring:', error);
+        toast('Failed to restore conversation', 'error');
+    }
+}
+
+// ============================================
+// UTILITY FUNCTIONS
+// ============================================
+
+function getAuthHeaders() {
+    const token = getAuthToken();
+    const headers = {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+    };
+
+    // Add Bearer token only if available (for API auth)
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    return headers;
+}
+
+function getAuthToken() {
+    // For web dashboard, get from session/meta tag
+    // May be empty if using session-based auth instead of Sanctum
+    return document.querySelector('meta[name="api-token"]')?.content || '';
+}
+
+function getUserId() {
+    // Get from session/meta tag
+    return parseInt(document.querySelector('meta[name="user-id"]')?.content) || null;
+}
+
+function scrollToBottom() {
+    const container = document.getElementById('messagesContainer');
+    if (container) {
+        container.scrollTop = container.scrollHeight;
+    }
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+/**
+ * Update filter tab badge count
+ */
+function updateFilterBadge(filter, count) {
+    const button = document.querySelector(`[data-filter="${filter}"]`);
+    if (button) {
+        const badge = button.querySelector('span');
+        if (badge) {
+            badge.textContent = count;
+        }
+    }
+}
+
 function toast(message, type = 'info') {
-  const existing = document.querySelector('.toast');
-  if (existing) existing.remove();
+    const colors = {
+        info: 'bg-blue-500',
+        success: 'bg-green-500',
+        warning: 'bg-amber-500',
+        error: 'bg-red-500'
+    };
 
-  const toast = document.createElement('div');
-  toast.className = 'toast';
-  
-  if (type === 'success') {
-    toast.style.background = 'linear-gradient(135deg, #10b981, #059669)';
-  } else if (type === 'error') {
-    toast.style.background = 'linear-gradient(135deg, #ef4444, #dc2626)';
-  } else {
-    toast.style.background = 'linear-gradient(135deg, #3b82f6, #2563eb)';
-  }
-  
-  toast.textContent = message;
-  document.body.appendChild(toast);
+    const toast = document.createElement('div');
+    toast.className = `fixed bottom-4 right-4 ${colors[type]} text-white px-6 py-3 rounded-lg shadow-lg z-50 transition-opacity`;
+    toast.textContent = message;
+    document.body.appendChild(toast);
 
-  setTimeout(() => {
-    toast.style.opacity = '0';
-    toast.style.transform = 'translateY(10px)';
-    setTimeout(() => toast.remove(), 300);
-  }, 3000);
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
 }

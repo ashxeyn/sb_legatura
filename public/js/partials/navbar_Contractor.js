@@ -20,7 +20,7 @@ class Navbar {
         const notificationBellBtn = document.getElementById('notificationBellBtn');
         const notificationDropdown = document.getElementById('notificationDropdown');
         const notificationCloseBtn = document.getElementById('notificationCloseBtn');
-        
+
         if (notificationBellBtn && notificationDropdown) {
             notificationBellBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -53,9 +53,9 @@ class Navbar {
 
         // Close dropdown when clicking outside
         document.addEventListener('click', (e) => {
-            if (notificationDropdown && 
-                !notificationDropdown.contains(e.target) && 
-                notificationBellBtn && 
+            if (notificationDropdown &&
+                !notificationDropdown.contains(e.target) &&
+                notificationBellBtn &&
                 !notificationBellBtn.contains(e.target)) {
                 this.closeNotificationDropdown();
             }
@@ -64,7 +64,7 @@ class Navbar {
         // User menu toggle (existing functionality)
         const userMenuToggle = document.getElementById('userMenuToggle');
         const userMenuDropdown = document.getElementById('userMenuDropdown');
-        
+
         if (userMenuToggle && userMenuDropdown) {
             userMenuToggle.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -233,12 +233,12 @@ class Navbar {
     showAccountSettingsModal() {
         const accountSettingsModal = document.getElementById('accountSettingsModal');
         const userMenuDropdown = document.getElementById('userMenuDropdown');
-        
+
         if (accountSettingsModal) {
             accountSettingsModal.classList.add('active');
             document.body.style.overflow = 'hidden';
         }
-        
+
         // Close user menu dropdown if open
         if (userMenuDropdown) {
             userMenuDropdown.classList.add('hidden');
@@ -337,32 +337,70 @@ class Navbar {
     }
 
     handleLogout() {
-        // Show loading state
+        // Show loading state and submit hidden logout form (server will redirect)
         const confirmBtn = document.getElementById('confirmLogoutBtn');
         if (confirmBtn) {
-            const originalText = confirmBtn.innerHTML;
+            confirmBtn.dataset.origHtml = confirmBtn.innerHTML;
             confirmBtn.innerHTML = '<i class="fi fi-rr-spinner animate-spin"></i> Logging out...';
             confirmBtn.disabled = true;
         }
 
-        // In a real implementation, make API call to logout
-        // For now, simulate logout after a delay
-        setTimeout(() => {
-            // Redirect to login page or perform logout
-            // window.location.href = '/login';
-            // Or use Laravel's logout route
-            // window.location.href = '{{ route("logout") }}';
-            
-            // For demo purposes, just show a message
-            this.showNotification('Logout successful', 'success');
-            this.closeLogoutConfirmationModal();
-            
-            // Reset button state
-            if (confirmBtn) {
-                confirmBtn.innerHTML = '<i class="fi fi-rr-sign-out-alt"></i> Logout';
-                confirmBtn.disabled = false;
+        const form = document.getElementById('logoutForm');
+        // Show immediate toast so user sees confirmation even if redirect fails
+        this.showToast('Successfully logged out', 'success');
+        if (form) {
+            try {
+                form.submit();
+                setTimeout(() => { window.location.href = '/accounts/login'; }, 200);
+                return;
+            } catch (e) {
+                console.warn('form.submit() failed, will use fetch fallback', e);
             }
-        }, 1000);
+        }
+
+        // Fallback: use fetch with CSRF token
+        const tokenMeta = document.querySelector('meta[name="csrf-token"]');
+        const token = tokenMeta ? tokenMeta.getAttribute('content') : null;
+        fetch('/accounts/logout', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': token || ''
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({})
+        }).then(resp => {
+            window.location.href = '/accounts/login';
+        }).catch(err => {
+            console.error('Logout fetch failed', err);
+            window.location.href = '/accounts/login';
+        });
+    }
+
+    showToast(message, type = 'info', duration = 3500) {
+        try {
+            const toast = document.createElement('div');
+            toast.className = 'site-toast site-toast-' + type;
+            toast.style.position = 'fixed';
+            toast.style.right = '20px';
+            toast.style.top = '20px';
+            toast.style.zIndex = 9999;
+            toast.style.padding = '12px 16px';
+            toast.style.borderRadius = '8px';
+            toast.style.boxShadow = '0 2px 10px rgba(0,0,0,0.12)';
+            toast.style.background = type === 'success' ? '#16a34a' : '#374151';
+            toast.style.color = '#fff';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => {
+                toast.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(-8px)';
+                setTimeout(() => toast.remove(), 350);
+            }, duration);
+        } catch (e) {
+            console.debug('showToast failed', e);
+        }
     }
 
     loadNotifications() {
@@ -502,7 +540,7 @@ class Navbar {
                 list = document.getElementById('notificationListBids');
                 break;
         }
-        
+
         if (!list) return;
 
         list.innerHTML = '';
@@ -520,13 +558,13 @@ class Navbar {
         filteredNotifications.forEach((notification, index) => {
             const notificationItem = this.createNotificationItem(notification);
             list.appendChild(notificationItem);
-            
+
             // Staggered animation
             setTimeout(() => {
                 notificationItem.style.opacity = '0';
                 notificationItem.style.transform = 'translateX(-10px)';
                 notificationItem.style.transition = 'all 0.3s ease';
-                
+
                 requestAnimationFrame(() => {
                     notificationItem.style.opacity = '1';
                     notificationItem.style.transform = 'translateX(0)';
@@ -540,9 +578,9 @@ class Navbar {
         item.className = `notification-item ${notification.read ? '' : 'unread'}`;
         item.setAttribute('data-notification-id', notification.id);
 
-        const iconClass = notification.type === 'project' ? 'project' : 
+        const iconClass = notification.type === 'project' ? 'project' :
                          notification.type === 'bid' ? 'bid' : 'general';
-        const icon = notification.type === 'project' ? 'fi-rr-briefcase' : 
+        const icon = notification.type === 'project' ? 'fi-rr-briefcase' :
                     notification.type === 'bid' ? 'fi-rr-handshake' : 'fi-rr-bell';
 
         item.innerHTML = `
@@ -585,7 +623,7 @@ class Navbar {
     updateNotificationBadge() {
         const badge = document.getElementById('notificationBadge');
         const unreadCount = this.notifications.filter(n => !n.read).length;
-        
+
         if (badge) {
             if (unreadCount > 0) {
                 badge.textContent = unreadCount > 99 ? '99+' : unreadCount;

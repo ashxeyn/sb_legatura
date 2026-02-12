@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\App;
 use Laravel\Sanctum\PersonalAccessToken;
+use App\Services\NotificationService;
 
 class projectsController extends Controller
 {
@@ -324,7 +325,7 @@ class projectsController extends Controller
         // If in testing mode and no user, allow access anyway
         if ($isLocalOrTesting && !$user) {
             // Allow access without authentication for testing
-            return view('owner.propertyOwner_Messages');
+            return view('both.messages');
         }
 
         // Normal authentication flow for logged-in users
@@ -341,7 +342,7 @@ class projectsController extends Controller
             }
         }
 
-        return view('owner.propertyOwner_Messages');
+        return view('both.messages');
     }
 
     public function showCreatePostPage(Request $request)
@@ -797,6 +798,29 @@ class projectsController extends Controller
             // Accept the bid
             $this->projectsClass->acceptBid($projectId, $bidId, $owner->owner_id);
 
+            // Notify contractor whose bid was accepted
+            $bid = DB::table('bids')->where('bid_id', $bidId)->first();
+            if ($bid) {
+                $cUserId = DB::table('contractor_users')->where('contractor_id', $bid->contractor_id)->where('is_active', 1)->where('is_deleted', 0)->value('user_id');
+                $projTitle = DB::table('projects')->where('project_id', $projectId)->value('project_title');
+                if ($cUserId) {
+                    NotificationService::create($cUserId, 'bid_accepted', 'Bid Accepted', "Your bid for \"{$projTitle}\" has been accepted!", 'high', 'project', (int)$projectId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int)$projectId]]);
+                }
+
+                // Notify all other contractors whose bids were rejected
+                $rejectedBids = DB::table('bids')
+                    ->where('project_id', $projectId)
+                    ->where('bid_id', '!=', $bidId)
+                    ->where('bid_status', 'rejected')
+                    ->get();
+                foreach ($rejectedBids as $rBid) {
+                    $rUserId = DB::table('contractor_users')->where('contractor_id', $rBid->contractor_id)->where('is_active', 1)->where('is_deleted', 0)->value('user_id');
+                    if ($rUserId) {
+                        NotificationService::create((int)$rUserId, 'bid_rejected', 'Bid Not Selected', "The property owner has already chosen a contractor for \"{$projTitle}\". Thank you for your bid.", 'normal', 'bid', (int)$rBid->bid_id, ['screen' => 'MyBids', 'params' => ['projectId' => (int)$projectId]]);
+                    }
+                }
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Bid accepted successfully! Bidding is now closed.'
@@ -853,6 +877,28 @@ class projectsController extends Controller
 
             // Accept the bid
             $this->projectsClass->acceptBid($projectId, $bidId, $owner->owner_id);
+
+            // Notify contractor whose bid was accepted
+            $bid = DB::table('bids')->where('bid_id', $bidId)->first();
+            if ($bid) {
+                $cUserId = DB::table('contractor_users')->where('contractor_id', $bid->contractor_id)->where('is_active', 1)->where('is_deleted', 0)->value('user_id');
+                if ($cUserId) {
+                    NotificationService::create($cUserId, 'bid_accepted', 'Bid Accepted', "Your bid for \"{$project->project_title}\" has been accepted!", 'high', 'project', (int)$projectId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int)$projectId]]);
+                }
+
+                // Notify all other contractors whose bids were rejected
+                $rejectedBids = DB::table('bids')
+                    ->where('project_id', $projectId)
+                    ->where('bid_id', '!=', $bidId)
+                    ->where('bid_status', 'rejected')
+                    ->get();
+                foreach ($rejectedBids as $rBid) {
+                    $rUserId = DB::table('contractor_users')->where('contractor_id', $rBid->contractor_id)->where('is_active', 1)->where('is_deleted', 0)->value('user_id');
+                    if ($rUserId) {
+                        NotificationService::create((int)$rUserId, 'bid_rejected', 'Bid Not Selected', "The property owner has already chosen a contractor for \"{$project->project_title}\". Thank you for your bid.", 'normal', 'bid', (int)$rBid->bid_id, ['screen' => 'MyBids', 'params' => ['projectId' => (int)$projectId]]);
+                    }
+                }
+            }
 
             return response()->json([
                 'success' => true,
@@ -1356,10 +1402,27 @@ class projectsController extends Controller
     public function apiGetApprovedProjects(Request $request)
     {
         try {
+            // Resolve user from query param, session, or bearer token
             $userId = $request->query('user_id');
+            if (!$userId) {
+                $user = Session::get('user');
+                if (!$user) {
+                    $bearerToken = $request->bearerToken();
+                    if ($bearerToken) {
+                        $token = \Laravel\Sanctum\PersonalAccessToken::findToken($bearerToken);
+                        if ($token) {
+                            $user = $token->tokenable;
+                        }
+                    }
+                }
+                if ($user) {
+                    $userId = $user->user_id ?? $user->id ?? null;
+                }
+            }
 
-            // Get contractor info if userId provided (for filtering)
+            // Get contractor info if userId available (for filtering)
             $contractorTypeId = null;
+            $contractor = null;
             if ($userId) {
                 $contractor = DB::table('contractors')->where('user_id', $userId)->first();
                 if ($contractor) {
@@ -1398,12 +1461,26 @@ class projectsController extends Controller
                 ->where('p.project_status', 'open')
                 ->where('pr.bidding_due', '>=', now());
 
-            // Filter by contractor type if available
-            if ($contractorTypeId) {
-                $query->where('p.type_id', $contractorTypeId);
+            // Exclude projects the contractor has already bid on (non-cancelled)
+            if ($contractor) {
+                $bidProjectIds = DB::table('bids')
+                    ->where('contractor_id', $contractor->contractor_id)
+                    ->whereNotIn('bid_status', ['cancelled'])
+                    ->pluck('project_id');
+                if ($bidProjectIds->isNotEmpty()) {
+                    $query->whereNotIn('p.project_id', $bidProjectIds);
+                }
             }
 
-            $projects = $query->orderBy('pr.created_at', 'desc')->get();
+            // Sort: matching contractor type first, then by newest
+            if ($contractorTypeId) {
+                $query->orderByRaw('CASE WHEN p.type_id = ? THEN 0 ELSE 1 END ASC', [$contractorTypeId])
+                      ->orderBy('pr.created_at', 'desc');
+            } else {
+                $query->orderBy('pr.created_at', 'desc');
+            }
+
+            $projects = $query->get();
 
             // Add bids_count for each project
             foreach ($projects as $project) {
@@ -1412,12 +1489,20 @@ class projectsController extends Controller
                     ->whereNotIn('bid_status', ['cancelled'])
                     ->count();
                 $project->bids_count = $bidCount;
-                // Attach project files (only desired design images for collage display)
+                // Attach all project files with type info so the frontend can
+                // display optional images (blueprint, desired design, others) and
+                // hide sensitive documents (building permit, title).
                 $fileRows = DB::table('project_files')
                     ->where('project_id', $project->project_id)
-                    ->where('file_type', 'desired design')
                     ->orderBy('file_id', 'asc')
-                    ->pluck('file_path')
+                    ->select('file_id', 'file_type', 'file_path')
+                    ->get()
+                    ->map(fn ($f) => [
+                        'file_id'   => $f->file_id,
+                        'file_type' => $f->file_type,
+                        'file_path' => $f->file_path,
+                    ])
+                    ->values()
                     ->toArray();
 
                 $project->files = $fileRows;
@@ -1487,6 +1572,16 @@ class projectsController extends Controller
                     'updated_at' => now()
                 ]);
 
+            // Notify contractor whose bid was rejected
+            $rejBid = DB::table('bids')->where('bid_id', $bidId)->first();
+            if ($rejBid) {
+                $cUserId = DB::table('contractor_users')->where('contractor_id', $rejBid->contractor_id)->where('is_active', 1)->where('is_deleted', 0)->value('user_id');
+                $projTitle = $project->project_title ?? DB::table('projects')->where('project_id', $projectId)->value('project_title');
+                if ($cUserId) {
+                    NotificationService::create($cUserId, 'bid_rejected', 'Bid Rejected', "Your bid for \"{$projTitle}\" was not accepted.", 'normal', 'project', (int)$projectId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int)$projectId]]);
+                }
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Bid rejected successfully'
@@ -1550,6 +1645,13 @@ class projectsController extends Controller
                     'setup_status' => 'approved',
                     'updated_at' => now()
                 ]);
+
+            // Notify contractor that milestone was approved
+            $cUserId = DB::table('contractor_users')->where('contractor_id', $milestone->contractor_id)->where('is_active', 1)->where('is_deleted', 0)->value('user_id');
+            if ($cUserId) {
+                $msName = $milestone->milestone_name ?? 'Milestone';
+                NotificationService::create($cUserId, 'milestone_approved', 'Milestone Approved', "Your milestone \"{$msName}\" has been approved by the owner.", 'normal', 'milestone', (int)$milestoneId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int)$milestone->project_id, 'tab' => 'milestones']]);
+            }
 
             return response()->json([
                 'success' => true,
@@ -1617,6 +1719,14 @@ class projectsController extends Controller
                     'updated_at' => now()
                 ]);
 
+            // Notify contractor that milestone was rejected
+            $cUserId = DB::table('contractor_users')->where('contractor_id', $milestone->contractor_id)->where('is_active', 1)->where('is_deleted', 0)->value('user_id');
+            if ($cUserId) {
+                $msName = $milestone->milestone_name ?? 'Milestone';
+                $reasonNote = $rejectionReason ? " Reason: {$rejectionReason}" : '';
+                NotificationService::create($cUserId, 'milestone_rejected', 'Milestone Rejected', "Your milestone \"{$msName}\" was rejected.{$reasonNote}", 'high', 'milestone', (int)$milestoneId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int)$milestone->project_id, 'tab' => 'milestones']]);
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Milestone rejected successfully'
@@ -1653,6 +1763,15 @@ class projectsController extends Controller
                     'success' => false,
                     'message' => 'No milestone found with ID: ' . $milestoneId,
                 ], 404);
+            }
+
+            // Notify contractor that milestone is marked complete
+            $ms = DB::table('milestones as m')->join('projects as p', 'm.project_id', '=', 'p.project_id')->where('m.milestone_id', $milestoneId)->select('m.milestone_name', 'm.contractor_id', 'p.project_id', 'p.project_title')->first();
+            if ($ms) {
+                $cUserId = DB::table('contractor_users')->where('contractor_id', $ms->contractor_id)->where('is_active', 1)->where('is_deleted', 0)->value('user_id');
+                if ($cUserId) {
+                    NotificationService::create($cUserId, 'milestone_completed', 'Milestone Completed', "Milestone \"{$ms->milestone_name}\" for \"{$ms->project_title}\" has been marked as complete.", 'normal', 'milestone', (int)$milestoneId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int)$ms->project_id, 'tab' => 'milestones']]);
+                }
             }
 
             return response()->json([
@@ -1699,6 +1818,22 @@ class projectsController extends Controller
                     'success' => false,
                     'message' => 'No milestone item found with ID: ' . $itemId,
                 ], 404);
+            }
+
+            // ── Sequential enforcement: previous item must be completed first ──
+            $currentItem = DB::table('milestone_items')
+                ->where('item_id', $milestoneItem->item_id)
+                ->first();
+            $prevItem = DB::table('milestone_items')
+                ->where('milestone_id', $currentItem->milestone_id)
+                ->where('sequence_order', '<', $currentItem->sequence_order)
+                ->orderBy('sequence_order', 'desc')
+                ->first();
+            if ($prevItem && ($prevItem->item_status ?? '') !== 'completed') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You must complete the previous milestone item first before completing this one.',
+                ], 422);
             }
 
             // Update milestone item status to 'completed'
@@ -1774,6 +1909,20 @@ class projectsController extends Controller
                 $responsePayload['non_approved_count'] = $nonApprovedCount;
                 // include a friendly note for frontend display
                 $responsePayload['message'] = 'Milestone item marked as complete. Note: ' . $warning;
+            }
+
+            // Notify contractor that milestone item is complete
+            $itemInfo = DB::table('milestone_items as mi')
+                ->join('milestones as m', 'mi.milestone_id', '=', 'm.milestone_id')
+                ->join('projects as p', 'm.project_id', '=', 'p.project_id')
+                ->where('mi.item_id', $updatedItem->item_id)
+                ->select('mi.milestone_item_title', 'm.contractor_id', 'p.project_id', 'p.project_title')
+                ->first();
+            if ($itemInfo) {
+                $cUserId = DB::table('contractor_users')->where('contractor_id', $itemInfo->contractor_id)->where('is_active', 1)->where('is_deleted', 0)->value('user_id');
+                if ($cUserId) {
+                    NotificationService::create($cUserId, 'milestone_item_completed', 'Milestone Complete', "Milestone \"{$itemInfo->milestone_item_title}\" for \"{$itemInfo->project_title}\" has been marked complete.", 'normal', 'milestone_item', (int)$updatedItem->item_id, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int)$itemInfo->project_id, 'tab' => 'milestones']]);
+                }
             }
 
             return response()->json($responsePayload);
@@ -1907,6 +2056,14 @@ class projectsController extends Controller
                 ->update([
                     'project_status' => 'completed'
                 ]);
+
+            // Notify contractor that the project is completed
+            if ($project->selected_contractor_id) {
+                $cUserId = DB::table('contractor_users')->where('contractor_id', $project->selected_contractor_id)->where('is_active', 1)->where('is_deleted', 0)->value('user_id');
+                if ($cUserId) {
+                    NotificationService::create($cUserId, 'project_completed', 'Project Completed', "The project \"{$project->project_title}\" has been marked as completed. Congratulations!", 'high', 'project', (int)$projectId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int)$projectId]]);
+                }
+            }
 
             return response()->json([
                 'success' => true,

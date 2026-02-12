@@ -41,6 +41,13 @@ interface Project {
   project_status?: string;
   owner_name?: string;
   accepted_bid_amount?: number;
+  proposed_cost?: number; // Direct field from API
+  accepted_bid?: {
+    bid_id: number;
+    proposed_cost: number;
+    estimated_timeline: string;
+    contractor_notes: string;
+  };
 }
 
 interface MilestoneSetupProps {
@@ -81,6 +88,39 @@ const MilestoneSetup: React.FC<MilestoneSetupProps> = ({ project, userId, onClos
   // Loading states
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [isPrefilledFromBid, setIsPrefilledFromBid] = useState(false);
+  const [hasPrefilledOnce, setHasPrefilledOnce] = useState(false);
+
+  // Helper functions defined early so they can be used in useEffects
+  const formatDate = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  // Format number with commas as user types
+  const formatNumberWithCommas = (text: string): string => {
+    // Remove all non-numeric characters except decimal point
+    const numericValue = text.replace(/[^0-9.]/g, '');
+
+    // If empty, return empty string
+    if (!numericValue) return '';
+
+    // Split by decimal point to handle decimal values
+    const parts = numericValue.split('.');
+    
+    // Format the integer part with commas
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    
+    // Rejoin with decimal point (limit to 2 decimal places)
+    return parts.length > 1 ? parts[0] + '.' + parts[1].substring(0, 2) : parts[0];
+  };
+
+  // Remove commas from formatted string to get numeric value
+  const removeCommas = (text: string): string => {
+    return text.replace(/,/g, '');
+  };
 
   // Load existing milestone data if in edit mode
   useEffect(() => {
@@ -89,8 +129,8 @@ const MilestoneSetup: React.FC<MilestoneSetupProps> = ({ project, userId, onClos
       setPaymentMode(existingMilestone.payment_plan?.payment_mode || 'downpayment');
       setStartDate(existingMilestone.start_date ? new Date(existingMilestone.start_date) : new Date());
       setEndDate(existingMilestone.end_date ? new Date(existingMilestone.end_date) : new Date());
-      setTotalProjectCost(existingMilestone.payment_plan?.total_project_cost?.toString() || '');
-      setDownpaymentAmount(existingMilestone.payment_plan?.downpayment_amount?.toString() || '');
+      setTotalProjectCost(existingMilestone.payment_plan?.total_project_cost ? formatNumberWithCommas(existingMilestone.payment_plan.total_project_cost.toString()) : '');
+      setDownpaymentAmount(existingMilestone.payment_plan?.downpayment_amount ? formatNumberWithCommas(existingMilestone.payment_plan.downpayment_amount.toString()) : '');
       
       if (existingMilestone.items && existingMilestone.items.length > 0) {
         const loadedItems = existingMilestone.items.map((item: any, index: number) => ({
@@ -105,18 +145,36 @@ const MilestoneSetup: React.FC<MilestoneSetupProps> = ({ project, userId, onClos
     }
   }, [editMode, existingMilestone]);
 
+  // Pre-fill total project cost from winning bid amount (only for new setup, not edit mode)
+  useEffect(() => {
+    // Get the bid amount from multiple possible sources
+    const bidAmount = project.accepted_bid_amount 
+      || project.proposed_cost 
+      || project.accepted_bid?.proposed_cost;
+
+    console.log('MilestoneSetup - Pre-fill check:', {
+      editMode,
+      accepted_bid_amount: project.accepted_bid_amount,
+      proposed_cost: project.proposed_cost,
+      accepted_bid_proposed_cost: project.accepted_bid?.proposed_cost,
+      bidAmount,
+      totalProjectCost,
+      hasPrefilledOnce
+    });
+
+    if (!editMode && bidAmount && !totalProjectCost && !hasPrefilledOnce) {
+      console.log('MilestoneSetup - Pre-filling with bid amount:', bidAmount);
+      setTotalProjectCost(formatNumberWithCommas(bidAmount.toString()));
+      setIsPrefilledFromBid(true);
+      setHasPrefilledOnce(true);
+    }
+  }, [editMode, project.accepted_bid_amount, project.proposed_cost, project.accepted_bid?.proposed_cost, totalProjectCost, hasPrefilledOnce]);
+
   // Calculate total percentage
   const totalPercentage = milestoneItems.reduce((sum, item) => {
     const pct = parseFloat(item.percentage) || 0;
     return sum + pct;
   }, 0);
-
-  const formatDate = (date: Date): string => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
 
   const handleStartDateChange = (event: any, selectedDate?: Date) => {
     setShowStartPicker(false);
@@ -176,16 +234,16 @@ const MilestoneSetup: React.FC<MilestoneSetupProps> = ({ project, userId, onClos
   };
 
   const validateStep2 = (): boolean => {
-    if (!totalProjectCost || parseFloat(totalProjectCost) <= 0) {
+    if (!totalProjectCost || parseFloat(removeCommas(totalProjectCost)) <= 0) {
       Alert.alert('Validation Error', 'Please enter a valid total project cost.');
       return false;
     }
     if (paymentMode === 'downpayment') {
-      if (!downpaymentAmount || parseFloat(downpaymentAmount) <= 0) {
+      if (!downpaymentAmount || parseFloat(removeCommas(downpaymentAmount)) <= 0) {
         Alert.alert('Validation Error', 'Please enter a valid downpayment amount.');
         return false;
       }
-      if (parseFloat(downpaymentAmount) >= parseFloat(totalProjectCost)) {
+      if (parseFloat(removeCommas(downpaymentAmount)) >= parseFloat(removeCommas(totalProjectCost))) {
         Alert.alert('Validation Error', 'Downpayment must be less than total project cost.');
         return false;
       }
@@ -249,8 +307,8 @@ const MilestoneSetup: React.FC<MilestoneSetupProps> = ({ project, userId, onClos
         payment_mode: paymentMode,
         start_date: formatDate(startDate),
         end_date: formatDate(endDate),
-        total_project_cost: parseFloat(totalProjectCost),
-        downpayment_amount: paymentMode === 'downpayment' ? parseFloat(downpaymentAmount) : 0,
+        total_project_cost: parseFloat(removeCommas(totalProjectCost)),
+        downpayment_amount: paymentMode === 'downpayment' ? parseFloat(removeCommas(downpaymentAmount)) : 0,
         items: milestoneItems.map(item => ({
           percentage: parseFloat(item.percentage),
           title: item.title,
@@ -455,18 +513,41 @@ const MilestoneSetup: React.FC<MilestoneSetupProps> = ({ project, userId, onClos
       )}
 
       <View style={styles.inputGroup}>
-        <Text style={styles.label}>Total Project Cost (₱) *</Text>
+        <View style={styles.labelWithBadge}>
+          <Text style={styles.label}>Total Project Cost (₱) *</Text>
+          {isPrefilledFromBid && (
+            <View style={styles.bidBadge}>
+              <Ionicons name="checkmark-circle" size={14} color="#10B981" />
+              <Text style={styles.bidBadgeText}>From winning bid</Text>
+            </View>
+          )}
+        </View>
         <View style={styles.currencyInput}>
           <Text style={styles.currencySymbol}>₱</Text>
           <TextInput
             style={styles.currencyTextInput}
             value={totalProjectCost}
-            onChangeText={setTotalProjectCost}
+            onChangeText={(value) => {
+              const formatted = formatNumberWithCommas(value);
+              setTotalProjectCost(formatted);
+              // Clear the badge when user manually edits the value
+              const bidAmount = project.accepted_bid_amount 
+                || project.proposed_cost 
+                || project.accepted_bid?.proposed_cost;
+              if (isPrefilledFromBid && bidAmount && removeCommas(formatted) !== bidAmount.toString()) {
+                setIsPrefilledFromBid(false);
+              }
+            }}
             placeholder="0.00"
             placeholderTextColor="#999"
             keyboardType="decimal-pad"
           />
         </View>
+        {isPrefilledFromBid && (
+          <Text style={styles.prefillHint}>
+            This amount was automatically filled from the accepted bid. You can edit it if needed.
+          </Text>
+        )}
       </View>
 
       {paymentMode === 'downpayment' && (
@@ -477,7 +558,7 @@ const MilestoneSetup: React.FC<MilestoneSetupProps> = ({ project, userId, onClos
             <TextInput
               style={styles.currencyTextInput}
               value={downpaymentAmount}
-              onChangeText={setDownpaymentAmount}
+              onChangeText={(value) => setDownpaymentAmount(formatNumberWithCommas(value))}
               placeholder="0.00"
               placeholderTextColor="#999"
               keyboardType="decimal-pad"
@@ -485,7 +566,7 @@ const MilestoneSetup: React.FC<MilestoneSetupProps> = ({ project, userId, onClos
           </View>
           {totalProjectCost && downpaymentAmount && (
             <Text style={styles.remainingBalance}>
-              Remaining Balance: ₱{(parseFloat(totalProjectCost) - parseFloat(downpaymentAmount)).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+              Remaining Balance: ₱{(parseFloat(removeCommas(totalProjectCost)) - parseFloat(removeCommas(downpaymentAmount))).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
             </Text>
           )}
         </View>
@@ -801,6 +882,32 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#333',
     marginBottom: 8,
+  },
+  labelWithBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 10,
+  },
+  bidBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#D1FAE5',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  bidBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#059669',
+  },
+  prefillHint: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 6,
+    fontStyle: 'italic',
   },
   smallLabel: {
     fontSize: 12,

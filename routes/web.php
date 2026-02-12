@@ -13,6 +13,7 @@ use App\Http\Controllers\Admin\userManagementController;
 use App\Http\Controllers\Admin\globalManagementController;
 use App\Http\Controllers\Admin\ProjectAdminController;
 use App\Http\Controllers\Admin\projectManagementController;
+use App\Http\Controllers\message\broadcastAuthController;
 
 
 Route::get('/', function () {
@@ -23,6 +24,10 @@ Route::get('/', function () {
 Route::get('/landing', function () {
     return view('signUp_logIN.landingPage');
 })->name('landing');
+
+// Custom Pusher Broadcasting Auth (Session-based for web dashboard)
+Route::post('/broadcasting/auth', [broadcastAuthController::class, 'authorize'])
+    ->name('broadcasting.auth.custom');
 
 // Splash / introduction screen for owner signup/login
 Route::get('/intro', function () {
@@ -87,6 +92,17 @@ Route::get('/owner/projects/milestone-progress-report', [\App\Http\Controllers\o
 // Property Owner Messages
 Route::get('/owner/messages', [\App\Http\Controllers\owner\projectsController::class, 'showMessages'])->name('owner.messages');
 
+// Property Owner Messages API (Session-based for web)
+Route::prefix('owner/messages')->group(function () {
+    Route::get('/api', [\App\Http\Controllers\message\messageController::class, 'index'])->name('owner.messages.index');
+    Route::get('/api/stats', [\App\Http\Controllers\message\messageController::class, 'getStats'])->name('owner.messages.stats');
+    Route::get('/api/users', [\App\Http\Controllers\message\messageController::class, 'getAvailableUsers'])->name('owner.messages.users');
+    Route::get('/api/search', [\App\Http\Controllers\message\messageController::class, 'search'])->name('owner.messages.search');
+    Route::get('/api/{conversationId}', [\App\Http\Controllers\message\messageController::class, 'show'])->name('owner.messages.show');
+    Route::post('/api', [\App\Http\Controllers\message\messageController::class, 'store'])->name('owner.messages.store');
+    Route::post('/api/report', [\App\Http\Controllers\message\messageController::class, 'report'])->name('owner.messages.report');
+});
+
 // Contractor Homepage
 Route::get('/contractor/homepage', [\App\Http\Controllers\contractor\cprocessController::class, 'showHomepage'])->name('contractor.homepage');
 
@@ -109,6 +125,17 @@ Route::get('/contractor/projects/milestone-progress-report', [\App\Http\Controll
 // Contractor Messages
 Route::get('/contractor/messages', [\App\Http\Controllers\contractor\cprocessController::class, 'showMessages'])->name('contractor.messages');
 
+// Contractor Messages API (Session-based for web)
+Route::prefix('contractor/messages')->group(function () {
+    Route::get('/api', [\App\Http\Controllers\message\messageController::class, 'index'])->name('contractor.messages.index');
+    Route::get('/api/stats', [\App\Http\Controllers\message\messageController::class, 'getStats'])->name('contractor.messages.stats');
+    Route::get('/api/users', [\App\Http\Controllers\message\messageController::class, 'getAvailableUsers'])->name('contractor.messages.users');
+    Route::get('/api/search', [\App\Http\Controllers\message\messageController::class, 'search'])->name('contractor.messages.search');
+    Route::get('/api/{conversationId}', [\App\Http\Controllers\message\messageController::class, 'show'])->name('contractor.messages.show');
+    Route::post('/api', [\App\Http\Controllers\message\messageController::class, 'store'])->name('contractor.messages.store');
+    Route::post('/api/report', [\App\Http\Controllers\message\messageController::class, 'report'])->name('contractor.messages.report');
+});
+
 // Contractor Profile
 Route::get('/contractor/profile', [\App\Http\Controllers\contractor\cprocessController::class, 'showProfile'])->name('contractor.profile');
 
@@ -130,7 +157,7 @@ Route::get('/admin/login', function() {
 Route::post('/admin/login', [authController::class, 'login'])->name('admin.login.post');
 
 Route::get('/admin/signup', function() {
-    return view('accounts.signup');
+    return view('accounts.login');
 })->name('admin.signup');
 Route::post('/admin/signup', [authController::class, 'adminSignup'])->name('admin.signup.post');
 
@@ -282,6 +309,23 @@ Route::get('/admin/project-management/subscriptions', [ProjectAdminController::c
 Route::get('/admin/project-management/disputes-reports', [projectManagementController::class, 'disputesReports'])->name('admin.projectManagement.disputesReports');
 Route::get('/admin/project-management/messages', [ProjectAdminController::class, 'messages'])->name('admin.projectManagement.messages');
 
+// Admin Messages API (Session-based for web dashboard)
+Route::prefix('admin/messages')->group(function () {
+    Route::get('/', [\App\Http\Controllers\message\messageController::class, 'index'])->name('admin.messages.index');
+    Route::get('/stats', [\App\Http\Controllers\message\messageController::class, 'getStats'])->name('admin.messages.stats');
+    Route::get('/flagged', [\App\Http\Controllers\message\messageController::class, 'getFlaggedConversations'])->name('admin.messages.flagged');
+    Route::get('/suspended', [\App\Http\Controllers\message\messageController::class, 'getSuspendedConversations'])->name('admin.messages.suspended');
+    Route::get('/users', [\App\Http\Controllers\message\messageController::class, 'getAvailableUsers'])->name('admin.messages.users');
+    Route::get('/search', [\App\Http\Controllers\message\messageController::class, 'search'])->name('admin.messages.search');
+    Route::get('/{conversationId}', [\App\Http\Controllers\message\messageController::class, 'show'])->name('admin.messages.show');
+    Route::post('/', [\App\Http\Controllers\message\messageController::class, 'store'])->name('admin.messages.store');
+    Route::post('/report', [\App\Http\Controllers\message\messageController::class, 'report'])->name('admin.messages.report');
+    Route::post('/conversation/{conversationId}/suspend', [\App\Http\Controllers\message\messageController::class, 'suspend'])->name('admin.messages.suspend');
+    Route::post('/conversation/{conversationId}/restore', [\App\Http\Controllers\message\messageController::class, 'restore'])->name('admin.messages.restore');
+    Route::post('/conversation/{conversationId}/flag', [\App\Http\Controllers\message\messageController::class, 'flagConversation'])->name('admin.messages.conversation.flag');
+    Route::post('/conversation/{conversationId}/unflag', [\App\Http\Controllers\message\messageController::class, 'unflagConversation'])->name('admin.messages.conversation.unflag');
+});
+
 // Bid routes
 Route::get('/admin/project-management/bids/{bid_id}/details', [projectManagementController::class, 'getBidDetails'])->name('admin.projectManagement.bidDetails');
 Route::get('/admin/project-management/bids/{bid_id}/accept-summary', [projectManagementController::class, 'getAcceptBidSummary'])->name('admin.projectManagement.acceptBidSummary');
@@ -328,24 +372,6 @@ Route::get('/admin/settings/notifications', function() {
 Route::get('/admin/settings/security', function() {
     return view('admin.settings.security');
 })->name('admin.settings.security');
-
-// * REMOVED CONFLICTING ROUTE HERE *
-// The route '/dashboard' was overwriting your Controller logic.
-
-// Debug route
-Route::get('/debug/check-projects', function() {
-    $projects = DB::table('projects')
-        ->where('project_status', 'open')
-        ->whereNotNull('owner_id')
-        ->select('project_id', 'project_title', 'project_status', 'owner_id', 'created_at')
-        ->orderBy('created_at', 'desc')
-        ->get();
-
-    return response()->json([
-        'count' => $projects->count(),
-        'projects' => $projects
-    ]);
-})->name('debug.check.projects');
 
 // =============================================
 // ADMIN API ROUTES
@@ -416,7 +442,6 @@ Route::prefix('/api/admin/projects')->group(function () {
     Route::post('/{id}/reject', [ProjectAdminController::class, 'reject'])->name('api.admin.project.reject');
 
     Route::get('/subscriptions', [ProjectAdminController::class, 'getSubscriptionsApi'])->name('api.admin.subscriptions');
-    Route::get('/messages', [ProjectAdminController::class, 'getMessagesApi'])->name('api.admin.messages');
     Route::get('/disputes', [ProjectAdminController::class, 'getDisputesApi'])->name('api.admin.disputes');
 });
 
@@ -433,7 +458,7 @@ Route::get('/storage/{path}', function ($path) {
     // Remove query parameters from path (e.g., ?t=timestamp)
     $cleanPath = strtok($path, '?');
     $fullPath = storage_path('app/public/' . $cleanPath);
-    
+
     \Log::info('Storage serve request', [
         'raw_path' => $path,
         'clean_path' => $cleanPath,
@@ -441,14 +466,14 @@ Route::get('/storage/{path}', function ($path) {
         'exists' => file_exists($fullPath),
         'is_readable' => file_exists($fullPath) ? is_readable($fullPath) : false
     ]);
-    
+
     if (!file_exists($fullPath)) {
         \Log::warning('File not found in storage', ['path' => $fullPath]);
         abort(404, 'File not found');
     }
-    
+
     $mimeType = mime_content_type($fullPath);
-    
+
     return response()->file($fullPath, [
         'Content-Type' => $mimeType,
         'Cache-Control' => 'public, max-age=31536000',

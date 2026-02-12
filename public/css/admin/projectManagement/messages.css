@@ -289,7 +289,7 @@ button:active {
     z-index: 40;
     background: white;
   }
-  
+
   #messagePanel.mobile-active {
     display: flex !important;
   }
@@ -331,3 +331,83 @@ button:active {
 .compose-attachment-preview .remove-attachment { position:absolute; top:4px; right:4px; background:#ef4444; color:#fff; width:20px; height:20px; border-radius:6px; font-size:12px; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 2px 4px rgba(239,68,68,.4); }
 .compose-attachment-preview .remove-attachment:hover { background:#dc2626; }
 .compose-attachment-preview .attachment-meta { position:absolute; left:4px; bottom:4px; font-size:10px; background:#6366f1; color:#fff; padding:2px 5px; border-radius:6px; opacity:.85; }
+
+/* ========================================
+   MESSAGE BUBBLES (Real-time Chat)
+   ======================================== */
+
+/* Sent Messages (Indigo/Purple) */
+.message-bubble-sent {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: white;
+  padding: 12px 16px;
+  border-radius: 18px 18px 4px 18px;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.25);
+  max-width: 100%;
+  word-wrap: break-word;
+}
+
+/* Received Messages (Gray) */
+.message-bubble-received {
+  background: #f3f4f6;
+  color: #1f2937;
+  padding: 12px 16px;
+  border-radius: 18px 18px 18px 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  max-width: 100%;
+  word-wrap: break-word;
+}
+
+/* Avatar Status */
+.avatar-status {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid white;
+}
+
+.avatar-status.online {
+  background: #10b981;
+}
+
+.avatar-status.offline {
+  background: #9ca3af;
+}
+
+/* Unread Badge */
+.unread-badge {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 12px;
+  min-width: 20px;
+  text-align: center;
+}
+/* Recipient Chips (Messenger-style) */
+.recipient-chip {
+  animation: chipSlide 0.2s ease-out;
+}
+
+@keyframes chipSlide {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.recipient-chip .remove-recipient {
+  transition: all 0.2s ease;
+}
+
+.recipient-chip .remove-recipient:hover {
+  transform: scale(1.1);
+}

@@ -10,6 +10,7 @@ use App\Http\Controllers\contractor\progressUploadController;
 use App\Http\Controllers\owner\paymentUploadController;
 use App\Http\Controllers\projectPosting\projectPostingController;
 use App\Http\Controllers\both\disputeController;
+use App\Http\Controllers\Both\NotificationController;
 
 // At the very top of api.php
 Log::info('=== INCOMING API REQUEST ===', [
@@ -171,6 +172,12 @@ Route::get('/contractor/projects/{projectId}/milestone-form', [\App\Http\Control
 Route::post('/contractor/projects/{projectId}/milestones', [\App\Http\Controllers\contractor\cprocessController::class, 'apiSubmitMilestones']);
 Route::put('/contractor/projects/{projectId}/milestones/{milestoneId}', [\App\Http\Controllers\contractor\cprocessController::class, 'apiUpdateMilestone']);
 
+// Notification endpoints - controller handles both session and token auth
+Route::get('/notifications', [NotificationController::class, 'index']);
+Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
+Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
+Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
+
 // Note: profile update registered below inside sanctum-protected group
 
 // DEBUG TEST ENDPOINT - Remove after testing
@@ -295,24 +302,24 @@ Route::get('/debug/check-user-login', function (\Illuminate\Http\Request $reques
     if (!$username) {
         return response()->json(['error' => 'username required']);
     }
-    
+
     $user = DB::table('users')
         ->where('username', $username)
         ->orWhere('email', $username)
         ->first();
-    
+
     if (!$user) {
         return response()->json(['error' => 'User not found: ' . $username]);
     }
-    
+
     $contractorUser = DB::table('contractor_users')->where('user_id', $user->user_id)->first();
     $contractor = null;
     if ($contractorUser) {
         $contractor = DB::table('contractors')->where('contractor_id', $contractorUser->contractor_id)->first();
     }
-    
+
     $propertyOwner = DB::table('property_owners')->where('user_id', $user->user_id)->first();
-    
+
     return response()->json([
         'user' => [
             'user_id' => $user->user_id,
@@ -336,8 +343,8 @@ Route::get('/debug/check-user-login', function (\Illuminate\Http\Request $reques
             'verification_status' => $propertyOwner->verification_status,
             'is_active' => $propertyOwner->is_active,
         ] : null,
-        'expected_login_behavior' => $user->user_type === 'staff' 
-            ? 'Should login as contractor (determinedRole=contractor)' 
+        'expected_login_behavior' => $user->user_type === 'staff'
+            ? 'Should login as contractor (determinedRole=contractor)'
             : 'Login as ' . $user->user_type,
     ]);
 });
@@ -362,6 +369,20 @@ Route::middleware('auth:sanctum')->group(function () {
             'success' => true,
             'message' => 'Logged out successfully'
         ]);
+    });
+
+    // Messages & Chat (Real-time with Pusher)
+    Route::prefix('messages')->group(function () {
+        Route::get('/', [\App\Http\Controllers\message\messageController::class, 'index']); // Get inbox
+        Route::get('/stats', [\App\Http\Controllers\message\messageController::class, 'getStats']); // Dashboard stats
+        Route::get('/users', [\App\Http\Controllers\message\messageController::class, 'getAvailableUsers']); // Users list
+        Route::get('/search', [\App\Http\Controllers\message\messageController::class, 'search']); // Search messages
+        Route::get('/{conversationId}', [\App\Http\Controllers\message\messageController::class, 'show']); // Conversation history
+        Route::post('/', [\App\Http\Controllers\message\messageController::class, 'store']); // Send message
+        Route::post('/{messageId}/flag', [\App\Http\Controllers\message\messageController::class, 'flag']); // Flag message
+        Route::post('/{messageId}/unflag', [\App\Http\Controllers\message\messageController::class, 'unflag']); // Unflag message
+        Route::post('/conversation/{conversationId}/suspend', [\App\Http\Controllers\message\messageController::class, 'suspend']); // Suspend
+        Route::post('/conversation/{conversationId}/restore', [\App\Http\Controllers\message\messageController::class, 'restore']); // Restore
     });
 
     // Update profile (profile picture / cover photo)

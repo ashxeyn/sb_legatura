@@ -831,7 +831,7 @@
         height: calc(100vh - 80px);
         padding: 12px;
     }
-    
+
     .messages-sidebar {
         min-width: 300px;
         max-width: 350px;
@@ -843,7 +843,7 @@
         height: calc(100vh - 80px);
         padding: 8px;
     }
-    
+
     .messages-layout {
         flex-direction: column;
     }

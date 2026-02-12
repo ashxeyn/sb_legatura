@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use App\Models\contractor\contractorClass;
+use App\Services\NotificationService;
 
 class cprocessController extends Controller
 {
@@ -32,7 +33,7 @@ class cprocessController extends Controller
 
     public function showMessages(Request $request)
     {
-        return view('contractor.contractor_Messages');
+        return view('both.messages');
     }
 
     public function showProfile(Request $request)
@@ -86,27 +87,31 @@ class cprocessController extends Controller
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Access denied. Only contractors can access milestone setup.',
+                    'message' => 'Access denied. Only contractors can access this page.',
                     'redirect_url' => '/dashboard'
                 ], 403);
             } else {
-                return redirect('/dashboard')->with('error', 'Access denied. Only contractors can access milestone setup.');
+                return redirect('/dashboard')->with('error', 'Access denied. Only contractors can access this page.');
             }
         }
 
-        // For 'both' users, check current active role
+        // For 'both' users, auto-switch to contractor role when accessing contractor pages
         if ($user->user_type === 'both') {
             $currentRole = Session::get('current_role', 'contractor');
             if ($currentRole !== 'contractor') {
-                if ($request->expectsJson()) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Access denied. Please switch to contractor role to access milestone setup.',
-                        'redirect_url' => '/dashboard',
-                        'suggested_action' => 'switch_to_contractor'
-                    ], 403);
-                } else {
-                    return redirect('/dashboard')->with('error', 'Please switch to contractor role to access milestone setup.');
+                // Auto-switch to contractor role
+                Session::put('current_role', 'contractor');
+
+                // Update preferred_role in database for persistence
+                try {
+                    DB::table('users')
+                        ->where('user_id', $user->user_id)
+                        ->update(['preferred_role' => 'contractor']);
+                } catch (\Exception $e) {
+                    Log::warning('Failed to update preferred_role in database', [
+                        'user_id' => $user->user_id,
+                        'error' => $e->getMessage()
+                    ]);
                 }
             }
         }
@@ -163,6 +168,34 @@ class cprocessController extends Controller
             }
         }
 
+        // Check verification status before allowing switch
+        $userId = is_object($user) ? ($user->user_id ?? null) : ($user['user_id'] ?? null);
+        $roleApproved = false;
+        if ($targetRole === 'contractor') {
+            $contractor = DB::table('contractors')->where('user_id', $userId)->first();
+            if ($contractor && $contractor->verification_status === 'approved') {
+                $roleApproved = true;
+            }
+        } elseif ($targetRole === 'owner') {
+            $owner = DB::table('property_owners')->where('user_id', $userId)->first();
+            if ($owner && ($owner->verification_status === 'approved' || $owner->verification_status === 'verified')) {
+                $roleApproved = true;
+            }
+        }
+
+        if (!$roleApproved) {
+            $msg = 'You cannot switch to this role until your application is approved by the admin.';
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $msg,
+                    'pending_role_request' => true
+                ], 403);
+            } else {
+                return redirect('/dashboard')->with('error', $msg);
+            }
+        }
+
         Session::put('current_role', $targetRole);
 
         // Persist active role for stateless clients using Sanctum
@@ -173,7 +206,6 @@ class cprocessController extends Controller
                 $user->save();
             } else {
                 // Session user (stdClass/array) — update via query builder
-                $userId = is_object($user) ? ($user->user_id ?? null) : ($user['user_id'] ?? null);
                 if ($userId) {
                     DB::table('users')->where('user_id', $userId)->update([
                         'preferred_role' => $targetRole,
@@ -186,7 +218,6 @@ class cprocessController extends Controller
         }
 
         if ($request->expectsJson()) {
-
             return response()->json([
                 'success' => true,
                 'message' => "Successfully switched to {$targetRole} role",
@@ -194,7 +225,6 @@ class cprocessController extends Controller
                 'redirect_url' => '/dashboard'
             ]);
         } else {
-
             return redirect('/dashboard')->with('success', "Successfully switched to {$targetRole} role");
         }
     }
@@ -229,9 +259,24 @@ class cprocessController extends Controller
             // For Sanctum-authenticated users, check the database for current_role
             // For session users, get from session
             $currentRole = Session::get('current_role');
+            $userId = is_object($user) ? ($user->user_id ?? null) : ($user['user_id'] ?? null);
+            $roleApproved = [
+                'contractor' => false,
+                'owner' => false
+            ];
+            // Check contractor approval
+            $contractor = DB::table('contractors')->where('user_id', $userId)->first();
+            if ($contractor && $contractor->verification_status === 'approved') {
+                $roleApproved['contractor'] = true;
+            }
+            // Check owner approval
+            $owner = DB::table('property_owners')->where('user_id', $userId)->first();
+            if ($owner && ($owner->verification_status === 'approved' || $owner->verification_status === 'verified')) {
+                $roleApproved['owner'] = true;
+            }
+
             if (!$currentRole) {
                 // Try persisted preferred_role for Sanctum/stateless clients
-                $userId = is_object($user) ? ($user->user_id ?? null) : ($user['user_id'] ?? null);
                 if ($userId) {
                     try {
                         $preferred = DB::table('users')->where('user_id', $userId)->value('preferred_role');
@@ -250,9 +295,13 @@ class cprocessController extends Controller
                 }
             }
 
-            // Normalize current_role format (convert 'owner' to 'contractor' for consistency)
+            // Only allow current_role if approved
             $normalizedRole = $currentRole;
-            if ($currentRole === 'property_owner' || $currentRole === 'owner') {
+            if ($currentRole === 'contractor' && !$roleApproved['contractor']) {
+                $normalizedRole = null;
+            } elseif (($currentRole === 'property_owner' || $currentRole === 'owner') && !$roleApproved['owner']) {
+                $normalizedRole = null;
+            } elseif ($currentRole === 'property_owner' || $currentRole === 'owner') {
                 $normalizedRole = 'owner';
             } elseif ($currentRole === 'contractor') {
                 $normalizedRole = 'contractor';
@@ -260,11 +309,31 @@ class cprocessController extends Controller
 
             $userType = is_object($user) ? $user->user_type : ($user['user_type'] ?? null);
 
+            // Prepare contractor and owner info for frontend (null if not present)
+            $contractorInfo = $contractor ? [
+                'contractor_id' => $contractor->contractor_id,
+                'verification_status' => $contractor->verification_status,
+                'rejection_reason' => $contractor->rejection_reason ?? null,
+            ] : null;
+
+            $ownerInfo = $owner ? [
+                'owner_id' => $owner->owner_id,
+                'verification_status' => $owner->verification_status,
+                'rejection_reason' => $owner->rejection_reason ?? null,
+            ] : null;
+
             return response()->json([
                 'success' => true,
                 'user_type' => $userType,
                 'current_role' => $normalizedRole,
-                'can_switch_roles' => $userType === 'both'
+                'can_switch_roles' => $userType === 'both',
+                'contractor_role_approved' => $roleApproved['contractor'],
+                'owner_role_approved' => $roleApproved['owner'],
+                'pending_role_request' =>
+                    ($contractor && $contractor->verification_status === 'pending')
+                    || ($owner && $owner->verification_status === 'pending'),
+                'contractor' => $contractorInfo,
+                'owner' => $ownerInfo,
             ]);
         } catch (\Exception $e) {
             \Log::error('getCurrentRole error: ' . $e->getMessage());
@@ -694,6 +763,22 @@ class cprocessController extends Controller
 
         $message = $isEditing ? 'Milestone plan updated successfully!' : 'Milestone plan created successfully!';
 
+        // Notify project owner about milestone submission/update
+        $ownerUserId = DB::table('projects as p')
+            ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
+            ->join('property_owners as po', 'pr.owner_id', '=', 'po.owner_id')
+            ->where('p.project_id', $step1['project_id'])
+            ->value('po.user_id');
+        if ($ownerUserId) {
+            $projTitle = DB::table('projects')->where('project_id', $step1['project_id'])->value('project_title');
+            $subType = $isEditing ? 'milestone_updated' : 'milestone_submitted';
+            $title = $isEditing ? 'Milestone Updated' : 'Milestone Submitted';
+            $msg = $isEditing
+                ? "Contractor updated a milestone for \"{$projTitle}\". Please review."
+                : "Contractor submitted a milestone plan for \"{$projTitle}\". Please review.";
+            NotificationService::create($ownerUserId, $subType, $title, $msg, 'normal', 'milestone', (int)$milestoneId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int)$step1['project_id'], 'tab' => 'milestones']]);
+        }
+
         if ($request->expectsJson()) {
             return response()->json([
                 'success' => true,
@@ -845,6 +930,17 @@ class cprocessController extends Controller
 
             DB::commit();
 
+            // Notify project owner about new milestone submission
+            $ownerUserId = DB::table('projects as p')
+                ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
+                ->join('property_owners as po', 'pr.owner_id', '=', 'po.owner_id')
+                ->where('p.project_id', $projectId)
+                ->value('po.user_id');
+            if ($ownerUserId) {
+                $projTitle = $project->project_title ?? '';
+                NotificationService::create($ownerUserId, 'milestone_submitted', 'Milestone Submitted', "Contractor submitted a milestone plan for \"{$projTitle}\". Please review.", 'normal', 'milestone', (int)$milestoneId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int)$projectId, 'tab' => 'milestones']]);
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Milestone plan created successfully!',
@@ -977,6 +1073,17 @@ class cprocessController extends Controller
 
             DB::commit();
 
+            // Notify project owner about milestone update
+            $ownerUserId = DB::table('projects as p')
+                ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
+                ->join('property_owners as po', 'pr.owner_id', '=', 'po.owner_id')
+                ->where('p.project_id', $projectId)
+                ->value('po.user_id');
+            if ($ownerUserId) {
+                $projTitle = DB::table('projects')->where('project_id', $projectId)->value('project_title');
+                NotificationService::create($ownerUserId, 'milestone_updated', 'Milestone Updated', "Contractor updated a milestone for \"{$projTitle}\". Please review.", 'normal', 'milestone', (int)$milestoneId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int)$projectId, 'tab' => 'milestones']]);
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Milestone updated successfully!',
@@ -1064,6 +1171,17 @@ class cprocessController extends Controller
                     // Re-throw if it's a different error
                     throw $e;
                 }
+            }
+
+            // Notify project owner about milestone deletion
+            $ownerUserId = DB::table('projects as p')
+                ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
+                ->join('property_owners as po', 'pr.owner_id', '=', 'po.owner_id')
+                ->where('p.project_id', $milestone->project_id)
+                ->value('po.user_id');
+            if ($ownerUserId) {
+                $projTitle = DB::table('projects')->where('project_id', $milestone->project_id)->value('project_title');
+                NotificationService::create($ownerUserId, 'milestone_deleted', 'Milestone Deleted', "Contractor deleted a milestone for \"{$projTitle}\".", 'normal', 'milestone', (int)$milestoneId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int)$milestone->project_id, 'tab' => 'milestones']]);
             }
 
             return response()->json([

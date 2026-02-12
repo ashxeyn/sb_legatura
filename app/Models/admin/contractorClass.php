@@ -37,6 +37,10 @@ class contractorClass extends Model
         'tin_business_reg_number',
         'dti_sec_registration_photo',
         'verification_status',
+        'is_active',
+        'suspension_until',
+        'suspension_reason',
+        'deletion_reason',
         'verification_date'
     ];
 
@@ -96,6 +100,10 @@ class contractorClass extends Model
                 'contractors.tin_business_reg_number',
                 'contractors.dti_sec_registration_photo',
                 'contractors.verification_status',
+                'contractors.is_active',
+                'contractors.suspension_until',
+                'contractors.suspension_reason',
+                'contractors.deletion_reason',
                 'contractors.verification_date',
                 'contractors.rejection_reason',
                 'contractors.completed_projects',

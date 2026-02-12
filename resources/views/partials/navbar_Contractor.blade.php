@@ -23,11 +23,28 @@
             <!-- Column 9-12: User Profile & Actions -->
             <div class="navbar-col navbar-col-4">
                 <div class="navbar-right">
+                    @php
+                        $authUser = Auth::user();
+                        $displayName = session('contractor_name') ?? ($authUser?->company_name ?? $authUser?->username ?? 'Contractor');
+                        $usernameHandle = session('contractor_handle') ?? ('@' . ($authUser?->username ?? 'contractor'));
+                        $profilePic = session('contractor_profile_pic') ?? $authUser?->profile_pic ?? null;
+                        $initials = 'C';
+                        if(trim($displayName)) {
+                            $parts = preg_split('/\s+/', $displayName);
+                            $initials = strtoupper(substr($parts[0],0,1) . (isset($parts[1]) ? substr($parts[1],0,1) : ''));
+                        }
+                    @endphp
                     <div class="navbar-user">
-                        <div class="navbar-avatar navbar-avatar-initials">BC</div>
+                        @if($profilePic)
+                            <div class="navbar-avatar">
+                                <img src="{{ asset('storage/' . $profilePic) }}" alt="{{ $displayName }}" class="navbar-avatar-img">
+                            </div>
+                        @else
+                            <div class="navbar-avatar navbar-avatar-initials">{{ $initials }}</div>
+                        @endif
                         <div class="navbar-user-info">
-                            <span class="navbar-user-name">BuildRight Construction</span>
-                            <span class="navbar-user-role">@buildRight_Construction</span>
+                            <span class="navbar-user-name">{{ $displayName }}</span>
+                            <span class="navbar-user-role">{{ $usernameHandle }}</span>
                         </div>
                     </div>
                     <div class="navbar-notification-container">
@@ -291,3 +308,7 @@
         </div>
     </div>
 </nav>
+
+<form id="logoutForm" action="/accounts/logout" method="POST" class="hidden">
+    @csrf
+</form>

@@ -17,17 +17,37 @@ interface RoleAddScreenProps {
 }
 
 export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any; navigation?: any }) {
+  // SAFETY CHECK: fallback for userData
+  const userData = (props as any)?.userData;
+  const user = userData || {};
+  // hasBoth state initialized from user roles when available
+
   const { targetRole: targetRoleProp, onBack, onComplete, route, navigation } = (props as any) || {};
   const insets = useSafeAreaInsets();
   const targetRole = (targetRoleProp ?? route?.params?.targetRole ?? 'contractor') as 'contractor' | 'owner';
-  const handleBack = onBack ?? (() => navigation?.goBack?.());
+  const handleBack = () => {
+    console.log('[addRoleRegistration] Back pressed, formStep:', formStep);
+    if (formStep > 1) {
+      console.log('[addRoleRegistration] Decrementing formStep:', formStep - 1);
+      setFormStep(formStep - 1);
+    } else {
+      console.log('[addRoleRegistration] Calling onBack or navigation.goBack');
+      if (onBack) {
+        onBack();
+      } else if (navigation?.goBack) {
+        navigation.goBack();
+      }
+    }
+  };
   const handleComplete = onComplete ?? (() => navigation?.goBack?.());
   const [loading, setLoading] = useState(true);
   const [formStep, setFormStep] = useState(1);
   const [formData, setFormData] = useState<any>({});
   const [submitting, setSubmitting] = useState(false);
   const [currentRoleInfo, setCurrentRoleInfo] = useState<any>(null);
-  const [hasBoth, setHasBoth] = useState(false);
+  const [hasBoth, setHasBoth] = useState<boolean>(() => !!(user?.is_contractor && user?.is_owner));
+  const [blockedDueToPending, setBlockedDueToPending] = useState<boolean>(false);
+  const [pendingInfo, setPendingInfo] = useState<any>(null);
   const [dropdowns, setDropdowns] = useState<any>({
     contractor_types: [],
     occupations: [],
@@ -89,6 +109,13 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
           if (targetRole === 'contractor') {
             const phone = existing?.property_owner?.phone_number || existing?.user?.phone_number;
             if (phone) updatePrefilled({ company_phone: phone });
+            // Prefill authorized representative fields if available from existing contractor_user
+            const cu = existing?.contractor_user || existing?.contractor_user_for_this_user || existing?.contractor_user_for_current;
+            const repPrefill: any = {};
+            if (cu?.authorized_rep_fname) repPrefill.authorized_rep_fname = cu.authorized_rep_fname;
+            if (cu?.authorized_rep_mname) repPrefill.authorized_rep_mname = cu.authorized_rep_mname;
+            if (cu?.authorized_rep_lname) repPrefill.authorized_rep_lname = cu.authorized_rep_lname;
+            if (Object.keys(repPrefill).length) updatePrefilled(repPrefill);
           } else if (targetRole === 'owner') {
             const user = existing?.user || {};
             const cu = existing?.contractor_user || {};
@@ -106,12 +133,24 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
           const provRes = await auth_service.get_provinces();
           if (provRes.success && provRes.data) setProvinces(provRes.data);
 
-          // Fetch current role info to decide if user already has both roles
+          // Fetch current role info to decide if user already has both roles or has a pending submission
           const curRes = await role_service.get_current_role();
           if (curRes?.success) {
             setCurrentRoleInfo(curRes);
-            const ut = curRes.user_type || (curRes as any)?.data?.user_type;
+            const data = curRes.data || curRes;
+            const ut = curRes.user_type || data?.user_type;
             setHasBoth(ut === 'both');
+
+            // Determine if there is an existing pending application for the target role.
+            // Policy: allow re-registration only after a rejection; block while pending.
+            const ownerStatus = data?.owner?.verification_status;
+            const contractorStatus = data?.contractor?.verification_status;
+            const isOwnerPending = ownerStatus === 'pending';
+            const isContractorPending = contractorStatus === 'pending';
+
+            const isPendingForTarget = (targetRole === 'owner' && isOwnerPending) || (targetRole === 'contractor' && isContractorPending);
+            setBlockedDueToPending(!!isPendingForTarget);
+            setPendingInfo(isPendingForTarget ? (targetRole === 'owner' ? data.owner : data.contractor) : null);
           }
         }
       } finally {
@@ -483,17 +522,25 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
   };
 
   const pickImage = async (field: string) => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      Alert.alert('Permission required', 'Please allow photo library access.');
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8 });
-    if (!result.canceled && result.assets?.length) {
-      const asset = result.assets[0];
-      const uri = asset.uri;
-      const fileName = (asset.fileName || asset.filename || uri?.split('/')?.pop()) ?? 'Image selected';
-      updateForm({ [field]: uri, [`${field}_name`]: fileName });
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert('Permission required', 'Please allow photo library access.');
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: 'Images', quality: 0.8 });
+      console.log('ImagePicker result:', result);
+      if (!result.canceled && result.assets?.length) {
+        const asset = result.assets[0];
+        const uri = asset.uri;
+        const fileName = (asset.fileName || asset.filename || uri?.split('/')?.pop()) ?? 'Image selected';
+        updateForm({ [field]: uri, [`${field}_name`]: fileName });
+      } else {
+        console.log('ImagePicker canceled or no assets');
+      }
+    } catch (err) {
+      console.log('ImagePicker error:', err);
+      Alert.alert('Image Picker Error', 'Failed to open gallery. Please try again or check permissions.');
     }
   };
 
@@ -511,7 +558,7 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
       setSubmitting(true);
       if (targetRole === 'contractor') {
         if (formStep === 1) {
-          // Client-side validation aligned with backend rules
+          // ...existing contractor step 1 logic...
           const errors: string[] = [];
           const phone = (formData.company_phone || '').trim();
           if (!formData.company_name?.trim()) errors.push('Company name is required');
@@ -529,8 +576,13 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
           if (!formData.business_address_province) errors.push('Business address province is required');
           if (!formData.business_address_postal?.trim()) errors.push('Business address postal code is required');
 
+          // Authorized representative must be provided for contractor applications
+          if (!formData.authorized_rep_fname?.trim()) errors.push('Authorized representative first name is required');
+          if (!formData.authorized_rep_lname?.trim()) errors.push('Authorized representative last name is required');
+
           if (errors.length) {
             Alert.alert('Please fix the following', errors.join('\n'));
+            setSubmitting(false);
             return;
           }
           const payload = {
@@ -545,6 +597,10 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
             business_address_city: formData.business_address_city,
             business_address_province: formData.business_address_province,
             business_address_postal: formData.business_address_postal,
+            // Authorized representative fields
+            authorized_rep_fname: formData.authorized_rep_fname,
+            authorized_rep_mname: formData.authorized_rep_mname,
+            authorized_rep_lname: formData.authorized_rep_lname,
             company_website: formData.company_website,
             company_social_media: formData.company_social_media,
           };
@@ -557,6 +613,7 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
             Alert.alert('Error', msg);
           }
         } else if (formStep === 2) {
+          // ...existing contractor step 2 logic...
           const fd = new FormData();
           const docKeys = [
             'picab_number', 'picab_category', 'picab_expiration_date',
@@ -578,7 +635,7 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
             if (saved && saved.dti_sec_registration_photo) {
               updateForm({ dti_sec_registration_photo_server: saved.dti_sec_registration_photo });
             }
-            setFormStep(3);
+            setFormStep(3); // Only advance to step 3, do not submit finalization here
           } else {
             Alert.alert('Error', res?.message || 'Upload failed');
           }
@@ -604,6 +661,10 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
             business_address,
             company_website: formData.company_website,
             company_social_media: formData.company_social_media,
+            // Authorized representative fields
+            authorized_rep_fname: formData.authorized_rep_fname,
+            authorized_rep_mname: formData.authorized_rep_mname,
+            authorized_rep_lname: formData.authorized_rep_lname,
           };
 
           const step2_data = {
@@ -615,66 +676,63 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
             business_permit_expiration: formData.business_permit_expiration,
             tin_business_reg_number: formData.tin_business_reg_number,
             dti_sec_registration_photo: formData.dti_sec_registration_photo_server || undefined,
+            // Include authorized representative names in step2 so backend will create contractor_user
+            first_name: formData.authorized_rep_fname,
+            middle_name: formData.authorized_rep_mname,
+            last_name: formData.authorized_rep_lname,
           };
 
           const body: any = { step1_data, step2_data };
           const res = await role_service.add_contractor_final(body);
-          if (res?.success) { Alert.alert('Success', 'Role added. Switching to Contractor.', [{ text: 'OK', onPress: handleComplete }]); }
-          else { Alert.alert('Error', res?.message || 'Finalization failed'); }
+          if (res?.success) {
+            Alert.alert('Application Submitted', 'Your application has been received and is pending administrative review and approval.', [
+              { text: 'OK', onPress: handleComplete }
+            ]);
+          } else {
+            Alert.alert('Error', res?.message || 'Finalization failed');
+          }
         }
-      } else {
+      } else if (targetRole === 'owner') {
         if (formStep === 1) {
+          // Owner step 1 validation
+          const errors: string[] = [];
+          if (!formData.username?.trim()) errors.push('Username is required');
+          if (!formData.email?.trim()) errors.push('Email is required');
+          if (!formData.first_name?.trim()) errors.push('First name is required');
+          if (!formData.last_name?.trim()) errors.push('Last name is required');
+          if (!formData.date_of_birth) errors.push('Date of birth is required');
+          if (!formData.phone_number?.trim()) errors.push('Phone number is required');
+          if (!formData.occupation_id) errors.push('Occupation is required');
+          if (!formData.owner_address_street?.trim()) errors.push('Address street is required');
+          if (!formData.owner_address_barangay) errors.push('Barangay is required');
+          if (!formData.owner_address_city) errors.push('City is required');
+          if (!formData.owner_address_province) errors.push('Province is required');
+          if (!formData.owner_address_postal?.trim()) errors.push('Postal code is required');
+          const occ = (dropdowns.occupations || []).find((o: any) => `${o.id}` === `${formData.occupation_id}`);
+          const isOther = (occ?.name || '').toLowerCase().includes('other');
+          if (isOther && !formData.occupation_other_text?.trim()) errors.push('Please specify other occupation');
+          if (errors.length) {
+            Alert.alert('Please fix the following', errors.join('\n'));
+            setSubmitting(false);
+            return;
+          }
           const payload = { username: formData.username, email: formData.email };
           const res = await role_service.add_owner_step1(payload);
-          if (res?.success) setFormStep(2); else Alert.alert('Error', res?.message || 'Please check account info');
-        } else if (formStep === 2) {
-          const fd = new FormData();
-          const docKeys = ['valid_id_id', 'valid_id_photo', 'valid_id_back_photo', 'police_clearance'];
-          docKeys.forEach((k) => {
-            const v = formData[k];
-            if (v === undefined || v === null) return;
-            if ((k === 'valid_id_photo' || k === 'valid_id_back_photo' || k === 'police_clearance') && typeof v === 'string' && v.startsWith('file://')) {
-              const name = k + '.jpg';
-              fd.append(k, { uri: v, name, type: 'image/jpeg' } as any);
-            } else {
-              fd.append(k, v as any);
-            }
-          });
-          const res = await role_service.add_owner_step2(fd);
           if (res?.success) {
-            const saved = res?.data?.saved;
-            console.log('Step 2 saved:', saved);
-            // Persist server paths only; avoid local file:// URIs
-            if (saved && typeof saved === 'object') {
-              const patch: any = {};
-              if (saved.valid_id_id != null) patch.owner_valid_id_id = saved.valid_id_id;
-              if (saved.valid_id_photo && typeof saved.valid_id_photo === 'string' && !saved.valid_id_photo.startsWith('file://')) {
-                patch.owner_valid_id_photo_server = saved.valid_id_photo;
-              }
-              if (saved.valid_id_back_photo && typeof saved.valid_id_back_photo === 'string' && !saved.valid_id_back_photo.startsWith('file://')) {
-                patch.owner_valid_id_back_photo_server = saved.valid_id_back_photo;
-              }
-              if (saved.police_clearance && typeof saved.police_clearance === 'string' && !saved.police_clearance.startsWith('file://')) {
-                patch.owner_police_clearance_server = saved.police_clearance;
-              }
-              if (Object.keys(patch).length) updateForm(patch);
-            }
-            setFormStep(3);
+            setFormStep(2);
           } else {
-            Alert.alert('Error', res?.message || 'Upload failed');
+            // Show backend errors immediately
+            let backendErrors = '';
+            if (Array.isArray(res?.data?.errors)) backendErrors = res.data.errors.join('\n');
+            else if (Array.isArray(res?.errors)) backendErrors = res.errors.join('\n');
+            else if (typeof res?.message === 'string') backendErrors = res.message;
+            else backendErrors = 'Please check required fields or login again.';
+            Alert.alert('Error', backendErrors);
+            setSubmitting(false);
+            return;
           }
-        } else if (formStep === 3) {
-          // Validate date of birth is not in the future
-          if (formData.date_of_birth) {
-            try {
-              const dob = new Date(formData.date_of_birth);
-              const today = new Date();
-              if (dob > today) {
-                Alert.alert('Invalid Date of Birth', 'Date of birth cannot be in the future.');
-                return;
-              }
-            } catch {}
-          }
+        } else if (formStep === 2) {
+          // Owner step 2 validation and submit
           // Build owner address as a single string for backend
           const provinceName = provinces.find(p => `${p.code}` === `${formData.owner_address_province}`)?.name || '';
           const cityName = cities.find(c => `${c.code}` === `${formData.owner_address_city}`)?.name || '';
@@ -685,7 +743,7 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
             cityName || '',
             provinceName || ''
           ].filter(Boolean).join(', ') + (formData.owner_address_postal ? ` ${formData.owner_address_postal}` : '');
-
+          // Compute age
           const computeYears = (start?: string): number => {
             if (!start) return 0;
             const sel = new Date(start);
@@ -696,17 +754,68 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
             }
             return Math.max(0, years);
           };
-
           const age = formData.date_of_birth ? computeYears(formData.date_of_birth) : undefined;
-
+           // Collect saved document paths from step 2
           const savedDocs: any = {};
-          if (formData.owner_valid_id_id != null) savedDocs.valid_id_id = formData.owner_valid_id_id;
-          if (formData.owner_valid_id_photo_server) savedDocs.valid_id_photo = formData.owner_valid_id_photo_server;
-          if (formData.owner_valid_id_back_photo_server) savedDocs.valid_id_back_photo = formData.owner_valid_id_back_photo_server;
-          if (formData.owner_police_clearance_server) savedDocs.police_clearance = formData.owner_police_clearance_server;
-
+          if (formData.owner_valid_id_id) savedDocs.valid_id_id = formData.owner_valid_id_id;
+          // Fallback to local file path if server path is missing
+          if (formData.owner_valid_id_photo_server) {
+            savedDocs.valid_id_photo = formData.owner_valid_id_photo_server;
+          } else if (formData.valid_id_photo) {
+            savedDocs.valid_id_photo = formData.valid_id_photo;
+          }
+          if (formData.owner_valid_id_back_photo_server) {
+            savedDocs.valid_id_back_photo = formData.owner_valid_id_back_photo_server;
+          } else if (formData.valid_id_back_photo) {
+            savedDocs.valid_id_back_photo = formData.valid_id_back_photo;
+          }
+          if (formData.owner_police_clearance_server) {
+            savedDocs.police_clearance = formData.owner_police_clearance_server;
+          } else if (formData.police_clearance) {
+            savedDocs.police_clearance = formData.police_clearance;
+          }
+          // Only advance to step 3, do not submit finalization here
+          setFormStep(3);
+        } else if (formStep === 3) {
+          // ...existing owner step 3 logic (finalize)...
+          const provinceName = provinces.find(p => `${p.code}` === `${formData.owner_address_province}`)?.name || '';
+          const cityName = cities.find(c => `${c.code}` === `${formData.owner_address_city}`)?.name || '';
+          const barangayName = barangays.find(b => `${b.code}` === `${formData.owner_address_barangay}`)?.name || '';
+          const address = [
+            formData.owner_address_street || '',
+            barangayName || '',
+            cityName || '',
+            provinceName || ''
+          ].filter(Boolean).join(', ') + (formData.owner_address_postal ? ` ${formData.owner_address_postal}` : '');
+          const computeYears = (start?: string): number => {
+            if (!start) return 0;
+            const sel = new Date(start);
+            const now = new Date();
+            let years = now.getFullYear() - sel.getFullYear();
+            if (now.getMonth() < sel.getMonth() || (now.getMonth() === sel.getMonth() && now.getDate() < sel.getDate())) {
+              years -= 1;
+            }
+            return Math.max(0, years);
+          };
+          const age = formData.date_of_birth ? computeYears(formData.date_of_birth) : undefined;
+          const savedDocs: any = {};
+          if (formData.owner_valid_id_id) savedDocs.valid_id_id = formData.owner_valid_id_id;
+          if (formData.owner_valid_id_photo_server) {
+            savedDocs.valid_id_photo = formData.owner_valid_id_photo_server;
+          } else if (formData.valid_id_photo) {
+            savedDocs.valid_id_photo = formData.valid_id_photo;
+          }
+          if (formData.owner_valid_id_back_photo_server) {
+            savedDocs.valid_id_back_photo = formData.owner_valid_id_back_photo_server;
+          } else if (formData.valid_id_back_photo) {
+            savedDocs.valid_id_back_photo = formData.valid_id_back_photo;
+          }
+          if (formData.owner_police_clearance_server) {
+            savedDocs.police_clearance = formData.owner_police_clearance_server;
+          } else if (formData.police_clearance) {
+            savedDocs.police_clearance = formData.police_clearance;
+          }
           const body: any = {
-            // Nested step data used by backend inserts
             owner_step1_data: {
               first_name: formData.first_name,
               middle_name: formData.middle_name,
@@ -722,9 +831,7 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
               username: formData.username,
               email: formData.email,
             },
-            // Pass Step 2 docs in nested 'saved' map only if present
             switch_step2_data: Object.keys(savedDocs).length ? { saved: savedDocs } : undefined,
-            // Top-level fields required by validation rules
             first_name: formData.first_name,
             middle_name: formData.middle_name,
             last_name: formData.last_name,
@@ -735,8 +842,20 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
             address,
           };
           const res = await role_service.add_owner_final(body);
-          if (res?.success) { Alert.alert('Success', 'Role added. Switching to Owner.', [{ text: 'OK', onPress: handleComplete }]); }
-          else { Alert.alert('Error', res?.message || 'Finalization failed'); }
+          if (res?.success) {
+            Alert.alert(
+              'Application Submitted',
+              'Your application has been received and is pending administrative review and approval.',
+              [
+                {
+                  text: 'OK',
+                  onPress: handleComplete,
+                },
+              ]
+            );
+          } else {
+            Alert.alert('Error', res?.message || 'Finalization failed');
+          }
         }
       }
     } finally {
@@ -745,17 +864,20 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
   };
 
   const switchToTargetRole = async () => {
-    try {
-      setSubmitting(true);
-      const response = await role_service.switch_role(targetRole);
-      if (response?.success) {
-        Alert.alert('Switched', `You are now in ${targetRole} role.`, [{ text: 'OK', onPress: handleComplete }]);
-      } else {
-        Alert.alert('Error', response?.message || 'Failed to switch role');
-      }
-    } finally {
-      setSubmitting(false);
+    // Switching role is not allowed until admin approval
+    Alert.alert('Not Allowed', 'You cannot switch to this role until your application is approved by an administrator.');
+    setSubmitting(false);
+  };
+
+  const handlePrimaryPress = () => {
+    if (hasBoth) return switchToTargetRole();
+    if (blockedDueToPending) {
+      Alert.alert('Application Pending', 'You have already submitted an application for this role. Please wait for administrative review or resubmit after a rejection.');
+      return;
     }
+    if (formStep < 3) return submitStep();
+    if (!agreedConfirm) { Alert.alert('Confirm', 'Please confirm the information is correct.'); return; }
+    setShowSubmitConfirm(true);
   };
 
   if (loading) {
@@ -816,14 +938,23 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
               </View>
             ) : null}
 
+            {blockedDueToPending ? (
+              <View>
+                <Text style={styles.inputLabel}>You have an application pending for this role.</Text>
+                <Text style={styles.inputLabel}>Status: {pendingInfo?.verification_status || 'pending'}</Text>
+                {pendingInfo?.rejection_reason ? <Text style={[styles.inputLabel, { marginTop: 8 }]}>Reason: {pendingInfo.rejection_reason}</Text> : null}
+                <Text style={[styles.inputLabel, { marginTop: 12 }]}>You cannot submit a new application until this is reviewed.</Text>
+              </View>
+            ) : null}
+
             {!hasBoth && targetRole === 'contractor' && formStep === 1 && (
               <View>
                 <Text style={styles.sectionTitle}>Company Information</Text>
-                <Text style={styles.inputLabel}>Company Name</Text>
+                <Text style={styles.inputLabel}>Company Name *</Text>
                 <TextInput style={styles.input} value={formData.company_name || ''} onChangeText={(t) => updateForm({ company_name: t })} placeholder="Company Name *" placeholderTextColor="#999" />
-                <Text style={styles.inputLabel}>Company Phone</Text>
+                <Text style={styles.inputLabel}>Company Phone *</Text>
                 <TextInput style={[styles.input, prefilledFields.company_phone && styles.prefilledInput]} value={formData.company_phone || ''} onChangeText={(t) => updateForm({ company_phone: t })} keyboardType="phone-pad" placeholder="Company Phone *" placeholderTextColor="#999" />
-                <Text style={styles.inputLabel}>Years of Experience</Text>
+                <Text style={styles.inputLabel}>Years of Experience *</Text>
                 <TouchableOpacity style={styles.input} onPress={() => setShowExperienceDateModal(true)}>
                   <View style={styles.dropdownInputWrapper}>
                     <Text style={[styles.dropdownInputText, !formData.experience_start_date && styles.placeholderText]}>
@@ -834,7 +965,7 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
                     <Ionicons name="calendar" size={20} color="#666" />
                   </View>
                 </TouchableOpacity>
-                <Text style={styles.inputLabel}>Contractor Type</Text>
+                <Text style={styles.inputLabel}>Contractor Type *</Text>
                 <TouchableOpacity style={styles.input} onPress={() => setShowContractorTypeModal(true)}>
                   <View style={styles.dropdownInputWrapper}>
                     <Text style={[styles.dropdownInputText, !formData.contractor_type_id && styles.placeholderText]}>
@@ -864,12 +995,12 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
                     </>
                   );
                 })()}
-                <Text style={styles.inputLabel}>Services Offered</Text>
+                <Text style={styles.inputLabel}>Services Offered *</Text>
                 <TextInput style={styles.input} value={formData.services_offered || ''} onChangeText={(t) => updateForm({ services_offered: t })} placeholder="Services Offered" placeholderTextColor="#999" />
                 <Text style={styles.sectionTitle}>Business Address</Text>
-                <Text style={styles.inputLabel}>Business Address Street</Text>
+                <Text style={styles.inputLabel}>Business Address Street *</Text>
                 <TextInput style={[styles.input, prefilledFields.business_address_street && styles.prefilledInput]} value={formData.business_address_street || ''} onChangeText={(t) => updateForm({ business_address_street: t })} placeholder="Street" placeholderTextColor="#999" />
-                <Text style={styles.inputLabel}>Province</Text>
+                <Text style={styles.inputLabel}>Province *</Text>
                 <TouchableOpacity style={styles.input} onPress={() => setShowProvinceModal(true)}>
                   <View style={styles.dropdownInputWrapper}>
                     <Text style={[styles.dropdownInputText, prefilledFields.business_address_province && styles.prefilledDropdownText, !formData.business_address_province && styles.placeholderText]}>
@@ -878,7 +1009,7 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
                     <Ionicons name="chevron-down" size={20} color="#666" />
                   </View>
                 </TouchableOpacity>
-                <Text style={styles.inputLabel}>City/Municipality</Text>
+                <Text style={styles.inputLabel}>City/Municipality *</Text>
                 <TouchableOpacity style={[styles.input, !formData.business_address_province && styles.inputDisabled]} onPress={() => formData.business_address_province && setShowCityModal(true)} disabled={!formData.business_address_province}>
                   <View style={styles.dropdownInputWrapper}>
                     <Text style={[styles.dropdownInputText, prefilledFields.business_address_city && styles.prefilledDropdownText, !formData.business_address_city && styles.placeholderText]}>
@@ -887,7 +1018,7 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
                     <Ionicons name="chevron-down" size={20} color="#666" />
                   </View>
                 </TouchableOpacity>
-                <Text style={styles.inputLabel}>Barangay</Text>
+                <Text style={styles.inputLabel}>Barangay *</Text>
                 <TouchableOpacity style={[styles.input, !formData.business_address_city && styles.inputDisabled]} onPress={() => formData.business_address_city && setShowBarangayModal(true)} disabled={!formData.business_address_city}>
                   <View style={styles.dropdownInputWrapper}>
                     <Text style={[styles.dropdownInputText, prefilledFields.business_address_barangay && styles.prefilledDropdownText, !formData.business_address_barangay && styles.placeholderText]}>
@@ -896,8 +1027,15 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
                     <Ionicons name="chevron-down" size={20} color="#666" />
                   </View>
                 </TouchableOpacity>
-                <Text style={styles.inputLabel}>Postal Code</Text>
+                <Text style={styles.inputLabel}>Postal Code *</Text>
                 <TextInput style={[styles.input, prefilledFields.business_address_postal && styles.prefilledInput]} value={formData.business_address_postal || ''} onChangeText={(t) => updateForm({ business_address_postal: t })} keyboardType="number-pad" placeholder="Postal Code" placeholderTextColor="#999" />
+                <Text style={styles.sectionTitle}>Authorized Representative</Text>
+                <Text style={styles.inputLabel}>First Name *</Text>
+                <TextInput style={styles.input} value={formData.authorized_rep_fname || ''} onChangeText={(t) => updateForm({ authorized_rep_fname: t })} placeholder="First name" placeholderTextColor="#999" />
+                <Text style={styles.inputLabel}>Middle Name (Optional)</Text>
+                <TextInput style={styles.input} value={formData.authorized_rep_mname || ''} onChangeText={(t) => updateForm({ authorized_rep_mname: t })} placeholder="Middle name (Optional)" placeholderTextColor="#999" />
+                <Text style={styles.inputLabel}>Last Name *</Text>
+                <TextInput style={styles.input} value={formData.authorized_rep_lname || ''} onChangeText={(t) => updateForm({ authorized_rep_lname: t })} placeholder="Last name" placeholderTextColor="#999" />
                 <Text style={styles.sectionTitle}>Optional Information</Text>
                 <Text style={styles.inputLabel}>Website</Text>
                 <TextInput style={styles.input} value={formData.company_website || ''} onChangeText={(t) => updateForm({ company_website: t })} placeholder="Website (Optional)" placeholderTextColor="#999" />
@@ -908,9 +1046,9 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
 
             {!hasBoth && targetRole === 'contractor' && formStep === 2 && (
               <View>
-                <Text style={styles.inputLabel}>PICAB Number</Text>
+                <Text style={styles.inputLabel}>PICAB Number *</Text>
                 <TextInput style={styles.input} value={formData.picab_number || ''} onChangeText={(t) => updateForm({ picab_number: t })} placeholder="PICAB Number" placeholderTextColor="#999" />
-                    <Text style={styles.inputLabel}>PICAB Category</Text>
+                    <Text style={styles.inputLabel}>PICAB Category *</Text>
                     <TouchableOpacity style={styles.input} onPress={() => setShowPicabCategoryModal(true)}>
                       <View style={styles.dropdownInputWrapper}>
                         <Text style={[styles.dropdownInputText, !formData.picab_category && styles.placeholderText]}>
@@ -919,7 +1057,7 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
                         <Ionicons name="chevron-down" size={20} color="#666" />
                       </View>
                     </TouchableOpacity>
-                <Text style={styles.inputLabel}>PICAB Expiration Date</Text>
+                <Text style={styles.inputLabel}>PICAB Expiration Date *</Text>
                 <TouchableOpacity style={styles.input} onPress={() => setShowPicabDatePicker(true)}>
                   <View style={styles.dropdownInputWrapper}>
                     <Text style={[styles.dropdownInputText, !formData.picab_expiration_date && styles.placeholderText]}>
@@ -928,16 +1066,16 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
                     <Ionicons name="chevron-down" size={20} color="#666" />
                   </View>
                 </TouchableOpacity>
-                <Text style={styles.inputLabel}>Business Permit Number</Text>
+                <Text style={styles.inputLabel}>Business Permit Number *</Text>
                 <TextInput style={styles.input} value={formData.business_permit_number || ''} onChangeText={(t) => updateForm({ business_permit_number: t })} placeholder="Business Permit Number" placeholderTextColor="#999" />
-                <Text style={styles.inputLabel}>Business Permit City</Text>
+                <Text style={styles.inputLabel}>Business Permit City *</Text>
                 <TouchableOpacity style={styles.inputSelector} onPress={() => setShowPermitCityModal(true)}>
                   <Text style={[styles.selectorText, !formData.business_permit_city && styles.selectorPlaceholder]}>
                     {formData.business_permit_city || 'Select City/Municipality'}
                   </Text>
                   <Ionicons name="chevron-down" size={18} color="#666" />
                 </TouchableOpacity>
-                <Text style={styles.inputLabel}>Business Permit Expiration</Text>
+                <Text style={styles.inputLabel}>Business Permit Expiration *</Text>
                 <TouchableOpacity style={styles.input} onPress={() => setShowPermitDatePicker(true)}>
                   <View style={styles.dropdownInputWrapper}>
                     <Text style={[styles.dropdownInputText, !formData.business_permit_expiration && styles.placeholderText]}>
@@ -946,9 +1084,9 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
                     <Ionicons name="chevron-down" size={20} color="#666" />
                   </View>
                 </TouchableOpacity>
-                <Text style={styles.inputLabel}>TIN Business Reg Number</Text>
+                <Text style={styles.inputLabel}>TIN Business Reg Number *</Text>
                 <TextInput style={styles.input} value={formData.tin_business_reg_number || ''} onChangeText={(t) => updateForm({ tin_business_reg_number: t })} placeholder="TIN Business Reg Number" placeholderTextColor="#999" />
-                    <Text style={styles.inputLabel}>DTI/SEC Registration Photo</Text>
+                    <Text style={styles.inputLabel}>DTI/SEC Registration Photo *</Text>
                     <TouchableOpacity style={styles.uploadButton} onPress={() => pickImage('dti_sec_registration_photo')}>
                       {formData.dti_sec_registration_photo || formData.dti_sec_registration_photo_server ? (
                         <View style={styles.uploadedFile}>
@@ -969,56 +1107,120 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
               </View>
             )}
 
-            {!hasBoth && targetRole === 'contractor' && formStep === 3 && (
+            {/* Always show step 3 finalization for both roles, but only render the correct preview for the current targetRole */}
+            {!hasBoth && formStep === 3 && (
               <View>
                 <Text style={styles.sectionTitle}>Review & Confirm</Text>
-                <View style={styles.previewCard}>
-                  <Text style={styles.previewHeader}>Company Information</Text>
-                  <View style={styles.previewRow}><Text style={styles.previewLabel}>Company Name</Text><Text style={styles.previewValue}>{formData.company_name || '—'}</Text></View>
-                  <View style={styles.previewRow}><Text style={styles.previewLabel}>Company Phone</Text><Text style={styles.previewValue}>{formData.company_phone || '—'}</Text></View>
-                  <View style={styles.previewRow}><Text style={styles.previewLabel}>Experience</Text><Text style={styles.previewValue}>{formData.experience_start_date ? `${computeYears(formData.experience_start_date)} years` : '—'}</Text></View>
-                  <View style={styles.previewRow}><Text style={styles.previewLabel}>Contractor Type</Text><Text style={styles.previewValue}>{(() => { const sel = (dropdowns.contractor_types || []).find((t: any) => `${t.id}` === `${formData.contractor_type_id}`); return sel?.name || '—'; })()}</Text></View>
-                  {(() => { const sel = (dropdowns.contractor_types || []).find((t: any) => `${t.id}` === `${formData.contractor_type_id}`); const isOther = (sel?.name || '').toLowerCase().includes('other'); return isOther ? (<View style={styles.previewRow}><Text style={styles.previewLabel}>Other Type</Text><Text style={styles.previewValue}>{formData.contractor_type_other_text || '—'}</Text></View>) : null; })()}
-                  <View style={styles.previewRow}><Text style={styles.previewLabel}>Services Offered</Text><Text style={styles.previewValue}>{formData.services_offered || '—'}</Text></View>
-                </View>
-
-                <View style={styles.previewCard}>
-                  <Text style={styles.previewHeader}>Business Address</Text>
-                  {(() => {
-                    const provinceName = provinces.find(p => `${p.code}` === `${formData.business_address_province}`)?.name || '';
-                    const cityName = cities.find(c => `${c.code}` === `${formData.business_address_city}`)?.name || '';
-                    const barangayName = barangays.find(b => `${b.code}` === `${formData.business_address_barangay}`)?.name || '';
-                    const address = [formData.business_address_street || '', barangayName || '', cityName || '', provinceName || ''].filter(Boolean).join(', ');
-                    return (
-                      <>
-                        <View style={styles.previewRow}><Text style={styles.previewLabel}>Street</Text><Text style={styles.previewValue}>{formData.business_address_street || '—'}</Text></View>
-                        <View style={styles.previewRow}><Text style={styles.previewLabel}>Barangay</Text><Text style={styles.previewValue}>{barangayName || '—'}</Text></View>
-                        <View style={styles.previewRow}><Text style={styles.previewLabel}>City/Municipality</Text><Text style={styles.previewValue}>{cityName || '—'}</Text></View>
-                        <View style={styles.previewRow}><Text style={styles.previewLabel}>Province</Text><Text style={styles.previewValue}>{provinceName || '—'}</Text></View>
-                        <View style={styles.previewRow}><Text style={styles.previewLabel}>Postal Code</Text><Text style={styles.previewValue}>{formData.business_address_postal || '—'}</Text></View>
-                        <View style={[styles.previewRow, { marginTop: 6 }]}><Text style={styles.previewLabel}>Full Address</Text><Text style={styles.previewValue}>{address || '—'}</Text></View>
-                      </>
-                    );
-                  })()}
-                </View>
-
-                <View style={styles.previewCard}>
-                  <Text style={styles.previewHeader}>Regulatory Documents</Text>
-                  <View style={styles.previewRow}><Text style={styles.previewLabel}>PICAB Number</Text><Text style={styles.previewValue}>{formData.picab_number || '—'}</Text></View>
-                  <View style={styles.previewRow}><Text style={styles.previewLabel}>PICAB Category</Text><Text style={styles.previewValue}>{formData.picab_category || '—'}</Text></View>
-                  <View style={styles.previewRow}><Text style={styles.previewLabel}>PICAB Expiration</Text><Text style={styles.previewValue}>{formData.picab_expiration_date ? formatDateForDisplay(formData.picab_expiration_date) : '—'}</Text></View>
-                  <View style={styles.previewRow}><Text style={styles.previewLabel}>Business Permit No.</Text><Text style={styles.previewValue}>{formData.business_permit_number || '—'}</Text></View>
-                  <View style={styles.previewRow}><Text style={styles.previewLabel}>Permit City</Text><Text style={styles.previewValue}>{formData.business_permit_city || '—'}</Text></View>
-                  <View style={styles.previewRow}><Text style={styles.previewLabel}>Permit Expiration</Text><Text style={styles.previewValue}>{formData.business_permit_expiration ? formatDateForDisplay(formData.business_permit_expiration) : '—'}</Text></View>
-                  <View style={styles.previewRow}><Text style={styles.previewLabel}>TIN Reg Number</Text><Text style={styles.previewValue}>{formData.tin_business_reg_number || '—'}</Text></View>
-                  {(formData.dti_sec_registration_photo || formData.dti_sec_registration_photo_server) && (
-                    <View style={[styles.previewRow, { alignItems: 'center' }]}>
-                      <Text style={styles.previewLabel}>DTI/SEC Photo</Text>
-                      <Image source={{ uri: getDocImageUrl(formData.dti_sec_registration_photo || formData.dti_sec_registration_photo_server) }} style={styles.previewImage} />
+                {targetRole === 'contractor' ? (
+                  <>
+                    <View style={styles.previewCard}>
+                      <Text style={styles.previewHeader}>Company Information</Text>
+                      <View style={styles.previewRow}><Text style={styles.previewLabel}>Company Name</Text><Text style={styles.previewValue}>{formData.company_name || '—'}</Text></View>
+                      <View style={styles.previewRow}><Text style={styles.previewLabel}>Company Phone</Text><Text style={styles.previewValue}>{formData.company_phone || '—'}</Text></View>
+                      <View style={styles.previewRow}><Text style={styles.previewLabel}>Experience</Text><Text style={styles.previewValue}>{formData.experience_start_date ? `${computeYears(formData.experience_start_date)} years` : '—'}</Text></View>
+                      <View style={styles.previewRow}><Text style={styles.previewLabel}>Contractor Type</Text><Text style={styles.previewValue}>{(() => { const sel = (dropdowns.contractor_types || []).find((t: any) => `${t.id}` === `${formData.contractor_type_id}`); return sel?.name || '—'; })()}</Text></View>
+                      {(() => { const sel = (dropdowns.contractor_types || []).find((t: any) => `${t.id}` === `${formData.contractor_type_id}`); const isOther = (sel?.name || '').toLowerCase().includes('other'); return isOther ? (<View style={styles.previewRow}><Text style={styles.previewLabel}>Other Type</Text><Text style={styles.previewValue}>{formData.contractor_type_other_text || '—'}</Text></View>) : null; })()}
+                      <View style={styles.previewRow}><Text style={styles.previewLabel}>Services Offered</Text><Text style={styles.previewValue}>{formData.services_offered || '—'}</Text></View>
+                      <View style={styles.previewRow}><Text style={styles.previewLabel}>Authorized Representative</Text><Text style={styles.previewValue}>{(formData.authorized_rep_fname || '') + (formData.authorized_rep_mname ? ' ' + formData.authorized_rep_mname : '') + (formData.authorized_rep_lname ? ' ' + formData.authorized_rep_lname : '') || '—'}</Text></View>
                     </View>
-                  )}
-                </View>
 
+                    <View style={styles.previewCard}>
+                      <Text style={styles.previewHeader}>Business Address</Text>
+                      {(() => {
+                        const provinceName = provinces.find(p => `${p.code}` === `${formData.business_address_province}`)?.name || '';
+                        const cityName = cities.find(c => `${c.code}` === `${formData.business_address_city}`)?.name || '';
+                        const barangayName = barangays.find(b => `${b.code}` === `${formData.business_address_barangay}`)?.name || '';
+                        const address = [formData.business_address_street || '', barangayName || '', cityName || '', provinceName || ''].filter(Boolean).join(', ');
+                        return (
+                          <>
+                            <View style={styles.previewRow}><Text style={styles.previewLabel}>Street</Text><Text style={styles.previewValue}>{formData.business_address_street || '—'}</Text></View>
+                            <View style={styles.previewRow}><Text style={styles.previewLabel}>Barangay</Text><Text style={styles.previewValue}>{barangayName || '—'}</Text></View>
+                            <View style={styles.previewRow}><Text style={styles.previewLabel}>City/Municipality</Text><Text style={styles.previewValue}>{cityName || '—'}</Text></View>
+                            <View style={styles.previewRow}><Text style={styles.previewLabel}>Province</Text><Text style={styles.previewValue}>{provinceName || '—'}</Text></View>
+                            <View style={styles.previewRow}><Text style={styles.previewLabel}>Postal Code</Text><Text style={styles.previewValue}>{formData.business_address_postal || '—'}</Text></View>
+                            <View style={[styles.previewRow, { marginTop: 6 }]}><Text style={styles.previewLabel}>Full Address</Text><Text style={styles.previewValue}>{address || '—'}</Text></View>
+                          </>
+                        );
+                      })()}
+                    </View>
+
+                    <View style={styles.previewCard}>
+                      <Text style={styles.previewHeader}>Regulatory Documents</Text>
+                      <View style={styles.previewRow}><Text style={styles.previewLabel}>PICAB Number</Text><Text style={styles.previewValue}>{formData.picab_number || '—'}</Text></View>
+                      <View style={styles.previewRow}><Text style={styles.previewLabel}>PICAB Category</Text><Text style={styles.previewValue}>{formData.picab_category || '—'}</Text></View>
+                      <View style={styles.previewRow}><Text style={styles.previewLabel}>PICAB Expiration</Text><Text style={styles.previewValue}>{formData.picab_expiration_date ? formatDateForDisplay(formData.picab_expiration_date) : '—'}</Text></View>
+                      <View style={styles.previewRow}><Text style={styles.previewLabel}>Business Permit No.</Text><Text style={styles.previewValue}>{formData.business_permit_number || '—'}</Text></View>
+                      <View style={styles.previewRow}><Text style={styles.previewLabel}>Permit City</Text><Text style={styles.previewValue}>{formData.business_permit_city || '—'}</Text></View>
+                      <View style={styles.previewRow}><Text style={styles.previewLabel}>Permit Expiration</Text><Text style={styles.previewValue}>{formData.business_permit_expiration ? formatDateForDisplay(formData.business_permit_expiration) : '—'}</Text></View>
+                      <View style={styles.previewRow}><Text style={styles.previewLabel}>TIN Reg Number</Text><Text style={styles.previewValue}>{formData.tin_business_reg_number || '—'}</Text></View>
+                      {(formData.dti_sec_registration_photo || formData.dti_sec_registration_photo_server) && (
+                        <View style={[styles.previewRow, { alignItems: 'center' }]}>
+                          <Text style={styles.previewLabel}>DTI/SEC Photo</Text>
+                          <Image source={{ uri: getDocImageUrl(formData.dti_sec_registration_photo || formData.dti_sec_registration_photo_server) }} style={styles.previewImage} />
+                        </View>
+                      )}
+                    </View>
+                  </>
+                ) : (
+                  <>
+                    <View style={styles.previewCard}>
+                      <Text style={styles.previewHeader}>Account Info</Text>
+                      <View style={styles.previewRow}><Text style={styles.previewLabel}>Username</Text><Text style={styles.previewValue}>{formData.username || '—'}</Text></View>
+                      <View style={styles.previewRow}><Text style={styles.previewLabel}>Email</Text><Text style={styles.previewValue}>{formData.email || '—'}</Text></View>
+                    </View>
+                    <View style={styles.previewCard}>
+                      <Text style={styles.previewHeader}>Personal Details</Text>
+                      <View style={styles.previewRow}><Text style={styles.previewLabel}>First Name</Text><Text style={styles.previewValue}>{formData.first_name || '—'}</Text></View>
+                      <View style={styles.previewRow}><Text style={styles.previewLabel}>Middle Name</Text><Text style={styles.previewValue}>{formData.middle_name || '—'}</Text></View>
+                      <View style={styles.previewRow}><Text style={styles.previewLabel}>Last Name</Text><Text style={styles.previewValue}>{formData.last_name || '—'}</Text></View>
+                      <View style={styles.previewRow}><Text style={styles.previewLabel}>Date of Birth</Text><Text style={styles.previewValue}>{formData.date_of_birth ? formatDateForDisplay(formData.date_of_birth) : '—'}</Text></View>
+                      <View style={styles.previewRow}><Text style={styles.previewLabel}>Phone Number</Text><Text style={styles.previewValue}>{formData.phone_number || '—'}</Text></View>
+                      <View style={styles.previewRow}><Text style={styles.previewLabel}>Occupation</Text><Text style={styles.previewValue}>{(() => { const occ = (dropdowns.occupations || []).find((o: any) => `${o.id}` === `${formData.occupation_id}`); return occ?.name || '—'; })()}</Text></View>
+                      {(() => { const occ = (dropdowns.occupations || []).find((o: any) => `${o.id}` === `${formData.occupation_id}`); const isOther = ((occ?.name || '').toLowerCase()).includes('other'); return isOther ? (<View style={styles.previewRow}><Text style={styles.previewLabel}>Occupation Other</Text><Text style={styles.previewValue}>{formData.occupation_other_text || '—'}</Text></View>) : null; })()}
+                    </View>
+                    <View style={styles.previewCard}>
+                      <Text style={styles.previewHeader}>Address</Text>
+                      {(() => {
+                        const provinceName = provinces.find(p => `${p.code}` === `${formData.owner_address_province}`)?.name || '';
+                        const cityName = cities.find(c => `${c.code}` === `${formData.owner_address_city}`)?.name || '';
+                        const barangayName = barangays.find(b => `${b.code}` === `${formData.owner_address_barangay}`)?.name || '';
+                        const address = [formData.owner_address_street || '', barangayName || '', cityName || '', provinceName || ''].filter(Boolean).join(', ');
+                        return (
+                          <>
+                            <View style={styles.previewRow}><Text style={styles.previewLabel}>Street</Text><Text style={styles.previewValue}>{formData.owner_address_street || '—'}</Text></View>
+                            <View style={styles.previewRow}><Text style={styles.previewLabel}>Barangay</Text><Text style={styles.previewValue}>{barangayName || '—'}</Text></View>
+                            <View style={styles.previewRow}><Text style={styles.previewLabel}>City/Municipality</Text><Text style={styles.previewValue}>{cityName || '—'}</Text></View>
+                            <View style={styles.previewRow}><Text style={styles.previewLabel}>Province</Text><Text style={styles.previewValue}>{provinceName || '—'}</Text></View>
+                            <View style={styles.previewRow}><Text style={styles.previewLabel}>Postal Code</Text><Text style={styles.previewValue}>{formData.owner_address_postal || '—'}</Text></View>
+                            <View style={[styles.previewRow, { marginTop: 6 }]}><Text style={styles.previewLabel}>Full Address</Text><Text style={styles.previewValue}>{address || '—'}</Text></View>
+                          </>
+                        );
+                      })()}
+                    </View>
+                    <View style={styles.previewCard}>
+                      <Text style={styles.previewHeader}>Documents</Text>
+                      <View style={styles.previewRow}><Text style={styles.previewLabel}>Valid ID</Text><Text style={styles.previewValue}>{(() => { const v = (dropdowns.valid_ids || []).find((vi: any) => `${vi.id}` === `${formData.valid_id_id}`); return v?.name || '—'; })()}</Text></View>
+                      {(formData.valid_id_photo || formData.owner_valid_id_photo_server) && (
+                        <View style={[styles.previewRow, { alignItems: 'center' }]}>
+                          <Text style={styles.previewLabel}>ID Front</Text>
+                          <Image source={{ uri: getDocImageUrl(formData.valid_id_photo || formData.owner_valid_id_photo_server) }} style={styles.previewImage} />
+                        </View>
+                      )}
+                      {(formData.valid_id_back_photo || formData.owner_valid_id_back_photo_server) && (
+                        <View style={[styles.previewRow, { alignItems: 'center' }]}>
+                          <Text style={styles.previewLabel}>ID Back</Text>
+                          <Image source={{ uri: getDocImageUrl(formData.valid_id_back_photo || formData.owner_valid_id_back_photo_server) }} style={styles.previewImage} />
+                        </View>
+                      )}
+                      {formData.police_clearance && (
+                        <View style={[styles.previewRow, { alignItems: 'center' }]}>
+                          <Text style={styles.previewLabel}>Police Clearance</Text>
+                          <Image source={{ uri: getDocImageUrl(formData.police_clearance) }} style={styles.previewImage} />
+                        </View>
+                      )}
+                    </View>
+                  </>
+                )}
                 <View style={styles.confirmRow}>
                   <TouchableOpacity onPress={() => setAgreedConfirm(!agreedConfirm)} style={styles.confirmCheckbox}>
                     <Ionicons name={agreedConfirm ? 'checkmark-circle' : 'checkmark-circle-outline'} size={24} color={agreedConfirm ? '#2ECC71' : '#666'} />
@@ -1030,17 +1232,17 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
 
             {!hasBoth && targetRole === 'owner' && formStep === 1 && (
               <View>
-                <Text style={styles.inputLabel}>Username</Text>
+                <Text style={styles.inputLabel}>Username *</Text>
                 <TextInput style={[styles.input, prefilledFields.username && styles.prefilledInput]} value={formData.username || ''} onChangeText={(t) => updateForm({ username: t })} placeholder="Username *" placeholderTextColor="#999" />
-                <Text style={styles.inputLabel}>Email</Text>
+                <Text style={styles.inputLabel}>Email *</Text>
                 <TextInput style={[styles.input, prefilledFields.email && styles.prefilledInput]} value={formData.email || ''} onChangeText={(t) => updateForm({ email: t })} keyboardType="email-address" placeholder="Email *" placeholderTextColor="#999" />
-                <Text style={[styles.inputLabel, { marginTop: 12 }]}>First Name</Text>
+                <Text style={[styles.inputLabel, { marginTop: 12 }]}>First Name *</Text>
                 <TextInput style={[styles.input, prefilledFields.first_name && styles.prefilledInput]} value={formData.first_name || ''} onChangeText={(t) => updateForm({ first_name: t })} placeholder="First Name *" placeholderTextColor="#999" />
                 <Text style={styles.inputLabel}>Middle Name</Text>
                 <TextInput style={[styles.input, prefilledFields.middle_name && styles.prefilledInput]} value={formData.middle_name || ''} onChangeText={(t) => updateForm({ middle_name: t })} placeholder="Middle Name (Optional)" placeholderTextColor="#999" />
-                <Text style={styles.inputLabel}>Last Name</Text>
+                <Text style={styles.inputLabel}>Last Name *</Text>
                 <TextInput style={[styles.input, prefilledFields.last_name && styles.prefilledInput]} value={formData.last_name || ''} onChangeText={(t) => updateForm({ last_name: t })} placeholder="Last Name *" placeholderTextColor="#999" />
-                <Text style={styles.inputLabel}>Date of Birth</Text>
+                <Text style={styles.inputLabel}>Date of Birth *</Text>
                 <TouchableOpacity style={styles.input} onPress={() => setShowDobModal(true)}>
                   <View style={styles.dropdownInputWrapper}>
                     <Text style={[styles.dropdownInputText, prefilledFields.date_of_birth && styles.prefilledDropdownText, !formData.date_of_birth && styles.placeholderText]}>
@@ -1049,9 +1251,9 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
                     <Ionicons name="calendar" size={20} color="#666" />
                   </View>
                 </TouchableOpacity>
-                <Text style={styles.inputLabel}>Phone Number</Text>
+                <Text style={styles.inputLabel}>Phone Number *</Text>
                 <TextInput style={[styles.input, prefilledFields.phone_number && styles.prefilledInput]} value={formData.phone_number || ''} onChangeText={(t) => updateForm({ phone_number: t })} keyboardType="phone-pad" placeholder="Phone Number *" placeholderTextColor="#999" />
-                <Text style={styles.inputLabel}>Occupation</Text>
+                <Text style={styles.inputLabel}>Occupation *</Text>
                 <TouchableOpacity style={styles.input} onPress={() => setShowOccupationModal(true)}>
                   <View style={styles.dropdownInputWrapper}>
                     <Text style={[styles.dropdownInputText, !formData.occupation_id && styles.placeholderText]}>
@@ -1081,9 +1283,9 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
                     </>
                   );
                 })()}
-                <Text style={styles.inputLabel}>Address Street</Text>
+                <Text style={styles.inputLabel}>Address Street *</Text>
                 <TextInput style={[styles.input, prefilledFields.owner_address_street && styles.prefilledInput]} value={formData.owner_address_street || ''} onChangeText={(t) => updateForm({ owner_address_street: t })} placeholder="Street" placeholderTextColor="#999" />
-                <Text style={styles.inputLabel}>Province</Text>
+                <Text style={styles.inputLabel}>Province *</Text>
                 <TouchableOpacity style={styles.input} onPress={() => setShowOwnerProvinceModal(true)}>
                   <View style={styles.dropdownInputWrapper}>
                     <Text style={[styles.dropdownInputText, prefilledFields.owner_address_province && styles.prefilledDropdownText, !formData.owner_address_province && styles.placeholderText]}>
@@ -1092,7 +1294,7 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
                     <Ionicons name="chevron-down" size={20} color="#666" />
                   </View>
                 </TouchableOpacity>
-                <Text style={styles.inputLabel}>City/Municipality</Text>
+                <Text style={styles.inputLabel}>City/Municipality *</Text>
                 <TouchableOpacity style={[styles.input, !formData.owner_address_province && styles.inputDisabled]} onPress={() => formData.owner_address_province && setShowOwnerCityModal(true)} disabled={!formData.owner_address_province}>
                   <View style={styles.dropdownInputWrapper}>
                     <Text style={[styles.dropdownInputText, prefilledFields.owner_address_city && styles.prefilledDropdownText, !formData.owner_address_city && styles.placeholderText]}>
@@ -1101,7 +1303,7 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
                     <Ionicons name="chevron-down" size={20} color="#666" />
                   </View>
                 </TouchableOpacity>
-                <Text style={styles.inputLabel}>Barangay</Text>
+                <Text style={styles.inputLabel}>Barangay *</Text>
                 <TouchableOpacity style={[styles.input, !formData.owner_address_city && styles.inputDisabled]} onPress={() => formData.owner_address_city && setShowOwnerBarangayModal(true)} disabled={!formData.owner_address_city}>
                   <View style={styles.dropdownInputWrapper}>
                     <Text style={[styles.dropdownInputText, prefilledFields.owner_address_barangay && styles.prefilledDropdownText, !formData.owner_address_barangay && styles.placeholderText]}>
@@ -1110,14 +1312,14 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
                     <Ionicons name="chevron-down" size={20} color="#666" />
                   </View>
                 </TouchableOpacity>
-                <Text style={styles.inputLabel}>Postal Code</Text>
+                <Text style={styles.inputLabel}>Postal Code *</Text>
                 <TextInput style={[styles.input, prefilledFields.owner_address_postal && styles.prefilledInput]} value={formData.owner_address_postal || ''} onChangeText={(t) => updateForm({ owner_address_postal: t })} keyboardType="number-pad" placeholder="Postal Code" placeholderTextColor="#999" />
               </View>
             )}
 
             {!hasBoth && targetRole === 'owner' && formStep === 2 && (
               <View>
-                <Text style={styles.inputLabel}>Valid ID</Text>
+                <Text style={styles.inputLabel}>Valid ID *</Text>
                 <TouchableOpacity style={styles.input} onPress={() => setShowValidIdModal(true)}>
                   <View style={styles.dropdownInputWrapper}>
                     <Text style={[styles.dropdownInputText, !formData.valid_id_id && styles.placeholderText]}>
@@ -1129,7 +1331,7 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
                     <Ionicons name="chevron-down" size={20} color="#666" />
                   </View>
                 </TouchableOpacity>
-                <Text style={styles.inputLabel}>Valid ID Front</Text>
+                <Text style={styles.inputLabel}>Valid ID Front *</Text>
                 <TouchableOpacity style={styles.uploadButton} onPress={() => pickImage('valid_id_photo')}>
                   {(formData.valid_id_photo || formData.owner_valid_id_photo_server) ? (
                     <View style={styles.uploadedFile}>
@@ -1147,7 +1349,7 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
                     </View>
                   )}
                 </TouchableOpacity>
-                <Text style={styles.inputLabel}>Valid ID Back</Text>
+                <Text style={styles.inputLabel}>Valid ID Back *</Text>
                 <TouchableOpacity style={styles.uploadButton} onPress={() => pickImage('valid_id_back_photo')}>
                   {(formData.valid_id_back_photo || formData.owner_valid_id_back_photo_server) ? (
                     <View style={styles.uploadedFile}>
@@ -1165,7 +1367,7 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
                     </View>
                   )}
                 </TouchableOpacity>
-                <Text style={styles.inputLabel}>Police Clearance</Text>
+                <Text style={styles.inputLabel}>Police Clearance *</Text>
                 <TouchableOpacity style={styles.uploadButton} onPress={() => pickImage('police_clearance')}>
                   {formData.police_clearance ? (
                     <View style={styles.uploadedFile}>
@@ -1186,89 +1388,21 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
               </View>
             )}
 
-            {!hasBoth && targetRole === 'owner' && formStep === 3 && (
-              <View>
-                <Text style={styles.sectionTitle}>Review & Confirm</Text>
-                <View style={styles.previewCard}>
-                  <Text style={styles.previewHeader}>Account Info</Text>
-                  <View style={styles.previewRow}><Text style={styles.previewLabel}>Username</Text><Text style={styles.previewValue}>{formData.username || '—'}</Text></View>
-                  <View style={styles.previewRow}><Text style={styles.previewLabel}>Email</Text><Text style={styles.previewValue}>{formData.email || '—'}</Text></View>
-                </View>
-                <View style={styles.previewCard}>
-                  <Text style={styles.previewHeader}>Personal Details</Text>
-                  <View style={styles.previewRow}><Text style={styles.previewLabel}>First Name</Text><Text style={styles.previewValue}>{formData.first_name || '—'}</Text></View>
-                  <View style={styles.previewRow}><Text style={styles.previewLabel}>Middle Name</Text><Text style={styles.previewValue}>{formData.middle_name || '—'}</Text></View>
-                  <View style={styles.previewRow}><Text style={styles.previewLabel}>Last Name</Text><Text style={styles.previewValue}>{formData.last_name || '—'}</Text></View>
-                  <View style={styles.previewRow}><Text style={styles.previewLabel}>Date of Birth</Text><Text style={styles.previewValue}>{formData.date_of_birth ? formatDateForDisplay(formData.date_of_birth) : '—'}</Text></View>
-                  <View style={styles.previewRow}><Text style={styles.previewLabel}>Phone Number</Text><Text style={styles.previewValue}>{formData.phone_number || '—'}</Text></View>
-                  <View style={styles.previewRow}><Text style={styles.previewLabel}>Occupation</Text><Text style={styles.previewValue}>{(() => { const occ = (dropdowns.occupations || []).find((o: any) => `${o.id}` === `${formData.occupation_id}`); return occ?.name || '—'; })()}</Text></View>
-                  {(() => { const occ = (dropdowns.occupations || []).find((o: any) => `${o.id}` === `${formData.occupation_id}`); const isOther = ((occ?.name || '').toLowerCase()).includes('other'); return isOther ? (<View style={styles.previewRow}><Text style={styles.previewLabel}>Occupation Other</Text><Text style={styles.previewValue}>{formData.occupation_other_text || '—'}</Text></View>) : null; })()}
-                </View>
-                <View style={styles.previewCard}>
-                  <Text style={styles.previewHeader}>Address</Text>
-                  {(() => {
-                    const provinceName = provinces.find(p => `${p.code}` === `${formData.owner_address_province}`)?.name || '';
-                    const cityName = cities.find(c => `${c.code}` === `${formData.owner_address_city}`)?.name || '';
-                    const barangayName = barangays.find(b => `${b.code}` === `${formData.owner_address_barangay}`)?.name || '';
-                    const address = [formData.owner_address_street || '', barangayName || '', cityName || '', provinceName || ''].filter(Boolean).join(', ');
-                    return (
-                      <>
-                        <View style={styles.previewRow}><Text style={styles.previewLabel}>Street</Text><Text style={styles.previewValue}>{formData.owner_address_street || '—'}</Text></View>
-                        <View style={styles.previewRow}><Text style={styles.previewLabel}>Barangay</Text><Text style={styles.previewValue}>{barangayName || '—'}</Text></View>
-                        <View style={styles.previewRow}><Text style={styles.previewLabel}>City/Municipality</Text><Text style={styles.previewValue}>{cityName || '—'}</Text></View>
-                        <View style={styles.previewRow}><Text style={styles.previewLabel}>Province</Text><Text style={styles.previewValue}>{provinceName || '—'}</Text></View>
-                        <View style={styles.previewRow}><Text style={styles.previewLabel}>Postal Code</Text><Text style={styles.previewValue}>{formData.owner_address_postal || '—'}</Text></View>
-                        <View style={[styles.previewRow, { marginTop: 6 }]}><Text style={styles.previewLabel}>Full Address</Text><Text style={styles.previewValue}>{address || '—'}</Text></View>
-                      </>
-                    );
-                  })()}
-                </View>
-                <View style={styles.previewCard}>
-                  <Text style={styles.previewHeader}>Documents</Text>
-                  <View style={styles.previewRow}><Text style={styles.previewLabel}>Valid ID</Text><Text style={styles.previewValue}>{(() => { const v = (dropdowns.valid_ids || []).find((vi: any) => `${vi.id}` === `${formData.valid_id_id}`); return v?.name || '—'; })()}</Text></View>
-                  {(formData.valid_id_photo || formData.owner_valid_id_photo_server) && (
-                    <View style={[styles.previewRow, { alignItems: 'center' }]}>
-                      <Text style={styles.previewLabel}>ID Front</Text>
-                      <Image source={{ uri: getDocImageUrl(formData.valid_id_photo || formData.owner_valid_id_photo_server) }} style={styles.previewImage} />
-                    </View>
-                  )}
-                  {(formData.valid_id_back_photo || formData.owner_valid_id_back_photo_server) && (
-                    <View style={[styles.previewRow, { alignItems: 'center' }]}>
-                      <Text style={styles.previewLabel}>ID Back</Text>
-                      <Image source={{ uri: getDocImageUrl(formData.valid_id_back_photo || formData.owner_valid_id_back_photo_server) }} style={styles.previewImage} />
-                    </View>
-                  )}
-                  {formData.police_clearance && (
-                    <View style={[styles.previewRow, { alignItems: 'center' }]}>
-                      <Text style={styles.previewLabel}>Police Clearance</Text>
-                      <Image source={{ uri: getDocImageUrl(formData.police_clearance) }} style={styles.previewImage} />
-                    </View>
-                  )}
-                </View>
-
-                <View style={styles.confirmRow}>
-                  <TouchableOpacity onPress={() => setAgreedConfirm(!agreedConfirm)} style={styles.confirmCheckbox}>
-                    <Ionicons name={agreedConfirm ? 'checkmark-circle' : 'checkmark-circle-outline'} size={24} color={agreedConfirm ? '#2ECC71' : '#666'} />
-                  </TouchableOpacity>
-                  <Text style={styles.confirmText}>I confirm the details above are accurate and agree to submit.</Text>
-                </View>
-              </View>
-            )}
           {/* Buttons */}
           <View style={styles.buttonContainer}>
             <TouchableOpacity style={styles.backButton} onPress={handleBack}>
               <Text style={styles.backButtonText}>Back</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.nextButton, submitting && styles.nextButtonDisabled]}
-              onPress={hasBoth ? switchToTargetRole : (formStep < 3 ? submitStep : () => { if (!agreedConfirm) { Alert.alert('Confirm', 'Please confirm the information is correct.'); return; } setShowSubmitConfirm(true); })}
-              disabled={submitting}
+              style={[styles.nextButton, (submitting || blockedDueToPending) && styles.nextButtonDisabled]}
+              onPress={handlePrimaryPress}
+              disabled={submitting || blockedDueToPending}
             >
               {submitting ? (
                 <ActivityIndicator color="#FFFFFF" />
               ) : (
-                <Text style={[styles.nextButtonText, submitting && styles.nextButtonTextDisabled]}>
-                  {hasBoth ? `Switch to ${targetRole === 'contractor' ? 'Contractor' : 'Owner'}` : (formStep < 3 ? 'Next' : 'Submit')}
+                <Text style={[styles.nextButtonText, (submitting || blockedDueToPending) && styles.nextButtonTextDisabled]}>
+                  {blockedDueToPending ? 'Pending' : (hasBoth ? `Switch to ${targetRole === 'contractor' ? 'Contractor' : 'Owner'}` : (formStep < 3 ? 'Next' : 'Submit'))}
                 </Text>
               )}
             </TouchableOpacity>
@@ -1507,10 +1641,7 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
       <Modal visible={showExperienceDateModal} animationType="slide" transparent onRequestClose={() => setShowExperienceDateModal(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Start Date</Text>
-              <TouchableOpacity onPress={() => setShowExperienceDateModal(false)} style={styles.closeButton}><Ionicons name="close" size={22} color="#333" /></TouchableOpacity>
-            </View>
+
             <View style={{ paddingHorizontal: 20 }}>
               <DateTimePicker
                 value={formData.experience_start_date ? new Date(formData.experience_start_date) : new Date()}

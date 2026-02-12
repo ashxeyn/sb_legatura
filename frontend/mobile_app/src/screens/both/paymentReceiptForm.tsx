@@ -61,6 +61,11 @@ interface PaymentReceiptFormProps {
   milestoneItemId: number;
   projectId: number;
   milestoneTitle: string;
+  expectedAmount?: number;
+  totalPaid?: number;
+  totalSubmitted?: number;
+  remainingBalance?: number;
+  overAmount?: number;
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -69,17 +74,36 @@ export default function paymentReceiptForm({
   milestoneItemId,
   projectId,
   milestoneTitle,
+  expectedAmount = 0,
+  totalPaid = 0,
+  totalSubmitted = 0,
+  remainingBalance = 0,
+  overAmount = 0,
   onClose,
   onSuccess,
 }: PaymentReceiptFormProps) {
   const insets = useSafeAreaInsets();
-  const [amount, setAmount] = useState('');
+
+  // Comma formatting helpers
+  const formatNumberWithCommas = (value: string): string => {
+    const cleaned = value.replace(/[^0-9.]/g, '');
+    if (!cleaned) return '';
+    const parts = cleaned.split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return parts.length > 1 ? `${parts[0]}.${parts[1]}` : parts[0];
+  };
+  const removeCommas = (value: string): string => value.replace(/,/g, '');
+
+  // Pre-fill amount with remaining balance if available (formatted with commas)
+  const prefillAmount = remainingBalance > 0 ? formatNumberWithCommas(remainingBalance.toFixed(2)) : '';
+  const [amount, setAmount] = useState(prefillAmount);
   const [paymentType, setPaymentType] = useState('');
   const [transactionNumber, setTransactionNumber] = useState('');
   const [transactionDate, setTransactionDate] = useState<Date>(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [receiptPhoto, setReceiptPhoto] = useState<ReceiptFile | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showOverAmountModal, setShowOverAmountModal] = useState(false);
   const [errors, setErrors] = useState<{ 
     amount?: string; 
     paymentType?: string; 
@@ -216,8 +240,8 @@ export default function paymentReceiptForm({
   const validateForm = (): boolean => {
     const newErrors: typeof errors = {};
 
-    // Validate amount
-    const amountNum = parseFloat(amount);
+    // Validate amount (strip commas before parsing)
+    const amountNum = parseFloat(removeCommas(amount));
     if (!amount.trim() || isNaN(amountNum) || amountNum <= 0) {
       newErrors.amount = 'Please enter a valid amount';
     }
@@ -246,13 +270,25 @@ export default function paymentReceiptForm({
       return;
     }
 
+    // Check if amount exceeds remaining balance and show warning modal
+    const amountNum = parseFloat(removeCommas(amount));
+    if (expectedAmount > 0 && remainingBalance > 0 && amountNum > remainingBalance) {
+      setShowOverAmountModal(true);
+      return;
+    }
+
+    await proceedWithSubmission();
+  };
+
+  const proceedWithSubmission = async () => {
+    setShowOverAmountModal(false);
     setIsSubmitting(true);
 
     try {
       const response = await payment_service.upload_payment(
         milestoneItemId,
         projectId,
-        parseFloat(amount),
+        parseFloat(removeCommas(amount)),
         paymentType,
         transactionNumber || null,
         formatDateForAPI(transactionDate),
@@ -307,6 +343,48 @@ export default function paymentReceiptForm({
           </Text>
         </View>
 
+        {/* Payment Summary Card - only show when expected amount is known */}
+        {expectedAmount > 0 && (
+          <View style={styles.paymentSummaryCard}>
+            <Text style={styles.paymentSummaryTitle}>Payment Summary</Text>
+            <View style={styles.paymentSummaryRow}>
+              <Text style={styles.paymentSummaryLabel}>Expected Amount</Text>
+              <Text style={styles.paymentSummaryValue}>
+                ₱{expectedAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </Text>
+            </View>
+            <View style={styles.paymentSummaryRow}>
+              <Text style={styles.paymentSummaryLabel}>Total Paid (Approved)</Text>
+              <Text style={[styles.paymentSummaryValue, { color: COLORS.success }]}>
+                ₱{totalPaid.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </Text>
+            </View>
+            {totalSubmitted > 0 && (
+              <View style={styles.paymentSummaryRow}>
+                <Text style={styles.paymentSummaryLabel}>Pending Confirmation</Text>
+                <Text style={[styles.paymentSummaryValue, { color: COLORS.warning }]}>
+                  ₱{totalSubmitted.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </Text>
+              </View>
+            )}
+            <View style={[styles.paymentSummaryRow, styles.paymentSummaryDivider]}>
+              <Text style={[styles.paymentSummaryLabel, { fontWeight: '700' }]}>Remaining Balance</Text>
+              <Text style={[styles.paymentSummaryValue, { fontWeight: '700', color: overAmount > 0 ? '#e74c3c' : remainingBalance > 0 ? COLORS.accent : COLORS.success }]}>
+                {overAmount > 0
+                  ? `₱0.00 (₱${overAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} over)`
+                  : `₱${remainingBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+              </Text>
+            </View>
+            {/* Progress bar */}
+            <View style={styles.paymentProgressBarBg}>
+              <View style={[styles.paymentProgressBarFill, { width: `${Math.min(100, expectedAmount > 0 ? ((totalPaid + totalSubmitted) / expectedAmount) * 100 : 0)}%` }]} />
+            </View>
+            <Text style={[styles.paymentProgressText, overAmount > 0 && { color: '#e74c3c' }]}>
+              {expectedAmount > 0 ? Math.round(((totalPaid + totalSubmitted) / expectedAmount) * 100) : 0}% covered
+            </Text>
+          </View>
+        )}
+
         {/* Amount Input */}
         <View style={styles.inputSection}>
           <Text style={styles.inputLabel}>
@@ -318,7 +396,8 @@ export default function paymentReceiptForm({
               style={styles.amountInput}
               value={amount}
               onChangeText={text => {
-                setAmount(text.replace(/[^0-9.]/g, ''));
+                const raw = text.replace(/[^0-9.]/g, '');
+                setAmount(formatNumberWithCommas(raw));
                 if (errors.amount) {
                   setErrors(prev => ({ ...prev, amount: undefined }));
                 }
@@ -331,9 +410,15 @@ export default function paymentReceiptForm({
           {errors.amount && (
             <Text style={styles.errorText}>{errors.amount}</Text>
           )}
+          {remainingBalance > 0 && prefillAmount && (
+            <View style={styles.prefillBadge}>
+              <Feather name="info" size={14} color={COLORS.info} />
+              <Text style={styles.prefillBadgeText}>
+                Pre-filled with remaining balance. You can adjust the amount for partial payment.
+              </Text>
+            </View>
+          )}
         </View>
-
-        {/* Payment Type Selection */}
         <View style={styles.inputSection}>
           <Text style={styles.inputLabel}>
             Payment Method <Text style={styles.required}>*</Text>
@@ -504,6 +589,54 @@ export default function paymentReceiptForm({
           />
         )
       )}
+
+      {/* Over-Amount Warning Modal */}
+      <Modal
+        visible={showOverAmountModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowOverAmountModal(false)}
+      >
+        <View style={styles.overAmountModalOverlay}>
+          <View style={styles.overAmountModalContent}>
+            <View style={styles.overAmountIconContainer}>
+              <Feather name="alert-triangle" size={36} color={COLORS.warning} />
+            </View>
+            <Text style={styles.overAmountTitle}>Amount Exceeds Balance</Text>
+            <Text style={styles.overAmountMessage}>
+              The entered amount (₱{parseFloat(removeCommas(amount) || '0').toLocaleString('en-US', { minimumFractionDigits: 2 })}) exceeds the remaining balance (₱{remainingBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })}) for this milestone item.
+            </Text>
+            <View style={styles.overAmountSummary}>
+              <View style={styles.overAmountSummaryRow}>
+                <Text style={styles.overAmountSummaryLabel}>Expected</Text>
+                <Text style={styles.overAmountSummaryValue}>₱{expectedAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</Text>
+              </View>
+              <View style={styles.overAmountSummaryRow}>
+                <Text style={styles.overAmountSummaryLabel}>Already Paid + Pending</Text>
+                <Text style={styles.overAmountSummaryValue}>₱{(totalPaid + totalSubmitted).toLocaleString('en-US', { minimumFractionDigits: 2 })}</Text>
+              </View>
+              <View style={styles.overAmountSummaryRow}>
+                <Text style={styles.overAmountSummaryLabel}>Remaining</Text>
+                <Text style={[styles.overAmountSummaryValue, { fontWeight: '700' }]}>₱{remainingBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })}</Text>
+              </View>
+            </View>
+            <View style={styles.overAmountActions}>
+              <TouchableOpacity
+                style={styles.overAmountEditButton}
+                onPress={() => setShowOverAmountModal(false)}
+              >
+                <Text style={styles.overAmountEditButtonText}>Edit Amount</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.overAmountContinueButton}
+                onPress={proceedWithSubmission}
+              >
+                <Text style={styles.overAmountContinueButtonText}>Submit Anyway</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -765,5 +898,158 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: COLORS.accent,
+  },
+  // Payment Summary Card styles
+  paymentSummaryCard: {
+    backgroundColor: COLORS.primaryLight,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  paymentSummaryTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: 12,
+  },
+  paymentSummaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 6,
+  },
+  paymentSummaryDivider: {
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    marginTop: 8,
+    paddingTop: 12,
+  },
+  paymentSummaryLabel: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+  },
+  paymentSummaryValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  paymentProgressBarBg: {
+    height: 6,
+    backgroundColor: COLORS.border,
+    borderRadius: 3,
+    marginTop: 12,
+    overflow: 'hidden',
+  },
+  paymentProgressBarFill: {
+    height: '100%',
+    backgroundColor: COLORS.success,
+    borderRadius: 3,
+  },
+  paymentProgressText: {
+    fontSize: 12,
+    color: COLORS.textMuted,
+    marginTop: 4,
+    textAlign: 'right',
+  },
+  // Pre-fill badge
+  prefillBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.infoLight,
+    borderRadius: 8,
+    padding: 10,
+    marginTop: 8,
+    gap: 8,
+  },
+  prefillBadgeText: {
+    flex: 1,
+    fontSize: 12,
+    color: COLORS.info,
+    lineHeight: 18,
+  },
+  // Over-amount warning modal styles
+  overAmountModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  overAmountModalContent: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 20,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+  },
+  overAmountIconContainer: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  overAmountTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: COLORS.text,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  overAmountMessage: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 16,
+  },
+  overAmountSummary: {
+    backgroundColor: COLORS.warningLight,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 20,
+  },
+  overAmountSummaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 4,
+  },
+  overAmountSummaryLabel: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+  },
+  overAmountSummaryValue: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  overAmountActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  overAmountEditButton: {
+    flex: 1,
+    backgroundColor: COLORS.surface,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: COLORS.accent,
+  },
+  overAmountEditButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.accent,
+  },
+  overAmountContinueButton: {
+    flex: 1,
+    backgroundColor: COLORS.warning,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  overAmountContinueButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.surface,
   },
 });

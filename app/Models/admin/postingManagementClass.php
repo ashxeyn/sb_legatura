@@ -151,16 +151,23 @@ class postingManagementClass
                 ->update(['project_post_status' => 'approved']);
 
             if ($updated) {
-                // Optional: Send approval email
-                // $owner = DB::table('users')
-                //     ->join('property_owners', 'users.user_id', '=', 'property_owners.user_id')
-                //     ->join('project_relationships', 'property_owners.owner_id', '=', 'project_relationships.owner_id')
-                //     ->where('project_relationships.rel_id', $project->relationship_id)
-                //     ->select('users.email', 'property_owners.first_name')
-                //     ->first();
-                // if ($owner) {
-                //     Mail::to($owner->email)->send(new PostApproved($owner->first_name, $project->project_title));
-                // }
+                // Notify property owner that their post was approved
+                $ownerUserId = DB::table('project_relationships as pr')
+                    ->join('property_owners as po', 'pr.owner_id', '=', 'po.owner_id')
+                    ->where('pr.rel_id', $project->relationship_id)
+                    ->value('po.user_id');
+                if ($ownerUserId) {
+                    \App\Services\NotificationService::create(
+                        (int) $ownerUserId,
+                        'project_update',
+                        'Project Post Approved',
+                        "Your project post \"{$project->project_title}\" has been approved and is now visible to contractors.",
+                        'high',
+                        'project',
+                        (int) $projectId,
+                        ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int) $projectId]]
+                    );
+                }
                 return true;
             }
             return false;
@@ -184,16 +191,23 @@ class postingManagementClass
                 ]);
 
             if ($updated) {
-                // Optional: Send rejection email
-                // $owner = DB::table('users')
-                //     ->join('property_owners', 'users.user_id', '=', 'property_owners.user_id')
-                //     ->join('project_relationships', 'property_owners.owner_id', '=', 'project_relationships.owner_id')
-                //     ->where('project_relationships.rel_id', $project->relationship_id)
-                //     ->select('users.email', 'property_owners.first_name')
-                //     ->first();
-                // if ($owner) {
-                //     Mail::to($owner->email)->send(new PostRejected($owner->first_name, $project->project_title, $reason));
-                // }
+                // Notify property owner that their post was rejected
+                $ownerUserId = DB::table('project_relationships as pr')
+                    ->join('property_owners as po', 'pr.owner_id', '=', 'po.owner_id')
+                    ->where('pr.rel_id', $project->relationship_id)
+                    ->value('po.user_id');
+                if ($ownerUserId) {
+                    \App\Services\NotificationService::create(
+                        (int) $ownerUserId,
+                        'project_update',
+                        'Project Post Rejected',
+                        "Your project post \"{$project->project_title}\" has been rejected. Reason: {$reason}",
+                        'high',
+                        'project',
+                        (int) $projectId,
+                        ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int) $projectId]]
+                    );
+                }
                 return true;
             }
             return false;
