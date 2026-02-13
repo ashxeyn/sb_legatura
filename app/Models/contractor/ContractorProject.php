@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Models\Contractor;
+namespace App\Models\contractor;
 
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -158,7 +158,7 @@ class ContractorType extends Model
 // Contractor Project Service
 class ContractorProjectService
 {
-    
+
     // Get all contractor types
     public function getContractorTypes()
     {
@@ -167,66 +167,66 @@ class ContractorProjectService
             ->get(['type_id', 'type_name']);
     }
 
-    
+
     // Create a new project for contractor
     public function createProject(array $data, $mediaFiles = [])
     {
         DB::beginTransaction();
-        
+
         try {
             // Set project status to open
             $data['project_status'] = 'open';
-            
+
             // Set default values if not provided
             if (empty($data['property_type'])) {
-                $data['property_type'] = 'Residential'; 
+                $data['property_type'] = 'Residential';
             }
-            
+
             if (empty($data['lot_size'])) {
-                $data['lot_size'] = 0; 
+                $data['lot_size'] = 0;
             }
-            
+
             if (empty($data['floor_area'])) {
-                $data['floor_area'] = 0; 
+                $data['floor_area'] = 0;
             }
-            
+
             if (empty($data['budget_range_min'])) {
                 $data['budget_range_min'] = 0;
             }
-            
+
             if (empty($data['budget_range_max'])) {
                 $data['budget_range_max'] = 0;
             }
-            
+
             if (empty($data['to_finish'])) {
                 $data['to_finish'] = null;
             }
-            
+
             // Set type_id from contractor if not provided
             if (empty($data['type_id'])) {
                 $contractor = Contractor::find($data['contractor_id']);
                 if ($contractor && $contractor->type_id) {
-                    $data['type_id'] = $contractor->type_id; 
+                    $data['type_id'] = $contractor->type_id;
                 } else {
-                    $data['type_id'] = 1; 
+                    $data['type_id'] = 1;
                 }
             }
-            
+
             if (empty($data['bidding_deadline'])) {
-                $data['bidding_deadline'] = now()->addDays(30); 
+                $data['bidding_deadline'] = now()->addDays(30);
             } else {
-                
+
                 $data['bidding_deadline'] = $this->normalizeDateTimeLocal($data['bidding_deadline']);
             }
-            
+
             // Create project
             $project = Project::create($data);
-            
+
             // Handle media upload (photo/video) - optional
             if (!empty($mediaFiles)) {
                 foreach ($mediaFiles as $file) {
                     $filePath = $file->store('project_files/contractor_media', 'public');
-                    
+
                     ProjectFile::create([
                         'project_id' => $project->project_id,
                         'file_path' => $filePath,
@@ -234,31 +234,31 @@ class ContractorProjectService
                     ]);
                 }
             }
-            
+
             DB::commit();
             return $project;
-            
+
         } catch (\Exception $e) {
             DB::rollBack();
             throw $e;
         }
     }
 
-    
+
     // Get contractor by user_id
     public function getContractorByUserId($userId)
     {
         return Contractor::where('user_id', $userId)->first();
     }
 
-    
+
     // Get contractor by contractor_id
     public function getContractorById($contractorId)
     {
         return Contractor::find($contractorId);
     }
 
-    
+
     // Get all projects for a contractor
     public function getContractorProjects($contractorId)
     {
@@ -268,7 +268,7 @@ class ContractorProjectService
             ->get();
     }
 
-    
+
     // Get project by ID with relationships
     public function getProjectById($projectId)
     {
@@ -276,7 +276,7 @@ class ContractorProjectService
             ->find($projectId);
     }
 
-    
+
     // Convert datetime-local format to database format
     private function normalizeDateTimeLocal(string $value): string
     {

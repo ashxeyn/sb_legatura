@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Models\Both;
+namespace App\Models\both;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Models\Owner;
+namespace App\Models\owner;
 
 use Illuminate\Support\Facades\DB;
 use App\Services\BidRankingService;

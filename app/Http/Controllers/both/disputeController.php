@@ -838,7 +838,7 @@ class disputeController extends Controller
             // Get bids for this project if user is owner
             $bids = [];
             if ($isOwner && $project->project_status === 'open') {
-                $projectsClass = new \App\Models\Owner\projectsClass();
+                $projectsClass = new \App\Models\owner\projectsClass();
                 $bids = $projectsClass->getProjectBids($projectId);
             }
 

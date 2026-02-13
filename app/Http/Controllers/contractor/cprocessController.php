@@ -72,7 +72,7 @@ class cprocessController extends Controller
         }
             // Fetch approved projects via the owner projectsClass (centralized logic)
             try {
-                $projectsClass = new \App\Models\Owner\projectsClass();
+                $projectsClass = new \App\Models\owner\projectsClass();
                 $projects = $projectsClass->getApprovedProjects();
 
                 // attach files for each project using the same class helper

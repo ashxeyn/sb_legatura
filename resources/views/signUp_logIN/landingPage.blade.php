@@ -18,7 +18,7 @@
 
    <section class="hero">
         <div class="hero-image">
-            <img src="{{ asset('img/landingpage.png') }}" alt="Construction and building projects">
+            <img src="{{ asset('img/landingPage.png') }}" alt="Construction and building projects">
         </div>
         <div class="hero-logo">
             <img src="{{ asset('img/logo_legatura.svg') }}" alt="Legatura Logo">
