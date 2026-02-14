@@ -134,16 +134,34 @@ class authController extends Controller
                     Session::put('current_role', $result['userType']);
                 }
 
-                // Route admins to the Admin dashboard, owners/contractors to their homepages, users to main dashboard
+                // If the auth service returned a determinedRole (common for 'both' accounts), prefer that
+                $determinedRole = $result['determinedRole'] ?? null;
+                if (!empty($determinedRole)) {
+                    Session::put('current_role', $determinedRole);
+                }
+
+                // Route admins to the Admin dashboard first
                 if (!empty($result['userType']) && $result['userType'] === 'admin') {
                     return redirect('/admin/dashboard')->with('success', 'Logged in successfully');
                 }
+
+                // Use determined role (if present) to redirect immediately for 'both' users
+                if (!empty($determinedRole) && $determinedRole === 'property_owner') {
+                    return redirect('/owner/homepage')->with('success', 'Logged in successfully');
+                }
+                if (!empty($determinedRole) && $determinedRole === 'contractor') {
+                    return redirect('/contractor/homepage')->with('success', 'Logged in successfully');
+                }
+
+                // Fallback: direct pure user_type accounts to their homepages
                 if (!empty($result['user']) && isset($result['user']->user_type) && $result['user']->user_type === 'property_owner') {
                     return redirect('/owner/homepage')->with('success', 'Logged in successfully');
                 }
                 if (!empty($result['user']) && isset($result['user']->user_type) && $result['user']->user_type === 'contractor') {
                     return redirect('/contractor/homepage')->with('success', 'Logged in successfully');
                 }
+
+                // Default landing
                 return redirect('/dashboard')->with('success', 'Logged in successfully');
             }
 
