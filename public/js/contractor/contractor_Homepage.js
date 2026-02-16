@@ -7,7 +7,7 @@ class ContractorHomepage {
     constructor() {
         this.projects = [];
         this.filteredProjects = [];
-        this.apiUrl = '/api/projects';
+        this.apiUrl = '/api/contractor/projects';
         this.projectsGrid = document.getElementById('projectsGrid');
         this.emptyState = document.getElementById('emptyState');
         this.cardTemplate = document.getElementById('projectCardTemplate');
@@ -21,19 +21,19 @@ class ContractorHomepage {
         this.filterBadge = document.getElementById('filterBadge');
 
         // Filter select elements
-        this.filterProjectStatus = document.getElementById('filterProjectStatus');
         this.filterProvince = document.getElementById('filterProvince');
         this.filterCity = document.getElementById('filterCity');
-        this.filterProjectType = document.getElementById('filterProjectType');
-        this.filterBudget = document.getElementById('filterBudget');
+        this.filterPropertyType = document.getElementById('filterPropertyType');
+        this.filterBudgetMin = document.getElementById('filterBudgetMin');
+        this.filterBudgetMax = document.getElementById('filterBudgetMax');
 
         // Filter state
         this.activeFilters = {
-            projectStatus: '',
             province: '',
             city: '',
-            projectType: '',
-            budget: ''
+            propertyType: '',
+            budgetMin: '',
+            budgetMax: ''
         };
 
         // Search state
@@ -184,7 +184,8 @@ class ContractorHomepage {
     async loadProjects() {
         // Load projects in background and update if API succeeds
         try {
-            const response = await fetch(this.apiUrl);
+            const url = window.userId ? `${this.apiUrl}?user_id=${window.userId}` : this.apiUrl;
+            const response = await fetch(url);
             const data = await response.json();
 
             if (data.success && data.data && data.data.length > 0) {
@@ -216,16 +217,16 @@ class ContractorHomepage {
                 const title = (project.title || project.project_title || '').toLowerCase();
                 const description = (project.description || project.project_description || '').toLowerCase();
                 const ownerName = (project.owner_name || project.owner || project.property_owner_name || '').toLowerCase();
-                const location = this.formatLocation(project).toLowerCase();
-                const projectType = (project.project_type || project.type || '').toLowerCase();
-                const budget = (project.budget || project.estimated_budget || 0).toString();
+                const location = (project.project_location || this.formatLocation(project)).toLowerCase();
+                const projectType = (project.type_name || project.project_type || project.type || '').toLowerCase();
+                const budget = (project.budget_range_min || project.budget || project.estimated_budget || 0).toString();
 
                 return title.includes(this.currentSearchTerm) ||
-                       description.includes(this.currentSearchTerm) ||
-                       ownerName.includes(this.currentSearchTerm) ||
-                       location.includes(this.currentSearchTerm) ||
-                       projectType.includes(this.currentSearchTerm) ||
-                       budget.includes(this.currentSearchTerm);
+                    description.includes(this.currentSearchTerm) ||
+                    ownerName.includes(this.currentSearchTerm) ||
+                    location.includes(this.currentSearchTerm) ||
+                    projectType.includes(this.currentSearchTerm) ||
+                    budget.includes(this.currentSearchTerm);
             });
         }
 
@@ -265,19 +266,19 @@ class ContractorHomepage {
         const ownerName = project.owner_name || project.owner || project.property_owner_name || 'Property Owner';
         const ownerInitials = this.getInitials(ownerName);
         const description = project.description || project.project_description || 'No description available';
-        const location = this.formatLocation(project);
-        const deadline = project.deadline || project.bid_deadline || project.end_date || 'Not specified';
-        const projectType = project.project_type || project.type || 'General';
+        const location = project.project_location || this.formatLocation(project);
+        const deadline = project.bidding_deadline || project.deadline || project.bid_deadline || project.end_date || 'Not specified';
+        const projectType = project.type_name || project.project_type || project.type || 'General';
         const budget = project.budget || project.estimated_budget || 0;
-        const budgetMin = project.budget_min ?? project.budgetMin ?? null;
-        const budgetMax = project.budget_max ?? project.budgetMax ?? null;
-        const status = project.status || 'open';
+        const budgetMin = project.budget_range_min ?? project.budget_min ?? project.budgetMin ?? null;
+        const budgetMax = project.budget_range_max ?? project.budget_max ?? project.budgetMax ?? null;
+        const status = project.status || project.project_status || 'open';
         const postedDate = project.created_at || project.posted_date || new Date().toISOString();
         const projectId = project.id || project.project_id || '';
 
         // Format dates
         const formattedDate = this.formatDate(postedDate);
-        const formattedDeadline = this.formatDate(deadline);
+        const formattedDeadline = this.formatDeadline(deadline);
         let formattedBudget;
         if (budgetMin !== null && budgetMax !== null) {
             // Both min and max present — show range
@@ -288,10 +289,24 @@ class ContractorHomepage {
             formattedBudget = this.formatBudget(budget);
         }
 
-        // Get project image
-        const projectImage = project.image || project.project_image || project.photo || project.thumbnail || '';
-        const imageElement = card.querySelector('.project-image');
-        const imageWrapper = card.querySelector('.project-image-wrapper');
+        // Get ALL project images from files array
+        let projectImages = [];
+        if (project.files && Array.isArray(project.files) && project.files.length > 0) {
+            project.files.forEach(f => {
+                if (f.file_type === 'image' || f.file_type === 'photo' || (f.file_path && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.file_path))) {
+                    // Remove leading slash
+                    const path = f.file_path.replace(/^\//, '');
+                    projectImages.push(`/storage/${path}`);
+                }
+            });
+        }
+
+
+        // Limit to 4 images for the grid (FB style usually shows 4 max with +N overlay)
+        const displayImages = projectImages.slice(0, 4);
+        const extraCount = projectImages.length - 4;
+
+        const mediaGrid = card.querySelector('.project-media-grid');
 
         // Get avatar color class based on owner name
         const avatarColorClass = this.getAvatarColorClass(ownerName);
@@ -307,15 +322,47 @@ class ContractorHomepage {
         card.querySelector('.status-text').textContent = this.formatStatus(status);
         card.querySelector('.status-text').classList.add(`status-${status}`);
 
-        // Set project image
-        if (projectImage) {
-            imageElement.src = projectImage;
-            imageElement.alt = projectTitle;
-            imageElement.style.display = 'block';
-        } else {
-            // Hide image wrapper if no image
-            if (imageWrapper) {
-                imageWrapper.style.display = 'none';
+        // Set project images grid
+        if (mediaGrid) {
+            mediaGrid.innerHTML = '';
+            mediaGrid.className = 'project-media-grid'; // Reset class
+
+            if (displayImages.length > 0) {
+                mediaGrid.style.display = 'grid';
+                mediaGrid.classList.add(`grid-${displayImages.length}`); // Add class based on count (grid-1, grid-2, etc)
+
+                displayImages.forEach((src, index) => {
+                    const img = document.createElement('img');
+                    img.src = src;
+                    img.alt = `Project Image ${index + 1}`;
+                    img.className = 'project-grid-image';
+
+                    // Error handler
+                    img.onerror = function () {
+                        if (!this.src.includes('logo.svg')) {
+                            this.src = '/img/logo.svg';
+                        } else {
+                            this.style.display = 'none';
+                        }
+                    };
+
+                    // Handle 4th image overlay if there are more
+                    if (index === 3 && extraCount > 0) {
+                        const wrapper = document.createElement('div');
+                        wrapper.className = 'image-overlay-wrapper';
+                        wrapper.appendChild(img);
+
+                        const overlay = document.createElement('div');
+                        overlay.className = 'more-images-overlay';
+                        overlay.textContent = `+${extraCount}`;
+                        wrapper.appendChild(overlay);
+                        mediaGrid.appendChild(wrapper);
+                    } else {
+                        mediaGrid.appendChild(img);
+                    }
+                });
+            } else {
+                mediaGrid.style.display = 'none';
             }
         }
 
@@ -370,6 +417,8 @@ class ContractorHomepage {
     }
 
     formatLocation(project) {
+        if (project.project_location) return project.project_location;
+
         const parts = [];
 
         if (project.city) {
@@ -396,6 +445,29 @@ class ContractorHomepage {
             if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
             if (diffDays < 365) return `${Math.floor(diffDays / 30)} months ago`;
             return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+        } catch (e) {
+            return 'Not specified';
+        }
+    }
+
+    formatDeadline(dateString) {
+        if (!dateString) return 'Not specified';
+        try {
+            const date = new Date(dateString);
+            const now = new Date();
+            const diffTime = date - now; // Positive for future
+            const diffDays = Math.ceil(Math.abs(diffTime) / (1000 * 60 * 60 * 24));
+
+            const isFuture = diffTime > 0;
+            const dateText = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+
+            if (!isFuture) return `Ended on ${dateText}`;
+
+            if (diffDays === 0) return 'Due Today';
+            if (diffDays === 1) return 'Due Tomorrow';
+            if (diffDays < 60) return `${dateText} (In ${diffDays} days)`;
+
+            return dateText;
         } catch (e) {
             return 'Not specified';
         }
@@ -443,8 +515,6 @@ class ContractorHomepage {
     }
 
     handleApplyBidClick(projectId, event) {
-        console.log('Apply bid for project:', projectId);
-
         // Find the project data
         let project = this.projects.find(p => (p.id || p.project_id) == projectId);
 
@@ -483,8 +553,18 @@ class ContractorHomepage {
     }
 
     handleCardClick(projectId) {
-        console.log('View details for project:', projectId);
-        // TODO: Implement project details view functionality
+        // Find the project object
+        const project = this.projects.find(p => (p.project_id || p.id) == projectId);
+
+        if (project) {
+            if (typeof window.openProjectDetailsModal === 'function') {
+                window.openProjectDetailsModal(project);
+            } else {
+                console.error('openProjectDetailsModal function is not defined');
+            }
+        } else {
+            console.error('Project not found for ID:', projectId);
+        }
     }
 
     showEmptyState() {
@@ -503,7 +583,7 @@ class ContractorHomepage {
     setupFilters() {
         if (!this.filterIconBtn || !this.filterDropdown) return;
 
-        // Populate filter options
+        // Populate filter options (Provinces)
         this.populateFilterOptions();
 
         // Toggle dropdown on filter icon click
@@ -519,11 +599,31 @@ class ContractorHomepage {
             });
         }
 
-        // Apply filters
-        if (this.filterApplyBtn) {
-            this.filterApplyBtn.addEventListener('click', () => {
-                this.applyFiltersFromUI();
+        // Apply filters automatically on change/input
+        const autoApply = () => this.applyFiltersFromUI();
+        const debouncedAutoApply = this.debounce(autoApply, 500);
+
+        if (this.filterProvince) {
+            this.filterProvince.addEventListener('change', () => {
+                this.updateCityOptions();
+                autoApply();
             });
+        }
+
+        if (this.filterCity) {
+            this.filterCity.addEventListener('change', autoApply);
+        }
+
+        if (this.filterPropertyType) {
+            this.filterPropertyType.addEventListener('change', autoApply);
+        }
+
+        if (this.filterBudgetMin) {
+            this.filterBudgetMin.addEventListener('input', debouncedAutoApply);
+        }
+
+        if (this.filterBudgetMax) {
+            this.filterBudgetMax.addEventListener('input', debouncedAutoApply);
         }
 
         // Clear filters
@@ -541,75 +641,90 @@ class ContractorHomepage {
                 this.closeFilterDropdown();
             }
         });
+    }
 
-        // Update city options when province changes
+    // Debounce helper
+    debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+
+    async populateFilterOptions() {
+        // Fetch Provinces from PSGC API
         if (this.filterProvince) {
-            this.filterProvince.addEventListener('change', () => {
-                this.updateCityOptions();
-            });
+            try {
+                const response = await fetch('/api/psgc/provinces');
+                const provinces = await response.json();
+
+                // Sort by name
+                provinces.sort((a, b) => a.name.localeCompare(b.name));
+
+                this.filterProvince.innerHTML = '<option value="">All Provinces</option>';
+                provinces.forEach(p => {
+                    const option = document.createElement('option');
+                    option.value = p.code; // Store code, but maybe text is needed for filtering? 
+                    // Wait, existing projects have 'Metro Manila' or 'Cebu' as text.
+                    // The API returns codes and names.
+                    // If projects store NAMES, I should use p.name as value? 
+                    // Previous code (Step 1608) suggests fetching cities by CODE.
+                    // So value must be CODE to fetch cities.
+                    // BUT filtering must match project data (which is likely Name).
+                    // I will use CODE as value to fetch cities, but when Filtering, I might need to map or check Name.
+                    // Actually, let's see how 'owner.js' does it.
+                    // Step 1608: "Handle PSGC selects to send names instead of codes if needed".
+                    // If `projects` table stores Names, I need to match Names.
+                    // I'll store Name in data attribute? Or just use Code and look up Name?
+                    // Let's use Code as value for the dropdown logic, and data-name for filtering.
+                    option.value = p.code;
+                    option.dataset.name = p.name;
+                    option.textContent = p.name;
+                    this.filterProvince.appendChild(option);
+                });
+            } catch (e) {
+                console.error('Error fetching provinces:', e);
+            }
         }
     }
 
-    populateFilterOptions() {
-        if (!this.projects || this.projects.length === 0) return;
-
-        // Get unique values
-        const provinces = new Set();
-        const cities = new Set();
-
-        this.projects.forEach(project => {
-            if (project.province) provinces.add(project.province);
-            if (project.city) cities.add(project.city);
-        });
-
-        // Populate provinces
-        if (this.filterProvince) {
-            const currentValue = this.filterProvince.value;
-            this.filterProvince.innerHTML = '<option value="">All Provinces</option>';
-            Array.from(provinces).sort().forEach(province => {
-                const option = document.createElement('option');
-                option.value = province;
-                option.textContent = province;
-                this.filterProvince.appendChild(option);
-            });
-            if (currentValue) this.filterProvince.value = currentValue;
-        }
-
-        // Populate cities (will be updated based on province selection)
-        this.updateCityOptions();
-    }
-
-    updateCityOptions() {
+    async updateCityOptions() {
         if (!this.filterCity || !this.filterProvince) return;
 
-        const selectedProvince = this.filterProvince.value;
-        const cities = new Set();
-
-        this.projects.forEach(project => {
-            if (project.city) {
-                // If province is selected, only show cities in that province
-                if (selectedProvince && project.province === selectedProvince) {
-                    cities.add(project.city);
-                } else if (!selectedProvince) {
-                    cities.add(project.city);
-                }
-            }
-        });
-
-        const currentValue = this.filterCity.value;
+        const provinceCode = this.filterProvince.value;
         this.filterCity.innerHTML = '<option value="">All Cities</option>';
-        Array.from(cities).sort().forEach(city => {
-            const option = document.createElement('option');
-            option.value = city;
-            option.textContent = city;
-            this.filterCity.appendChild(option);
-        });
+        this.filterCity.disabled = true;
 
-        // Reset city if province changed and city is no longer valid
-        if (currentValue && !Array.from(cities).includes(currentValue)) {
-            this.filterCity.value = '';
-        } else if (currentValue) {
-            this.filterCity.value = currentValue;
+        if (provinceCode) {
+            try {
+                const response = await fetch(`/api/psgc/provinces/${provinceCode}/cities`);
+                const cities = await response.json();
+
+                cities.sort((a, b) => a.name.localeCompare(b.name));
+
+                cities.forEach(c => {
+                    const option = document.createElement('option');
+                    option.value = c.name; // Use Name for city filtering as it's likely stored as name
+                    // Wait, if I use Code for Province, I need Code to fetch cities.
+                    // But for City, I only need to filter.
+                    // Projects likely store "Davao City", "Makati City".
+                    // So City value should be NAME.
+                    // What about Province value?
+                    // If I filter by Province, and projects store "Davao del Sur", but value is "112400000".
+                    // I need to use the Name for filtering.
+                    // In `applyFilters`, I'll get the selected option's text (or data-name).
+                    option.textContent = c.name;
+                    this.filterCity.appendChild(option);
+                });
+                this.filterCity.disabled = false;
+            } catch (e) {
+                console.error('Error fetching cities:', e);
+            }
         }
     }
 
@@ -638,12 +753,19 @@ class ContractorHomepage {
 
     applyFiltersFromUI() {
         // Get filter values from UI
+        let provinceName = '';
+        if (this.filterProvince && this.filterProvince.selectedIndex > 0) {
+            // Use text content (Name) for filtering, not the Code
+            const selectedOption = this.filterProvince.options[this.filterProvince.selectedIndex];
+            provinceName = selectedOption.dataset.name || selectedOption.text;
+        }
+
         this.activeFilters = {
-            projectStatus: this.filterProjectStatus ? this.filterProjectStatus.value : '',
-            province: this.filterProvince ? this.filterProvince.value : '',
+            province: provinceName, // Filter by Name
             city: this.filterCity ? this.filterCity.value : '',
-            projectType: this.filterProjectType ? this.filterProjectType.value : '',
-            budget: this.filterBudget ? this.filterBudget.value : ''
+            propertyType: this.filterPropertyType ? this.filterPropertyType.value : '',
+            budgetMin: this.filterBudgetMin ? this.filterBudgetMin.value : '',
+            budgetMax: this.filterBudgetMax ? this.filterBudgetMax.value : ''
         };
 
         // Apply both filters and search
@@ -659,46 +781,56 @@ class ContractorHomepage {
     applyFilters(projects) {
         let filtered = [...projects];
 
-        // Filter by project status
-        if (this.activeFilters.projectStatus) {
-            filtered = filtered.filter(project => {
-                const status = project.status || 'open';
-                return status === this.activeFilters.projectStatus;
-            });
-        }
-
         // Filter by province
         if (this.activeFilters.province) {
             filtered = filtered.filter(project => {
-                return project.province === this.activeFilters.province;
+                const pLocation = (project.project_location || '').toLowerCase();
+                const pProvince = (project.province || '').toLowerCase();
+                const filterVal = this.activeFilters.province.toLowerCase();
+                // Check if project.province matches OR if location string contains it
+                return pProvince === filterVal || pLocation.includes(filterVal);
             });
         }
 
         // Filter by city
         if (this.activeFilters.city) {
             filtered = filtered.filter(project => {
-                return project.city === this.activeFilters.city;
+                const pCity = (project.city || '').toLowerCase();
+                const pLocation = (project.project_location || '').toLowerCase();
+                const filterVal = this.activeFilters.city.toLowerCase();
+                return pCity === filterVal || pLocation.includes(filterVal);
             });
         }
 
-        // Filter by project type
-        if (this.activeFilters.projectType) {
+        // Filter by property type
+        if (this.activeFilters.propertyType) {
             filtered = filtered.filter(project => {
-                const type = project.project_type || project.type || '';
-                return type.toLowerCase() === this.activeFilters.projectType.toLowerCase();
+                const type = project.property_type || project.project_type || project.type_name || '';
+                return type.toLowerCase() === this.activeFilters.propertyType.toLowerCase();
             });
         }
 
-        // Filter by budget range
-        if (this.activeFilters.budget) {
-            filtered = filtered.filter(project => {
-                const budget = parseFloat(project.budget || project.estimated_budget || 0);
-                const range = this.activeFilters.budget;
+        // Filter by budget range (Min/Max)
+        const userMin = this.activeFilters.budgetMin ? parseFloat(this.activeFilters.budgetMin) : null;
+        const userMax = this.activeFilters.budgetMax ? parseFloat(this.activeFilters.budgetMax) : null;
 
-                if (range === '0-50000') return budget >= 0 && budget <= 50000;
-                if (range === '50000-100000') return budget > 50000 && budget <= 100000;
-                if (range === '100000-500000') return budget > 100000 && budget <= 500000;
-                if (range === '500000+') return budget > 500000;
+        if (userMin !== null || userMax !== null) {
+            filtered = filtered.filter(project => {
+                // Project budget might be single value or range
+                let pMin = 0;
+                let pMax = 0;
+
+                if (project.budget_range_min !== undefined && project.budget_range_max !== undefined) {
+                    pMin = parseFloat(project.budget_range_min) || 0;
+                    pMax = parseFloat(project.budget_range_max) || 0;
+                } else {
+                    const b = parseFloat(project.budget || project.estimated_budget || 0);
+                    pMin = b;
+                    pMax = b;
+                }
+
+                if (userMin !== null && pMax < userMin) return false;
+                if (userMax !== null && pMin > userMax) return false;
 
                 return true;
             });
@@ -710,19 +842,23 @@ class ContractorHomepage {
     clearFilters() {
         // Reset filter values
         this.activeFilters = {
-            projectStatus: '',
             province: '',
             city: '',
-            projectType: '',
-            budget: ''
+            propertyType: '',
+            budgetMin: '',
+            budgetMax: ''
         };
 
         // Reset UI
-        if (this.filterProjectStatus) this.filterProjectStatus.value = '';
         if (this.filterProvince) this.filterProvince.value = '';
-        if (this.filterCity) this.filterCity.value = '';
-        if (this.filterProjectType) this.filterProjectType.value = '';
-        if (this.filterBudget) this.filterBudget.value = '';
+        if (this.filterCity) {
+            this.filterCity.innerHTML = '<option value="">All Cities</option>';
+            this.filterCity.value = '';
+            this.filterCity.disabled = true;
+        }
+        if (this.filterPropertyType) this.filterPropertyType.value = '';
+        if (this.filterBudgetMin) this.filterBudgetMin.value = '';
+        if (this.filterBudgetMax) this.filterBudgetMax.value = '';
 
         // Update city options
         this.updateCityOptions();

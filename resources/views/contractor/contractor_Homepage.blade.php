@@ -27,18 +27,7 @@
                                     </button>
                                 </div>
                                 <div class="filter-dropdown-body">
-                                    <div class="filter-group">
-                                        <label class="filter-label">
-                                            <i class="fi fi-rr-flag"></i>
-                                            Project Status
-                                        </label>
-                                        <select class="filter-select" id="filterProjectStatus">
-                                            <option value="">All Status</option>
-                                            <option value="pending">Pending</option>
-                                            <option value="active">Active</option>
-                                            <option value="open">Open for Bids</option>
-                                        </select>
-                                    </div>
+                                    {{-- Status Filter Removed --}}
                                     <div class="filter-group">
                                         <label class="filter-label">
                                             <i class="fi fi-rr-marker"></i>
@@ -60,13 +49,15 @@
                                     <div class="filter-group">
                                         <label class="filter-label">
                                             <i class="fi fi-rr-briefcase"></i>
-                                            Project Type
+                                            Property Type
                                         </label>
-                                        <select class="filter-select" id="filterProjectType">
+                                        <select class="filter-select" id="filterPropertyType">
                                             <option value="">All Types</option>
-                                            <option value="residential">Residential</option>
-                                            <option value="commercial">Commercial</option>
-                                            <option value="industrial">Industrial</option>
+                                            @if(isset($propertyTypes))
+                                                @foreach($propertyTypes as $type)
+                                                    <option value="{{ $type }}">{{ ucfirst(str_replace('_', ' ', $type)) }}</option>
+                                                @endforeach
+                                            @endif
                                         </select>
                                     </div>
                                     <div class="filter-group">
@@ -74,23 +65,17 @@
                                             <i class="fi fi-rr-dollar"></i>
                                             Budget Range
                                         </label>
-                                        <select class="filter-select" id="filterBudget">
-                                            <option value="">Any Budget</option>
-                                            <option value="0-50000">₱0 - ₱50,000</option>
-                                            <option value="50000-100000">₱50,000 - ₱100,000</option>
-                                            <option value="100000-500000">₱100,000 - ₱500,000</option>
-                                            <option value="500000+">₱500,000+</option>
-                                        </select>
+                                        <div class="budget-range-container" style="display: flex; gap: 8px; align-items: center;">
+                                            <input type="number" id="filterBudgetMin" class="filter-select" placeholder="Min" min="0" style="width: 50%;">
+                                            <span style="color: #64748B;">-</span>
+                                            <input type="number" id="filterBudgetMax" class="filter-select" placeholder="Max" min="0" style="width: 50%;">
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="filter-dropdown-footer">
                                     <button type="button" class="btn-filter-clear" id="filterClearBtn">
                                         <i class="fi fi-rr-cross-small"></i>
                                         Clear
-                                    </button>
-                                    <button type="button" class="btn-filter-apply" id="filterApplyBtn">
-                                        <i class="fi fi-rr-check"></i>
-                                        Apply
                                     </button>
                                 </div>
                             </div>
@@ -145,7 +130,7 @@
                                     <img src="{{ $imageSrc }}" alt="" class="project-image" onerror="this.style.display='none';">
                                 </div>
 
-                                <div class="project-content">
+                                <div class="header-content">
                                     <h3 class="project-title">{{ $project->project_title ?? '—' }}</h3>
                                     <p class="project-description">{{ Str::limit($project->project_description ?? '', 200) }}</p>
                                 </div>
@@ -215,10 +200,6 @@
                 </div>
             </div>
 
-            <div class="project-image-wrapper">
-                <img src="" alt="" class="project-image" onerror="this.style.display='none';">
-            </div>
-
             <div class="project-content">
                 <h3 class="project-title"></h3>
                 <p class="project-description"></p>
@@ -243,8 +224,12 @@
                 </div>
             </div>
 
+            <div class="project-media-grid" style="display: none;">
+                <!-- Images will be injected here by JS -->
+            </div>
+
             <div class="project-actions">
-                <button class="apply-bid-button" data-project-id="">
+                <button class="apply-bid-button" data-project-id="" onclick="event.stopPropagation(); openBidModal(this.getAttribute('data-project-id'))">
                     <i class="fi fi-rr-hand-holding-usd"></i>
                     <span>Apply Bid</span>
                 </button>
@@ -252,16 +237,38 @@
         </div>
     </template>
 
-    <!-- Include Apply Bid Modal -->
-    @include('contractor.contractor_Modals.contractorApplybids_Modal')
+    <!-- Include Apply Bid Modals (Populated via PHP) -->
+    @if(isset($projects) && count($projects) > 0)
+        @foreach($projects as $project)
+            @include('contractor.contractor_Modals.contractorApplybids_Modal', ['project' => $project])
+        @endforeach
+    @endif
+
+    <!-- Include Project Details Modals (Populated via PHP) -->
+    @if(isset($projects) && count($projects) > 0)
+        @foreach($projects as $project)
+            @include('contractor.contractor_Modals.projectPostDetails_Modal', ['project' => $project])
+        @endforeach
+    @endif
+
+    <!-- Include Budget Warning Modals (Populated via PHP) -->
+    @if(isset($projects) && count($projects) > 0)
+        @foreach($projects as $project)
+            @include('contractor.contractor_Modals.budgetWarning_Modal', ['project' => $project])
+        @endforeach
+    @endif
 @endsection
 
 @section('extra_css')
     <link rel="stylesheet" href="{{ asset('css/contractor/contractor_Homepage.css') }}?v={{ time() }}">
     <link rel="stylesheet" href="{{ asset('css/contractor/contractor_Modals/contractorApplybids_Modal.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/contractor/contractor_Modals/projectPostDetails_Modal.css') }}">
 @endsection
 
 @section('extra_js')
+    <script>
+        window.userId = {{ session('user')->user_id ?? 'null' }};
+    </script>
     @if(isset($jsProjects))
         <script>
             window.serverProjects = {!! json_encode($jsProjects, JSON_UNESCAPED_SLASHES) !!};
@@ -269,6 +276,7 @@
     @endif
     <script src="{{ asset('js/contractor/contractor_Homepage.js') }}"></script>
     <script src="{{ asset('js/contractor/contractor_Modals/contractorApplybids_Modal.js') }}"></script>
+    <script src="{{ asset('js/contractor/contractor_Modals/projectPostDetails_Modal.js') }}"></script>
     <script>
         // Update navbar search placeholder and set active link when on contractor homepage
         document.addEventListener('DOMContentLoaded', () => {

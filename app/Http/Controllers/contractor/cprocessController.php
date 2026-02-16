@@ -263,7 +263,7 @@ class cprocessController extends Controller
         return view('contractor.contractor_MilestoneprogressReport');
     }
 
-    private function checkContractorAccess(Request $request)
+    protected function checkContractorAccess(Request $request)
     {
         if (!Session::has('user')) {
             if ($request->expectsJson()) {
@@ -1524,3 +1524,4 @@ class cprocessController extends Controller
         ]);
     }
 }
+

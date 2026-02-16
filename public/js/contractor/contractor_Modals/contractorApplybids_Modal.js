@@ -1,484 +1,730 @@
-/**
- * Apply Bid Modal JavaScript
- * Handles modal opening/closing, form submission, and file uploads
- */
+// Bid Modal Control Functions (PHP-populated modals)
 
-class ApplyBidModal {
-    constructor() {
-        this.modal = document.getElementById('applyBidModal');
-        this.overlay = document.getElementById('applyBidModalOverlay');
-        this.backBtn = document.getElementById('applyBidBackBtn');
-        this.closeBtn = document.getElementById('closeApplyBidModalBtn');
-        this.cancelBtn = document.getElementById('cancelApplyBidBtn');
-        this.form = document.getElementById('applyBidForm');
-        this.submitBtn = document.getElementById('submitApplyBidBtn');
-        this.fileUploadArea = document.getElementById('fileUploadArea');
-        this.fileInput = document.getElementById('modalSupportingDocuments');
-        this.filePreviewContainer = document.getElementById('filePreviewContainer');
-        this.selectedFiles = [];
-        this.currentProject = null;
-        
-        this.init();
+// Global function to open a specific bid modal
+window.openBidModal = function (projectId) {
+    const modalId = `applyBidModal-${projectId}`;
+    const modal = document.getElementById(modalId);
+
+    if (modal) {
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+
+        // Focus on first input
+        const firstInput = modal.querySelector('input[type="text"]');
+        if (firstInput) {
+            setTimeout(() => firstInput.focus(), 100);
+        }
+    } else {
+        console.error(`Bid modal not found for project ${projectId}`);
+    }
+};
+
+// Global function to close a specific bid modal
+window.closeBidModal = function (modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.remove('active');
+        document.body.style.overflow = '';
+
+        // Reset form
+        const form = modal.querySelector('form');
+        if (form) {
+            form.reset();
+            // Reset character count
+            const charCount = modal.querySelector('[id^="messageCharCount"]');
+            if (charCount) {
+                charCount.textContent = '0';
+            }
+            // Clear file previews
+            const filePreview = modal.querySelector('[id^="filePreviewContainer"]');
+            if (filePreview) {
+                filePreview.innerHTML = '';
+            }
+        }
+    }
+};
+
+// Budget Warning Modal Functions
+window.showBudgetWarningModal = function (type, message, projectId) {
+    const modal = document.getElementById(`budgetWarningModal-${projectId}`);
+    const iconContainer = document.getElementById(`budgetWarningIcon-${projectId}`);
+    const iconSymbol = document.getElementById(`budgetWarningIconSymbol-${projectId}`);
+    const title = document.getElementById(`budgetWarningTitle-${projectId}`);
+    const messageEl = document.getElementById(`budgetWarningMessage-${projectId}`);
+
+    if (modal && iconContainer && iconSymbol && title && messageEl) {
+        // Update icon and styling based on type
+        if (type === 'high') {
+            iconContainer.className = 'modal-icon-container warning';
+            iconSymbol.className = 'fi fi-rr-trending-up';
+            title.textContent = 'Bid Above Budget Range';
+        } else {
+            iconContainer.className = 'modal-icon-container info';
+            iconSymbol.className = 'fi fi-rr-trending-down';
+            title.textContent = 'Bid Below Budget Range';
+        }
+
+        messageEl.textContent = message;
+        modal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+};
+
+window.closeBudgetWarningModal = function (projectId) {
+    const modal = document.getElementById(`budgetWarningModal-${projectId}`);
+    if (modal) {
+        modal.classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+};
+
+window.handleEditBudget = function (projectId) {
+    window[`editBidAmount_${projectId}`]();
+};
+
+window.handleContinueBudget = function (projectId) {
+    window[`continueBidSubmission_${projectId}`]();
+};
+
+// Close on Escape key
+document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+        const openModal = document.querySelector('.apply-bid-modal.active');
+        if (openModal) {
+            const modalId = openModal.id;
+            window.closeBidModal(modalId);
+        }
+    }
+});
+
+// Initialize all modals on page load
+document.addEventListener('DOMContentLoaded', function () {
+    // Character count for textareas
+    const textareas = document.querySelectorAll('[id^="modalCompellingMessage"]');
+    textareas.forEach(textarea => {
+        const projectId = textarea.id.replace('modalCompellingMessage-', '');
+        const charCount = document.getElementById(`messageCharCount-${projectId}`);
+
+        if (charCount) {
+            textarea.addEventListener('input', function () {
+                charCount.textContent = this.value.length;
+            });
+        }
+    });
+
+    // Format proposed cost inputs with commas and prevent non-numeric input
+    const proposedCostInputs = document.querySelectorAll('[id^="modalProposedCost"]');
+    proposedCostInputs.forEach(input => {
+        // Helper to format number with commas
+        const formatNumberWithCommas = (value) => {
+            if (!value) return '';
+            const parts = value.toString().split('.');
+            parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+            return parts.join('.');
+        };
+
+        input.addEventListener('keydown', function (e) {
+            // Allow: backspace, delete, tab, escape, enter, decimal point (110, 190), comma (188)
+            if ([8, 9, 27, 13, 46, 110, 190, 188].indexOf(e.keyCode) !== -1 ||
+                // Allow: Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
+                (e.keyCode === 65 && e.ctrlKey === true) ||
+                (e.keyCode === 67 && e.ctrlKey === true) ||
+                (e.keyCode === 86 && e.ctrlKey === true) ||
+                (e.keyCode === 88 && e.ctrlKey === true) ||
+                // Allow: home, end, left, right
+                (e.keyCode >= 35 && e.keyCode <= 39)) {
+                return;
+            }
+            // Prevent: e, E, +, - and any non-numeric characters
+            if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
+                e.preventDefault();
+            }
+        });
+
+        // Format dynamically on input
+        input.addEventListener('input', function (e) {
+            // Save cursor position
+            const start = this.selectionStart;
+            const oldVal = this.value;
+
+            // Get raw value (remove existing commas)
+            let rawValue = this.value.replace(/,/g, '');
+
+            // If it's just a dot, leave it (e.g. user starting to type .50)
+            if (rawValue === '.') return;
+
+            // Check for multiple decimals
+            if ((rawValue.match(/\./g) || []).length > 1) {
+                rawValue = rawValue.substring(0, rawValue.lastIndexOf('.'));
+            }
+
+            // Format
+            const formatted = formatNumberWithCommas(rawValue);
+
+            // Only update if changed
+            if (this.value !== formatted) {
+                this.value = formatted;
+
+                // Restore cursor (approximate logic handles most cases)
+                // If we added a comma before cursor, increment. If removed, decrement.
+                // Simple version: put cursor at end or try to calc offset.
+                // Robust version: count commas before cursor in old vs new.
+
+                let oldCommas = (oldVal.substring(0, start).match(/,/g) || []).length;
+                let newCommas = (formatted.substring(0, start).match(/,/g) || []).length;
+
+                // Adjust for added comma by re-calculating position based on raw content length? 
+                // Actually, just tracking standard drift is often enough.
+                // Let's rely on basic behavior or just set it to end if difficult? 
+                // No, users hate jumped cursors.
+                // Better approach: Calculate new position based on non-comma characters count.
+
+                let nonCommaIndices = 0;
+                for (let i = 0; i < start; i++) {
+                    if (oldVal[i] !== ',') nonCommaIndices++;
+                }
+
+                let newCursor = 0;
+                let finalNonCommas = 0;
+                while (newCursor < formatted.length && finalNonCommas < nonCommaIndices) {
+                    if (formatted[newCursor] !== ',') finalNonCommas++;
+                    newCursor++;
+                }
+                // If next char is comma, jump it?
+                // This logic is safer.
+                this.setSelectionRange(newCursor, newCursor);
+            }
+        });
+
+        // Format with commas and .00 on blur
+        input.addEventListener('blur', function (e) {
+            let value = this.value.replace(/,/g, '');
+
+            if (value && !isNaN(value)) {
+                const numValue = parseFloat(value);
+                this.value = numValue.toLocaleString('en-US', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                });
+            }
+        });
+    });
+
+    // Form submission handlers
+    const bidForms = document.querySelectorAll('[id^="applyBidForm"]');
+    bidForms.forEach(form => {
+        // Store project budget data
+        const projectId = form.id.replace('applyBidForm-', '');
+        const proposedCostInput = document.getElementById(`modalProposedCost-${projectId}`);
+
+        // Get budget range from data attributes (will be set when modal opens)
+        let budgetMin = null;
+        let budgetMax = null;
+        let pendingFormData = null;
+
+        form.addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            const submitBtn = document.getElementById(`submitApplyBidBtn-${projectId}`);
+            const successAlert = document.getElementById(`applyBidFormSuccess-${projectId}`);
+            const errorAlert = document.getElementById(`applyBidFormError-${projectId}`);
+
+            // Clear all previous error messages
+            clearFieldErrors(projectId);
+
+            // Validate all fields
+            let hasErrors = false;
+
+            // Validate proposed cost
+            const proposedCostValue = proposedCostInput.value.replace(/,/g, '');
+            const proposedCost = parseFloat(proposedCostValue);
+
+            if (!proposedCostValue || proposedCostValue.trim() === '') {
+                showFieldError(projectId, 'proposed_cost', 'Proposed cost is required.');
+                hasErrors = true;
+            } else if (isNaN(proposedCost) || proposedCost <= 0) {
+                showFieldError(projectId, 'proposed_cost', 'Please enter a valid proposed cost.');
+                hasErrors = true;
+            }
+
+            // Validate estimated timeline
+            const timelineInput = document.getElementById(`modalEstimatedTimeline-${projectId}`);
+            const timelineValue = timelineInput.value;
+            const timeline = parseInt(timelineValue);
+
+            if (!timelineValue || timelineValue.trim() === '') {
+                showFieldError(projectId, 'estimated_timeline', 'Estimated timeline is required.');
+                hasErrors = true;
+            } else if (isNaN(timeline) || timeline < 1) {
+                showFieldError(projectId, 'estimated_timeline', 'Timeline must be at least 1 month.');
+                hasErrors = true;
+            }
+
+            // Validate contractor notes
+            const notesInput = document.getElementById(`modalCompellingMessage-${projectId}`);
+            const notesValue = notesInput.value;
+
+            if (!notesValue || notesValue.trim() === '') {
+                showFieldError(projectId, 'contractor_notes', 'Please provide a compelling message.');
+                hasErrors = true;
+            } else if (notesValue.trim().length < 20) {
+                showFieldError(projectId, 'contractor_notes', 'Message must be at least 20 characters.');
+                hasErrors = true;
+            }
+
+            // If there are validation errors, stop submission
+            if (hasErrors) {
+                return;
+            }
+
+            // Get budget range from the form's dataset
+            budgetMin = parseFloat(form.dataset.budgetMin) || null;
+            budgetMax = parseFloat(form.dataset.budgetMax) || null;
+
+            // Check budget range
+            const budgetCheck = checkBudgetRange(proposedCost, budgetMin, budgetMax);
+
+            if (budgetCheck.outOfRange) {
+                // Store form data for later submission
+                pendingFormData = new FormData(this);
+                // Remove commas from proposed_cost
+                if (pendingFormData.has('proposed_cost')) {
+                    pendingFormData.set('proposed_cost', pendingFormData.get('proposed_cost').replace(/,/g, ''));
+                }
+
+                // Show budget warning modal
+                showBudgetWarningModal(budgetCheck.type, budgetCheck.message, projectId);
+                return;
+            }
+
+            // Proceed with submission if no budget warning
+            await submitBidForm(this, projectId, submitBtn, successAlert, errorAlert);
+        });
+
+        // Store submit function for budget warning continuation
+        window[`continueBidSubmission_${projectId}`] = async function () {
+            // Close budget warning modal
+            closeBudgetWarningModal(projectId);
+
+            const submitBtn = document.getElementById(`submitApplyBidBtn-${projectId}`);
+            const successAlert = document.getElementById(`applyBidFormSuccess-${projectId}`);
+            const errorAlert = document.getElementById(`applyBidFormError-${projectId}`);
+
+            if (pendingFormData) {
+                await submitBidFormWithData(form.action, pendingFormData, projectId, submitBtn, successAlert, errorAlert);
+                pendingFormData = null;
+            }
+        };
+
+        window[`editBidAmount_${projectId}`] = function () {
+            closeBudgetWarningModal();
+            // Focus back on the proposed cost input
+            if (proposedCostInput) {
+                proposedCostInput.focus();
+            }
+        };
+    });
+
+    // Budget range check function
+    function checkBudgetRange(cost, minBudget, maxBudget) {
+        if (minBudget || maxBudget) {
+            if (maxBudget && cost > maxBudget) {
+                return {
+                    outOfRange: true,
+                    type: 'high',
+                    message: `Your bid of ₱${formatNumber(cost)} is higher than the maximum budget of ₱${formatNumber(maxBudget)}. The property owner may prefer lower bids.`
+                };
+            } else if (minBudget && cost < minBudget) {
+                return {
+                    outOfRange: true,
+                    type: 'low',
+                    message: `Your bid of ₱${formatNumber(cost)} is lower than the minimum budget of ₱${formatNumber(minBudget)}. This may raise concerns about quality or scope.`
+                };
+            }
+        }
+        return { outOfRange: false };
     }
 
-    init() {
-        this.setupEventListeners();
-        this.setupFileUpload();
-        this.setupInputFormatting();
-        this.setupCharacterCount();
+    // Show field error message
+    function showFieldError(projectId, fieldName, message) {
+        const errorDiv = document.getElementById(`error_${fieldName}-${projectId}`);
+        if (errorDiv) {
+            errorDiv.textContent = message;
+            errorDiv.classList.remove('hidden');
+        }
     }
 
-    setupCharacterCount() {
-        const messageTextarea = document.getElementById('modalCompellingMessage');
-        const charCountElement = document.getElementById('messageCharCount');
-        
-        if (messageTextarea && charCountElement) {
-            messageTextarea.addEventListener('input', () => {
-                const length = messageTextarea.value.length;
-                charCountElement.textContent = length;
-                
-                // Update character count styling
-                if (length >= 950) {
-                    charCountElement.parentElement.classList.add('error');
-                    charCountElement.parentElement.classList.remove('warning');
-                } else if (length >= 800) {
-                    charCountElement.parentElement.classList.add('warning');
-                    charCountElement.parentElement.classList.remove('error');
-                } else {
-                    charCountElement.parentElement.classList.remove('warning', 'error');
+    // Clear all field errors
+    function clearFieldErrors(projectId) {
+        const errorDivs = [
+            `error_proposed_cost-${projectId}`,
+            `error_estimated_timeline-${projectId}`,
+            `error_contractor_notes-${projectId}`
+        ];
+
+        errorDivs.forEach(id => {
+            const errorDiv = document.getElementById(id);
+            if (errorDiv) {
+                errorDiv.textContent = '';
+                errorDiv.classList.add('hidden');
+            }
+        });
+    }
+
+    // Format number with commas
+    function formatNumber(num) {
+        return new Intl.NumberFormat('en-PH').format(num);
+    }
+
+    // Submit bid form function
+    async function submitBidForm(form, projectId, submitBtn, successAlert, errorAlert) {
+        const formData = new FormData(form);
+        // Remove commas from proposed_cost
+        if (formData.has('proposed_cost')) {
+            formData.set('proposed_cost', formData.get('proposed_cost').replace(/,/g, ''));
+        }
+        await submitBidFormWithData(form.action, formData, projectId, submitBtn, successAlert, errorAlert);
+    }
+
+    // Submit bid form with data
+    // Submit bid form with data
+    async function submitBidFormWithData(action, formData, projectId, submitBtn, successAlert, errorAlert) {
+        // Disable submit button
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span>Submitting...</span>';
+        }
+
+        // Hide previous alerts (if any still exist/used)
+        if (successAlert) successAlert.classList.add('hidden');
+        if (errorAlert) errorAlert.classList.add('hidden');
+
+        try {
+            const response = await fetch(action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
                 }
             });
-        }
-    }
 
-    setupInputFormatting() {
-        // Format proposed cost input
-        const proposedCostInput = document.getElementById('modalProposedCost');
-        if (proposedCostInput) {
-            proposedCostInput.addEventListener('input', (e) => {
-                this.formatCostInput(e.target);
-            });
+            const data = await response.json();
 
-            proposedCostInput.addEventListener('blur', (e) => {
-                this.formatCostOnBlur(e.target);
-            });
-        }
+            if (response.ok && data.success) {
+                // Determine which modal to close
+                // If it was the apply bid modal
+                window.closeBidModal(`applyBidModal-${projectId}`);
+                // If it was via budget warning continue, that modal is already closed by handleContinueBudget
 
-        // Format timeline input (only allow numbers)
-        const timelineInput = document.getElementById('modalEstimatedTimeline');
-        if (timelineInput) {
-            timelineInput.addEventListener('input', (e) => {
-                // Only allow numbers and decimal point
-                e.target.value = e.target.value.replace(/[^0-9.]/g, '');
-            });
-        }
-    }
+                // Show success toast
+                showToast(data.message || 'Bid submitted successfully!', 'success');
 
-    formatCostInput(input) {
-        let value = input.value.replace(/[^0-9.]/g, '');
-        
-        // Remove multiple decimal points
-        const parts = value.split('.');
-        if (parts.length > 2) {
-            value = parts[0] + '.' + parts.slice(1).join('');
-        }
-        
-        input.value = value;
-    }
+                // Remove project card from UI without reload
+                const bidButton = document.querySelector(`.apply-bid-button[data-project-id="${projectId}"]`);
+                if (bidButton) {
+                    const card = bidButton.closest('.project-card');
+                    if (card) {
+                        // Animate removal
+                        card.style.transition = 'all 0.5s ease';
+                        card.style.opacity = '0';
+                        card.style.transform = 'scale(0.9)';
 
-    formatCostOnBlur(input) {
-        const value = parseFloat(input.value);
-        if (!isNaN(value) && value > 0) {
-            // Format with commas for thousands
-            input.value = value.toLocaleString('en-US', { 
-                minimumFractionDigits: 2, 
-                maximumFractionDigits: 2 
-            });
-        }
-    }
+                        setTimeout(() => {
+                            card.remove();
 
-    setupEventListeners() {
-        // Close modal
-        if (this.closeBtn) {
-            this.closeBtn.addEventListener('click', () => this.closeModal());
-        }
+                            // Check if any projects remain
+                            const grid = document.getElementById('projectsGrid');
+                            // We need to check direct children or query class
+                            const remainingCards = grid ? grid.querySelectorAll('.project-card').length : 0;
 
-        if (this.backBtn) {
-            this.backBtn.addEventListener('click', () => this.closeModal());
-        }
+                            if (remainingCards === 0) {
+                                const emptyState = document.getElementById('emptyState');
+                                if (emptyState) emptyState.classList.remove('hidden');
+                            }
+                        }, 500);
+                    }
+                }
+            } else {
+                // Show error toast instead of alert? Or keep alert for error?
+                // User asked for "success message should be toast".
+                // Usually errors are better near the form.
+                // But let's use toast for consistency if it's a general error.
+                // However, validation errors should probably stay in the form.
+                // The current code puts errors in errorAlert.
+                // I will keep errorAlert for errors unless they are generic.
 
-        if (this.cancelBtn) {
-            this.cancelBtn.addEventListener('click', () => this.closeModal());
-        }
-
-        if (this.overlay) {
-            this.overlay.addEventListener('click', () => this.closeModal());
-        }
-
-        // Form submission
-        if (this.form) {
-            this.form.addEventListener('submit', (e) => this.handleSubmit(e));
-        }
-
-        // Close on Escape key
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && this.modal && this.modal.classList.contains('active')) {
-                this.closeModal();
+                if (errorAlert) {
+                    errorAlert.textContent = data.message || 'Failed to submit bid. Please try again.';
+                    errorAlert.classList.remove('hidden');
+                } else {
+                    showToast(data.message || 'Failed to submit bid.', 'error');
+                }
             }
-        });
-    }
-
-    openModal(projectData) {
-        if (this.modal) {
-            this.currentProject = projectData;
-            this.populateProjectInfo(projectData);
-            this.modal.classList.add('active');
-            document.body.style.overflow = 'hidden';
-            
-            // Focus on first input
-            const firstInput = this.modal.querySelector('input[type="text"]');
-            if (firstInput) {
-                setTimeout(() => firstInput.focus(), 100);
+        } catch (error) {
+            console.error('Error submitting bid:', error);
+            if (errorAlert) {
+                errorAlert.textContent = 'An error occurred. Please try again.';
+                errorAlert.classList.remove('hidden');
+            } else {
+                showToast('An error occurred. Please try again.', 'error');
+            }
+        } finally {
+            // Re-enable submit button
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<span>Submit</span>';
             }
         }
     }
 
-    closeModal() {
-        if (this.modal) {
-            this.modal.classList.remove('active');
-            document.body.style.overflow = '';
-            this.resetForm();
-        }
-    }
+    // File upload functionality for each modal
+    const fileUploadAreas = document.querySelectorAll('[id^="fileUploadArea"]');
+    fileUploadAreas.forEach(uploadArea => {
+        const projectId = uploadArea.id.replace('fileUploadArea-', '');
+        const fileInput = document.getElementById(`modalSupportingDocuments-${projectId}`);
+        const filePreviewContainer = document.getElementById(`filePreviewContainer-${projectId}`);
 
-    populateProjectInfo(project) {
-        const projectType = document.getElementById('modalProjectType');
-        const projectName = document.getElementById('modalProjectName');
-        const projectId = document.getElementById('modalProjectId');
+        if (!fileInput || !filePreviewContainer) return;
 
-        if (projectType && project) {
-            const type = project.project_type || project.type || 'General';
-            projectType.textContent = type;
-        }
-
-        if (projectName && project) {
-            const title = project.title || project.project_title || 'Untitled Project';
-            projectName.textContent = title;
-        }
-
-        if (projectId && project) {
-            const id = project.id || project.project_id || '';
-            projectId.value = id;
-        }
-    }
-
-    resetForm() {
-        if (this.form) {
-            this.form.reset();
-            this.hideAllErrors();
-            this.hideAlerts();
-            this.selectedFiles = [];
-            this.updateFilePreview();
-            this.currentProject = null;
-            
-            // Reset character count
-            const charCountElement = document.getElementById('messageCharCount');
-            if (charCountElement) {
-                charCountElement.textContent = '0';
-                charCountElement.parentElement.classList.remove('warning', 'error');
-            }
-        }
-    }
-
-    setupFileUpload() {
-        if (!this.fileUploadArea || !this.fileInput) return;
+        // Store selected files
+        let selectedFiles = [];
 
         // Click to upload
-        this.fileUploadArea.addEventListener('click', () => {
-            this.fileInput.click();
-        });
-
-        // File input change
-        this.fileInput.addEventListener('change', (e) => {
-            this.handleFileSelection(e.target.files);
+        uploadArea.addEventListener('click', () => {
+            fileInput.click();
         });
 
         // Drag and drop
-        this.fileUploadArea.addEventListener('dragover', (e) => {
+        uploadArea.addEventListener('dragover', (e) => {
             e.preventDefault();
-            this.fileUploadArea.classList.add('dragover');
+            uploadArea.classList.add('drag-over');
         });
 
-        this.fileUploadArea.addEventListener('dragleave', () => {
-            this.fileUploadArea.classList.remove('dragover');
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('drag-over');
         });
 
-        this.fileUploadArea.addEventListener('drop', (e) => {
+        uploadArea.addEventListener('drop', (e) => {
             e.preventDefault();
-            this.fileUploadArea.classList.remove('dragover');
+            uploadArea.classList.remove('drag-over');
+
             const files = Array.from(e.dataTransfer.files);
-            this.handleFileSelection(files);
-        });
-    }
-
-    handleFileSelection(files) {
-        const fileArray = Array.from(files);
-        const maxSize = 10 * 1024 * 1024; // 10MB
-        const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'image/jpeg', 'image/jpg', 'image/png'];
-
-        fileArray.forEach(file => {
-            // Validate file size
-            if (file.size > maxSize) {
-                this.showError(`File "${file.name}" exceeds 10MB limit`);
-                return;
-            }
-
-            // Validate file type
-            if (!allowedTypes.includes(file.type)) {
-                this.showError(`File "${file.name}" is not a supported format`);
-                return;
-            }
-
-            // Check if file already exists
-            const exists = this.selectedFiles.some(f => f.name === file.name && f.size === file.size);
-            if (!exists) {
-                this.selectedFiles.push(file);
-            }
+            handleFiles(files, fileInput, filePreviewContainer, selectedFiles);
         });
 
-        this.updateFilePreview();
-    }
+        // File input change
+        fileInput.addEventListener('change', (e) => {
+            const files = Array.from(e.target.files);
+            handleFiles(files, fileInput, filePreviewContainer, selectedFiles);
+        });
 
-    updateFilePreview() {
-        if (!this.filePreviewContainer) return;
+        // Handle files function
+        function handleFiles(files, input, container, filesArray) {
+            // Validate file types
+            const allowedTypes = ['application/pdf', 'application/msword',
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'image/jpeg', 'image/jpg', 'image/png'];
 
-        this.filePreviewContainer.innerHTML = '';
+            const validFiles = files.filter(file => {
+                if (!allowedTypes.includes(file.type)) {
+                    alert(`File type not allowed: ${file.name}`);
+                    return false;
+                }
+                if (file.size > 10 * 1024 * 1024) { // 10MB
+                    alert(`File too large: ${file.name} (max 10MB)`);
+                    return false;
+                }
+                return true;
+            });
 
-        if (this.selectedFiles.length === 0) {
-            return;
+            // Add to selected files (max 5)
+            validFiles.forEach(file => {
+                if (filesArray.length < 5) {
+                    filesArray.push(file);
+                }
+            });
+
+            if (filesArray.length > 5) {
+                filesArray = filesArray.slice(0, 5);
+                alert('Maximum 5 files allowed');
+            }
+
+            // Update file input
+            updateFileInput(input, filesArray);
+
+            // Update preview
+            updateFilePreview(container, filesArray, input);
         }
 
-        this.selectedFiles.forEach((file, index) => {
-            const previewItem = document.createElement('div');
-            previewItem.className = 'file-preview-item';
-            
-            const fileSize = this.formatFileSize(file.size);
-            const fileIcon = this.getFileIcon(file.type);
+        function updateFileInput(input, filesArray) {
+            const dataTransfer = new DataTransfer();
+            filesArray.forEach(file => dataTransfer.items.add(file));
+            input.files = dataTransfer.files;
+        }
 
-            previewItem.innerHTML = `
-                <div class="file-preview-info">
-                    <i class="fi ${fileIcon} file-preview-icon"></i>
-                    <div>
-                        <div class="file-preview-name">${file.name}</div>
-                        <div class="file-preview-size">${fileSize}</div>
+        function updateFilePreview(container, filesArray, input) {
+            container.innerHTML = '';
+
+            filesArray.forEach((file, index) => {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'file-preview-item';
+
+                const fileIcon = getFileIcon(file.type);
+                const fileName = file.name.length > 20 ? file.name.substring(0, 17) + '...' : file.name;
+                const fileSize = formatFileSize(file.size);
+
+                fileItem.innerHTML = `
+                    <div class="file-preview-icon">${fileIcon}</div>
+                    <div class="file-preview-info">
+                        <span class="file-preview-name">${fileName}</span>
+                        <span class="file-preview-size">${fileSize}</span>
                     </div>
-                </div>
-                <button type="button" class="file-preview-remove" data-file-index="${index}" aria-label="Remove file">
-                    <i class="fi fi-rr-cross-small"></i>
-                </button>
-            `;
+                    <button type="button" class="file-preview-remove" data-index="${index}">
+                        <i class="fi fi-rr-cross"></i>
+                    </button>
+                `;
 
-            // Remove file handler
-            const removeBtn = previewItem.querySelector('.file-preview-remove');
-            removeBtn.addEventListener('click', () => {
-                this.removeFile(index);
+                // Remove file handler
+                const removeBtn = fileItem.querySelector('.file-preview-remove');
+                removeBtn.addEventListener('click', () => {
+                    filesArray.splice(index, 1);
+                    updateFileInput(input, filesArray);
+                    updateFilePreview(container, filesArray, input);
+                });
+
+                container.appendChild(fileItem);
             });
+        }
 
-            this.filePreviewContainer.appendChild(previewItem);
-        });
-    }
+        function getFileIcon(fileType) {
+            if (fileType.includes('pdf')) return '<i class="fi fi-rr-file-pdf"></i>';
+            if (fileType.includes('word') || fileType.includes('document')) return '<i class="fi fi-rr-file-word"></i>';
+            if (fileType.includes('image')) return '<i class="fi fi-rr-file-image"></i>';
+            return '<i class="fi fi-rr-file"></i>';
+        }
 
-    removeFile(index) {
-        this.selectedFiles.splice(index, 1);
-        this.updateFilePreview();
-        this.updateFileInput();
-    }
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+    });
 
-    updateFileInput() {
-        if (!this.fileInput) return;
+    // Make functions globally available
+    window.showBudgetWarningModal = function (type, message, projectId) {
+        const modal = document.getElementById(`budgetWarningModal-${projectId}`);
+        const title = document.getElementById(`budgetWarningTitle-${projectId}`);
+        const msg = document.getElementById(`budgetWarningMessage-${projectId}`);
+        const iconContainer = document.getElementById(`budgetWarningIcon-${projectId}`);
+        const iconSymbol = document.getElementById(`budgetWarningIconSymbol-${projectId}`);
 
-        // Create a new DataTransfer object to update files
-        const dataTransfer = new DataTransfer();
-        this.selectedFiles.forEach(file => {
-            dataTransfer.items.add(file);
-        });
-        this.fileInput.files = dataTransfer.files;
-    }
+        if (modal && title && msg && iconContainer && iconSymbol) {
+            msg.textContent = message;
 
-    formatFileSize(bytes) {
-        if (bytes === 0) return '0 Bytes';
-        const k = 1024;
-        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
-    }
+            // Update styling based on type
+            iconContainer.className = 'modal-icon-container'; // reset
+            iconSymbol.className = ''; // reset
 
-    getFileIcon(fileType) {
-        if (fileType.includes('pdf')) return 'fi-rr-file-pdf';
-        if (fileType.includes('word') || fileType.includes('document')) return 'fi-rr-file-word';
-        if (fileType.includes('image')) return 'fi-rr-file-image';
-        return 'fi-rr-file';
-    }
+            if (type === 'high') {
+                title.textContent = 'Bid Above Budget Range';
+                iconContainer.classList.add('warning');
+                iconSymbol.className = 'fi fi-rr-trending-up';
+            } else {
+                title.textContent = 'Bid Below Budget Range';
+                iconContainer.classList.add('info');
+                iconSymbol.className = 'fi fi-rr-trending-down';
+            }
 
-    async handleSubmit(e) {
-        e.preventDefault();
+            modal.classList.remove('hidden');
+        }
+    };
 
-        if (!this.validateForm()) {
+    window.closeBudgetWarningModal = function (projectId) {
+        // If projectId is not provided, try to close all open budget modals??
+        // Or just handle specific one. The call site usually passes projectId.
+        // If undefined, maybe look for open modals.
+        if (!projectId) {
+            const openModals = document.querySelectorAll('.budget-warning-modal:not(.hidden)');
+            openModals.forEach(m => m.classList.add('hidden'));
             return;
         }
-
-        // Disable submit button
-        if (this.submitBtn) {
-            this.submitBtn.disabled = true;
-            this.submitBtn.classList.add('loading');
-            this.submitBtn.innerHTML = '<span>Submitting...</span>';
+        const modal = document.getElementById(`budgetWarningModal-${projectId}`);
+        if (modal) {
+            modal.classList.add('hidden');
         }
+    };
 
-        try {
-            const formData = new FormData(this.form);
-
-            // Format proposed cost (remove commas)
-            const proposedCost = document.getElementById('modalProposedCost');
-            if (proposedCost) {
-                const costValue = proposedCost.value.replace(/[^0-9.]/g, '');
-                formData.set('proposed_cost', costValue);
-            }
-
-            // Add files to FormData
-            this.selectedFiles.forEach((file, index) => {
-                formData.append(`supporting_documents[${index}]`, file);
-            });
-
-            // TODO: Replace with actual API endpoint
-            // const response = await fetch('/api/contractor/bids', {
-            //     method: 'POST',
-            //     body: formData,
-            //     headers: {
-            //         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-            //     }
-            // });
-
-            // const data = await response.json();
-
-            // Simulate API call
-            await new Promise(resolve => setTimeout(resolve, 1500));
-
-            this.showSuccess('Bid application submitted successfully!');
-            
-            // Close modal after delay
+    window.handleEditBudget = function (projectId) {
+        closeBudgetWarningModal(projectId);
+        // Focus on the proposed cost input
+        const input = document.getElementById(`modalProposedCost-${projectId}`);
+        if (input) {
+            // Small delay to allow modal transition
             setTimeout(() => {
-                this.closeModal();
-            }, 2000);
+                input.focus();
+                // Select values? No, just focus.
+            }, 100);
+        }
+    };
 
-        } catch (error) {
-            console.error('Error submitting bid:', error);
-            this.showError('Failed to submit bid. Please try again.');
-        } finally {
-            // Re-enable submit button
-            if (this.submitBtn) {
-                this.submitBtn.disabled = false;
-                this.submitBtn.classList.remove('loading');
-                this.submitBtn.innerHTML = '<span>Submit</span>';
+    window.handleContinueBudget = function (projectId) {
+        closeBudgetWarningModal(projectId);
+
+        // Find the form
+        const form = document.getElementById(`applyBidForm-${projectId}`);
+        if (form) {
+            const continueFunc = window[`continueBidSubmission_${projectId}`];
+            if (typeof continueFunc === 'function') {
+                continueFunc();
+            } else {
+                console.error('Continue function not found for project:', projectId);
             }
         }
-    }
+    };
 
-    validateForm() {
-        let isValid = true;
-        this.hideAllErrors();
+    // Global Toast Function
+    window.showToast = function (message, type = 'info') {
+        const toast = document.createElement('div');
+        let bgColor = '#EEA24B';
+        let icon = '<i class="fi fi-rr-info"></i>';
 
-        // Validate proposed cost
-        const proposedCost = document.getElementById('modalProposedCost');
-        if (!proposedCost || !proposedCost.value.trim()) {
-            this.showFieldError('proposed_cost', 'Proposed cost is required');
-            isValid = false;
-        } else {
-            const cost = parseFloat(proposedCost.value.replace(/[^0-9.]/g, ''));
-            if (isNaN(cost) || cost <= 0) {
-                this.showFieldError('proposed_cost', 'Please enter a valid cost amount');
-                isValid = false;
-            } else if (cost < 1000) {
-                this.showFieldError('proposed_cost', 'Minimum cost is ₱1,000');
-                isValid = false;
-            }
-        }
-
-        // Validate estimated timeline
-        const estimatedTimeline = document.getElementById('modalEstimatedTimeline');
-        if (!estimatedTimeline || !estimatedTimeline.value.trim()) {
-            this.showFieldError('estimated_timeline', 'Estimated timeline is required');
-            isValid = false;
-        } else {
-            const timeline = parseFloat(estimatedTimeline.value);
-            if (isNaN(timeline) || timeline <= 0) {
-                this.showFieldError('estimated_timeline', 'Please enter a valid timeline in months');
-                isValid = false;
-            }
-        }
-
-        // Validate compelling message
-        const compellingMessage = document.getElementById('modalCompellingMessage');
-        if (!compellingMessage || !compellingMessage.value.trim()) {
-            this.showFieldError('compelling_message', 'Compelling message is required');
-            isValid = false;
-        } else if (compellingMessage.value.trim().length < 20) {
-            this.showFieldError('compelling_message', 'Message must be at least 20 characters');
-            isValid = false;
-        }
-
-        return isValid;
-    }
-
-    showFieldError(fieldName, message) {
-        const errorElement = document.getElementById(`error_${fieldName}`);
-        if (errorElement) {
-            errorElement.textContent = message;
-            errorElement.classList.remove('hidden');
-        }
-    }
-
-    hideAllErrors() {
-        const errorElements = this.modal.querySelectorAll('.error-message');
-        errorElements.forEach(element => {
-            element.classList.add('hidden');
-        });
-    }
-
-    showSuccess(message) {
-        const successElement = document.getElementById('applyBidFormSuccess');
-        if (successElement) {
-            successElement.textContent = message;
-            successElement.classList.remove('hidden');
-            this.hideAlerts('error');
-        }
-    }
-
-    showError(message) {
-        const errorElement = document.getElementById('applyBidFormError');
-        if (errorElement) {
-            errorElement.textContent = message;
-            errorElement.classList.remove('hidden');
-            this.hideAlerts('success');
-        }
-    }
-
-    hideAlerts(type) {
         if (type === 'success') {
-            const successElement = document.getElementById('applyBidFormSuccess');
-            if (successElement) successElement.classList.add('hidden');
+            bgColor = '#10b981';
+            icon = '<i class="fi fi-rr-check-circle"></i>';
         } else if (type === 'error') {
-            const errorElement = document.getElementById('applyBidFormError');
-            if (errorElement) errorElement.classList.add('hidden');
-        } else {
-            const successElement = document.getElementById('applyBidFormSuccess');
-            const errorElement = document.getElementById('applyBidFormError');
-            if (successElement) successElement.classList.add('hidden');
-            if (errorElement) errorElement.classList.add('hidden');
+            bgColor = '#ef4444';
+            icon = '<i class="fi fi-rr-cross-circle"></i>';
         }
-    }
-}
 
-// Initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
-    window.applyBidModal = new ApplyBidModal();
+        // Use standard classes + inline styles for reliability
+        toast.className = 'fixed flex items-center gap-3 px-6 py-4 rounded-lg shadow-lg text-white transition-transform duration-300';
+        toast.style.position = 'fixed';
+        toast.style.top = '20px';
+        toast.style.right = '20px';
+        toast.style.zIndex = '999999'; // Ensure it's on top of everything
+        toast.style.backgroundColor = bgColor;
+        toast.style.transform = 'translateX(120%)'; // Start off-screen right
+        toast.style.maxWidth = '350px';
+
+        toast.innerHTML = `${icon} <span class="font-medium">${message}</span>`;
+
+        document.body.appendChild(toast);
+
+        // Animate in
+        requestAnimationFrame(() => {
+            toast.style.transform = 'translateX(0)';
+        });
+
+        // Remove after 3 seconds
+        setTimeout(() => {
+            toast.style.transform = 'translateX(120%)';
+            setTimeout(() => {
+                if (document.body.contains(toast)) {
+                    document.body.removeChild(toast);
+                }
+            }, 300);
+        }, 3000);
+    };
 });

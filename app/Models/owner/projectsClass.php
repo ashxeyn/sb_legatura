@@ -59,22 +59,22 @@ class projectsClass
             ->where('project_relationships.owner_id', $ownerId)
             ->where('project_relationships.project_post_status', '!=', 'deleted')
             ->select(
-                'projects.project_id',
-                'projects.project_title',
-                'projects.project_description',
-                'projects.project_location',
-                'projects.budget_range_min',
-                'projects.budget_range_max',
-                'projects.lot_size',
-                'projects.floor_area',
-                'projects.property_type',
-                'projects.type_id',
-                'contractor_types.type_name',
-                'projects.project_status',
-                'project_relationships.project_post_status',
-                DB::raw('project_relationships.bidding_due as bidding_deadline'),
-                'project_relationships.created_at'
-            )
+            'projects.project_id',
+            'projects.project_title',
+            'projects.project_description',
+            'projects.project_location',
+            'projects.budget_range_min',
+            'projects.budget_range_max',
+            'projects.lot_size',
+            'projects.floor_area',
+            'projects.property_type',
+            'projects.type_id',
+            'contractor_types.type_name',
+            'projects.project_status',
+            'project_relationships.project_post_status',
+            DB::raw('project_relationships.bidding_due as bidding_deadline'),
+            'project_relationships.created_at'
+        )
             ->orderBy('project_relationships.created_at', 'desc')
             ->get();
     }
@@ -88,9 +88,9 @@ class projectsClass
             ->whereNotNull('bidding_due')
             ->where('bidding_due', '<=', date('Y-m-d'))
             ->update([
-                'project_post_status' => 'due',
-                'updated_at' => now()
-            ]);
+            'project_post_status' => 'due',
+            'updated_at' => now()
+        ]);
 
         return DB::table('projects')
             ->join('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
@@ -99,31 +99,31 @@ class projectsClass
             ->join('users', 'property_owners.user_id', '=', 'users.user_id')
             ->where('project_relationships.project_post_status', 'approved')
             ->where('projects.project_status', 'open')
-            ->where(function($query) {
-                // Show projects where bidding deadline hasn't passed, or no deadline is set
-                $query->whereNull('project_relationships.bidding_due')
-                      ->orWhere('project_relationships.bidding_due', '>=', date('Y-m-d'));
-            })
+            ->where(function ($query) {
+            // Show projects where bidding deadline hasn't passed, or no deadline is set
+            $query->whereNull('project_relationships.bidding_due')
+                ->orWhere('project_relationships.bidding_due', '>=', date('Y-m-d'));
+        })
             ->select(
-                'projects.project_id',
-                'projects.project_title',
-                'projects.project_description',
-                'projects.project_location',
-                'projects.budget_range_min',
-                'projects.budget_range_max',
-                'projects.lot_size',
-                'projects.floor_area',
-                'projects.property_type',
-                'projects.type_id',
-                'contractor_types.type_name',
-                'projects.project_status',
-                'project_relationships.project_post_status',
-                'project_relationships.bidding_due as bidding_deadline',
-                'project_relationships.created_at',
-                DB::raw("CONCAT(property_owners.first_name, ' ', COALESCE(property_owners.middle_name, ''), ' ', property_owners.last_name) as owner_name"),
-                'users.profile_pic as owner_profile_pic',
-                'users.user_id as owner_user_id'
-            )
+            'projects.project_id',
+            'projects.project_title',
+            'projects.project_description',
+            'projects.project_location',
+            'projects.budget_range_min',
+            'projects.budget_range_max',
+            'projects.lot_size',
+            'projects.floor_area',
+            'projects.property_type',
+            'projects.type_id',
+            'contractor_types.type_name',
+            'projects.project_status',
+            'project_relationships.project_post_status',
+            'project_relationships.bidding_due as bidding_deadline',
+            'project_relationships.created_at',
+            DB::raw("CONCAT(property_owners.first_name, ' ', COALESCE(property_owners.middle_name, ''), ' ', property_owners.last_name) as owner_name"),
+            'users.profile_pic as owner_profile_pic',
+            'users.user_id as owner_user_id'
+        )
             ->orderBy('project_relationships.created_at', 'desc')
             ->get();
     }
@@ -136,12 +136,12 @@ class projectsClass
             ->join('property_owners', 'project_relationships.owner_id', '=', 'property_owners.owner_id')
             ->where('projects.project_id', $projectId)
             ->select(
-                'projects.*',
-                'contractor_types.type_name',
-                'project_relationships.project_post_status',
-                'project_relationships.bidding_due as bidding_deadline',
-                DB::raw("CONCAT(property_owners.first_name, ' ', COALESCE(property_owners.middle_name, ''), ' ', property_owners.last_name) as owner_name")
-            )
+            'projects.*',
+            'contractor_types.type_name',
+            'project_relationships.project_post_status',
+            'project_relationships.bidding_due as bidding_deadline',
+            DB::raw("CONCAT(property_owners.first_name, ' ', COALESCE(property_owners.middle_name, ''), ' ', property_owners.last_name) as owner_name")
+        )
             ->first();
     }
 
@@ -184,10 +184,10 @@ class projectsClass
         return DB::table('project_relationships')
             ->where('rel_id', $relationshipId)
             ->update([
-                'bidding_due' => $biddingDue,
-                'project_post_status' => 'under_review',
-                'updated_at' => now()
-            ]);
+            'bidding_due' => $biddingDue,
+            'project_post_status' => 'under_review',
+            'updated_at' => now()
+        ]);
     }
 
     public function deleteProjectFile($fileId)
@@ -207,9 +207,9 @@ class projectsClass
             DB::table('project_relationships')
                 ->where('rel_id', $project->relationship_id)
                 ->update([
-                    'project_post_status' => 'deleted',
-                    'updated_at' => now()
-                ]);
+                'project_post_status' => 'deleted',
+                'updated_at' => now()
+            ]);
         }
 
         return true;
@@ -236,33 +236,33 @@ class projectsClass
     {
         $query = DB::table('contractors as c')
             ->join('users as u', 'c.user_id', '=', 'u.user_id')
-            ->join('contractor_users as cu', function($join) {
-                $join->on('c.contractor_id', '=', 'cu.contractor_id')
-                     ->on('c.user_id', '=', 'cu.user_id');
-            })
+            ->join('contractor_users as cu', function ($join) {
+            $join->on('c.contractor_id', '=', 'cu.contractor_id')
+                ->on('c.user_id', '=', 'cu.user_id');
+        })
             ->join('contractor_types as ct', 'c.type_id', '=', 'ct.type_id')
             ->where('cu.is_active', 1)
             ->where('c.verification_status', 'approved')
             ->select(
-                'c.contractor_id',
-                'c.company_name',
-                'c.years_of_experience',
-                'c.services_offered',
-                'c.business_address',
-                'c.company_website',
-                'c.company_social_media',
-                'c.company_description',
-                'c.picab_number',
-                'c.picab_category',
-                'c.business_permit_number',
-                'c.completed_projects',
-                'c.created_at',
-                'ct.type_name',
-                'u.user_id',
-                'u.username',
-                'u.profile_pic',
-                'u.cover_photo'
-            );
+            'c.contractor_id',
+            'c.company_name',
+            'c.years_of_experience',
+            'c.services_offered',
+            'c.business_address',
+            'c.company_website',
+            'c.company_social_media',
+            'c.company_description',
+            'c.picab_number',
+            'c.picab_category',
+            'c.business_permit_number',
+            'c.completed_projects',
+            'c.created_at',
+            'ct.type_name',
+            'u.user_id',
+            'u.username',
+            'u.profile_pic',
+            'u.cover_photo'
+        );
 
         // Exclude current user if they have a contractor account
         if ($excludeUserId) {
@@ -278,34 +278,34 @@ class projectsClass
         $bids = DB::table('bids as b')
             ->join('contractors as c', 'b.contractor_id', '=', 'c.contractor_id')
             ->join('users as u', 'c.user_id', '=', 'u.user_id')
-            ->leftJoin('bid_files as bf', function($join) {
-                $join->on('b.bid_id', '=', 'bf.bid_id');
-            })
+            ->leftJoin('bid_files as bf', function ($join) {
+            $join->on('b.bid_id', '=', 'bf.bid_id');
+        })
             ->where('b.project_id', $projectId)
             ->whereNotIn('b.bid_status', ['cancelled'])
             ->select(
-                'b.bid_id',
-                'b.proposed_cost',
-                'b.estimated_timeline',
-                'b.contractor_notes',
-                'b.bid_status',
-                'b.submitted_at',
-                'b.decision_date',
-                'c.contractor_id',
-                'c.company_name',
-                'c.years_of_experience',
-                'c.company_email',
-                'c.company_phone',
-                'c.company_website',
-                'c.completed_projects',
-                'u.username',
-                'u.profile_pic',
-                DB::raw('COUNT(DISTINCT bf.file_id) as file_count')
-            )
+            'b.bid_id',
+            'b.proposed_cost',
+            'b.estimated_timeline',
+            'b.contractor_notes',
+            'b.bid_status',
+            'b.submitted_at',
+            'b.decision_date',
+            'c.contractor_id',
+            'c.company_name',
+            'c.years_of_experience',
+            'c.company_email',
+            'c.company_phone',
+            'c.company_website',
+            'c.completed_projects',
+            'u.username',
+            'u.profile_pic',
+            DB::raw('COUNT(DISTINCT bf.file_id) as file_count')
+        )
             ->groupBy('b.bid_id', 'b.proposed_cost', 'b.estimated_timeline', 'b.contractor_notes',
-                     'b.bid_status', 'b.submitted_at', 'b.decision_date', 'c.contractor_id',
-                     'c.company_name', 'c.years_of_experience', 'c.company_email', 'c.company_phone',
-                     'c.company_website', 'c.completed_projects', 'u.username', 'u.profile_pic')
+            'b.bid_status', 'b.submitted_at', 'b.decision_date', 'c.contractor_id',
+            'c.company_name', 'c.years_of_experience', 'c.company_email', 'c.company_phone',
+            'c.company_website', 'c.completed_projects', 'u.username', 'u.profile_pic')
             ->get();
 
         // Get bid files for each bid
@@ -354,9 +354,9 @@ class projectsClass
             DB::table('bids')
                 ->where('bid_id', $bidId)
                 ->update([
-                    'bid_status' => 'accepted',
-                    'decision_date' => now()
-                ]);
+                'bid_status' => 'accepted',
+                'decision_date' => now()
+            ]);
 
             // Reject all other bids for this project
             DB::table('bids')
@@ -364,33 +364,33 @@ class projectsClass
                 ->where('bid_id', '!=', $bidId)
                 ->whereNotIn('bid_status', ['cancelled', 'accepted'])
                 ->update([
-                    'bid_status' => 'rejected',
-                    'decision_date' => now()
-                ]);
+                'bid_status' => 'rejected',
+                'decision_date' => now()
+            ]);
 
             // Update project: set selected contractor and close bidding
             DB::table('projects')
                 ->where('project_id', $projectId)
                 ->update([
-                    'selected_contractor_id' => $bid->contractor_id,
-                    'project_status' => 'bidding_closed'
-                ]);
+                'selected_contractor_id' => $bid->contractor_id,
+                'project_status' => 'bidding_closed'
+            ]);
 
             // Update project relationship selected contractor if column exists
             if ($project->relationship_id) {
                 DB::table('project_relationships')
                     ->where('rel_id', $project->relationship_id)
                     ->update([
-                        'selected_contractor_id' => $bid->contractor_id
-                    ]);
+                    'selected_contractor_id' => $bid->contractor_id
+                ]);
             }
 
             DB::commit();
             return true;
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e) {
             DB::rollBack();
             throw $e;
         }
     }
 }
-

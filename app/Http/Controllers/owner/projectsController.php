@@ -37,7 +37,7 @@ class projectsController extends Controller
 
         // Determine if user is owner
         $isOwner = ($userType === 'property_owner' || $userType === 'both') &&
-                   ($currentRole === 'owner' || $currentRole === 'property_owner');
+            ($currentRole === 'owner' || $currentRole === 'property_owner');
 
         // Get owner_id if user is owner
         $ownerId = null;
@@ -58,7 +58,8 @@ class projectsController extends Controller
             $excludeUserId = ($userType === 'both') ? $user->user_id : null;
             $feedItems = $this->projectsClass->getActiveContractors($excludeUserId);
             $feedType = 'contractors';
-        } else {
+        }
+        else {
             // Contractor view: Show all approved projects
             $feedItems = $this->projectsClass->getApprovedProjects();
             $feedType = 'projects';
@@ -100,25 +101,24 @@ class projectsController extends Controller
         $contractors = $this->projectsClass->getActiveContractors($excludeUserId);
 
         // Prepare contractors data for JavaScript (if needed for filtering)
-        $jsContractors = $contractors->map(function($contractor) {
+        $jsContractors = $contractors->map(function ($contractor) {
             return [
-                'contractor_id' => $contractor->contractor_id,
-                'company_name' => $contractor->company_name,
-                'contact_person' => $contractor->contact_person ?? '',
-                'years_of_experience' => $contractor->years_of_experience ?? 0,
-                'contractor_type_name' => $contractor->contractor_type_name ?? 'Contractor',
-                'city' => $contractor->city ?? '',
-                'province' => $contractor->province ?? '',
-                'average_rating' => $contractor->average_rating ?? 0,
-                'total_reviews' => $contractor->total_reviews ?? 0,
-                'completed_projects' => $contractor->completed_projects ?? 0,
-                'specialization' => $contractor->specialization ?? $contractor->contractor_type_name ?? '',
+            'contractor_id' => $contractor->contractor_id,
+            'company_name' => $contractor->company_name,
+            'contact_person' => $contractor->contact_person ?? '',
+            'years_of_experience' => $contractor->years_of_experience ?? 0,
+            'contractor_type_name' => $contractor->contractor_type_name ?? 'Contractor',
+            'city' => $contractor->city ?? '',
+            'province' => $contractor->province ?? '',
+            'average_rating' => $contractor->average_rating ?? 0,
+            'total_reviews' => $contractor->total_reviews ?? 0,
+            'completed_projects' => $contractor->completed_projects ?? 0,
+            'specialization' => $contractor->specialization ?? $contractor->contractor_type_name ?? '',
             ];
         });
 
         // Get contractor types for modal dropdown
         $contractorTypes = $this->projectsClass->getContractorTypes();
-        
         return view('owner.propertyOwner_Homepage', compact('contractorTypes', 'contractors', 'jsContractors'));
     }
 
@@ -147,7 +147,7 @@ class projectsController extends Controller
         // Only owners can access this dashboard (skip in testing if no user)
         if ($user) {
             $isOwner = ($userType === 'property_owner' || $userType === 'both') &&
-                       ($currentRole === 'owner' || $currentRole === 'property_owner');
+                ($currentRole === 'owner' || $currentRole === 'property_owner');
 
             if (!$isOwner && !$isLocalOrTesting) {
                 return redirect('/dashboard')->with('error', 'Only property owners can access this dashboard.');
@@ -182,7 +182,7 @@ class projectsController extends Controller
         // Only owners can access this page (skip in testing if no user)
         if ($user) {
             $isOwner = ($userType === 'property_owner' || $userType === 'both') &&
-                       ($currentRole === 'owner' || $currentRole === 'property_owner');
+                ($currentRole === 'owner' || $currentRole === 'property_owner');
 
             if (!$isOwner && !$isLocalOrTesting) {
                 return redirect('/dashboard')->with('error', 'Only property owners can access this page.');
@@ -217,7 +217,7 @@ class projectsController extends Controller
         // Only owners can access this page (skip in testing if no user)
         if ($user) {
             $isOwner = ($userType === 'property_owner' || $userType === 'both') &&
-                       ($currentRole === 'owner' || $currentRole === 'property_owner');
+                ($currentRole === 'owner' || $currentRole === 'property_owner');
 
             if (!$isOwner && !$isLocalOrTesting) {
                 return redirect('/dashboard')->with('error', 'Only property owners can access this page.');
@@ -252,7 +252,7 @@ class projectsController extends Controller
         // Only owners can access this page (skip in testing if no user)
         if ($user) {
             $isOwner = ($userType === 'property_owner' || $userType === 'both') &&
-                       ($currentRole === 'owner' || $currentRole === 'property_owner');
+                ($currentRole === 'owner' || $currentRole === 'property_owner');
 
             if (!$isOwner && !$isLocalOrTesting) {
                 return redirect('/dashboard')->with('error', 'Only property owners can access this page.');
@@ -287,7 +287,7 @@ class projectsController extends Controller
         // Only owners can access this page (skip in testing if no user)
         if ($user) {
             $isOwner = ($userType === 'property_owner' || $userType === 'both') &&
-                       ($currentRole === 'owner' || $currentRole === 'property_owner');
+                ($currentRole === 'owner' || $currentRole === 'property_owner');
 
             if (!$isOwner && !$isLocalOrTesting) {
                 return redirect('/dashboard')->with('error', 'Only property owners can access this page.');
@@ -322,7 +322,7 @@ class projectsController extends Controller
         // Only owners can access this page (skip in testing if no user)
         if ($user) {
             $isOwner = ($userType === 'property_owner' || $userType === 'both') &&
-                       ($currentRole === 'owner' || $currentRole === 'property_owner');
+                ($currentRole === 'owner' || $currentRole === 'property_owner');
 
             if (!$isOwner && !$isLocalOrTesting) {
                 return redirect('/dashboard')->with('error', 'Only property owners can access this page.');
@@ -357,7 +357,7 @@ class projectsController extends Controller
         // Only owners can access this page (skip in testing if no user)
         if ($user) {
             $isOwner = ($userType === 'property_owner' || $userType === 'both') &&
-                       ($currentRole === 'owner' || $currentRole === 'property_owner');
+                ($currentRole === 'owner' || $currentRole === 'property_owner');
 
             if (!$isOwner && !$isLocalOrTesting) {
                 return redirect('/dashboard')->with('error', 'Only property owners can access this page.');
@@ -379,7 +379,7 @@ class projectsController extends Controller
 
         // Only owners can create posts
         $isOwner = ($userType === 'property_owner' || $userType === 'both') &&
-                   ($currentRole === 'owner' || $currentRole === 'property_owner');
+            ($currentRole === 'owner' || $currentRole === 'property_owner');
 
         if (!$isOwner) {
             return redirect('/dashboard')->with('error', 'Only property owners can create project posts.');
@@ -406,7 +406,7 @@ class projectsController extends Controller
 
             // Verify user is owner
             $isOwner = ($userType === 'property_owner' || $userType === 'both') &&
-                       ($currentRole === 'owner' || $currentRole === 'property_owner');
+                ($currentRole === 'owner' || $currentRole === 'property_owner');
 
             if (!$isOwner) {
                 return response()->json([
@@ -540,10 +540,12 @@ class projectsController extends Controller
                     'message' => 'Project posted successfully. It is now under review.',
                     'project_id' => $projectId
                 ], 201);
-            } else {
+            }
+            else {
                 return redirect('/dashboard')->with('success', 'Project posted successfully. It is now under review.');
             }
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e) {
             \Log::error('Project creation error: ' . $e->getMessage(), [
                 'user_id' => $user->user_id ?? null,
                 'trace' => $e->getTraceAsString()
@@ -554,7 +556,8 @@ class projectsController extends Controller
                     'success' => false,
                     'message' => 'Error creating project: ' . $e->getMessage()
                 ], 500);
-            } else {
+            }
+            else {
                 return back()->with('error', 'Error creating project: ' . $e->getMessage())->withInput();
             }
         }
@@ -571,7 +574,7 @@ class projectsController extends Controller
         $userType = $user->user_type;
 
         $isOwner = ($userType === 'property_owner' || $userType === 'both') &&
-                   ($currentRole === 'owner' || $currentRole === 'property_owner');
+            ($currentRole === 'owner' || $currentRole === 'property_owner');
 
         if (!$isOwner) {
             return redirect('/dashboard')->with('error', 'Only property owners can edit project posts.');
@@ -612,7 +615,7 @@ class projectsController extends Controller
             $userType = $user->user_type;
 
             $isOwner = ($userType === 'property_owner' || $userType === 'both') &&
-                       ($currentRole === 'owner' || $currentRole === 'property_owner');
+                ($currentRole === 'owner' || $currentRole === 'property_owner');
 
             if (!$isOwner) {
                 return response()->json([
@@ -686,10 +689,12 @@ class projectsController extends Controller
                     'success' => true,
                     'message' => 'Project updated successfully. It is now under review again.'
                 ], 200);
-            } else {
+            }
+            else {
                 return redirect('/dashboard')->with('success', 'Project updated successfully. It is now under review again.');
             }
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e) {
             \Log::error('Project update error: ' . $e->getMessage(), [
                 'user_id' => $user->user_id ?? null,
                 'project_id' => $projectId,
@@ -701,7 +706,8 @@ class projectsController extends Controller
                     'success' => false,
                     'message' => 'Error updating project: ' . $e->getMessage()
                 ], 500);
-            } else {
+            }
+            else {
                 return back()->with('error', 'Error updating project: ' . $e->getMessage())->withInput();
             }
         }
@@ -722,7 +728,7 @@ class projectsController extends Controller
             $userType = $user->user_type;
 
             $isOwner = ($userType === 'property_owner' || $userType === 'both') &&
-                       ($currentRole === 'owner' || $currentRole === 'property_owner');
+                ($currentRole === 'owner' || $currentRole === 'property_owner');
 
             if (!$isOwner) {
                 return response()->json([
@@ -758,10 +764,12 @@ class projectsController extends Controller
                     'success' => true,
                     'message' => 'Project deleted successfully'
                 ], 200);
-            } else {
+            }
+            else {
                 return redirect('/dashboard')->with('success', 'Project deleted successfully');
             }
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e) {
             \Log::error('Project delete error: ' . $e->getMessage(),
             [
                 'user_id' => $user->user_id ?? null,
@@ -774,7 +782,8 @@ class projectsController extends Controller
                     'success' => false,
                     'message' => 'Error deleting project: ' . $e->getMessage()
                 ], 500);
-            } else {
+            }
+            else {
                 return back()->with('error', 'Error deleting project: ' . $e->getMessage());
             }
         }
@@ -796,7 +805,7 @@ class projectsController extends Controller
 
             // Verify user is owner
             $isOwner = ($userType === 'property_owner' || $userType === 'both') &&
-                       ($currentRole === 'owner' || $currentRole === 'property_owner');
+                ($currentRole === 'owner' || $currentRole === 'property_owner');
 
             if (!$isOwner) {
                 return response()->json([
@@ -848,7 +857,8 @@ class projectsController extends Controller
                 'message' => 'Bid accepted successfully! Bidding is now closed.'
             ], 200);
 
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'An error occurred: ' . $e->getMessage()
@@ -927,7 +937,8 @@ class projectsController extends Controller
                 'message' => 'Bid accepted successfully! Bidding is now closed.'
             ], 200);
 
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'An error occurred: ' . $e->getMessage()
@@ -951,7 +962,8 @@ class projectsController extends Controller
                 'data' => $contractors
             ], 200);
 
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Error retrieving contractors: ' . $e->getMessage()
@@ -991,22 +1003,22 @@ class projectsController extends Controller
                 ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
                 ->join('contractor_types as ct', 'p.type_id', '=', 'ct.type_id')
                 ->select(
-                    'p.project_id',
-                    'p.project_title',
-                    'p.project_description',
-                    'p.project_location',
-                    'p.budget_range_min',
-                    'p.budget_range_max',
-                    'p.lot_size',
-                    'p.floor_area',
-                    'p.property_type',
-                    'p.project_status',
-                    'p.selected_contractor_id',
-                    'ct.type_name',
-                    'pr.project_post_status',
-                    'pr.bidding_due',
-                    DB::raw('DATE(pr.created_at) as created_at')
-                )
+                'p.project_id',
+                'p.project_title',
+                'p.project_description',
+                'p.project_location',
+                'p.budget_range_min',
+                'p.budget_range_max',
+                'p.lot_size',
+                'p.floor_area',
+                'p.property_type',
+                'p.project_status',
+                'p.selected_contractor_id',
+                'ct.type_name',
+                'pr.project_post_status',
+                'pr.bidding_due',
+                DB::raw('DATE(pr.created_at) as created_at')
+            )
                 ->where('pr.owner_id', $owner->owner_id)
                 ->whereNotIn('pr.project_post_status', ['deleted'])
                 ->orderBy('pr.created_at', 'desc')
@@ -1031,22 +1043,22 @@ class projectsController extends Controller
                         ->join('contractors as c', 'b.contractor_id', '=', 'c.contractor_id')
                         ->join('users as u', 'c.user_id', '=', 'u.user_id')
                         ->select(
-                            'b.bid_id',
-                            'b.proposed_cost',
-                            'b.estimated_timeline',
-                            'b.contractor_notes',
-                            'b.submitted_at',
-                            'c.contractor_id',
-                            'c.company_name',
-                            'c.company_phone',
-                            'c.company_email',
-                            'c.company_website',
-                            'c.years_of_experience',
-                            'c.completed_projects',
-                            'c.picab_category',
-                            'u.username',
-                            'u.profile_pic'
-                        )
+                        'b.bid_id',
+                        'b.proposed_cost',
+                        'b.estimated_timeline',
+                        'b.contractor_notes',
+                        'b.submitted_at',
+                        'c.contractor_id',
+                        'c.company_name',
+                        'c.company_phone',
+                        'c.company_email',
+                        'c.company_website',
+                        'c.years_of_experience',
+                        'c.completed_projects',
+                        'c.picab_category',
+                        'u.username',
+                        'u.profile_pic'
+                    )
                         ->where('b.project_id', $project->project_id)
                         ->where('b.contractor_id', $project->selected_contractor_id)
                         ->where('b.bid_status', 'accepted')
@@ -1054,7 +1066,7 @@ class projectsController extends Controller
 
                     if ($acceptedBid) {
                         $project->accepted_bid = $acceptedBid;
-                        $project->contractor_info = (object) [
+                        $project->contractor_info = (object)[
                             'company_name' => $acceptedBid->company_name,
                             'company_phone' => $acceptedBid->company_phone,
                             'company_email' => $acceptedBid->company_email,
@@ -1069,24 +1081,24 @@ class projectsController extends Controller
                         // Get milestones for this project and contractor
                         $milestones = DB::table('milestones')
                             ->select(
-                                'milestones.milestone_id',
-                                'milestones.plan_id',
-                                'milestones.milestone_name',
-                                'milestones.milestone_description',
-                                'milestones.milestone_status',
-                                'milestones.setup_status',
-                                'milestones.setup_rej_reason',
-                                'milestones.start_date',
-                                'milestones.end_date',
-                                'milestones.created_at',
-                                'milestones.updated_at'
-                            )
+                            'milestones.milestone_id',
+                            'milestones.plan_id',
+                            'milestones.milestone_name',
+                            'milestones.milestone_description',
+                            'milestones.milestone_status',
+                            'milestones.setup_status',
+                            'milestones.setup_rej_reason',
+                            'milestones.start_date',
+                            'milestones.end_date',
+                            'milestones.created_at',
+                            'milestones.updated_at'
+                        )
                             ->where('milestones.project_id', $project->project_id)
                             ->where('milestones.contractor_id', $project->selected_contractor_id)
-                            ->where(function($query) {
-                                $query->whereNull('milestones.is_deleted')
-                                      ->orWhere('milestones.is_deleted', 0);
-                            })
+                            ->where(function ($query) {
+                            $query->whereNull('milestones.is_deleted')
+                                ->orWhere('milestones.is_deleted', 0);
+                        })
                             ->orderBy('milestones.created_at', 'asc')
                             ->get();
 
@@ -1095,16 +1107,16 @@ class projectsController extends Controller
                             // Get milestone items
                             $milestone->items = DB::table('milestone_items')
                                 ->select(
-                                    'item_id',
-                                    'sequence_order',
-                                    'percentage_progress',
-                                    'milestone_item_title',
-                                    'milestone_item_description',
-                                    'milestone_item_cost',
-                                    'date_to_finish',
-                                    // include item_status so clients know completion state
-                                    DB::raw("COALESCE(item_status, '') as item_status")
-                                )
+                                'item_id',
+                                'sequence_order',
+                                'percentage_progress',
+                                'milestone_item_title',
+                                'milestone_item_description',
+                                'milestone_item_cost',
+                                'date_to_finish',
+                                // include item_status so clients know completion state
+                                DB::raw("COALESCE(item_status, '') as item_status")
+                            )
                                 ->where('milestone_id', $milestone->milestone_id)
                                 ->orderBy('sequence_order', 'asc')
                                 ->get()
@@ -1113,12 +1125,12 @@ class projectsController extends Controller
                             // Get payment plan details
                             $paymentPlan = DB::table('payment_plans')
                                 ->select(
-                                    'plan_id',
-                                    'payment_mode',
-                                    'total_project_cost',
-                                    'downpayment_amount',
-                                    'is_confirmed'
-                                )
+                                'plan_id',
+                                'payment_mode',
+                                'total_project_cost',
+                                'downpayment_amount',
+                                'is_confirmed'
+                            )
                                 ->where('plan_id', $milestone->plan_id)
                                 ->first();
 
@@ -1131,12 +1143,14 @@ class projectsController extends Controller
                         // Determine display_status based on milestone states
                         if ($milestones->isEmpty()) {
                             $project->display_status = 'waiting_milestone_setup';
-                        } else {
+                        }
+                        else {
                             $allCompleted = $milestones->every(fn($m) => $m->milestone_status === 'completed' || $m->milestone_status === 'approved');
 
                             if ($allCompleted) {
                                 $project->display_status = 'completed';
-                            } else {
+                            }
+                            else {
                                 // If milestones exist (submitted or approved), project is in progress
                                 $project->display_status = 'in_progress';
                             }
@@ -1151,7 +1165,8 @@ class projectsController extends Controller
                 'data' => $projects
             ], 200);
 
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Error retrieving projects: ' . $e->getMessage()
@@ -1173,7 +1188,8 @@ class projectsController extends Controller
                 'data' => $contractorTypes
             ], 200);
 
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Error retrieving contractor types: ' . $e->getMessage()
@@ -1329,18 +1345,21 @@ class projectsController extends Controller
                     ]
                 ], 201);
 
-            } catch (\Exception $e) {
+            }
+            catch (\Exception $e) {
                 DB::rollBack();
                 throw $e;
             }
 
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        }
+        catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Validation failed',
                 'errors' => $e->errors()
             ], 422);
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Error creating project: ' . $e->getMessage()
@@ -1369,14 +1388,14 @@ class projectsController extends Controller
                 ->join('contractor_types as ct', 'p.type_id', '=', 'ct.type_id')
                 ->join('property_owners as po', 'pr.owner_id', '=', 'po.owner_id')
                 ->select(
-                    'p.*',
-                    'ct.type_name',
-                    'pr.project_post_status',
-                    'pr.bidding_due',
-                    'pr.owner_id',
-                    'po.first_name',
-                    'po.last_name'
-                )
+                'p.*',
+                'ct.type_name',
+                'pr.project_post_status',
+                'pr.bidding_due',
+                'pr.owner_id',
+                'po.first_name',
+                'po.last_name'
+            )
                 ->where('p.project_id', $projectId)
                 ->first();
 
@@ -1410,7 +1429,8 @@ class projectsController extends Controller
                 'data' => $project
             ], 200);
 
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Error retrieving project details: ' . $e->getMessage()
@@ -1459,26 +1479,26 @@ class projectsController extends Controller
                 ->join('property_owners as po', 'pr.owner_id', '=', 'po.owner_id')
                 ->join('users as u', 'po.user_id', '=', 'u.user_id')
                 ->select(
-                    'p.project_id',
-                    'p.project_title',
-                    'p.project_description',
-                    'p.project_location',
-                    'p.budget_range_min',
-                    'p.budget_range_max',
-                    'p.lot_size',
-                    'p.floor_area',
-                    'p.property_type',
-                    'p.type_id',
-                    'ct.type_name',
-                    'p.project_status',
-                    'pr.project_post_status',
-                    'pr.bidding_due as bidding_deadline',
-                    DB::raw('DATE(pr.created_at) as created_at'),
-                    'pr.owner_id as owner_id',
-                    DB::raw("CONCAT(po.first_name, ' ', po.last_name) as owner_name"),
-                    'u.profile_pic as owner_profile_pic',
-                    'u.user_id as owner_user_id'
-                )
+                'p.project_id',
+                'p.project_title',
+                'p.project_description',
+                'p.project_location',
+                'p.budget_range_min',
+                'p.budget_range_max',
+                'p.lot_size',
+                'p.floor_area',
+                'p.property_type',
+                'p.type_id',
+                'ct.type_name',
+                'p.project_status',
+                'pr.project_post_status',
+                'pr.bidding_due as bidding_deadline',
+                DB::raw('DATE(pr.created_at) as created_at'),
+                'pr.owner_id as owner_id',
+                DB::raw("CONCAT(po.first_name, ' ', po.last_name) as owner_name"),
+                'u.profile_pic as owner_profile_pic',
+                'u.user_id as owner_user_id'
+            )
                 ->where('pr.project_post_status', 'approved')
                 ->where('p.project_status', 'open')
                 ->where('pr.bidding_due', '>=', now());
@@ -1497,8 +1517,9 @@ class projectsController extends Controller
             // Sort: matching contractor type first, then by newest
             if ($contractorTypeId) {
                 $query->orderByRaw('CASE WHEN p.type_id = ? THEN 0 ELSE 1 END ASC', [$contractorTypeId])
-                      ->orderBy('pr.created_at', 'desc');
-            } else {
+                    ->orderBy('pr.created_at', 'desc');
+            }
+            else {
                 $query->orderBy('pr.created_at', 'desc');
             }
 
@@ -1519,11 +1540,11 @@ class projectsController extends Controller
                     ->orderBy('file_id', 'asc')
                     ->select('file_id', 'file_type', 'file_path')
                     ->get()
-                    ->map(fn ($f) => [
-                        'file_id'   => $f->file_id,
-                        'file_type' => $f->file_type,
-                        'file_path' => $f->file_path,
-                    ])
+                    ->map(fn($f) => [
+                'file_id' => $f->file_id,
+                'file_type' => $f->file_type,
+                'file_path' => $f->file_path,
+                ])
                     ->values()
                     ->toArray();
 
@@ -1536,7 +1557,8 @@ class projectsController extends Controller
                 'data' => $projects
             ], 200);
 
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Error retrieving projects: ' . $e->getMessage()
@@ -1590,9 +1612,9 @@ class projectsController extends Controller
                 ->where('bid_id', $bidId)
                 ->where('project_id', $projectId)
                 ->update([
-                    'bid_status' => 'rejected',
-                    'updated_at' => now()
-                ]);
+                'bid_status' => 'rejected',
+                'updated_at' => now()
+            ]);
 
             // Notify contractor whose bid was rejected
             $rejBid = DB::table('bids')->where('bid_id', $bidId)->first();
@@ -1609,7 +1631,8 @@ class projectsController extends Controller
                 'message' => 'Bid rejected successfully'
             ], 200);
 
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Error rejecting bid: ' . $e->getMessage()
@@ -1664,9 +1687,9 @@ class projectsController extends Controller
             DB::table('milestones')
                 ->where('milestone_id', $milestoneId)
                 ->update([
-                    'setup_status' => 'approved',
-                    'updated_at' => now()
-                ]);
+                'setup_status' => 'approved',
+                'updated_at' => now()
+            ]);
 
             // Notify contractor that milestone was approved
             $cUserId = DB::table('contractor_users')->where('contractor_id', $milestone->contractor_id)->where('is_active', 1)->where('is_deleted', 0)->value('user_id');
@@ -1680,7 +1703,8 @@ class projectsController extends Controller
                 'message' => 'Milestone approved successfully'
             ], 200);
 
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Error approving milestone: ' . $e->getMessage()
@@ -1736,10 +1760,10 @@ class projectsController extends Controller
             DB::table('milestones')
                 ->where('milestone_id', $milestoneId)
                 ->update([
-                    'setup_status' => 'rejected',
-                    'setup_rej_reason' => $rejectionReason,
-                    'updated_at' => now()
-                ]);
+                'setup_status' => 'rejected',
+                'setup_rej_reason' => $rejectionReason,
+                'updated_at' => now()
+            ]);
 
             // Notify contractor that milestone was rejected
             $cUserId = DB::table('contractor_users')->where('contractor_id', $milestone->contractor_id)->where('is_active', 1)->where('is_deleted', 0)->value('user_id');
@@ -1754,7 +1778,8 @@ class projectsController extends Controller
                 'message' => 'Milestone rejected successfully'
             ], 200);
 
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Error rejecting milestone: ' . $e->getMessage()
@@ -1800,7 +1825,8 @@ class projectsController extends Controller
                 'success' => true,
                 'message' => 'Milestone marked as complete successfully.',
             ]);
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e) {
             \Log::error('apiSetMilestoneComplete error', ['error' => $e->getMessage()]);
             return response()->json([
                 'success' => false,
@@ -1948,7 +1974,8 @@ class projectsController extends Controller
             }
 
             return response()->json($responsePayload);
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e) {
             \Log::error('apiSetMilestoneItemComplete error', ['error' => $e->getMessage()]);
             return response()->json([
                 'success' => false,
@@ -1993,7 +2020,8 @@ class projectsController extends Controller
                         if ($user && !Session::has('user')) {
                             Session::put('user', $user);
                         }
-                    } else {
+                    }
+                    else {
                         \Log::warning('completeProject: Token not found in database');
                     }
                 }
@@ -2008,7 +2036,8 @@ class projectsController extends Controller
                         Session::put('user', $user);
                     }
                 }
-            } else {
+            }
+            else {
                 \Log::info('completeProject: Using session user', [
                     'user_id' => $user->user_id ?? null
                 ]);
@@ -2076,8 +2105,8 @@ class projectsController extends Controller
             DB::table('projects')
                 ->where('project_id', $projectId)
                 ->update([
-                    'project_status' => 'completed'
-                ]);
+                'project_status' => 'completed'
+            ]);
 
             // Notify contractor that the project is completed
             if ($project->selected_contractor_id) {
@@ -2093,7 +2122,8 @@ class projectsController extends Controller
                 'project_id' => $projectId
             ]);
 
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e) {
             \Log::error('completeProject error', ['error' => $e->getMessage(), 'projectId' => $projectId]);
             return response()->json([
                 'success' => false,
@@ -2103,4 +2133,3 @@ class projectsController extends Controller
         }
     }
 }
-
