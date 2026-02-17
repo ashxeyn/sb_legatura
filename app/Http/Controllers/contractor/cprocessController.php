@@ -185,19 +185,55 @@ class cprocessController extends Controller
 
                 $projects = collect($data);
 
-                // Compute stats similar to JS mapping
-                $totalBids = $projects->reduce(function($acc, $p) { return $acc + ((isset($p->bid_id) && $p->bid_id) ? 1 : 0); }, 0);
-                $pendingBids = $projects->reduce(function($acc, $p) { return $acc + ((isset($p->bid_status) && $p->bid_status && $p->bid_status !== 'accepted') ? 1 : 0); }, 0);
-                $wonBids = $projects->reduce(function($acc, $p) { return $acc + ((isset($p->bid_status) && $p->bid_status === 'accepted') ? 1 : 0); }, 0);
-                $activeProjects = $projects->filter(function($p){ return (isset($p->display_status) && $p->display_status === 'in_progress'); })->count();
-                $completedCount = $projects->filter(function($p){ return (isset($p->display_status) && $p->display_status === 'completed'); })->count();
+                // Calculate exact dashboard numbers directly via optimized queries
+                // Resolve contractor_id for this user
+                $contractorId = DB::table('contractors')->where('user_id', $userId)->value('contractor_id');
+
+                if ($contractorId) {
+                    // Total Bids: all bids for this contractor
+                    $totalBids = (int) DB::table('bids')
+                        ->where('contractor_id', $contractorId)
+                        ->count();
+
+                    // Pending: submitted or under_review
+                    $pendingStatuses = ['submitted', 'under_review'];
+                    $pendingBids = (int) DB::table('bids')
+                        ->where('contractor_id', $contractorId)
+                        ->whereIn('bid_status', $pendingStatuses)
+                        ->count();
+
+                    // Won Bids: accepted or awarded
+                    $wonStatuses = ['accepted', 'awarded'];
+                    $wonBids = (int) DB::table('bids')
+                        ->where('contractor_id', $contractorId)
+                        ->whereIn('bid_status', $wonStatuses)
+                        ->count();
+
+                    // Active: distinct projects where contractor has a won bid AND the project has at least one milestone for this contractor
+                    $activeProjects = (int) DB::table('bids as b')
+                        ->join('milestones as m', 'b.project_id', '=', 'm.project_id')
+                        ->where('b.contractor_id', $contractorId)
+                        ->whereIn('b.bid_status', $wonStatuses)
+                        ->where('m.contractor_id', $contractorId)
+                        ->where(function($q) {
+                            $q->whereNull('m.is_deleted')->orWhere('m.is_deleted', 0);
+                        })
+                        ->distinct()
+                        ->count('b.project_id');
+
+                } else {
+                    $totalBids = 0;
+                    $pendingBids = 0;
+                    $wonBids = 0;
+                    $activeProjects = 0;
+                }
 
                 $stats = [
                     'total' => $totalBids,
                     'pending' => $pendingBids,
                     'active' => $wonBids,
                     'inProgress' => $activeProjects,
-                    'completed' => $completedCount
+                    'completed' => 0
                 ];
 
             } catch (\Exception $e) {
@@ -917,13 +953,13 @@ class cprocessController extends Controller
                 'success' => true,
                 'message' => $message,
                 'milestone_id' => $milestoneId,
-                'redirect_url' => '/dashboard'
+                'redirect_url' => '/contractor/myprojects'
             ], $isEditing ? 200 : 201);
         } else {
             return response()->json([
                 'success' => true,
                 'message' => $message,
-                'redirect' => '/dashboard'
+                'redirect' => '/contractor/myprojects'
             ]);
         }
     }
@@ -1472,14 +1508,44 @@ class cprocessController extends Controller
                 if (count($milestones) === 0) {
                     $project->display_status = 'waiting_milestone_setup';
                 } else {
-                    // Check if all milestones are approved/completed
-                    $pendingMilestones = DB::table('milestones')
+                    // Determine milestone status breakdown
+                    $totalMilestones = count($milestones);
+                    $notStarted = DB::table('milestones')
                         ->where('project_id', $project->project_id)
                         ->where('contractor_id', $contractor->contractor_id)
-                        ->whereNotIn('milestone_status', ['approved', 'completed'])
+                        ->where('milestone_status', 'not_started')
                         ->count();
 
-                    $project->display_status = $pendingMilestones > 0 ? 'in_progress' : 'completed';
+                    // Count milestones that are neither approved/completed nor not_started (i.e. active/in-progress)
+                    $activeMilestones = DB::table('milestones')
+                        ->where('project_id', $project->project_id)
+                        ->where('contractor_id', $contractor->contractor_id)
+                        ->whereNotIn('milestone_status', ['approved', 'completed', 'not_started'])
+                        ->count();
+
+                    if ($notStarted === $totalMilestones) {
+                        // All milestones have been submitted but not yet approved
+                        $project->display_status = 'waiting_for_approval';
+                    } elseif ($activeMilestones > 0) {
+                        // There are milestones in active/in-progress states
+                        $project->display_status = 'in_progress';
+                    } else {
+                        // No active milestones and not all are 'not_started' — check for completed
+                        $completedMilestones = DB::table('milestones')
+                            ->where('project_id', $project->project_id)
+                            ->where('contractor_id', $contractor->contractor_id)
+                            ->whereIn('milestone_status', ['approved', 'completed'])
+                            ->count();
+
+                        // Project is considered completed only when the project_status is 'completed'
+                        // and all milestones are marked completed/approved.
+                        if ($completedMilestones === $totalMilestones && (($project->project_status ?? '') === 'completed')) {
+                            $project->display_status = 'completed';
+                        } else {
+                            // Default to in_progress if milestones are approved but project_status not yet completed
+                            $project->display_status = 'in_progress';
+                        }
+                    }
                 }
             }
 

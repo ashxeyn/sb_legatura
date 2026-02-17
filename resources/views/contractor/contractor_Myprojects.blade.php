@@ -89,13 +89,17 @@
                 <!-- Tab Filters -->
                 <div class="tab-filters">
                     <button class="tab-filter-btn active" data-filter="needs_setup">
-                        <span class="tab-filter-text">Needs Setup</span>
-                        <span class="tab-filter-badge" id="needsSetupBadge">{{ $needsSetupCount ?? 0 }}</span>
-                    </button>
-                    <button class="tab-filter-btn" data-filter="in_progress">
-                        <span class="tab-filter-text">In Progress</span>
-                        <span class="tab-filter-badge" id="inProgressBadge">{{ $inProgressCount ?? 0 }}</span>
-                    </button>
+                            <span class="tab-filter-text">Needs Setup</span>
+                            <span class="tab-filter-badge" id="needsSetupBadge">{{ $needsSetupCount ?? 0 }}</span>
+                        </button>
+                        <button class="tab-filter-btn" data-filter="waiting_approval">
+                            <span class="tab-filter-text">Waiting for Approval</span>
+                            <span class="tab-filter-badge" id="waitingApprovalBadge">{{ $waitingApprovalCount ?? 0 }}</span>
+                        </button>
+                        <button class="tab-filter-btn" data-filter="in_progress">
+                            <span class="tab-filter-text">In Progress</span>
+                            <span class="tab-filter-badge" id="inProgressBadge">{{ $inProgressCount ?? 0 }}</span>
+                        </button>
                     <button class="tab-filter-btn" data-filter="completed">
                         <span class="tab-filter-text">Completed</span>
                         <span class="tab-filter-badge" id="completedBadge">{{ $completedCount ?? 0 }}</span>
@@ -106,6 +110,7 @@
         @php
             // Compute badge counts from server-provided $projects
             $needsSetupCount = 0;
+            $waitingApprovalCount = 0;
             $inProgressCount = 0;
             $completedCount = 0;
             $hasProjects = isset($projects) && count($projects) > 0;
@@ -115,6 +120,8 @@
                     $display = $p->display_status ?? ($p->project_status ?? null);
                     if ($display === 'waiting_milestone_setup') {
                         $needsSetupCount++;
+                    } elseif ($display === 'waiting_for_approval') {
+                        $waitingApprovalCount++;
                     } elseif ($display === 'in_progress') {
                         $inProgressCount++;
                     } elseif ($display === 'completed') {
@@ -166,11 +173,18 @@
 
                             $display = $p->display_status ?? ($p->project_status ?? null);
                             $awaitingSetup = ($display === 'waiting_milestone_setup');
-                            $statusText = $awaitingSetup ? 'Needs Setup' : ( $display ? ucfirst(str_replace('_', ' ', $display)) : ($p->project_post_status ?? ''));
+                            $awaitingApproval = ($display === 'waiting_for_approval');
+                            if ($awaitingSetup) {
+                                $statusText = 'Needs Setup';
+                            } elseif ($awaitingApproval) {
+                                $statusText = 'Waiting for Approval';
+                            } else {
+                                $statusText = $display ? ucfirst(str_replace('_', ' ', $display)) : ($p->project_post_status ?? '');
+                            }
                         @endphp
 
                         <div class="project-card">
-                            @if($awaitingSetup)
+                                @if($awaitingSetup)
                                 <div class="milestone-warning-banner">
                                     <i class="fi fi-rr-triangle-warning"></i>
                                     <span>Tap to setup milestones</span>
@@ -238,6 +252,11 @@
                                     <button class="action-btn w-full px-4 py-2 rounded-lg transition-colors font-medium text-sm flex items-center justify-center gap-2 setup-btn" onclick="window.openMilestoneSetupModal(@json($project))">
                                         <i class="fi fi-rr-settings action-btn-icon"></i>
                                         <span class="action-btn-text">Setup</span>
+                                    </button>
+                                @elseif($awaitingApproval)
+                                    <button class="action-btn w-full px-4 py-2 rounded-lg transition-colors font-medium text-sm flex items-center justify-center gap-2 view-btn" onclick="window.openProjectDetailsModal(@json($project))">
+                                        <i class="fi fi-rr-eye action-btn-icon"></i>
+                                        <span class="action-btn-text">View Details</span>
                                     </button>
                                 @elseif(($display ?? '') === 'completed')
                                     <button class="action-btn w-full px-4 py-2 rounded-lg transition-colors font-medium text-sm flex items-center justify-center gap-2 view-btn" onclick="window.openProjectDetailsModal(@json($project))">

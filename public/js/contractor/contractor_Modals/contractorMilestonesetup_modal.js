@@ -16,9 +16,9 @@ class MilestoneSetupModal {
             endDate: '',
             totalBudget: 0,
             downpaymentAmount: 0,
-            numberOfMilestones: 5
+            numberOfMilestones: 1
         };
-        
+
         this.init();
     }
 
@@ -89,7 +89,7 @@ class MilestoneSetupModal {
             // Set today as minimum date
             const today = new Date().toISOString().split('T')[0];
             startDate.setAttribute('min', today);
-            
+
             startDate.addEventListener('change', (e) => {
                 this.formData.startDate = e.target.value;
                 // Set minimum end date to start date
@@ -102,7 +102,7 @@ class MilestoneSetupModal {
             });
 
             // Also trigger on click to open calendar
-            startDate.addEventListener('click', function() {
+            startDate.addEventListener('click', function () {
                 this.showPicker?.();
             });
         }
@@ -115,7 +115,7 @@ class MilestoneSetupModal {
             });
 
             // Also trigger on click to open calendar
-            endDate.addEventListener('click', function() {
+            endDate.addEventListener('click', function () {
                 this.showPicker?.();
             });
         }
@@ -188,7 +188,7 @@ class MilestoneSetupModal {
     openModal(projectData = {}) {
         this.projectData = projectData;
         this.currentStep = 1;
-        
+
         // Set project name in header
         const projectNameEl = document.getElementById('milestoneProjectName');
         if (projectNameEl && projectData.title) {
@@ -196,7 +196,15 @@ class MilestoneSetupModal {
         }
 
         // Pre-fill budget if available
-        if (projectData.budget) {
+        // Pre-fill budget using proposed_cost from accepted bid
+        if (projectData.proposed_cost) {
+            const budgetInput = document.getElementById('totalBudget');
+            if (budgetInput) {
+                const budgetValue = parseFloat(projectData.proposed_cost);
+                this.formData.totalBudget = budgetValue;
+                budgetInput.value = this.formatNumber(budgetValue);
+            }
+        } else if (projectData.budget) {
             const budgetInput = document.getElementById('totalBudget');
             if (budgetInput) {
                 // Extract numbers from budget string (e.g., "₱2.92M" -> 2920000)
@@ -248,14 +256,27 @@ class MilestoneSetupModal {
     resetForm() {
         this.currentStep = 1;
         this.milestones = [];
+
+        const paymentModeInputs = document.querySelectorAll('input[name="paymentMode"]');
+        paymentModeInputs.forEach(input => {
+            input.checked = false;
+            input.closest('.payment-mode-card').classList.remove('active');
+        });
+
+        // Reset downpayment group visibility
+        const downpaymentGroup = document.getElementById('downpaymentGroup');
+        if (downpaymentGroup) {
+            downpaymentGroup.style.display = 'block'; // Default to show, or hidden until selection?
+        }
+
         this.formData = {
             planName: '',
-            paymentMode: 'downpayment',
+            paymentMode: null, // Clear payment mode
             startDate: '',
             endDate: '',
             totalBudget: 0,
             downpaymentAmount: 0,
-            numberOfMilestones: 5
+            numberOfMilestones: 1
         };
 
         // Reset form inputs
@@ -280,7 +301,7 @@ class MilestoneSetupModal {
         this.updateStepDisplay();
     }
 
-    nextStep() {
+    async nextStep() {
         // Validate current step
         if (!this.validateCurrentStep()) {
             return;
@@ -289,7 +310,25 @@ class MilestoneSetupModal {
         // Save current step data
         this.saveStepData();
 
+        // AJAX validation for Step 1
+        if (this.currentStep === 1) {
+            const isValid = await this.validateStep1WithBackend();
+            if (!isValid) {
+                return; // Block transition if backend validation fails
+            }
+        }
+
+        // AJAX validation for Step 2
         if (this.currentStep === 2) {
+            // Check budget warning first
+            if (this.checkBudgetWarning()) {
+                return; // Stop here, warning modal is shown
+            }
+
+            const isValid = await this.validateStep2WithBackend();
+            if (!isValid) {
+                return; // Block transition if backend validation fails
+            }
             // Generate milestones before going to step 3
             this.generateMilestones();
         }
@@ -316,7 +355,7 @@ class MilestoneSetupModal {
         stepItems.forEach((item, index) => {
             const stepNum = index + 1;
             item.classList.remove('active', 'completed');
-            
+
             if (stepNum === this.currentStep) {
                 item.classList.add('active');
             } else if (stepNum < this.currentStep) {
@@ -353,10 +392,13 @@ class MilestoneSetupModal {
     }
 
     validateCurrentStep() {
+        this.clearAllInlineErrors();
+        let isValid = true;
+
         if (this.currentStep === 1) {
             const planName = document.getElementById('milestonePlanName');
             if (!planName || !planName.value.trim()) {
-                this.showNotification('Please enter a milestone plan name', 'error');
+                this.showInlineError(planName, 'This field is required');
                 planName?.focus();
                 return false;
             }
@@ -365,45 +407,49 @@ class MilestoneSetupModal {
         if (this.currentStep === 2) {
             const startDate = document.getElementById('startDate');
             if (!startDate || !startDate.value) {
-                this.showNotification('Please select a start date', 'error');
+                this.showInlineError(startDate, 'This field is required');
                 startDate?.focus();
-                return false;
+                isValid = false;
             }
 
             const endDate = document.getElementById('endDate');
             if (!endDate || !endDate.value) {
-                this.showNotification('Please select an end date', 'error');
-                endDate?.focus();
-                return false;
+                this.showInlineError(endDate, 'This field is required');
+                if (isValid) endDate?.focus();
+                isValid = false;
             }
 
             // Validate end date is after start date
-            if (new Date(endDate.value) < new Date(startDate.value)) {
-                this.showNotification('End date must be after start date', 'error');
-                endDate?.focus();
-                return false;
+            if (startDate && startDate.value && endDate && endDate.value) {
+                if (new Date(endDate.value) < new Date(startDate.value)) {
+                    this.showInlineError(endDate, 'End date must be after start date');
+                    if (isValid) endDate?.focus();
+                    isValid = false;
+                }
             }
 
             const totalBudget = document.getElementById('totalBudget');
             if (!totalBudget || !totalBudget.value.trim()) {
-                this.showNotification('Please enter the total project cost', 'error');
-                totalBudget?.focus();
-                return false;
+                this.showInlineError(totalBudget, 'This field is required');
+                if (isValid) totalBudget?.focus();
+                isValid = false;
             }
 
             if (this.formData.paymentMode === 'downpayment') {
                 const downpaymentAmount = document.getElementById('downpaymentAmount');
                 if (!downpaymentAmount || !downpaymentAmount.value.trim()) {
-                    this.showNotification('Please enter the downpayment amount', 'error');
-                    downpaymentAmount?.focus();
-                    return false;
+                    this.showInlineError(downpaymentAmount, 'This field is required');
+                    if (isValid) downpaymentAmount?.focus();
+                    isValid = false;
                 }
             }
+
+            if (!isValid) return false;
         }
 
         if (this.currentStep === 3) {
             const milestoneItems = document.querySelectorAll('.milestone-item');
-            
+
             if (milestoneItems.length === 0) {
                 this.showNotification('Please add at least one milestone', 'error');
                 return false;
@@ -419,39 +465,63 @@ class MilestoneSetupModal {
             // Validate all milestone fields
             let hasError = false;
             milestoneItems.forEach((item, index) => {
-                const name = item.querySelector('.milestone-name')?.value;
-                const percentage = item.querySelector('.milestone-percentage')?.value;
-                const targetDate = item.querySelector('.milestone-target-date')?.value;
-                const amount = item.querySelector('.milestone-amount')?.value;
-                
+                const nameInput = item.querySelector('.milestone-name');
+                const percentageInput = item.querySelector('.milestone-percentage');
+                const targetDateInput = item.querySelector('.milestone-target-date');
+                // Amount is readonly/auto-calculated, so skipping required check for user input,
+                // but we can check if it's valid if needed. Usually valid if percentage is valid.
+
+                const name = nameInput?.value;
+                const percentage = percentageInput?.value;
+                const targetDate = targetDateInput?.value;
+
                 if (!name || !name.trim()) {
-                    this.showNotification(`Milestone ${index + 1}: Title is required`, 'error');
-                    item.querySelector('.milestone-name')?.focus();
+                    this.showInlineError(nameInput, 'Title is required');
+                    if (!hasError) nameInput?.focus();
                     hasError = true;
-                    return false;
                 }
 
                 if (!percentage || parseFloat(percentage) <= 0) {
-                    this.showNotification(`Milestone ${index + 1}: Percentage is required`, 'error');
-                    item.querySelector('.milestone-percentage')?.focus();
+                    this.showInlineError(percentageInput, 'Required');
+                    if (!hasError) percentageInput?.focus();
                     hasError = true;
-                    return false;
                 }
 
                 if (!targetDate) {
-                    this.showNotification(`Milestone ${index + 1}: Target completion date is required`, 'error');
-                    item.querySelector('.milestone-target-date')?.focus();
+                    this.showInlineError(targetDateInput, 'Date is required');
+                    if (!hasError) targetDateInput?.focus();
                     hasError = true;
-                    return false;
                 }
-                
-                if (!amount || parseFloat(amount.replace(/,/g, '')) <= 0) {
-                    this.showNotification(`Milestone ${index + 1}: Payment amount is required`, 'error');
-                    item.querySelector('.milestone-amount')?.focus();
-                    hasError = true;
-                    return false;
+
+                // Chronological Date Validation
+                // Check if current date is after previous milestone date
+                if (index > 0 && targetDate && !hasError) {
+                    const prevItem = milestoneItems[index - 1];
+                    const prevDateInput = prevItem.querySelector('.milestone-target-date');
+                    const prevDateVal = prevDateInput?.value;
+
+                    if (prevDateVal && targetDate <= prevDateVal) {
+                        this.showInlineError(targetDateInput, `Date must be after previous milestone (${this.formatDateForDisplay(prevDateVal)})`);
+                        if (!hasError) targetDateInput?.focus();
+                        hasError = true;
+                    }
                 }
             });
+
+            // Validate Last Milestone Date Rule
+            if (milestoneItems.length > 0) {
+                const lastItem = milestoneItems[milestoneItems.length - 1];
+                const lastDateInput = lastItem.querySelector('.milestone-target-date');
+                const projectEndDate = this.formData.endDate;
+
+                if (lastDateInput && lastDateInput.value && projectEndDate) {
+                    if (lastDateInput.value !== projectEndDate) {
+                        this.showInlineError(lastDateInput, `Last milestone date must be ${this.formatDateForDisplay(projectEndDate)}`);
+                        if (!hasError) lastDateInput.focus();
+                        hasError = true;
+                    }
+                }
+            }
 
             if (hasError) return false;
         }
@@ -481,12 +551,9 @@ class MilestoneSetupModal {
             const downpaymentAmount = document.getElementById('downpaymentAmount');
             this.formData.downpaymentAmount = this.parseNumber(downpaymentAmount?.value || '0');
 
-            // Auto-calculate number of milestones based on project duration if not set
-            if (!this.formData.numberOfMilestones && this.formData.startDate && this.formData.endDate) {
-                const start = new Date(this.formData.startDate);
-                const end = new Date(this.formData.endDate);
-                const months = Math.ceil((end - start) / (1000 * 60 * 60 * 24 * 30));
-                this.formData.numberOfMilestones = Math.max(3, Math.min(months, 10)); // Between 3-10 milestones
+            // Default to 1 milestone as requested
+            if (!this.formData.numberOfMilestones) {
+                this.formData.numberOfMilestones = 1;
             }
         }
 
@@ -500,13 +567,14 @@ class MilestoneSetupModal {
         if (!container) return;
 
         container.innerHTML = '';
-        
+
         const remainingBudget = this.formData.totalBudget - this.formData.downpaymentAmount;
-        const numMilestones = this.formData.numberOfMilestones || 5;
-        const amountPerMilestone = Math.floor(remainingBudget / numMilestones);
+        const numMilestones = this.formData.numberOfMilestones || 1;
+        const amountPerMilestone = 0; // No pre-fill
+        const percentagePerMilestone = 0; // No pre-fill
 
         for (let i = 0; i < numMilestones; i++) {
-            this.addMilestone(i + 1, amountPerMilestone);
+            this.addMilestone(i + 1, amountPerMilestone, percentagePerMilestone);
         }
     }
 
@@ -519,7 +587,7 @@ class MilestoneSetupModal {
 
         const clone = template.content.cloneNode(true);
         const milestoneItem = clone.querySelector('.milestone-item');
-        
+
         const number = milestoneNumber || container.children.length + 1;
         const milestoneNumberEl = clone.querySelector('.milestone-number');
         if (milestoneNumberEl) {
@@ -549,9 +617,9 @@ class MilestoneSetupModal {
             if (startDate) {
                 targetDateInput.setAttribute('min', startDate);
             }
-            
+
             // Click handler for date input
-            targetDateInput.addEventListener('click', function() {
+            targetDateInput.addEventListener('click', function () {
                 this.showPicker?.();
             });
         }
@@ -584,15 +652,7 @@ class MilestoneSetupModal {
             });
         }
 
-        // Amount input handler
-        const amountInput = clone.querySelector('.milestone-amount');
-        if (amountInput) {
-            amountInput.addEventListener('input', (e) => {
-                this.formatCurrency(e.target);
-                this.calculateMilestonePercentageFromAmount(milestoneItem);
-                this.updateTotalProgress();
-            });
-        }
+
 
         // Percentage input handler
         const percentageInput = clone.querySelector('.milestone-percentage');
@@ -604,7 +664,7 @@ class MilestoneSetupModal {
         }
 
         container.appendChild(clone);
-        
+
         // Update total progress after adding
         this.updateTotalProgress();
     }
@@ -635,16 +695,16 @@ class MilestoneSetupModal {
     updateTotalProgress() {
         const items = document.querySelectorAll('.milestone-item');
         let totalPercentage = 0;
-        
+
         items.forEach(item => {
             const percentage = parseFloat(item.querySelector('.milestone-percentage')?.value || 0);
             totalPercentage += percentage;
         });
-        
+
         const progressDisplay = document.getElementById('totalProgressValue');
         if (progressDisplay) {
             progressDisplay.textContent = totalPercentage.toFixed(1) + '%';
-            
+
             // Change color based on total
             if (Math.abs(totalPercentage - 100) < 0.5) {
                 progressDisplay.style.color = '#10b981'; // Green when exactly 100%
@@ -654,7 +714,7 @@ class MilestoneSetupModal {
                 progressDisplay.style.color = '#EEA24B'; // Orange when under 100%
             }
         }
-        
+
         return totalPercentage;
     }
 
@@ -687,7 +747,7 @@ class MilestoneSetupModal {
     calculateMilestonePercentageFromAmount(milestoneItem) {
         const amount = this.parseNumber(milestoneItem.querySelector('.milestone-amount')?.value || '0');
         const totalBudget = this.formData.totalBudget - this.formData.downpaymentAmount;
-        
+
         if (totalBudget > 0 && amount > 0) {
             const percentage = (amount / totalBudget * 100).toFixed(1);
             const percentageInput = milestoneItem.querySelector('.milestone-percentage');
@@ -700,8 +760,8 @@ class MilestoneSetupModal {
     calculateMilestoneAmountFromPercentage(milestoneItem) {
         const percentage = parseFloat(milestoneItem.querySelector('.milestone-percentage')?.value || 0);
         const totalBudget = this.formData.totalBudget - this.formData.downpaymentAmount;
-        
-        if (totalBudget > 0 && percentage > 0) {
+
+        if (totalBudget > 0) {
             const amount = totalBudget * (percentage / 100);
             const amountInput = milestoneItem.querySelector('.milestone-amount');
             if (amountInput) {
@@ -723,7 +783,7 @@ class MilestoneSetupModal {
 
     submitMilestones() {
         this.saveStepData();
-        
+
         // Show confirmation modal instead of directly submitting
         this.showConfirmationModal();
     }
@@ -734,34 +794,34 @@ class MilestoneSetupModal {
 
         // Populate confirmation data
         document.getElementById('confirmPlanName').textContent = this.formData.planName || '-';
-        
+
         const paymentModeText = this.formData.paymentMode === 'downpayment' ? 'Downpayment' : 'Full Payment';
         document.getElementById('confirmPaymentMode').textContent = paymentModeText;
-        
+
         // Format dates
         if (this.formData.startDate && this.formData.endDate) {
-            const startDate = new Date(this.formData.startDate).toLocaleDateString('en-US', { 
-                year: 'numeric', month: 'short', day: 'numeric' 
+            const startDate = new Date(this.formData.startDate).toLocaleDateString('en-US', {
+                year: 'numeric', month: 'short', day: 'numeric'
             });
-            const endDate = new Date(this.formData.endDate).toLocaleDateString('en-US', { 
-                year: 'numeric', month: 'short', day: 'numeric' 
+            const endDate = new Date(this.formData.endDate).toLocaleDateString('en-US', {
+                year: 'numeric', month: 'short', day: 'numeric'
             });
             document.getElementById('confirmDuration').textContent = `${startDate} - ${endDate}`;
         }
-        
+
         // Format budget
         document.getElementById('confirmTotalBudget').textContent = `₱${this.formatNumber(this.formData.totalBudget)}`;
-        
+
         // Format downpayment
         if (this.formData.paymentMode === 'downpayment') {
             document.getElementById('confirmDownpayment').textContent = `₱${this.formatNumber(this.formData.downpaymentAmount)}`;
         } else {
             document.getElementById('confirmDownpayment').textContent = 'N/A';
         }
-        
+
         // Milestone count
         document.getElementById('confirmMilestoneCount').textContent = `${this.milestones.length} milestone${this.milestones.length !== 1 ? 's' : ''}`;
-        
+
         // Show overlay
         overlay.classList.add('active');
     }
@@ -773,7 +833,7 @@ class MilestoneSetupModal {
         }
     }
 
-    confirmAndSubmit() {
+    async confirmAndSubmit() {
         // Prepare final data
         const finalData = {
             project: this.projectData,
@@ -791,15 +851,199 @@ class MilestoneSetupModal {
         // Close confirmation modal
         this.closeConfirmationModal();
 
-        // Show success notification
-        this.showNotification('Milestone setup created successfully!', 'success');
+        // Submit to backend
+        await this.submitMilestonesToBackend();
+    }
 
-        // Close main modal
-        setTimeout(() => {
-            this.closeModal();
-            // TODO: Send data to backend API
-            // this.saveMilestonesToBackend(finalData);
-        }, 1000);
+    /**
+     * Get CSRF token from multiple possible sources
+     */
+    getCsrfToken() {
+        // Try meta tag first
+        let token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+        // Fallback to window.Laravel if available
+        if (!token && window.Laravel && window.Laravel.csrfToken) {
+            token = window.Laravel.csrfToken;
+        }
+
+        // Fallback to hidden input field
+        if (!token) {
+            const hiddenInput = document.querySelector('input[name="_token"]');
+            token = hiddenInput?.value;
+        }
+
+        return token;
+    }
+
+    /**
+     * Validate Step 1 with backend
+     */
+    async validateStep1WithBackend() {
+        try {
+            const csrfToken = this.getCsrfToken();
+
+            const response = await fetch('/contractor/milestone/setup/step1', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({
+                    project_id: this.projectData.id || this.projectData.project_id,
+                    milestone_name: this.formData.planName,
+                    milestone_description: this.formData.planName,
+                    payment_mode: this.formData.paymentMode
+                })
+            });
+
+            const data = await response.json();
+
+            if (response.status === 422) {
+                // Validation errors
+                const errors = data.errors || {};
+
+                if (errors.milestone_name) {
+                    this.showInlineError(document.getElementById('milestonePlanName'), errors.milestone_name[0]);
+                }
+
+                return false;
+            }
+
+            if (!response.ok || !data.success) {
+                this.showNotification(data.message || 'Failed to validate step 1', 'error');
+                return false;
+            }
+
+            return true;
+        } catch (error) {
+            console.error('Step 1 validation error:', error);
+            this.showNotification('Network error. Please try again.', 'error');
+            return false;
+        }
+    }
+
+    /**
+     * Validate Step 2 with backend
+     */
+    async validateStep2WithBackend() {
+        try {
+            const csrfToken = this.getCsrfToken();
+
+            const response = await fetch('/contractor/milestone/setup/step2', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({
+                    start_date: this.formData.startDate,
+                    end_date: this.formData.endDate,
+                    total_project_cost: this.formData.totalBudget,
+                    downpayment_amount: this.formData.paymentMode === 'downpayment' ? this.formData.downpaymentAmount : 0
+                })
+            });
+
+            const data = await response.json();
+
+            if (response.status === 422) {
+                const errors = data.errors || {};
+
+                if (errors.start_date) this.showInlineError(document.getElementById('startDate'), errors.start_date[0]);
+                if (errors.end_date) this.showInlineError(document.getElementById('endDate'), errors.end_date[0]);
+                if (errors.total_project_cost) this.showInlineError(document.getElementById('totalBudget'), errors.total_project_cost[0]);
+                if (errors.downpayment_amount) this.showInlineError(document.getElementById('downpaymentAmount'), errors.downpayment_amount[0]);
+
+                return false;
+            }
+
+            if (!response.ok || !data.success) {
+                this.showNotification(data.message || 'Failed to validate step 2', 'error');
+                return false;
+            }
+
+            return true;
+        } catch (error) {
+            console.error('Step 2 validation error:', error);
+            this.showNotification('Network error. Please try again.', 'error');
+            return false;
+        }
+    }
+
+    /**
+     * Submit all milestone data to backend
+     */
+    async submitMilestonesToBackend() {
+        try {
+            const csrfToken = this.getCsrfToken();
+
+            // Prepare milestone items array
+            const items = this.milestones.map(milestone => ({
+                title: milestone.name,
+                description: milestone.description || '',
+                percentage: milestone.percentage,
+                date_to_finish: milestone.targetDate,
+                amount: milestone.amount
+            }));
+
+            const response = await fetch('/contractor/milestone/setup/submit', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({
+                    items: JSON.stringify(items)
+                })
+            });
+
+            const data = await response.json();
+
+            if (response.status === 422) {
+                // Validation errors
+                const errors = data.errors || {};
+                const errorMessages = Object.values(errors).flat();
+                this.showNotification(errorMessages[0] || 'Validation failed', 'error');
+                return;
+            }
+
+            if (response.status === 500) {
+                // Server error
+                this.showNotification(data.message || 'Server error occurred', 'error');
+                return;
+            }
+
+            if (!response.ok || !data.success) {
+                this.showNotification(data.message || 'Failed to submit milestone', 'error');
+                return;
+            }
+
+            // Success!
+            this.showNotification(data.message || 'Milestone setup created successfully!', 'success');
+
+            // Redirect if URL provided
+            if (data.redirect_url) {
+                setTimeout(() => {
+                    window.location.href = data.redirect_url;
+                }, 1500);
+            } else {
+                // Close modal after success
+                setTimeout(() => {
+                    this.closeModal();
+                    // Reload page to show updated data
+                    window.location.reload();
+                }, 1500);
+            }
+        } catch (error) {
+            console.error('Milestone submission error:', error);
+            this.showNotification('Network error. Please try again.', 'error');
+        }
     }
 
     showNotification(message, type = 'info') {
@@ -833,6 +1077,162 @@ class MilestoneSetupModal {
             toast.style.animation = 'slideOutDown 0.3s ease';
             setTimeout(() => toast.remove(), 300);
         }, 3000);
+    }
+    /**
+     * Show inline error message
+     */
+    showInlineError(input, message) {
+        if (!input) return;
+        const formGroup = input.closest('.form-group');
+        const errorSpan = formGroup?.querySelector('.validation-error');
+        if (errorSpan) {
+            errorSpan.textContent = message;
+            errorSpan.style.display = 'block';
+            input.style.borderColor = '#ef4444';
+            input.classList.add('border-red-500');
+        }
+    }
+
+    /**
+     * Clear inline error message
+     */
+    clearInlineError(input) {
+        if (!input) return;
+        const formGroup = input.closest('.form-group');
+        const errorSpan = formGroup?.querySelector('.validation-error');
+        if (errorSpan) {
+            errorSpan.style.display = 'none';
+            input.style.borderColor = '';
+            input.classList.remove('border-red-500');
+        }
+    }
+
+    /**
+     * Clear all inline errors
+     */
+    clearAllInlineErrors() {
+        const errorSpans = document.querySelectorAll('.validation-error');
+        errorSpans.forEach(span => {
+            span.style.display = 'none';
+            const formGroup = span.closest('.form-group');
+            const input = formGroup?.querySelector('.form-input, .form-textarea');
+            if (input) {
+                input.style.borderColor = '';
+                input.classList.remove('border-red-500');
+            }
+        });
+    }
+
+    /**
+     * Format date for display (e.g. Feb 23, 2027)
+     */
+    formatDateForDisplay(dateString) {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    /**
+     * Check if total project cost is within project budget range
+     * Returns true if warning is shown, false otherwise
+     */
+    checkBudgetWarning() {
+        // Get project Min/Max from raw data (from contractor_Myprojects.js) or fallback
+        const raw = this.projectData.raw || this.projectData;
+        let minBudget = 0;
+        let maxBudget = 0;
+
+        if (raw.budget_range_min) {
+            minBudget = parseFloat(raw.budget_range_min);
+        }
+        if (raw.budget_range_max) {
+            maxBudget = parseFloat(raw.budget_range_max);
+        }
+
+        // Get entered total cost - ensure it's up to date
+        const totalBudgetInput = document.getElementById('totalBudget');
+        const totalProjectCost = this.parseNumber(totalBudgetInput?.value || '0');
+
+        // Skip if no range defined or both are 0
+        if (!minBudget && !maxBudget) return false;
+
+        let warningMessage = '';
+        let warningType = 'warning';
+
+        // Check Min Range
+        if (minBudget > 0 && totalProjectCost < minBudget) {
+            warningMessage = `The total project cost you entered (<span class="font-semibold text-gray-900">₱${this.formatNumber(totalProjectCost)}</span>) is <strong>lower</strong> than the project's minimum budget range (<span class="font-semibold text-gray-900">₱${this.formatNumber(minBudget)}</span>).`;
+        }
+        // Check Max Range
+        else if (maxBudget > 0 && totalProjectCost > maxBudget) {
+            warningMessage = `The total project cost you entered (<span class="font-semibold text-gray-900">₱${this.formatNumber(totalProjectCost)}</span>) is <strong>higher</strong> than the project's maximum budget range (<span class="font-semibold text-gray-900">₱${this.formatNumber(maxBudget)}</span>).`;
+        }
+
+        if (warningMessage) {
+            this.showBudgetWarning(warningMessage, warningType);
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Show Budget Warning Modal
+     */
+    showBudgetWarning(message, type) {
+        const modal = document.getElementById('budgetWarningModal');
+        const overlay = document.getElementById('budgetWarningOverlay');
+        const iconContainer = document.getElementById('budgetWarningIcon');
+        const msgEl = document.getElementById('budgetWarningMessage');
+        const editBtn = document.getElementById('budgetWarningEditBtn');
+        const continueBtn = document.getElementById('budgetWarningContinueBtn');
+
+        if (modal && msgEl) {
+            msgEl.innerHTML = message;
+
+            // Setup Icon
+            iconContainer.className = 'modal-icon-container ' + type;
+
+            // Show Modal
+            modal.classList.remove('hidden');
+
+            // Define close handler
+            const closeModal = () => {
+                modal.classList.add('hidden');
+            };
+
+            // Bind actions
+            editBtn.onclick = () => {
+                closeModal();
+                // Focus on total budget input
+                setTimeout(() => {
+                    const input = document.getElementById('totalBudget');
+                    input?.focus();
+                    input?.select();
+                }, 100);
+            };
+
+            continueBtn.onclick = async () => {
+                closeModal();
+                // Proceed with Step 2 validation explicitly
+                // We need to show loading state perhaps? separate from nextStep
+                // But validateStep2WithBackend handles UI blocking usually via class methods?
+                // Actually validateStep2WithBackend calls fetch and shows notification on error.
+                // It returns isValid boolean.
+
+                // If valid, we need to proceed to generate milestones and move to step 3.
+                // We should reuse the logic from nextStep() for step 2:
+
+                const isValid = await this.validateStep2WithBackend();
+                if (isValid) {
+                    this.generateMilestones();
+                    this.currentStep++;
+                    this.updateStepDisplay();
+                }
+            };
+
+            overlay.onclick = closeModal;
+        }
     }
 }
 
