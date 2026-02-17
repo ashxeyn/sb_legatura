@@ -238,6 +238,27 @@ class authController extends Controller
         return view('accounts.signup', compact('contractorTypes', 'occupations', 'validIds', 'provinces', 'picabCategories'));
     }
 
+    public function showOwnerAccountSetup()
+    {
+        $occupations = $this->accountClass->getOccupations();
+        $validIds = $this->accountClass->getValidIds();
+        $provinces = $this->psgcService->getProvinces();
+
+        $selectedProvince = request()->input('owner_address_province', old('owner_address_province'));
+        $selectedCity = request()->input('owner_address_city', old('owner_address_city'));
+
+        $cities = $selectedProvince ? $this->psgcService->getCitiesByProvince($selectedProvince) : [];
+        $barangays = $selectedCity ? $this->psgcService->getBarangaysByCity($selectedCity) : [];
+
+        return view('signUp_logIN.propertyOwner_accountSetup', compact(
+            'occupations',
+            'validIds',
+            'provinces',
+            'cities',
+            'barangays'
+        ));
+    }
+
     // Handle role selection
     public function selectRole(accountRequest $request)
     {
@@ -1123,11 +1144,24 @@ class authController extends Controller
     // Handle Property Owner Step 2
     public function propertyOwnerStep2(accountRequest $request)
     {
+        \Log::info("Step 2: Starting account setup for email: {$request->email}");
 
         // Generate and send OTP
         $otp = $this->authService->generateOtp();
         $otpHash = $this->authService->hashOtp($otp);
-        $this->authService->sendOtpEmail($request->email, $otp);
+        
+        \Log::info("Step 2: Generated OTP for {$request->email}, sending email...");
+        $emailSent = $this->authService->sendOtpEmail($request->email, $otp);
+        
+        if (!$emailSent) {
+            \Log::error("Step 2: Failed to send OTP email to {$request->email}");
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to send OTP email. Please verify SMTP credentials and try again.'
+            ], 500);
+        }
+
+        \Log::info("Step 2: OTP email sent successfully to {$request->email}");
 
         // Store in session (include issued timestamp for reliable verification)
         Session::put('owner_step2', [
@@ -1412,33 +1446,89 @@ class authController extends Controller
     // Property Owner Step 4
     public function propertyOwnerStep4(accountRequest $request)
     {
-        // Handle file uploads
-        $validIdPath = null;
-        $validIdBackPath = null;
-        $policeClearancePath = null;
-
-        if ($request->hasFile('valid_id_photo')) {
-            $validIdPath = $request->file('valid_id_photo')->store('validID', 'public');
-        }
-
-        if ($request->hasFile('valid_id_back_photo')) {
-            $validIdBackPath = $request->file('valid_id_back_photo')->store('validID', 'public');
-        }
-
-        if ($request->hasFile('police_clearance')) {
-            $policeClearancePath = $request->file('police_clearance')->store('policeClearance', 'public');
-        }
-
-        Session::put('owner_step4', [
-            'valid_id_id' => $request->valid_id_id,
-            'valid_id_photo' => $validIdPath,
-            'valid_id_back_photo' => $validIdBackPath,
-            'police_clearance' => $policeClearancePath
+        \Log::info('STEP 4 START: propertyOwnerStep4 called');
+        
+        // Detailed file debugging
+        \Log::info('Request input keys:', $request->all());
+        \Log::info('Files received (hasFile):', [
+            'valid_id_photo' => $request->hasFile('valid_id_photo'),
+            'valid_id_back_photo' => $request->hasFile('valid_id_back_photo'),
+            'police_clearance' => $request->hasFile('police_clearance'),
         ]);
+        
+        // Check file details if they exist
+        if ($request->hasFile('valid_id_photo')) {
+            $file = $request->file('valid_id_photo');
+            \Log::info('valid_id_photo details:', [
+                'name' => $file->getClientOriginalName(),
+                'mime' => $file->getMimeType(),
+                'size' => $file->getSize(),
+                'is_valid' => $file->isValid(),
+            ]);
+        }
+        
+        if ($request->hasFile('valid_id_back_photo')) {
+            $file = $request->file('valid_id_back_photo');
+            \Log::info('valid_id_back_photo details:', [
+                'name' => $file->getClientOriginalName(),
+                'mime' => $file->getMimeType(),
+                'size' => $file->getSize(),
+                'is_valid' => $file->isValid(),
+            ]);
+        }
+        
+        if ($request->hasFile('police_clearance')) {
+            $file = $request->file('police_clearance');
+            \Log::info('police_clearance details:', [
+                'name' => $file->getClientOriginalName(),
+                'mime' => $file->getMimeType(),
+                'size' => $file->getSize(),
+                'is_valid' => $file->isValid(),
+            ]);
+        }
 
-        Session::put('signup_step', 5);
+        try {
+            // Handle file uploads
+            $validIdPath = null;
+            $validIdBackPath = null;
+            $policeClearancePath = null;
 
-        return response()->json(['success' => true, 'step' => 5]);
+            if ($request->hasFile('valid_id_photo')) {
+                \Log::info('Storing valid_id_photo');
+                $validIdPath = $request->file('valid_id_photo')->store('validID', 'public');
+                \Log::info('valid_id_photo stored at: ' . $validIdPath);
+            }
+
+            if ($request->hasFile('valid_id_back_photo')) {
+                \Log::info('Storing valid_id_back_photo');
+                $validIdBackPath = $request->file('valid_id_back_photo')->store('validID', 'public');
+                \Log::info('valid_id_back_photo stored at: ' . $validIdBackPath);
+            }
+
+            if ($request->hasFile('police_clearance')) {
+                \Log::info('Storing police_clearance');
+                $policeClearancePath = $request->file('police_clearance')->store('policeClearance', 'public');
+                \Log::info('police_clearance stored at: ' . $policeClearancePath);
+            }
+
+            Session::put('owner_step4', [
+                'valid_id_id' => $request->valid_id_id,
+                'valid_id_photo' => $validIdPath,
+                'valid_id_back_photo' => $validIdBackPath,
+                'police_clearance' => $policeClearancePath
+            ]);
+
+            Session::put('signup_step', 5);
+            
+            \Log::info('STEP 4 SUCCESS: Session updated, returning response');
+            return response()->json(['success' => true, 'step' => 5]);
+        } catch (\Exception $e) {
+            \Log::error('STEP 4 ERROR: ' . $e->getMessage(), ['exception' => $e]);
+            return response()->json([
+                'success' => false,
+                'errors' => ['upload' => $e->getMessage()]
+            ], 422);
+        }
     }
 
     // Handle Property Owner Final Step

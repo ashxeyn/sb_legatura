@@ -45,9 +45,8 @@ Route::get('/account-type', function () {
     return view('signUp_logIN.accountType');
 });
 // Owner account setup screen
-Route::match (['get', 'post'], '/propertyOwner/account-setup', function () {
-    return view('signUp_logIN.propertyOwner_accountSetup');
-})->name('owner.account-setup');
+Route::match (['get', 'post'], '/propertyOwner/account-setup', [authController::class , 'showOwnerAccountSetup'])
+    ->name('owner.account-setup');
 
 // Back-compat: keep old path working
 Route::get('/account-setup', function () {

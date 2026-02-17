@@ -42,16 +42,24 @@ class authService
 
     public function sendOtpEmail($email, $otp)
     {
-        // \Log::info("OTP for {$email}: {$otp}");
+        $otp = (string)$otp; // Ensure OTP is a string
+        \Log::info("Sending OTP to {$email}", ['otp' => $otp, 'timestamp' => now()]);
 
         try {
-            \Mail::raw("Your OTP code is: {$otp}\n\nThis code will expire soon. Please do not share this code with anyone.", function($message) use ($email) {
+            \Mail::raw("Your OTP code is: {$otp}\n\nThis code will expire in 15 minutes. Please do not share this code with anyone.", function($message) use ($email) {
                 $message->to($email)
                         ->subject('Legatura - Your OTP Code');
             });
+            
+            \Log::info("OTP sent successfully to {$email}");
             return true;
         } catch (\Exception $e) {
-            \Log::error("Failed to send OTP email to {$email}: " . $e->getMessage());
+            \Log::error("Failed to send OTP email to {$email}", [
+                'error' => $e->getMessage(),
+                'code' => $e->getCode(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ]);
             return false;
         }
     }

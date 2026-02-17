@@ -5,6 +5,7 @@ namespace App\Http\Requests\accounts;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Support\Facades\DB;
 
 class accountRequest extends FormRequest
 {
@@ -78,6 +79,17 @@ class accountRequest extends FormRequest
         }
     }
 
+    protected function dbAvailable(): bool
+    {
+        try {
+            DB::connection()->getPdo();
+            return true;
+        } catch (\Throwable $e) {
+            \Log::warning('DB unavailable for validation: ' . $e->getMessage());
+            return false;
+        }
+    }
+
     protected function loginRules()
     {
         return [
@@ -113,12 +125,12 @@ class accountRequest extends FormRequest
 
     protected function contractorStep2Rules()
     {
-        return [
+        $rules = [
             'first_name' => 'required|string|max:100',
             'middle_name' => 'nullable|string|max:100',
             'last_name' => 'required|string|max:100',
-            'username' => 'required|string|max:50|unique:users,username',
-            'company_email' => 'required|email|max:255|unique:users,email|unique:contractors,company_email',
+            'username' => 'required|string|max:50',
+            'company_email' => 'required|email|max:255',
             'password' => [
                 'required',
                 'string',
@@ -129,6 +141,13 @@ class accountRequest extends FormRequest
                 'confirmed'
             ]
         ];
+
+        if ($this->dbAvailable()) {
+            $rules['username'] .= '|unique:users,username';
+            $rules['company_email'] .= '|unique:users,email|unique:contractors,company_email';
+        }
+
+        return $rules;
     }
 
     protected function otpRules()
@@ -195,9 +214,9 @@ class accountRequest extends FormRequest
 
     protected function ownerStep2Rules()
     {
-        return [
-            'username' => 'required|string|max:50|unique:users,username',
-            'email' => 'required|email|max:255|unique:users,email',
+        $rules = [
+            'username' => 'required|string|max:50',
+            'email' => 'required|email|max:255',
             'password' => [
                 'required',
                 'string',
@@ -208,6 +227,13 @@ class accountRequest extends FormRequest
                 'confirmed'
             ]
         ];
+
+        if ($this->dbAvailable()) {
+            $rules['username'] .= '|unique:users,username';
+            $rules['email'] .= '|unique:users,email';
+        }
+
+        return $rules;
     }
 
     protected function ownerStep4Rules()
@@ -319,9 +345,21 @@ class accountRequest extends FormRequest
             'business_permit_expiration.after' => 'Business permit expiration date must be in the future',
             'date_of_birth.before' => 'Please enter a valid date of birth',
             'dti_sec_registration_photo.max' => 'File size must not exceed 5MB',
-            'valid_id_photo.max' => 'File size must not exceed 5MB',
-            'police_clearance.max' => 'File size must not exceed 5MB',
-            'profile_pic.max' => 'File size must not exceed 5MB'
+            'valid_id_photo.max' => 'Valid ID front photo size must not exceed 5MB',
+            'valid_id_photo.mimes' => 'Valid ID front photo must be a JPG, PNG, or PDF file',
+            'valid_id_photo.required' => 'Valid ID front photo is required',
+            'valid_id_photo.file' => 'Valid ID front photo must be a valid file',
+            'valid_id_back_photo.max' => 'Valid ID back photo size must not exceed 5MB',
+            'valid_id_back_photo.mimes' => 'Valid ID back photo must be a JPG, PNG, or PDF file',
+            'valid_id_back_photo.required' => 'Valid ID back photo is required',
+            'valid_id_back_photo.file' => 'Valid ID back photo must be a valid file',
+            'police_clearance.max' => 'Police clearance file size must not exceed 5MB',
+            'police_clearance.mimes' => 'Police clearance must be a JPG, PNG, or PDF file',
+            'police_clearance.required' => 'Police clearance is required',
+            'police_clearance.file' => 'Police clearance must be a valid file',
+            'profile_pic.max' => 'Profile picture size must not exceed 5MB',
+            'valid_id_id.required' => 'Please select a valid ID type',
+            'valid_id_id.exists' => 'Invalid ID type selected'
         ];
     }
 

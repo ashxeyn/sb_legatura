@@ -16,31 +16,46 @@
 	<div class="profile-container">
 		<!-- Card Content -->
 		<div class="profile-card">
-			<div class="setup-logo" aria-label="Legatura logo">
-				<img src="{{ asset('img/logo2.0.svg') }}" alt="Legatura" class="setup-logo-img" loading="eager">
-			</div>
+			<form id="profileForm" method="POST" action="/accounts/signup/owner/final" enctype="multipart/form-data">
+				@csrf
+				<div class="setup-logo" aria-label="Legatura logo">
+					<img src="{{ asset('img/logo2.0.svg') }}" alt="Legatura" class="setup-logo-img" loading="eager">
+				</div>
 
-            <!-- Title & Subtitle -->
+				<!-- Title & Subtitle -->
 				<div class="otp-header">
 					<h1 class="otp-title">Add Profile Photo</h1>
 				</div>
 
-			<div class="avatar-wrapper" aria-label="Profile picture preview">
-				<div class="avatar-circle" id="avatarCircle">
-					<i class="fi fi-rr-user"></i>
+				<div class="avatar-wrapper" aria-label="Profile picture preview">
+					<div class="avatar-circle" id="avatarCircle">
+						<i class="fi fi-rr-user" id="avatarIcon"></i>
+						<img id="avatarImg" style="display: none; width: 100%; height: 100%; object-fit: cover;" />
+					</div>
+					<button type="button" class="avatar-edit" id="editBtn" aria-label="Select profile photo">
+						<i class="fi fi-rr-pencil"></i>
+					</button>
+					<input type="file" name="profile_pic" id="avatarInput" accept="image/*" class="avatar-input" aria-hidden="true">
 				</div>
-				<button type="button" class="avatar-edit" id="editBtn" aria-label="Select profile photo">
-					<i class="fi fi-rr-pencil"></i>
-				</button>
-				<input type="file" id="avatarInput" accept="image/*" class="avatar-input" aria-hidden="true">
-			</div>
 
-			<p class="profile-subtitle">Set your profile picture to make your account recognizable.</p>
+				<p class="profile-subtitle">Set your profile picture to make your account recognizable.</p>
 
-			<div class="profile-actions">
-				<button type="button" class="btn btn-primary" id="selectBtn">Select</button>
-				<button type="button" class="btn btn-secondary" id="skipBtn">Skip</button>
+				<div class="profile-actions">
+					<button type="submit" class="btn btn-primary" id="continueBtn">Continue</button>
+					<button type="button" class="btn btn-secondary" id="skipBtn">Skip for Now</button>
+				</div>
+			</form>
+		</div>
+	</div>
+
+	<!-- Success Overlay -->
+	<div class="profile-success-overlay" id="successOverlay" style="display: none;">
+		<div class="profile-success-content">
+			<div class="profile-success-icon">
+				<i class="fi fi-rr-check"></i>
 			</div>
+			<h2 class="profile-success-text">Registration Successful!</h2>
+			<p class="profile-success-subtext">Your account is pending admin approval.</p>
 		</div>
 	</div>
 

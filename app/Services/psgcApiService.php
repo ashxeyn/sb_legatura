@@ -13,8 +13,8 @@ class psgcApiService
     public function getProvinces()
     {
         try {
-            return Cache::remember('psgc_provinces', 86400, function () {
-                $response = Http::get($this->baseUrl . '/provinces/');
+            return Cache::remember('psgc_provinces_v2', 86400, function () {
+                $response = Http::withoutVerifying()->get($this->baseUrl . '/provinces/');
 
                 if ($response->successful()) {
                     $provinces = $response->json();
@@ -37,7 +37,7 @@ class psgcApiService
     {
         try {
             return Cache::remember('psgc_all_cities', 86400, function () {
-                $response = Http::get($this->baseUrl . '/cities-municipalities/');
+                $response = Http::withoutVerifying()->get($this->baseUrl . '/cities-municipalities/');
 
                 if ($response->successful()) {
                     $cities = $response->json();
@@ -58,8 +58,13 @@ class psgcApiService
     public function getCitiesByProvince($provinceCode)
     {
         try {
-            return Cache::remember('psgc_cities_' . $provinceCode, 86400, function () use ($provinceCode) {
-                $response = Http::get($this->baseUrl . '/provinces/' . $provinceCode . '/cities-municipalities/');
+            $normalizedCode = (string) $provinceCode;
+            if (strlen($normalizedCode) === 4) {
+                $normalizedCode .= '00000';
+            }
+
+            return Cache::remember('psgc_cities_' . $normalizedCode, 86400, function () use ($normalizedCode) {
+                $response = Http::withoutVerifying()->get($this->baseUrl . '/provinces/' . $normalizedCode . '/cities-municipalities/');
 
                 if ($response->successful()) {
                     $cities = $response->json();
@@ -81,7 +86,7 @@ class psgcApiService
     {
         try {
             return Cache::remember('psgc_barangays_' . $cityCode, 86400, function () use ($cityCode) {
-                $response = Http::get($this->baseUrl . '/cities-municipalities/' . $cityCode . '/barangays/');
+                $response = Http::withoutVerifying()->get($this->baseUrl . '/cities-municipalities/' . $cityCode . '/barangays/');
 
                 if ($response->successful()) {
                     $barangays = $response->json();
@@ -186,6 +191,14 @@ class psgcApiService
             ['code' => '1668', 'name' => 'Surigao del Sur'],
             ['code' => '1685', 'name' => 'Dinagat Islands']
         ];
+
+        $provinces = array_map(function ($province) {
+            $code = (string) ($province['code'] ?? '');
+            if (strlen($code) === 4) {
+                $province['code'] = $code . '00000';
+            }
+            return $province;
+        }, $provinces);
 
         usort($provinces, function($a, $b) {
             return strcmp($a['name'], $b['name']);
