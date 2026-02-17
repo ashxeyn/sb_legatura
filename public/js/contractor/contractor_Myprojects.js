@@ -50,7 +50,7 @@ class ContractorMyProjects {
 
                 const ownerInfo = p.owner_info || null;
                 const ownerName = ownerInfo ? (ownerInfo.username || ((ownerInfo.first_name || '') + ' ' + (ownerInfo.last_name || ''))) : (p.owner_name || '');
-                const ownerAvatar = ownerInfo && ownerInfo.profile_pic ? ownerInfo.profile_pic : (ownerName ? ownerName.split(/\s+/).map(w => w.charAt(0)).slice(0,2).join('').toUpperCase() : 'PO');
+                const ownerAvatar = ownerInfo && ownerInfo.profile_pic ? ownerInfo.profile_pic : (ownerName ? ownerName.split(/\s+/).map(w => w.charAt(0)).slice(0, 2).join('').toUpperCase() : 'PO');
 
                 let budget = '-';
                 if (p.budget_range_min && p.budget_range_max) {
@@ -61,10 +61,15 @@ class ContractorMyProjects {
                 let status = 'in_progress';
                 let statusText = display;
                 let awaitingSetup = false;
+                let awaitingApproval = false;
                 if (display === 'waiting_milestone_setup') {
                     status = 'needs_setup';
                     statusText = 'Needs Setup';
                     awaitingSetup = true;
+                } else if (display === 'waiting_for_approval') {
+                    status = 'waiting_approval';
+                    statusText = 'Waiting for Approval';
+                    awaitingApproval = true;
                 } else if (display === 'in_progress') {
                     status = 'in_progress';
                     statusText = 'In Progress';
@@ -90,7 +95,9 @@ class ContractorMyProjects {
                     owner: { name: ownerName, avatar: ownerAvatar, username: ownerInfo ? ownerInfo.username : null, profile_pic: ownerInfo ? ownerInfo.profile_pic : null },
                     image: p.project_image || '',
                     awaitingSetup: awaitingSetup,
-                    statusInfo: p.project_status || display || '' ,
+                    awaitingApproval: awaitingApproval,
+                    statusInfo: p.project_status || display || '',
+                    proposed_cost: p.proposed_cost,
                     raw: p
                 };
             });
@@ -138,7 +145,7 @@ class ContractorMyProjects {
 
                     const ownerInfo = p.owner_info || null;
                     const ownerName = ownerInfo ? (ownerInfo.username || ((ownerInfo.first_name || '') + ' ' + (ownerInfo.last_name || ''))) : (p.owner_name || '');
-                    const ownerAvatar = ownerInfo && ownerInfo.profile_pic ? ownerInfo.profile_pic : (ownerName ? ownerName.split(/\s+/).map(w => w.charAt(0)).slice(0,2).join('').toUpperCase() : 'PO');
+                    const ownerAvatar = ownerInfo && ownerInfo.profile_pic ? ownerInfo.profile_pic : (ownerName ? ownerName.split(/\s+/).map(w => w.charAt(0)).slice(0, 2).join('').toUpperCase() : 'PO');
 
                     let budget = '-';
                     if (p.budget_range_min && p.budget_range_max) {
@@ -178,7 +185,8 @@ class ContractorMyProjects {
                         owner: { name: ownerName, avatar: ownerAvatar, username: ownerInfo ? ownerInfo.username : null, profile_pic: ownerInfo ? ownerInfo.profile_pic : null },
                         image: p.project_image || '',
                         awaitingSetup: awaitingSetup,
-                        statusInfo: p.project_status || display || '' ,
+                        statusInfo: p.project_status || display || '',
+                        proposed_cost: p.proposed_cost,
                         raw: p
                     };
                 });
@@ -270,6 +278,7 @@ class ContractorMyProjects {
     updateTabBadgeCounts() {
         const counts = {
             needs_setup: 0,
+            waiting_approval: 0,
             in_progress: 0,
             completed: 0
         };
@@ -282,10 +291,12 @@ class ContractorMyProjects {
 
         // Update tab badges
         const needsSetupBadge = document.getElementById('needsSetupBadge');
+        const waitingApprovalBadge = document.getElementById('waitingApprovalBadge');
         const inProgressBadge = document.getElementById('inProgressBadge');
         const completedBadge = document.getElementById('completedBadge');
 
         if (needsSetupBadge) needsSetupBadge.textContent = counts.needs_setup;
+        if (waitingApprovalBadge) waitingApprovalBadge.textContent = counts.waiting_approval;
         if (inProgressBadge) inProgressBadge.textContent = counts.in_progress;
         if (completedBadge) completedBadge.textContent = counts.completed;
     }

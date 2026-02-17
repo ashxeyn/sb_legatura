@@ -71,8 +71,8 @@
         <!-- Main Content -->
         <div class="dashboard-content">
             <div class="dashboard-container">
-                <!-- Pinned Project Section -->
-                <div class="section-pinned">
+                {{-- Pinned Project Section --}}
+                {{-- <div class="section-pinned">
                     <div class="section-header">
                         <h2 class="section-title">Pinned Projects</h2>
                         <button class="add-pinned-btn" id="addPinnedBtn" title="Add pinned project">
@@ -272,7 +272,7 @@
                                 </div>
                             </div>
                         </template>
-                </div>
+                </div> --}}
 
                 <!-- My Projects Section -->
                 <div class="section-projects">
@@ -315,8 +315,8 @@
         </div>
     </div>
 
-    <!-- Pin Project Selection Modal -->
-    <div id="pinProjectModal" class="pin-project-modal">
+    {{-- Pin Project Selection Modal --}}
+    {{-- <div id="pinProjectModal" class="pin-project-modal">
         <div class="modal-overlay" id="pinProjectOverlay"></div>
         <div class="modal-container">
             <!-- Modal Header -->
@@ -379,10 +379,10 @@
                 </button>
             </div>
         </div>
-    </div>
+    </div> --}}
 
-    <!-- Project Item Template -->
-    <template id="pinProjectItemTemplate">
+    {{-- Project Item Template --}}
+    {{-- <template id="pinProjectItemTemplate">
         <div class="pin-project-item" data-project-id="">
             <div class="pin-project-image-wrapper">
                 <img class="pin-project-image" src="" alt="Project">
@@ -409,7 +409,7 @@
                 <span>Pin</span>
             </button>
         </div>
-    </template>
+    </template> --}}
 @endsection
 
 @section('extra_css')

@@ -12,7 +12,7 @@
             </div>
         </div>
 
-        <!-- Step Indicators -->
+        <!-- Step Indicators --> 
         <div class="milestone-steps-indicator">
             <div class="step-item active" data-step="1">
                 <div class="step-circle">
@@ -54,6 +54,7 @@
                         placeholder="e.g., Phase 1 - Foundation Work"
                         required
                     >
+                    <span class="validation-error" id="error-milestonePlanName" style="color: #ef4444; font-size: 12px; display: none; margin-top: 4px;">This field is required</span>
                 </div>
 
                 <div class="form-group">
@@ -61,8 +62,8 @@
                         Payment Mode <span class="required">*</span>
                     </label>
                     <div class="payment-mode-options">
-                        <label class="payment-mode-card active">
-                            <input type="radio" name="paymentMode" value="downpayment" checked>
+                        <label class="payment-mode-card">
+                            <input type="radio" name="paymentMode" value="downpayment">
                             <div class="payment-mode-icon">
                                 <i class="fi fi-rr-money-check-edit"></i>
                             </div>
@@ -106,6 +107,7 @@
                             >
                             <i class="fi fi-rr-calendar date-calendar-icon"></i>
                         </div>
+                        <span class="validation-error" id="error-startDate" style="color: #ef4444; font-size: 12px; display: none; margin-top: 4px;">This field is required</span>
                     </div>
 
                     <div class="form-group">
@@ -122,6 +124,7 @@
                             >
                             <i class="fi fi-rr-calendar date-calendar-icon"></i>
                         </div>
+                        <span class="validation-error" id="error-endDate" style="color: #ef4444; font-size: 12px; display: none; margin-top: 4px;">This field is required</span>
                     </div>
                 </div>
 
@@ -139,6 +142,7 @@
                             required
                         >
                     </div>
+                    <span class="validation-error" id="error-totalBudget" style="color: #ef4444; font-size: 12px; display: none; margin-top: 4px;">This field is required</span>
                 </div>
 
                 <div class="form-group" id="downpaymentGroup">
@@ -154,6 +158,7 @@
                             placeholder="0.00"
                         >
                     </div>
+                    <span class="validation-error" id="error-downpaymentAmount" style="color: #ef4444; font-size: 12px; display: none; margin-top: 4px;">This field is required</span>
                 </div>
             </div>
 
@@ -282,6 +287,7 @@
                         >
                         <span class="input-suffix">%</span>
                     </div>
+                    <span class="validation-error error-milestone-percentage" style="color: #ef4444; font-size: 12px; display: none; margin-top: 4px;"></span>
                 </div>
                 <div class="form-group flex-1">
                     <label class="form-label">
@@ -293,6 +299,7 @@
                         placeholder="e.g., Foundation Co"
                         required
                     >
+                    <span class="validation-error error-milestone-name" style="color: #ef4444; font-size: 12px; display: none; margin-top: 4px;"></span>
                 </div>
             </div>
             <div class="form-group">
@@ -318,6 +325,7 @@
                     >
                     <i class="fi fi-rr-calendar date-calendar-icon"></i>
                 </div>
+                <span class="validation-error error-milestone-target-date" style="color: #ef4444; font-size: 12px; display: none; margin-top: 4px;"></span>
             </div>
             <div class="form-group">
                 <label class="form-label">
@@ -329,10 +337,174 @@
                         type="text" 
                         class="form-input milestone-amount" 
                         placeholder="0.00"
-                        required
+                        readonly
+                        style="background-color: #f3f4f6; cursor: not-allowed;"
                     >
                 </div>
             </div>
         </div>
     </div>
 </template>
+
+<!-- Generic Budget Warning Modal (Dynamically Populated) -->
+<div id="budgetWarningModal" class="budget-warning-modal hidden">
+    <div class="modal-overlay" id="budgetWarningOverlay"></div>
+    <div class="modal-container">
+        <div class="modal-content">
+            <!-- Icon Container (will be styled dynamically) -->
+            <div class="modal-icon-container" id="budgetWarningIcon">
+                <i class="fi fi-rr-trending-up" id="budgetWarningIconSymbol"></i>
+            </div>
+
+            <!-- Title -->
+            <h3 class="modal-title" id="budgetWarningTitle">Bid Check</h3>
+
+            <!-- Message -->
+            <p class="modal-message" id="budgetWarningMessage"></p>
+
+            <!-- Hint -->
+            <p class="modal-hint">Would you like to continue with this amount or go back to edit it?</p>
+
+            <!-- Action Buttons -->
+            <div class="modal-buttons-row">
+                <button type="button" class="modal-button modal-button-secondary" id="budgetWarningEditBtn">
+                    Edit
+                </button>
+                <button type="button" class="modal-button modal-button-primary" id="budgetWarningContinueBtn">
+                    Continue
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.budget-warning-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10000;
+    display: none;
+}
+
+.budget-warning-modal:not(.hidden) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.budget-warning-modal .modal-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+}
+
+.budget-warning-modal .modal-container {
+    position: relative;
+    z-index: 10001;
+    max-width: 480px;
+    width: 90%;
+    margin: 0 auto;
+}
+
+.budget-warning-modal .modal-content {
+    background-color: #ffffff;
+    border-radius: 16px;
+    padding: 32px 24px;
+    text-align: center;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.budget-warning-modal .modal-icon-container {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.budget-warning-modal .modal-icon-container.warning {
+    background-color: #FEF3C7;
+}
+
+.budget-warning-modal .modal-icon-container.info {
+    background-color: #DBEAFE;
+}
+
+.budget-warning-modal .modal-icon-container i {
+    font-size: 32px;
+}
+
+.budget-warning-modal .modal-icon-container.warning i {
+    color: #F59E0B;
+}
+
+.budget-warning-modal .modal-icon-container.info i {
+    color: #3B82F6;
+}
+
+.budget-warning-modal .modal-title {
+    font-size: 20px;
+    font-weight: 600;
+    color: #0F172A;
+    margin-bottom: 12px;
+}
+
+.budget-warning-modal .modal-message {
+    font-size: 15px;
+    color: #64748B;
+    line-height: 1.6;
+    margin-bottom: 12px;
+}
+
+.budget-warning-modal .modal-hint {
+    font-size: 14px;
+    color: #94A3B8;
+    margin-bottom: 24px;
+}
+
+.budget-warning-modal .modal-buttons-row {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
+
+.budget-warning-modal .modal-button {
+    flex: 1;
+    max-width: 140px;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+    outline: none;
+}
+
+.budget-warning-modal .modal-button-secondary {
+    background-color: #F1F5F9;
+    color: #0F172A;
+}
+
+.budget-warning-modal .modal-button-secondary:hover {
+    background-color: #E2E8F0;
+}
+
+.budget-warning-modal .modal-button-primary {
+    background-color: #EC7E00;
+    color: #ffffff;
+}
+
+.budget-warning-modal .modal-button-primary:hover {
+    background-color: #C96A00;
+}
+</style>
