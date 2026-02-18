@@ -8,7 +8,9 @@ import { role_service } from '../../services/role_service';
 import { api_request, api_config } from '../../config/api';
 import { auth_service } from '../../services/auth_service';
 import * as ImagePicker from 'expo-image-picker';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import PlatformDatePicker from '../../components/PlatformDatePicker';
+import { Platform } from 'react-native';
+import { computeYears, formatDate, formatDateForDisplay, formatExperience } from '../../utils/roleFormUtils';
 
 interface RoleAddScreenProps {
   targetRole: 'contractor' | 'owner';
@@ -115,13 +117,23 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
             if (cu?.authorized_rep_fname) repPrefill.authorized_rep_fname = cu.authorized_rep_fname;
             if (cu?.authorized_rep_mname) repPrefill.authorized_rep_mname = cu.authorized_rep_mname;
             if (cu?.authorized_rep_lname) repPrefill.authorized_rep_lname = cu.authorized_rep_lname;
+            // Fallback: if no contractor_user authorized rep info, use property_owner name (owner becomes authorized rep)
+            if (!repPrefill.authorized_rep_fname && existing?.property_owner?.first_name) {
+              repPrefill.authorized_rep_fname = existing.property_owner.first_name;
+            }
+            if (!repPrefill.authorized_rep_mname && existing?.property_owner?.middle_name) {
+              repPrefill.authorized_rep_mname = existing.property_owner.middle_name;
+            }
+            if (!repPrefill.authorized_rep_lname && existing?.property_owner?.last_name) {
+              repPrefill.authorized_rep_lname = existing.property_owner.last_name;
+            }
             if (Object.keys(repPrefill).length) updatePrefilled(repPrefill);
           } else if (targetRole === 'owner') {
             const user = existing?.user || {};
             const cu = existing?.contractor_user || {};
             const prefill: any = {};
-            if (user?.username) prefill.username = user.username;
-            if (user?.email) prefill.email = user.email;
+            // Username is not required for switch/role reapplication form; omit prefilling username.
+            // Email removed from owner switch form; do not prefill
             if (cu?.authorized_rep_fname) prefill.first_name = cu.authorized_rep_fname;
             if (cu?.authorized_rep_mname) prefill.middle_name = cu.authorized_rep_mname;
             if (cu?.authorized_rep_lname) prefill.last_name = cu.authorized_rep_lname;
@@ -214,34 +226,7 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
   };
 
   // Years of experience computation (same logic as accountSetup/companyInfo)
-  const computeYears = (start?: string): number => {
-    if (!start) return 0;
-    const sel = new Date(start);
-    const now = new Date();
-    let years = now.getFullYear() - sel.getFullYear();
-    if (now.getMonth() < sel.getMonth() || (now.getMonth() === sel.getMonth() && now.getDate() < sel.getDate())) {
-      years -= 1;
-    }
-    return Math.max(0, years);
-  };
-
-  const formatDate = (date: Date): string => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
-
-  const formatDateForDisplay = (dateString?: string): string => {
-    if (!dateString) return '';
-    try {
-      const date = new Date(dateString);
-      const options: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'long', day: 'numeric' };
-      return date.toLocaleDateString('en-US', options);
-    } catch {
-      return dateString || '';
-    }
-  };
+  // Use shared helpers from utils/roleFormUtils
 
   // Custom Date Picker (matches Business Documents screen)
   const getYears = (): number[] => {
@@ -454,31 +439,72 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
   };
 
   const prefillContractorFromOwner = async (existing: any) => {
-    // Expect address like: street, barangay, city, province, postal
-    const addr = existing?.property_owner?.address || existing?.user?.address;
-    if (!addr || typeof addr !== 'string') return;
-    const parts = addr.split(',').map((s) => s.trim());
-    if (parts.length < 5) return;
-    const street = parts[0];
-    const barangayName = parts[1];
-    const cityName = parts[2];
-    const provinceName = parts[3];
-    const postal = parts[4];
+    // Prefer structured address fields when available; otherwise fall back to parsing a single address string.
+    const po = existing?.property_owner || {};
+    const userAddr = existing?.user || {};
 
-    const provinceCode = mapProvinceCodeByName(provinceName);
-    const updates: any = { business_address_street: street, business_address_postal: postal };
-    if (provinceCode) {
-      updates.business_address_province = provinceCode;
-      await loadCities(provinceCode);
-      const cityCode = await fetchCityCodeByName(provinceCode, cityName);
-      if (cityCode) {
-        updates.business_address_city = cityCode;
-        await loadBarangays(cityCode);
-        const barangayCode = await fetchBarangayCodeByName(cityCode, barangayName);
-        if (barangayCode) updates.business_address_barangay = barangayCode;
+    // Check for explicit structured fields on property_owner or user
+    const streetField = po.address_street || po.owner_address_street || po.street || userAddr.address_street || userAddr.street;
+    const provinceCodeField = po.address_province_code || po.owner_address_province || po.owner_address_province_code || po.province_code || userAddr.address_province_code || userAddr.province_code;
+    const cityCodeField = po.address_city_code || po.owner_address_city || po.owner_address_city_code || po.city_code || userAddr.address_city_code || userAddr.city_code;
+    const barangayCodeField = po.address_barangay_code || po.owner_address_barangay || po.owner_address_barangay_code || po.barangay_code || userAddr.address_barangay_code || userAddr.barangay_code;
+    const postalField = po.postal_code || po.owner_address_postal || po.postal || userAddr.postal_code || userAddr.postal;
+
+    const updates: any = {};
+    if (streetField) updates.business_address_street = streetField;
+    if (postalField) updates.business_address_postal = postalField;
+
+    if (provinceCodeField) {
+      // If we already have a code-like value, map directly; otherwise try to resolve by name
+      const provCode = String(provinceCodeField).match(/^\d+$/) ? String(provinceCodeField) : mapProvinceCodeByName(String(provinceCodeField));
+      if (provCode) {
+        updates.business_address_province = provCode;
+        await loadCities(provCode);
+        // If we have a city code or name, resolve it
+        if (cityCodeField) {
+          const cityCode = String(cityCodeField).match(/^\d+$/) ? String(cityCodeField) : await fetchCityCodeByName(provCode, String(cityCodeField));
+          if (cityCode) {
+            updates.business_address_city = cityCode;
+            await loadBarangays(cityCode);
+            if (barangayCodeField) {
+              const barangayCode = String(barangayCodeField).match(/^\d+$/) ? String(barangayCodeField) : await fetchBarangayCodeByName(cityCode, String(barangayCodeField));
+              if (barangayCode) updates.business_address_barangay = barangayCode;
+            }
+          }
+        }
       }
     }
-    updatePrefilled(updates);
+
+    // If we didn't find structured fields, fall back to parsing an address string
+    if (!updates.business_address_street || !updates.business_address_province) {
+      const addr = po.address || po.address_full || po.address_string || userAddr.address || userAddr.address_full;
+      if (addr && typeof addr === 'string') {
+        const parts = addr.split(',').map((s) => s.trim());
+        if (parts.length >= 4) {
+          const street = parts[0];
+          const barangayName = parts[1] || '';
+          const cityName = parts[2] || '';
+          const provinceName = parts[3] || '';
+          const postal = parts[4] || '';
+          const provinceCode = mapProvinceCodeByName(provinceName);
+          updates.business_address_street = updates.business_address_street || street;
+          updates.business_address_postal = updates.business_address_postal || postal;
+          if (provinceCode) {
+            updates.business_address_province = updates.business_address_province || provinceCode;
+            await loadCities(provinceCode);
+            const cityCode = await fetchCityCodeByName(provinceCode, cityName);
+            if (cityCode) {
+              updates.business_address_city = updates.business_address_city || cityCode;
+              await loadBarangays(cityCode);
+              const barangayCode = await fetchBarangayCodeByName(cityCode, barangayName);
+              if (barangayCode) updates.business_address_barangay = updates.business_address_barangay || barangayCode;
+            }
+          }
+        }
+      }
+    }
+
+    if (Object.keys(updates).length) updatePrefilled(updates);
   };
 
   const prefillOwnerFromContractor = async (existing: any) => {
@@ -486,7 +512,15 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
     const addr = existing?.contractor?.business_address;
     if (!addr || typeof addr !== 'string') return;
     const parts = addr.split(',').map((s) => s.trim());
-    if (parts.length < 4) return;
+    if (parts.length < 4) {
+      // Fallback: try to extract postal code from the whole address string
+      const mAll = addr.match(/(\b\d{4,}\b)/);
+      if (mAll && mAll[1]) {
+        const postalFallback = mAll[1].trim();
+        updatePrefilled({ owner_address_postal: postalFallback });
+      }
+      return;
+    }
     // province and postal may be in one part or separated
     let street = parts[0];
     let barangayName = parts[1];
@@ -523,6 +557,16 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
 
   const pickImage = async (field: string) => {
     try {
+      // Web fallback: prompt for an image URL if running on web
+      if (Platform.OS === 'web') {
+        const url = (window as any)?.prompt?.('Enter image URL (or data URI)');
+        if (url) {
+          const fileName = url.split('/').pop() || 'uploaded-image';
+          updateForm({ [field]: url, [`${field}_name`]: fileName });
+        }
+        return;
+      }
+
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
         Alert.alert('Permission required', 'Please allow photo library access.');
@@ -559,51 +603,14 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
       if (targetRole === 'contractor') {
         if (formStep === 1) {
           // ...existing contractor step 1 logic...
-          const errors: string[] = [];
-          const phone = (formData.company_phone || '').trim();
-          if (!formData.company_name?.trim()) errors.push('Company name is required');
-          if (!phone) errors.push('Company phone is required');
-          if (phone && !/^09\d{9}$/.test(phone)) errors.push('Company phone must be 11 digits starting with 09');
-          if (!formData.experience_start_date) errors.push('Years of experience (start date) is required');
-          if (!formData.contractor_type_id) errors.push('Contractor type is required');
-          const sel = (dropdowns.contractor_types || []).find((t: any) => `${t.id}` === `${formData.contractor_type_id}`);
-          const isOther = (sel?.name || '').toLowerCase().includes('other');
-          if (isOther && !formData.contractor_type_other_text?.trim()) errors.push('Please specify other contractor type');
-          if (!formData.services_offered?.trim()) errors.push('Services offered is required');
-          if (!formData.business_address_street?.trim()) errors.push('Business address street is required');
-          if (!formData.business_address_barangay) errors.push('Business address barangay is required');
-          if (!formData.business_address_city) errors.push('Business address city is required');
-          if (!formData.business_address_province) errors.push('Business address province is required');
-          if (!formData.business_address_postal?.trim()) errors.push('Business address postal code is required');
-
-          // Authorized representative must be provided for contractor applications
-          if (!formData.authorized_rep_fname?.trim()) errors.push('Authorized representative first name is required');
-          if (!formData.authorized_rep_lname?.trim()) errors.push('Authorized representative last name is required');
-
+          const { validateContractorStep1, buildContractorStep1Payload } = await import('../../utils/roleFormBuilders');
+          const errors = validateContractorStep1(formData, dropdowns);
           if (errors.length) {
             Alert.alert('Please fix the following', errors.join('\n'));
             setSubmitting(false);
             return;
           }
-          const payload = {
-            company_name: formData.company_name,
-            company_phone: formData.company_phone,
-            years_of_experience: computeYears(formData.experience_start_date),
-            contractor_type_id: formData.contractor_type_id,
-            contractor_type_other_text: formData.contractor_type_other_text,
-            services_offered: formData.services_offered,
-            business_address_street: formData.business_address_street,
-            business_address_barangay: formData.business_address_barangay,
-            business_address_city: formData.business_address_city,
-            business_address_province: formData.business_address_province,
-            business_address_postal: formData.business_address_postal,
-            // Authorized representative fields
-            authorized_rep_fname: formData.authorized_rep_fname,
-            authorized_rep_mname: formData.authorized_rep_mname,
-            authorized_rep_lname: formData.authorized_rep_lname,
-            company_website: formData.company_website,
-            company_social_media: formData.company_social_media,
-          };
+          const payload = buildContractorStep1Payload(formData);
           const res = await role_service.add_contractor_step1(payload);
           if (res?.success) {
             setFormStep(2);
@@ -614,21 +621,8 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
           }
         } else if (formStep === 2) {
           // ...existing contractor step 2 logic...
-          const fd = new FormData();
-          const docKeys = [
-            'picab_number', 'picab_category', 'picab_expiration_date',
-            'business_permit_number', 'business_permit_city', 'business_permit_expiration',
-            'tin_business_reg_number', 'dti_sec_registration_photo',
-          ];
-          docKeys.forEach((k) => {
-            const v = formData[k];
-            if (v === undefined || v === null) return;
-            if (k === 'dti_sec_registration_photo' && typeof v === 'string' && v.startsWith('file://')) {
-              fd.append(k, { uri: v, name: 'dti_sec_registration.jpg', type: 'image/jpeg' } as any);
-            } else {
-              fd.append(k, v as any);
-            }
-          });
+          const { buildContractorStep2FormData } = await import('../../utils/roleFormBuilders');
+          const fd = buildContractorStep2FormData(formData);
           const res = await role_service.add_contractor_step2(fd);
           if (res?.success) {
             const saved = res?.data?.saved;
@@ -641,48 +635,8 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
           }
         } else if (formStep === 3) {
           // Build business address string required by backend final step
-          const provinceName = provinces.find(p => `${p.code}` === `${formData.business_address_province}`)?.name || '';
-          const cityName = cities.find(c => `${c.code}` === `${formData.business_address_city}`)?.name || '';
-          const barangayName = barangays.find(b => `${b.code}` === `${formData.business_address_barangay}`)?.name || '';
-          const business_address = [
-            formData.business_address_street || '',
-            barangayName || '',
-            cityName || '',
-            provinceName || ''
-          ].filter(Boolean).join(', ') + (formData.business_address_postal ? ` ${formData.business_address_postal}` : '');
-
-          const step1_data = {
-            company_name: formData.company_name,
-            company_phone: formData.company_phone,
-            years_of_experience: computeYears(formData.experience_start_date),
-            type_id: formData.contractor_type_id,
-            contractor_type_other: formData.contractor_type_other_text,
-            services_offered: formData.services_offered,
-            business_address,
-            company_website: formData.company_website,
-            company_social_media: formData.company_social_media,
-            // Authorized representative fields
-            authorized_rep_fname: formData.authorized_rep_fname,
-            authorized_rep_mname: formData.authorized_rep_mname,
-            authorized_rep_lname: formData.authorized_rep_lname,
-          };
-
-          const step2_data = {
-            picab_number: formData.picab_number,
-            picab_category: formData.picab_category,
-            picab_expiration_date: formData.picab_expiration_date,
-            business_permit_number: formData.business_permit_number,
-            business_permit_city: formData.business_permit_city,
-            business_permit_expiration: formData.business_permit_expiration,
-            tin_business_reg_number: formData.tin_business_reg_number,
-            dti_sec_registration_photo: formData.dti_sec_registration_photo_server || undefined,
-            // Include authorized representative names in step2 so backend will create contractor_user
-            first_name: formData.authorized_rep_fname,
-            middle_name: formData.authorized_rep_mname,
-            last_name: formData.authorized_rep_lname,
-          };
-
-          const body: any = { step1_data, step2_data };
+          const { buildContractorFinalBody } = await import('../../utils/roleFormBuilders');
+          const body = buildContractorFinalBody(formData, provinces, cities, barangays);
           const res = await role_service.add_contractor_final(body);
           if (res?.success) {
             Alert.alert('Application Submitted', 'Your application has been received and is pending administrative review and approval.', [
@@ -696,8 +650,8 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
         if (formStep === 1) {
           // Owner step 1 validation
           const errors: string[] = [];
-          if (!formData.username?.trim()) errors.push('Username is required');
-          if (!formData.email?.trim()) errors.push('Email is required');
+          // Username removed from form; no longer required
+          // Email removed from form validation
           if (!formData.first_name?.trim()) errors.push('First name is required');
           if (!formData.last_name?.trim()) errors.push('Last name is required');
           if (!formData.date_of_birth) errors.push('Date of birth is required');
@@ -716,8 +670,7 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
             setSubmitting(false);
             return;
           }
-          const payload = { username: formData.username, email: formData.email };
-          const res = await role_service.add_owner_step1(payload);
+          const res = await role_service.add_owner_step1({});
           if (res?.success) {
             setFormStep(2);
           } else {
@@ -744,16 +697,6 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
             provinceName || ''
           ].filter(Boolean).join(', ') + (formData.owner_address_postal ? ` ${formData.owner_address_postal}` : '');
           // Compute age
-          const computeYears = (start?: string): number => {
-            if (!start) return 0;
-            const sel = new Date(start);
-            const now = new Date();
-            let years = now.getFullYear() - sel.getFullYear();
-            if (now.getMonth() < sel.getMonth() || (now.getMonth() === sel.getMonth() && now.getDate() < sel.getDate())) {
-              years -= 1;
-            }
-            return Math.max(0, years);
-          };
           const age = formData.date_of_birth ? computeYears(formData.date_of_birth) : undefined;
            // Collect saved document paths from step 2
           const savedDocs: any = {};
@@ -787,16 +730,6 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
             cityName || '',
             provinceName || ''
           ].filter(Boolean).join(', ') + (formData.owner_address_postal ? ` ${formData.owner_address_postal}` : '');
-          const computeYears = (start?: string): number => {
-            if (!start) return 0;
-            const sel = new Date(start);
-            const now = new Date();
-            let years = now.getFullYear() - sel.getFullYear();
-            if (now.getMonth() < sel.getMonth() || (now.getMonth() === sel.getMonth() && now.getDate() < sel.getDate())) {
-              years -= 1;
-            }
-            return Math.max(0, years);
-          };
           const age = formData.date_of_birth ? computeYears(formData.date_of_birth) : undefined;
           const savedDocs: any = {};
           if (formData.owner_valid_id_id) savedDocs.valid_id_id = formData.owner_valid_id_id;
@@ -827,10 +760,7 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
               address,
               age,
             },
-            switch_step1_data: {
-              username: formData.username,
-              email: formData.email,
-            },
+            // switch_step1_data omitted (email removed)
             switch_step2_data: Object.keys(savedDocs).length ? { saved: savedDocs } : undefined,
             first_name: formData.first_name,
             middle_name: formData.middle_name,
@@ -959,7 +889,7 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
                   <View style={styles.dropdownInputWrapper}>
                     <Text style={[styles.dropdownInputText, !formData.experience_start_date && styles.placeholderText]}>
                       {formData.experience_start_date
-                        ? `${computeYears(formData.experience_start_date)} years (selected ${formData.experience_start_date})`
+                        ? `${formatExperience(formData.experience_start_date)} (selected ${formData.experience_start_date})`
                         : 'Years of Experience *'}
                     </Text>
                     <Ionicons name="calendar" size={20} color="#666" />
@@ -1031,11 +961,11 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
                 <TextInput style={[styles.input, prefilledFields.business_address_postal && styles.prefilledInput]} value={formData.business_address_postal || ''} onChangeText={(t) => updateForm({ business_address_postal: t })} keyboardType="number-pad" placeholder="Postal Code" placeholderTextColor="#999" />
                 <Text style={styles.sectionTitle}>Authorized Representative</Text>
                 <Text style={styles.inputLabel}>First Name *</Text>
-                <TextInput style={styles.input} value={formData.authorized_rep_fname || ''} onChangeText={(t) => updateForm({ authorized_rep_fname: t })} placeholder="First name" placeholderTextColor="#999" />
+                <TextInput style={[styles.input, prefilledFields.authorized_rep_fname ? styles.prefilledInput : null]} value={formData.authorized_rep_fname || ''} onChangeText={(t) => updateForm({ authorized_rep_fname: t })} placeholder="First name" placeholderTextColor="#999" />
                 <Text style={styles.inputLabel}>Middle Name (Optional)</Text>
-                <TextInput style={styles.input} value={formData.authorized_rep_mname || ''} onChangeText={(t) => updateForm({ authorized_rep_mname: t })} placeholder="Middle name (Optional)" placeholderTextColor="#999" />
+                <TextInput style={[styles.input, prefilledFields.authorized_rep_mname ? styles.prefilledInput : null]} value={formData.authorized_rep_mname || ''} onChangeText={(t) => updateForm({ authorized_rep_mname: t })} placeholder="Middle name (Optional)" placeholderTextColor="#999" />
                 <Text style={styles.inputLabel}>Last Name *</Text>
-                <TextInput style={styles.input} value={formData.authorized_rep_lname || ''} onChangeText={(t) => updateForm({ authorized_rep_lname: t })} placeholder="Last name" placeholderTextColor="#999" />
+                <TextInput style={[styles.input, prefilledFields.authorized_rep_lname ? styles.prefilledInput : null]} value={formData.authorized_rep_lname || ''} onChangeText={(t) => updateForm({ authorized_rep_lname: t })} placeholder="Last name" placeholderTextColor="#999" />
                 <Text style={styles.sectionTitle}>Optional Information</Text>
                 <Text style={styles.inputLabel}>Website</Text>
                 <TextInput style={styles.input} value={formData.company_website || ''} onChangeText={(t) => updateForm({ company_website: t })} placeholder="Website (Optional)" placeholderTextColor="#999" />
@@ -1117,7 +1047,7 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
                       <Text style={styles.previewHeader}>Company Information</Text>
                       <View style={styles.previewRow}><Text style={styles.previewLabel}>Company Name</Text><Text style={styles.previewValue}>{formData.company_name || '—'}</Text></View>
                       <View style={styles.previewRow}><Text style={styles.previewLabel}>Company Phone</Text><Text style={styles.previewValue}>{formData.company_phone || '—'}</Text></View>
-                      <View style={styles.previewRow}><Text style={styles.previewLabel}>Experience</Text><Text style={styles.previewValue}>{formData.experience_start_date ? `${computeYears(formData.experience_start_date)} years` : '—'}</Text></View>
+                      <View style={styles.previewRow}><Text style={styles.previewLabel}>Experience</Text><Text style={styles.previewValue}>{formData.experience_start_date ? formatExperience(formData.experience_start_date) : '—'}</Text></View>
                       <View style={styles.previewRow}><Text style={styles.previewLabel}>Contractor Type</Text><Text style={styles.previewValue}>{(() => { const sel = (dropdowns.contractor_types || []).find((t: any) => `${t.id}` === `${formData.contractor_type_id}`); return sel?.name || '—'; })()}</Text></View>
                       {(() => { const sel = (dropdowns.contractor_types || []).find((t: any) => `${t.id}` === `${formData.contractor_type_id}`); const isOther = (sel?.name || '').toLowerCase().includes('other'); return isOther ? (<View style={styles.previewRow}><Text style={styles.previewLabel}>Other Type</Text><Text style={styles.previewValue}>{formData.contractor_type_other_text || '—'}</Text></View>) : null; })()}
                       <View style={styles.previewRow}><Text style={styles.previewLabel}>Services Offered</Text><Text style={styles.previewValue}>{formData.services_offered || '—'}</Text></View>
@@ -1163,11 +1093,7 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
                   </>
                 ) : (
                   <>
-                    <View style={styles.previewCard}>
-                      <Text style={styles.previewHeader}>Account Info</Text>
-                      <View style={styles.previewRow}><Text style={styles.previewLabel}>Username</Text><Text style={styles.previewValue}>{formData.username || '—'}</Text></View>
-                      <View style={styles.previewRow}><Text style={styles.previewLabel}>Email</Text><Text style={styles.previewValue}>{formData.email || '—'}</Text></View>
-                    </View>
+                    {/* Account Info preview: email removed */}
                     <View style={styles.previewCard}>
                       <Text style={styles.previewHeader}>Personal Details</Text>
                       <View style={styles.previewRow}><Text style={styles.previewLabel}>First Name</Text><Text style={styles.previewValue}>{formData.first_name || '—'}</Text></View>
@@ -1232,10 +1158,6 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
 
             {!hasBoth && targetRole === 'owner' && formStep === 1 && (
               <View>
-                <Text style={styles.inputLabel}>Username *</Text>
-                <TextInput style={[styles.input, prefilledFields.username && styles.prefilledInput]} value={formData.username || ''} onChangeText={(t) => updateForm({ username: t })} placeholder="Username *" placeholderTextColor="#999" />
-                <Text style={styles.inputLabel}>Email *</Text>
-                <TextInput style={[styles.input, prefilledFields.email && styles.prefilledInput]} value={formData.email || ''} onChangeText={(t) => updateForm({ email: t })} keyboardType="email-address" placeholder="Email *" placeholderTextColor="#999" />
                 <Text style={[styles.inputLabel, { marginTop: 12 }]}>First Name *</Text>
                 <TextInput style={[styles.input, prefilledFields.first_name && styles.prefilledInput]} value={formData.first_name || ''} onChangeText={(t) => updateForm({ first_name: t })} placeholder="First Name *" placeholderTextColor="#999" />
                 <Text style={styles.inputLabel}>Middle Name</Text>
@@ -1576,27 +1498,20 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
 
       {/* Date of Birth Picker */}
       <Modal visible={showDobModal} animationType="slide" transparent onRequestClose={() => setShowDobModal(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Date of Birth</Text>
-              <TouchableOpacity onPress={() => setShowDobModal(false)} style={styles.closeButton}><Ionicons name="close" size={22} color="#333" /></TouchableOpacity>
+        <View style={styles.datePickerModalOverlay}>
+          <View style={styles.datePickerModalContainer}>
+            <View style={styles.datePickerModalHeader}>
+              <Text style={styles.datePickerModalTitle}>Select Date of Birth</Text>
+              <TouchableOpacity onPress={() => setShowDobModal(false)} style={styles.datePickerModalCloseButton}>
+                <Text style={styles.datePickerModalCloseText}>Done</Text>
+              </TouchableOpacity>
             </View>
             <View style={{ paddingHorizontal: 20 }}>
-              <DateTimePicker
-                value={formData.date_of_birth ? new Date(formData.date_of_birth) : new Date()}
-                mode="date"
-                display="default"
+              <PlatformDatePicker
+                value={formData.date_of_birth}
                 maximumDate={new Date()}
-                onChange={(event, date) => {
-                  if (date) {
-                    const today = new Date();
-                    const picked = date > today ? today : date;
-                    const yyyy = picked.getFullYear();
-                    const mm = String(picked.getMonth() + 1).padStart(2, '0');
-                    const dd = String(picked.getDate()).padStart(2, '0');
-                    updateForm({ date_of_birth: `${yyyy}-${mm}-${dd}` });
-                  }
+                onChange={(val) => {
+                  updateForm({ date_of_birth: val });
                   setShowDobModal(false);
                 }}
               />
@@ -1639,24 +1554,21 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
 
       {/* Experience Start Date Picker */}
       <Modal visible={showExperienceDateModal} animationType="slide" transparent onRequestClose={() => setShowExperienceDateModal(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
+        <View style={styles.datePickerModalOverlay}>
+          <View style={styles.datePickerModalContainer}>
+            <View style={styles.datePickerModalHeader}>
+              <Text style={styles.datePickerModalTitle}>Select Company Start Date</Text>
+              <TouchableOpacity onPress={() => setShowExperienceDateModal(false)} style={styles.datePickerModalCloseButton}>
+                <Text style={styles.datePickerModalCloseText}>Done</Text>
+              </TouchableOpacity>
+            </View>
 
             <View style={{ paddingHorizontal: 20 }}>
-              <DateTimePicker
-                value={formData.experience_start_date ? new Date(formData.experience_start_date) : new Date()}
-                mode="date"
-                display="default"
+              <PlatformDatePicker
+                value={formData.experience_start_date}
                 maximumDate={new Date()}
-                onChange={(event, date) => {
-                  if (date) {
-                    const today = new Date();
-                    const picked = date > today ? today : date;
-                    const yyyy = picked.getFullYear();
-                    const mm = String(picked.getMonth() + 1).padStart(2, '0');
-                    const dd = String(picked.getDate()).padStart(2, '0');
-                    updateForm({ experience_start_date: `${yyyy}-${mm}-${dd}` });
-                  }
+                onChange={(val) => {
+                  updateForm({ experience_start_date: val });
                   setShowExperienceDateModal(false);
                 }}
               />

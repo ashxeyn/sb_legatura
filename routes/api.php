@@ -12,6 +12,7 @@ use App\Http\Controllers\projectPosting\projectPostingController;
 use App\Http\Controllers\both\disputeController;
 use App\Http\Controllers\Both\notificationController;
 use App\Http\Controllers\passwordController;
+use App\Http\Controllers\profileController;
 
 // At the very top of api.php
 Log::info('=== INCOMING API REQUEST ===', [
@@ -46,6 +47,12 @@ Route::get('/role/switch-form', function() {
     Route::post('/role/add/owner/step2', [authController::class, 'switchOwnerStep2']);
     Route::post('/role/add/owner/final', [authController::class, 'switchOwnerFinal']);
 
+
+    // Update profile (profile picture / cover photo and general profile FormData)
+    Route::post('/user/update-profile', [authController::class, 'updateProfile']);
+    // Keep both `/profile` and `/user/profile` aliases for backward compatibility
+    Route::post('/profile', [profileController::class, 'update']);
+    Route::post('/user/profile', [profileController::class, 'update']);
 
 // Test endpoint for mobile app
 Route::get('/test', [authController::class, 'apiTest']);
@@ -385,9 +392,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/conversation/{conversationId}/suspend', [\App\Http\Controllers\message\messageController::class, 'suspend']); // Suspend
         Route::post('/conversation/{conversationId}/restore', [\App\Http\Controllers\message\messageController::class, 'restore']); // Restore
     });
-
-    // Update profile (profile picture / cover photo)
-    Route::post('/user/update-profile', [authController::class, 'updateProfile']);
 
     // Dashboard
     Route::get('/dashboard', [\App\Http\Controllers\both\dashboardController::class, 'apiDashboard']);

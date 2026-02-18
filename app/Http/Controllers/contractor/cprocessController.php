@@ -398,11 +398,53 @@ class cprocessController extends Controller
 
             $userType = is_object($user) ? $user->user_type : ($user['user_type'] ?? null);
 
+            // Fetch contractor / owner profile records so the mobile client can show
+            // application status (pending/rejected/approved) and rejection reasons.
+            $userId = is_object($user) ? ($user->user_id ?? null) : ($user['user_id'] ?? null);
+            $contractor = null;
+            $owner = null;
+            $contractor_pending = false;
+            $owner_pending = false;
+            $contractor_approved = false;
+            $owner_approved = false;
+            $contractor_rejected = false;
+            $owner_rejected = false;
+
+            try {
+                if ($userId) {
+                    $contractor = DB::table('contractors')->where('user_id', $userId)->first();
+                    $owner = DB::table('property_owners')->where('user_id', $userId)->first();
+
+                    if ($contractor && isset($contractor->verification_status)) {
+                        $vs = strtolower($contractor->verification_status);
+                        $contractor_approved = $vs === 'approved';
+                        $contractor_rejected = $vs === 'rejected';
+                        $contractor_pending = !$contractor_approved && !$contractor_rejected;
+                    }
+
+                    if ($owner && isset($owner->verification_status)) {
+                        $vs2 = strtolower($owner->verification_status);
+                        $owner_approved = $vs2 === 'approved';
+                        $owner_rejected = $vs2 === 'rejected';
+                        $owner_pending = !$owner_approved && !$owner_rejected;
+                    }
+                }
+            } catch (\Throwable $e) {
+                Log::warning('getCurrentRole: failed to load contractor/owner records: ' . $e->getMessage());
+            }
+
+            $pending_role_request = ($contractor_pending || $owner_pending);
+
             return response()->json([
                 'success' => true,
                 'user_type' => $userType,
                 'current_role' => $normalizedRole,
-                'can_switch_roles' => $userType === 'both'
+                'can_switch_roles' => $userType === 'both',
+                'pending_role_request' => $pending_role_request,
+                'contractor' => $contractor,
+                'owner' => $owner,
+                'contractor_role_approved' => $contractor_approved,
+                'owner_role_approved' => $owner_approved,
             ]);
         } catch (\Exception $e) {
             \Log::error('getCurrentRole error: ' . $e->getMessage());

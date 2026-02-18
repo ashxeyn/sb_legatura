@@ -25,6 +25,7 @@ import { api_config } from '../../config/api';
 import { contractors_service } from '../../services/contractors_service';
 import { role_service } from '../../services/role_service';
 import { useContractorAuth } from '../../hooks/useContractorAuth';
+import { storage_service } from '../../utils/storage';
 
 // Helper to build full storage URL for profile/cover images
 const getStorageUrl = (filePath?: string, defaultSubfolder = 'profiles') => {
@@ -205,7 +206,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
   const effectiveUserType = useMemo(() => {
     if (currentRole === 'owner') return 'property_owner';
     if (currentRole === 'contractor') return 'contractor';
-    
+
     const rawType = userData?.user_type || userType;
     // Staff users operate in contractor context
     if (rawType === 'staff' || rawType === 'contractor') {
@@ -226,6 +227,45 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
           const v = String(roleVal || '').toLowerCase();
           const role = v.includes('owner') ? 'owner' : v.includes('contractor') ? 'contractor' : null;
           if (isMounted) setCurrentRole(role as any);
+
+          // If backend indicates current role is contractor and we don't have
+          // a saved contractor_member context, persist a lightweight fallback
+          // so `useContractorAuth` and related services enable contractor features.
+          try {
+            if (role === 'contractor') {
+              const stored = await storage_service.get_user_data();
+              // prefer contractor payload from response
+              const contractorPayload = (res as any).contractor || (res as any).data?.contractor || null;
+              if (stored && contractorPayload) {
+                // Only write if we don't already have contractor_member
+                if (!stored.contractor_member) {
+                  const ctx = {
+                    contractor_member_id: contractorPayload.contractor_member_id || null,
+                    contractor_id: contractorPayload.contractor_id || contractorPayload.contractorId || 0,
+                    contractor_name: contractorPayload.company_name || contractorPayload.contractor_name || null,
+                    role: 'owner',
+                    is_active: (contractorPayload.is_active !== undefined) ? contractorPayload.is_active : (contractorPayload.verification_status === 'approved'),
+                    is_contractor_owner: true,
+                    has_full_access: true,
+                    permissions: {
+                      can_manage_members: true,
+                      can_view_members: true,
+                      can_bid: true,
+                      can_manage_milestones: true,
+                      can_upload_progress: true,
+                      can_approve_payments: true,
+                      can_view_property_owners: true,
+                    }
+                  };
+                  stored.contractor_member = ctx;
+                  stored.determinedRole = 'contractor';
+                  await storage_service.save_user_data(stored);
+                }
+              }
+            }
+          } catch (err) {
+            // ignore storage errors
+          }
         }
       } catch (e) {
         // Silent failure; keep existing role
