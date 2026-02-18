@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use App\Models\contractor\contractorClass;
-use App\Services\NotificationService;
+use App\Services\notificationService;
 
 class cprocessController extends Controller
 {
@@ -141,112 +141,12 @@ class cprocessController extends Controller
         return view('contractor.contractor_Profile');
     }
 
+    /**
+     * @deprecated Moved to \App\Http\Controllers\both\DashboardController::contractorDashboard()
+     */
     public function showDashboard(Request $request)
     {
-        $accessCheck = $this->checkContractorAccess($request);
-        if ($accessCheck) {
-            return $accessCheck;
-        }
-
-        // Resolve user id from session or sanctum
-        $user = Session::get('user') ?: $request->user();
-        $userId = is_object($user) ? ($user->user_id ?? null) : ($user['user_id'] ?? null);
-        $userName = null;
-        if (is_object($user)) {
-            if (!empty($user->first_name) || !empty($user->last_name)) {
-                $userName = trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? ''));
-            } else {
-                $userName = $user->username ?? ($user->name ?? null);
-            }
-        }
-
-        $projects = collect([]);
-        $stats = [
-            'total' => 0,
-            'pending' => 0,
-            'active' => 0,
-            'inProgress' => 0,
-            'completed' => 0
-        ];
-
-        if ($userId) {
-            try {
-                // Create a synthetic request to reuse the API method
-                $req = new Request();
-                $req->query->set('user_id', $userId);
-                $resp = $this->apiGetContractorProjects($req);
-                $data = [];
-                if (is_object($resp) && method_exists($resp, 'getData')) {
-                    $content = $resp->getData();
-                    $data = $content->data ?? [];
-                } elseif (is_array($resp)) {
-                    $data = $resp['data'] ?? [];
-                }
-
-                $projects = collect($data);
-
-                // Calculate exact dashboard numbers directly via optimized queries
-                // Resolve contractor_id for this user
-                $contractorId = DB::table('contractors')->where('user_id', $userId)->value('contractor_id');
-
-                if ($contractorId) {
-                    // Total Bids: all bids for this contractor
-                    $totalBids = (int) DB::table('bids')
-                        ->where('contractor_id', $contractorId)
-                        ->count();
-
-                    // Pending: submitted or under_review
-                    $pendingStatuses = ['submitted', 'under_review'];
-                    $pendingBids = (int) DB::table('bids')
-                        ->where('contractor_id', $contractorId)
-                        ->whereIn('bid_status', $pendingStatuses)
-                        ->count();
-
-                    // Won Bids: accepted or awarded
-                    $wonStatuses = ['accepted', 'awarded'];
-                    $wonBids = (int) DB::table('bids')
-                        ->where('contractor_id', $contractorId)
-                        ->whereIn('bid_status', $wonStatuses)
-                        ->count();
-
-                    // Active: distinct projects where contractor has a won bid AND the project has at least one milestone for this contractor
-                    $activeProjects = (int) DB::table('bids as b')
-                        ->join('milestones as m', 'b.project_id', '=', 'm.project_id')
-                        ->where('b.contractor_id', $contractorId)
-                        ->whereIn('b.bid_status', $wonStatuses)
-                        ->where('m.contractor_id', $contractorId)
-                        ->where(function($q) {
-                            $q->whereNull('m.is_deleted')->orWhere('m.is_deleted', 0);
-                        })
-                        ->distinct()
-                        ->count('b.project_id');
-
-                } else {
-                    $totalBids = 0;
-                    $pendingBids = 0;
-                    $wonBids = 0;
-                    $activeProjects = 0;
-                }
-
-                $stats = [
-                    'total' => $totalBids,
-                    'pending' => $pendingBids,
-                    'active' => $wonBids,
-                    'inProgress' => $activeProjects,
-                    'completed' => 0
-                ];
-
-            } catch (\Exception $e) {
-                Log::error('showDashboard: failed to load projects: ' . $e->getMessage());
-                $projects = collect([]);
-            }
-        }
-
-        return view('contractor.contractor_Dashboard', [
-            'projects' => $projects,
-            'stats' => $stats,
-            'userName' => $userName
-        ]);
+        return app(\App\Http\Controllers\both\dashboardController::class)->contractorDashboard($request);
     }
 
     public function showMyProjects(Request $request)
@@ -945,7 +845,7 @@ class cprocessController extends Controller
             $msg = $isEditing
                 ? "Contractor updated a milestone for \"{$projTitle}\". Please review."
                 : "Contractor submitted a milestone plan for \"{$projTitle}\". Please review.";
-            NotificationService::create($ownerUserId, $subType, $title, $msg, 'normal', 'milestone', (int)$milestoneId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int)$step1['project_id'], 'tab' => 'milestones']]);
+            notificationService::create($ownerUserId, $subType, $title, $msg, 'normal', 'milestone', (int)$milestoneId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int)$step1['project_id'], 'tab' => 'milestones']]);
         }
 
         if ($request->expectsJson()) {
@@ -1107,7 +1007,7 @@ class cprocessController extends Controller
                 ->value('po.user_id');
             if ($ownerUserId) {
                 $projTitle = $project->project_title ?? '';
-                NotificationService::create($ownerUserId, 'milestone_submitted', 'Milestone Submitted', "Contractor submitted a milestone plan for \"{$projTitle}\". Please review.", 'normal', 'milestone', (int)$milestoneId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int)$projectId, 'tab' => 'milestones']]);
+                notificationService::create($ownerUserId, 'milestone_submitted', 'Milestone Submitted', "Contractor submitted a milestone plan for \"{$projTitle}\". Please review.", 'normal', 'milestone', (int)$milestoneId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int)$projectId, 'tab' => 'milestones']]);
             }
 
             return response()->json([
@@ -1465,6 +1365,51 @@ class cprocessController extends Controller
                         ->where('milestone_id', $milestone->milestone_id)
                         ->orderBy('sequence_order', 'asc')
                         ->get();
+
+                    // Enrich each item with progress report and payment status summaries
+                    foreach ($milestone->items as $mItem) {
+                        $mItemId = $mItem->item_id;
+
+                        // Latest progress report status
+                        $latestProgress = DB::table('progress')
+                            ->where('milestone_item_id', $mItemId)
+                            ->whereNotIn('progress_status', ['deleted'])
+                            ->orderBy('submitted_at', 'desc')
+                            ->select('progress_status', 'submitted_at')
+                            ->first();
+                        $mItem->latest_progress_status = $latestProgress->progress_status ?? null;
+                        $mItem->latest_progress_date = $latestProgress->submitted_at ?? null;
+
+                        // Progress report counts
+                        $mItem->progress_submitted_count = DB::table('progress')
+                            ->where('milestone_item_id', $mItemId)
+                            ->where('progress_status', 'submitted')
+                            ->count();
+                        $mItem->progress_rejected_count = DB::table('progress')
+                            ->where('milestone_item_id', $mItemId)
+                            ->where('progress_status', 'rejected')
+                            ->count();
+
+                        // Latest payment status
+                        $latestPayment = DB::table('milestone_payments')
+                            ->where('item_id', $mItemId)
+                            ->whereNotIn('payment_status', ['deleted'])
+                            ->orderBy('transaction_date', 'desc')
+                            ->select('payment_status', 'transaction_date')
+                            ->first();
+                        $mItem->latest_payment_status = $latestPayment->payment_status ?? null;
+                        $mItem->latest_payment_date = $latestPayment->transaction_date ?? null;
+
+                        // Payment counts
+                        $mItem->payment_submitted_count = DB::table('milestone_payments')
+                            ->where('item_id', $mItemId)
+                            ->where('payment_status', 'submitted')
+                            ->count();
+                        $mItem->payment_rejected_count = DB::table('milestone_payments')
+                            ->where('item_id', $mItemId)
+                            ->where('payment_status', 'rejected')
+                            ->count();
+                    }
 
                     $milestone->payment_plan = DB::table('payment_plans')
                         ->where('plan_id', $milestone->plan_id)

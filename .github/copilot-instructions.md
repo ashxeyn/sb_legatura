@@ -55,6 +55,7 @@ What to update here and how to ask for clarification
 - If you change any session keys, validation rules, external API cache keys, or database column names, update this file with a one-line note and a reference to the modified files.
 - Role switching persistence added: `preferred_role` is written on switch and read in `getCurrentRole` for Sanctum. See `app/Http/Controllers/contractor/cprocessController.php`.
  - Session keys update: `userType` (high-level type, e.g., `user`/`admin`) is stored on web login and `current_role` now falls back to `userType` when `user.user_type` is absent. See updates in `app/Http/Controllers/authController.php` and guarded checks in `app/Http/Controllers/owner/projectsController.php`.
+- Pagination implementation: Both `/api/contractors` and `/api/contractor/projects` endpoints now support `page` and `per_page` query parameters (default: 15 per page). Responses include `pagination` metadata with `current_page`, `per_page`, `total`, `total_pages`, and `has_more`. Mobile app implements infinite scroll using these endpoints. See `app/Http/Controllers/owner/projectsController.php`, `frontend/mobile_app/src/services/contractors_service.ts`, `frontend/mobile_app/src/services/projects_service.ts`, and `frontend/mobile_app/src/screens/both/homepage.tsx`.
 - If behavior depends on a platform (Windows/XAMPP vs Linux), include a short test plan: commands to run, expected outputs, and any files to inspect.
 
 Files that exemplify the most important patterns:

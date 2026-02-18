@@ -66,6 +66,7 @@ interface ProgressReportDetailProps {
   projectTitle: string;
   userRole: 'owner' | 'contractor';
   onClose: () => void;
+  projectStatus?: string;
 }
 
 export default function progressReportDetail({
@@ -74,8 +75,10 @@ export default function progressReportDetail({
   projectTitle,
   userRole,
   onClose,
+  projectStatus,
 }: ProgressReportDetailProps) {
   const insets = useSafeAreaInsets();
+  const isProjectHalted = projectStatus === 'halt' || projectStatus === 'on_hold' || projectStatus === 'halted';
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [showMenu, setShowMenu] = useState(false);
   const [showDisputeHistory, setShowDisputeHistory] = useState(false);
@@ -406,7 +409,7 @@ export default function progressReportDetail({
         <View style={{ height: 40 }} />
 
         {/* Owner actions: Approve / Reject (Reject opens modal) */}
-        {userRole === 'owner' && localStatus === 'submitted' && (
+        {!isProjectHalted && userRole === 'owner' && localStatus === 'submitted' && (
           <View style={styles.actionsContainer}>
             <TouchableOpacity
               style={[styles.actionButton, styles.rejectButton]}

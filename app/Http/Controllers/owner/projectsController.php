@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\App;
 use Laravel\Sanctum\PersonalAccessToken;
-use App\Services\NotificationService;
+use App\Services\notificationService;
 
 class projectsController extends Controller
 {
@@ -22,139 +22,28 @@ class projectsController extends Controller
         $this->projectsClass = $projectsClass;
     }
 
+    /**
+     * @deprecated Moved to \App\Http\Controllers\both\dashboardController::unifiedDashboard()
+     */
     public function showDashboard(Request $request)
     {
-        $user = Session::get('user');
-        if (!$user) {
-            return redirect('/accounts/login');
-        }
-
-        // Safely resolve role and type from session with fallbacks
-        $sessionCurrentRole = session('current_role');
-        $sessionUserType = session('userType'); // e.g., 'user' or 'admin'
-        $userType = isset($user->user_type) ? $user->user_type : ($sessionCurrentRole ?? null);
-        $currentRole = $sessionCurrentRole ?? $userType ?? $sessionUserType ?? null;
-
-        // Determine if user is owner
-        $isOwner = ($userType === 'property_owner' || $userType === 'both') &&
-            ($currentRole === 'owner' || $currentRole === 'property_owner');
-
-        // Get owner_id if user is owner
-        $ownerId = null;
-        if ($isOwner) {
-            $owner = DB::table('property_owners')
-                ->where('user_id', $user->user_id)
-                ->first();
-            $ownerId = $owner ? $owner->owner_id : null;
-        }
-
-        // Get feed data based on role
-        $feedItems = [];
-        $feedType = 'projects'; // 'projects' or 'contractors'
-        $contractorProjectsForMilestone = [];
-
-        if ($isOwner && $ownerId) {
-            // Owner view: Show all active contractor profiles (except themselves if both)
-            $excludeUserId = ($userType === 'both') ? $user->user_id : null;
-            $feedItems = $this->projectsClass->getActiveContractors($excludeUserId);
-            $feedType = 'contractors';
-        }
-        else {
-            // Contractor view: Show all approved projects
-            $feedItems = $this->projectsClass->getApprovedProjects();
-            $feedType = 'projects';
-
-            // Get contractor projects for milestone setup only if user is contractor/both
-            if ($userType === 'contractor' || $userType === 'both') {
-                $contractor = DB::table('contractors')->where('user_id', $user->user_id)->first();
-                if ($contractor) {
-                    $contractorClass = new \App\Models\contractor\contractorClass();
-                    $contractorProjectsForMilestone = $contractorClass->getContractorProjects($contractor->contractor_id);
-                }
-            }
-        }
-
-        // Get contractor types for dropdown
-        $contractorTypes = $this->projectsClass->getContractorTypes();
-
-        return view('both.dashboard', compact('feedItems', 'isOwner', 'contractorTypes', 'currentRole', 'userType', 'feedType', 'contractorProjectsForMilestone'));
+        return app(\App\Http\Controllers\both\dashboardController::class)->unifiedDashboard($request);
     }
 
+    /**
+     * @deprecated Moved to \App\Http\Controllers\both\homepageController::ownerHomepage()
+     */
     public function showHomepage(Request $request)
     {
-        $user = Session::get('user');
-        if (!$user) {
-            return redirect('/accounts/login');
-        }
-
-        $currentRole = session('current_role', $user->user_type ?? null);
-        $userType = $user->user_type ?? null;
-        $isOwner = ($userType === 'property_owner' || $userType === 'both') &&
-            ($currentRole === 'owner' || $currentRole === 'property_owner');
-
-        if (!$isOwner) {
-            return redirect('/dashboard')->with('error', 'Only property owners can access this page.');
-        }
-
-        // Get active contractors (exclude current user if they're also a contractor)
-        $excludeUserId = ($userType === 'both') ? $user->user_id : null;
-        $contractors = $this->projectsClass->getActiveContractors($excludeUserId);
-
-        // Prepare contractors data for JavaScript (if needed for filtering)
-        $jsContractors = $contractors->map(function ($contractor) {
-            return [
-            'contractor_id' => $contractor->contractor_id,
-            'company_name' => $contractor->company_name,
-            'contact_person' => $contractor->contact_person ?? '',
-            'years_of_experience' => $contractor->years_of_experience ?? 0,
-            'contractor_type_name' => $contractor->contractor_type_name ?? 'Contractor',
-            'city' => $contractor->city ?? '',
-            'province' => $contractor->province ?? '',
-            'average_rating' => $contractor->average_rating ?? 0,
-            'total_reviews' => $contractor->total_reviews ?? 0,
-            'completed_projects' => $contractor->completed_projects ?? 0,
-            'specialization' => $contractor->specialization ?? $contractor->contractor_type_name ?? '',
-            ];
-        });
-
-        // Get contractor types for modal dropdown
-        $contractorTypes = $this->projectsClass->getContractorTypes();
-        return view('owner.propertyOwner_Homepage', compact('contractorTypes', 'contractors', 'jsContractors'));
+        return app(\App\Http\Controllers\both\homepageController::class)->ownerHomepage($request);
     }
 
+    /**
+     * @deprecated Moved to \App\Http\Controllers\both\dashboardController::ownerDashboard()
+     */
     public function showOwnerDashboard(Request $request)
     {
-        // Allow access without login in local/testing environments
-        $isLocalOrTesting = App::environment(['local', 'testing', 'development']);
-
-        $user = Session::get('user');
-
-        // Only require login in production/staging environments
-        if (!$isLocalOrTesting && !$user) {
-            return redirect('/accounts/login');
-        }
-
-        // If in testing mode and no user, allow access anyway
-        if ($isLocalOrTesting && !$user) {
-            // Allow access without authentication for testing
-            return view('owner.propertyOwner_Dashboard');
-        }
-
-        // Normal authentication flow for logged-in users
-        $currentRole = session('current_role', $user->user_type);
-        $userType = $user->user_type;
-
-        // Only owners can access this dashboard (skip in testing if no user)
-        if ($user) {
-            $isOwner = ($userType === 'property_owner' || $userType === 'both') &&
-                ($currentRole === 'owner' || $currentRole === 'property_owner');
-
-            if (!$isOwner && !$isLocalOrTesting) {
-                return redirect('/dashboard')->with('error', 'Only property owners can access this dashboard.');
-            }
-        }
-
-        return view('owner.propertyOwner_Dashboard');
+        return app(\App\Http\Controllers\both\dashboardController::class)->ownerDashboard($request);
     }
 
     public function showAllProjects(Request $request)
@@ -835,7 +724,7 @@ class projectsController extends Controller
                 $cUserId = DB::table('contractor_users')->where('contractor_id', $bid->contractor_id)->where('is_active', 1)->where('is_deleted', 0)->value('user_id');
                 $projTitle = DB::table('projects')->where('project_id', $projectId)->value('project_title');
                 if ($cUserId) {
-                    NotificationService::create($cUserId, 'bid_accepted', 'Bid Accepted', "Your bid for \"{$projTitle}\" has been accepted!", 'high', 'project', (int)$projectId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int)$projectId]]);
+                    notificationService::create($cUserId, 'bid_accepted', 'Bid Accepted', "Your bid for \"{$projTitle}\" has been accepted!", 'high', 'project', (int)$projectId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int)$projectId]]);
                 }
 
                 // Notify all other contractors whose bids were rejected
@@ -847,7 +736,7 @@ class projectsController extends Controller
                 foreach ($rejectedBids as $rBid) {
                     $rUserId = DB::table('contractor_users')->where('contractor_id', $rBid->contractor_id)->where('is_active', 1)->where('is_deleted', 0)->value('user_id');
                     if ($rUserId) {
-                        NotificationService::create((int)$rUserId, 'bid_rejected', 'Bid Not Selected', "The property owner has already chosen a contractor for \"{$projTitle}\". Thank you for your bid.", 'normal', 'bid', (int)$rBid->bid_id, ['screen' => 'MyBids', 'params' => ['projectId' => (int)$projectId]]);
+                        notificationService::create((int)$rUserId, 'bid_rejected', 'Bid Not Selected', "The property owner has already chosen a contractor for \"{$projTitle}\". Thank you for your bid.", 'normal', 'bid', (int)$rBid->bid_id, ['screen' => 'MyBids', 'params' => ['projectId' => (int)$projectId]]);
                     }
                 }
             }
@@ -915,7 +804,7 @@ class projectsController extends Controller
             if ($bid) {
                 $cUserId = DB::table('contractor_users')->where('contractor_id', $bid->contractor_id)->where('is_active', 1)->where('is_deleted', 0)->value('user_id');
                 if ($cUserId) {
-                    NotificationService::create($cUserId, 'bid_accepted', 'Bid Accepted', "Your bid for \"{$project->project_title}\" has been accepted!", 'high', 'project', (int)$projectId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int)$projectId]]);
+                    notificationService::create($cUserId, 'bid_accepted', 'Bid Accepted', "Your bid for \"{$project->project_title}\" has been accepted!", 'high', 'project', (int)$projectId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int)$projectId]]);
                 }
 
                 // Notify all other contractors whose bids were rejected
@@ -927,7 +816,7 @@ class projectsController extends Controller
                 foreach ($rejectedBids as $rBid) {
                     $rUserId = DB::table('contractor_users')->where('contractor_id', $rBid->contractor_id)->where('is_active', 1)->where('is_deleted', 0)->value('user_id');
                     if ($rUserId) {
-                        NotificationService::create((int)$rUserId, 'bid_rejected', 'Bid Not Selected', "The property owner has already chosen a contractor for \"{$project->project_title}\". Thank you for your bid.", 'normal', 'bid', (int)$rBid->bid_id, ['screen' => 'MyBids', 'params' => ['projectId' => (int)$projectId]]);
+                        notificationService::create((int)$rUserId, 'bid_rejected', 'Bid Not Selected', "The property owner has already chosen a contractor for \"{$project->project_title}\". Thank you for your bid.", 'normal', 'bid', (int)$rBid->bid_id, ['screen' => 'MyBids', 'params' => ['projectId' => (int)$projectId]]);
                     }
                 }
             }
@@ -947,28 +836,11 @@ class projectsController extends Controller
     }
 
     /**
-     * API endpoint to get active contractors for mobile app
-     * Used in property owner's feed/homepage
+     * @deprecated Moved to \App\Http\Controllers\both\HomepageController::apiGetContractors()
      */
     public function apiGetContractors(Request $request)
     {
-        try {
-            // Get active contractors (no authentication required for browsing)
-            $contractors = $this->projectsClass->getActiveContractors();
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Contractors retrieved successfully',
-                'data' => $contractors
-            ], 200);
-
-        }
-        catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error retrieving contractors: ' . $e->getMessage()
-            ], 500);
-        }
+        return app(\App\Http\Controllers\both\homepageController::class)->apiGetContractors($request);
     }
 
     /**
@@ -1122,6 +994,52 @@ class projectsController extends Controller
                                 ->get()
                                 ->toArray();
 
+                            // Enrich each item with progress report and payment status summaries
+                            foreach ($milestone->items as &$item) {
+                                $itemId = $item->item_id;
+
+                                // Latest progress report status
+                                $latestProgress = DB::table('progress')
+                                    ->where('milestone_item_id', $itemId)
+                                    ->whereNotIn('progress_status', ['deleted'])
+                                    ->orderBy('submitted_at', 'desc')
+                                    ->select('progress_status', 'submitted_at')
+                                    ->first();
+                                $item->latest_progress_status = $latestProgress->progress_status ?? null;
+                                $item->latest_progress_date = $latestProgress->submitted_at ?? null;
+
+                                // Progress report counts
+                                $item->progress_submitted_count = DB::table('progress')
+                                    ->where('milestone_item_id', $itemId)
+                                    ->where('progress_status', 'submitted')
+                                    ->count();
+                                $item->progress_rejected_count = DB::table('progress')
+                                    ->where('milestone_item_id', $itemId)
+                                    ->where('progress_status', 'rejected')
+                                    ->count();
+
+                                // Latest payment status
+                                $latestPayment = DB::table('milestone_payments')
+                                    ->where('item_id', $itemId)
+                                    ->whereNotIn('payment_status', ['deleted'])
+                                    ->orderBy('transaction_date', 'desc')
+                                    ->select('payment_status', 'transaction_date')
+                                    ->first();
+                                $item->latest_payment_status = $latestPayment->payment_status ?? null;
+                                $item->latest_payment_date = $latestPayment->transaction_date ?? null;
+
+                                // Payment counts
+                                $item->payment_submitted_count = DB::table('milestone_payments')
+                                    ->where('item_id', $itemId)
+                                    ->where('payment_status', 'submitted')
+                                    ->count();
+                                $item->payment_rejected_count = DB::table('milestone_payments')
+                                    ->where('item_id', $itemId)
+                                    ->where('payment_status', 'rejected')
+                                    ->count();
+                            }
+                            unset($item); // break reference
+
                             // Get payment plan details
                             $paymentPlan = DB::table('payment_plans')
                                 ->select(
@@ -1175,26 +1093,11 @@ class projectsController extends Controller
     }
 
     /**
-     * API endpoint to get contractor types for project creation form
+     * @deprecated Moved to \App\Http\Controllers\both\HomepageController::apiGetContractorTypes()
      */
     public function apiGetContractorTypes(Request $request)
     {
-        try {
-            $contractorTypes = $this->projectsClass->getContractorTypes();
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Contractor types retrieved successfully',
-                'data' => $contractorTypes
-            ], 200);
-
-        }
-        catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error retrieving contractor types: ' . $e->getMessage()
-            ], 500);
-        }
+        return app(\App\Http\Controllers\both\homepageController::class)->apiGetContractorTypes($request);
     }
 
     /**
@@ -1439,131 +1342,11 @@ class projectsController extends Controller
     }
 
     /**
-     * API endpoint to get approved projects for contractors (feed)
+     * @deprecated Moved to \App\Http\Controllers\both\HomepageController::apiGetApprovedProjects()
      */
     public function apiGetApprovedProjects(Request $request)
     {
-        try {
-            // Resolve user from query param, session, or bearer token
-            $userId = $request->query('user_id');
-            if (!$userId) {
-                $user = Session::get('user');
-                if (!$user) {
-                    $bearerToken = $request->bearerToken();
-                    if ($bearerToken) {
-                        $token = \Laravel\Sanctum\PersonalAccessToken::findToken($bearerToken);
-                        if ($token) {
-                            $user = $token->tokenable;
-                        }
-                    }
-                }
-                if ($user) {
-                    $userId = $user->user_id ?? $user->id ?? null;
-                }
-            }
-
-            // Get contractor info if userId available (for filtering)
-            $contractorTypeId = null;
-            $contractor = null;
-            if ($userId) {
-                $contractor = DB::table('contractors')->where('user_id', $userId)->first();
-                if ($contractor) {
-                    $contractorTypeId = $contractor->type_id;
-                }
-            }
-
-            // Get approved projects that are open for bidding
-            $query = DB::table('projects as p')
-                ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
-                ->join('contractor_types as ct', 'p.type_id', '=', 'ct.type_id')
-                ->join('property_owners as po', 'pr.owner_id', '=', 'po.owner_id')
-                ->join('users as u', 'po.user_id', '=', 'u.user_id')
-                ->select(
-                'p.project_id',
-                'p.project_title',
-                'p.project_description',
-                'p.project_location',
-                'p.budget_range_min',
-                'p.budget_range_max',
-                'p.lot_size',
-                'p.floor_area',
-                'p.property_type',
-                'p.type_id',
-                'ct.type_name',
-                'p.project_status',
-                'pr.project_post_status',
-                'pr.bidding_due as bidding_deadline',
-                DB::raw('DATE(pr.created_at) as created_at'),
-                'pr.owner_id as owner_id',
-                DB::raw("CONCAT(po.first_name, ' ', po.last_name) as owner_name"),
-                'u.profile_pic as owner_profile_pic',
-                'u.user_id as owner_user_id'
-            )
-                ->where('pr.project_post_status', 'approved')
-                ->where('p.project_status', 'open')
-                ->where('pr.bidding_due', '>=', now());
-
-            // Exclude projects the contractor has already bid on (non-cancelled)
-            if ($contractor) {
-                $bidProjectIds = DB::table('bids')
-                    ->where('contractor_id', $contractor->contractor_id)
-                    ->whereNotIn('bid_status', ['cancelled'])
-                    ->pluck('project_id');
-                if ($bidProjectIds->isNotEmpty()) {
-                    $query->whereNotIn('p.project_id', $bidProjectIds);
-                }
-            }
-
-            // Sort: matching contractor type first, then by newest
-            if ($contractorTypeId) {
-                $query->orderByRaw('CASE WHEN p.type_id = ? THEN 0 ELSE 1 END ASC', [$contractorTypeId])
-                    ->orderBy('pr.created_at', 'desc');
-            }
-            else {
-                $query->orderBy('pr.created_at', 'desc');
-            }
-
-            $projects = $query->get();
-
-            // Add bids_count for each project
-            foreach ($projects as $project) {
-                $bidCount = DB::table('bids')
-                    ->where('project_id', $project->project_id)
-                    ->whereNotIn('bid_status', ['cancelled'])
-                    ->count();
-                $project->bids_count = $bidCount;
-                // Attach all project files with type info so the frontend can
-                // display optional images (blueprint, desired design, others) and
-                // hide sensitive documents (building permit, title).
-                $fileRows = DB::table('project_files')
-                    ->where('project_id', $project->project_id)
-                    ->orderBy('file_id', 'asc')
-                    ->select('file_id', 'file_type', 'file_path')
-                    ->get()
-                    ->map(fn($f) => [
-                'file_id' => $f->file_id,
-                'file_type' => $f->file_type,
-                'file_path' => $f->file_path,
-                ])
-                    ->values()
-                    ->toArray();
-
-                $project->files = $fileRows;
-            }
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Projects retrieved successfully',
-                'data' => $projects
-            ], 200);
-
-        }
-        catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error retrieving projects: ' . $e->getMessage()
-            ], 500);
-        }
+        return app(\App\Http\Controllers\both\homepageController::class)->apiGetApprovedProjects($request);
     }
 
     /**
@@ -1622,7 +1405,7 @@ class projectsController extends Controller
                 $cUserId = DB::table('contractor_users')->where('contractor_id', $rejBid->contractor_id)->where('is_active', 1)->where('is_deleted', 0)->value('user_id');
                 $projTitle = $project->project_title ?? DB::table('projects')->where('project_id', $projectId)->value('project_title');
                 if ($cUserId) {
-                    NotificationService::create($cUserId, 'bid_rejected', 'Bid Rejected', "Your bid for \"{$projTitle}\" was not accepted.", 'normal', 'project', (int)$projectId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int)$projectId]]);
+                    notificationService::create($cUserId, 'bid_rejected', 'Bid Rejected', "Your bid for \"{$projTitle}\" was not accepted.", 'normal', 'project', (int)$projectId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int)$projectId]]);
                 }
             }
 
@@ -1695,7 +1478,7 @@ class projectsController extends Controller
             $cUserId = DB::table('contractor_users')->where('contractor_id', $milestone->contractor_id)->where('is_active', 1)->where('is_deleted', 0)->value('user_id');
             if ($cUserId) {
                 $msName = $milestone->milestone_name ?? 'Milestone';
-                NotificationService::create($cUserId, 'milestone_approved', 'Milestone Approved', "Your milestone \"{$msName}\" has been approved by the owner.", 'normal', 'milestone', (int)$milestoneId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int)$milestone->project_id, 'tab' => 'milestones']]);
+                notificationService::create($cUserId, 'milestone_approved', 'Milestone Approved', "Your milestone \"{$msName}\" has been approved by the owner.", 'normal', 'milestone', (int)$milestoneId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int)$milestone->project_id, 'tab' => 'milestones']]);
             }
 
             return response()->json([
@@ -1770,7 +1553,7 @@ class projectsController extends Controller
             if ($cUserId) {
                 $msName = $milestone->milestone_name ?? 'Milestone';
                 $reasonNote = $rejectionReason ? " Reason: {$rejectionReason}" : '';
-                NotificationService::create($cUserId, 'milestone_rejected', 'Milestone Rejected', "Your milestone \"{$msName}\" was rejected.{$reasonNote}", 'high', 'milestone', (int)$milestoneId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int)$milestone->project_id, 'tab' => 'milestones']]);
+                notificationService::create($cUserId, 'milestone_rejected', 'Milestone Rejected', "Your milestone \"{$msName}\" was rejected.{$reasonNote}", 'high', 'milestone', (int)$milestoneId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int)$milestone->project_id, 'tab' => 'milestones']]);
             }
 
             return response()->json([
@@ -1817,7 +1600,7 @@ class projectsController extends Controller
             if ($ms) {
                 $cUserId = DB::table('contractor_users')->where('contractor_id', $ms->contractor_id)->where('is_active', 1)->where('is_deleted', 0)->value('user_id');
                 if ($cUserId) {
-                    NotificationService::create($cUserId, 'milestone_completed', 'Milestone Completed', "Milestone \"{$ms->milestone_name}\" for \"{$ms->project_title}\" has been marked as complete.", 'normal', 'milestone', (int)$milestoneId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int)$ms->project_id, 'tab' => 'milestones']]);
+                    notificationService::create($cUserId, 'milestone_completed', 'Milestone Completed', "Milestone \"{$ms->milestone_name}\" for \"{$ms->project_title}\" has been marked as complete.", 'normal', 'milestone', (int)$milestoneId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int)$ms->project_id, 'tab' => 'milestones']]);
                 }
             }
 
@@ -1969,7 +1752,7 @@ class projectsController extends Controller
             if ($itemInfo) {
                 $cUserId = DB::table('contractor_users')->where('contractor_id', $itemInfo->contractor_id)->where('is_active', 1)->where('is_deleted', 0)->value('user_id');
                 if ($cUserId) {
-                    NotificationService::create($cUserId, 'milestone_item_completed', 'Milestone Complete', "Milestone \"{$itemInfo->milestone_item_title}\" for \"{$itemInfo->project_title}\" has been marked complete.", 'normal', 'milestone_item', (int)$updatedItem->item_id, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int)$itemInfo->project_id, 'tab' => 'milestones']]);
+                    notificationService::create($cUserId, 'milestone_item_completed', 'Milestone Complete', "Milestone \"{$itemInfo->milestone_item_title}\" for \"{$itemInfo->project_title}\" has been marked complete.", 'normal', 'milestone_item', (int)$updatedItem->item_id, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int)$itemInfo->project_id, 'tab' => 'milestones']]);
                 }
             }
 
@@ -2112,7 +1895,7 @@ class projectsController extends Controller
             if ($project->selected_contractor_id) {
                 $cUserId = DB::table('contractor_users')->where('contractor_id', $project->selected_contractor_id)->where('is_active', 1)->where('is_deleted', 0)->value('user_id');
                 if ($cUserId) {
-                    NotificationService::create($cUserId, 'project_completed', 'Project Completed', "The project \"{$project->project_title}\" has been marked as completed. Congratulations!", 'high', 'project', (int)$projectId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int)$projectId]]);
+                    notificationService::create($cUserId, 'project_completed', 'Project Completed', "The project \"{$project->project_title}\" has been marked as completed. Congratulations!", 'high', 'project', (int)$projectId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int)$projectId]]);
                 }
             }
 

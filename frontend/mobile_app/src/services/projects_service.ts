@@ -34,12 +34,24 @@ export interface ContractorType {
 }
 
 /**
+ * Pagination metadata
+ */
+export interface PaginationMeta {
+  current_page: number;
+  per_page: number;
+  total: number;
+  total_pages: number;
+  has_more: boolean;
+}
+
+/**
  * API response wrapper
  */
 export interface ApiResponse<T = any> {
   success: boolean;
   message?: string;
   data?: T;
+  pagination?: PaginationMeta;
   status: number;
 }
 
@@ -439,12 +451,23 @@ export class projects_service {
   }
 
   /**
-   * Get approved projects for contractor feed
+   * Get approved projects for contractor feed with pagination support
    * These are projects open for bidding
+   * 
+   * @param page - Page number (default: 1)
+   * @param perPage - Items per page (default: 15)
+   * @returns Promise with API response containing projects and pagination metadata
    */
-  static async get_approved_projects(): Promise<ApiResponse> {
+  static async get_approved_projects(
+    page: number = 1,
+    perPage: number = 15
+  ): Promise<ApiResponse> {
     try {
-      const response = await api_request('/api/contractor/projects', {
+      const params = new URLSearchParams();
+      params.append('page', page.toString());
+      params.append('per_page', perPage.toString());
+      
+      const response = await api_request(`/api/contractor/projects?${params.toString()}`, {
         method: 'GET',
         headers: {
           'Accept': 'application/json',

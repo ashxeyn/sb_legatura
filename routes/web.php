@@ -5,6 +5,8 @@ use App\Http\Controllers\authController;
 use App\Http\Controllers\contractor\cprocessController;
 use App\Http\Controllers\contractor\membersController;
 use App\Http\Controllers\both\disputeController;
+use App\Http\Controllers\both\homepageController;
+use App\Http\Controllers\both\dashboardController as BothDashboardController;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\View;
 use App\Http\Controllers\Admin\dashboardController;
@@ -69,10 +71,10 @@ Route::get('/add-profile-photo', function () {
 })->name('profile.photo');
 
 // Property Owner Homepage
-Route::get('/owner/homepage', [\App\Http\Controllers\owner\projectsController::class, 'showHomepage'])->name('owner.homepage');
+Route::get('/owner/homepage', [homepageController::class, 'ownerHomepage'])->name('owner.homepage');
 
 // Property Owner Dashboard
-Route::get('/owner/dashboard', [\App\Http\Controllers\owner\projectsController::class, 'showOwnerDashboard'])->name('owner.dashboard');
+Route::get('/owner/dashboard', [BothDashboardController::class, 'ownerDashboard'])->name('owner.dashboard');
 
 // Property Owner All Projects
 Route::get('/owner/projects', [\App\Http\Controllers\owner\projectsController::class, 'showAllProjects'])->name('owner.projects');
@@ -104,10 +106,10 @@ Route::prefix('owner/messages')->group(function () {
 });
 
 // Contractor Homepage
-Route::get('/contractor/homepage', [\App\Http\Controllers\contractor\cprocessController::class, 'showHomepage'])->name('contractor.homepage');
+Route::get('/contractor/homepage', [homepageController::class, 'contractorHomepage'])->name('contractor.homepage');
 
 // Contractor Dashboard
-Route::get('/contractor/dashboard', [\App\Http\Controllers\contractor\cprocessController::class, 'showDashboard'])->name('contractor.dashboard');
+Route::get('/contractor/dashboard', [BothDashboardController::class, 'contractorDashboard'])->name('contractor.dashboard');
 
 // Contractor My Projects
 Route::get('/contractor/projects', [\App\Http\Controllers\contractor\cprocessController::class, 'showMyProjects'])->name('contractor.projects');
@@ -199,7 +201,7 @@ Route::get('/admin/dashboard', function() {
     return view('admin.dashboard');
 });
 
-Route::get('/dashboard', [\App\Http\Controllers\owner\projectsController::class, 'showDashboard']);
+Route::get('/dashboard', [BothDashboardController::class, 'unifiedDashboard']);
 
 // Contractor Milestone Setup Routes
 Route::get('/contractor/milestone/setup', [cprocessController::class, 'showMilestoneSetupForm']);

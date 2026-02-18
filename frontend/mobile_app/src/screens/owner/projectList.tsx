@@ -9,6 +9,8 @@ import {
   ActivityIndicator,
   RefreshControl,
   StatusBar,
+  TextInput,
+  Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
@@ -109,8 +111,44 @@ export default function ProjectList({ userData, onClose, initialFilter = 'all' }
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeFilter, setActiveFilter] = useState(initialFilter);
+  const [activeFilters, setActiveFilters] = useState<string[]>([initialFilter]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<'latest' | 'oldest' | 'a_z' | 'z_a' | 'budget_high' | 'budget_low'>('latest');
+  const [showSortModal, setShowSortModal] = useState(false);
+
+  const toggleFilter = (key: string) => {
+    if (key === 'all') {
+      setActiveFilters(['all']);
+      return;
+    }
+    setActiveFilters(prev => {
+      const withoutAll = prev.filter(f => f !== 'all');
+      if (withoutAll.includes(key)) {
+        const updated = withoutAll.filter(f => f !== key);
+        return updated.length === 0 ? ['all'] : updated;
+      } else {
+        return [...withoutAll, key];
+      }
+    });
+  };
+
+  const isFiltered = !(activeFilters.length === 1 && activeFilters[0] === 'all') || searchQuery.trim() !== '' || sortBy !== 'latest';
+
+  const clearAllFilters = () => {
+    setActiveFilters(['all']);
+    setSearchQuery('');
+    setSortBy('latest');
+  };
+
+  const sortOptions = [
+    { key: 'latest', label: 'Latest First', icon: 'arrow-down' },
+    { key: 'oldest', label: 'Oldest First', icon: 'arrow-up' },
+    { key: 'a_z', label: 'Title A-Z', icon: 'type' },
+    { key: 'z_a', label: 'Title Z-A', icon: 'type' },
+    { key: 'budget_high', label: 'Budget: High to Low', icon: 'trending-up' },
+    { key: 'budget_low', label: 'Budget: Low to High', icon: 'trending-down' },
+  ] as const;
 
   useEffect(() => {
     fetchProjects();
@@ -167,16 +205,65 @@ export default function ProjectList({ userData, onClose, initialFilter = 'all' }
     pending_review: projects.filter(p => p.project_post_status === 'under_review').length,
     active: projects.filter(p => p.selected_contractor_id && p.display_status === 'in_progress').length,
     completed: projects.filter(p => p.display_status === 'completed' || p.project_status === 'completed').length,
+    needs_setup: projects.filter(p => p.selected_contractor_id && p.display_status === 'waiting_milestone_setup').length,
+    has_bids: projects.filter(p => (p.bids_count || 0) > 0).length,
+    expiring_soon: projects.filter(p => {
+      if (!p.bidding_due || p.selected_contractor_id) return false;
+      const daysLeft = Math.ceil((new Date(p.bidding_due).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+      return daysLeft > 0 && daysLeft <= 7;
+    }).length,
   };
 
-  // Filter projects
-  const filteredProjects = projects.filter(p => {
-    if (activeFilter === 'all') return true;
-    if (activeFilter === 'bidding') return !p.selected_contractor_id && p.project_post_status === 'approved' && p.project_status === 'open';
-    if (activeFilter === 'pending_review') return p.project_post_status === 'under_review';
-    if (activeFilter === 'active') return p.selected_contractor_id && p.display_status === 'in_progress';
-    if (activeFilter === 'completed') return p.display_status === 'completed' || p.project_status === 'completed';
-    return true;
+  // Filter projects by phase (multi-select: project matches if ANY selected filter applies)
+  const phaseFiltered = projects.filter(p => {
+    if (activeFilters.includes('all')) return true;
+    return activeFilters.some(filter => {
+      if (filter === 'bidding') return !p.selected_contractor_id && p.project_post_status === 'approved' && p.project_status === 'open';
+      if (filter === 'pending_review') return p.project_post_status === 'under_review';
+      if (filter === 'active') return p.selected_contractor_id && p.display_status === 'in_progress';
+      if (filter === 'needs_setup') return p.selected_contractor_id && p.display_status === 'waiting_milestone_setup';
+      if (filter === 'completed') return p.display_status === 'completed' || p.project_status === 'completed';
+      if (filter === 'has_bids') return (p.bids_count || 0) > 0;
+      if (filter === 'expiring_soon') {
+        if (!p.bidding_due || p.selected_contractor_id) return false;
+        const daysLeft = Math.ceil((new Date(p.bidding_due).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+        return daysLeft > 0 && daysLeft <= 7;
+      }
+      return false;
+    });
+  });
+
+  // Apply search filter
+  const searchFiltered = phaseFiltered.filter(p => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      (p.project_title || '').toLowerCase().includes(q) ||
+      (p.project_description || '').toLowerCase().includes(q) ||
+      (p.project_location || '').toLowerCase().includes(q) ||
+      (p.type_name || '').toLowerCase().includes(q) ||
+      (p.property_type || '').toLowerCase().includes(q)
+    );
+  });
+
+  // Apply sort
+  const filteredProjects = [...searchFiltered].sort((a, b) => {
+    switch (sortBy) {
+      case 'latest':
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      case 'oldest':
+        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      case 'a_z':
+        return (a.project_title || '').localeCompare(b.project_title || '');
+      case 'z_a':
+        return (b.project_title || '').localeCompare(a.project_title || '');
+      case 'budget_high':
+        return (b.budget_range_max || 0) - (a.budget_range_max || 0);
+      case 'budget_low':
+        return (a.budget_range_min || 0) - (b.budget_range_min || 0);
+      default:
+        return 0;
+    }
   });
 
   const formatBudget = (min: number, max: number) => {
@@ -190,6 +277,11 @@ export default function ProjectList({ userData, onClose, initialFilter = 'all' }
 
   const getStatusConfig = (project: Project) => {
     const { project_status, project_post_status, display_status, selected_contractor_id } = project;
+
+    // Check if project is halted (highest priority)
+    if (project_status === 'halt' || project_status === 'on_hold' || project_status === 'halted') {
+      return { color: COLORS.error, bg: '#FEE2E2', label: 'Project Halted', icon: 'alert-octagon' };
+    }
 
     // Check if project is completed (priority check)
     if (project_status === 'completed' || display_status === 'completed') {
@@ -227,12 +319,12 @@ export default function ProjectList({ userData, onClose, initialFilter = 'all' }
   };
 
   const renderFilterChip = (key: string, label: string, count: number) => {
-    const isActive = activeFilter === key;
+    const isActive = activeFilters.includes(key);
     return (
       <TouchableOpacity
         key={key}
         style={[styles.filterChip, isActive && styles.filterChipActive]}
-        onPress={() => setActiveFilter(key)}
+        onPress={() => toggleFilter(key)}
         activeOpacity={0.7}
       >
         <Text style={[styles.filterChipText, isActive && styles.filterChipTextActive]}>
@@ -253,18 +345,26 @@ export default function ProjectList({ userData, onClose, initialFilter = 'all' }
     const statusConfig = getStatusConfig(project);
     const daysRemaining = project.bidding_due && !project.selected_contractor_id ? getDaysRemaining(project.bidding_due) : null;
     const isCompleted = project.project_status === 'completed' || project.display_status === 'completed';
+    const isHalted = project.project_status === 'halt' || project.project_status === 'on_hold' || project.project_status === 'halted';
 
     return (
       <TouchableOpacity
         key={project.project_id}
         style={[
           styles.projectCard,
-          isCompleted && styles.projectCardCompleted
+          isCompleted && styles.projectCardCompleted,
+          isHalted && styles.projectCardHalted,
         ]}
         activeOpacity={0.7}
         onPress={() => setSelectedProject(project)}
       >
-        {isCompleted && (
+        {isHalted && (
+          <View style={styles.haltedBanner}>
+            <Feather name="alert-octagon" size={16} color="#FFFFFF" />
+            <Text style={styles.haltedBannerText}>Project Halted</Text>
+          </View>
+        )}
+        {isCompleted && !isHalted && (
           <View style={styles.completedBanner}>
             <Feather name="check-circle" size={16} color={COLORS.success} />
             <Text style={styles.completedBannerText}>Project Completed</Text>
@@ -370,19 +470,97 @@ export default function ProjectList({ userData, onClose, initialFilter = 'all' }
         <View style={styles.headerSpacer} />
       </View>
 
-      {/* Filter Chips */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filterScrollContent}
-        style={styles.filterScroll}
-      >
-        {renderFilterChip('all', 'All', stats.total)}
-        {renderFilterChip('bidding', 'Bidding', stats.bidding)}
-        {renderFilterChip('pending_review', 'Pending Review', stats.pending_review)}
-        {renderFilterChip('active', 'Active', stats.active)}
-        {renderFilterChip('completed', 'Completed', stats.completed)}
-      </ScrollView>
+      {/* Search Bar */}
+      <View style={styles.searchRow}>
+        <View style={styles.searchInputContainer}>
+          <Feather name="search" size={18} color={COLORS.textMuted} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search projects..."
+            placeholderTextColor={COLORS.textMuted}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            returnKeyType="search"
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Feather name="x-circle" size={18} color={COLORS.textMuted} />
+            </TouchableOpacity>
+          )}
+        </View>
+        <TouchableOpacity
+          style={[styles.sortButton, isFiltered && styles.sortButtonActive]}
+          onPress={() => setShowSortModal(true)}
+          activeOpacity={0.7}
+        >
+          <Feather name="sliders" size={18} color={isFiltered ? '#FFFFFF' : COLORS.primary} />
+          {isFiltered && (
+            <View style={styles.filterBadge}>
+              <Text style={styles.filterBadgeText}>
+                {(activeFilters.includes('all') ? 0 : activeFilters.length) + (sortBy !== 'latest' ? 1 : 0)}
+              </Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      </View>
+
+      {/* Sort & Filter Modal */}
+      <Modal visible={showSortModal} transparent animationType="slide" onRequestClose={() => setShowSortModal(false)}>
+        <TouchableOpacity style={styles.sortModalOverlay} activeOpacity={1} onPress={() => setShowSortModal(false)}>
+          <View style={styles.sortModalContent} onStartShouldSetResponder={() => true}>
+            {/* Modal Header */}
+            <View style={styles.modalHeader}>
+              <View style={styles.modalDragHandle} />
+              <View style={styles.modalTitleRow}>
+                <Text style={styles.sortModalTitle}>Sort & Filter</Text>
+                {isFiltered && (
+                  <TouchableOpacity style={styles.resetButton} onPress={clearAllFilters} activeOpacity={0.7}>
+                    <Feather name="rotate-ccw" size={14} color={COLORS.error} />
+                    <Text style={styles.resetButtonText}>Reset All</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
+              {/* Sort By Section */}
+              <Text style={styles.sectionLabel}>Sort By</Text>
+              {sortOptions.map(option => (
+                <TouchableOpacity
+                  key={option.key}
+                  style={[styles.sortOption, sortBy === option.key && styles.sortOptionActive]}
+                  onPress={() => setSortBy(option.key as any)}
+                >
+                  <Feather name={option.icon as any} size={18} color={sortBy === option.key ? COLORS.primary : COLORS.textSecondary} />
+                  <Text style={[styles.sortOptionText, sortBy === option.key && styles.sortOptionTextActive]}>
+                    {option.label}
+                  </Text>
+                  {sortBy === option.key && <Feather name="check" size={18} color={COLORS.primary} />}
+                </TouchableOpacity>
+              ))}
+
+              {/* By Phase Section */}
+              <View style={styles.sectionDivider} />
+              <Text style={styles.sectionLabel}>By Phase</Text>
+              <View style={styles.phaseChipsContainer}>
+                {renderFilterChip('all', 'All', stats.total)}
+                {renderFilterChip('pending_review', 'Pending Review', stats.pending_review)}
+                {renderFilterChip('bidding', 'Bidding', stats.bidding)}
+                {renderFilterChip('needs_setup', 'Needs Setup', stats.needs_setup)}
+                {renderFilterChip('active', 'In Progress', stats.active)}
+                {renderFilterChip('completed', 'Completed', stats.completed)}
+                {renderFilterChip('has_bids', 'Has Bids', stats.has_bids)}
+                {renderFilterChip('expiring_soon', 'Expiring Soon', stats.expiring_soon)}
+              </View>
+            </ScrollView>
+
+            {/* Apply Button - pinned at bottom */}
+            <TouchableOpacity style={styles.applyButton} onPress={() => setShowSortModal(false)} activeOpacity={0.7}>
+              <Text style={styles.applyButtonText}>Apply</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
 
       {/* Content */}
       {isLoading && !refreshing ? (
@@ -402,36 +580,25 @@ export default function ProjectList({ userData, onClose, initialFilter = 'all' }
       ) : filteredProjects.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Feather
-            name={activeFilter === 'all' ? 'folder' : activeFilter === 'completed' ? 'check-circle' : activeFilter === 'active' ? 'tool' : activeFilter === 'bidding' ? 'send' : 'clock'}
+            name={activeFilters.includes('all') ? 'folder' : 'search'}
             size={64}
             color={COLORS.border}
           />
           <Text style={styles.emptyTitle}>
-            {activeFilter === 'all'
+            {activeFilters.includes('all') && !searchQuery.trim()
               ? 'No Projects Yet'
-              : activeFilter === 'completed'
-              ? 'No Finished Projects'
-              : activeFilter === 'active'
-              ? 'No Active Projects'
-              : activeFilter === 'bidding'
-              ? 'No Projects in Bidding'
-              : activeFilter === 'pending_review'
-              ? 'No Pending Projects'
-              : 'No Projects Found'}
+              : 'No Matching Projects'}
           </Text>
           <Text style={styles.emptyText}>
-            {activeFilter === 'all'
+            {activeFilters.includes('all') && !searchQuery.trim()
               ? 'Create your first project to start finding contractors'
-              : activeFilter === 'completed'
-              ? 'You don\'t have any finished projects yet. Projects will appear here once they are marked as completed.'
-              : activeFilter === 'active'
-              ? 'No projects are currently in progress. Accept a bid to get started.'
-              : activeFilter === 'bidding'
-              ? 'No projects are currently open for bidding.'
-              : activeFilter === 'pending_review'
-              ? 'No projects are waiting for admin approval.'
-              : 'Try selecting a different filter'}
+              : 'Try adjusting your filters or search query'}
           </Text>
+          {isFiltered && (
+            <TouchableOpacity style={styles.retryButton} onPress={clearAllFilters}>
+              <Text style={styles.retryButtonText}>Clear Filters</Text>
+            </TouchableOpacity>
+          )}
         </View>
       ) : (
         <ScrollView
@@ -485,18 +652,165 @@ const styles = StyleSheet.create({
   headerSpacer: {
     width: 40,
   },
-  filterScroll: {
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     backgroundColor: COLORS.surface,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.borderLight,
-    flexGrow: 0,
-    maxHeight: 60,
+    gap: 10,
   },
-  filterScrollContent: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+  searchInputContainer: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: COLORS.background,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    height: 42,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: COLORS.text,
+    marginLeft: 8,
+    paddingVertical: 0,
+  },
+  sortButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 10,
+    backgroundColor: COLORS.primaryLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.primary + '30',
+  },
+  sortModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-end',
+  },
+  sortModalContent: {
+    backgroundColor: COLORS.surface,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 36,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  modalTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  modalDragHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: COLORS.border,
+    marginBottom: 16,
+  },
+  sortModalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: 4,
+  },
+  sectionLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginBottom: 10,
+    marginTop: 8,
+  },
+  sectionDivider: {
+    height: 1,
+    backgroundColor: COLORS.borderLight,
+    marginVertical: 16,
+  },
+  resetButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  resetButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.error,
+  },
+  phaseChipsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 8,
+  },
+  applyButton: {
+    backgroundColor: COLORS.primary,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  applyButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  sortButtonActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  filterBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: COLORS.error,
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  filterBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  sortOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    borderRadius: 10,
+    gap: 12,
+  },
+  sortOptionActive: {
+    backgroundColor: COLORS.primaryLight,
+  },
+  sortOptionText: {
+    flex: 1,
+    fontSize: 15,
+    color: COLORS.textSecondary,
+  },
+  sortOptionTextActive: {
+    color: COLORS.primary,
+    fontWeight: '600',
   },
   filterChip: {
     flexDirection: 'row',
@@ -622,6 +936,31 @@ const styles = StyleSheet.create({
     borderColor: COLORS.success,
     shadowColor: COLORS.success,
     shadowOpacity: 0.15,
+  },
+  projectCardHalted: {
+    borderWidth: 2,
+    borderColor: COLORS.error,
+    backgroundColor: '#FFF5F5',
+  },
+  haltedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.error,
+    marginHorizontal: -16,
+    marginTop: -16,
+    marginBottom: 12,
+    paddingVertical: 8,
+    borderTopLeftRadius: 10,
+    borderTopRightRadius: 10,
+    gap: 6,
+  },
+  haltedBannerText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   completedBanner: {
     flexDirection: 'row',

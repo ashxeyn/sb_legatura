@@ -64,6 +64,7 @@ interface MilestoneDetailProps {
       userRole: 'owner' | 'contractor';
       userId: number;
       isPreviousItemComplete?: boolean;
+      projectStatus?: string;
     };
   };
   navigation: any;
@@ -83,7 +84,10 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
     userRole,
     userId,
     isPreviousItemComplete = true,
+    projectStatus,
   } = route.params;
+
+  const isProjectHalted = projectStatus === 'halt' || projectStatus === 'on_hold' || projectStatus === 'halted';
 
   // Debug: log the milestone item to see its structure
   console.log('MilestoneDetail - milestoneItem:', JSON.stringify(milestoneItem));
@@ -567,6 +571,68 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
           </View>
         </TouchableOpacity>
 
+        {/* Status Alert Banners */}
+        {milestoneItem.item_status === 'halt' && (
+          <View style={styles.alertBanner}>
+            <Feather name="pause-circle" size={18} color={COLORS.error} />
+            <Text style={styles.alertBannerText}>This milestone item is currently halted</Text>
+          </View>
+        )}
+
+        {(() => {
+          // A rejected report is only an active issue if the latest report is still rejected.
+          // Once a new report is submitted or approved, the rejection is resolved.
+          const sorted = [...progressReports].sort((a, b) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime());
+          const latestReport = sorted[0];
+          if (latestReport && latestReport.progress_status === 'rejected') {
+            return (
+              <View style={[styles.alertBanner, { backgroundColor: COLORS.errorLight, borderColor: '#FECACA' }]}>
+                <Feather name="alert-circle" size={18} color={COLORS.error} />
+                <Text style={[styles.alertBannerText, { color: '#991B1B' }]}>
+                  Latest progress report rejected — submit a new one
+                </Text>
+              </View>
+            );
+          }
+          return null;
+        })()}
+
+        {(() => {
+          // A rejected payment is only an issue if the latest payment is still rejected.
+          const sortedPayments = [...payments].sort((a, b) => new Date(b.transaction_date).getTime() - new Date(a.transaction_date).getTime());
+          const latestPayment = sortedPayments[0];
+          if (latestPayment && latestPayment.payment_status === 'rejected') {
+            return (
+              <View style={[styles.alertBanner, { backgroundColor: COLORS.errorLight, borderColor: '#FECACA' }]}>
+                <Feather name="alert-circle" size={18} color={COLORS.error} />
+                <Text style={[styles.alertBannerText, { color: '#991B1B' }]}>
+                  Latest payment rejected
+                </Text>
+              </View>
+            );
+          }
+          return null;
+        })()}
+
+        {(() => {
+          const pendingReports = progressReports.filter(r => r.progress_status === 'submitted');
+          const pendingPayments = payments.filter(p => p.payment_status === 'submitted');
+          if (pendingReports.length > 0 || pendingPayments.length > 0) {
+            const parts: string[] = [];
+            if (pendingReports.length > 0) parts.push(`${pendingReports.length} new report${pendingReports.length > 1 ? 's' : ''}`);
+            if (pendingPayments.length > 0) parts.push(`${pendingPayments.length} new payment${pendingPayments.length > 1 ? 's' : ''}`);
+            return (
+              <View style={[styles.alertBanner, { backgroundColor: '#DBEAFE', borderColor: '#93C5FD' }]}>
+                <Feather name="info" size={18} color={COLORS.info} />
+                <Text style={[styles.alertBannerText, { color: '#1E40AF' }]}>
+                  {parts.join(' and ')} pending review
+                </Text>
+              </View>
+            );
+          }
+          return null;
+        })()}
+
         {/* Divider */}
         <View style={styles.divider} />
 
@@ -797,7 +863,7 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
                     )}
 
                     {/* Contractor: Approve/Reject buttons for submitted payments */}
-                    {isContractor && payment.payment_status === 'submitted' && (
+                    {!isProjectHalted && isContractor && payment.payment_status === 'submitted' && (
                       <View style={styles.paymentActionButtons}>
                         <TouchableOpacity
                           style={styles.paymentRejectBtn}
@@ -854,7 +920,7 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
         )}
 
         {/* Owner: Send payment (show if any approved) */}
-        {shouldShowPaymentButton && isPreviousItemComplete && (
+        {!isProjectHalted && shouldShowPaymentButton && isPreviousItemComplete && (
           <View style={styles.bottomRow}>
             <TouchableOpacity 
               style={styles.sendPaymentButton}
@@ -867,7 +933,7 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
         )}
 
         {/* Owner: Set as Complete (appears when at least one progress report is approved AND at least one payment is approved by contractor) */}
-        {isOwner && isApproved && hasAnyApproved && hasApprovedPayment && itemStatus !== 'completed' && isPreviousItemComplete && (
+        {!isProjectHalted && isOwner && isApproved && hasAnyApproved && hasApprovedPayment && itemStatus !== 'completed' && isPreviousItemComplete && (
           <View style={styles.bottomRow}>
             <TouchableOpacity
               style={styles.completeButton}
@@ -942,7 +1008,7 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
         )}
 
         {/* Contractor: Submit Progress Report */}
-        {isContractor && isApproved && !isCompleted && itemStatus !== 'completed' && isPreviousItemComplete && (
+        {!isProjectHalted && isContractor && isApproved && !isCompleted && itemStatus !== 'completed' && isPreviousItemComplete && (
           <View style={styles.bottomRow}>
             <TouchableOpacity
               style={styles.submitReportButton}
@@ -1048,6 +1114,7 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
             projectTitle={projectTitle}
             userRole={userRole}
             onClose={() => setSelectedProgressReport(null)}
+            projectStatus={projectStatus}
           />
         </Modal>
       )}
@@ -1816,5 +1883,27 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: COLORS.surface,
+  },
+
+  // ── Alert Banners ──
+  alertBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginHorizontal: 16,
+    marginBottom: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: '#FEE2E2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  alertBannerText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#991B1B',
+    lineHeight: 18,
   },
 });

@@ -10,7 +10,8 @@ use App\Http\Controllers\contractor\progressUploadController;
 use App\Http\Controllers\owner\paymentUploadController;
 use App\Http\Controllers\projectPosting\projectPostingController;
 use App\Http\Controllers\both\disputeController;
-use App\Http\Controllers\Both\NotificationController;
+use App\Http\Controllers\Both\notificationController;
+use App\Http\Controllers\passwordController;
 
 // At the very top of api.php
 Log::info('=== INCOMING API REQUEST ===', [
@@ -99,7 +100,7 @@ Route::get('/signup-form', [authController::class, 'showSignupForm']);
 // Public routes (no authentication required)
 Route::post('/login', [authController::class, 'apiLogin']);
 Route::post('/register', [authController::class, 'apiRegister']);
-Route::post('/force-change-password', [authController::class, 'apiForceChangePassword']);
+Route::post('/force-change-password', [passwordController::class, 'apiForceChangePassword']);
 
 // Mobile API signup routes (mirror web signup but stateless API paths for mobile clients)
 Route::post('/signup/contractor/step1', [authController::class, 'contractorStep1']);
@@ -125,10 +126,10 @@ Route::get('/psgc/provinces/{provinceCode}/cities', [authController::class, 'get
 Route::get('/psgc/cities/{cityCode}/barangays', [authController::class, 'getBarangaysByCity']);
 
 // Contractors endpoint for property owner feed
-Route::get('/contractors', [projectsController::class, 'apiGetContractors']);
+Route::get('/contractors', [\App\Http\Controllers\both\homepageController::class, 'apiGetContractors']);
 
-// Contractor types endpoint for project creation form
-Route::get('/contractor-types', [projectsController::class, 'apiGetContractorTypes']);
+// Contractor types endpoint for project creation form / filter chips
+Route::get('/contractor-types', [\App\Http\Controllers\both\homepageController::class, 'apiGetContractorTypes']);
 
 // Owner endpoints - for owner dashboard/project management
 Route::get('/owner/projects', [projectsController::class, 'apiGetOwnerProjects']);
@@ -159,7 +160,7 @@ Route::get('/contractor/progress/files/{itemId}', [progressUploadController::cla
 Route::post('/contractor/progress/upload', [progressUploadController::class, 'uploadProgress']);
 
 // Contractor endpoints - for contractor feed
-Route::get('/contractor/projects', [projectsController::class, 'apiGetApprovedProjects']);
+Route::get('/contractor/projects', [\App\Http\Controllers\both\homepageController::class, 'apiGetApprovedProjects']);
 
 // Contractor bidding endpoints
 Route::post('/contractor/projects/{projectId}/bid', [\App\Http\Controllers\contractor\biddingController::class, 'apiSubmitBid']);
@@ -173,10 +174,10 @@ Route::post('/contractor/projects/{projectId}/milestones', [\App\Http\Controller
 Route::put('/contractor/projects/{projectId}/milestones/{milestoneId}', [\App\Http\Controllers\contractor\cprocessController::class, 'apiUpdateMilestone']);
 
 // Notification endpoints - controller handles both session and token auth
-Route::get('/notifications', [NotificationController::class, 'index']);
-Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
-Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
-Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
+Route::get('/notifications', [notificationController::class, 'index']);
+    Route::get('/notifications/unread-count', [notificationController::class, 'unreadCount']);
+    Route::post('/notifications/{id}/read', [notificationController::class, 'markAsRead']);
+    Route::post('/notifications/read-all', [notificationController::class, 'markAllAsRead']);
 
 // Note: profile update registered below inside sanctum-protected group
 
@@ -389,7 +390,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/user/update-profile', [authController::class, 'updateProfile']);
 
     // Dashboard
-    Route::get('/dashboard', [projectsController::class, 'showDashboard']);
+    Route::get('/dashboard', [\App\Http\Controllers\both\dashboardController::class, 'apiDashboard']);
+    Route::get('/dashboard/owner-stats', [\App\Http\Controllers\both\dashboardController::class, 'apiOwnerStats']);
+    Route::get('/dashboard/contractor-stats', [\App\Http\Controllers\both\dashboardController::class, 'apiContractorStats']);
 
     // Projects (Owner)
     Route::prefix('projects')->group(function () {

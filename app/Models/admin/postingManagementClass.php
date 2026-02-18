@@ -157,7 +157,7 @@ class postingManagementClass
                     ->where('pr.rel_id', $project->relationship_id)
                     ->value('po.user_id');
                 if ($ownerUserId) {
-                    \App\Services\NotificationService::create(
+                    \App\Services\notificationService::create(
                         (int) $ownerUserId,
                         'project_update',
                         'Project Post Approved',
@@ -197,7 +197,7 @@ class postingManagementClass
                     ->where('pr.rel_id', $project->relationship_id)
                     ->value('po.user_id');
                 if ($ownerUserId) {
-                    \App\Services\NotificationService::create(
+                    \App\Services\notificationService::create(
                         (int) $ownerUserId,
                         'project_update',
                         'Project Post Rejected',
