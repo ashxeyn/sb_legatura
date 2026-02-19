@@ -57,6 +57,15 @@ interface MilestoneItem {
   milestone_item_cost: number;
   date_to_finish: string;
   item_status?: string;
+  // Status summary fields from backend
+  latest_progress_status?: string | null;
+  latest_progress_date?: string | null;
+  progress_submitted_count?: number;
+  progress_rejected_count?: number;
+  latest_payment_status?: string | null;
+  latest_payment_date?: string | null;
+  payment_submitted_count?: number;
+  payment_rejected_count?: number;
 }
 
 interface PaymentPlan {
@@ -152,6 +161,8 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
   const [showEditMilestone, setShowEditMilestone] = useState(false);
   const [milestoneToEdit, setMilestoneToEdit] = useState<Milestone | null>(null);
   const [showDownpaymentDetail, setShowDownpaymentDetail] = useState(false);
+
+  const isProjectHalted = projectStatus === 'halt' || projectStatus === 'on_hold' || projectStatus === 'halted';
 
   // Flatten all milestone items from all milestones into one array for the timeline
   const allMilestoneItems: (MilestoneItem & { parentMilestoneId: number; parentSetupStatus: string; parentMilestoneStatus: string })[] = [];
@@ -526,6 +537,41 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
     }
   };
 
+  // Helper: renders small status tag pills for a milestone item
+  const renderItemStatusTags = (item: MilestoneItem & { parentMilestoneId: number; parentSetupStatus: string; parentMilestoneStatus: string }) => {
+    const tags: { label: string; color: string; bg: string; icon: string }[] = [];
+    const isItemCompleted = item.item_status === 'completed' || item.parentMilestoneStatus === 'completed';
+
+    if (item.item_status === 'halt') {
+      tags.push({ label: 'Halted', color: COLORS.error, bg: COLORS.errorLight, icon: 'pause-circle' });
+    }
+    if (item.latest_progress_status === 'rejected') {
+      tags.push({ label: 'Report Rejected', color: COLORS.error, bg: COLORS.errorLight, icon: 'x-circle' });
+    }
+    if (item.latest_payment_status === 'rejected') {
+      tags.push({ label: 'Payment Rejected', color: COLORS.error, bg: COLORS.errorLight, icon: 'x-circle' });
+    }
+    if (!isItemCompleted && item.latest_progress_status === 'submitted') {
+      tags.push({ label: 'New Report', color: COLORS.info, bg: COLORS.infoLight, icon: 'file-text' });
+    }
+    if (!isItemCompleted && item.latest_payment_status === 'submitted') {
+      tags.push({ label: 'New Payment', color: COLORS.info, bg: COLORS.infoLight, icon: 'credit-card' });
+    }
+
+    if (tags.length === 0) return null;
+
+    return (
+      <View style={styles.statusTagsContainer}>
+        {tags.map((tag, i) => (
+          <View key={i} style={[styles.statusTag, { backgroundColor: tag.bg, borderColor: tag.color + '40' }]}>
+            <Feather name={tag.icon as any} size={10} color={tag.color} />
+            <Text style={[styles.statusTagText, { color: tag.color }]}>{tag.label}</Text>
+          </View>
+        ))}
+      </View>
+    );
+  };
+
   // If a milestone detail is selected, show the detail view
   if (selectedMilestoneDetail) {
     // Determine if the previous item (by sequence_order) is completed
@@ -550,6 +596,7 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
             userRole,
             userId,
             isPreviousItemComplete,
+            projectStatus,
           },
         }}
         navigation={{
@@ -614,6 +661,23 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
           )}
         </View>
 
+        {/* Project Halted Banner */}
+        {(projectStatus === 'halt' || projectStatus === 'on_hold' || projectStatus === 'halted') && (
+          <View style={styles.haltedBanner}>
+            <View style={styles.haltedBannerInner}>
+              <View style={styles.haltedIconContainer}>
+                <Feather name="pause-circle" size={28} color={COLORS.error} />
+              </View>
+              <View style={styles.haltedTextContainer}>
+                <Text style={styles.haltedTitle}>Project Halted</Text>
+                <Text style={styles.haltedMessage}>
+                  This project has been halted due to a pending dispute or administrative action. Milestone progress is temporarily paused.
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
+
         {/* Timeline Section */}
         <View style={styles.timelineSection}>
           {/* Milestones - displayed from top (highest %) to bottom (lowest %) */}
@@ -662,35 +726,80 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
                       <Text style={styles.milestoneTitle}>{item.milestone_item_title}</Text>
                       <Text style={styles.milestoneCost}>{formatCurrency(item.milestone_item_cost || 0)}</Text>
                       <Text style={styles.milestonePercent}>{itemPercentage.toFixed(2)}%</Text>
+                      {renderItemStatusTags(item)}
                     </View>
                   )}
                 </View>
 
                 {/* Center - Circle and Line */}
                 <View style={styles.timelineCenter}>
-                  <View
-                    style={[
-                      styles.milestoneCircle,
-                      (item.item_status === 'completed' || item.parentMilestoneStatus === 'completed')
-                        ? styles.milestoneCircleApproved
-                        : styles.milestoneCirclePending,
-                    ]}
-                  >
-                    {item.parentMilestoneStatus === 'completed' ? (
-                      <Feather name="check" size={20} color={COLORS.surface} />
-                    ) : (
-                      <Text
-                        style={[
-                          styles.circleText,
-                          item.item_status === 'completed'
-                            ? styles.circleTextApproved
-                            : styles.circleTextPending,
-                        ]}
-                      >
-                        {displayPercentage}
-                      </Text>
-                    )}
-                  </View>
+                  {/* Status indicator ring */}
+                  {(() => {
+                    const hasRejectedProgress = item.latest_progress_status === 'rejected';
+                    const hasRejectedPayment = item.latest_payment_status === 'rejected';
+                    const hasNewProgress = (item.progress_submitted_count ?? 0) > 0;
+                    const hasNewPayment = (item.payment_submitted_count ?? 0) > 0;
+                    const isHalted = item.item_status === 'halt';
+                    const isItemCompleted = item.item_status === 'completed' || item.parentMilestoneStatus === 'completed';
+
+                    // Determine ring color: red for rejected/halted, blue for new submissions, none otherwise
+                    let ringColor: string | null = null;
+                    let ringIcon: string | null = null;
+                    let ringBgColor: string | null = null;
+                    if (isHalted) {
+                      ringColor = COLORS.error;
+                      ringIcon = 'pause-circle';
+                      ringBgColor = COLORS.errorLight;
+                    } else if (hasRejectedProgress || hasRejectedPayment) {
+                      ringColor = COLORS.error;
+                      ringIcon = 'alert-circle';
+                      ringBgColor = COLORS.errorLight;
+                    } else if (!isItemCompleted && (hasNewProgress || hasNewPayment)) {
+                      ringColor = COLORS.info;
+                      ringIcon = 'arrow-up-circle';
+                      ringBgColor = COLORS.infoLight;
+                    }
+
+                    return (
+                      <View style={styles.circleWrapper}>
+                        {ringColor && (
+                          <View style={[
+                            styles.statusRing,
+                            { borderColor: ringColor, backgroundColor: ringBgColor || 'transparent' },
+                          ]} />
+                        )}
+                        <View
+                          style={[
+                            styles.milestoneCircle,
+                            isItemCompleted
+                              ? styles.milestoneCircleApproved
+                              : styles.milestoneCirclePending,
+                          ]}
+                        >
+                          {item.parentMilestoneStatus === 'completed' ? (
+                            <Feather name="check" size={20} color={COLORS.surface} />
+                          ) : (
+                            <Text
+                              style={[
+                                styles.circleText,
+                                item.item_status === 'completed'
+                                  ? styles.circleTextApproved
+                                  : styles.circleTextPending,
+                              ]}
+                            >
+                              {displayPercentage}
+                            </Text>
+                          )}
+                        </View>
+                        {/* Badge dot */}
+                        {ringColor && ringIcon && (
+                          <View style={[styles.statusBadgeDot, { backgroundColor: ringColor }]}>
+                            <Feather name={ringIcon} size={12} color="#FFFFFF" />
+                          </View>
+                        )}
+                      </View>
+                    );
+                  })()}
                   {!isLast && <View style={styles.timelineLine} />}
                 </View>
 
@@ -707,6 +816,7 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
                       <Text style={styles.milestoneTitle}>{item.milestone_item_title}</Text>
                       <Text style={styles.milestoneCost}>{formatCurrency(item.milestone_item_cost || 0)}</Text>
                       <Text style={styles.milestonePercent}>{itemPercentage.toFixed(2)}%</Text>
+                      {renderItemStatusTags(item)}
                     </View>
                   )}
                 </View>
@@ -760,7 +870,7 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
           </View>
         ) : (
           /* Complete Project Button (Owner only, when all items are completed) */
-          userRole === 'owner' && allMilestoneItemsCompleted && (
+          !isProjectHalted && userRole === 'owner' && allMilestoneItemsCompleted && (
             <View style={styles.completeProjectSection}>
               <TouchableOpacity
                 style={styles.completeProjectButton}
@@ -781,7 +891,7 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
         )}
 
         {/* Rejection Reason Indicator - Show for rejected milestones */}
-        {userRole === 'owner' && milestones.some(m => m.setup_status === 'rejected' && m.setup_rej_reason) && (
+        {!isProjectHalted && userRole === 'owner' && milestones.some(m => m.setup_status === 'rejected' && m.setup_rej_reason) && (
           <View style={styles.rejectionIndicatorSection}>
             {milestones
               .filter(m => m.setup_status === 'rejected' && m.setup_rej_reason)
@@ -821,7 +931,7 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
         )}
 
         {/* Contractor Rejection Indicator - Show for rejected milestones */}
-        {userRole === 'contractor' && milestones.some(m => m.setup_status === 'rejected' && m.setup_rej_reason) && (
+        {!isProjectHalted && userRole === 'contractor' && milestones.some(m => m.setup_status === 'rejected' && m.setup_rej_reason) && (
           <View style={styles.rejectionIndicatorSection}>
             {milestones
               .filter(m => m.setup_status === 'rejected' && m.setup_rej_reason)
@@ -888,7 +998,7 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
       </ScrollView>
 
       {/* Action Buttons - Fixed at Bottom - Only show for owners */}
-      {submittedMilestone && userRole === 'owner' && (
+      {!isProjectHalted && submittedMilestone && userRole === 'owner' && (
         <View style={[styles.actionButtonsContainer, { paddingBottom: insets.bottom + 16 }]}>
           <TouchableOpacity
             style={styles.requestChangesBtn}
@@ -1188,7 +1298,7 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
               )}
 
               {/* Approve/Decline Buttons for Contractor */}
-              {userRole === 'contractor' && selectedPayment.payment_status === 'submitted' && (
+              {!isProjectHalted && userRole === 'contractor' && selectedPayment.payment_status === 'submitted' && (
                 <View style={styles.paymentActionsContainer}>
                   <TouchableOpacity
                     style={[styles.paymentActionButton, styles.declineButton]}
@@ -2838,6 +2948,99 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+
+  // ── Project Halted Banner ──
+  haltedBanner: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 12,
+    backgroundColor: COLORS.errorLight,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    overflow: 'hidden',
+  },
+  haltedBannerInner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    padding: 16,
+    gap: 12,
+  },
+  haltedIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FEE2E2',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FECACA',
+  },
+  haltedTextContainer: {
+    flex: 1,
+  },
+  haltedTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.error,
+    marginBottom: 4,
+  },
+  haltedMessage: {
+    fontSize: 13,
+    color: '#991B1B',
+    lineHeight: 18,
+  },
+
+  // ── Circle status indicators ──
+  circleWrapper: {
+    position: 'relative',
+    width: 66,
+    height: 66,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  statusRing: {
+    position: 'absolute',
+    width: 66,
+    height: 66,
+    borderRadius: 33,
+    borderWidth: 3,
+    zIndex: 0,
+  },
+  statusBadgeDot: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: COLORS.surface,
+    zIndex: 3,
+  },
+
+  // ── Item status tags ──
+  statusTagsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 4,
+    marginTop: 6,
+  },
+  statusTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  statusTagText: {
+    fontSize: 9,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
 });
 

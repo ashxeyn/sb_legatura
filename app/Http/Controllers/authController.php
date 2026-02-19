@@ -927,10 +927,10 @@ class authController extends Controller
         // Generate and send OTP
         $otp = $this->authService->generateOtp();
         $otpHash = $this->authService->hashOtp($otp);
-        
+
         \Log::info("Step 2: Generated OTP for {$request->email}, sending email...");
         $emailSent = $this->authService->sendOtpEmail($request->email, $otp);
-        
+
         if (!$emailSent) {
             \Log::error("Step 2: Failed to send OTP email to {$request->email}");
             return response()->json([
@@ -1225,7 +1225,7 @@ class authController extends Controller
     public function propertyOwnerStep4(accountRequest $request)
     {
         \Log::info('STEP 4 START: propertyOwnerStep4 called');
-        
+
         // Detailed file debugging
         \Log::info('Request input keys:', $request->all());
         \Log::info('Files received (hasFile):', [
@@ -1233,7 +1233,7 @@ class authController extends Controller
             'valid_id_back_photo' => $request->hasFile('valid_id_back_photo'),
             'police_clearance' => $request->hasFile('police_clearance'),
         ]);
-        
+
         // Check file details if they exist
         if ($request->hasFile('valid_id_photo')) {
             $file = $request->file('valid_id_photo');
@@ -1244,7 +1244,7 @@ class authController extends Controller
                 'is_valid' => $file->isValid(),
             ]);
         }
-        
+
         if ($request->hasFile('valid_id_back_photo')) {
             $file = $request->file('valid_id_back_photo');
             \Log::info('valid_id_back_photo details:', [
@@ -1254,7 +1254,7 @@ class authController extends Controller
                 'is_valid' => $file->isValid(),
             ]);
         }
-        
+
         if ($request->hasFile('police_clearance')) {
             $file = $request->file('police_clearance');
             \Log::info('police_clearance details:', [
@@ -1297,7 +1297,7 @@ class authController extends Controller
             ]);
 
             Session::put('signup_step', 5);
-            
+
             \Log::info('STEP 4 SUCCESS: Session updated, returning response');
             return response()->json(['success' => true, 'step' => 5]);
         } catch (\Exception $e) {
@@ -2056,64 +2056,112 @@ class authController extends Controller
 
             $ownerData = DB::table('property_owners')->where('user_id', $userId)->first();
 
-            $contractorId = DB::table('contractors')->insertGetId([
-                'user_id' => $userId,
-                'company_name' => $step1['company_name'] ?? '',
-                'years_of_experience' => $step1['years_of_experience'] ?? 0,
-                'type_id' => $step1['type_id'] ?? null,
-                'contractor_type_other' => $step1['contractor_type_other'] ?? null,
-                'services_offered' => $step1['services_offered'] ?? '',
-                'business_address' => $businessAddress,
-                'company_email' => $userEmail,
-                'company_phone' => $step1['company_phone'] ?? '',
-                'company_website' => $step1['company_website'] ?? null,
-                'company_social_media' => $step1['company_social_media'] ?? null,
-                'picab_number' => $step2['picab_number'] ?? '',
-                'picab_category' => $step2['picab_category'] ?? '',
-                'picab_expiration_date' => $step2['picab_expiration_date'] ?? null,
-                'business_permit_number' => $step2['business_permit_number'] ?? '',
-                'business_permit_city' => $step2['business_permit_city'] ?? '',
-                'business_permit_expiration' => $step2['business_permit_expiration'] ?? null,
-                'tin_business_reg_number' => $step2['tin_business_reg_number'] ?? '',
-                'dti_sec_registration_photo' => $step2['dti_sec_registration_photo'] ?? null,
-                'verification_status' => 'pending',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-
-            if ($ownerData) {
-                DB::table('contractor_users')->insert([
-                    'contractor_id' => $contractorId,
-                    'user_id' => $userId,
-                    'authorized_rep_lname' => $ownerData->last_name ?? '',
-                    'authorized_rep_mname' => $ownerData->middle_name ?? null,
-                    'authorized_rep_fname' => $ownerData->first_name ?? '',
-                    'phone_number' => $ownerData->phone_number ?? '',
-                    'role' => 'owner',
-                    'is_active' => 0,
+            // If a contractors row already exists for this user, update it and set verification back to pending.
+            $existingContractor = DB::table('contractors')->where('user_id', $userId)->first();
+            if ($existingContractor) {
+                DB::table('contractors')->where('user_id', $userId)->update([
+                    'company_name' => $step1['company_name'] ?? '',
+                    'years_of_experience' => $step1['years_of_experience'] ?? 0,
+                    'type_id' => $step1['type_id'] ?? null,
+                    'contractor_type_other' => $step1['contractor_type_other'] ?? null,
+                    'services_offered' => $step1['services_offered'] ?? '',
+                    'business_address' => $businessAddress,
+                    'company_email' => $userEmail,
+                    'company_phone' => $step1['company_phone'] ?? '',
+                    'company_website' => $step1['company_website'] ?? null,
+                    'company_social_media' => $step1['company_social_media'] ?? null,
+                    'picab_number' => $step2['picab_number'] ?? '',
+                    'picab_category' => $step2['picab_category'] ?? '',
+                    'picab_expiration_date' => $step2['picab_expiration_date'] ?? null,
+                    'business_permit_number' => $step2['business_permit_number'] ?? '',
+                    'business_permit_city' => $step2['business_permit_city'] ?? '',
+                    'business_permit_expiration' => $step2['business_permit_expiration'] ?? null,
+                    'tin_business_reg_number' => $step2['tin_business_reg_number'] ?? '',
+                    'dti_sec_registration_photo' => $step2['dti_sec_registration_photo'] ?? null,
+                    'verification_status' => 'pending',
+                    // Update timestamps: set created_at to now to reflect the new application time
                     'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+                $contractorId = $existingContractor->contractor_id;
+            } else {
+                $contractorId = DB::table('contractors')->insertGetId([
+                    'user_id' => $userId,
+                    'company_name' => $step1['company_name'] ?? '',
+                    'years_of_experience' => $step1['years_of_experience'] ?? 0,
+                    'type_id' => $step1['type_id'] ?? null,
+                    'contractor_type_other' => $step1['contractor_type_other'] ?? null,
+                    'services_offered' => $step1['services_offered'] ?? '',
+                    'business_address' => $businessAddress,
+                    'company_email' => $userEmail,
+                    'company_phone' => $step1['company_phone'] ?? '',
+                    'company_website' => $step1['company_website'] ?? null,
+                    'company_social_media' => $step1['company_social_media'] ?? null,
+                    'picab_number' => $step2['picab_number'] ?? '',
+                    'picab_category' => $step2['picab_category'] ?? '',
+                    'picab_expiration_date' => $step2['picab_expiration_date'] ?? null,
+                    'business_permit_number' => $step2['business_permit_number'] ?? '',
+                    'business_permit_city' => $step2['business_permit_city'] ?? '',
+                    'business_permit_expiration' => $step2['business_permit_expiration'] ?? null,
+                    'tin_business_reg_number' => $step2['tin_business_reg_number'] ?? '',
+                    'dti_sec_registration_photo' => $step2['dti_sec_registration_photo'] ?? null,
+                    'verification_status' => 'pending',
+                    'created_at' => now(),
+                    'updated_at' => now(),
                 ]);
             }
 
-            DB::table('users')->where('user_id', $userId)->update([
-                'user_type' => 'both',
-                'updated_at' => now(),
-            ]);
+            if ($ownerData) {
+                // Prefer submitted authorized representative fields from step2 if provided; otherwise fall back to property owner data
+                $auth_fname = $step2['first_name'] ?? $ownerData->first_name ?? '';
+                $auth_mname = $step2['middle_name'] ?? $ownerData->middle_name ?? null;
+                $auth_lname = $step2['last_name'] ?? $ownerData->last_name ?? '';
+                $auth_phone = $step1['company_phone'] ?? $ownerData->phone_number ?? '';
 
+                $existingContractorUser = DB::table('contractor_users')->where('user_id', $userId)->first();
+                if ($existingContractorUser) {
+                    // Update existing contractor_users record to reflect re-application or edited authorized representative
+                    DB::table('contractor_users')->where('user_id', $userId)->update([
+                        'contractor_id' => $contractorId,
+                        'authorized_rep_lname' => $auth_lname,
+                        'authorized_rep_mname' => $auth_mname,
+                        'authorized_rep_fname' => $auth_fname,
+                        'phone_number' => $auth_phone,
+                        'role' => 'owner',
+                        'is_active' => 0,
+                    ]);
+                } else {
+                    DB::table('contractor_users')->insert([
+                        'contractor_id' => $contractorId,
+                        'user_id' => $userId,
+                        'authorized_rep_lname' => $auth_lname,
+                        'authorized_rep_mname' => $auth_mname,
+                        'authorized_rep_fname' => $auth_fname,
+                        'phone_number' => $auth_phone,
+                        'role' => 'owner',
+                        'is_active' => 0,
+                        'created_at' => now(),
+                    ]);
+                }
+            }
+
+            // Do NOT change users.user_type here; the role becomes effective only after admin approval.
             Session::forget(['switch_contractor_step1', 'switch_contractor_step2']);
             $updatedUser = DB::table('users')->where('user_id', $userId)->first();
             if (Session::has('user')) {
                 Session::put('user', $updatedUser);
-                Session::put('userType', 'both');
+                Session::put('userType', $updatedUser->user_type ?? 'property_owner');
+                // Keep current_role as contractor for UX, but user_type remains unchanged until approval
                 Session::put('current_role', 'contractor');
             }
 
             DB::commit();
             return response()->json([
                 'success' => true,
-                'message' => 'Role switch successful! You now have both roles.',
-                'user_type' => 'both',
+                'message' => 'Role application submitted. Please wait for admin approval.',
+                'user_type' => $updatedUser->user_type ?? null,
                 'current_role' => 'contractor',
+                'pending_role_request' => true,
                 'redirect_url' => '/dashboard'
             ]);
         } catch (\Exception $e) {
@@ -2339,8 +2387,9 @@ class authController extends Controller
             // Get existing contractor user data (optional fallback)
             $contractorUser = DB::table('contractor_users')->where('user_id', $user->user_id)->first();
 
-            // Create property owner record using validated top-level fields with fallbacks
-            DB::table('property_owners')->insert([
+            // Create or update property owner record using validated top-level fields with fallbacks
+            $existingOwner = DB::table('property_owners')->where('user_id', $user->user_id)->first();
+            $ownerPayload = [
                 'user_id' => $user->user_id,
                 'last_name' => $validated['last_name'] ?? ($contractorUser->authorized_rep_lname ?? null),
                 'middle_name' => $validated['middle_name'] ?? ($contractorUser->authorized_rep_mname ?? null),
@@ -2358,20 +2407,23 @@ class authController extends Controller
                 'verification_status' => 'pending',
                 'verification_date' => null,
                 'created_at' => now(),
-            ]);
+            ];
+
+            if ($existingOwner) {
+                // Update existing owner record and set verification back to pending
+                DB::table('property_owners')->where('user_id', $user->user_id)->update($ownerPayload);
+            } else {
+                DB::table('property_owners')->insert($ownerPayload);
+            }
 
             // Update user type to 'both'
-            DB::table('users')->where('user_id', $user->user_id)->update([
-                'user_type' => 'both',
-                'updated_at' => now(),
-            ]);
-
-            // Update session with new user data
+            // Do NOT change users.user_type here; the role becomes effective only after admin approval.
+            // Refresh session user object but preserve current user_type.
             $updatedUser = DB::table('users')->where('user_id', $user->user_id)->first();
             Session::put('user', $updatedUser);
-            Session::put('userType', 'both');
+            Session::put('userType', $updatedUser->user_type ?? 'property_owner');
+            // Keep current_role as owner for UX, but user_type remains unchanged until approval
             Session::put('current_role', 'owner'); // Default to owner since they just added owner role
-
             // Clear switch session data
             Session::forget(['switch_owner_step1', 'switch_owner_step2', 'owner_step1']);
 

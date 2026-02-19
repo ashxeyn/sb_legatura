@@ -82,7 +82,7 @@ export class auth_service {
    */
   static async updateProfile(formData: FormData): Promise<api_response> {
     try {
-      const response = await api_request('/api/user/profile', {
+      const response = await api_request('/api/user/update-profile', {
         method: 'POST',
         body: formData,
       });

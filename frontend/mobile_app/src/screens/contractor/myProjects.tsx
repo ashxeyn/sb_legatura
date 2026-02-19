@@ -10,6 +10,8 @@ import {
   RefreshControl,
   StatusBar,
   Image,
+  TextInput,
+  Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
@@ -136,7 +138,43 @@ export default function MyProjects({ userData, onClose }: MyProjectsProps) {
   const [showMilestoneSetup, setShowMilestoneSetup] = useState(false);
   const [showProjectDetails, setShowProjectDetails] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeFilter, setActiveFilter] = useState('all');
+  const [activeFilters, setActiveFilters] = useState<string[]>(['all']);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<'latest' | 'oldest' | 'a_z' | 'z_a' | 'budget_high' | 'budget_low'>('latest');
+  const [showSortModal, setShowSortModal] = useState(false);
+
+  const toggleFilter = (key: string) => {
+    if (key === 'all') {
+      setActiveFilters(['all']);
+      return;
+    }
+    setActiveFilters(prev => {
+      const withoutAll = prev.filter(f => f !== 'all');
+      if (withoutAll.includes(key)) {
+        const updated = withoutAll.filter(f => f !== key);
+        return updated.length === 0 ? ['all'] : updated;
+      } else {
+        return [...withoutAll, key];
+      }
+    });
+  };
+
+  const isFiltered = !(activeFilters.length === 1 && activeFilters[0] === 'all') || searchQuery.trim() !== '' || sortBy !== 'latest';
+
+  const clearAllFilters = () => {
+    setActiveFilters(['all']);
+    setSearchQuery('');
+    setSortBy('latest');
+  };
+
+  const sortOptions = [
+    { key: 'latest', label: 'Latest First', icon: 'arrow-down' },
+    { key: 'oldest', label: 'Oldest First', icon: 'arrow-up' },
+    { key: 'a_z', label: 'Title A-Z', icon: 'type' },
+    { key: 'z_a', label: 'Title Z-A', icon: 'type' },
+    { key: 'budget_high', label: 'Budget: High to Low', icon: 'trending-up' },
+    { key: 'budget_low', label: 'Budget: Low to High', icon: 'trending-down' },
+  ] as const;
 
   useEffect(() => {
     fetchProjects();
@@ -214,18 +252,66 @@ export default function MyProjects({ userData, onClose }: MyProjectsProps) {
     }).length,
     completed: projects.filter(p => (p.project_status || '').toLowerCase() === 'completed').length,
     onHold: projects.filter(p => (p.project_status || '').toLowerCase() === 'halt' || p.display_status === 'on_hold').length,
+    dueSoon: projects.filter(p => {
+      if (!p.expected_completion) return false;
+      const status = (p.project_status || '').toLowerCase();
+      if (status !== 'in_progress') return false;
+      const daysLeft = Math.ceil((new Date(p.expected_completion).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+      return daysLeft > 0 && daysLeft <= 14;
+    }).length,
   };
 
-  // Filter projects (ensure 'In Progress' shows only truly ongoing projects)
-  const filteredProjects = projects.filter(p => {
+  // Filter projects by phase (multi-select: project matches if ANY selected filter applies)
+  const phaseFiltered = projects.filter(p => {
     const status = (p.project_status || '').toLowerCase();
     const hasMilestones = typeof p.milestones_count === 'number' ? p.milestones_count > 0 : Array.isArray(p.milestones) && p.milestones.length > 0;
-    if (activeFilter === 'all') return true;
-    if (activeFilter === 'not_started') return p.display_status === 'waiting_milestone_setup';
-    if (activeFilter === 'in_progress') return status === 'in_progress' && hasMilestones;
-    if (activeFilter === 'completed') return status === 'completed';
-    if (activeFilter === 'on_hold') return status === 'halt' || p.display_status === 'on_hold';
-    return true;
+    if (activeFilters.includes('all')) return true;
+    return activeFilters.some(filter => {
+      if (filter === 'not_started') return p.display_status === 'waiting_milestone_setup';
+      if (filter === 'in_progress') return status === 'in_progress' && hasMilestones;
+      if (filter === 'completed') return status === 'completed';
+      if (filter === 'on_hold') return status === 'halt' || p.display_status === 'on_hold';
+      if (filter === 'due_soon') {
+        if (!p.expected_completion || status !== 'in_progress') return false;
+        const daysLeft = Math.ceil((new Date(p.expected_completion).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+        return daysLeft > 0 && daysLeft <= 14;
+      }
+      return false;
+    });
+  });
+
+  // Apply search filter
+  const searchFiltered = phaseFiltered.filter(p => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      (p.project_title || '').toLowerCase().includes(q) ||
+      (p.project_description || '').toLowerCase().includes(q) ||
+      (p.project_location || '').toLowerCase().includes(q) ||
+      (p.type_name || '').toLowerCase().includes(q) ||
+      (p.property_type || '').toLowerCase().includes(q) ||
+      (p.owner_name || '').toLowerCase().includes(q)
+    );
+  });
+
+  // Apply sort
+  const filteredProjects = [...searchFiltered].sort((a, b) => {
+    switch (sortBy) {
+      case 'latest':
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      case 'oldest':
+        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      case 'a_z':
+        return (a.project_title || '').localeCompare(b.project_title || '');
+      case 'z_a':
+        return (b.project_title || '').localeCompare(a.project_title || '');
+      case 'budget_high':
+        return (b.budget_range_max || b.accepted_bid_amount || 0) - (a.budget_range_max || a.accepted_bid_amount || 0);
+      case 'budget_low':
+        return (a.budget_range_min || a.accepted_bid_amount || 0) - (b.budget_range_min || b.accepted_bid_amount || 0);
+      default:
+        return 0;
+    }
   });
 
   const formatBudget = (amount: number) => {
@@ -269,12 +355,12 @@ export default function MyProjects({ userData, onClose }: MyProjectsProps) {
   };
 
   const renderFilterChip = (key: string, label: string, count: number) => {
-    const isActive = activeFilter === key;
+    const isActive = activeFilters.includes(key);
     return (
       <TouchableOpacity
         key={key}
         style={[styles.filterChip, isActive && styles.filterChipActive]}
-        onPress={() => setActiveFilter(key)}
+        onPress={() => toggleFilter(key)}
         activeOpacity={0.7}
       >
         <Text style={[styles.filterChipText, isActive && styles.filterChipTextActive]}>
@@ -295,19 +381,27 @@ export default function MyProjects({ userData, onClose }: MyProjectsProps) {
     const statusConfig = getStatusConfig(project.display_status || project.project_status);
     const daysRemaining = project.expected_completion ? getDaysRemaining(project.expected_completion) : null;
     const isNotStarted = project.display_status === 'waiting_milestone_setup';
+    const isHalted = (project.project_status || '').toLowerCase() === 'halt' || (project.project_status || '').toLowerCase() === 'on_hold' || (project.project_status || '').toLowerCase() === 'halted';
 
     return (
       <TouchableOpacity
         key={project.project_id}
-        style={[styles.projectCard, isNotStarted && styles.projectCardNotStarted]}
+        style={[styles.projectCard, isNotStarted && styles.projectCardNotStarted, isHalted && styles.projectCardHalted]}
         activeOpacity={0.7}
         onPress={() => {
           setSelectedProject(project);
           setShowProjectDetails(true);
         }}
       >
+        {/* Halted Banner */}
+        {isHalted && (
+          <View style={styles.haltedBanner}>
+            <Feather name="alert-octagon" size={16} color="#FFFFFF" />
+            <Text style={styles.haltedBannerText}>Project Halted</Text>
+          </View>
+        )}
         {/* Setup Required Banner for not_started projects */}
-        {isNotStarted && (
+        {isNotStarted && !isHalted && (
           <View style={styles.setupBanner}>
             <Feather name="alert-triangle" size={14} color={COLORS.warning} />
             <Text style={styles.setupBannerText}>Milestone setup required</Text>
@@ -474,36 +568,95 @@ export default function MyProjects({ userData, onClose }: MyProjectsProps) {
         <View style={styles.headerSpacer} />
       </View>
 
-      {/* Stats Summary */}
-      <View style={styles.statsSummary}>
-        <View style={styles.statItem}>
-          <Text style={[styles.statNumber, stats.notStarted > 0 && { color: COLORS.warning }]}>{stats.notStarted}</Text>
-          <Text style={styles.statLabel}>Needs Setup</Text>
+      {/* Search Bar */}
+      <View style={styles.searchRow}>
+        <View style={styles.searchInputContainer}>
+          <Feather name="search" size={18} color={COLORS.textMuted} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search projects..."
+            placeholderTextColor={COLORS.textMuted}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            returnKeyType="search"
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Feather name="x-circle" size={18} color={COLORS.textMuted} />
+            </TouchableOpacity>
+          )}
         </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statItem}>
-          <Text style={styles.statNumber}>{stats.inProgress}</Text>
-          <Text style={styles.statLabel}>In Progress</Text>
-        </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statItem}>
-          <Text style={styles.statNumber}>{stats.completed}</Text>
-          <Text style={styles.statLabel}>Completed</Text>
-        </View>
+        <TouchableOpacity
+          style={[styles.sortButton, isFiltered && styles.sortButtonActive]}
+          onPress={() => setShowSortModal(true)}
+          activeOpacity={0.7}
+        >
+          <Feather name="sliders" size={18} color={isFiltered ? '#FFFFFF' : COLORS.primary} />
+          {isFiltered && (
+            <View style={styles.filterBadge}>
+              <Text style={styles.filterBadgeText}>
+                {(activeFilters.includes('all') ? 0 : activeFilters.length) + (sortBy !== 'latest' ? 1 : 0)}
+              </Text>
+            </View>
+          )}
+        </TouchableOpacity>
       </View>
 
-      {/* Filter Chips */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filterScrollContent}
-        style={styles.filterScroll}
-      >
-        {renderFilterChip('all', 'All', stats.total)}
-        {renderFilterChip('not_started', 'Needs Setup', stats.notStarted)}
-        {renderFilterChip('in_progress', 'In Progress', stats.inProgress)}
-        {renderFilterChip('completed', 'Completed', stats.completed)}
-      </ScrollView>
+      {/* Sort & Filter Modal */}
+      <Modal visible={showSortModal} transparent animationType="slide" onRequestClose={() => setShowSortModal(false)}>
+        <TouchableOpacity style={styles.sortModalOverlay} activeOpacity={1} onPress={() => setShowSortModal(false)}>
+          <View style={styles.sortModalContent} onStartShouldSetResponder={() => true}>
+            {/* Modal Header */}
+            <View style={styles.modalHeader}>
+              <View style={styles.modalDragHandle} />
+              <View style={styles.modalTitleRow}>
+                <Text style={styles.sortModalTitle}>Sort & Filter</Text>
+                {isFiltered && (
+                  <TouchableOpacity style={styles.resetButton} onPress={clearAllFilters} activeOpacity={0.7}>
+                    <Feather name="rotate-ccw" size={14} color={COLORS.error} />
+                    <Text style={styles.resetButtonText}>Reset All</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
+              {/* Sort By Section */}
+              <Text style={styles.sectionLabel}>Sort By</Text>
+              {sortOptions.map(option => (
+                <TouchableOpacity
+                  key={option.key}
+                  style={[styles.sortOption, sortBy === option.key && styles.sortOptionActive]}
+                  onPress={() => setSortBy(option.key as any)}
+                >
+                  <Feather name={option.icon as any} size={18} color={sortBy === option.key ? COLORS.primary : COLORS.textSecondary} />
+                  <Text style={[styles.sortOptionText, sortBy === option.key && styles.sortOptionTextActive]}>
+                    {option.label}
+                  </Text>
+                  {sortBy === option.key && <Feather name="check" size={18} color={COLORS.primary} />}
+                </TouchableOpacity>
+              ))}
+
+              {/* By Phase Section */}
+              <View style={styles.sectionDivider} />
+              <Text style={styles.sectionLabel}>By Phase</Text>
+              <View style={styles.phaseChipsContainer}>
+                {renderFilterChip('all', 'All', stats.total)}
+                {renderFilterChip('not_started', 'Needs Setup', stats.notStarted)}
+                {renderFilterChip('in_progress', 'In Progress', stats.inProgress)}
+                {renderFilterChip('completed', 'Completed', stats.completed)}
+                {renderFilterChip('on_hold', 'On Hold', stats.onHold)}
+                {renderFilterChip('due_soon', 'Due Soon', stats.dueSoon)}
+              </View>
+            </ScrollView>
+
+            {/* Apply Button - pinned at bottom */}
+            <TouchableOpacity style={styles.applyButton} onPress={() => setShowSortModal(false)} activeOpacity={0.7}>
+              <Text style={styles.applyButtonText}>Apply</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
 
       {/* Content */}
       {isLoading && !refreshing ? (
@@ -523,17 +676,25 @@ export default function MyProjects({ userData, onClose }: MyProjectsProps) {
       ) : filteredProjects.length === 0 ? (
         <View style={styles.emptyContainer}>
           <View style={styles.emptyIllustration}>
-            <Feather name="briefcase" size={64} color={COLORS.border} />
+            <Feather name={activeFilters.includes('all') && !searchQuery.trim() ? 'briefcase' : 'search'} size={64} color={COLORS.border} />
           </View>
           <Text style={styles.emptyTitle}>
-            {activeFilter === 'all' ? 'No Projects Yet' : 'No Projects Found'}
+            {activeFilters.includes('all') && !searchQuery.trim() ? 'No Projects Yet' : 'No Matching Projects'}
           </Text>
           <Text style={styles.emptyText}>
-            {activeFilter === 'all'
+            {activeFilters.includes('all') && !searchQuery.trim()
               ? 'Once your bids are accepted, your projects will appear here'
-              : 'Try selecting a different filter'}
+              : 'Try adjusting your filters or search query'}
           </Text>
-          {activeFilter === 'all' && (
+          {isFiltered && (
+            <TouchableOpacity style={[styles.browseButton, { marginTop: 16 }]} onPress={clearAllFilters}>
+              <View style={[styles.browseButtonGradient, { backgroundColor: COLORS.primary }]}>
+                <Feather name="x" size={18} color="#FFFFFF" />
+                <Text style={styles.browseButtonText}>Clear Filters</Text>
+              </View>
+            </TouchableOpacity>
+          )}
+          {activeFilters.includes('all') && !searchQuery.trim() && (
             <TouchableOpacity style={styles.browseButton} onPress={onClose}>
               <LinearGradient
                 colors={[COLORS.primary, COLORS.primaryDark]}
@@ -597,6 +758,166 @@ const styles = StyleSheet.create({
   headerSpacer: {
     width: 40,
   },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: COLORS.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.borderLight,
+    gap: 10,
+  },
+  searchInputContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    height: 42,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: COLORS.text,
+    marginLeft: 8,
+    paddingVertical: 0,
+  },
+  sortButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 10,
+    backgroundColor: COLORS.primaryLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.primary + '30',
+  },
+  sortModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-end',
+  },
+  sortModalContent: {
+    backgroundColor: COLORS.surface,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 36,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  modalTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  modalDragHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: COLORS.border,
+    marginBottom: 16,
+  },
+  sortModalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: 4,
+  },
+  sectionLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginBottom: 10,
+    marginTop: 8,
+  },
+  sectionDivider: {
+    height: 1,
+    backgroundColor: COLORS.borderLight,
+    marginVertical: 16,
+  },
+  resetButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  resetButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.error,
+  },
+  phaseChipsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 8,
+  },
+  applyButton: {
+    backgroundColor: COLORS.primary,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  applyButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  sortButtonActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  filterBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: COLORS.error,
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  filterBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  sortOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    borderRadius: 10,
+    gap: 12,
+  },
+  sortOptionActive: {
+    backgroundColor: COLORS.primaryLight,
+  },
+  sortOptionText: {
+    flex: 1,
+    fontSize: 15,
+    color: COLORS.textSecondary,
+  },
+  sortOptionTextActive: {
+    color: COLORS.primary,
+    fontWeight: '600',
+  },
   statsSummary: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -625,19 +946,6 @@ const styles = StyleSheet.create({
     width: 1,
     height: 36,
     backgroundColor: COLORS.border,
-  },
-  filterScroll: {
-    backgroundColor: COLORS.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.borderLight,
-    flexGrow: 0,
-    maxHeight: 60,
-  },
-  filterScrollContent: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
   },
   filterChip: {
     flexDirection: 'row',
@@ -795,6 +1103,31 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: COLORS.warning,
     borderStyle: 'dashed',
+  },
+  projectCardHalted: {
+    borderWidth: 2,
+    borderColor: COLORS.error,
+    backgroundColor: '#FFF5F5',
+  },
+  haltedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.error,
+    marginHorizontal: -16,
+    marginTop: -16,
+    marginBottom: 12,
+    paddingVertical: 8,
+    borderTopLeftRadius: 10,
+    borderTopRightRadius: 10,
+    gap: 6,
+  },
+  haltedBannerText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   setupBanner: {
     flexDirection: 'row',

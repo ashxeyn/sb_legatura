@@ -25,7 +25,7 @@ interface SwitchRoleScreenProps {
   };
 }
 
-export default function SwitchRoleScreen({ onBack, onRoleChanged, onStartAddRole, userData }: SwitchRoleScreenProps) {
+export default function SwitchRoleScreen({ onBack, onRoleChanged, onStartAddRole, userData, navigation }: SwitchRoleScreenProps & { navigation?: any }) {
   const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [switching, setSwitching] = useState(false);
@@ -50,7 +50,14 @@ export default function SwitchRoleScreen({ onBack, onRoleChanged, onStartAddRole
 
   useEffect(() => {
     loadCurrentRole();
-  }, []);
+    let unsub: any = null;
+    if (navigation && typeof navigation.addListener === 'function') {
+      unsub = navigation.addListener('focus', () => {
+        loadCurrentRole();
+      });
+    }
+    return () => { if (unsub) unsub(); };
+  }, [navigation]);
 
   const loadCurrentRole = async () => {
     try {
@@ -248,7 +255,33 @@ export default function SwitchRoleScreen({ onBack, onRoleChanged, onStartAddRole
                     {rejectionReason || 'Your application was rejected.'}
                   </Text>
                 </View>
-                {/* Re-apply button removed per design decision */}
+                <View style={{ padding: 16 }}>
+                  <TouchableOpacity
+                    style={styles.reapplyButton}
+                    onPress={async () => {
+                      // Determine which role was rejected
+                      let target: 'contractor' | 'owner' = (currentRole === 'contractor') ? 'owner' : 'contractor';
+                      try {
+                        // Fetch existing prefill data from server
+                        const res = await role_service.get_switch_form_data();
+                        const existing = res?.data?.existing_data || res?.data?.existing_data_raw || res?.data?.existing_data || null;
+                        // Navigate specifically to the roleReapplyScreen route
+                        if (navigation && typeof navigation.navigate === 'function') {
+                          navigation.navigate('roleReapplyScreen', { targetRole: target, existingData: existing });
+                        } else if (onStartAddRole) {
+                          // Fallback: reuse add-role flow for re-application without popups
+                          onStartAddRole(target);
+                        } else {
+                          console.warn('Unable to reapply: navigation not available');
+                        }
+                      } catch (err) {
+                        console.error('Reapply navigation error:', err);
+                      }
+                    }}
+                  >
+                    <Text style={styles.reapplyButtonText}>Re-apply</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             ) : (approvedRole && approvedRole !== currentRole) ? (
               /* --- APPROVED VIEW: User's application for the other role is approved and not the current role --- */
@@ -370,7 +403,7 @@ export default function SwitchRoleScreen({ onBack, onRoleChanged, onStartAddRole
             <View style={styles.infoRow}>
               <Ionicons name="mail-outline" size={20} color="#666" />
               <Text style={styles.infoLabel}>Email</Text>
-              <Text style={styles.infoValue}>{userData?.email || 'N/A'}</Text>
+              <Text style={[styles.infoValue, styles.infoValueWrap]} numberOfLines={2} ellipsizeMode="middle">{userData?.email || 'N/A'}</Text>
             </View>
             <View style={styles.divider} />
             <View style={styles.infoRow}>
@@ -411,6 +444,14 @@ const styles = StyleSheet.create({
   roleIconContainer: { width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center', marginRight: 16 },
   contractorBg: { backgroundColor: '#1877F2' },
   ownerBg: { backgroundColor: '#EC7E00' },
+  reapplyButton: {
+    backgroundColor: '#EC7E00',
+    paddingVertical: 12,
+    paddingHorizontal: 18,
+    borderRadius: 10,
+    alignItems: 'center'
+  },
+  reapplyButtonText: { color: '#FFF', fontWeight: '700' },
   roleInfo: { flex: 1 },
   roleName: { fontSize: 17, fontWeight: 'bold', color: '#333' },
   roleDescription: { fontSize: 13, color: '#777', marginTop: 2 },
@@ -439,6 +480,7 @@ const styles = StyleSheet.create({
   infoRow: { flexDirection: 'row', alignItems: 'center', padding: 16 },
   infoLabel: { flex: 1, fontSize: 14, color: '#666', marginLeft: 12 },
   infoValue: { fontSize: 14, fontWeight: '600', color: '#333' },
+  infoValueWrap: { flex: 2, textAlign: 'right', flexWrap: 'wrap' },
   divider: { height: 1, backgroundColor: '#F0F0F0', marginLeft: 48 },
   dividerFull: { height: 1, backgroundColor: '#F0F0F0' },
 });

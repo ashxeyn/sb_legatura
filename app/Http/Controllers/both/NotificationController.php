@@ -4,12 +4,12 @@ namespace App\Http\Controllers\both;
 
 use App\Http\Controllers\Controller;
 use App\Models\Both\notificationClass;
-use App\Services\NotificationService;
+use App\Services\notificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Session;
 use Laravel\Sanctum\PersonalAccessToken;
 
-class NotificationController extends Controller
+class notificationController extends Controller
 {
     protected notificationClass $notificationClass;
 
@@ -66,7 +66,7 @@ class NotificationController extends Controller
 
         // Map each row to frontend shape
         $formatted = collect($result['notifications'])->map(function ($row) {
-            return NotificationService::formatForFrontend($row);
+            return notificationService::formatForFrontend($row);
         })->values()->all();
 
         return response()->json([

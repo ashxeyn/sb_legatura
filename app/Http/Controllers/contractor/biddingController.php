@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use App\Services\NotificationService;
+use App\Services\notificationService;
 
 class biddingController extends Controller
 {
@@ -147,7 +147,7 @@ class biddingController extends Controller
 
             if ($ownerUserId) {
                 $projTitle = DB::table('projects')->where('project_id', $request->project_id)->value('project_title');
-                NotificationService::create(
+                notificationService::create(
                     (int)$ownerUserId,
                     'bid_received',
                     'New Bid Received',
@@ -561,7 +561,7 @@ class biddingController extends Controller
                 ->value('po.user_id');
             if ($ownerUserId) {
                 $projTitle = DB::table('projects')->where('project_id', $projectId)->value('project_title');
-                NotificationService::create(
+                notificationService::create(
                     (int)$ownerUserId,
                     'bid_received',
                     'New Bid Received',

@@ -49,12 +49,24 @@ export interface Contractor {
 }
 
 /**
+ * Pagination metadata
+ */
+export interface PaginationMeta {
+  current_page: number;
+  per_page: number;
+  total: number;
+  total_pages: number;
+  has_more: boolean;
+}
+
+/**
  * API response wrapper
  */
 export interface api_response<T = any> {
   success: boolean;
   message?: string;
   data?: T;
+  pagination?: PaginationMeta;
   status: number;
 }
 
@@ -64,28 +76,27 @@ export interface api_response<T = any> {
  */
 export class contractors_service {
   /**
-   * Fetch all active contractors from the backend
+   * Fetch active contractors from the backend with pagination support
    * This calls the backend endpoint that uses getActiveContractors() method
    *
-   * IMPORTANT: The backend endpoint /api/contractors needs to be created.
-   * The backend should add this route in routes/api.php:
-   *   Route::get('/contractors', [projectsController::class, 'apiGetContractors']);
-   *
-   * And create a method in projectsController:
-   *   public function apiGetContractors(Request $request) {
-   *     $excludeUserId = $request->query('exclude_user_id');
-   *     $contractors = $this->projectsClass->getActiveContractors($excludeUserId);
-   *     return response()->json($contractors);
-   *   }
-   *
    * @param excludeUserId - Optional user ID to exclude from results (for 'both' users)
-   * @returns Promise with API response containing array of contractors
+   * @param page - Page number (default: 1)
+   * @param perPage - Items per page (default: 15)
+   * @returns Promise with API response containing array of contractors and pagination metadata
    */
-  static async get_active_contractors(excludeUserId?: number): Promise<api_response<BackendContractor[]>> {
+  static async get_active_contractors(
+    excludeUserId?: number,
+    page: number = 1,
+    perPage: number = 15
+  ): Promise<api_response<BackendContractor[]>> {
     try {
-      // Build query parameters if excludeUserId is provided
-      const params = excludeUserId ? `?exclude_user_id=${excludeUserId}` : '';
-      const endpoint = `${api_config.endpoints.contractors.list}${params}`;
+      // Build query parameters
+      const params = new URLSearchParams();
+      if (excludeUserId) params.append('exclude_user_id', excludeUserId.toString());
+      params.append('page', page.toString());
+      params.append('per_page', perPage.toString());
+      
+      const endpoint = `${api_config.endpoints.contractors.list}?${params.toString()}`;
 
       const response = await api_request(endpoint, {
         method: 'GET',

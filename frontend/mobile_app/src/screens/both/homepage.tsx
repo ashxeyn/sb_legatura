@@ -25,6 +25,7 @@ import { api_config } from '../../config/api';
 import { contractors_service } from '../../services/contractors_service';
 import { role_service } from '../../services/role_service';
 import { useContractorAuth } from '../../hooks/useContractorAuth';
+import { storage_service } from '../../utils/storage';
 
 // Helper to build full storage URL for profile/cover images
 const getStorageUrl = (filePath?: string, defaultSubfolder = 'profiles') => {
@@ -138,6 +139,14 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
   const [isFullScreenMode, setIsFullScreenMode] = useState(false);
   const [currentRole, setCurrentRole] = useState<'contractor' | 'owner' | null>(null);
 
+  // Pagination state
+  const [contractorsPage, setContractorsPage] = useState(1);
+  const [projectsPage, setProjectsPage] = useState(1);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMoreContractors, setHasMoreContractors] = useState(true);
+  const [hasMoreProjects, setHasMoreProjects] = useState(true);
+  const PER_PAGE = 15;
+
   // Create project screen state
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [contractorTypes, setContractorTypes] = useState<ContractorTypeOption[]>([]);
@@ -197,7 +206,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
   const effectiveUserType = useMemo(() => {
     if (currentRole === 'owner') return 'property_owner';
     if (currentRole === 'contractor') return 'contractor';
-    
+
     const rawType = userData?.user_type || userType;
     // Staff users operate in contractor context
     if (rawType === 'staff' || rawType === 'contractor') {
@@ -218,6 +227,45 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
           const v = String(roleVal || '').toLowerCase();
           const role = v.includes('owner') ? 'owner' : v.includes('contractor') ? 'contractor' : null;
           if (isMounted) setCurrentRole(role as any);
+
+          // If backend indicates current role is contractor and we don't have
+          // a saved contractor_member context, persist a lightweight fallback
+          // so `useContractorAuth` and related services enable contractor features.
+          try {
+            if (role === 'contractor') {
+              const stored = await storage_service.get_user_data();
+              // prefer contractor payload from response
+              const contractorPayload = (res as any).contractor || (res as any).data?.contractor || null;
+              if (stored && contractorPayload) {
+                // Only write if we don't already have contractor_member
+                if (!stored.contractor_member) {
+                  const ctx = {
+                    contractor_member_id: contractorPayload.contractor_member_id || null,
+                    contractor_id: contractorPayload.contractor_id || contractorPayload.contractorId || 0,
+                    contractor_name: contractorPayload.company_name || contractorPayload.contractor_name || null,
+                    role: 'owner',
+                    is_active: (contractorPayload.is_active !== undefined) ? contractorPayload.is_active : (contractorPayload.verification_status === 'approved'),
+                    is_contractor_owner: true,
+                    has_full_access: true,
+                    permissions: {
+                      can_manage_members: true,
+                      can_view_members: true,
+                      can_bid: true,
+                      can_manage_milestones: true,
+                      can_upload_progress: true,
+                      can_approve_payments: true,
+                      can_view_property_owners: true,
+                    }
+                  };
+                  stored.contractor_member = ctx;
+                  stored.determinedRole = 'contractor';
+                  await storage_service.save_user_data(stored);
+                }
+              }
+            }
+          } catch (err) {
+            // ignore storage errors
+          }
         }
       } catch (e) {
         // Silent failure; keep existing role
@@ -296,7 +344,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
   };
 
   /**
-   * Fetch active contractors from the backend API
+   * Fetch active contractors from the backend API with pagination
    * This replaces the mock data with real data from the database
    * Uses the contractors_service which calls the backend's getActiveContractors() method
    */
@@ -311,19 +359,24 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
       try {
         setIsLoading(true);
         setError(null);
+        setContractorsPage(1);
+        setHasMoreContractors(true);
 
-        // Fetch contractors from backend API
-        // The backend endpoint should return data from getActiveContractors() method
-        const response = await contractors_service.get_active_contractors();
+        // Fetch first page of contractors from backend API
+        const response = await contractors_service.get_active_contractors(undefined, 1, PER_PAGE);
 
-        // API response structure: { success: true, data: { success: true, data: [...contractors] } }
-        // The actual contractors array is nested inside response.data.data
+        // API response structure: { success: true, data: [...contractors], pagination: {...} }
         const contractorsData = response.data?.data || response.data;
 
         if (response.success && contractorsData && Array.isArray(contractorsData)) {
           // Transform backend contractor data to frontend format
           const transformedContractors = contractors_service.transform_contractors(contractorsData);
           setPopularContractors(transformedContractors);
+          
+          // Update pagination state
+          if (response.pagination) {
+            setHasMoreContractors(response.pagination.has_more);
+          }
         } else {
           // Handle API error response
           const errorMessage = response.message || 'Failed to load contractors';
@@ -350,7 +403,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
   }, [effectiveUserType]);
 
   /**
-   * Fetch available projects for contractors
+   * Fetch available projects for contractors with pagination
    * This fetches approved projects that are open for bidding
    */
   useEffect(() => {
@@ -363,12 +416,19 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
       try {
         setIsLoading(true);
         setError(null);
+        setProjectsPage(1);
+        setHasMoreProjects(true);
 
-        const response = await projects_service.get_approved_projects();
+        const response = await projects_service.get_approved_projects(1, PER_PAGE);
         const projectsData = response.data?.data || response.data;
 
         if (response.success && projectsData && Array.isArray(projectsData)) {
           setAvailableProjects(projectsData);
+          
+          // Update pagination state
+          if (response.pagination) {
+            setHasMoreProjects(response.pagination.has_more);
+          }
         } else {
           const errorMessage = response.message || 'Failed to load projects';
           setError(errorMessage);
@@ -397,15 +457,110 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
     if (userType !== 'contractor') return;
 
     try {
-      const response = await projects_service.get_approved_projects();
+      const response = await projects_service.get_approved_projects(1, PER_PAGE);
       const projectsData = response.data?.data || response.data;
       if (response.success && projectsData && Array.isArray(projectsData)) {
         setAvailableProjects(projectsData);
+        setProjectsPage(1);
+        if (response.pagination) {
+          setHasMoreProjects(response.pagination.has_more);
+        }
       }
     } catch (err) {
       console.error('Error refreshing projects:', err);
     }
   }, [userType]);
+
+  /**
+   * Load more contractors (infinite scroll)
+   */
+  const loadMoreContractors = useCallback(async () => {
+    if (loadingMore || !hasMoreContractors || effectiveUserType !== 'property_owner') {
+      console.log('Load more contractors skipped:', { loadingMore, hasMoreContractors, effectiveUserType });
+      return;
+    }
+
+    try {
+      setLoadingMore(true);
+      const nextPage = contractorsPage + 1;
+      console.log('Loading more contractors - page:', nextPage);
+      
+      const response = await contractors_service.get_active_contractors(undefined, nextPage, PER_PAGE);
+      const contractorsData = response.data?.data || response.data;
+
+      if (response.success && contractorsData && Array.isArray(contractorsData)) {
+        const transformedContractors = contractors_service.transform_contractors(contractorsData);
+        console.log(`Loaded ${transformedContractors.length} more contractors`);
+        setPopularContractors(prev => [...prev, ...transformedContractors]);
+        setContractorsPage(nextPage);
+        
+        if (response.pagination) {
+          setHasMoreContractors(response.pagination.has_more);
+          console.log('Has more contractors:', response.pagination.has_more);
+        }
+      }
+    } catch (err) {
+      console.error('Error loading more contractors:', err);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, hasMoreContractors, contractorsPage, effectiveUserType]);
+
+  /**
+   * Load more projects (infinite scroll)
+   */
+  const loadMoreProjects = useCallback(async () => {
+    if (loadingMore || !hasMoreProjects || effectiveUserType !== 'contractor') {
+      console.log('Load more projects skipped:', { loadingMore, hasMoreProjects, effectiveUserType });
+      return;
+    }
+
+    try {
+      setLoadingMore(true);
+      const nextPage = projectsPage + 1;
+      console.log('Loading more projects - page:', nextPage);
+      
+      const response = await projects_service.get_approved_projects(nextPage, PER_PAGE);
+      const projectsData = response.data?.data || response.data;
+
+      if (response.success && projectsData && Array.isArray(projectsData)) {
+        console.log(`Loaded ${projectsData.length} more projects`);
+        setAvailableProjects(prev => [...prev, ...projectsData]);
+        setProjectsPage(nextPage);
+        
+        if (response.pagination) {
+          setHasMoreProjects(response.pagination.has_more);
+          console.log('Has more projects:', response.pagination.has_more);
+        }
+      }
+    } catch (err) {
+      console.error('Error loading more projects:', err);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, hasMoreProjects, projectsPage, effectiveUserType]);
+
+  /**
+   * Handle scroll event to detect when user reaches the end
+   * Using onMomentumScrollEnd and onScrollEndDrag for better detection
+   */
+  const handleScrollEnd = useCallback((event: any, loadMoreFn: () => void) => {
+    const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
+    const paddingToBottom = 100; // Increased threshold for earlier loading
+    const isCloseToBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - paddingToBottom;
+    
+    console.log('Scroll end detected:', {
+      layoutHeight: layoutMeasurement.height,
+      scrollY: contentOffset.y,
+      contentHeight: contentSize.height,
+      isCloseToBottom,
+    });
+    
+    if (isCloseToBottom) {
+      console.log('Triggering load more...');
+      loadMoreFn();
+    }
+  }, []);
 
   /**
    * Generate initials from company name (matching backend logic)
@@ -901,6 +1056,8 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        onMomentumScrollEnd={(e) => handleScrollEnd(e, loadMoreContractors)}
+        onScrollEndDrag={(e) => handleScrollEnd(e, loadMoreContractors)}
       >
         {/* User Profile and Project Input */}
         <View style={styles.profileSection}>
@@ -941,12 +1098,16 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
                   // Retry fetching contractors
                   setError(null);
                   setIsLoading(true);
-                  contractors_service.get_active_contractors()
+                  setContractorsPage(1);
+                  contractors_service.get_active_contractors(undefined, 1, PER_PAGE)
                     .then(response => {
                       const contractorsData = response.data?.data || response.data;
                       if (response.success && contractorsData && Array.isArray(contractorsData)) {
                         const transformedContractors = contractors_service.transform_contractors(contractorsData);
                         setPopularContractors(transformedContractors);
+                        if (response.pagination) {
+                          setHasMoreContractors(response.pagination.has_more);
+                        }
                       }
                     })
                     .finally(() => setIsLoading(false));
@@ -973,6 +1134,21 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
                   {renderContractorCard({ item: contractor })}
                 </View>
               ))}
+              
+              {/* Loading More Indicator */}
+              {loadingMore && (
+                <View style={styles.loadingMoreContainer}>
+                  <ActivityIndicator size="small" color="#EC7E00" />
+                  <Text style={styles.loadingMoreText}>Loading more...</Text>
+                </View>
+              )}
+              
+              {/* End of List Indicator */}
+              {!loadingMore && !hasMoreContractors && (
+                <View style={styles.endOfListContainer}>
+                  <Text style={styles.endOfListText}>You've reached the end</Text>
+                </View>
+              )}
             </>
           )}
         </View>
@@ -991,6 +1167,8 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        onMomentumScrollEnd={(e) => handleScrollEnd(e, loadMoreProjects)}
+        onScrollEndDrag={(e) => handleScrollEnd(e, loadMoreProjects)}
       >
         {/* User Profile and Search */}
         <View style={styles.profileSection}>
@@ -1028,11 +1206,15 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
                 onPress={() => {
                   setError(null);
                   setIsLoading(true);
-                  projects_service.get_approved_projects()
+                  setProjectsPage(1);
+                  projects_service.get_approved_projects(1, PER_PAGE)
                     .then(response => {
                       const projectsData = response.data?.data || response.data;
                       if (response.success && projectsData && Array.isArray(projectsData)) {
                         setAvailableProjects(projectsData);
+                        if (response.pagination) {
+                          setHasMoreProjects(response.pagination.has_more);
+                        }
                       }
                     })
                     .finally(() => setIsLoading(false));
@@ -1056,6 +1238,21 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
           {!isLoading && !error && availableProjects.length > 0 && (
             <>
               {availableProjects.map((project) => renderProjectCard(project))}
+              
+              {/* Loading More Indicator */}
+              {loadingMore && (
+                <View style={styles.loadingMoreContainer}>
+                  <ActivityIndicator size="small" color="#EC7E00" />
+                  <Text style={styles.loadingMoreText}>Loading more...</Text>
+                </View>
+              )}
+              
+              {/* End of List Indicator */}
+              {!loadingMore && !hasMoreProjects && (
+                <View style={styles.endOfListContainer}>
+                  <Text style={styles.endOfListText}>You've reached the end</Text>
+                </View>
+              )}
             </>
           )}
         </View>
@@ -1783,6 +1980,27 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontSize: 14,
     color: '#666666',
+  },
+  loadingMoreContainer: {
+    paddingVertical: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  loadingMoreText: {
+    fontSize: 14,
+    color: '#666666',
+  },
+  endOfListContainer: {
+    paddingVertical: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  endOfListText: {
+    fontSize: 13,
+    color: '#999999',
+    fontStyle: 'italic',
   },
   errorContainer: {
     paddingVertical: 40,

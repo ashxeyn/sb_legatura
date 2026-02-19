@@ -6,7 +6,7 @@ use App\Models\Both\notificationClass;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-class NotificationService
+class notificationService
 {
     /**
      * Map a reference_type + context into a frontend-friendly notification sub-type.
