@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Both;
+namespace App\Http\Controllers\both;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\both\disputeRequest;

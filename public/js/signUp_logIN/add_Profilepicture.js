@@ -90,6 +90,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const formData = new FormData(profileForm);
+            
+            // Debug: Log form data being sent
+            console.log('Form data being submitted:');
+            for (let [key, value] of formData.entries()) {
+                if (key.includes('_data')) {
+                    try {
+                        console.log(`  ${key}:`, JSON.parse(value));
+                    } catch {
+                        console.log(`  ${key}:`, value);
+                    }
+                } else {
+                    console.log(`  ${key}:`, value?.name || value);
+                }
+            }
 
             const response = await fetch(profileForm.action, {
                 method: 'POST',

@@ -10,7 +10,7 @@ use App\Http\Controllers\contractor\progressUploadController;
 use App\Http\Controllers\owner\paymentUploadController;
 use App\Http\Controllers\projectPosting\projectPostingController;
 use App\Http\Controllers\both\disputeController;
-use App\Http\Controllers\Both\NotificationController;
+use App\Http\Controllers\both\NotificationController;
 
 // At the very top of api.php
 Log::info('=== INCOMING API REQUEST ===', [

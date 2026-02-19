@@ -240,6 +240,9 @@ class authController extends Controller
 
     public function showOwnerAccountSetup()
     {
+        // Always set signup type so profile photo page routes correctly
+        Session::put('signup_user_type', 'owner');
+
         $occupations = $this->accountClass->getOccupations();
         $validIds = $this->accountClass->getValidIds();
         $provinces = $this->psgcService->getProvinces();
@@ -451,341 +454,75 @@ class authController extends Controller
     }
 
     // Contractor Step 3
-    public function contractorVerifyOtp(accountRequest $request)
+    public function contractorVerifyOtp(Request $request)
     {
-        $step2Data = Session::get('contractor_step2');
+        // Validate OTP input
+        $request->validate([
+            'otp' => 'required|digits:6'
+        ]);
 
-        // If the signup step already moved past OTP verification,
-        // return a friendly idempotent success so clients that retry
-        // don't get a confusing "missing identifier" error.
-        $signupStep = Session::get('signup_step');
-        if (!empty($signupStep) && (int)$signupStep >= 4) {
-            \Log::info('contractorVerifyOtp called but signup_step already >=4; returning already verified');
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'OTP already verified',
-                    'step' => (int)$signupStep,
-                    'next_step' => 'contractor_step4'
-                ], 200);
-            }
-            return response()->json(['success' => true, 'step' => (int)$signupStep], 200);
+        $inputOtp = $request->input('otp');
+        
+        // Get contractor OTP data from session
+        $contractorOtp = Session::get('contractor_otp');
+        $contractorOtpExpiry = Session::get('contractor_otp_expiry');
+        $contractorOtpEmail = Session::get('contractor_otp_email');
+        $attempts = Session::get('contractor_otp_attempts', 0);
+
+        // Check if OTP session exists
+        if (!$contractorOtp || !$contractorOtpEmail) {
+            return response()->json([
+                'success' => false,
+                'message' => 'OTP session not found. Please request a new OTP.'
+            ], 422);
         }
 
-        // Input OTP
-        $inputOtp = $request->input('otp') ?? $request->otp ?? null;
-        if (empty($inputOtp)) {
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'OTP is required',
-                    'errors' => ['otp' => ['OTP is required']]
-                ], 422);
-            }
-            return response()->json(['success' => false, 'errors' => ['otp' => ['OTP is required']]], 422);
+        // Check if OTP has expired
+        if ($contractorOtpExpiry && now()->isAfter($contractorOtpExpiry)) {
+            Session::forget(['contractor_otp', 'contractor_otp_expiry', 'contractor_otp_email', 'contractor_otp_attempts']);
+            return response()->json([
+                'success' => false,
+                'message' => 'OTP has expired. Please request a new one.'
+            ], 422);
         }
 
-        $otpMeta = null;
-        $normalizedEmail = null;
-        $otpToken = $request->input('otp_token') ?? null;
-        // Require either: (1) session-stored OTP (web flow), (2) company email in request/header, or (3) otp_token (stateless client)
-        $hasSessionOtp = is_array($step2Data) && isset($step2Data['otp_hash']);
-        $hasEmailInRequest = false;
-        $clientIp = $request->ip();
-        $possibleKeys = ['company_email', 'companyEmail', 'email', 'identifier'];
-        foreach ($possibleKeys as $key) {
-            $val = $request->input($key);
-            if (!empty($val)) {
-                $hasEmailInRequest = true;
-                break;
-            }
-        }
-        if (!$hasEmailInRequest) {
-            $hdr = $request->header('X-Company-Email') ?: $request->header('X-User-Email');
-            if ($hdr) {
-                $hasEmailInRequest = true;
-            }
+        // Check attempt limit
+        if ($attempts >= 3) {
+            Session::forget(['contractor_otp', 'contractor_otp_expiry', 'contractor_otp_email', 'contractor_otp_attempts']);
+            return response()->json([
+                'success' => false,
+                'message' => 'Too many failed attempts. Please request a new OTP.'
+            ], 429);
         }
 
-        // If no explicit email/token/session, try IP->email mapping as an identifier
-        if (!$hasSessionOtp && empty($otpToken) && !$hasEmailInRequest && $clientIp) {
-            try {
-                $ipMapped = Cache::get('signup_otp_ip_' . $clientIp);
-                if (!empty($ipMapped)) {
-                    \Log::info('Using IP-mapped email for OTP identification: ' . $clientIp . ' -> ' . $ipMapped);
-                    $hasEmailInRequest = true;
-                    // keep mapped email for later lookup
-                    $mappedEmailForIp = $ipMapped;
-                }
-            } catch (\Exception $e) {
-                \Log::warning('Failed to read IP-mapped OTP email: ' . $e->getMessage());
-            }
-        }
-
-        if (!$hasSessionOtp && empty($otpToken) && !$hasEmailInRequest) {
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Missing identifier: provide company_email (or X-Company-Email header) or otp_token for stateless clients.',
-                    'errors' => ['identifier' => ['company_email or otp_token required']]
-                ], 400);
-            }
-            return response()->json(['success' => false, 'errors' => ['identifier' => ['company_email or otp_token required']]], 400);
-        }
-        $clientIp = $request->ip();
-
-        // 1) Prefer session-stored OTP (web flow)
-        if (is_array($step2Data) && isset($step2Data['otp_hash'])) {
-            $otpMeta = [
-                'hash' => $step2Data['otp_hash'],
-                'issued_at' => $step2Data['otp_issued_at'] ?? null
-            ];
-            $normalizedEmail = isset($step2Data['company_email']) ? strtolower(trim($step2Data['company_email'])) : null;
-            \Log::info('Found OTP meta in session for contractor_step2');
-        }
-
-        // 2) Check token-based lookup (stateless/mobile)
-        if (!$otpMeta && !empty($otpToken)) {
-            $meta = Cache::get('signup_otp_token_' . $otpToken);
-            if ($meta) {
-                $otpMeta = $meta;
-                \Log::info('Lookup OTP meta by token ' . $otpToken . ' -> HIT');
-            } else {
-                \Log::info('Lookup OTP meta by token ' . $otpToken . ' -> MISS');
-            }
-        }
-
-        // 3) Check email-based lookup
-        if (!$otpMeta) {
-            $possibleKeys = ['company_email', 'companyEmail', 'email', 'identifier'];
-            $companyEmail = null;
-            foreach ($possibleKeys as $key) {
-                $val = $request->input($key);
-                if (!empty($val)) {
-                    // If the key is "identifier" decide whether it's an email or a token
-                    if ($key === 'identifier') {
-                        if (strpos($val, '@') !== false) {
-                            $companyEmail = $val;
-                            \Log::info('Found company email in request identifier');
-                            break;
-                        } else {
-                            // treat as otp token for stateless clients
-                            $otpToken = $val;
-                            \Log::info('Found otp_token in request identifier');
-                            break;
-                        }
-                    }
-                    $companyEmail = $val;
-                    \Log::info('Found company email in request key: ' . $key);
-                    break;
-                }
-            }
-            if (!$companyEmail) {
-                $hdr = $request->header('X-Company-Email') ?: $request->header('X-User-Email');
-                if ($hdr) {
-                    $companyEmail = $hdr;
-                }
-                // If we earlier mapped IP to an email, prefer that
-                if (empty($companyEmail) && isset($mappedEmailForIp) && !empty($mappedEmailForIp)) {
-                    $companyEmail = $mappedEmailForIp;
-                    \Log::info('Using mapped IP email for lookup: ' . $companyEmail);
-                }
-            }
-
-            if ($companyEmail) {
-                $normalizedEmail = strtolower(trim($companyEmail));
-                $meta = Cache::get('signup_otp_' . $normalizedEmail);
-                if ($meta) {
-                    $otpMeta = $meta;
-                    \Log::info('Lookup OTP meta by email ' . $normalizedEmail . ' -> HIT');
-                } else {
-                    \Log::info('Lookup OTP meta by email ' . $normalizedEmail . ' -> MISS');
-                }
-            }
-        }
-
-        // 4) IP fallback mapping
-        if (!$otpMeta && $clientIp) {
-            try {
-                $mapped = Cache::get('signup_otp_ip_' . $clientIp);
-                if ($mapped) {
-                    $normalizedEmail = $mapped;
-                    $meta = Cache::get('signup_otp_' . $mapped);
-                    if ($meta) {
-                        $otpMeta = $meta;
-                        \Log::info('IP fallback lookup for ' . $clientIp . ' -> ' . ($mapped ?: 'NONE') . ' ; OTP meta HIT');
-                    } else {
-                        \Log::info('IP fallback lookup for ' . $clientIp . ' -> ' . ($mapped ?: 'NONE') . ' ; OTP meta MISS');
-                    }
-                }
-            } catch (\Exception $e) {
-                \Log::warning('Failed IP fallback lookup: ' . $e->getMessage());
-            }
-        }
-
-        if (!$otpMeta || !isset($otpMeta['hash'])) {
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'OTP not found (expired or missing). Please request a new code.',
-                    'errors' => ['otp' => ['OTP not found or expired']]
-                ], 422);
-            }
-            return response()->json(['success' => false, 'errors' => ['otp' => ['OTP not found or expired']]], 422);
-        }
-
-        // Validate TTL using issued_at if available to avoid premature invalidation
-        $otpTtlSeconds = 15 * 60; // 15 minutes
-        $graceSeconds = 30; // small grace window for clock skew
-        if (!empty($otpMeta['issued_at'])) {
-            $issued = (int) $otpMeta['issued_at'];
-            if (now()->timestamp > ($issued + $otpTtlSeconds + $graceSeconds)) {
-                // OTP expired
-                // Cleanup stale cache entries
-                try {
-                    if (!empty($normalizedEmail)) {
-                        Cache::forget('signup_otp_' . $normalizedEmail);
-                    }
-                    if (!empty($otpToken)) {
-                        Cache::forget('signup_otp_token_' . $otpToken);
-                    }
-                    if (!empty($clientIp)) {
-                        Cache::forget('signup_otp_ip_' . $clientIp);
-                    }
-                } catch (\Exception $e) {
-                    \Log::warning('Failed to cleanup expired OTP cache: ' . $e->getMessage());
-                }
-
-                if ($request->expectsJson()) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'OTP has expired. Please request a new code.',
-                        'errors' => ['otp' => ['OTP expired']]
-                    ], 422);
-                }
-                return response()->json(['success' => false, 'errors' => ['otp' => ['OTP expired']]], 422);
-            }
-        }
-
-        // Verify attempts rate-limiting to prevent brute-force
-        $attemptKeyBase = null;
-        try {
-            if (!empty($normalizedEmail)) {
-                $attemptKeyBase = 'otp_verify_attempts_' . $normalizedEmail;
-            } elseif (!empty($otpToken)) {
-                $attemptKeyBase = 'otp_verify_attempts_token_' . $otpToken;
-            } else {
-                $attemptKeyBase = 'otp_verify_attempts_ip_' . $clientIp;
-            }
-            $attemptLimit = (int)config('otp.verify_attempts_limit', 5);
-            $attempts = Cache::get($attemptKeyBase, 0);
-            if ($attempts >= $attemptLimit) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Too many failed OTP attempts. Please try again later.'
-                ], 429);
-            }
-        } catch (\Throwable $e) {
-            \Log::warning('OTP verify rate-limit check failed: ' . $e->getMessage());
-        }
-
-        // Attempt verification and prevent race/reuse by using cache lock when available
-        $lockName = null;
-        if (!empty($normalizedEmail)) {
-            $lockName = 'signup_otp_lock_' . $normalizedEmail;
-        } elseif (!empty($otpToken)) {
-            $lockName = 'signup_otp_lock_token_' . $otpToken;
-        }
-
-        $blockSeconds = (int)config('otp.verify_block_seconds', 900);
-
-        $verifyAndCleanup = function () use ($inputOtp, $otpMeta, $normalizedEmail, $otpToken, $clientIp, $request, $attemptKeyBase, $blockSeconds) {
-            if (!$this->authService->verifyOtp($inputOtp, $otpMeta['hash'])) {
-                // Increment failed attempt counter
-                try {
-                    if (!empty($attemptKeyBase)) {
-                        Cache::increment($attemptKeyBase);
-                        Cache::put($attemptKeyBase, Cache::get($attemptKeyBase), now()->addSeconds($blockSeconds));
-                    }
-                } catch (\Throwable $e) {
-                    \Log::warning('Failed to increment OTP verify attempts: ' . $e->getMessage());
-                }
-                if ($request->expectsJson()) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Invalid OTP',
-                        'errors' => ['otp' => ['Invalid OTP']]
-                    ], 422);
-                }
-                return response()->json(['success' => false, 'errors' => ['otp' => ['Invalid OTP']]], 422);
-            }
-
-            // On success, clear failed attempts counter
-            try {
-                if (!empty($attemptKeyBase)) {
-                    Cache::forget($attemptKeyBase);
-                }
-            } catch (\Throwable $e) {
-                \Log::warning('Failed to clear OTP verify attempts: ' . $e->getMessage());
-            }
-
-            // On success, remove any cached tokens and session OTP to prevent reuse
-            try {
-                if (!empty($normalizedEmail)) {
-                    Cache::forget('signup_otp_' . $normalizedEmail);
-                }
-                if (!empty($otpToken)) {
-                    Cache::forget('signup_otp_token_' . $otpToken);
-                }
-                if (!empty($clientIp)) {
-                    Cache::forget('signup_otp_ip_' . $clientIp);
-                }
-            } catch (\Exception $e) {
-                \Log::warning('Failed to cleanup OTP cache after verify: ' . $e->getMessage());
-            }
-
-            // Keep otp_hash in session until final registration to allow creating
-            // the user record (DB requires OTP_hash). We already cleared cached
-            // OTP tokens and IP mappings above to prevent reuse.
+        // Verify OTP
+        if ($inputOtp === $contractorOtp) {
+            // Clear OTP session data (but keep hash in contractor_step2 for final step)
+            Session::forget(['contractor_otp', 'contractor_otp_expiry', 'contractor_otp_email', 'contractor_otp_attempts']);
+            
+            // Set verified flag and advance to step 3
             try {
                 $s = Session::get('contractor_step2', []);
-                if (is_array($s)) {
-                    // Mark that OTP was verified, but retain the stored hash for final step
-                    $s['otp_verified'] = true;
-                    Session::put('contractor_step2', $s);
-                }
-            } catch (\Exception $e) {
-                \Log::warning('Failed to update session after OTP verify: ' . $e->getMessage());
-            }
+                if (is_array($s)) { $s['otp_verified'] = true; Session::put('contractor_step2', $s); }
+            } catch (\Exception $e) { \Log::warning('Failed to update contractor session after OTP verify: ' . $e->getMessage()); }
+            
+            Session::put('contractor_otp_verified', true);
+            Session::put('signup_step', 3);
 
-            Session::put('signup_step', 4);
-
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'OTP verified successfully',
-                    'step' => 4,
-                    'next_step' => 'contractor_step4'
-                ], 200);
-            }
-            return response()->json(['success' => true, 'step' => 4]);
-        };
-
-        if ($lockName) {
-            try {
-                if (method_exists(Cache::store(), 'lock')) {
-                    $lock = Cache::lock($lockName, 5);
-                    return $lock->block(3, function () use ($verifyAndCleanup) {
-                        return $verifyAndCleanup();
-                    });
-                }
-            } catch (\Throwable $e) {
-                \Log::warning('OTP verification lock failed or unsupported: ' . $e->getMessage());
-            }
+            return response()->json([
+                'success' => true,
+                'message' => 'Email verified successfully!'
+            ], 200);
+        } else {
+            // Increment failed attempts
+            Session::put('contractor_otp_attempts', $attempts + 1);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid OTP. Please try again.',
+                'attempts_remaining' => 3 - ($attempts + 1)
+            ], 422);
         }
-
-        // Fallback: no lock available
-        return $verifyAndCleanup();
     }
 
     // Contractor Step 4
@@ -818,21 +555,53 @@ class authController extends Controller
         $step2 = Session::get('contractor_step2');
         $step4 = Session::get('contractor_step4');
 
+        \Log::info('contractorFinalStep: Session data retrieved', [
+            'has_session_step1' => !empty($step1),
+            'has_session_step2' => !empty($step2),
+            'has_session_step4' => !empty($step4),
+            'step2_username' => $step2['username'] ?? 'MISSING'
+        ]);
+
+        // Log raw request data to debug hidden fields
+        \Log::debug('contractorFinalStep: Request step data', [
+            'has_step1_data' => !empty($request->input('step1_data')),
+            'has_step2_data' => !empty($request->input('step2_data')),
+            'has_step4_data' => !empty($request->input('step4_data')),
+            'step2_data_sample' => substr($request->input('step2_data', ''), 0, 100)
+        ]);
+
         // If session is not available (mobile/stateless clients), allow passing
         // the step data directly in the request as JSON fields: step1_data, step2_data, step4_data
         try {
-            if (!$step1 && $request->input('step1_data')) {
+            if ($request->input('step1_data')) {
                 $decoded = json_decode($request->input('step1_data'), true);
-                if (is_array($decoded)) $step1 = $decoded;
+                if (is_array($decoded) && !empty($decoded)) {
+                    \Log::info('Using fallback step1_data from request');
+                    $step1 = $decoded;
+                }
             }
-            if (!$step2 && $request->input('step2_data')) {
+            if ($request->input('step2_data')) {
                 $decoded = json_decode($request->input('step2_data'), true);
-                if (is_array($decoded)) $step2 = $decoded;
+                if (is_array($decoded) && !empty($decoded)) {
+                    \Log::info('Using fallback step2_data from request');
+                    $step2 = $decoded;
+                }
             }
-            if (!$step4 && $request->input('step4_data')) {
+            if ($request->input('step4_data')) {
                 $decoded = json_decode($request->input('step4_data'), true);
-                if (is_array($decoded)) $step4 = $decoded;
+                if (is_array($decoded) && !empty($decoded)) {
+                    \Log::info('Using fallback step4_data from request');
+                    $step4 = $decoded;
+                }
             }
+
+            \Log::info('contractorFinalStep: After fallback attempt', [
+                'has_step1' => !empty($step1),
+                'has_step2' => !empty($step2),
+                'has_step4' => !empty($step4),
+                'step2_username_after' => $step2['username'] ?? 'MISSING',
+                'step2_email_after' => $step2['email'] ?? 'MISSING'
+            ]);
         } catch (\Throwable $e) {
             \Log::warning('Failed to decode step data from request: ' . $e->getMessage());
         }
@@ -886,22 +655,31 @@ class authController extends Controller
             $step1['type_id'] = $step1['contractor_type_id'];
         }
 
-        // Check if all required session data exists
-        if (!$step1 || !$step2 || !$step4) {
-            $missing = [];
-            if (!$step1) {
-                $missing[] = 'Step 1 data';
-            }
-            if (!$step2) {
-                $missing[] = 'Step 2 data';
-            }
-            if (!$step4) {
-                $missing[] = 'Step 4 data';
-            }
+        // Check if all required session data exists with detailed validation
+        $missing = [];
+        if (!$step1) {
+            $missing[] = 'Step 1 data (personal information)';
+        }
+        if (!$step2) {
+            $missing[] = 'Step 2 data (account setup)';
+        } else {
+            if (empty($step2['username'])) $missing[] = 'Step 2: username';
+            if (empty($step2['company_email'])) $missing[] = 'Step 2: company_email';
+            if (empty($step2['password'])) $missing[] = 'Step 2: password';
+            if (empty($step2['otp_hash'])) $missing[] = 'Step 2: OTP verification (please verify OTP first)';
+        }
+        if (!$step4) {
+            $missing[] = 'Step 4 data (business verification)';
+        }
 
+        if (!empty($missing)) {
+            \Log::warning('contractorFinalStep: Missing required data', [
+                'missing' => $missing,
+                'step2_keys' => $step2 ? array_keys($step2) : []
+            ]);
             return response()->json([
                 'success' => false,
-                'errors' => ['Session expired. Missing: ' . implode(', ', $missing) . '. Please start the registration process again.']
+                'errors' => ['Session expired or incomplete. Missing: ' . implode(', ', $missing) . '. Please restart the registration process.']
             ], 400);
         }
 
@@ -1224,7 +1002,7 @@ class authController extends Controller
     }
 
     // Property Owner Step 3
-    public function propertyOwnerVerifyOtp(accountRequest $request)
+    public function propertyOwnerVerifyOtp(Request $request)
     {
         // Frontend integration notes:
         // - Fetch CSRF token first via GET /sanctum/csrf-cookie when using cookie-based auth.
@@ -1539,12 +1317,57 @@ class authController extends Controller
         $step2 = Session::get('owner_step2');
         $step4 = Session::get('owner_step4');
 
+        \Log::info('propertyOwnerFinalStep: Session data retrieved', [
+            'has_session_step1' => !empty($step1),
+            'has_session_step2' => !empty($step2),
+            'has_session_step4' => !empty($step4),
+            'step2_username' => $step2['username'] ?? 'MISSING',
+            'signup_user_type' => Session::get('signup_user_type', 'NOT_SET')
+        ]);
+
+        // Log raw request data to debug hidden fields
+        \Log::debug('propertyOwnerFinalStep: Request step data', [
+            'has_step1_data' => !empty($request->input('step1_data')),
+            'has_step2_data' => !empty($request->input('step2_data')),
+            'has_step4_data' => !empty($request->input('step4_data')),
+            'step2_data_sample' => substr($request->input('step2_data', ''), 0, 100)
+        ]);
+
         // Allow passing step data directly in request for stateless clients
+        // Try to parse JSON fallback data, even if session exists
         try {
-            if (!$step1 && $request->input('step1_data')) { $decoded = json_decode($request->input('step1_data'), true); if (is_array($decoded)) $step1 = $decoded; }
-            if (!$step2 && $request->input('step2_data')) { $decoded = json_decode($request->input('step2_data'), true); if (is_array($decoded)) $step2 = $decoded; }
-            if (!$step4 && $request->input('step4_data')) { $decoded = json_decode($request->input('step4_data'), true); if (is_array($decoded)) $step4 = $decoded; }
-        } catch (\Throwable $e) { \Log::warning('Failed to decode owner step data from request: ' . $e->getMessage()); }
+            if ($request->input('step1_data')) {
+                $decoded = json_decode($request->input('step1_data'), true);
+                if (is_array($decoded) && !empty($decoded)) {
+                    \Log::info('Using fallback step1_data from request');
+                    $step1 = $decoded;
+                }
+            }
+            if ($request->input('step2_data')) {
+                $decoded = json_decode($request->input('step2_data'), true);
+                if (is_array($decoded) && !empty($decoded)) {
+                    \Log::info('Using fallback step2_data from request');
+                    $step2 = $decoded;
+                }
+            }
+            if ($request->input('step4_data')) {
+                $decoded = json_decode($request->input('step4_data'), true);
+                if (is_array($decoded) && !empty($decoded)) {
+                    \Log::info('Using fallback step4_data from request');
+                    $step4 = $decoded;
+                }
+            }
+
+            \Log::info('propertyOwnerFinalStep: After fallback attempt', [
+                'has_step1' => !empty($step1),
+                'has_step2' => !empty($step2),
+                'has_step4' => !empty($step4),
+                'step2_username_after' => $step2['username'] ?? 'MISSING',
+                'step2_email_after' => $step2['email'] ?? 'MISSING'
+            ]);
+        } catch (\Throwable $e) {
+            \Log::warning('Failed to decode owner step data from request: ' . $e->getMessage());
+        }
 
         $step1 = is_array($step1) ? $step1 : (is_object($step1) ? (array)$step1 : []);
         $step2 = is_array($step2) ? $step2 : (is_object($step2) ? (array)$step2 : []);
@@ -1602,12 +1425,25 @@ class authController extends Controller
         $step4['valid_id_back_photo'] = $step4['valid_id_back_photo'] ?? null;
         $step4['police_clearance'] = $step4['police_clearance'] ?? null;
 
-        if (!$step1 || !$step2 || !$step4) {
-            $missing = [];
-            if (!$step1) $missing[] = 'Step 1 data';
-            if (!$step2) $missing[] = 'Step 2 data';
-            if (!$step4) $missing[] = 'Step 4 data';
-            return response()->json(['success' => false, 'errors' => ['Session expired. Missing: ' . implode(', ', $missing) . '. Please start the registration process again.']], 400);
+        // More detailed validation
+        $missing = [];
+        if (!$step1) $missing[] = 'Step 1 data (personal information)';
+        if (!$step2) {
+            $missing[] = 'Step 2 data (account setup)';
+        } else {
+            if (empty($step2['username'])) $missing[] = 'Step 2: username';
+            if (empty($step2['email'])) $missing[] = 'Step 2: email';
+            if (empty($step2['password'])) $missing[] = 'Step 2: password';
+            if (empty($step2['otp_hash'])) $missing[] = 'Step 2: OTP verification (please verify OTP first)';
+        }
+        if (!$step4) $missing[] = 'Step 4 data (verification documents)';
+
+        if (!empty($missing)) {
+            \Log::warning('propertyOwnerFinalStep: Missing required data', [
+                'missing' => $missing,
+                'step2_keys' => $step2 ? array_keys($step2) : []
+            ]);
+            return response()->json(['success' => false, 'errors' => ['Session expired or incomplete. Missing: ' . implode(', ', $missing) . '. Please restart the registration process.']], 400);
         }
 
         $profilePicPath = null;
@@ -1735,6 +1571,13 @@ class authController extends Controller
             } catch (\Throwable $e) { \Log::warning('Existing owner lookup failed: ' . $e->getMessage()); }
         } else {
             // Do NOT set user_type to property_owner yet; keep original user_type
+            \Log::info('propertyOwnerFinalStep: About to create user with', [
+                'username' => $step2['username'] ?? 'NULL',
+                'email' => $step2['email'] ?? 'NULL',
+                'has_password' => !empty($step2['password']),
+                'has_otp_hash' => !empty($step2['otp_hash'])
+            ]);
+
             $userId = $this->accountClass->createUser([
                 'profile_pic' => $profilePicPath,
                 'username' => $step2['username'] ?? null,
@@ -2566,19 +2409,360 @@ class authController extends Controller
     public function getProvinces()
     {
         $provinces = $this->psgcService->getProvinces();
-        return response()->json($provinces);
+        return response()->json(['success' => true, 'data' => $provinces]);
     }
 
     public function getCitiesByProvince($provinceCode)
     {
         $cities = $this->psgcService->getCitiesByProvince($provinceCode);
-        return response()->json($cities);
+        return response()->json(['success' => true, 'data' => $cities]);
     }
 
     public function getBarangaysByCity($cityCode)
     {
         $barangays = $this->psgcService->getBarangaysByCity($cityCode);
-        return response()->json($barangays);
+        return response()->json(['success' => true, 'data' => $barangays]);
+    }
+
+    // Get contractor setup form data (for web blade template)
+    public function getContractorSetupData()
+    {
+        $contractorTypes = $this->accountClass->getContractorTypes();
+        $provinces = $this->psgcService->getProvinces();
+        
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'contractor_types' => $contractorTypes,
+                'provinces' => $provinces
+            ]
+        ]);
+    }
+
+    // Show contractor setup form (web)
+    public function showContractorSetup(Request $request)
+    {
+        // Always set signup type so profile photo page routes correctly
+        Session::put('signup_user_type', 'contractor');
+        
+        $contractorTypes = $this->accountClass->getContractorTypes();
+        $provinces = $this->psgcService->getProvinces();
+
+        // Get selected province and city from request or old() for validation errors
+        $selectedProvince = $request->input('business_address_province', old('business_address_province'));
+        $selectedCity = $request->input('business_address_city', old('business_address_city'));
+
+        // Fetch cities based on selected province
+        $cities = $selectedProvince ? $this->psgcService->getCitiesByProvince($selectedProvince) : [];
+        
+        // Fetch barangays based on selected city
+        $barangays = $selectedCity ? $this->psgcService->getBarangaysByCity($selectedCity) : [];
+
+        if ($request->isMethod('post')) {
+            // Check if this is an AJAX Step 2 request (OTP verification flow)
+            $isAjaxRequest = $request->header('X-Requested-With') === 'XMLHttpRequest' || $request->wantsJson();
+            if ($request->input('step') === '2' && $isAjaxRequest) {
+                return $this->storeContractorStep2($request);
+            }
+            
+            // Check for Step 3 submission (Business Documents)
+            if ($request->input('step') === '3' || ($request->has('pcab_number') && $request->has('pcab_category'))) {
+                return $this->storeContractorStep3($request);
+            }
+            
+            // Handle form submission (all steps or Steps 1 & 2)
+            return $this->storeContractorStep1($request);
+        }
+
+        return view('signUp_logIN.contractor_accountSetup', compact(
+            'contractorTypes',
+            'provinces',
+            'cities',
+            'barangays'
+        ));
+    }
+
+    // Store contractor step 2 (account setup) and send OTP email
+    public function storeContractorStep2(Request $request)
+    {
+        try {
+            // Validate Step 2 fields only
+            $validated = $request->validate([
+                'first_name' => 'required|string|max:255',
+                'middle_name' => 'nullable|string|max:255',
+                'last_name' => 'required|string|max:255',
+                'username' => 'required|string|max:255|unique:users,username',
+                'company_email' => 'required|email|unique:users,email',
+                'password' => 'required|string|min:8|confirmed',
+                'password_confirmation' => 'required|string',
+            ], [
+                'password.confirmed' => 'Passwords do not match',
+                'company_email.unique' => 'This email is already in use',
+                'company_email.email' => 'Please enter a valid email address',
+                'username.unique' => 'This username is already taken',
+                'password.min' => 'Password must be at least 8 characters long'
+            ]);
+
+            // Generate 6-digit OTP and hash it
+            $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+            $otpHash = $this->authService->hashOtp($otp);
+            
+            // Store Step 2 data in session (include OTP hash for final step)
+            $step2Data = [
+                'first_name' => $validated['first_name'],
+                'middle_name' => $validated['middle_name'] ?? '',
+                'last_name' => $validated['last_name'],
+                'username' => $validated['username'],
+                'company_email' => $validated['company_email'],
+                'password' => $validated['password'],
+                'otp_hash' => $otpHash,
+                'otp_issued_at' => now()->timestamp
+            ];
+            Session::put('contractor_step2', $step2Data);
+            
+            // Store OTP in session with 10-minute expiry (for verification)
+            Session::put('contractor_otp', $otp);
+            Session::put('contractor_otp_expiry', now()->addMinutes(10));
+            Session::put('contractor_otp_email', $validated['company_email']);
+            Session::put('contractor_otp_attempts', 0);
+
+            // Force session save before sending response (important for AJAX)
+            Session::save();
+
+            // Send OTP email
+            try {
+                $this->authService->sendOtpEmail($validated['company_email'], $otp);
+            } catch (\Exception $e) {
+                \Log::error('Failed to send OTP email: ' . $e->getMessage());
+                // Don't fail the request, user can resend
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'OTP sent to your email'
+            ], 200);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            \Log::error('storeContractorStep2 error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error sending OTP. Please try again.'
+            ], 500);
+        }
+    }
+
+    // Store contractor step 1 (company information) from showContractorSetup form submission
+    public function storeContractorStep1(Request $request)
+    {
+        // Validate Step 1: Company Information (matching mobile CompanyInfo interface)
+        $validated = $request->validate([
+            // Step 1: Company Information (12 fields matching mobile CompanyInfo)
+            'company_name' => 'required|string|max:255',
+            'company_phone' => 'required|string|max:11|regex:/^09\d{9}$/',
+            'founded_date' => 'required|date|before_or_equal:today',
+            'contractor_type_id' => 'required|string',
+            'contractor_type_other_text' => 'nullable|string|max:255',
+            'services_offered' => 'required|string|min:10',
+            'business_address_street' => 'required|string|max:255',
+            'business_address_province' => 'required|string|max:255',
+            'business_address_city' => 'required|string|max:255',
+            'business_address_barangay' => 'required|string|max:255',
+            'business_address_postal' => 'required|string|max:10',
+            'company_website' => 'nullable|url|max:255',
+            'company_social_media' => 'nullable|string|max:255',
+            
+            // Step 2: Account Setup (matching mobile ContractorAccountInfo)
+            'first_name' => 'required|string|max:255',
+            'middle_name' => 'nullable|string|max:255',
+            'last_name' => 'required|string|max:255',
+            'username' => 'required|string|max:255|unique:users,username',
+            'company_email' => 'required|email|unique:users,email',
+            'password' => 'required|string|min:8|confirmed',
+            'password_confirmation' => 'required|string',
+            
+            // Step 3: Verification (if present)
+            'pcab_number' => 'nullable|string|max:255',
+            'pcab_category' => 'nullable|string|max:255',
+            'pcab_expiration' => 'nullable|date',
+            'business_permit_number' => 'nullable|string|max:255',
+            'business_permit_city' => 'nullable|string|max:255',
+            'business_permit_expiration' => 'nullable|date',
+            'tin_registration_number' => 'nullable|string|max:255',
+            'dti_sec_registration' => 'nullable|file|max:5120'
+        ], [
+            'company_phone.regex' => 'Phone must be 11 digits starting with 09',
+            'founded_date.before_or_equal' => 'Founded date cannot be in the future',
+            'password.confirmed' => 'Passwords do not match',
+            'company_email.unique' => 'This email is already in use',
+            'username.unique' => 'This username is already taken'
+        ]);
+
+        // Build full business address
+        $businessAddress = $validated['business_address_street'] . ', ' .
+                          $validated['business_address_barangay'] . ', ' .
+                          $validated['business_address_city'] . ', ' .
+                          $validated['business_address_province'] . ' ' .
+                          $validated['business_address_postal'];
+
+        // Calculate years of experience from founded_date
+        $yearsOfExperience = null;
+        try {
+            $yearsOfExperience = $this->authService->calculateAge($validated['founded_date']);
+        } catch (\Exception $e) {
+            \Log::warning('Failed to calculate years_of_experience from founded_date: ' . $e->getMessage());
+            $yearsOfExperience = 0;
+        }
+
+        // Store Step 1 data in session (matching mobile CompanyInfo structure)
+        $step1Data = [
+            'company_name' => $validated['company_name'],
+            'company_phone' => $validated['company_phone'],
+            'founded_date' => $validated['founded_date'],
+            'years_of_experience' => $yearsOfExperience,
+            'contractor_type_id' => $validated['contractor_type_id'],
+            'contractor_type_other_text' => $validated['contractor_type_other_text'],
+            'services_offered' => $validated['services_offered'],
+            'business_address' => $businessAddress,
+            'business_address_street' => $validated['business_address_street'],
+            'business_address_province' => $validated['business_address_province'],
+            'business_address_city' => $validated['business_address_city'],
+            'business_address_barangay' => $validated['business_address_barangay'],
+            'business_address_postal' => $validated['business_address_postal'],
+            'company_website' => $validated['company_website'] ?? '',
+            'company_social_media' => $validated['company_social_media'] ?? ''
+        ];
+        Session::put('contractor_step1', $step1Data);
+
+        // Store Step 2 data in session (matching mobile ContractorAccountInfo structure)
+        $step2Data = [
+            'first_name' => $validated['first_name'],
+            'middle_name' => $validated['middle_name'] ?? '',
+            'last_name' => $validated['last_name'],
+            'username' => $validated['username'],
+            'company_email' => $validated['company_email'],
+            'password' => $validated['password'],
+        ];
+        Session::put('contractor_step2', $step2Data);
+
+        // Store Step 3 data in session (if provided)
+        $step3Data = [
+            'pcab_number' => $validated['pcab_number'] ?? null,
+            'pcab_category' => $validated['pcab_category'] ?? null,
+            'pcab_expiration' => $validated['pcab_expiration'] ?? null,
+            'business_permit_number' => $validated['business_permit_number'] ?? null,
+            'business_permit_city' => $validated['business_permit_city'] ?? null,
+            'business_permit_expiration' => $validated['business_permit_expiration'] ?? null,
+            'tin_registration_number' => $validated['tin_registration_number'] ?? null,
+        ];
+        Session::put('contractor_step3', $step3Data);
+
+        // Handle file upload for DTI/SEC Registration if provided
+        if ($request->hasFile('dti_sec_registration')) {
+            try {
+                $file = $request->file('dti_sec_registration');
+                $path = Storage::disk('public')->put('contractor_documents', $file);
+                $step3Data['dti_sec_registration_path'] = $path;
+                Session::put('contractor_step3', $step3Data);
+            } catch (\Exception $e) {
+                \Log::error('Failed to upload DTI/SEC document: ' . $e->getMessage());
+                return back()->withErrors(['dti_sec_registration' => 'Failed to upload file. Please try again.'])->withInput();
+            }
+        }
+
+        // Set completion flags
+        Session::put('signup_step', 4); // Move to final confirmation/review step
+
+        // Redirect to confirmation/final submission page or back to show completion message
+        return redirect()->route('contractor.account-setup')
+            ->with('success', 'All contractor information submitted successfully. Your application is under review.');
+    }
+
+    // Store contractor step 3 (verification/business documents)
+    public function storeContractorStep3(Request $request)
+    {
+        try {
+            // Validate Step 3 fields only (matching mobile BusinessDocuments interface)
+            $validated = $request->validate([
+                'pcab_number' => 'required|string|max:255',
+                'pcab_category' => 'required|string|in:AAAA,AAA,AA,A,B,C,D,Trade/E',
+                'pcab_expiration' => 'required|date|after_or_equal:today',
+                'business_permit_number' => 'required|string|max:255',
+                'business_permit_city' => 'required|string|max:255',
+                'business_permit_expiration' => 'required|date|after_or_equal:today',
+                'tin_registration_number' => 'required|string|max:255',
+                'dti_sec_registration' => 'required|file|mimes:jpeg,jpg,png,pdf|max:5120'
+            ], [
+                'pcab_number.required' => 'Please enter PCAB number',
+                'pcab_category.required' => 'Please select PCAB category',
+                'pcab_category.in' => 'Invalid PCAB category selected',
+                'pcab_expiration.required' => 'Please enter PCAB expiration date',
+                'pcab_expiration.after_or_equal' => 'PCAB expiration date must be today or in the future',
+                'business_permit_number.required' => 'Please enter business permit number',
+                'business_permit_city.required' => 'Please enter business permit city',
+                'business_permit_expiration.required' => 'Please enter business permit expiration date',
+                'business_permit_expiration.after_or_equal' => 'Business permit expiration date must be today or in the future',
+                'tin_registration_number.required' => 'Please enter TIN/Business registration number',
+                'dti_sec_registration.required' => 'Please upload DTI/SEC registration photo',
+                'dti_sec_registration.mimes' => 'DTI/SEC file must be an image (JPEG, PNG) or PDF',
+                'dti_sec_registration.max' => 'DTI/SEC file size must not exceed 5MB'
+            ]);
+
+            // Store Step 3 data in session
+            $step3Data = [
+                'pcab_number' => $validated['pcab_number'],
+                'pcab_category' => $validated['pcab_category'],
+                'pcab_expiration' => $validated['pcab_expiration'],
+                'business_permit_number' => $validated['business_permit_number'],
+                'business_permit_city' => $validated['business_permit_city'],
+                'business_permit_expiration' => $validated['business_permit_expiration'],
+                'tin_registration_number' => $validated['tin_registration_number'],
+            ];
+
+            // Handle file upload for DTI/SEC Registration
+            if ($request->hasFile('dti_sec_registration')) {
+                try {
+                    $file = $request->file('dti_sec_registration');
+                    $filename = 'dti_sec_' . time() . '_' . $file->getClientOriginalName();
+                    $path = Storage::disk('public')->putFileAs('contractor_documents', $file, $filename);
+                    $step3Data['dti_sec_registration_path'] = $path;
+                    \Log::info('DTI/SEC document uploaded: ' . $path);
+                } catch (\Exception $e) {
+                    \Log::error('Failed to upload DTI/SEC document: ' . $e->getMessage());
+                    return back()->withErrors(['dti_sec_registration' => 'Failed to upload file. Please try again.'])->withInput();
+                }
+            }
+
+            // Store as step4 to match what contractorFinalStep expects
+            $step4Data = [
+                'picab_number' => $validated['pcab_number'],
+                'picab_category' => $validated['pcab_category'],
+                'picab_expiration_date' => $validated['pcab_expiration'],
+                'business_permit_number' => $validated['business_permit_number'],
+                'business_permit_city' => $validated['business_permit_city'],
+                'business_permit_expiration' => $validated['business_permit_expiration'],
+                'tin_business_reg_number' => $validated['tin_registration_number'],
+                'dti_sec_registration_photo' => $step3Data['dti_sec_registration_path'] ?? null,
+            ];
+            Session::put('contractor_step4', $step4Data);
+
+            // Move to profile picture step
+            Session::put('signup_step', 5);
+
+            // Redirect to profile picture page
+            return redirect()->route('profile.photo')
+                ->with('success', 'Business documents submitted successfully. Please add your profile photo.');
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return back()->withErrors($e->validator->errors())->withInput();
+        } catch (\Exception $e) {
+            \Log::error('storeContractorStep3 error: ' . $e->getMessage());
+            return back()->withErrors(['error' => 'An error occurred while processing your documents. Please try again.'])->withInput();
+        }
     }
 
     // API Methods for Mobile Authentication
@@ -2871,6 +3055,78 @@ e,
             return response()->json([
                 'success' => false,
                 'message' => 'An error occurred while changing password',
+            ], 500);
+        }
+    }
+
+    // Generic OTP verification endpoint (detects contractor vs owner from session)
+    public function verifyOtp(Request $request)
+    {
+        try {
+            $inputOtp = $request->input('otp');
+            
+            if (empty($inputOtp) || !preg_match('/^\d{6}$/', $inputOtp)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid OTP format'
+                ], 422);
+            }
+
+            // Check if this is a contractor OTP flow
+            $contractorOtp = Session::get('contractor_otp');
+            $contractorOtpExpiry = Session::get('contractor_otp_expiry');
+            $contractorOtpEmail = Session::get('contractor_otp_email');
+
+            if ($contractorOtp && $contractorOtpEmail) {
+                // Contractor OTP verification
+                
+                // Check if OTP has expired
+                if ($contractorOtpExpiry && now()->isAfter($contractorOtpExpiry)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'OTP has expired. Please request a new one.'
+                    ], 422);
+                }
+
+                // Check attempt limit
+                $attempts = Session::get('contractor_otp_attempts', 0);
+                if ($attempts >= 3) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Too many failed attempts. Please request a new OTP.'
+                    ], 429);
+                }
+
+                // Verify OTP
+                if ($inputOtp === $contractorOtp) {
+                    // Clear OTP session data
+                    Session::forget(['contractor_otp', 'contractor_otp_expiry', 'contractor_otp_email', 'contractor_otp_attempts']);
+
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'OTP verified successfully',
+                        'next_step' => 'contractor_step3',
+                        'redirect_url' => '/contractor/account-setup?step=3'
+                    ], 200);
+                } else {
+                    // Increment failed attempts
+                    Session::put('contractor_otp_attempts', $attempts + 1);
+                    
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Invalid OTP. Please try again.'
+                    ], 422);
+                }
+            }
+
+            // Fall back to owner OTP verification (existing implementation)
+            return $this->propertyOwnerVerifyOtp($request);
+
+        } catch (\Exception $e) {
+            \Log::error('verifyOtp error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error verifying OTP'
             ], 500);
         }
     }

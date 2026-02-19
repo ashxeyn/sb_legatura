@@ -44,9 +44,8 @@ Route::get('/account-type', function () {
     return view('signUp_logIN.accountType');
 });
 // Owner account setup screen
-Route::match(['get', 'post'], '/propertyOwner/account-setup', function () {
-    return view('signUp_logIN.propertyOwner_accountSetup');
-})->name('owner.account-setup');
+Route::match(['get', 'post'], '/propertyOwner/account-setup', [authController::class, 'showOwnerAccountSetup'])
+    ->name('owner.account-setup');
 
 // Back-compat: keep old path working
 Route::get('/account-setup', function () {
@@ -54,14 +53,20 @@ Route::get('/account-setup', function () {
 });
 
 // Contractor account setup screen
-Route::match(['get', 'post'], '/contractor/account-setup', function () {
-    return view('signUp_logIN.contractor_accountSetup');
-})->name('contractor.account-setup');
+Route::match(['get', 'post'], '/contractor/account-setup', [authController::class, 'showContractorSetup'])->name('contractor.account-setup');
 
 // OTP Verification screen
 Route::get('/otp-verification', function () {
     return view('signUp_logIN.otp_Verification');
 })->name('otp.verification');
+
+// OTP Verification for contractor (after Step 2)
+Route::get('/otp-verify', function () {
+    return view('signUp_logIN.otp_Verification');
+})->name('otp.verify');
+
+// Generic OTP verification endpoint (handles contractor and owner)
+Route::post('/verify-otp', [authController::class, 'verifyOtp'])->name('verify.otp');
 
 // Add profile photo screen
 Route::get('/add-profile-photo', function () {
@@ -190,6 +195,9 @@ Route::post('/accounts/switch/owner/final', [authController::class, 'switchOwner
 Route::get('/api/psgc/provinces', [authController::class, 'getProvinces']);
 Route::get('/api/psgc/provinces/{provinceCode}/cities', [authController::class, 'getCitiesByProvince']);
 Route::get('/api/psgc/cities/{cityCode}/barangays', [authController::class, 'getBarangaysByCity']);
+
+// Contractor Setup Form Data
+Route::get('/api/contractor/setup-data', [authController::class, 'getContractorSetupData']);
 
 // NOTE: Contractor members API routes are in routes/api.php (not here)
 // Mobile app uses /api/contractor/members endpoints with Bearer token auth
@@ -447,10 +455,10 @@ Route::prefix('/api/admin/projects')->group(function () {
 
 // New admin resource API routes
 Route::prefix('/api/admin')->group(function () {
-    Route::apiResource('projects', App\Http\Controllers\Admin\ProjectController::class);
-    Route::apiResource('bids', App\Http\Controllers\Admin\BidController::class);
-    Route::apiResource('milestones', App\Http\Controllers\Admin\MilestoneController::class);
-    Route::apiResource('payments', App\Http\Controllers\Admin\PaymentController::class);
+    Route::apiResource('projects', App\Http\Controllers\Admin\projectController::class);
+    Route::apiResource('bids', App\Http\Controllers\Admin\bidController::class);
+    Route::apiResource('milestones', App\Http\Controllers\Admin\milestoneController::class);
+    Route::apiResource('payments', App\Http\Controllers\Admin\paymentController::class);
 });
 
 // Windows/XAMPP storage fallback route - serves files from storage/app/public/

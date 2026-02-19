@@ -44,18 +44,34 @@ document.addEventListener('DOMContentLoaded', () => {
 		}
 	};
 
+	// Flag to prevent duplicate submissions
+	let isVerifying = false;
+
 	const handleVerification = async () => {
+		// Prevent duplicate submissions
+		if (isVerifying) {
+			console.log('Verification already in progress...');
+			return;
+		}
+
 		const otp = Array.from(otpInputs).map(input => input.value).join('');
 
 		if (otp.length === OTP_LENGTH) {
-			// Disable inputs during verification
+			// Set flag and disable inputs during verification
+			isVerifying = true;
 			otpInputs.forEach(input => {
 				input.disabled = true;
 			});
+			submitBtn.disabled = true;
 
 			try {
-				// Send OTP to backend for verification
-				const response = await fetch('/accounts/signup/owner/step3/verify-otp', {
+				// Detect if we're in contractor or property owner flow based on URL
+				const isContractor = window.location.pathname.includes('contractor');
+				const verifyEndpoint = isContractor 
+					? '/accounts/signup/contractor/step3/verify-otp' 
+					: '/accounts/signup/owner/step3/verify-otp';
+
+				const response = await fetch(verifyEndpoint, {
 					method: 'POST',
 					headers: {
 						'Content-Type': 'application/json',
@@ -85,9 +101,15 @@ document.addEventListener('DOMContentLoaded', () => {
 						if (typeof handleOtpVerified === 'function') {
 							// Call the account setup handler to advance to Step 3
 							handleOtpVerified();
+						} else if (result.redirect_url) {
+							// Use redirect URL from backend if provided
+							window.location.href = result.redirect_url;
 						} else if (result.next_step === 'property_owner_step4') {
-							// Fallback for standalone OTP page
+							// Fallback for owner flow
 							window.location.href = window.location.pathname + '?step=3';
+						} else if (result.next_step === 'contractor_step3') {
+							// Redirect to contractor Step 3 (resuming the multi-step form)
+							window.location.href = '/contractor/account-setup?step=3';
 						} else {
 							window.location.reload();
 						}
@@ -96,6 +118,9 @@ document.addEventListener('DOMContentLoaded', () => {
 					// Verification failed
 					const errorMsg = result.message || 'Invalid OTP. Please try again.';
 					alert(errorMsg);
+
+					// Reset flag for retry
+					isVerifying = false;
 
 					// Reset form for retry
 					otpInputs.forEach(input => {
@@ -111,6 +136,9 @@ document.addEventListener('DOMContentLoaded', () => {
 			} catch (error) {
 				console.error('Error verifying OTP:', error);
 				alert('Error: Unable to verify OTP. Please check your connection and try again.');
+
+				// Reset flag for retry
+				isVerifying = false;
 
 				// Reset form for retry
 				otpInputs.forEach(input => {

@@ -37,11 +37,11 @@ class contractorClass extends Model
         'tin_business_reg_number',
         'dti_sec_registration_photo',
         'verification_status',
+        'verification_date',
         'is_active',
         'suspension_until',
         'suspension_reason',
-        'deletion_reason',
-        'verification_date'
+        'deletion_reason'
     ];
 
     public function bids(): HasMany
@@ -100,11 +100,11 @@ class contractorClass extends Model
                 'contractors.tin_business_reg_number',
                 'contractors.dti_sec_registration_photo',
                 'contractors.verification_status',
+                'contractors.verification_date',
                 'contractors.is_active',
                 'contractors.suspension_until',
                 'contractors.suspension_reason',
                 'contractors.deletion_reason',
-                'contractors.verification_date',
                 'contractors.rejection_reason',
                 'contractors.completed_projects',
                 'contractors.created_at',
@@ -223,6 +223,7 @@ class contractorClass extends Model
                 'dti_sec_registration_photo' => $data['dti_sec_registration_photo'] ?? null,
                 'verification_status' => 'approved',
                 'verification_date' => now(),
+                'is_active' => 1,
                 'created_at' => now(),
                 'updated_at' => now()
             ));
@@ -326,7 +327,9 @@ class contractorClass extends Model
                 DB::table('contractors')
                     ->where('contractor_id', $contractorId)
                     ->update([
-                        'verification_status' => 'deleted'
+                        'verification_status' => 'deleted',
+                        'is_active' => 0,
+                        'deletion_reason' => $reason
                     ]);
 
                 // Update Contractor Users table
@@ -565,6 +568,15 @@ class contractorClass extends Model
     public function suspendContractor($id, $reason, $duration, $suspensionUntil)
     {
         return DB::transaction(function () use ($id, $reason, $duration, $suspensionUntil) {
+            // Update contractors table
+            DB::table('contractors')
+                ->where('contractor_id', $id)
+                ->update([
+                    'is_active' => 0,
+                    'suspension_reason' => $reason,
+                    'suspension_until' => $suspensionUntil
+                ]);
+
             // Suspend ALL contractor_users for this contractor (owner suspension affects entire company)
             DB::table('contractor_users')
                 ->where('contractor_id', $id)
