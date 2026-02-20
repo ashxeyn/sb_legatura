@@ -357,7 +357,7 @@
         </div>
 
         <div class="actions">
-            <a href="{{ route('contractor.browse.projects') }}" class="btn btn-back">← Back to Browse Projects</a>
+            <a href="{{ route('contractor.homepage') }}" class="btn btn-back">← Back to Browse Projects</a>
             <button type="button" class="btn btn-apply-bid" onclick="applyBid({{ $project->project_id }})">Apply Bid</button>
         </div>
     </div>
@@ -368,7 +368,7 @@
         }
 
         function applyBid(projectId) {
-            window.location.href = '{{ route("contractor.bid.form", ":id") }}'.replace(':id', projectId);
+            window.location.href = '/contractor/projects/' + projectId;
         }
     </script>
 </body>

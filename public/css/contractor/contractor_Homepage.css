@@ -532,6 +532,27 @@
     white-space: nowrap;
 }
 
+/* Deadline urgency badge (matches mobile) */
+.deadline-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    background-color: #DBEAFE;
+    color: #1E40AF;
+    margin-left: auto;
+}
+.deadline-badge.urgent {
+    background-color: #FEE2E2;
+    color: #991B1B;
+    animation: pulse-urgent 2s ease-in-out infinite;
+}
+@keyframes pulse-urgent {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
 .status-text.status-pending {
     background-color: #FEF3C7;
     color: #92400E;

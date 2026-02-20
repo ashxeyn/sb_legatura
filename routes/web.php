@@ -5,6 +5,7 @@ use App\Http\Controllers\authController;
 use App\Http\Controllers\contractor\cprocessController;
 use App\Http\Controllers\contractor\membersController;
 use App\Http\Controllers\both\disputeController;
+use App\Http\Controllers\both\milestoneController;
 use App\Http\Controllers\both\homepageController;
 use App\Http\Controllers\both\dashboardController as BothDashboardController;
 use Illuminate\Support\Facades\DB;
@@ -257,8 +258,8 @@ Route::get('/owner/projects/{projectId}/edit', [\App\Http\Controllers\owner\proj
 Route::put('/owner/projects/{projectId}', [\App\Http\Controllers\owner\projectsController::class, 'update']);
 Route::delete('/owner/projects/{projectId}', [\App\Http\Controllers\owner\projectsController::class, 'delete']);
 Route::post('/owner/projects/{projectId}/bids/{bidId}/accept', [\App\Http\Controllers\owner\projectsController::class, 'acceptBid']);
-Route::post('/owner/milestones/{milestoneId}/approve', [disputeController::class, 'approveMilestone']);
-Route::post('/owner/milestones/{milestoneId}/reject', [disputeController::class, 'rejectMilestone']);
+Route::post('/owner/milestones/{milestoneId}/approve', [milestoneController::class, 'webApproveMilestone']);
+Route::post('/owner/milestones/{milestoneId}/reject', [milestoneController::class, 'webRejectMilestone']);
 Route::post('/contractor/payments/{paymentId}/approve', [disputeController::class, 'approvePayment']);
 
 // Contractor Bidding Routes

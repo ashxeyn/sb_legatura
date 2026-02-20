@@ -51,8 +51,9 @@ class feedClass
                 'c.picab_category',
                 'c.business_permit_number',
                 'c.completed_projects',
+                'c.business_permit_city',
                 'c.created_at',
-                'ct.type_name as contractor_type_name',
+                'ct.type_name',
                 'u.user_id',
                 'u.username',
                 'u.profile_pic',
@@ -248,8 +249,13 @@ class feedClass
             ->orderBy('project_relationships.created_at', 'desc')
             ->get();
 
-        // Attach files to each project
+        // Attach bids_count + files to each project
         foreach ($projects as $project) {
+            $project->bids_count = DB::table('bids')
+                ->where('project_id', $project->project_id)
+                ->whereNotIn('bid_status', ['cancelled'])
+                ->count();
+
             $project->files = DB::table('project_files')
                 ->where('project_id', $project->project_id)
                 ->get();

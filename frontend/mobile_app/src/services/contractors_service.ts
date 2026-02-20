@@ -17,6 +17,7 @@ export interface BackendContractor {
   picab_category: string | null;
   business_permit_number: string | null;
   completed_projects: number;
+  business_permit_city: string | null;
   created_at: string;
   type_name: string; // Contractor type name
   user_id: number;
@@ -161,7 +162,7 @@ export class contractors_service {
       contractor_id: backendContractor.contractor_id,
       company_name: backendContractor.company_name,
       company_description: backendContractor.company_description || undefined,
-      location: backendContractor.business_address || undefined,
+      location: backendContractor.business_address || backendContractor.business_permit_city || undefined,
       rating: 5.0, // Default rating (not available in backend yet)
       reviews_count: 0, // Default reviews count (not available in backend yet)
       distance: undefined, // Would need location calculation

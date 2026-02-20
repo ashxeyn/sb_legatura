@@ -53,14 +53,153 @@ window.triggerApplyBidFromDetails = function (projectId, modalId) {
 };
 
 document.addEventListener('DOMContentLoaded', function () {
-    // Optional: Close on Escape key
+    // Close on Escape key — also close any open viewer first
     document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape') {
+            // Close any open design viewer first
+            const openDesign = document.querySelector('.design-viewer:not(.hidden)');
+            if (openDesign) {
+                const mid = openDesign.id.replace('designViewer-', '');
+                closeDesignViewer(mid);
+                return;
+            }
+            // Close any open doc viewer
+            const openDoc = document.querySelector('.doc-viewer:not(.hidden)');
+            if (openDoc) {
+                const mid = openDoc.id.replace('docViewer-', '');
+                closeDocViewer(mid);
+                return;
+            }
+            // Then close the details modal
             const openModal = document.querySelector('.project-details-modal.show');
             if (openModal) {
-                const modalId = openModal.id;
-                window.closeProjectModal(modalId);
+                window.closeProjectModal(openModal.id);
+            }
+        }
+        // Arrow keys for active viewers
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+            const dir = e.key === 'ArrowLeft' ? -1 : 1;
+            const openDesign = document.querySelector('.design-viewer:not(.hidden)');
+            if (openDesign) {
+                navDesignViewer(openDesign.id.replace('designViewer-', ''), dir);
+                return;
+            }
+            const openDoc = document.querySelector('.doc-viewer:not(.hidden)');
+            if (openDoc) {
+                navDocViewer(openDoc.id.replace('docViewer-', ''), dir);
             }
         }
     });
+
+    // Prevent drag-saving images inside doc viewers
+    document.addEventListener('dragstart', function(e) {
+        if (e.target.closest('.doc-viewer')) e.preventDefault();
+    });
 });
+
+/* ==========================================
+ * DESIGN IMAGE VIEWER  (no watermark)
+ * ========================================== */
+
+window._designViewerIndex = {};
+
+window.openDesignViewer = function(modalId, startIndex) {
+    const viewer = document.getElementById('designViewer-' + modalId);
+    if (!viewer) return;
+    window._designViewerIndex[modalId] = startIndex || 0;
+    showSlide('designSlides-' + modalId, 'designCounter-' + modalId, 'designDots-' + modalId, window._designViewerIndex[modalId]);
+    viewer.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+};
+
+window.closeDesignViewer = function(modalId) {
+    const viewer = document.getElementById('designViewer-' + modalId);
+    if (viewer) viewer.classList.add('hidden');
+    // Don't restore overflow — the details modal is still open
+};
+
+window.navDesignViewer = function(modalId, dir) {
+    const slides = document.getElementById('designSlides-' + modalId);
+    if (!slides) return;
+    const total = slides.querySelectorAll('.viewer-slide').length;
+    let idx = (window._designViewerIndex[modalId] || 0) + dir;
+    if (idx < 0) idx = total - 1;
+    if (idx >= total) idx = 0;
+    window._designViewerIndex[modalId] = idx;
+    showSlide('designSlides-' + modalId, 'designCounter-' + modalId, 'designDots-' + modalId, idx);
+};
+
+window.goToDesignSlide = function(modalId, idx) {
+    window._designViewerIndex[modalId] = idx;
+    showSlide('designSlides-' + modalId, 'designCounter-' + modalId, 'designDots-' + modalId, idx);
+};
+
+/* ==========================================
+ * DOCUMENT VIEWER  (watermark protected)
+ * ========================================== */
+
+window._docViewerIndex = {};
+
+window.openDocViewer = function(modalId, startIndex) {
+    const viewer = document.getElementById('docViewer-' + modalId);
+    if (!viewer) return;
+    window._docViewerIndex[modalId] = startIndex || 0;
+    showSlide('docSlides-' + modalId, 'docCounter-' + modalId, 'docDots-' + modalId, window._docViewerIndex[modalId]);
+    updateDocLabel(modalId);
+    viewer.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+};
+
+window.closeDocViewer = function(modalId) {
+    const viewer = document.getElementById('docViewer-' + modalId);
+    if (viewer) viewer.classList.add('hidden');
+};
+
+window.navDocViewer = function(modalId, dir) {
+    const slides = document.getElementById('docSlides-' + modalId);
+    if (!slides) return;
+    const total = slides.querySelectorAll('.viewer-slide').length;
+    let idx = (window._docViewerIndex[modalId] || 0) + dir;
+    if (idx < 0) idx = total - 1;
+    if (idx >= total) idx = 0;
+    window._docViewerIndex[modalId] = idx;
+    showSlide('docSlides-' + modalId, 'docCounter-' + modalId, 'docDots-' + modalId, idx);
+    updateDocLabel(modalId);
+};
+
+window.goToDocSlide = function(modalId, idx) {
+    window._docViewerIndex[modalId] = idx;
+    showSlide('docSlides-' + modalId, 'docCounter-' + modalId, 'docDots-' + modalId, idx);
+    updateDocLabel(modalId);
+};
+
+/* ==========================================
+ * SHARED HELPERS
+ * ========================================== */
+
+function showSlide(slidesId, counterId, dotsId, idx) {
+    const container = document.getElementById(slidesId);
+    const counter = document.getElementById(counterId);
+    const dotsContainer = document.getElementById(dotsId);
+    if (!container) return;
+
+    const slides = container.querySelectorAll('.viewer-slide');
+    slides.forEach((s, i) => {
+        s.classList.toggle('hidden', i !== idx);
+    });
+    if (counter) counter.textContent = idx + 1;
+    if (dotsContainer) {
+        dotsContainer.querySelectorAll('.viewer-dot').forEach((d, i) => {
+            d.classList.toggle('active', i === idx);
+        });
+    }
+}
+
+function updateDocLabel(modalId) {
+    const slides = document.getElementById('docSlides-' + modalId);
+    const label = document.getElementById('docLabel-' + modalId);
+    if (!slides || !label) return;
+    const idx = window._docViewerIndex[modalId] || 0;
+    const active = slides.querySelectorAll('.viewer-slide')[idx];
+    if (active) label.textContent = active.getAttribute('data-label') || 'Document';
+}

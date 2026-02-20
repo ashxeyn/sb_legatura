@@ -44,7 +44,7 @@ class projectManagementController extends Controller
     public function show($id)
     {
         $dispute = disputeClass::getById($id);
-        if (!$dispute) return redirect()->route('admin.disputes.index')->with('error','Dispute not found');
+        if (!$dispute) return redirect()->route('admin.projectManagement.disputesReports')->with('error','Dispute not found');
 
         $evidence = disputeClass::getEvidence($id);
         $messages = disputeClass::getMessages($id);

@@ -24,7 +24,7 @@ class projectAdminController extends Controller
     public function show($projectId)
     {
         $project = DB::table('projects')->where('project_id', $projectId)->first();
-        if (!$project) return redirect()->route('admin.projects.index')->with('error','Project not found');
+        if (!$project) return redirect()->route('admin.projectManagement.listOfProjects')->with('error','Project not found');
 
         // fetch bids (assumes bids table exists)
         $bids = DB::table('bids')

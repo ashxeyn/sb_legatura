@@ -13,6 +13,7 @@ use App\Http\Controllers\both\disputeController;
 use App\Http\Controllers\Both\notificationController;
 use App\Http\Controllers\passwordController;
 use App\Http\Controllers\profileController;
+use App\Http\Controllers\both\milestoneController;
 
 // At the very top of api.php
 Log::info('=== INCOMING API REQUEST ===', [
@@ -145,10 +146,10 @@ Route::get('/owner/projects/{projectId}', [projectsController::class, 'apiGetPro
 Route::get('/owner/projects/{projectId}/bids', [biddingController::class, 'getProjectBids']);
 Route::post('/owner/projects/{projectId}/bids/{bidId}/accept', [projectsController::class, 'apiAcceptBid']);
 Route::post('/owner/projects/{projectId}/bids/{bidId}/reject', [projectsController::class, 'apiRejectBid']);
-Route::post('/owner/milestones/{milestoneId}/approve', [projectsController::class, 'apiApproveMilestone']);
-Route::post('/owner/milestones/{milestoneId}/reject', [projectsController::class, 'apiRejectMilestone']);
-Route::post('/owner/milestones/{milestoneId}/complete', [projectsController::class, 'apiSetMilestoneComplete']);
-Route::post('/owner/milestone-items/{itemId}/complete', [projectsController::class, 'apiSetMilestoneItemComplete']);
+Route::post('/owner/milestones/{milestoneId}/approve', [milestoneController::class, 'apiApproveMilestone']);
+Route::post('/owner/milestones/{milestoneId}/reject', [milestoneController::class, 'apiRejectMilestone']);
+Route::post('/owner/milestones/{milestoneId}/complete', [milestoneController::class, 'apiSetMilestoneComplete']);
+Route::post('/owner/milestone-items/{itemId}/complete', [milestoneController::class, 'apiSetMilestoneItemComplete']);
 Route::post('/owner/projects/{projectId}/complete', [projectsController::class, 'completeProject']);
 
 // Owner payment upload routes for mobile app - controller handles auth manually
@@ -177,8 +178,8 @@ Route::get('/contractor/my-bids', [\App\Http\Controllers\contractor\biddingContr
 // Contractor milestone setup endpoints
 Route::get('/contractor/my-projects', [\App\Http\Controllers\contractor\cprocessController::class, 'apiGetContractorProjects']);
 Route::get('/contractor/projects/{projectId}/milestone-form', [\App\Http\Controllers\contractor\cprocessController::class, 'apiGetMilestoneFormData']);
-Route::post('/contractor/projects/{projectId}/milestones', [\App\Http\Controllers\contractor\cprocessController::class, 'apiSubmitMilestones']);
-Route::put('/contractor/projects/{projectId}/milestones/{milestoneId}', [\App\Http\Controllers\contractor\cprocessController::class, 'apiUpdateMilestone']);
+Route::post('/contractor/projects/{projectId}/milestones', [milestoneController::class, 'apiSubmitMilestones']);
+Route::put('/contractor/projects/{projectId}/milestones/{milestoneId}', [milestoneController::class, 'apiUpdateMilestone']);
 
 // Notification endpoints - controller handles both session and token auth
 Route::get('/notifications', [notificationController::class, 'index']);
@@ -420,11 +421,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/{id}', [cprocessController::class, 'getMilestoneDetails']);
         Route::post('/', [cprocessController::class, 'submitMilestone']);
         Route::put('/{id}', [cprocessController::class, 'updateMilestone']);
-        Route::delete('/{id}', [cprocessController::class, 'deleteMilestone']);
+        Route::delete('/{id}', [milestoneController::class, 'deleteMilestone']);
 
-        // Milestone approval (Owner)
-        Route::post('/{id}/approve', [disputeController::class, 'approveMilestone']);
-        Route::post('/{id}/reject', [disputeController::class, 'rejectMilestone']);
+        // Milestone approval (Owner) — now handled by milestoneController
+        Route::post('/{id}/approve', [milestoneController::class, 'apiApproveMilestone']);
+        Route::post('/{id}/reject', [milestoneController::class, 'apiRejectMilestone']);
     });
 
     // Milestone setup (Contractor)

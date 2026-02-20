@@ -289,12 +289,17 @@ class ContractorHomepage {
             formattedBudget = this.formatBudget(budget);
         }
 
-        // Get ALL project images from files array
+        // Get project images, filtering out important documents (matching mobile behavior)
         let projectImages = [];
         if (project.files && Array.isArray(project.files) && project.files.length > 0) {
             project.files.forEach(f => {
-                if (f.file_type === 'image' || f.file_type === 'photo' || (f.file_path && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.file_path))) {
-                    // Remove leading slash
+                // Skip important documents — they should never appear on the card
+                if (this.isImportantDocument(f.file_type, f.file_path)) return;
+
+                const isImage = f.file_type === 'image' || f.file_type === 'photo'
+                    || f.file_type === 'desired_design' || f.file_type === 'blueprint'
+                    || (f.file_path && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.file_path));
+                if (isImage) {
                     const path = f.file_path.replace(/^\//, '');
                     projectImages.push(`/storage/${path}`);
                 }
@@ -448,6 +453,28 @@ class ContractorHomepage {
         } catch (e) {
             return 'Not specified';
         }
+    }
+
+    /**
+     * Check if a file is an important/protected document (building permit, land title).
+     * Matches mobile app logic in homepage.tsx / projectPostDetail.tsx.
+     */
+    isImportantDocument(fileType, filePath) {
+        const lType = (fileType || '').toLowerCase();
+        const lPath = (filePath || '').toLowerCase();
+
+        // Exact type matches
+        if (lType === 'title' || lType === 'building permit') return true;
+
+        // Regex pattern matches on type
+        if (/building.?permit|title_of_land|title-of-land|land.?title/i.test(lType)) return true;
+
+        // Path-based matches
+        if (lPath.includes('building') && lPath.includes('permit')) return true;
+        if (lPath.includes('title') && lPath.includes('land')) return true;
+        if (lPath.includes('project_files/titles/')) return true;
+
+        return false;
     }
 
     formatDeadline(dateString) {

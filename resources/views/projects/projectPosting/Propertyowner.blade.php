@@ -126,7 +126,7 @@
         </style>
 </head>
 <body>
-    <form action="{{ route('projects.storeOwner') }}" method="POST" enctype="multipart/form-data">
+    <form action="/owner/projects" method="POST" enctype="multipart/form-data">
         @csrf
 
         <div>

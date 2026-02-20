@@ -52,7 +52,7 @@ class ProjectWebController extends Controller
         
         $project = $this->projectService->createProject($data, $landTitleFile, $blueprintFile, $supportingDocuments, $housePhotos);
         
-        return redirect()->route('projects.show', $project->project_id)->with('success', 'Project created successfully');
+        return redirect('/owner/projects/' . $project->project_id . '/edit')->with('success', 'Project created successfully');
     }
 
     public function show($id)
@@ -60,7 +60,7 @@ class ProjectWebController extends Controller
         $project = $this->projectService->getProjectById($id);
         
         if (!$project) {
-            return redirect()->route('projects.create')->with('error', 'Project not found');
+            return redirect('/owner/projects/create')->with('error', 'Project not found');
         }
         
         return view('projects.projectPosting.PropertyownerPost', compact('project'));
@@ -89,7 +89,7 @@ class ProjectWebController extends Controller
         // Create project
         $project = $this->contractorService->createProject($data, $mediaFiles);
         
-        return redirect()->route('contractorProjects.show', $project->project_id)->with('success', 'Project posted successfully');
+        return redirect('/contractor/projects/' . $project->project_id)->with('success', 'Project posted successfully');
     }
 
     public function showContractor($id)
@@ -97,7 +97,7 @@ class ProjectWebController extends Controller
         $project = $this->contractorService->getProjectById($id);
         
         if (!$project) {
-            return redirect()->route('contractorProjects.create')->with('error', 'Project not found');
+            return redirect(route('contractor.homepage'))->with('error', 'Project not found');
         }
         
         return view('projects.projectPosting.contractorPost', compact('project'));

@@ -1,4 +1,4 @@
-// @ts-nocheck
+﻿// @ts-nocheck
 import React, { useState } from 'react';
 import {
   View,
@@ -7,20 +7,19 @@ import {
   StyleSheet,
   ScrollView,
   Image,
-  Dimensions,
   StatusBar,
-  Linking,
+  Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import EditProject from './editProject';
 import ProjectBids from './projectBids';
+import ProjectView from '../both/projectView';
+import MilestoneApproval from '../both/milestoneApproval';
 import { api_config } from '../../config/api';
+import { projects_service } from '../../services/projects_service';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
-// Color palette
 const COLORS = {
   primary: '#EC7E00',
   primaryLight: '#FFF3E6',
@@ -30,9 +29,10 @@ const COLORS = {
   warning: '#F59E0B',
   warningLight: '#FEF3C7',
   error: '#EF4444',
+  errorLight: '#FEE2E2',
   info: '#3B82F6',
   infoLight: '#DBEAFE',
-  background: '#F8FAFC',
+  background: '#F1F5F9',
   surface: '#FFFFFF',
   text: '#0F172A',
   textSecondary: '#64748B',
@@ -40,6 +40,41 @@ const COLORS = {
   border: '#E2E8F0',
   borderLight: '#F1F5F9',
 };
+
+interface Milestone {
+  milestone_id: number;
+  milestone_name: string;
+  milestone_status: string;
+  setup_status: string;
+  setup_rej_reason?: string;
+  start_date?: string;
+  end_date?: string;
+}
+
+interface AcceptedBid {
+  bid_id: number;
+  proposed_cost: number;
+  estimated_timeline: number | string;
+  contractor_notes?: string;
+  submitted_at?: string;
+  company_name?: string;
+  company_phone?: string;
+  company_email?: string;
+  company_website?: string;
+  years_of_experience?: number;
+  completed_projects?: number;
+  picab_category?: string;
+  username?: string;
+  profile_pic?: string;
+}
+
+interface ContractorInfo {
+  company_name: string;
+  username: string;
+  profile_pic?: string;
+  years_of_experience?: number;
+  completed_projects?: number;
+}
 
 interface Project {
   project_id: number;
@@ -55,37 +90,16 @@ interface Project {
   type_id?: number;
   project_status: string;
   project_post_status: string;
+  selected_contractor_id?: number;
   bidding_deadline?: string;
+  bidding_due?: string;
   created_at: string;
   bids_count?: number;
   display_status?: string;
-  accepted_bid?: {
-    bid_id: number;
-    proposed_cost: number;
-    estimated_timeline: number;
-    contractor_notes: string;
-    submitted_at: string;
-    company_name: string;
-    company_phone: string;
-    company_email: string;
-    company_website?: string;
-    years_of_experience: number;
-    completed_projects: number;
-    picab_category: string;
-    username: string;
-    profile_pic?: string;
-  };
-  contractor_info?: {
-    company_name: string;
-    company_phone: string;
-    company_email: string;
-    company_website?: string;
-    years_of_experience: number;
-    completed_projects: number;
-    picab_category: string;
-    username: string;
-    profile_pic?: string;
-  };
+  milestones?: Milestone[];
+  milestones_count?: number;
+  accepted_bid?: AcceptedBid;
+  contractor_info?: ContractorInfo;
 }
 
 interface ProjectDetailsProps {
@@ -97,823 +111,531 @@ interface ProjectDetailsProps {
 
 export default function ProjectDetails({ project, userId, onClose, onProjectUpdated }: ProjectDetailsProps) {
   const insets = useSafeAreaInsets();
+  const [currentProject, setCurrentProject] = useState(project);
+  const [expandedSummary, setExpandedSummary] = useState(false);
   const [showEditProject, setShowEditProject] = useState(false);
   const [showBids, setShowBids] = useState(false);
-  const [currentProject, setCurrentProject] = useState(project);
+  const [showMilestones, setShowMilestones] = useState(false);
+  const [showMilestoneApproval, setShowMilestoneApproval] = useState(false);
 
-  const formatBudget = (amount: number) => {
-    return new Intl.NumberFormat('en-PH', {
-      style: 'currency',
-      currency: 'PHP',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
+  const hasContractor = !!currentProject.selected_contractor_id;
+  const milestones: Milestone[] = currentProject.milestones || [];
+
+  // â”€â”€ Formatters â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 0 }).format(amount || 0);
+
+  const formatDate = (ds: string) => {
+    if (!ds) return '';
+    return new Date(ds).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
+  const getDaysRemaining = (deadline: string) =>
+    Math.ceil((new Date(deadline).getTime() - Date.now()) / 86400000);
+
+  // â”€â”€ Refresh â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+  const refreshProjectData = async () => {
+    if (!userId) return;
+    try {
+      const response = await projects_service.get_owner_projects(userId);
+      if (response.success) {
+        const list = response.data?.data || response.data || [];
+        const updated = list.find((p: Project) => p.project_id === currentProject.project_id);
+        if (updated) setCurrentProject(updated);
+      }
+    } catch (_) {}
   };
 
-  const getFileUrl = (filePath: string) => {
-    if (!filePath) return '';
-    if (filePath.startsWith('http')) return filePath;
-    // Use the API files endpoint for proper file serving on mobile
-    return `${api_config.base_url}/api/files/${filePath}`;
+  // â”€â”€ Status config â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+  const getProjectStatusConfig = () => {
+    const post = currentProject.project_post_status;
+    const ds   = (currentProject.display_status || currentProject.project_status || '').toLowerCase();
+    if (post === 'under_review') return { color: COLORS.warning, bg: COLORS.warningLight, label: 'Under Review',                icon: 'clock' };
+    if (post === 'rejected')     return { color: COLORS.error,   bg: COLORS.errorLight,   label: 'Rejected',                   icon: 'x-circle' };
+    if (ds === 'open')           return { color: COLORS.success, bg: COLORS.successLight, label: 'Open for Bidding',           icon: 'check-circle' };
+    if (ds === 'bidding_closed') return { color: COLORS.info,    bg: COLORS.infoLight,    label: 'Bidding Closed',             icon: 'lock' };
+    if (ds === 'waiting_milestone_setup' || ds === 'waiting_for_approval')
+                                 return { color: COLORS.warning, bg: COLORS.warningLight, label: 'Waiting for Milestone Setup', icon: 'alert-circle' };
+    if (ds === 'in_progress')    return { color: COLORS.info,    bg: COLORS.infoLight,    label: 'In Progress',                icon: 'trending-up' };
+    if (ds === 'completed')      return { color: COLORS.success, bg: COLORS.successLight, label: 'Completed',                  icon: 'check-circle' };
+    if (ds === 'on_hold')        return { color: COLORS.warning, bg: COLORS.warningLight, label: 'On Hold',                   icon: 'pause-circle' };
+    return { color: COLORS.textMuted, bg: COLORS.borderLight, label: ds, icon: 'circle' };
   };
 
-  const handleOpenFile = (filePath: string) => {
-    const url = getFileUrl(filePath);
-    if (url) Linking.openURL(url);
-  };
+  // â”€â”€ Action banner (milestone status) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-  const getStatusConfig = (status: string, postStatus: string) => {
-    if (postStatus === 'under_review') return { color: COLORS.warning, bg: COLORS.warningLight, label: 'Under Review', icon: 'clock' };
-    if (postStatus === 'rejected') return { color: COLORS.error, bg: '#FEE2E2', label: 'Rejected', icon: 'x-circle' };
-    if (status === 'waiting_milestone_setup') return { color: COLORS.info, bg: COLORS.infoLight, label: 'Waiting for Milestone Setup', icon: 'alert-circle' };
-    if (status === 'open') return { color: COLORS.success, bg: COLORS.successLight, label: 'Open for Bidding', icon: 'check-circle' };
-    if (status === 'bidding_closed') return { color: COLORS.info, bg: COLORS.infoLight, label: 'Bidding Closed', icon: 'lock' };
-    if (status === 'in_progress') return { color: COLORS.info, bg: COLORS.infoLight, label: 'In Progress', icon: 'trending-up' };
-    if (status === 'completed') return { color: COLORS.success, bg: COLORS.successLight, label: 'Completed', icon: 'check' };
-    return { color: COLORS.textMuted, bg: COLORS.borderLight, label: status, icon: 'circle' };
-  };
+  const renderStatusBanner = () => {
+    if (!hasContractor) return null;
+    const ds       = (currentProject.display_status || '').toLowerCase();
+    const pending  = milestones.filter(m => m.setup_status === 'submitted');
 
-  const getDaysRemaining = (deadline: string) => {
-    const now = new Date();
-    const deadlineDate = new Date(deadline);
-    const diff = Math.ceil((deadlineDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-    return diff;
-  };
-
-  const statusConfig = getStatusConfig(currentProject.display_status || currentProject.project_status, currentProject.project_post_status);
-  const daysRemaining = currentProject.bidding_deadline ? getDaysRemaining(currentProject.bidding_deadline) : null;
-
-  const handleEditSave = (updatedProject: Project) => {
-    setCurrentProject(updatedProject);
-    setShowEditProject(false);
-    if (onProjectUpdated) {
-      onProjectUpdated(updatedProject);
+    if (ds === 'waiting_milestone_setup') {
+      return (
+        <View style={styles.banner}>
+          <View style={[styles.bannerInner, { borderLeftColor: COLORS.warning, backgroundColor: COLORS.warningLight }]}>
+            <Feather name="clock" size={18} color={COLORS.warning} />
+            <View style={styles.bannerText}>
+              <Text style={[styles.bannerTitle, { color: COLORS.warning }]}>Waiting for Setup</Text>
+              <Text style={styles.bannerMsg}>The contractor is preparing the milestone proposal for this project.</Text>
+            </View>
+          </View>
+        </View>
+      );
     }
+
+    if (pending.length > 0) {
+      return (
+        <View style={styles.banner}>
+          <View style={[styles.bannerInner, { borderLeftColor: COLORS.info, backgroundColor: COLORS.infoLight }]}>
+            <Feather name="alert-circle" size={18} color={COLORS.info} />
+            <View style={styles.bannerText}>
+              <Text style={[styles.bannerTitle, { color: COLORS.info }]}>Action Required</Text>
+              <Text style={styles.bannerMsg}>
+                {pending.length} milestone{pending.length > 1 ? 's' : ''} waiting for your approval. Tap the card below to review.
+              </Text>
+            </View>
+          </View>
+        </View>
+      );
+    }
+
+    return null;
   };
 
-  // Show bids screen
+  // â”€â”€ Milestone card config â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+  const getMilestoneCardConfig = () => {
+    const hasApproved = milestones.some(m => m.setup_status === 'approved');
+    const hasPending  = milestones.some(m => m.setup_status === 'submitted');
+    if (hasApproved) return { title: 'Check Project Progress',  desc: 'Track milestone completion, review progress reports, and monitor payment history.',  label: 'View Progress',    icon: 'trending-up', color: COLORS.success };
+    if (hasPending)  return { title: 'Review Milestone Setup',  desc: 'The contractor has submitted a milestone proposal. Review and approve the breakdown.', label: 'Review & Approve', icon: 'clock',       color: COLORS.warning };
+    return             { title: 'Milestone Setup',              desc: 'The milestone timeline and payment breakdown are being prepared by the contractor.',    label: 'View Details',     icon: 'clipboard',   color: COLORS.info };
+  };
+
+  const statusConfig    = getProjectStatusConfig();
+  const milestoneConfig = getMilestoneCardConfig();
+  const deadline = currentProject.bidding_deadline || currentProject.bidding_due;
+  const daysLeft = deadline ? getDaysRemaining(deadline) : null;
+
+  // â”€â”€ Sub-screens â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
   if (showBids) {
     return (
       <ProjectBids
         project={currentProject}
         userId={userId || 0}
         onClose={() => setShowBids(false)}
-        onBidAccepted={() => {
-          // Optionally refresh project data after a bid is accepted
-        }}
+        onBidAccepted={() => { setShowBids(false); refreshProjectData(); }}
       />
     );
   }
 
-  // Show edit project screen
-  if (showEditProject) {
+  if (showMilestones) {
     return (
-      <EditProject
-        project={currentProject}
-        userId={userId || 0}
-        onClose={() => setShowEditProject(false)}
-        onSave={handleEditSave}
+      <ProjectView
+        project={currentProject as any}
+        userId={userId}
+        userRole="owner"
+        onClose={() => { setShowMilestones(false); refreshProjectData(); }}
       />
     );
   }
-
-  const renderInfoRow = (icon: string, label: string, value: string | number | undefined) => {
-    if (!value) return null;
-    return (
-      <View style={styles.infoRow}>
-        <View style={styles.infoIconContainer}>
-          <Feather name={icon as any} size={18} color={COLORS.primary} />
-        </View>
-        <View style={styles.infoContent}>
-          <Text style={styles.infoLabel}>{label}</Text>
-          <Text style={styles.infoValue}>{value}</Text>
-        </View>
-      </View>
-    );
-  };
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.surface} />
+
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={onClose} style={styles.backButton}>
-          <Feather name="arrow-left" size={24} color={COLORS.text} />
+        <TouchableOpacity onPress={onClose} style={styles.headerBtn} activeOpacity={0.7}>
+          <Feather name="arrow-left" size={22} color={COLORS.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Project Details</Text>
-        <View style={styles.headerSpacer} />
+        <TouchableOpacity style={styles.headerBtn} activeOpacity={0.7} onPress={() => setShowEditProject(true)}>
+          <Feather name="edit-2" size={18} color={COLORS.text} />
+        </TouchableOpacity>
       </View>
 
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Status Card */}
-        <View style={styles.statusCard}>
-          <View style={[styles.statusBadgeLarge, { backgroundColor: statusConfig.bg }]}>
-            <Feather name={statusConfig.icon as any} size={20} color={statusConfig.color} />
-            <Text style={[styles.statusTextLarge, { color: statusConfig.color }]}>
-              {statusConfig.label}
-            </Text>
-          </View>
-          {daysRemaining !== null && daysRemaining > 0 && (
-            <View style={styles.deadlineContainer}>
-              <Feather
-                name="clock"
-                size={16}
-                color={daysRemaining <= 3 ? COLORS.error : COLORS.textSecondary}
-              />
-              <Text style={[
-                styles.deadlineText,
-                daysRemaining <= 3 && styles.deadlineUrgent
-              ]}>
-                {daysRemaining} days remaining
-              </Text>
-            </View>
-          )}
-        </View>
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
-        {/* Project Title & Type */}
-        <View style={styles.titleSection}>
-          <View style={styles.typeTag}>
-            <Feather name="briefcase" size={14} color={COLORS.primary} />
-            <Text style={styles.typeText}>{currentProject.type_name}</Text>
-          </View>
-          <Text style={styles.projectTitle}>{currentProject.project_title}</Text>
-        </View>
-
-        {/* Description */}
-        <View style={styles.sectionCompact}>
-          <Text style={styles.sectionTitle}>Description</Text>
-          <View style={styles.descriptionCard}>
-            <Text style={styles.descriptionText}>{currentProject.project_description}</Text>
-          </View>
-        </View>
-
-        {/* Budget */}
-        <View style={styles.sectionCompact}>
-          <Text style={styles.sectionTitle}>Budget Range</Text>
-          <View style={styles.budgetCard}>
-            <View style={styles.budgetItem}>
-              <Text style={styles.budgetLabel}>Minimum</Text>
-              <Text style={styles.budgetValue}>{formatBudget(currentProject.budget_range_min)}</Text>
-            </View>
-            <View style={styles.budgetDivider} />
-            <View style={styles.budgetItem}>
-              <Text style={styles.budgetLabel}>Maximum</Text>
-              <Text style={styles.budgetValue}>{formatBudget(currentProject.budget_range_max)}</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Project Details */}
-        <View style={styles.sectionCompact}>
-          <Text style={styles.sectionTitle}>Project Information</Text>
-          <View style={styles.infoCard}>
-            {renderInfoRow('map-pin', 'Location', currentProject.project_location)}
-            {renderInfoRow('home', 'Property Type', currentProject.property_type)}
-            {renderInfoRow('maximize', 'Lot Size', currentProject.lot_size ? `${currentProject.lot_size} sqm` : undefined)}
-            {renderInfoRow('square', 'Floor Area', currentProject.floor_area ? `${currentProject.floor_area} sqm` : undefined)}
-            {renderInfoRow('calendar', 'Bidding Deadline', currentProject.bidding_deadline ? formatDate(currentProject.bidding_deadline) : undefined)}
-            {renderInfoRow('clock', 'Posted On', formatDate(currentProject.created_at))}
-          </View>
-        </View>
-
-        {/* Accepted Bid Section - Show when contractor is selected */}
-        {currentProject.display_status === 'waiting_milestone_setup' && currentProject.accepted_bid && (
-          <View style={styles.sectionCompact}>
-            <Text style={styles.sectionTitle}>Selected Contractor & Bid</Text>
-            <View style={styles.acceptedBidCard}>
-              {/* Contractor Info */}
-              <View style={styles.contractorSection}>
-                <View style={styles.contractorHeader}>
-                  {currentProject.accepted_bid.profile_pic ? (
-                    <Image
-                      source={{ uri: `http://192.168.254.113:8083/storage/${currentProject.accepted_bid.profile_pic}` }}
-                      style={styles.contractorAvatar}
-                    />
-                  ) : (
-                    <View style={styles.avatarPlaceholder}>
-                      <Text style={styles.avatarText}>
-                        {currentProject.accepted_bid.company_name?.charAt(0).toUpperCase() || 'C'}
-                      </Text>
-                    </View>
-                  )}
-                  <View style={styles.contractorDetails}>
-                    <Text style={styles.contractorName}>{currentProject.accepted_bid.company_name}</Text>
-                    <Text style={styles.contractorUsername}>@{currentProject.accepted_bid.username}</Text>
-                    <View style={styles.picabBadge}>
-                      <Text style={styles.picabText}>{currentProject.accepted_bid.picab_category}</Text>
-                    </View>
-                  </View>
+        {/* â”€â”€ Collapsible gradient summary card â”€â”€ */}
+        <TouchableOpacity style={styles.summaryCard} onPress={() => setExpandedSummary(!expandedSummary)} activeOpacity={0.92}>
+          <LinearGradient
+            colors={[COLORS.primary, COLORS.primaryDark]}
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+            style={styles.summaryGradient}
+          >
+            {/* Title row */}
+            <View style={styles.summaryTop}>
+              <View style={{ flex: 1, marginRight: 12 }}>
+                <View style={styles.typePill}>
+                  <Text style={styles.typePillText}>{currentProject.type_name}</Text>
                 </View>
-
-                {/* Contractor Stats */}
-                <View style={styles.statsRow}>
-                  <View style={styles.statItem}>
-                    <Text style={styles.statValue}>{currentProject.accepted_bid.years_of_experience}</Text>
-                    <Text style={styles.statLabel}>Yrs Exp</Text>
-                  </View>
-                  <View style={styles.statDivider} />
-                  <View style={styles.statItem}>
-                    <Text style={styles.statValue}>{currentProject.accepted_bid.completed_projects}</Text>
-                    <Text style={styles.statLabel}>Projects</Text>
-                  </View>
+                <Text style={styles.summaryTitle}>{currentProject.project_title}</Text>
+                <View style={styles.locRow}>
+                  <Feather name="map-pin" size={12} color="rgba(255,255,255,0.8)" />
+                  <Text style={styles.locText}>{currentProject.project_location}</Text>
                 </View>
               </View>
-
-              {/* Bid Details */}
-              <View style={styles.bidDetailsSection}>
-                <View style={styles.bidDetailRow}>
-                  <View>
-                    <Text style={styles.bidDetailLabel}>Agreed Price</Text>
-                    <Text style={styles.bidDetailValue}>{formatBudget(currentProject.accepted_bid.proposed_cost)}</Text>
-                  </View>
-                  <View style={{ alignItems: 'flex-end' }}>
-                    <Text style={styles.bidDetailLabel}>Timeline</Text>
-                    <Text style={styles.bidDetailValue}>{currentProject.accepted_bid.estimated_timeline} months</Text>
-                  </View>
-                </View>
-
-                {currentProject.accepted_bid.contractor_notes && (
-                  <View style={styles.notesSection}>
-                    <Text style={styles.notesLabel}>Contractor Notes</Text>
-                    <Text style={styles.notesText}>{currentProject.accepted_bid.contractor_notes}</Text>
-                  </View>
-                )}
-
-                <View style={styles.contactSection}>
-                  <Text style={styles.contactLabel}>Contact Information</Text>
-                  <View style={styles.contactRow}>
-                    <Feather name="mail" size={16} color={COLORS.primary} />
-                    <Text style={styles.contactValue}>{currentProject.accepted_bid.company_email}</Text>
-                  </View>
-                  <View style={styles.contactRow}>
-                    <Feather name="phone" size={16} color={COLORS.primary} />
-                    <Text style={styles.contactValue}>{currentProject.accepted_bid.company_phone}</Text>
-                  </View>
-                  {currentProject.accepted_bid.company_website && (
-                    <View style={styles.contactRow}>
-                      <Feather name="globe" size={16} color={COLORS.primary} />
-                      <Text style={styles.contactValue}>{currentProject.accepted_bid.company_website}</Text>
-                    </View>
-                  )}
-                </View>
-              </View>
+              <Feather name={expandedSummary ? 'chevron-up' : 'chevron-down'} size={22} color="rgba(255,255,255,0.9)" />
             </View>
 
-              {/* Attached Documents for Accepted Bid */}
-              {currentProject.accepted_bid && (currentProject as any).accepted_bid.files && (currentProject as any).accepted_bid.files.length > 0 && (
-                <View style={styles.sectionCompact}>
-                  <Text style={styles.sectionTitle}>Attached Documents</Text>
-                  <View style={styles.filesCard}>
-                    {(currentProject as any).accepted_bid.files.map((file: any, idx: number) => (
-                      <TouchableOpacity
-                        key={file.file_id || idx}
-                        style={[styles.fileItem, idx === (currentProject as any).accepted_bid.files.length - 1 && { borderBottomWidth: 0 }]}
-                        onPress={() => handleOpenFile(file.file_path)}
-                      >
-                        <View style={styles.fileIcon}>
-                          <Feather name={file.file_name && file.file_name.endsWith('.pdf') ? 'file-text' : 'file'} size={20} color={COLORS.primary} />
-                        </View>
-                        <View style={styles.fileInfo}>
-                          <Text style={styles.fileName} numberOfLines={1}>{file.file_name}</Text>
-                          {file.description && <Text style={styles.fileDescription} numberOfLines={1}>{file.description}</Text>}
-                        </View>
-                        <Feather name="download" size={18} color={COLORS.textMuted} />
-                      </TouchableOpacity>
-                    ))}
-                  </View>
+            {/* Status pills */}
+            <View style={styles.pillRow}>
+              <View style={styles.pill}>
+                <Feather name={statusConfig.icon as any} size={11} color="#FFFFFF" />
+                <Text style={styles.pillText}>{statusConfig.label}</Text>
+              </View>
+              {daysLeft !== null && daysLeft > 0 && (
+                <View style={styles.pill}>
+                  <Feather name="clock" size={11} color="#FFFFFF" />
+                  <Text style={styles.pillText}>{daysLeft}d left</Text>
                 </View>
               )}
+            </View>
+
+            {/* Expanded details */}
+            {expandedSummary && (
+              <View style={{ marginTop: 4 }}>
+                <View style={styles.gradDivider} />
+
+                <Text style={styles.expLabel}>Description</Text>
+                <Text style={styles.expText}>{currentProject.project_description}</Text>
+
+                <Text style={[styles.expLabel, { marginTop: 14 }]}>Budget Range</Text>
+                <View style={styles.budgetRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.budgetLbl}>Min</Text>
+                    <Text style={styles.budgetVal}>{formatCurrency(currentProject.budget_range_min)}</Text>
+                  </View>
+                  <View style={styles.budgetSep} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.budgetLbl}>Max</Text>
+                    <Text style={styles.budgetVal}>{formatCurrency(currentProject.budget_range_max)}</Text>
+                  </View>
+                </View>
+
+                <Text style={[styles.expLabel, { marginTop: 14 }]}>Specifications</Text>
+                <View style={styles.specGrid}>
+                  {[
+                    { label: 'Property Type', value: currentProject.property_type },
+                    { label: 'Category',      value: currentProject.type_name },
+                    { label: 'Lot Size',      value: currentProject.lot_size ? `${currentProject.lot_size} sqm` : null },
+                    { label: 'Floor Area',    value: currentProject.floor_area ? `${currentProject.floor_area} sqm` : null },
+                  ].filter(s => s.value).map((s, i) => (
+                    <View key={i} style={styles.specCell}>
+                      <Text style={styles.specLbl}>{s.label}</Text>
+                      <Text style={styles.specVal}>{s.value}</Text>
+                    </View>
+                  ))}
+                </View>
+
+                {deadline && (
+                  <>
+                    <Text style={[styles.expLabel, { marginTop: 14 }]}>Bidding Deadline</Text>
+                    <Text style={styles.expText}>{formatDate(deadline)}</Text>
+                  </>
+                )}
+                <Text style={[styles.expLabel, { marginTop: 10 }]}>Posted On</Text>
+                <Text style={styles.expText}>{formatDate(currentProject.created_at)}</Text>
+
+                {/* Contractor & agreement */}
+                {hasContractor && currentProject.contractor_info && (
+                  <>
+                    <View style={styles.gradDivider} />
+                    <Text style={styles.expLabel}>Contractor &amp; Agreement</Text>
+                    <View style={styles.ctRow}>
+                      {currentProject.contractor_info.profile_pic ? (
+                        <Image
+                          source={{ uri: `${api_config.base_url}/api/files/${currentProject.contractor_info.profile_pic}` }}
+                          style={styles.ctAvatar}
+                        />
+                      ) : (
+                        <View style={styles.ctAvatarPh}>
+                          <Feather name="user" size={16} color="rgba(255,255,255,0.7)" />
+                        </View>
+                      )}
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.ctName}>{currentProject.contractor_info.company_name}</Text>
+                        <Text style={styles.ctUser}>@{currentProject.contractor_info.username}</Text>
+                      </View>
+                      {currentProject.contractor_info.years_of_experience != null && (
+                        <View style={styles.expBadge}>
+                          <Text style={styles.expBadgeText}>{currentProject.contractor_info.years_of_experience} yrs exp</Text>
+                        </View>
+                      )}
+                    </View>
+                    {currentProject.accepted_bid && (
+                      <View style={styles.agreedRow}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.agreedLbl}>Agreed Cost</Text>
+                          <Text style={styles.agreedVal}>{formatCurrency(currentProject.accepted_bid.proposed_cost)}</Text>
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.agreedLbl}>Timeline</Text>
+                          <Text style={styles.agreedVal}>{currentProject.accepted_bid.estimated_timeline} months</Text>
+                        </View>
+                      </View>
+                    )}
+                  </>
+                )}
+              </View>
+            )}
+          </LinearGradient>
+        </TouchableOpacity>
+
+        {/* â”€â”€ Action / status banner â”€â”€ */}
+        {renderStatusBanner()}
+
+        {/* â”€â”€ Under review notice â”€â”€ */}
+        {currentProject.project_post_status === 'under_review' && (
+          <View style={styles.banner}>
+            <View style={[styles.bannerInner, { borderLeftColor: COLORS.warning, backgroundColor: COLORS.warningLight }]}>
+              <Feather name="info" size={18} color={COLORS.warning} />
+              <View style={styles.bannerText}>
+                <Text style={[styles.bannerTitle, { color: COLORS.warning }]}>Under Review</Text>
+                <Text style={styles.bannerMsg}>Your project is currently under review. You will be notified once it's approved.</Text>
+              </View>
+            </View>
           </View>
         )}
 
-        {/* Bids Section - Always show */}
-        <View style={styles.sectionCompact}>
-          <Text style={styles.sectionTitle}>Bids Received</Text>
-          <TouchableOpacity
-            style={styles.bidsCard}
-            activeOpacity={0.7}
-            onPress={() => setShowBids(true)}
-          >
-            <View style={styles.bidsInfo}>
-              <View style={styles.bidsIconContainer}>
-                <Feather name="users" size={24} color={COLORS.info} />
-              </View>
-              <View style={styles.bidsContent}>
-                <Text style={styles.bidsCount}>
-                  {currentProject.bids_count || 0} {(currentProject.bids_count || 0) === 1 ? 'Bid' : 'Bids'}
-                </Text>
-                <Text style={styles.bidsSubtext}>Tap to view all bids</Text>
+        {/* â”€â”€ Milestone action card â”€â”€ */}
+        {hasContractor && (
+          <TouchableOpacity style={styles.actionCard} onPress={() => setShowMilestoneApproval(true)} activeOpacity={0.8}>
+            <View style={[styles.actionIconWrap, { backgroundColor: milestoneConfig.color + '1A' }]}>
+              <Feather name={milestoneConfig.icon as any} size={22} color={milestoneConfig.color} />
+            </View>
+            <View style={styles.actionCardBody}>
+              <Text style={styles.actionCardTitle}>{milestoneConfig.title}</Text>
+              <Text style={styles.actionCardDesc}>{milestoneConfig.desc}</Text>
+              <View style={[styles.actionChip, { backgroundColor: milestoneConfig.color + '1A' }]}>
+                <Text style={[styles.actionChipText, { color: milestoneConfig.color }]}>{milestoneConfig.label}</Text>
+                <Feather name="arrow-right" size={12} color={milestoneConfig.color} />
               </View>
             </View>
-            <Feather name="chevron-right" size={24} color={COLORS.textMuted} />
+            <Feather name="chevron-right" size={20} color={COLORS.textMuted} />
           </TouchableOpacity>
-        </View>
+        )}
 
-        {/* Action Buttons */}
-        <View style={styles.actionSection}>
-          {currentProject.project_post_status === 'under_review' && (
-            <View style={styles.pendingNotice}>
-              <Feather name="info" size={20} color={COLORS.warning} />
-              <Text style={styles.pendingNoticeText}>
-                Your project is currently under review. You will be notified once it's approved.
-              </Text>
-            </View>
-          )}
+        {/* â”€â”€ Bids received â”€â”€ */}
+        <TouchableOpacity style={styles.rowCard} onPress={() => setShowBids(true)} activeOpacity={0.8}>
+          <View style={[styles.rowIconWrap, { backgroundColor: COLORS.infoLight }]}>
+            <Feather name="users" size={20} color={COLORS.info} />
+          </View>
+          <View style={styles.rowBody}>
+            <Text style={styles.rowTitle}>Bids Received</Text>
+            <Text style={styles.rowSub}>{currentProject.bids_count || 0} {(currentProject.bids_count || 0) === 1 ? 'bid' : 'bids'} submitted</Text>
+          </View>
+          <Feather name="chevron-right" size={20} color={COLORS.textMuted} />
+        </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.secondaryButton}
-            activeOpacity={0.7}
-            onPress={() => setShowEditProject(true)}
-          >
-            <Feather name="edit-2" size={18} color={COLORS.primary} />
-            <Text style={styles.secondaryButtonText}>Edit Project</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={{ height: 40 }} />
+        <View style={{ height: 32 }} />
       </ScrollView>
+
+      {/* Edit Project - full-screen Modal so safe area insets work correctly */}
+      <Modal
+        visible={showEditProject}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        onRequestClose={() => setShowEditProject(false)}
+      >
+        <EditProject
+          project={currentProject}
+          userId={userId || 0}
+          onClose={() => setShowEditProject(false)}
+          onSave={(updated: Project) => {
+            setCurrentProject(updated);
+            setShowEditProject(false);
+            if (onProjectUpdated) onProjectUpdated(updated);
+          }}
+        />
+      </Modal>
+
+      {/* Milestone Approval - full-screen Modal so safe area insets work correctly */}
+      <Modal
+        visible={showMilestoneApproval}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        onRequestClose={() => { setShowMilestoneApproval(false); refreshProjectData(); }}
+      >
+        <MilestoneApproval
+          route={{
+            params: {
+              projectId: currentProject.project_id,
+              projectTitle: currentProject.project_title,
+              projectDescription: currentProject.project_description,
+              projectLocation: currentProject.project_location,
+              contractorName: currentProject.contractor_info?.company_name || 'Contractor',
+              propertyType: currentProject.type_name || currentProject.property_type,
+              projectStartDate: (currentProject.milestones && currentProject.milestones[0])?.start_date || currentProject.created_at,
+              projectEndDate: (currentProject.milestones && currentProject.milestones[(currentProject.milestones?.length ?? 1) - 1])?.end_date || currentProject.created_at,
+              totalCost: (currentProject.milestones && currentProject.milestones[0])?.payment_plan?.total_project_cost || currentProject.accepted_bid?.proposed_cost || 0,
+              paymentMethod: (currentProject.milestones && currentProject.milestones[0])?.payment_plan?.payment_mode || 'milestone',
+              milestones: currentProject.milestones || [],
+              userId: userId || 0,
+              userRole: 'owner',
+              projectStatus: currentProject.project_status,
+              onApprovalComplete: async () => {
+                await refreshProjectData();
+                setShowMilestoneApproval(false);
+              },
+            },
+          }}
+          navigation={{ goBack: () => { setShowMilestoneApproval(false); refreshProjectData(); } }}
+        />
+      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
+  container: { flex: 1, backgroundColor: COLORS.background },
+
+  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    backgroundColor: COLORS.surface,
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: COLORS.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.text,
-  },
-  headerSpacer: {
-    width: 40,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 16,
-  },
-  statusCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 12,
-    padding: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  statusBadgeLarge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    gap: 8,
-  },
-  statusTextLarge: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  deadlineContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  deadlineText: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
-    fontWeight: '500',
-  },
-  deadlineUrgent: {
-    color: COLORS.error,
-  },
-  titleSection: {
-    marginBottom: 10,
-  },
-  typeTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: COLORS.primaryLight,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-    alignSelf: 'flex-start',
-    marginBottom: 8,
-  },
-  typeText: {
-    fontSize: 13,
-    color: COLORS.primary,
-    fontWeight: '600',
-  },
-  projectTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: COLORS.text,
-    lineHeight: 32,
-  },
-  section: {
-    marginBottom: 16,
-  },
-  sectionCompact: {
-    marginBottom: 10,
-  },
-  filesCard: {
-    backgroundColor: COLORS.background,
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  fileItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-  },
-  fileIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    backgroundColor: COLORS.primaryLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  fileInfo: {
-    flex: 1,
-    marginRight: 8,
-  },
-  fileName: {
-    fontSize: 14,
-    color: COLORS.text,
-    fontWeight: '600',
-  },
-  fileDescription: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-    marginTop: 4,
-  },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.text,
-    marginBottom: 6,
-  },
-  descriptionCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 10,
-    padding: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 4,
-    elevation: 1,
-  },
-  descriptionText: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-    lineHeight: 22,
-  },
-  budgetCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 10,
-    padding: 12,
-    flexDirection: 'row',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 4,
-    elevation: 1,
-  },
-  budgetItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  budgetLabel: {
-    fontSize: 12,
-    color: COLORS.textMuted,
-    marginBottom: 4,
-    fontWeight: '500',
-  },
-  budgetValue: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.primary,
-  },
-  budgetDivider: {
-    width: 1,
-    backgroundColor: COLORS.border,
-    marginHorizontal: 16,
-  },
-  infoCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 10,
-    padding: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 4,
-    elevation: 1,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.borderLight,
-  },
-  infoIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    backgroundColor: COLORS.primaryLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  infoContent: {
-    flex: 1,
-  },
-  infoLabel: {
-    fontSize: 12,
-    color: COLORS.textMuted,
-    marginBottom: 2,
-  },
-  infoValue: {
-    fontSize: 15,
-    color: COLORS.text,
-    fontWeight: '500',
-  },
-  bidsCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 12,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 4,
-    elevation: 1,
-  },
-  bidsInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  bidsIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: COLORS.infoLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  bidsContent: {},
-  bidsCount: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.text,
-  },
-  bidsSubtext: {
-    fontSize: 13,
-    color: COLORS.textMuted,
-    marginTop: 2,
-  },
-  actionSection: {
-    marginTop: 6,
-    gap: 10,
-  },
-  primaryButton: {
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  primaryButtonGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    gap: 10,
-  },
-  primaryButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  secondaryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
     paddingVertical: 14,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: COLORS.primary,
-    gap: 8,
-  },
-  secondaryButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: COLORS.primary,
-  },
-  pendingNotice: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: COLORS.warningLight,
-    borderRadius: 12,
-    padding: 16,
-    gap: 12,
-  },
-  pendingNoticeText: {
-    flex: 1,
-    fontSize: 14,
-    color: COLORS.warning,
-    lineHeight: 20,
-  },
-  acceptedBidCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 12,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  contractorSection: {
-    padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
   },
-  contractorHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  contractorAvatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    marginRight: 12,
-  },
-  avatarPlaceholder: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: COLORS.primaryLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  avatarText: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: COLORS.primary,
-  },
-  contractorDetails: {
-    flex: 1,
-  },
-  contractorName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: COLORS.text,
-    marginBottom: 2,
-  },
-  contractorUsername: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-    marginBottom: 6,
-  },
-  picabBadge: {
+  headerBtn: { padding: 4 },
+  headerTitle: { fontSize: 17, fontWeight: '700', color: COLORS.text, letterSpacing: 0.3 },
+
+  scroll: { flex: 1 },
+  scrollContent: { paddingBottom: 20 },
+
+  // Summary card
+  summaryCard: { marginBottom: 0 },
+  summaryGradient: { paddingHorizontal: 20, paddingTop: 18, paddingBottom: 16 },
+  summaryTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 },
+  typePill: {
     alignSelf: 'flex-start',
-    backgroundColor: COLORS.primaryLight,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 3,
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 8,
-  },
-  picabText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: COLORS.primary,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    backgroundColor: COLORS.background,
-    borderRadius: 10,
-    paddingVertical: 12,
-    justifyContent: 'space-around',
-  },
-  statItem: {
-    alignItems: 'center',
-  },
-  statValue: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: COLORS.text,
-    marginBottom: 2,
-  },
-  statLabel: {
-    fontSize: 11,
-    color: COLORS.textSecondary,
-  },
-  statDivider: {
-    width: 1,
-    height: '100%',
-    backgroundColor: COLORS.border,
-  },
-  bidDetailsSection: {
-    padding: 16,
-  },
-  bidDetailRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-  },
-  bidDetailLabel: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-    marginBottom: 4,
-  },
-  bidDetailValue: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: COLORS.primary,
-  },
-  notesSection: {
-    marginBottom: 12,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-  },
-  notesLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: COLORS.textSecondary,
-    marginBottom: 6,
-  },
-  notesText: {
-    fontSize: 13,
-    color: COLORS.text,
-    lineHeight: 18,
-  },
-  contactSection: {
-    marginTop: 4,
-  },
-  contactLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: COLORS.textSecondary,
     marginBottom: 8,
   },
-  contactRow: {
+  typePillText: { fontSize: 11, fontWeight: '600', color: '#FFFFFF', letterSpacing: 0.5 },
+  summaryTitle: { fontSize: 20, fontWeight: '700', color: '#FFFFFF', lineHeight: 26, marginBottom: 6 },
+  locRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  locText: { fontSize: 13, color: 'rgba(255,255,255,0.85)', flex: 1 },
+  pillRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+  pill: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 6,
+    gap: 5,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderRadius: 3,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
   },
-  contactValue: {
-    fontSize: 13,
-    color: COLORS.text,
-    marginLeft: 8,
-    flex: 1,
+  pillText: { fontSize: 12, fontWeight: '600', color: '#FFFFFF' },
+
+  // Expanded
+  gradDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.2)', marginVertical: 14 },
+  expLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.6)',
+    textTransform: 'uppercase',
+    letterSpacing: 0.9,
+    marginBottom: 4,
   },
+  expText: { fontSize: 14, color: 'rgba(255,255,255,0.9)', lineHeight: 20 },
+  budgetRow: { flexDirection: 'row', gap: 12 },
+  budgetLbl: { fontSize: 11, color: 'rgba(255,255,255,0.6)', marginBottom: 2 },
+  budgetVal: { fontSize: 16, fontWeight: '700', color: '#FFFFFF' },
+  budgetSep: { width: 1, backgroundColor: 'rgba(255,255,255,0.2)' },
+  specGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  specCell: { width: '47%' },
+  specLbl: { fontSize: 10, color: 'rgba(255,255,255,0.6)', marginBottom: 2 },
+  specVal: { fontSize: 13, fontWeight: '600', color: '#FFFFFF' },
+  ctRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8, marginBottom: 10 },
+  ctAvatar: { width: 38, height: 38, borderRadius: 3 },
+  ctAvatarPh: {
+    width: 38, height: 38, borderRadius: 3,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  ctName: { fontSize: 14, fontWeight: '600', color: '#FFFFFF' },
+  ctUser: { fontSize: 12, color: 'rgba(255,255,255,0.7)' },
+  expBadge: {
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderRadius: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  expBadgeText: { fontSize: 11, fontWeight: '600', color: '#FFFFFF' },
+  agreedRow: { flexDirection: 'row', gap: 12 },
+  agreedLbl: { fontSize: 10, color: 'rgba(255,255,255,0.6)', marginBottom: 2 },
+  agreedVal: { fontSize: 15, fontWeight: '700', color: '#FFFFFF' },
+
+  // Banners
+  banner: { marginHorizontal: 16, marginTop: 12 },
+  bannerInner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    borderLeftWidth: 3,
+    borderRadius: 4,
+    padding: 12,
+  },
+  bannerText: { flex: 1 },
+  bannerTitle: { fontSize: 13, fontWeight: '700', marginBottom: 2 },
+  bannerMsg: { fontSize: 12, color: COLORS.textSecondary, lineHeight: 18 },
+
+  // Action card (milestone)
+  actionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    marginHorizontal: 16,
+    marginTop: 12,
+    padding: 14,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    gap: 12,
+  },
+  actionIconWrap: { width: 46, height: 46, borderRadius: 6, alignItems: 'center', justifyContent: 'center' },
+  actionCardBody: { flex: 1 },
+  actionCardTitle: { fontSize: 14, fontWeight: '700', color: COLORS.text, marginBottom: 3 },
+  actionCardDesc: { fontSize: 12, color: COLORS.textSecondary, lineHeight: 17, marginBottom: 8 },
+  actionChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    alignSelf: 'flex-start',
+    borderRadius: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  actionChipText: { fontSize: 12, fontWeight: '600' },
+
+  // Row card (bids)
+  rowCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    marginHorizontal: 16,
+    marginTop: 10,
+    padding: 14,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    gap: 12,
+  },
+  rowIconWrap: { width: 40, height: 40, borderRadius: 6, alignItems: 'center', justifyContent: 'center' },
+  rowBody: { flex: 1 },
+  rowTitle: { fontSize: 14, fontWeight: '700', color: COLORS.text, marginBottom: 2 },
+  rowSub: { fontSize: 12, color: COLORS.textSecondary },
 });

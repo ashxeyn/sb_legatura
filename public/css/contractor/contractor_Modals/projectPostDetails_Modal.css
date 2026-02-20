@@ -416,3 +416,235 @@
 .hidden {
     display: none !important;
 }
+
+/* =============================================
+ * Document card — eye icon badge
+ * ============================================= */
+.document-eye-icon {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    color: #333;
+    z-index: 3;
+    pointer-events: none;
+}
+
+/* =============================================
+ * Full-screen viewers (shared base)
+ * ============================================= */
+.fullscreen-viewer {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 100000;
+    display: flex;
+    flex-direction: column;
+}
+.fullscreen-viewer.hidden { display: none !important; }
+
+.design-viewer { background: rgba(0, 0, 0, 0.95); }
+.doc-viewer {
+    background: rgba(0, 0, 0, 0.97);
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+/* Viewer toolbar (top bar) */
+.viewer-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    flex-shrink: 0;
+    z-index: 10;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.viewer-back-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 15px;
+    cursor: pointer;
+    padding: 8px 14px;
+    border-radius: 8px;
+    transition: background 0.2s;
+}
+.viewer-back-btn:hover { background: rgba(255,255,255,0.12); }
+.viewer-back-btn i { font-size: 18px; }
+
+.viewer-counter-text {
+    color: rgba(255,255,255,0.7);
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.viewer-close-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.1);
+    border: none;
+    color: #fff;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+.viewer-close-btn:hover { background: rgba(255,255,255,0.25); }
+
+/* Viewer body (slides + nav area) */
+.viewer-body {
+    flex: 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    min-height: 0;
+}
+
+.viewer-slides {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.viewer-slide {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+}
+.viewer-slide.hidden { display: none !important; }
+
+.viewer-slide img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    border-radius: 4px;
+}
+
+/* Navigation buttons (inside viewer-body) */
+.viewer-nav-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.15);
+    border: none;
+    color: #fff;
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+    z-index: 10;
+}
+.viewer-nav-btn:hover { background: rgba(255,255,255,0.3); }
+.viewer-nav-btn.nav-prev { left: 16px; }
+.viewer-nav-btn.nav-next { right: 16px; }
+
+/* Dots */
+.viewer-dots {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    padding: 12px 0 20px;
+    flex-shrink: 0;
+}
+.viewer-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.35);
+    cursor: pointer;
+    transition: all 0.25s;
+}
+.viewer-dot.active {
+    background: #ec7e00;
+    width: 20px;
+    border-radius: 4px;
+}
+
+/* =============================================
+ * Document viewer extras
+ * ============================================= */
+.doc-viewer-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 600;
+}
+.doc-viewer-label i {
+    font-size: 13px;
+    color: #ec7e00;
+}
+
+.doc-viewer-notice {
+    text-align: center;
+    color: rgba(255,255,255,0.45);
+    font-size: 12px;
+    font-style: italic;
+    flex-shrink: 0;
+    padding: 0 16px 4px;
+}
+
+/* Protected image + watermark container */
+.doc-image-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    max-width: 100%;
+    max-height: 100%;
+}
+.doc-image-container img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    -webkit-user-drag: none;
+    pointer-events: none;
+    border-radius: 4px;
+}
+
+.doc-watermark-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 5;
+    opacity: 0.18;
+    background-image: url('/img/logo2.0.svg');
+    background-size: 120px;
+    background-position: center;
+    background-repeat: repeat;
+}

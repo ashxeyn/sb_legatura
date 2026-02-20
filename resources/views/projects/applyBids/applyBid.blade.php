@@ -288,7 +288,7 @@
                 </div>
             @endif
 
-            <form action="{{ route('contractor.bid.submit', $project->project_id) }}" method="POST" enctype="multipart/form-data" id="bidForm">
+            <form action="/contractor/bids" method="POST" enctype="multipart/form-data" id="bidForm">
                 @csrf
 
                 <div class="form-group">
@@ -388,7 +388,7 @@
                 </div>
 
                 <div class="form-actions">
-                    <a href="{{ route('contractor.project.details', $project->project_id) }}" class="btn btn-cancel">Cancel</a>
+                    <a href="/contractor/projects/{{ $project->project_id }}" class="btn btn-cancel">Cancel</a>
                     <button type="submit" class="btn btn-submit" id="submitBtn">Submit</button>
                 </div>
             </form>

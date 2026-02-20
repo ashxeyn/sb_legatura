@@ -5,8 +5,8 @@
 <p>{{ $project->project_description }}</p>
 <p><strong>Status:</strong> {{ $project->project_status }}</p>
 
-<form method="post" action="{{ route('admin.projects.approve', $project->project_id) }}">@csrf<button class="btn btn-success">Approve</button></form>
-<form method="post" action="{{ route('admin.projects.reject', $project->project_id) }}">@csrf
+<form method="post" action="{{ route('api.admin.project.approve', $project->project_id) }}">@csrf<button class="btn btn-success">Approve</button></form>
+<form method="post" action="{{ route('api.admin.project.reject', $project->project_id) }}">@csrf
   <input name="reason" placeholder="Reject reason" class="form-control" />
   <button class="btn btn-danger mt-2">Reject</button>
 </form>
@@ -22,7 +22,7 @@
         <td>{{ $b->proposed_cost}}</td>
         <td>{{ $b->estimated_timeline }} days</td>
         <td>
-          <form method="post" action="{{ route('admin.projects.assign', $project->project_id) }}">
+          <form method="post" action="{{ route('api.admin.project.assignContractor', $project->project_id) }}">
             @csrf
             <input type="hidden" name="contractor_id" value="{{ $b->contractor_id }}">
             <button class="btn btn-primary btn-sm">Assign</button>

@@ -198,22 +198,24 @@ export default function MyProjects({ userData, onClose }: MyProjectsProps) {
         const projectsData = backendResponse?.data || backendResponse || [];
         const projectsArray = Array.isArray(projectsData) ? projectsData : [];
 
-        // Normalize display_status for each project based on true backend status
+        // Normalize display_status for each project based on true backend status.
+        // project_status (completed / halt) always wins regardless of what the backend set.
         const normalizedProjects = projectsArray.map((project: Project) => {
           const status = (project.project_status || '').toLowerCase();
           const hasMilestones = typeof project.milestones_count === 'number' ? project.milestones_count > 0 : Array.isArray(project.milestones) && project.milestones.length > 0;
 
-          if (!project.display_status || project.display_status === '') {
+          // Hard overrides — these always take priority
+          if (status === 'completed') {
+            project.display_status = 'completed';
+          } else if (status === 'halt' || status === 'halted' || status === 'on_hold') {
+            project.display_status = 'on_hold';
+          } else if (!project.display_status || project.display_status === '') {
+            // Only fill in display_status when the backend didn't provide one
             if (!hasMilestones) {
               project.display_status = 'waiting_milestone_setup';
             } else if (status === 'in_progress') {
               project.display_status = 'in_progress';
-            } else if (status === 'completed') {
-              project.display_status = 'completed';
-            } else if (status === 'halt' || status === 'on_hold') {
-              project.display_status = 'on_hold';
             } else {
-              // Unknown or pending states should not inflate in-progress counts
               project.display_status = status || 'pending';
             }
           }
@@ -325,13 +327,16 @@ export default function MyProjects({ userData, onClose }: MyProjectsProps) {
     if (s === 'waiting_milestone_setup' || s === 'not_started' || s === 'pending_setup') {
       return { color: COLORS.warning, bg: COLORS.warningLight, label: 'Needs Setup', icon: 'alert-circle' };
     }
+    if (s === 'waiting_for_approval') {
+      return { color: COLORS.info, bg: COLORS.infoLight, label: 'Pending Approval', icon: 'clock' };
+    }
     if (s === 'in_progress' || s === 'ongoing') {
       return { color: COLORS.info, bg: COLORS.infoLight, label: 'In Progress', icon: 'trending-up' };
     }
     if (s === 'completed' || s === 'complete' || s === 'finished' || s === 'done') {
       return { color: COLORS.success, bg: COLORS.successLight, label: 'Completed', icon: 'check-circle' };
     }
-    if (s === 'on_hold' || s === 'halt' || s === 'paused') {
+    if (s === 'on_hold' || s === 'halt' || s === 'halted' || s === 'paused') {
       return { color: COLORS.warning, bg: COLORS.warningLight, label: 'On Hold', icon: 'pause-circle' };
     }
     return { color: COLORS.textMuted, bg: COLORS.borderLight, label: status, icon: 'circle' };

@@ -17,7 +17,6 @@ import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { projects_service } from '../../services/projects_service';
 import ProjectDetails from './projectDetails';
-import ProjectView from '../both/projectView';
 
 // Color palette
 const COLORS = {
@@ -425,29 +424,8 @@ export default function ProjectList({ userData, onClose, initialFilter = 'all' }
     );
   };
 
-  // Show appropriate screen based on project type
+  // Always show ProjectDetails — milestone navigation is handled from within it
   if (selectedProject) {
-    console.log('=== PROJECT CLICKED ===');
-    console.log('Project:', selectedProject.project_title);
-    console.log('selected_contractor_id:', selectedProject.selected_contractor_id);
-    console.log('Type of selected_contractor_id:', typeof selectedProject.selected_contractor_id);
-    console.log('Has contractor?', !!selectedProject.selected_contractor_id);
-
-    // If contractor is selected, show ProjectView (milestone-focused)
-    if (selectedProject.selected_contractor_id) {
-      console.log('>>> ROUTING TO ProjectView (milestone-focused)');
-      return (
-        <ProjectView
-          project={selectedProject}
-          userId={userData?.user_id}
-          userRole="owner"
-          onClose={() => setSelectedProject(null)}
-        />
-      );
-    }
-
-    // Otherwise show ProjectDetails (bidding screen)
-    console.log('>>> ROUTING TO ProjectDetails (bidding screen)');
     return (
       <ProjectDetails
         project={selectedProject}

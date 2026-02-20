@@ -102,32 +102,51 @@
                                             <p class="project-posted-date">{{ isset($project->created_at) ? \Carbon\Carbon::parse($project->created_at)->format('M d, Y') : '—' }}</p>
                                         </div>
                                     </div>
-                                    <div class="project-status-badge">
-                                        <span class="status-text">{{ $project->project_post_status ?? ucfirst($project->project_status ?? '—') }}</span>
-                                    </div>
+                                    @php
+                                        $deadlineRaw = $project->bidding_due ?? $project->bidding_deadline ?? null;
+                                        $daysLeft = $deadlineRaw ? (int) now()->startOfDay()->diffInDays(\Carbon\Carbon::parse($deadlineRaw)->startOfDay(), false) : null;
+                                    @endphp
+                                    @if($daysLeft !== null && $daysLeft >= 0)
+                                        <span class="deadline-badge @if($daysLeft <= 3) urgent @endif">
+                                            @if($daysLeft === 0) Due Today
+                                            @elseif($daysLeft === 1) 1 day left
+                                            @else {{ $daysLeft }} days left
+                                            @endif
+                                        </span>
+                                    @endif
                                 </div>
 
                                 <div class="project-image-wrapper">
                                     @php
-                                        $imageSrc = '';
-                                        if (!empty($project->files)) {
-                                            if (is_array($project->files) && count($project->files) > 0) {
-                                                $first = $project->files[0];
-                                            } elseif (method_exists($project->files, 'first')) {
-                                                $first = $project->files->first();
-                                            } else {
-                                                $first = null;
-                                            }
+                                        // Filter out important docs — only show design/optional images on the card
+                                        $cardImages = [];
+                                        if (!empty($project->files) && is_iterable($project->files)) {
+                                            foreach ($project->files as $f) {
+                                                $fPath = is_string($f) ? $f : (is_array($f) ? ($f['file_path'] ?? '') : ($f->file_path ?? ''));
+                                                $fType = is_object($f) ? ($f->file_type ?? '') : (is_array($f) ? ($f['file_type'] ?? '') : '');
+                                                $lType = strtolower($fType);
+                                                $lPath = strtolower($fPath);
 
-                                            if (!empty($first)) {
-                                                $imagePath = is_string($first) ? $first : (is_array($first) ? ($first['file_path'] ?? '') : ($first->file_path ?? ''));
-                                                if ($imagePath) $imageSrc = asset('storage/' . ltrim($imagePath, '/'));
+                                                // Skip important documents
+                                                $isCritical = false;
+                                                if ($lType === 'title' || $lType === 'building permit') $isCritical = true;
+                                                elseif (preg_match('/building.?permit|title_of_land|title-of-land|land.?title/i', $lType)) $isCritical = true;
+                                                elseif (str_contains($lPath, 'building') && str_contains($lPath, 'permit')) $isCritical = true;
+                                                elseif (str_contains($lPath, 'title') && str_contains($lPath, 'land')) $isCritical = true;
+                                                elseif (str_contains($lPath, 'project_files/titles/')) $isCritical = true;
+
+                                                if (!$isCritical && $fPath) {
+                                                    $cardImages[] = asset('storage/' . ltrim($fPath, '/'));
+                                                }
                                             }
-                                        } elseif(!empty($project->image_path)) {
-                                            $imageSrc = asset('storage/' . ltrim($project->image_path, '/'));
+                                        } elseif (!empty($project->image_path)) {
+                                            $cardImages[] = asset('storage/' . ltrim($project->image_path, '/'));
                                         }
+                                        $imageSrc = count($cardImages) > 0 ? $cardImages[0] : '';
                                     @endphp
-                                    <img src="{{ $imageSrc }}" alt="" class="project-image" onerror="this.style.display='none';">
+                                    @if($imageSrc)
+                                        <img src="{{ $imageSrc }}" alt="" class="project-image" onerror="this.style.display='none';">
+                                    @endif
                                 </div>
 
                                 <div class="header-content">
@@ -137,16 +156,12 @@
 
                                 <div class="project-details">
                                     <div class="detail-item">
-                                        <i class="fi fi-rr-marker"></i>
-                                        <span class="detail-text location-text">{{ $project->project_location ?? '—' }}</span>
-                                    </div>
-                                    <div class="detail-item">
-                                        <i class="fi fi-rr-calendar"></i>
-                                        <span class="detail-text deadline-text">{{ ($project->bidding_due ?? $project->bidding_deadline) ? \Carbon\Carbon::parse($project->bidding_due ?? $project->bidding_deadline)->format('M d, Y') : '—' }}</span>
-                                    </div>
-                                    <div class="detail-item">
                                         <i class="fi fi-rr-briefcase"></i>
                                         <span class="detail-text type-text">{{ $project->type_name ?? $project->property_type ?? '—' }}</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <i class="fi fi-rr-marker"></i>
+                                        <span class="detail-text location-text">{{ $project->project_location ?? '—' }}</span>
                                     </div>
                                     <div class="detail-item">
                                         <i class="fi fi-rr-dollar"></i>
@@ -157,6 +172,10 @@
                                                 —
                                             @endif
                                         </span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <i class="fi fi-rr-gavel"></i>
+                                        <span class="detail-text bids-text">{{ $project->bids_count ?? 0 }} bids</span>
                                     </div>
                                 </div>
 

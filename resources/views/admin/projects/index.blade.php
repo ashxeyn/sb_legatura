@@ -12,7 +12,7 @@
         <td>{{ $p->first_name }} {{ $p->last_name }}</td>
         <td>{{ $p->project_status }}</td>
         <td>
-          <a class="btn btn-sm btn-primary" href="{{ route('admin.projects.show', $p->project_id) }}">View</a>
+          <a class="btn btn-sm btn-primary" href="{{ route('admin.projectManagement.projectDetails', $p->project_id) }}">View</a>
         </td>
       </tr>
     @endforeach

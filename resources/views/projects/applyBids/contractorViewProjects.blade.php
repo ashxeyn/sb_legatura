@@ -212,7 +212,7 @@
                             </div>
 
                             <div style="margin-top: 15px;">
-                                <a href="{{ route('contractor.project.details', $project->project_id) }}" class="view-details-btn">View Details</a>
+                                <a href="/contractor/projects/{{ $project->project_id }}" class="view-details-btn">View Details</a>
                             </div>
                         </div>
                     </div>

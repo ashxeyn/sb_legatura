@@ -151,19 +151,43 @@ class FeedService
                     }
                 }
 
+                // Build files array with full URLs for JS
+                $jsFiles = [];
+                if (!empty($p->files) && is_iterable($p->files)) {
+                    foreach ($p->files as $f) {
+                        $fPath = is_string($f) ? $f : (is_array($f) ? ($f['file_path'] ?? '') : ($f->file_path ?? ''));
+                        $fType = is_object($f) ? ($f->file_type ?? '') : (is_array($f) ? ($f['file_type'] ?? '') : '');
+                        $jsFiles[] = [
+                            'file_path' => $fPath,
+                            'file_type' => $fType,
+                            'url'       => $fPath ? asset('storage/' . ltrim($fPath, '/')) : '',
+                        ];
+                    }
+                }
+
                 return (object) [
                     'project_id'   => $p->project_id,
                     'title'        => $p->project_title,
                     'description'  => $p->project_description,
                     'city'         => $p->project_location,
+                    'project_location' => $p->project_location,
                     'deadline'     => $p->bidding_due ?? $p->bidding_deadline ?? null,
+                    'bidding_deadline' => $p->bidding_due ?? $p->bidding_deadline ?? null,
                     'project_type' => $p->type_name ?? $p->property_type ?? null,
+                    'type_name'    => $p->type_name ?? null,
                     'budget_min'   => $p->budget_range_min ?? null,
                     'budget_max'   => $p->budget_range_max ?? null,
+                    'budget_range_min' => $p->budget_range_min ?? null,
+                    'budget_range_max' => $p->budget_range_max ?? null,
                     'status'       => $p->project_status ?? 'open',
                     'created_at'   => $p->created_at ?? null,
                     'image'        => $firstFilePath ? asset('storage/' . ltrim($firstFilePath, '/')) : null,
                     'owner_name'   => $p->owner_name ?? null,
+                    'owner_profile_pic' => $p->owner_profile_pic ?? null,
+                    'lot_size'     => $p->lot_size ?? null,
+                    'floor_area'   => $p->floor_area ?? null,
+                    'bids_count'   => $p->bids_count ?? 0,
+                    'files'        => $jsFiles,
                     'project'      => $p,
                 ];
             })->toArray();

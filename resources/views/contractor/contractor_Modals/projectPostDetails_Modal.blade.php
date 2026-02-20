@@ -169,9 +169,10 @@
             <!-- Design Images Section -->
             @if(count($designImages) > 0)
             <div class="details-images-section">
+                <h3 class="section-subtitle">Design Images</h3>
                 <div class="images-grid {{ $gridClass }}">
                     @foreach(array_slice($designImages, 0, 4) as $index => $img)
-                        <div class="img-item" onclick="window.open(this.querySelector('img').src, '_blank')">
+                        <div class="img-item" onclick="openDesignViewer('{{ $modalId }}', {{ $index }})">
                             <img src="{{ $img['url'] }}" alt="Project Image" onerror="this.style.display='none'">
                             @if($index === 3 && $imgCount > 4)
                                 <div class="more-overlay">+{{ $imgCount - 4 }}</div>
@@ -180,6 +181,7 @@
                     @endforeach
                 </div>
             </div>
+
             @endif
 
             <!-- Important Documents Section -->
@@ -188,19 +190,14 @@
                 <h3 class="section-subtitle">Important Documents</h3>
                 <p class="doc-notice">
                     <i class="fi fi-rr-lock"></i>
-                    These documents are view-only and protected.
+                    These documents are view-only and protected. Click to view.
                 </p>
                 <div class="documents-grid">
-                    @foreach($importantDocs as $doc)
-                        @php
-                            $viewerUrl = route('contractor.document.view', [
-                                'file' => str_replace('storage/', '', parse_url($doc['url'], PHP_URL_PATH)),
-                                'type' => $doc['type'] ?: 'Document'
-                            ]);
-                        @endphp
-                        <div class="document-card" onclick="window.open('{{ $viewerUrl }}', '_blank')">
+                    @foreach($importantDocs as $dIdx => $doc)
+                        <div class="document-card" onclick="openDocViewer('{{ $modalId }}', {{ $dIdx }})">
                             <img src="{{ $doc['url'] }}" class="document-thumbnail" alt="Document">
                             <div class="document-watermark"></div>
+                            <div class="document-eye-icon"><i class="fi fi-rr-eye"></i></div>
                             <div class="document-label-overlay">
                                 <i class="fi fi-rr-lock"></i>
                                 <span>{{ $doc['type'] ?: 'Document' }}</span>
@@ -209,6 +206,7 @@
                     @endforeach
                 </div>
             </div>
+
             @endif
         </div>
 
@@ -224,3 +222,72 @@
         </div>
     </div>
 </div>
+
+{{-- ======== FULLSCREEN VIEWERS (outside modal to avoid CSS transform containment) ======== --}}
+
+@if(count($designImages) > 0)
+<div id="designViewer-{{ $modalId }}" class="fullscreen-viewer design-viewer hidden">
+    <div class="viewer-toolbar">
+        <button class="viewer-back-btn" onclick="closeDesignViewer('{{ $modalId }}')" aria-label="Go back">
+            <i class="fi fi-rr-arrow-left"></i>
+            <span>Back</span>
+        </button>
+        <span class="viewer-counter-text"><span id="designCounter-{{ $modalId }}">1</span> / {{ $imgCount }}</span>
+        <button class="viewer-close-btn" onclick="closeDesignViewer('{{ $modalId }}')" aria-label="Close">
+            <i class="fi fi-rr-cross"></i>
+        </button>
+    </div>
+    <div class="viewer-body">
+        <div class="viewer-slides" id="designSlides-{{ $modalId }}">
+            @foreach($designImages as $i => $img)
+                <div class="viewer-slide @if($i > 0) hidden @endif" data-index="{{ $i }}">
+                    <img src="{{ $img['url'] }}" alt="Design Image {{ $i+1 }}">
+                </div>
+            @endforeach
+        </div>
+        <button class="viewer-nav-btn nav-prev" onclick="navDesignViewer('{{ $modalId }}',-1)"><i class="fi fi-rr-angle-left"></i></button>
+        <button class="viewer-nav-btn nav-next" onclick="navDesignViewer('{{ $modalId }}',1)"><i class="fi fi-rr-angle-right"></i></button>
+    </div>
+    <div class="viewer-dots" id="designDots-{{ $modalId }}">
+        @foreach($designImages as $i => $img)
+            <span class="viewer-dot @if($i === 0) active @endif" onclick="goToDesignSlide('{{ $modalId }}',{{ $i }})"></span>
+        @endforeach
+    </div>
+</div>
+@endif
+
+@if(count($importantDocs) > 0)
+<div id="docViewer-{{ $modalId }}" class="fullscreen-viewer doc-viewer hidden" oncontextmenu="return false;">
+    <div class="viewer-toolbar">
+        <button class="viewer-back-btn" onclick="closeDocViewer('{{ $modalId }}')" aria-label="Go back">
+            <i class="fi fi-rr-arrow-left"></i>
+            <span>Back</span>
+        </button>
+        <div class="doc-viewer-label">
+            <i class="fi fi-rr-lock"></i>
+            <span id="docLabel-{{ $modalId }}">Document</span>
+        </div>
+        <span class="viewer-counter-text"><span id="docCounter-{{ $modalId }}">1</span> / {{ count($importantDocs) }}</span>
+    </div>
+    <div class="doc-viewer-notice">View only &mdash; downloading is disabled</div>
+    <div class="viewer-body">
+        <div class="viewer-slides" id="docSlides-{{ $modalId }}">
+            @foreach($importantDocs as $dIdx => $doc)
+                <div class="viewer-slide @if($dIdx > 0) hidden @endif" data-index="{{ $dIdx }}" data-label="{{ $doc['type'] ?: 'Document' }}">
+                    <div class="doc-image-container">
+                        <img src="{{ $doc['url'] }}" alt="Document {{ $dIdx+1 }}" draggable="false" oncontextmenu="return false;">
+                        <div class="doc-watermark-overlay"></div>
+                    </div>
+                </div>
+            @endforeach
+        </div>
+        <button class="viewer-nav-btn nav-prev" onclick="navDocViewer('{{ $modalId }}',-1)"><i class="fi fi-rr-angle-left"></i></button>
+        <button class="viewer-nav-btn nav-next" onclick="navDocViewer('{{ $modalId }}',1)"><i class="fi fi-rr-angle-right"></i></button>
+    </div>
+    <div class="viewer-dots" id="docDots-{{ $modalId }}">
+        @foreach($importantDocs as $dIdx => $doc)
+            <span class="viewer-dot @if($dIdx === 0) active @endif" onclick="goToDocSlide('{{ $modalId }}',{{ $dIdx }})"></span>
+        @endforeach
+    </div>
+</div>
+@endif

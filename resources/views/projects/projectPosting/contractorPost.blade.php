@@ -278,7 +278,7 @@
         </div>
 
         <div class="actions">
-            <a href="{{ route('contractorProjects.create') }}" class="btn btn-primary">Post Another</a>
+            <a href="{{ route('contractor.homepage') }}" class="btn btn-primary">Post Another</a>
         </div>
     </div>
 
