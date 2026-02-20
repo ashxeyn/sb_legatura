@@ -1,73 +1,11 @@
 // Boost Modal JavaScript
-document.addEventListener('DOMContentLoaded', function() {
-    // Sample posts data
-    const ownerPosts = [
-        {
-            id: 1,
-            title: 'Residential House Construction',
-            description: 'A two-story residential house with modern minimalist design. Owner is looking for quality finishing, open space layout, and energy-efficient construction materials.',
-            location: 'Zamboanga City',
-            date: 'July 2026',
-            image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=400&h=400&fit=crop'
-        },
-        {
-            id: 2,
-            title: 'Modern Two-Storey Residential House',
-            description: 'A two-story residential house with modern minimalist design. Owner is looking for quality finishing, open space layout, and energy-efficient construction materials.',
-            location: 'Zamboanga City',
-            date: 'July 2026',
-            image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=400&h=400&fit=crop'
-        },
-        {
-            id: 3,
-            title: 'Commercial Office Renovation',
-            description: 'A two-story residential house with modern minimalist design. Owner is looking for quality finishing, open space layout, and energy-efficient construction materials.',
-            location: 'Zamboanga City',
-            date: 'July 2026',
-            image: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=400&h=400&fit=crop'
-        },
-        {
-            id: 4,
-            title: 'Residential Renovation',
-            description: 'A two-story residential house with modern minimalist design. Owner is looking for quality finishing, open space layout, and energy-efficient construction materials.',
-            location: 'Zamboanga City',
-            date: 'July 2026',
-            image: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=400&h=400&fit=crop'
-        }
-    ];
-
-    // Sample boosted posts data
-    const boostedPosts = [
-        {
-            id: 1,
-            title: 'Residential House Construction',
-            description: 'A two-story residential house with modern minimalist design. Owner is looking for quality finishing, open space layout, and energy-efficient construction materials.',
-            location: 'Zamboanga City',
-            endDate: '10/23/2025',
-            image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=400&h=400&fit=crop'
-        },
-        {
-            id: 2,
-            title: 'Modern Two-Storey Residential House',
-            description: 'A two-story residential house with modern minimalist design. Owner is looking for quality finishing, open space layout, and energy-efficient construction materials.',
-            location: 'Zamboanga City',
-            endDate: '11/12/2025',
-            image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=400&h=400&fit=crop'
-        },
-        {
-            id: 3,
-            title: 'Commercial Office Renovation',
-            description: 'A two-story residential house with modern minimalist design. Owner is looking for quality finishing, open space layout, and energy-efficient construction materials.',
-            location: 'Zamboanga City',
-            endDate: '11/20/2025',
-            image: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=400&h=400&fit=crop'
-        }
-    ];
-
+document.addEventListener('DOMContentLoaded', function () {
     // State management
     let selectedPlan = null;
     let selectedPost = null;
     let currentSection = 'plan-selection'; // 'plan-selection', 'post-selection', 'boost-summary'
+    let ownerPosts = [];
+    let boostedPosts = [];
 
     // Modal elements
     const boostModal = document.getElementById('boostModal');
@@ -114,12 +52,23 @@ document.addEventListener('DOMContentLoaded', function() {
     // Account settings modal
     const accountSettingsModal = document.getElementById('accountSettingsModal');
 
+    // Load data
+    /*
+    function loadProjectsData() {
+        // Projects are now loaded via PHP in the blade file
+    }
+    
+    async function loadBoostedProjectsData() {
+       // Boosted projects are now loaded via PHP
+    }
+    */
+
     // Open boost modal
     if (boostLink) {
-        boostLink.addEventListener('click', function(e) {
+        boostLink.addEventListener('click', function (e) {
             e.preventDefault();
             openBoostModal();
-            
+
             // Close account settings modal if open
             if (accountSettingsModal) {
                 accountSettingsModal.classList.remove('active');
@@ -143,7 +92,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Escape key to close
-    document.addEventListener('keydown', function(e) {
+    document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape') {
             if (boostModal && boostModal.classList.contains('active')) {
                 closeBoostModal();
@@ -159,7 +108,22 @@ document.addEventListener('DOMContentLoaded', function() {
         if (boostModal) {
             boostModal.classList.add('active');
             showPlanSelection();
+
+            // Load and display dashboard/boosted posts
             loadDashboard();
+
+            // Projects are pre-loaded via PHP, we just need to re-attach listeners
+            attachPostSelectionListeners();
+
+            // Auto-select the single plan
+            const singlePlan = document.querySelector('.boost-plan-card.selected');
+            if (singlePlan) {
+                selectedPlan = {
+                    type: singlePlan.dataset.plan,
+                    reach: singlePlan.dataset.reach,
+                    price: singlePlan.dataset.price
+                };
+            }
         }
     }
 
@@ -194,13 +158,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Plan selection
     planCards.forEach(card => {
-        card.addEventListener('click', function() {
+        card.addEventListener('click', function () {
             // Remove selected class from all cards
             planCards.forEach(c => c.classList.remove('selected'));
-            
+
             // Add selected class to clicked card
             this.classList.add('selected');
-            
+
             // Store selected plan
             selectedPlan = {
                 type: this.dataset.plan,
@@ -212,7 +176,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Choose post button
     if (choosePostBtn) {
-        choosePostBtn.addEventListener('click', function() {
+        choosePostBtn.addEventListener('click', function () {
             if (!selectedPlan) {
                 alert('Please select a boost plan first');
                 return;
@@ -223,7 +187,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Back to plans
     if (backToPlansBtn) {
-        backToPlansBtn.addEventListener('click', function() {
+        backToPlansBtn.addEventListener('click', function () {
             showPlanSelection();
         });
     }
@@ -241,7 +205,8 @@ document.addEventListener('DOMContentLoaded', function() {
         planSelectionSection.classList.add('hidden');
         postSelectionSection.classList.remove('hidden');
         boostSummarySection.classList.add('hidden');
-        loadPosts();
+        // Do NOT call loadPosts() as it clears PHP content
+        attachPostSelectionListeners();
     }
 
     function showBoostSummary() {
@@ -252,64 +217,57 @@ document.addEventListener('DOMContentLoaded', function() {
         displayBoostSummary();
     }
 
-    // Load posts
+    // Load posts (display) - DEPRECATED / DISABLED
     function loadPosts() {
-        if (!postsListContainer) return;
-
-        const template = document.getElementById('postCardTemplate');
-        postsListContainer.innerHTML = '';
-
-        ownerPosts.forEach(post => {
-            const clone = template.content.cloneNode(true);
-            const postCard = clone.querySelector('.post-card');
-            
-            postCard.dataset.postId = post.id;
-            postCard.querySelector('.post-card-image img').src = post.image;
-            postCard.querySelector('.post-card-title').textContent = post.title;
-            postCard.querySelector('.post-card-description').textContent = post.description;
-            postCard.querySelector('.location-text').textContent = post.location;
-            postCard.querySelector('.date-text').textContent = post.date;
-
-            const radio = postCard.querySelector('.post-radio');
-            radio.value = post.id;
-
-            // Click on card to select
-            postCard.addEventListener('click', function(e) {
-                if (e.target.tagName !== 'INPUT') {
-                    radio.checked = true;
-                    handlePostSelection(post, postCard);
-                }
-            });
-
-            // Click on radio
-            radio.addEventListener('change', function() {
-                if (this.checked) {
-                    handlePostSelection(post, postCard);
-                }
-            });
-
-            postsListContainer.appendChild(clone);
-        });
-
-        // Enable/disable confirm button
-        updateConfirmButton();
+        // Disabled to prevent clearing PHP-rendered content
+        console.log('loadPosts disabled for server-side rendering');
     }
 
-    // Handle post selection
+    // Attach listeners to PHP rendered list
+    function attachPostSelectionListeners() {
+        const postsList = document.getElementById('postsListContainer');
+        if (!postsList) return;
+
+        // Use event delegation - remove first to avoid duplicates (though minimal risk with this logic)
+        postsList.removeEventListener('click', handlePostSelectionClick);
+        postsList.addEventListener('click', handlePostSelectionClick);
+    }
+
+    function handlePostSelectionClick(e) {
+        const postCard = e.target.closest('.post-card');
+
+        if (postCard) {
+            const projectId = postCard.dataset.postId;
+            const title = postCard.querySelector('.post-card-title').textContent;
+            const description = postCard.querySelector('.post-card-description') ? postCard.querySelector('.post-card-description').textContent : '';
+            const image = postCard.querySelector('.post-card-image img') ? postCard.querySelector('.post-card-image img').src : '';
+
+            selectedPost = {
+                id: projectId,
+                title: title,
+                description: description,
+                image: image,
+            };
+
+            // Visual feedback
+            document.querySelectorAll('.post-card').forEach(p => p.classList.remove('selected'));
+            postCard.classList.add('selected');
+
+            // Handle radio button
+            const radio = postCard.querySelector('.post-radio');
+            if (radio) {
+                radio.checked = true;
+            }
+
+            // Enable confirm button
+            updateConfirmButton();
+        }
+    }
+
+
+    // Handle post selection - Legacy function kept if needed but handlePostSelectionClick is used now
     function handlePostSelection(post, postCard) {
-        // Remove selected class from all cards
-        document.querySelectorAll('.post-card').forEach(card => {
-            card.classList.remove('selected');
-        });
-
-        // Add selected class to clicked card
-        postCard.classList.add('selected');
-
-        // Store selected post
-        selectedPost = post;
-
-        // Enable confirm button
-        updateConfirmButton();
+        // ...
     }
 
     // Update confirm button state
@@ -321,7 +279,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Confirm button
     if (confirmBoostBtn) {
-        confirmBoostBtn.addEventListener('click', function() {
+        confirmBoostBtn.addEventListener('click', function () {
             if (!selectedPost) return;
             showBoostSummary();
         });
@@ -329,18 +287,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Search posts
     if (postSearchInput) {
-        postSearchInput.addEventListener('input', function(e) {
+        postSearchInput.addEventListener('input', function (e) {
             const searchTerm = e.target.value.toLowerCase();
-            const postCards = postsListContainer.querySelectorAll('.post-card');
+            const postItems = postsListContainer.querySelectorAll('.post-card');
 
-            postCards.forEach(card => {
-                const title = card.querySelector('.post-card-title').textContent.toLowerCase();
-                const description = card.querySelector('.post-card-description').textContent.toLowerCase();
-                
+            postItems.forEach(item => {
+                const title = item.querySelector('.post-card-title').textContent.toLowerCase();
+                const description = item.querySelector('.post-card-description').textContent.toLowerCase();
+
                 if (title.includes(searchTerm) || description.includes(searchTerm)) {
-                    card.style.display = 'flex';
+                    item.style.display = 'flex';
                 } else {
-                    card.style.display = 'none';
+                    item.style.display = 'none';
                 }
             });
         });
@@ -355,7 +313,7 @@ document.addEventListener('DOMContentLoaded', function() {
             selectedPostPreview.innerHTML = `
                 <div class="post-card">
                     <div class="post-card-image">
-                        <img src="${selectedPost.image}" alt="Post image" />
+                        <img src="${selectedPost.image || 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?w=400&h=400&fit=crop'}" alt="Post image" />
                     </div>
                     <div class="post-card-content">
                         <div class="post-card-header">
@@ -363,18 +321,6 @@ document.addEventListener('DOMContentLoaded', function() {
                             <span class="post-chosen-badge">Post Chosen</span>
                         </div>
                         <p class="post-card-description">${selectedPost.description}</p>
-                        <div class="post-card-footer">
-                            <div class="post-card-meta">
-                                <span class="post-card-location">
-                                    <i class="fi fi-rr-marker"></i>
-                                    <span>${selectedPost.location}</span>
-                                </span>
-                                <span class="post-card-date">
-                                    <i class="fi fi-rr-calendar"></i>
-                                    <span>${selectedPost.date}</span>
-                                </span>
-                            </div>
-                        </div>
                     </div>
                 </div>
             `;
@@ -390,33 +336,48 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Change post button
     if (changePostBtn) {
-        changePostBtn.addEventListener('click', function() {
+        changePostBtn.addEventListener('click', function () {
             showPostSelection();
         });
     }
 
     // Boost now button
     if (boostNowBtn) {
-        boostNowBtn.addEventListener('click', function() {
+        boostNowBtn.addEventListener('click', async function () {
             if (!selectedPost || !selectedPlan) return;
 
-            // Show success modal
-            if (boostReachValue) {
-                const reach = parseInt(selectedPlan.reach).toLocaleString();
-                boostReachValue.textContent = `${reach}+`;
+            // Show loading
+            const originalText = boostNowBtn.innerHTML;
+            boostNowBtn.innerHTML = '<i class="fi fi-rr-spinner fi-spin"></i> Processing...';
+            boostNowBtn.disabled = true;
+
+            try {
+                const response = await fetch('/boost/checkout', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    },
+                    body: JSON.stringify({
+                        project_id: selectedPost.id
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    window.location.href = data.checkout_url;
+                } else {
+                    alert('Boost failed: ' + (data.message || 'Unknown error'));
+                    boostNowBtn.innerHTML = originalText;
+                    boostNowBtn.disabled = false;
+                }
+            } catch (error) {
+                console.error('Error boosting:', error);
+                alert('An error occurred. Please try again.');
+                boostNowBtn.innerHTML = originalText;
+                boostNowBtn.disabled = false;
             }
-
-            if (boostSuccessModal) {
-                boostSuccessModal.classList.add('active');
-            }
-
-            // Close boost modal
-            closeBoostModal();
-
-            // Reset for next boost
-            setTimeout(() => {
-                resetBoostModal();
-            }, 500);
         });
     }
 
@@ -428,7 +389,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     if (closeBoostSuccessBtn) {
-        closeBoostSuccessBtn.addEventListener('click', function() {
+        closeBoostSuccessBtn.addEventListener('click', function () {
             closeBoostSuccessModal();
             // Open boost modal to dashboard tab
             openBoostModal();
@@ -444,16 +405,16 @@ document.addEventListener('DOMContentLoaded', function() {
     function resetBoostModal() {
         selectedPlan = null;
         selectedPost = null;
-        
+
         // Remove selected classes
         planCards.forEach(c => c.classList.remove('selected'));
-        
+
         // Reset to plan selection
         showPlanSelection();
-        
+
         // Switch to boosts tab
         switchTab('boosts');
-        
+
         // Clear search
         if (postSearchInput) {
             postSearchInput.value = '';
@@ -462,7 +423,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Load dashboard
     function loadDashboard() {
-        loadBoostedPosts();
+        // Disabled fetch for server-side rendering
     }
 
     // Load boosted posts
@@ -472,12 +433,17 @@ document.addEventListener('DOMContentLoaded', function() {
         const template = document.getElementById('boostedPostTemplate');
         boostedPostsList.innerHTML = '';
 
+        if (boostedPosts.length === 0) {
+            boostedPostsList.innerHTML = '<p class="no-posts-message" style="text-align:center; padding: 20px;">No active boosted projects.</p>';
+            return;
+        }
+
         boostedPosts.forEach(post => {
             const clone = template.content.cloneNode(true);
             const boostedCard = clone.querySelector('.boosted-post-card');
-            
+
             boostedCard.dataset.postId = post.id;
-            boostedCard.querySelector('.boosted-post-image img').src = post.image;
+            boostedCard.querySelector('.boosted-post-image img').src = post.image || 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?w=400&h=400&fit=crop';
             boostedCard.querySelector('.boosted-post-title').textContent = post.title;
             boostedCard.querySelector('.boosted-post-description').textContent = post.description;
             boostedCard.querySelector('.location-text').textContent = post.location;

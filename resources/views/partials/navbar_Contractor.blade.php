@@ -31,6 +31,14 @@
                             $user = is_object($sess) ? $sess : (object)$sess;
                         }
 
+                        // Fetch subscription data directly for navbar logic (moved from AppServiceProvider)
+                        try {
+                            $modalData = \App\Http\Controllers\subs\platformPaymentController::shareModalData();
+                            $subscription = $modalData['subscription'] ?? null;
+                        } catch (\Exception $e) {
+                            $subscription = null;
+                        }
+
                         $displayName = $user->company_name ?? $user->name ?? $user->username ?? 'Contractor';
                         $rawHandle = $user->username ?? $user->user_name ?? null;
                         $usernameHandle = $rawHandle ? ('@' . ltrim($rawHandle, '@')) : '@contractor';
@@ -112,6 +120,9 @@
         <a href="{{ route('contractor.homepage') }}" class="navbar-link active">Home</a>
         <a href="{{ route('contractor.dashboard') }}" class="navbar-link">Dashboard</a>
         <a href="{{ route('contractor.messages') }}" class="navbar-link">Messages</a>
+        @if(isset($subscription) && isset($subscription['plan_key']) && strtolower($subscription['plan_key']) === 'gold')
+            <a href="{{ route('contractor.ai-analytics') }}" class="navbar-link">AI Analytics</a>
+        @endif
         <a href="{{ route('contractor.profile') }}" class="navbar-link">Profile</a>
     </div>
 

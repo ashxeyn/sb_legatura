@@ -29,36 +29,49 @@
             <div class="subscription-tab-content active" id="overviewContent">
                 <div class="overview-container">
                     <!-- Current Subscription -->
-                    <div class="current-subscription">
-                        <div class="current-subscription-badge">
-                            <i class="fi fi-rr-crown"></i>
-                        </div>
-                        <div class="current-subscription-info">
-                            <p class="current-subscription-label">You are currently Subscribed to</p>
-                            <h3 class="current-subscription-plan" id="currentPlanName">Gold Tier</h3>
-                            <p class="current-subscription-expires">Subscription will end in:</p>
-                            <p class="current-subscription-date" id="currentPlanExpiry">10/23/2026</p>
-                        </div>
-                    </div>
+                    @php
+                        // $subscription is now passed from the controller
+                        $sub = $subscription ?? null; 
+                        // If it's an array, cast to object for consistent property access
+                        if (is_array($sub)) {
+                            $sub = (object) $sub;
+                        }
+                    @endphp
 
-                    <!-- Benefits Being Enjoyed -->
-                    <div class="benefits-section">
-                        <h4 class="benefits-title">Benefits being enjoyed:</h4>
-                        <ul class="benefits-list" id="currentBenefitsList">
-                            <li class="benefit-item">
-                                <i class="fi fi-rr-check-circle"></i>
-                                <span>Unlock AI driven analytics</span>
-                            </li>
-                            <li class="benefit-item">
-                                <i class="fi fi-rr-check-circle"></i>
-                                <span>Unlimited Bids</span>
-                            </li>
-                            <li class="benefit-item">
-                                <i class="fi fi-rr-check-circle"></i>
-                                <span>Boost Bids for 1 month</span>
-                            </li>
-                        </ul>
-                    </div>
+                    @if(!$sub)
+                        <div class="current-subscription no-subscription" id="noSubscriptionMessage">No subscription</div>
+                    @else
+                        <div class="current-subscription">
+                            <div class="current-subscription-badge">
+                                <i class="fi fi-rr-crown"></i>
+                            </div>
+                            <div class="current-subscription-info">
+                                <p class="current-subscription-label">You are currently Subscribed to</p>
+                                <h3 class="current-subscription-plan" id="currentPlanName">{{ $sub->name }}</h3>
+                                <p class="current-subscription-expires">Subscription will end in:</p>
+                                <p class="current-subscription-date" id="currentPlanExpiry">{{ isset($sub->expires_at) ? \Carbon\Carbon::parse($sub->expires_at)->format('m/d/Y') : 'N/A' }}</p>
+                            </div>
+                        </div>
+
+                        <!-- Benefits Being Enjoyed -->
+                        <div class="benefits-section">
+                            <h4 class="benefits-title">Benefits being enjoyed:</h4>
+                            <ul class="benefits-list" id="currentBenefitsList">
+                                @php $benefits = $sub->benefits ?? [];
+                                @endphp
+                                @if(empty($benefits))
+                                    <li class="benefit-item">No benefits listed</li>
+                                @else
+                                    @foreach($benefits as $benefit)
+                                        <li class="benefit-item">
+                                            <i class="fi fi-rr-check-circle"></i>
+                                            <span>{{ $benefit }}</span>
+                                        </li>
+                                    @endforeach
+                                @endif
+                            </ul>
+                        </div>
+                    @endif
 
                     <!-- Other Plans -->
                     <div class="other-plans-section">
@@ -79,10 +92,12 @@
                         </div>
                     </div>
 
-                    <!-- Cancel Subscription Button -->
-                    <button class="cancel-subscription-btn" id="cancelSubscriptionBtn">
-                        Cancel Subscription
-                    </button>
+                    <!-- Cancel Subscription Button (only when subscribed) -->
+                    @if(!empty($sub))
+                        <button class="cancel-subscription-btn" id="cancelSubscriptionBtn">
+                            Cancel Subscription
+                        </button>
+                    @endif
                 </div>
             </div>
 
@@ -104,9 +119,6 @@
                                 <span class="plan-name">GOLD TIER</span>
                                 <span class="plan-price">₱ 1,999</span>
                             </div>
-                            <button class="plan-subscribe-btn gold-btn" data-plan="gold">
-                                Subscribe
-                            </button>
                         </div>
 
                         <!-- Silver Tier -->
@@ -115,9 +127,6 @@
                                 <span class="plan-name">SILVER TIER</span>
                                 <span class="plan-price">₱ 1,499</span>
                             </div>
-                            <button class="plan-subscribe-btn silver-btn" data-plan="silver">
-                                Subscribe
-                            </button>
                         </div>
 
                         <!-- Bronze Tier -->
@@ -126,9 +135,6 @@
                                 <span class="plan-name">BRONZE TIER</span>
                                 <span class="plan-price">₱ 999</span>
                             </div>
-                            <button class="plan-subscribe-btn bronze-btn" data-plan="bronze">
-                                Subscribe
-                            </button>
                         </div>
                     </div>
 

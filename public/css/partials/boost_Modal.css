@@ -46,6 +46,7 @@
         opacity: 0;
         transform: translateY(30px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -175,6 +176,7 @@
     from {
         opacity: 0;
     }
+
     to {
         opacity: 1;
     }
@@ -796,6 +798,48 @@
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+    min-width: 0;
+}
+
+/* Boost Progress Section */
+.boost-progress-section {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid #f3f4f6;
+}
+
+.boost-progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.boost-progress-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #6b7280;
+}
+
+.boost-progress-percentage {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #F57C00;
+}
+
+.boost-progress-bar-container {
+    height: 6px;
+    background: #f3f4f6;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+}
+
+.boost-progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #F57C00 0%, #EEA24B 100%);
+    border-radius: 10px;
+    transition: width 0.5s ease;
 }
 
 .boosted-post-title {

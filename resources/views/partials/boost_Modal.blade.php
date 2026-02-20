@@ -31,33 +31,14 @@
                     <!-- Plan Selection -->
                     <div class="boost-plan-section" id="planSelectionSection">
                         <h3 class="boost-section-title">Choose your boosting plan</h3>
-                        
+
                         <div class="boost-plans-list">
-                            <!-- Plan 1 -->
-                            <div class="boost-plan-card" data-plan="basic" data-reach="1000" data-price="250">
-                                <div class="boost-plan-emoji">👍</div>
+                            <!-- Single Boost Plan: ₱49 per post -->
+                            <div class="boost-plan-card single-plan" data-plan="single" data-reach="1000" data-price="49">
+                                <div class="boost-plan-emoji">🚀</div>
                                 <div class="boost-plan-info">
                                     <div class="boost-plan-reach">1,000+ <span class="reach-label">reach</span></div>
-                                    <div class="boost-plan-price">₱250</div>
-                                </div>
-                            </div>
-
-                            <!-- Plan 2 - Most Popular -->
-                            <div class="boost-plan-card popular" data-plan="standard" data-reach="4000" data-price="750">
-                                <div class="boost-popular-badge">Most popular</div>
-                                <div class="boost-plan-emoji">⚡</div>
-                                <div class="boost-plan-info">
-                                    <div class="boost-plan-reach">4,000+ <span class="reach-label">reach</span></div>
-                                    <div class="boost-plan-price">₱750</div>
-                                </div>
-                            </div>
-
-                            <!-- Plan 3 -->
-                            <div class="boost-plan-card" data-plan="premium" data-reach="10000" data-price="1500">
-                                <div class="boost-plan-emoji">🔥</div>
-                                <div class="boost-plan-info">
-                                    <div class="boost-plan-reach">10,000+ <span class="reach-label">reach</span></div>
-                                    <div class="boost-plan-price">₱1,500</div>
+                                    <div class="boost-plan-price">₱49 <span class="per-post">per post</span></div>
                                 </div>
                             </div>
                         </div>
@@ -89,7 +70,42 @@
 
                         <!-- Posts List -->
                         <div class="posts-list" id="postsListContainer">
-                            <!-- Posts will be loaded here dynamically -->
+                              @if(isset($boostableProjects) && count($boostableProjects) > 0)
+                                @foreach($boostableProjects as $project)
+                                    <div class="post-card" data-post-id="{{ $project->id }}">
+                                        <div class="post-card-image">
+                                            <img src="{{ $project->image }}" alt="Post image" />
+                                        </div>
+                                        <div class="post-card-content">
+                                            <div class="post-card-header">
+                                                <h4 class="post-card-title">{{ $project->title }}</h4>
+                                                <span class="post-chosen-badge hidden">Post Chosen</span>
+                                            </div>
+                                            <p class="post-card-description">{{ strlen($project->description) > 100 ? substr($project->description, 0, 100) . '...' : $project->description }}</p>
+                                            <div class="post-card-footer">
+                                                <div class="post-card-meta">
+                                                    <span class="post-card-location">
+                                                        <i class="fi fi-rr-marker"></i>
+                                                        <span class="location-text">{{ $project->location }}</span>
+                                                    </span>
+                                                    <span class="post-card-date">
+                                                        <i class="fi fi-rr-calendar"></i>
+                                                        <span class="date-text">{{ $project->date }}</span>
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="post-card-select">
+                                            <input type="radio" name="selectedPost" class="post-radio" />
+                                        </div>
+                                    </div>
+                                @endforeach
+                            @else
+                                <div class="no-posts-found">
+                                    <p>No eligible posts found to boost.</p>
+                                    <small>Make sure your posts are Approved and Open.</small>
+                                </div>
+                            @endif
                         </div>
 
                         <!-- Confirm Button -->
@@ -142,32 +158,49 @@
                     <!-- Analytics Section -->
                     <div class="analytics-section">
                         <h3 class="dashboard-section-title">Analytics</h3>
+                        @php
+                            if (!isset($boostAnalytics) || !isset($boostedPosts)) {
+                                try {
+                                    $analytics = \App\Models\subs\platformPaymentClass::getBoostAnalytics(auth()->id());
+                                    $posts = \App\Models\subs\platformPaymentClass::getBoostedPosts(auth()->id());
+                                } catch (\Throwable $e) {
+                                    $analytics = null;
+                                    $posts = [];
+                                }
+                            } else {
+                                $analytics = $boostAnalytics;
+                                $posts = $boostedPosts;
+                            }
+                        @endphp
                         <div class="analytics-grid">
                             <div class="analytics-card">
                                 <div class="analytics-label">Post reach</div>
-                                <div class="analytics-value" id="analyticsReach">3.6k</div>
-                                <div class="analytics-change positive">
-                                    <i class="fi fi-rr-arrow-up"></i>
-                                    <span>76.0%</span>
-                                    <span class="change-period">7d</span>
+                                <div class="analytics-value" id="analyticsReach">{{ $analytics['reach'] ?? '0' }}</div>
+                                @php $reachChange = $analytics['reach_change'] ?? 0; @endphp
+                                <div class="analytics-change {{ $reachChange >= 0 ? 'positive' : 'negative' }}">
+                                    <i class="fi fi-rr-arrow-{{ $reachChange >= 0 ? 'up' : 'down' }}"></i>
+                                    <span>{{ $reachChange }}%</span>
+                                    <span class="change-period">{{ $analytics['period'] ?? '7d' }}</span>
                                 </div>
                             </div>
                             <div class="analytics-card">
                                 <div class="analytics-label">Bids</div>
-                                <div class="analytics-value" id="analyticsBids">56</div>
-                                <div class="analytics-change positive">
-                                    <i class="fi fi-rr-arrow-up"></i>
-                                    <span>248%</span>
-                                    <span class="change-period">7d</span>
+                                <div class="analytics-value" id="analyticsBids">{{ $analytics['bids'] ?? '0' }}</div>
+                                @php $bidsChange = $analytics['bids_change'] ?? 0; @endphp
+                                <div class="analytics-change {{ $bidsChange >= 0 ? 'positive' : 'negative' }}">
+                                    <i class="fi fi-rr-arrow-{{ $bidsChange >= 0 ? 'up' : 'down' }}"></i>
+                                    <span>{{ $bidsChange }}%</span>
+                                    <span class="change-period">{{ $analytics['period'] ?? '7d' }}</span>
                                 </div>
                             </div>
                             <div class="analytics-card">
                                 <div class="analytics-label">Clicks</div>
-                                <div class="analytics-value" id="analyticsClicks">210</div>
-                                <div class="analytics-change positive">
-                                    <i class="fi fi-rr-arrow-up"></i>
-                                    <span>130%</span>
-                                    <span class="change-period">2d</span>
+                                <div class="analytics-value" id="analyticsClicks">{{ $analytics['clicks'] ?? '0' }}</div>
+                                @php $clicksChange = $analytics['clicks_change'] ?? 0; @endphp
+                                <div class="analytics-change {{ $clicksChange >= 0 ? 'positive' : 'negative' }}">
+                                    <i class="fi fi-rr-arrow-{{ $clicksChange >= 0 ? 'up' : 'down' }}"></i>
+                                    <span>{{ $clicksChange }}%</span>
+                                    <span class="change-period">{{ $analytics['period'] ?? '2d' }}</span>
                                 </div>
                             </div>
                         </div>
@@ -176,8 +209,41 @@
                     <!-- Boosted Posts Section -->
                     <div class="boosted-posts-section">
                         <h3 class="dashboard-section-title">Boosted posts</h3>
+                        @php $posts = $posts ?? []; @endphp
                         <div class="boosted-posts-list" id="boostedPostsList">
-                            <!-- Boosted posts will be loaded here -->
+                            @if(empty($posts))
+                                <div class="no-boosted-posts">No boosted posts</div>
+                            @else
+                                @foreach($posts as $post)
+                                    <div class="boosted-post-card" data-post-id="{{ $post->id }}">
+                                        <div class="boosted-post-image">
+                                            <img src="{{ $post->image_url ?? asset('img/placeholder_project.svg') }}" alt="Post image" />
+                                        </div>
+                                        <div class="boosted-post-content">
+                                            <h4 class="boosted-post-title">{{ $post->title }}</h4>
+                                            <p class="boosted-post-description">{{ \Illuminate\Support\Str::limit($post->excerpt ?? ($post->description ?? ''), 150) }}</p>
+                                            <div class="boosted-post-meta">
+                                                <span class="boosted-post-location">
+                                                    <i class="fi fi-rr-marker"></i>
+                                                    <span class="location-text">{{ $post->location ?? '—' }}</span>
+                                                </span>
+                                            </div>
+                                            <div class="boost-progress-section">
+                                                <div class="boost-progress-header">
+                                                    <span class="boost-progress-label">Boost Progress</span>
+                                                    <span class="boost-progress-percentage">{{ $post->percentage ?? 0 }}%</span>
+                                                </div>
+                                                <div class="boost-progress-bar-container">
+                                                    <div class="boost-progress-bar" style="width: {{ $post->percentage ?? 0 }}%"></div>
+                                                </div>
+                                                <div class="boost-end-date">
+                                                    Boost will end in: <strong class="end-date-text">{{ isset($post->ends_at) ? (\Carbon\Carbon::parse($post->ends_at))->diffForHumans() : 'N/A' }}</strong>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            @endif
                         </div>
                     </div>
                 </div>

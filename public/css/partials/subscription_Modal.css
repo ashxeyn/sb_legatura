@@ -46,6 +46,7 @@
         opacity: 0;
         transform: translateY(30px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -175,6 +176,7 @@
     from {
         opacity: 0;
     }
+
     to {
         opacity: 1;
     }
@@ -564,6 +566,19 @@
     box-shadow: 0 6px 16px rgba(236, 126, 0, 0.4);
 }
 
+.main-subscribe-btn.cancel-mode {
+    background: transparent;
+    border: 2px solid #EF4444;
+    color: #EF4444;
+    box-shadow: none;
+}
+
+.main-subscribe-btn.cancel-mode:hover {
+    background: #EF4444;
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
 .main-subscribe-btn:active {
     transform: translateY(0);
 }
@@ -796,28 +811,46 @@
     display: none !important;
 }
 
+
 /* Responsive Design */
 @media (max-width: 640px) {
     .subscription-modal-container {
-        width: 95%;
-        max-height: 95vh;
+        width: 100%;
+        height: 100%;
+        max-width: none;
+        max-height: none;
+        border-radius: 0;
     }
 
-    .subscription-modal-title {
-        font-size: 1.25rem;
+    .subscription-confirm-container,
+    .cancel-subscription-container {
+        width: 100%;
+        border-radius: 20px 20px 0 0;
+        position: absolute;
+        bottom: 0;
+        animation: modalSlideUp 0.3s ease-out;
     }
+}
 
-    .current-subscription {
-        flex-direction: column;
-        text-align: center;
-    }
+.subscription-modal-container {
+    width: 95%;
+    max-height: 95vh;
+}
 
-    .plan-card {
-        flex-direction: column;
-        text-align: center;
-    }
+.subscription-modal-title {
+    font-size: 1.25rem;
+}
 
-    .plan-header {
-        align-items: center;
-    }
+.current-subscription {
+    flex-direction: column;
+    text-align: center;
+}
+
+.plan-card {
+    flex-direction: column;
+    text-align: center;
+}
+
+.plan-header {
+    align-items: center;
 }

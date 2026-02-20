@@ -1170,5 +1170,13 @@ class cprocessController extends Controller
             'data' => $milestones,
         ]);
     }
-}
 
+    public function showAIAnalytics(Request $request)
+    {
+        $accessCheck = $this->checkContractorAccess($request);
+        if ($accessCheck) {
+            return $accessCheck;
+        }
+        return view('contractor.AI');
+    }
+}

@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Feb 08, 2026 at 08:12 AM
+-- Generation Time: Feb 18, 2026 at 04:25 PM
 -- Server version: 11.4.5-MariaDB
 -- PHP Version: 8.2.12
 
@@ -173,6 +173,7 @@ CREATE TABLE `conversations` (
   `sender_id` bigint(20) UNSIGNED NOT NULL,
   `receiver_id` bigint(20) UNSIGNED NOT NULL,
   `is_suspended` tinyint(11) DEFAULT 0,
+  `no_suspends` int(11) NOT NULL DEFAULT 0,
   `reason` varchar(255) DEFAULT NULL,
   `suspended_until` datetime DEFAULT NULL,
   `status` enum('active','suspended') NOT NULL DEFAULT 'active',
@@ -236,22 +237,6 @@ CREATE TABLE `item_files` (
 -- --------------------------------------------------------
 
 --
--- Table structure for table `jobs`
---
-
-CREATE TABLE `jobs` (
-  `id` bigint(20) UNSIGNED NOT NULL,
-  `queue` varchar(255) NOT NULL,
-  `payload` longtext NOT NULL,
-  `attempts` tinyint(3) UNSIGNED NOT NULL,
-  `reserved_at` int(10) UNSIGNED DEFAULT NULL,
-  `available_at` int(10) UNSIGNED NOT NULL,
-  `created_at` int(10) UNSIGNED NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
-
---
 -- Table structure for table `messages`
 --
 
@@ -307,13 +292,13 @@ CREATE TABLE `milestones` (
   `plan_id` int(11) NOT NULL,
   `milestone_name` varchar(200) NOT NULL,
   `milestone_description` text NOT NULL,
-  `milestone_status` enum('not_started','in_progress','rejected','delayed','cancelled','deleted') DEFAULT 'not_started',
+  `milestone_status` enum('not_started','in_progress','rejected','delayed','cancelled','deleted','completed') DEFAULT 'not_started',
   `previous_status` varchar(50) DEFAULT NULL,
   `start_date` datetime NOT NULL,
   `end_date` datetime NOT NULL,
   `is_deleted` tinyint(1) DEFAULT NULL,
   `reason` text DEFAULT NULL,
-  `setup_status` enum('submitted','rejected','approved','completed') NOT NULL DEFAULT 'submitted',
+  `setup_status` enum('submitted','rejected','approved') NOT NULL DEFAULT 'submitted',
   `setup_rej_reason` text DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
@@ -371,9 +356,14 @@ CREATE TABLE `notifications` (
   `notification_id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL,
   `message` text NOT NULL,
-  `type` enum('Milestone Update','Bid Status','Payment Reminder','Project Alert') NOT NULL,
+  `title` varchar(255) DEFAULT NULL,
+  `type` enum('Milestone Update','Bid Status','Payment Reminder','Project Alert','Progress Update','Dispute Update','Team Update','Payment Status') NOT NULL,
   `is_read` tinyint(1) DEFAULT 0,
   `delivery_method` enum('App','Email','Both') DEFAULT 'App',
+  `priority` enum('critical','high','normal') NOT NULL DEFAULT 'normal',
+  `reference_type` varchar(50) DEFAULT NULL,
+  `reference_id` int(10) UNSIGNED DEFAULT NULL,
+  `dedup_key` varchar(100) DEFAULT NULL,
   `action_link` varchar(255) DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -437,14 +427,15 @@ CREATE TABLE `platform_payments` (
   `project_id` int(11) DEFAULT NULL,
   `contractor_id` int(11) DEFAULT NULL,
   `owner_id` int(11) DEFAULT NULL,
-  `payment_for` enum('commission','boosted_post') NOT NULL,
-  `percentage` decimal(5,2) DEFAULT 0.02,
+  `payment_for` enum('subscription','boosted_post') NOT NULL,
+  `subscription_tier` varchar(50) DEFAULT NULL,
   `amount` decimal(15,2) NOT NULL,
   `transaction_number` varchar(100) DEFAULT NULL,
-  `receipt_photo` varchar(255) NOT NULL,
   `transaction_date` timestamp NULL DEFAULT current_timestamp(),
   `is_approved` tinyint(1) DEFAULT 0,
-  `approved_by` int(11) DEFAULT NULL
+  `approved_by` int(11) DEFAULT NULL,
+  `expiration_date` timestamp NULL DEFAULT NULL,
+  `payment_type` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -734,13 +725,6 @@ ALTER TABLE `item_files`
   ADD KEY `item_id` (`item_id`);
 
 --
--- Indexes for table `jobs`
---
-ALTER TABLE `jobs`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `jobs_queue_index` (`queue`);
-
---
 -- Indexes for table `messages`
 --
 ALTER TABLE `messages`
@@ -792,7 +776,10 @@ ALTER TABLE `milestone_payments`
 --
 ALTER TABLE `notifications`
   ADD PRIMARY KEY (`notification_id`),
-  ADD KEY `user_id` (`user_id`);
+  ADD UNIQUE KEY `idx_dedup` (`user_id`,`dedup_key`),
+  ADD KEY `user_id` (`user_id`),
+  ADD KEY `idx_user_read` (`user_id`,`is_read`),
+  ADD KEY `idx_user_created` (`user_id`,`created_at`);
 
 --
 -- Indexes for table `occupations`
@@ -972,12 +959,6 @@ ALTER TABLE `disputes`
 --
 ALTER TABLE `dispute_files`
   MODIFY `file_id` int(11) NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT for table `jobs`
---
-ALTER TABLE `jobs`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `messages`

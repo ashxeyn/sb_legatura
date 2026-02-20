@@ -1,5 +1,5 @@
 // Subscription Modal JavaScript
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     // Subscription Plan Data
     const subscriptionPlans = {
         gold: {
@@ -8,32 +8,28 @@ document.addEventListener('DOMContentLoaded', function() {
             benefits: [
                 'Unlock AI driven analytics',
                 'Unlimited Bids',
-                'Boost Bids for 1 month'
+                'Boosted Bids (Stay at the top)'
             ]
         },
         silver: {
             name: 'Silver Tier',
             price: '₱ 1,499',
             benefits: [
-                '7 Bids',
-                'Boost Bids for 1 month'
+                '25 Bids per month',
+                'Boosted Bids (Stay at the top)'
             ]
         },
         bronze: {
             name: 'Bronze Tier',
             price: '₱ 999',
             benefits: [
-                '4 Bids per month'
+                '10 Bids per month'
             ]
         }
     };
 
-    // Current subscription state (simulated)
-    let currentSubscription = {
-        plan: 'gold',
-        expiryDate: '10/23/2026',
-        isActive: true
-    };
+    // Current subscription state (will be loaded from server)
+    let currentSubscription = null;
 
     // Modal elements
     const subscriptionModal = document.getElementById('subscriptionModal');
@@ -49,7 +45,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Plans tab elements
     const planCards = document.querySelectorAll('.plan-card');
-    const planSubscribeBtns = document.querySelectorAll('.plan-subscribe-btn');
     const mainSubscribeBtn = document.getElementById('mainSubscribeBtn');
     const selectedPlanBenefits = document.getElementById('selectedPlanBenefits');
     const alreadySubscribedMsg = document.getElementById('alreadySubscribedMsg');
@@ -79,10 +74,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Open subscription modal
     if (subscriptionLink) {
-        subscriptionLink.addEventListener('click', function(e) {
+        subscriptionLink.addEventListener('click', function (e) {
             e.preventDefault();
             openSubscriptionModal();
-            
+
             // Close account settings modal if open
             if (accountSettingsModal) {
                 accountSettingsModal.classList.remove('active');
@@ -106,7 +101,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Escape key to close
-    document.addEventListener('keydown', function(e) {
+    document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape' && subscriptionModal && subscriptionModal.classList.contains('active')) {
             closeSubscriptionModal();
         }
@@ -116,9 +111,34 @@ document.addEventListener('DOMContentLoaded', function() {
     function openSubscriptionModal() {
         if (subscriptionModal) {
             subscriptionModal.classList.add('active');
-            updateOverviewTab();
-            updatePlansTab();
+            // Load current subscription state then update UI
+            loadSubscriptionState().then(() => {
+                updateOverviewTab();
+                updatePlansTab();
+            });
         }
+    }
+
+    // Fetch subscription state (best-effort)
+    function loadSubscriptionState() {
+        return fetch('/subs/modal-data').then(r => r.ok ? r.json() : Promise.reject()).then(data => {
+            const sub = data.subscription || null;
+            if (!sub) {
+                currentSubscription = null;
+                return;
+            }
+
+            // Normalize subscription object
+            currentSubscription = {
+                plan: sub.plan_key || sub.plan || (sub.name ? sub.name.toLowerCase().split(' ')[0] : 'gold'),
+                expiryDate: sub.expires_at || sub.expiry_date || sub.expires_at_formatted || null,
+                isActive: true,
+                benefits: sub.benefits || (sub.meta && sub.meta.benefits) || []
+            };
+            return;
+        }).catch(() => {
+            currentSubscription = null;
+        });
     }
 
     // Tab switching
@@ -152,51 +172,85 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Update Overview Tab
     function updateOverviewTab() {
-        if (currentSubscription.isActive) {
-            const planData = subscriptionPlans[currentSubscription.plan];
-            
-            // Update current plan info
-            if (currentPlanName) {
-                currentPlanName.textContent = planData.name;
-            }
-            if (currentPlanExpiry) {
-                currentPlanExpiry.textContent = currentSubscription.expiryDate;
+        if (!currentSubscription || !currentSubscription.isActive) {
+            if (currentBenefitsList) currentBenefitsList.innerHTML = '<li>No subscription</li>';
+            if (currentPlanName) currentPlanName.textContent = 'No subscription';
+            if (currentPlanExpiry) currentPlanExpiry.textContent = '';
+            // Hide cancel button when no subscription active
+            if (cancelSubscriptionBtn) {
+                cancelSubscriptionBtn.style.display = 'none';
             }
 
-            // Update benefits list
-            if (currentBenefitsList) {
-                currentBenefitsList.innerHTML = '';
-                planData.benefits.forEach(benefit => {
-                    const li = document.createElement('li');
-                    li.className = 'benefit-item';
-                    li.innerHTML = `
-                        <i class="fi fi-rr-check-circle"></i>
-                        <span>${benefit}</span>
-                    `;
-                    currentBenefitsList.appendChild(li);
-                });
-            }
-
-            // Update other plans (show plans that are not current)
-            const otherPlansHtml = Object.keys(subscriptionPlans)
-                .filter(key => key !== currentSubscription.plan)
-                .map(key => {
-                    const plan = subscriptionPlans[key];
-                    const className = key === 'silver' ? 'silver-plan' : 'bronze-plan';
-                    return `
-                        <div class="other-plan-card ${className}">
-                            <div class="other-plan-info">
-                                <span class="other-plan-name">${plan.name.toUpperCase()}</span>
-                            </div>
-                            <span class="other-plan-price">${plan.price}</span>
+            // Show other plans by default
+            const otherPlansHtml = Object.keys(subscriptionPlans).map(key => {
+                const plan = subscriptionPlans[key];
+                const className = key === 'silver' ? 'silver-plan' : (key === 'gold' ? 'gold-plan' : 'bronze-plan');
+                return `
+                    <div class="other-plan-card ${className}">
+                        <div class="other-plan-info">
+                            <span class="other-plan-name">${plan.name.toUpperCase()}</span>
                         </div>
-                    `;
-                }).join('');
+                        <span class="other-plan-price">${plan.price}</span>
+                    </div>
+                `;
+            }).join('');
 
             const otherPlansList = document.querySelector('.other-plans-list');
-            if (otherPlansList) {
-                otherPlansList.innerHTML = otherPlansHtml;
-            }
+            if (otherPlansList) otherPlansList.innerHTML = otherPlansHtml;
+
+            return;
+        }
+
+        const planKey = currentSubscription.plan || 'gold';
+        const planData = subscriptionPlans[planKey] || subscriptionPlans['gold'];
+
+        // Update current plan info
+        if (currentPlanName) {
+            currentPlanName.textContent = planData.name;
+        }
+        if (currentPlanExpiry) {
+            currentPlanExpiry.textContent = currentSubscription.expiryDate || '';
+        }
+
+        // Show cancel button when subscription active
+        if (cancelSubscriptionBtn) {
+            cancelSubscriptionBtn.style.display = 'block';
+        }
+
+        // Update benefits list
+        if (currentBenefitsList) {
+            currentBenefitsList.innerHTML = '';
+            const benefits = currentSubscription.benefits && currentSubscription.benefits.length ? currentSubscription.benefits : planData.benefits;
+            benefits.forEach(benefit => {
+                const li = document.createElement('li');
+                li.className = 'benefit-item';
+                li.innerHTML = `
+                    <i class="fi fi-rr-check-circle"></i>
+                    <span>${benefit}</span>
+                `;
+                currentBenefitsList.appendChild(li);
+            });
+        }
+
+        // Update other plans (show plans that are not current)
+        const otherPlansHtml = Object.keys(subscriptionPlans)
+            .filter(key => key !== planKey)
+            .map(key => {
+                const plan = subscriptionPlans[key];
+                const className = key === 'silver' ? 'silver-plan' : 'bronze-plan';
+                return `
+                    <div class="other-plan-card ${className}">
+                        <div class="other-plan-info">
+                            <span class="other-plan-name">${plan.name.toUpperCase()}</span>
+                        </div>
+                        <span class="other-plan-price">${plan.price}</span>
+                    </div>
+                `;
+            }).join('');
+
+        const otherPlansList = document.querySelector('.other-plans-list');
+        if (otherPlansList) {
+            otherPlansList.innerHTML = otherPlansHtml;
         }
     }
 
@@ -205,18 +259,13 @@ document.addEventListener('DOMContentLoaded', function() {
         // Update plan card states
         planCards.forEach(card => {
             const planType = card.dataset.plan;
-            if (currentSubscription.isActive && planType === currentSubscription.plan) {
-                card.classList.add('already-subscribed');
-            } else {
-                card.classList.remove('already-subscribed');
-            }
-
+            card.classList.remove('already-subscribed');
             // Remove selected class initially
             card.classList.remove('selected');
         });
 
         // Select the current or first available plan
-        if (currentSubscription.isActive) {
+        if (currentSubscription && currentSubscription.isActive) {
             selectedPlan = currentSubscription.plan;
             const currentCard = document.querySelector(`.plan-card[data-plan="${currentSubscription.plan}"]`);
             if (currentCard) {
@@ -236,14 +285,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Plan card click
     planCards.forEach(card => {
-        card.addEventListener('click', function() {
+        card.addEventListener('click', function () {
             const planType = this.dataset.plan;
-            
-            // Don't allow selecting already subscribed plan
-            if (currentSubscription.isActive && planType === currentSubscription.plan) {
-                return;
-            }
-
             selectedPlan = planType;
 
             // Update selected state
@@ -255,26 +298,18 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Plan subscribe buttons
-    planSubscribeBtns.forEach(btn => {
-        btn.addEventListener('click', function(e) {
-            e.stopPropagation();
-            const planType = this.dataset.plan;
-            
-            // Don't allow subscribing to current plan
-            if (currentSubscription.isActive && planType === currentSubscription.plan) {
-                return;
-            }
-
-            selectedPlan = planType;
-            subscribeToPlan(planType);
-        });
-    });
 
     // Main subscribe button
     if (mainSubscribeBtn) {
-        mainSubscribeBtn.addEventListener('click', function() {
-            subscribeToPlan(selectedPlan);
+        mainSubscribeBtn.addEventListener('click', function () {
+            if (currentSubscription && currentSubscription.isActive) {
+                // Trigger cancellation confirmation
+                if (cancelSubscriptionConfirmModal) {
+                    cancelSubscriptionConfirmModal.classList.add('active');
+                }
+            } else {
+                subscribeToPlan(selectedPlan);
+            }
         });
     }
 
@@ -297,52 +332,69 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Update subscribe button
     function updateSubscribeButton() {
-        if (currentSubscription.isActive && selectedPlan === currentSubscription.plan) {
-            if (mainSubscribeBtn) {
-                mainSubscribeBtn.style.display = 'none';
+        if (mainSubscribeBtn) {
+            mainSubscribeBtn.style.display = 'block';
+            if (currentSubscription && currentSubscription.isActive) {
+                mainSubscribeBtn.innerHTML = 'Cancel Subscription';
+                mainSubscribeBtn.classList.add('cancel-mode'); // Optional: for styling
+            } else {
+                mainSubscribeBtn.innerHTML = 'Subscribe Now';
+                mainSubscribeBtn.classList.remove('cancel-mode');
             }
-            if (alreadySubscribedMsg) {
-                alreadySubscribedMsg.classList.remove('hidden');
-            }
-        } else {
-            if (mainSubscribeBtn) {
-                mainSubscribeBtn.style.display = 'block';
-            }
-            if (alreadySubscribedMsg) {
-                alreadySubscribedMsg.classList.add('hidden');
-            }
+        }
+
+        // Hide "already subscribed" message since we allow selection now
+        if (alreadySubscribedMsg) {
+            alreadySubscribedMsg.classList.add('hidden');
         }
     }
 
     // Subscribe to plan
-    function subscribeToPlan(planType) {
+    async function subscribeToPlan(planType) {
         const planData = subscriptionPlans[planType];
-        
-        // Show loading (simulated)
+
         console.log(`Subscribing to ${planData.name}...`);
 
-        // Simulate API call
-        setTimeout(() => {
-            // Update current subscription
-            currentSubscription = {
-                plan: planType,
-                expiryDate: getExpiryDate(),
-                isActive: true
-            };
+        // Show loading state if button exists
+        if (mainSubscribeBtn) {
+            const originalText = mainSubscribeBtn.innerHTML;
+            mainSubscribeBtn.innerHTML = '<i class="fi fi-rr-spinner fi-spin"></i> Processing...';
+            mainSubscribeBtn.disabled = true;
+        }
 
-            // Show confirmation modal
-            if (confirmedPlanName) {
-                confirmedPlanName.textContent = planData.name;
+        try {
+            const response = await fetch('/subscribe/checkout', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                body: JSON.stringify({
+                    plan_tier: planType
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                // Redirect to PayMongo Checkout
+                window.location.href = data.checkout_url;
+            } else {
+                alert('Subscription failed: ' + (data.message || 'Unknown error'));
+                if (mainSubscribeBtn) {
+                    mainSubscribeBtn.innerHTML = 'Subscribe Now'; // Reset text
+                    mainSubscribeBtn.disabled = false;
+                }
             }
-            if (subscriptionConfirmModal) {
-                subscriptionConfirmModal.classList.add('active');
+        } catch (error) {
+            console.error('Error subscribing:', error);
+            alert('An error occurred. Please try again.');
+            if (mainSubscribeBtn) {
+                mainSubscribeBtn.innerHTML = 'Subscribe Now'; // Reset text
+                mainSubscribeBtn.disabled = false;
             }
-
-            // Close subscription modal
-            closeSubscriptionModal();
-
-            console.log(`Successfully subscribed to ${planData.name}`);
-        }, 1000);
+        }
     }
 
     // Get expiry date (1 month from now)
@@ -372,7 +424,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Cancel subscription
     if (cancelSubscriptionBtn) {
-        cancelSubscriptionBtn.addEventListener('click', function() {
+        cancelSubscriptionBtn.addEventListener('click', function () {
             if (cancelSubscriptionConfirmModal) {
                 cancelSubscriptionConfirmModal.classList.add('active');
             }
@@ -381,39 +433,106 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Cancel subscription - No
     if (cancelSubscriptionNoBtn) {
-        cancelSubscriptionNoBtn.addEventListener('click', function() {
+        cancelSubscriptionNoBtn.addEventListener('click', function () {
             if (cancelSubscriptionConfirmModal) {
                 cancelSubscriptionConfirmModal.classList.remove('active');
             }
         });
     }
 
+    // Toast Notification Function (Matches Navbar style)
+    function showToast(message, type = 'success', duration = 3500) {
+        try {
+            const toast = document.createElement('div');
+            toast.className = 'site-toast site-toast-' + type;
+            toast.style.position = 'fixed';
+            toast.style.right = '20px';
+            toast.style.top = '20px';
+            toast.style.zIndex = 11000;
+            toast.style.padding = '12px 16px';
+            toast.style.borderRadius = '8px';
+            toast.style.boxShadow = '0 2px 10px rgba(0,0,0,0.12)';
+            toast.style.background = type === 'success' ? '#16a34a' : '#374151';
+            toast.style.color = '#fff';
+            toast.textContent = message;
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(-8px)';
+            toast.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+
+            document.body.appendChild(toast);
+
+            requestAnimationFrame(() => {
+                toast.style.opacity = '1';
+                toast.style.transform = 'translateY(0)';
+            });
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(-8px)';
+                setTimeout(() => toast.remove(), 350);
+            }, duration);
+        } catch (e) {
+            console.debug('showToast failed', e);
+        }
+    }
+
     // Cancel subscription - Yes
     if (cancelSubscriptionYesBtn) {
-        cancelSubscriptionYesBtn.addEventListener('click', function() {
+        cancelSubscriptionYesBtn.addEventListener('click', function () {
             console.log('Canceling subscription...');
 
-            // Simulate API call
-            setTimeout(() => {
-                currentSubscription.isActive = false;
-                
-                // Close modals
-                if (cancelSubscriptionConfirmModal) {
-                    cancelSubscriptionConfirmModal.classList.remove('active');
+            // Disable button
+            const originalText = cancelSubscriptionYesBtn.innerText;
+            cancelSubscriptionYesBtn.innerText = 'Processing...';
+            cancelSubscriptionYesBtn.disabled = true;
+
+            fetch('/subscribe/cancel', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
                 }
-                closeSubscriptionModal();
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        currentSubscription.isActive = false;
 
-                // Switch to plans tab for next opening
-                switchTab('plans');
+                        // Close modals
+                        if (cancelSubscriptionConfirmModal) {
+                            cancelSubscriptionConfirmModal.classList.remove('active');
+                        }
+                        closeSubscriptionModal();
 
-                console.log('Subscription cancelled successfully');
-            }, 1000);
+                        // Switch to plans tab for next opening
+                        switchTab('plans');
+
+                        showToast('Subscription cancelled successfully.', 'success');
+
+                        // Delay reload to allow toast to be seen
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1500);
+
+                    } else {
+                        showToast('Failed to cancel: ' + (data.message || 'Unknown error'), 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error canceling:', error);
+                    showToast('An error occurred. Please try again.', 'error');
+                })
+                .finally(() => {
+                    cancelSubscriptionYesBtn.innerText = originalText;
+                    cancelSubscriptionYesBtn.disabled = false;
+                });
         });
     }
 
     // Close cancel confirmation modal on overlay click
     if (cancelSubscriptionConfirmOverlay) {
-        cancelSubscriptionConfirmOverlay.addEventListener('click', function() {
+        cancelSubscriptionConfirmOverlay.addEventListener('click', function () {
             if (cancelSubscriptionConfirmModal) {
                 cancelSubscriptionConfirmModal.classList.remove('active');
             }
@@ -421,7 +540,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Escape key for confirmation modals
-    document.addEventListener('keydown', function(e) {
+    document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape') {
             if (subscriptionConfirmModal && subscriptionConfirmModal.classList.contains('active')) {
                 closeSubscriptionConfirmModal();

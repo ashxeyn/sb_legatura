@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\DB;
 class contractorClass
 {
 
-    // MILESTONE SETUP FUNCTIONS
+	// MILESTONE SETUP FUNCTIONS
 
 	public function getContractorByUserId($userId)
 	{
@@ -45,47 +45,52 @@ class contractorClass
 	{
 		$query = DB::table('projects as p')
 			->select(
-				'p.project_id',
-				'p.project_title',
-				'p.project_description',
-				'p.project_status'
-			)
+			'p.project_id',
+			'p.project_title',
+			'p.project_description',
+			'p.project_status'
+		)
 			->where('p.selected_contractor_id', $contractorId);
-		
+
 		// If editing a milestone, include projects with that milestone
 		// Otherwise, exclude projects that already have milestones
 		if ($excludeMilestoneId) {
-			$query->where(function($q) use ($contractorId, $excludeMilestoneId) {
+			$query->where(function ($q) use ($contractorId, $excludeMilestoneId) {
 				$q->whereNotExists(function ($subQuery) use ($contractorId) {
-					$subQuery->select(DB::raw(1))
-						->from('milestones')
-						->whereColumn('milestones.project_id', 'p.project_id')
-						->where('milestones.contractor_id', $contractorId)
-						->where(function($mQuery) {
-							$mQuery->where('milestones.is_deleted', 0)
-								   ->orWhereNull('milestones.is_deleted');
-						});
-				})
-				->orWhereExists(function ($subQuery) use ($excludeMilestoneId) {
+					    $subQuery->select(DB::raw(1))
+					    	->from('milestones')
+					    	->whereColumn('milestones.project_id', 'p.project_id')
+					    	->where('milestones.contractor_id', $contractorId)
+					    	->where(function ($mQuery) {
+						$mQuery->where('milestones.is_deleted', 0)
+							->orWhereNull('milestones.is_deleted');
+					}
+					);
+				}
+				)
+					->orWhereExists(function ($subQuery) use ($excludeMilestoneId) {
 					$subQuery->select(DB::raw(1))
 						->from('milestones')
 						->whereColumn('milestones.project_id', 'p.project_id')
 						->where('milestones.milestone_id', $excludeMilestoneId);
-				});
+				}
+				);
 			});
-		} else {
+		}
+		else {
 			$query->whereNotExists(function ($subQuery) use ($contractorId) {
 				$subQuery->select(DB::raw(1))
 					->from('milestones')
 					->whereColumn('milestones.project_id', 'p.project_id')
 					->where('milestones.contractor_id', $contractorId)
-					->where(function($mQuery) {
-						$mQuery->where('milestones.is_deleted', 0)
-							   ->orWhereNull('milestones.is_deleted');
-					});
+					->where(function ($mQuery) {
+					$mQuery->where('milestones.is_deleted', 0)
+						->orWhereNull('milestones.is_deleted');
+				}
+				);
 			});
 		}
-		
+
 		return $query->orderBy('p.project_title')->get();
 	}
 
@@ -94,15 +99,15 @@ class contractorClass
 		return DB::table('milestones')
 			->where('project_id', $projectId)
 			->where('contractor_id', $contractorId)
-			->where(function($query) {
-				$query->where('is_deleted', 0)
-					  ->orWhereNull('is_deleted');
-			})
-			->where(function($query) {
-				// Exclude rejected milestones (contractor can resubmit after rejection)
-				$query->whereNull('setup_status')
-					  ->orWhere('setup_status', '!=', 'rejected');
-			})
+			->where(function ($query) {
+			$query->where('is_deleted', 0)
+				->orWhereNull('is_deleted');
+		})
+			->where(function ($query) {
+			// Exclude rejected milestones (contractor can resubmit after rejection)
+			$query->whereNull('setup_status')
+				->orWhere('setup_status', '!=', 'rejected');
+		})
 			->exists();
 	}
 
@@ -135,12 +140,12 @@ class contractorClass
 			'created_at' => now(),
 			'updated_at' => now()
 		];
-		
+
 		// Add setup_status if provided
 		if (isset($data['setup_status'])) {
 			$insertData['setup_status'] = $data['setup_status'];
 		}
-		
+
 		return DB::table('milestones')->insertGetId($insertData);
 	}
 
@@ -164,19 +169,19 @@ class contractorClass
 			->where('m.milestone_id', $milestoneId)
 			->where('m.contractor_id', $contractorId)
 			->select(
-				'm.milestone_id',
-				'm.project_id',
-				'm.contractor_id',
-				'm.plan_id',
-				'm.milestone_name',
-				'm.milestone_description',
-				'm.milestone_status',
-				'm.start_date',
-				'm.end_date',
-				'pp.payment_mode',
-				'pp.total_project_cost',
-				'pp.downpayment_amount'
-			)
+			'm.milestone_id',
+			'm.project_id',
+			'm.contractor_id',
+			'm.plan_id',
+			'm.milestone_name',
+			'm.milestone_description',
+			'm.milestone_status',
+			'm.start_date',
+			'm.end_date',
+			'pp.payment_mode',
+			'pp.total_project_cost',
+			'pp.downpayment_amount'
+		)
 			->first();
 	}
 
