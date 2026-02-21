@@ -1447,29 +1447,16 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
     );
   }
 
-  // If Search screen is open, show it full screen
+  // If Search screen is open, show it full screen (FB-style search)
   if (showSearchScreen) {
-    if (userType === 'contractor') {
-      // Contractor searching for projects
-      return (
-        <SearchScreen
-          onClose={handleSearchClose}
-          projects={availableProjects}
-          searchType="projects"
-          onProjectPress={handleSearchProjectPress}
-        />
-      );
-    } else {
-      // Property owner searching for contractors
-      return (
-        <SearchScreen
-          onClose={handleSearchClose}
-          contractors={searchContractors}
-          searchType="contractors"
-          onContractorPress={handleSearchContractorPress}
-        />
-      );
-    }
+    return (
+      <SearchScreen
+        onClose={handleSearchClose}
+        searchType={effectiveUserType === 'contractor' ? 'projects' : 'contractors'}
+        onContractorPress={handleSearchContractorPress}
+        onProjectPress={handleSearchProjectPress}
+      />
+    );
   }
 
   // If Create Project screen is open, show it full screen

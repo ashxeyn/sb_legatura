@@ -3,6 +3,25 @@ const API_BASE_URL = 'http://192.168.254.112:8000'; //'https://legaturaph.com'
 
 import { storage_service } from '../utils/storage';
 
+// ---------------------------------------------------------------------------
+// Global 401 / Unauthorized handler
+// Register once from App.tsx so ALL api_request calls trigger logout when the
+// stored token has been invalidated (e.g. after a DB reset or server restart).
+// ---------------------------------------------------------------------------
+let _unauthorizedHandler: (() => void) | null = null;
+let _handlingUnauthorized = false; // prevents repeated logout calls when multiple requests are in-flight
+
+export const set_unauthorized_handler = (handler: () => void) => {
+    _unauthorizedHandler = handler;
+    _handlingUnauthorized = false; // reset guard whenever a new handler is registered (e.g. after re-login)
+};
+
+/** Call this after a successful login to reset the 401 guard so the next
+ *  token-invalidation event will trigger logout correctly. */
+export const reset_unauthorized_guard = () => {
+    _handlingUnauthorized = false;
+};
+
 export const api_config = {
     base_url: API_BASE_URL,
     endpoints: {
@@ -192,6 +211,16 @@ export const api_request = async (endpoint: string, options: RequestInit = {}) =
             } else {
                 throw new Error(`Invalid JSON response: ${json_error instanceof Error ? json_error.message : 'Unknown parsing error'}`);
             }
+        }
+
+        // Global 401 handler: if token was present and server says unauthorized,
+        // the stored token is invalid (e.g. DB was reset). Clear storage and
+        // trigger logout immediately so the user is sent back to login.
+        if (response.status === 401 && hasAuthToken && _unauthorizedHandler && !_handlingUnauthorized) {
+            _handlingUnauthorized = true; // guard: only fire once even if multiple requests are in-flight
+            console.warn('api_request: 401 with stored token — clearing session and logging out');
+            await storage_service.clear_user_data();
+            _unauthorizedHandler();
         }
 
         return { success: response.ok, data, status: response.status, message: data?.message };

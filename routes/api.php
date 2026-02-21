@@ -140,6 +140,9 @@ Route::get('/contractors', [\App\Http\Controllers\both\homepageController::class
 // Contractor types endpoint for project creation form / filter chips
 Route::get('/contractor-types', [\App\Http\Controllers\both\homepageController::class , 'apiGetContractorTypes']);
 
+// Search & filter options for mobile search/filter UI
+Route::get('/search/filter-options', [\App\Http\Controllers\both\homepageController::class , 'apiGetFilterOptions']);
+
 // Owner endpoints - for owner dashboard/project management
 Route::get('/owner/projects', [projectsController::class , 'apiGetOwnerProjects']);
 Route::post('/owner/projects', [projectsController::class , 'apiCreateProject']);

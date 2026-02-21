@@ -635,6 +635,21 @@ class authController extends Controller
         $step1['company_website'] = $step1['company_website'] ?? null;
         $step1['company_social_media'] = $step1['company_social_media'] ?? null;
 
+        // Build business_address from components if it's empty (mobile/stateless clients
+        // send individual address parts instead of the pre-concatenated string)
+        if (empty($step1['business_address'])) {
+            $addressParts = [];
+            if (!empty($step1['business_address_street'])) $addressParts[] = $step1['business_address_street'];
+            if (!empty($step1['business_address_barangay'])) $addressParts[] = $step1['business_address_barangay'];
+            if (!empty($step1['business_address_city'])) $addressParts[] = $step1['business_address_city'];
+            if (!empty($step1['business_address_province'])) $addressParts[] = $step1['business_address_province'];
+            if (!empty($step1['business_address_postal'])) $addressParts[] = $step1['business_address_postal'];
+            if (count($addressParts) > 0) {
+                $step1['business_address'] = implode(', ', $addressParts);
+                \Log::info('Built business_address from components: ' . $step1['business_address']);
+            }
+        }
+
         // Ensure step2 defaults
         $step2['username'] = $step2['username'] ?? null;
         $step2['company_email'] = $step2['company_email'] ?? ($step2['email'] ?? null);
@@ -653,6 +668,58 @@ class authController extends Controller
         // Map common mobile keys to backend keys (mobile may send contractor_type_id)
         if (isset($step1['contractor_type_id']) && empty($step1['type_id'])) {
             $step1['type_id'] = $step1['contractor_type_id'];
+        }
+
+        // Recover OTP hash from cache BEFORE validation (mobile/stateless clients
+        // never have otp_hash in step2_data — it is server-side only)
+        if (empty($step2['otp_hash'])) {
+            $foundHash = null;
+            try {
+                $normalizedEmail = isset($step2['company_email']) ? strtolower(trim($step2['company_email'])) : (isset($step2['email']) ? strtolower(trim($step2['email'])) : null);
+                $otpTokenFromRequest = $request->input('otp_token') ?? null;
+                $clientIp = $request->ip();
+
+                // 1) Try token lookup
+                if (!empty($otpTokenFromRequest)) {
+                    $meta = Cache::get('signup_otp_token_' . $otpTokenFromRequest);
+                    if (!empty($meta) && isset($meta['hash'])) {
+                        $foundHash = $meta['hash'];
+                        \Log::info('Found contractor OTP hash via otp_token lookup (pre-validation)');
+                    }
+                }
+
+                // 2) Try email lookup
+                if (!$foundHash && !empty($normalizedEmail)) {
+                    $meta = Cache::get('signup_otp_' . $normalizedEmail);
+                    if (!empty($meta) && isset($meta['hash'])) {
+                        $foundHash = $meta['hash'];
+                        \Log::info('Found contractor OTP hash via email lookup (pre-validation) for ' . $normalizedEmail);
+                    }
+                }
+
+                // 3) IP fallback
+                if (!$foundHash && !empty($clientIp)) {
+                    try {
+                        $mapped = Cache::get('signup_otp_ip_' . $clientIp);
+                        if ($mapped) {
+                            $meta = Cache::get('signup_otp_' . $mapped);
+                            if (!empty($meta) && isset($meta['hash'])) {
+                                $foundHash = $meta['hash'];
+                                \Log::info('Found contractor OTP hash via IP fallback (pre-validation) for ' . $clientIp . ' -> ' . $mapped);
+                            }
+                        }
+                    } catch (\Exception $e) {
+                        \Log::warning('Failed contractor IP fallback OTP lookup (pre-validation): ' . $e->getMessage());
+                    }
+                }
+            } catch (\Throwable $e) {
+                \Log::warning('Contractor OTP hash lookup failed (pre-validation): ' . $e->getMessage());
+            }
+
+            if ($foundHash) {
+                $step2['otp_hash'] = $foundHash;
+                \Log::info('Recovered contractor OTP hash from cache before validation');
+            }
         }
 
         // Check if all required session data exists with detailed validation
@@ -721,38 +788,6 @@ class authController extends Controller
         }
 
         // Create user
-        // If OTP hash not present in session/request, try to lookup from cache using
-        // company_email or otp_token (useful for stateless mobile flow).
-        if ((empty($step2['otp_hash']) || !isset($step2['otp_hash'])) ) {
-            $foundHash = null;
-            try {
-                $normalizedEmail = isset($step2['company_email']) ? strtolower(trim($step2['company_email'])) : (isset($step2['email']) ? strtolower(trim($step2['email'])) : null);
-                $otpTokenFromRequest = $request->input('otp_token') ?? null;
-
-                if (!empty($otpTokenFromRequest)) {
-                    $meta = Cache::get('signup_otp_token_' . $otpTokenFromRequest);
-                    if (!empty($meta) && isset($meta['hash'])) {
-                        $foundHash = $meta['hash'];
-                        \Log::info('Found OTP hash via otp_token lookup in final step');
-                    }
-                }
-
-                if (!$foundHash && !empty($normalizedEmail)) {
-                    $meta = Cache::get('signup_otp_' . $normalizedEmail);
-                    if (!empty($meta) && isset($meta['hash'])) {
-                        $foundHash = $meta['hash'];
-                        \Log::info('Found OTP hash via email lookup in final step for ' . $normalizedEmail);
-                    }
-                }
-            } catch (\Throwable $e) {
-                \Log::warning('OTP hash lookup failed in final step: ' . $e->getMessage());
-            }
-
-            if ($foundHash) {
-                $step2['otp_hash'] = $foundHash;
-            }
-        }
-
         // If user already exists (username or email), reuse it to avoid duplicate inserts
         $existingUser = null;
         try {
@@ -790,14 +825,13 @@ class authController extends Controller
                 \Log::warning('Existing contractor lookup failed: ' . $e->getMessage());
             }
         } else {
-            // Do NOT set user_type to contractor yet; keep original user_type
             $userId = $this->accountClass->createUser([
                 'profile_pic' => $profilePicPath,
                 'username' => $step2['username'] ?? null,
                 'email' => $step2['company_email'] ?? ($step2['email'] ?? null),
                 'password_hash' => isset($step2['password']) ? $this->authService->hashPassword($step2['password']) : null,
                 'OTP_hash' => $step2['otp_hash'] ?? null,
-                // 'user_type' => 'contractor' // Do NOT set yet
+                'user_type' => 'contractor',
             ]);
 
             // Log creation result for debugging (temporary)
@@ -1195,8 +1229,30 @@ class authController extends Controller
 
             try { if (!empty($attemptKeyBase)) Cache::forget($attemptKeyBase); } catch (\Throwable $e) { \Log::warning('Failed to clear owner OTP attempts: ' . $e->getMessage()); }
 
-            // clear cached entries but keep session hash until final
-            try { if (!empty($normalizedEmail)) Cache::forget('signup_otp_owner_' . $normalizedEmail); if (!empty($otpToken)) Cache::forget('signup_otp_token_owner_' . $otpToken); if (!empty($clientIp)) Cache::forget('signup_otp_owner_ip_' . $clientIp); } catch (\Exception $e) { \Log::warning('Failed to cleanup owner OTP cache after verify: ' . $e->getMessage()); }
+            // Do NOT delete the OTP cache entries yet — stateless mobile clients
+            // need them during the final step to recover the otp_hash (they have
+            // no session).  Instead, mark them as verified so the entries remain
+            // until they expire naturally or the final step consumes them.
+            try {
+                // Give verified OTP entries a longer TTL since the user still needs
+                // to complete step 4 (documents) and the profile picture step
+                $verifiedTtl = max((int)config('otp.ttl_seconds', 900), 1800); // at least 30 minutes
+                if (!empty($normalizedEmail)) {
+                    $existing = Cache::get('signup_otp_owner_' . $normalizedEmail);
+                    if (is_array($existing)) {
+                        $existing['verified'] = true;
+                        Cache::put('signup_otp_owner_' . $normalizedEmail, $existing, now()->addSeconds($verifiedTtl));
+                    }
+                }
+                if (!empty($otpToken)) {
+                    $existing = Cache::get('signup_otp_token_owner_' . $otpToken);
+                    if (is_array($existing)) {
+                        $existing['verified'] = true;
+                        Cache::put('signup_otp_token_owner_' . $otpToken, $existing, now()->addSeconds($verifiedTtl));
+                    }
+                }
+                // IP mapping can stay as-is — it's just a pointer to the email key
+            } catch (\Exception $e) { \Log::warning('Failed to update owner OTP cache after verify: ' . $e->getMessage()); }
 
             try {
                 $s = Session::get('owner_step2', []);
@@ -1425,6 +1481,58 @@ class authController extends Controller
         $step4['valid_id_back_photo'] = $step4['valid_id_back_photo'] ?? null;
         $step4['police_clearance'] = $step4['police_clearance'] ?? null;
 
+        // Recover OTP hash from cache BEFORE validation (mobile/stateless clients
+        // never have otp_hash in step2_data — it is server-side only)
+        if (empty($step2['otp_hash'])) {
+            $foundHash = null;
+            try {
+                $normalizedEmail = isset($step2['email']) ? strtolower(trim($step2['email'])) : (isset($step2['owner_email']) ? strtolower(trim($step2['owner_email'])) : null);
+                $otpTokenFromRequest = $request->input('otp_token') ?? $request->input('identifier') ?? null;
+                $clientIp = $request->ip();
+
+                // 1) Try token lookup
+                if (!empty($otpTokenFromRequest)) {
+                    $meta = Cache::get('signup_otp_token_owner_' . $otpTokenFromRequest);
+                    if (!empty($meta) && isset($meta['hash'])) {
+                        $foundHash = $meta['hash'];
+                        \Log::info('Found owner OTP hash via otp_token lookup in final step (pre-validation)');
+                    }
+                }
+
+                // 2) Try email lookup
+                if (!$foundHash && !empty($normalizedEmail)) {
+                    $meta = Cache::get('signup_otp_owner_' . $normalizedEmail);
+                    if (!empty($meta) && isset($meta['hash'])) {
+                        $foundHash = $meta['hash'];
+                        \Log::info('Found owner OTP hash via email lookup in final step (pre-validation) for ' . $normalizedEmail);
+                    }
+                }
+
+                // 3) IP fallback mapping
+                if (!$foundHash && !empty($clientIp)) {
+                    try {
+                        $mapped = Cache::get('signup_otp_owner_ip_' . $clientIp);
+                        if ($mapped) {
+                            $meta = Cache::get('signup_otp_owner_' . $mapped);
+                            if (!empty($meta) && isset($meta['hash'])) {
+                                $foundHash = $meta['hash'];
+                                \Log::info('Found owner OTP hash via IP fallback lookup (pre-validation) for ' . $clientIp . ' -> ' . $mapped);
+                            }
+                        }
+                    } catch (\Exception $e) {
+                        \Log::warning('Failed owner IP fallback OTP lookup (pre-validation): ' . $e->getMessage());
+                    }
+                }
+            } catch (\Throwable $e) {
+                \Log::warning('Owner OTP hash lookup failed in final step (pre-validation): ' . $e->getMessage());
+            }
+
+            if ($foundHash) {
+                $step2['otp_hash'] = $foundHash;
+                \Log::info('Recovered OTP hash from cache before validation');
+            }
+        }
+
         // More detailed validation
         $missing = [];
         if (!$step1) $missing[] = 'Step 1 data (personal information)';
@@ -1492,56 +1600,6 @@ class authController extends Controller
             }
         }
 
-        // If OTP hash not present, try lookup from cache using token, email, or IP (mirror contractor logic)
-        if (empty($step2['otp_hash']) || !isset($step2['otp_hash'])) {
-            $foundHash = null;
-            try {
-                $normalizedEmail = isset($step2['email']) ? strtolower(trim($step2['email'])) : (isset($step2['owner_email']) ? strtolower(trim($step2['owner_email'])) : null);
-                $otpTokenFromRequest = $request->input('otp_token') ?? $request->input('identifier') ?? null;
-                $clientIp = $request->ip();
-
-                // 1) Try token lookup
-                if (!empty($otpTokenFromRequest)) {
-                    $meta = Cache::get('signup_otp_token_owner_' . $otpTokenFromRequest);
-                    if (!empty($meta) && isset($meta['hash'])) {
-                        $foundHash = $meta['hash'];
-                        \Log::info('Found owner OTP hash via otp_token lookup in final step');
-                    }
-                }
-
-                // 2) Try email lookup
-                if (!$foundHash && !empty($normalizedEmail)) {
-                    $meta = Cache::get('signup_otp_owner_' . $normalizedEmail);
-                    if (!empty($meta) && isset($meta['hash'])) {
-                        $foundHash = $meta['hash'];
-                        \Log::info('Found owner OTP hash via email lookup in final step for ' . $normalizedEmail);
-                    }
-                }
-
-                // 3) IP fallback mapping
-                if (!$foundHash && !empty($clientIp)) {
-                    try {
-                        $mapped = Cache::get('signup_otp_owner_ip_' . $clientIp);
-                        if ($mapped) {
-                            $meta = Cache::get('signup_otp_owner_' . $mapped);
-                            if (!empty($meta) && isset($meta['hash'])) {
-                                $foundHash = $meta['hash'];
-                                \Log::info('Found owner OTP hash via IP fallback lookup for ' . $clientIp . ' -> ' . $mapped);
-                            }
-                        }
-                    } catch (\Exception $e) {
-                        \Log::warning('Failed owner IP fallback OTP lookup: ' . $e->getMessage());
-                    }
-                }
-            } catch (\Throwable $e) {
-                \Log::warning('Owner OTP hash lookup failed in final step: ' . $e->getMessage());
-            }
-
-            if ($foundHash) {
-                $step2['otp_hash'] = $foundHash;
-            }
-        }
-
         // Reuse existing user if present
         $existingUser = null;
         try {
@@ -1584,7 +1642,7 @@ class authController extends Controller
                 'email' => $step2['email'] ?? null,
                 'password_hash' => isset($step2['password']) ? $this->authService->hashPassword($step2['password']) : null,
                 'OTP_hash' => $step2['otp_hash'] ?? null,
-                // 'user_type' => 'property_owner' // Do NOT set yet
+                'user_type' => 'property_owner',
             ]);
 
             try { \Log::info('propertyOwnerFinalStep: created user id -> ' . var_export($userId, true)); } catch (\Throwable $e) {}
@@ -1613,6 +1671,16 @@ class authController extends Controller
 
         // Clear session
         Session::forget(['signup_user_type', 'signup_step', 'owner_step1', 'owner_step2', 'owner_step4']);
+
+        // Clean up OTP cache entries that were preserved for the stateless flow
+        try {
+            $normalizedEmail = isset($step2['email']) ? strtolower(trim($step2['email'])) : null;
+            $otpTokenFromRequest = $request->input('otp_token') ?? null;
+            $clientIp = $request->ip();
+            if (!empty($normalizedEmail)) Cache::forget('signup_otp_owner_' . $normalizedEmail);
+            if (!empty($otpTokenFromRequest)) Cache::forget('signup_otp_token_owner_' . $otpTokenFromRequest);
+            if (!empty($clientIp)) Cache::forget('signup_otp_owner_ip_' . $clientIp);
+        } catch (\Throwable $e) { \Log::warning('Failed to clean up owner OTP cache in final step: ' . $e->getMessage()); }
 
         if ($request->expectsJson()) {
             return response()->json([
