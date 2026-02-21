@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import { auth_service } from '../../services/auth_service';
 
 // Business Documents interface for contractor step 4
 export interface BusinessDocuments {
@@ -228,6 +229,12 @@ export default function BusinessDocumentsScreen({ onBackPress, onNext, companyIn
     const [showPicabCategoryModal, setShowPicabCategoryModal] = useState(false);
     const [showPicabDatePicker, setShowPicabDatePicker] = useState(false);
     const [showPermitDatePicker, setShowPermitDatePicker] = useState(false);
+    const [showPermitCityModal, setShowPermitCityModal] = useState(false);
+
+    // City dropdown data
+    const [allCities, setAllCities] = useState<{code: string; name: string}[]>([]);
+    const [citySearchText, setCitySearchText] = useState('');
+    const [loadingCities, setLoadingCities] = useState(false);
     
     // Date objects for pickers
     const [picabDate, setPicabDate] = useState(() => {
@@ -242,6 +249,24 @@ export default function BusinessDocumentsScreen({ onBackPress, onNext, companyIn
         }
         return new Date();
     });
+
+    // Load all Philippine cities for the Business Permit City dropdown
+    useEffect(() => {
+        const loadAllCities = async () => {
+            setLoadingCities(true);
+            try {
+                const response = await auth_service.get_all_cities();
+                if (response.success && response.data) {
+                    setAllCities(response.data);
+                }
+            } catch (error) {
+                console.error('Failed to load cities:', error);
+            } finally {
+                setLoadingCities(false);
+            }
+        };
+        loadAllCities();
+    }, []);
 
     // Update form fields when initialData changes (when navigating back)
     useEffect(() => {
@@ -347,7 +372,7 @@ export default function BusinessDocumentsScreen({ onBackPress, onNext, companyIn
             return;
         }
         if (!businessPermitCity.trim()) {
-            Alert.alert('Error', 'Please enter business permit city');
+            Alert.alert('Error', 'Please select business permit city');
             return;
         }
         if (!businessPermitExpiration.trim()) {
@@ -473,13 +498,18 @@ export default function BusinessDocumentsScreen({ onBackPress, onNext, companyIn
                     </View>
 
                     <View style={styles.inputContainer}>
-                        <TextInput
-                            style={styles.input}
-                            value={businessPermitCity}
-                            onChangeText={setBusinessPermitCity}
-                            placeholder="Business Permit City *"
-                            placeholderTextColor="#999"
-                        />
+                        <TouchableOpacity
+                            style={[styles.dropdownContainer, loadingCities && { opacity: 0.6 }]}
+                            onPress={() => !loadingCities && setShowPermitCityModal(true)}
+                            disabled={loadingCities}
+                        >
+                            <View style={styles.dropdownInputWrapper}>
+                                <Text style={[styles.dropdownInputText, !businessPermitCity && styles.placeholderText]}>
+                                    {businessPermitCity || (loadingCities ? 'Loading cities...' : 'Business Permit City *')}
+                                </Text>
+                                <MaterialIcons name="keyboard-arrow-down" size={24} color="#666666" style={styles.dropdownIcon} />
+                            </View>
+                        </TouchableOpacity>
                     </View>
 
                     <View style={styles.inputContainer}>
@@ -616,6 +646,62 @@ export default function BusinessDocumentsScreen({ onBackPress, onNext, companyIn
                             currentDate={picabDate}
                             onDateChange={handlePicabDateChange}
                             minimumDate={new Date()}
+                        />
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Business Permit City Selector Modal */}
+            <Modal
+                visible={showPermitCityModal}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => { setShowPermitCityModal(false); setCitySearchText(''); }}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContainer}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Select City</Text>
+                            <TouchableOpacity
+                                onPress={() => { setShowPermitCityModal(false); setCitySearchText(''); }}
+                                style={styles.closeButton}
+                            >
+                                <MaterialIcons name="close" size={24} color="#333333" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={{ paddingHorizontal: 20, marginBottom: 10 }}>
+                            <TextInput
+                                style={[styles.input, { paddingVertical: 12 }]}
+                                placeholder="Search city..."
+                                placeholderTextColor="#999"
+                                value={citySearchText}
+                                onChangeText={setCitySearchText}
+                                autoFocus={true}
+                            />
+                        </View>
+
+                        <FlatList
+                            data={allCities.filter(c =>
+                                c.name.toLowerCase().includes(citySearchText.toLowerCase())
+                            )}
+                            keyExtractor={(item, index) => `${item.code}-${index}`}
+                            renderItem={({ item }) => (
+                                <TouchableOpacity
+                                    style={styles.modalItem}
+                                    onPress={() => {
+                                        setBusinessPermitCity(item.name);
+                                        setShowPermitCityModal(false);
+                                        setCitySearchText('');
+                                    }}
+                                >
+                                    <Text style={styles.modalItemText}>{item.name}</Text>
+                                </TouchableOpacity>
+                            )}
+                            showsVerticalScrollIndicator={false}
+                            initialNumToRender={30}
+                            maxToRenderPerBatch={30}
+                            windowSize={5}
                         />
                     </View>
                 </View>

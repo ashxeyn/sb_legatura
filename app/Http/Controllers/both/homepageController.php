@@ -97,9 +97,10 @@ class homepageController extends Controller
      * ===================================================================== */
 
     /**
-     * GET /api/contractors  ?exclude_user_id=&page=&per_page=
+     * GET /api/contractors  ?exclude_user_id=&page=&per_page=&search=&type_id=&province=&city=&min_experience=&max_experience=&picab_category=&min_completed=
      *
      * Paginated active contractors for the mobile owner feed.
+     * Supports full-text search and advanced filters.
      */
     public function apiGetContractors(Request $request)
     {
@@ -108,10 +109,24 @@ class homepageController extends Controller
             $perPage     = min(50, max(1, (int) $request->query('per_page', 15)));
             $excludeUser = $request->query('exclude_user_id');
 
+            // Collect filter params (all optional)
+            $filters = array_filter([
+                'search'          => $request->query('search'),
+                'type_id'         => $request->query('type_id'),
+                'location'        => $request->query('location'),
+                'province'        => $request->query('province'),
+                'city'            => $request->query('city'),
+                'min_experience'  => $request->query('min_experience'),
+                'max_experience'  => $request->query('max_experience'),
+                'picab_category'  => $request->query('picab_category'),
+                'min_completed'   => $request->query('min_completed'),
+            ], fn ($v) => $v !== null && $v !== '');
+
             $result = $this->feedService->ownerFeedApi(
                 $excludeUser ? (int) $excludeUser : null,
                 $page,
-                $perPage
+                $perPage,
+                $filters
             );
 
             return response()->json([
@@ -119,6 +134,7 @@ class homepageController extends Controller
                 'message'    => 'Contractors retrieved successfully',
                 'data'       => $result['data'],
                 'pagination' => $result['pagination'],
+                'filters'    => $filters,
             ], 200);
         } catch (\Exception $e) {
             Log::error('apiGetContractors error: ' . $e->getMessage());
@@ -160,10 +176,11 @@ class homepageController extends Controller
      * ===================================================================== */
 
     /**
-     * GET /api/contractor/projects  ?user_id=&page=&per_page=
+     * GET /api/contractor/projects  ?user_id=&page=&per_page=&search=&type_id=&property_type=&province=&city=&budget_min=&budget_max=&project_status=
      *
      * Paginated open projects for the mobile contractor feed.
      * Excludes already-bid projects and sorts matching type first.
+     * Supports full-text search and advanced filters.
      */
     public function apiGetApprovedProjects(Request $request)
     {
@@ -172,19 +189,82 @@ class homepageController extends Controller
             $perPage = min(50, max(1, (int) $request->query('per_page', 15)));
             $userId  = $this->resolveUserId($request);
 
-            $result = $this->feedService->contractorFeedApi($userId, $page, $perPage);
+            // Collect filter params (all optional)
+            $filters = array_filter([
+                'search'         => $request->query('search'),
+                'type_id'        => $request->query('type_id'),
+                'property_type'  => $request->query('property_type'),
+                'location'       => $request->query('location'),
+                'province'       => $request->query('province'),
+                'city'           => $request->query('city'),
+                'budget_min'     => $request->query('budget_min'),
+                'budget_max'     => $request->query('budget_max'),
+                'project_status' => $request->query('project_status'),
+                'min_lot_size'   => $request->query('min_lot_size'),
+                'max_lot_size'   => $request->query('max_lot_size'),
+                'min_floor_area' => $request->query('min_floor_area'),
+                'max_floor_area' => $request->query('max_floor_area'),
+            ], fn ($v) => $v !== null && $v !== '');
+
+            $result = $this->feedService->contractorFeedApi($userId, $page, $perPage, $filters);
 
             return response()->json([
                 'success'    => true,
                 'message'    => 'Projects retrieved successfully',
                 'data'       => $result['data'],
                 'pagination' => $result['pagination'],
+                'filters'    => $filters,
             ], 200);
         } catch (\Exception $e) {
             Log::error('apiGetApprovedProjects error: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Error retrieving projects: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /* =====================================================================
+     * API — Filter options  (dropdown data for mobile filter sheet)
+     * ===================================================================== */
+
+    /**
+     * GET /api/search/filter-options
+     *
+     * Returns all available filter options for the mobile search/filter UI:
+     *  • contractor_types   — id + name for type dropdown
+     *  • property_types     — ENUM values from projects table
+     *  • project_statuses   — available project status values
+     *  • picab_categories   — available PICAB classifications
+     */
+    public function apiGetFilterOptions(Request $request)
+    {
+        try {
+            $contractorTypes = $this->feedService->getContractorTypes();
+            $propertyTypes   = (new \App\Models\both\feedClass)->getEnumValues('projects', 'property_type');
+
+            $picabCategories = ['AAAA', 'AAA', 'AA', 'A', 'B', 'C', 'D', 'Trade/E'];
+
+            $projectStatuses = [
+                ['value' => 'open', 'label' => 'Open for Bidding'],
+                ['value' => 'completed', 'label' => 'Completed Projects'],
+                ['value' => 'all', 'label' => 'All Projects'],
+            ];
+
+            return response()->json([
+                'success' => true,
+                'data'    => [
+                    'contractor_types'  => $contractorTypes,
+                    'property_types'    => $propertyTypes,
+                    'project_statuses'  => $projectStatuses,
+                    'picab_categories'  => $picabCategories,
+                ],
+            ], 200);
+        } catch (\Exception $e) {
+            Log::error('apiGetFilterOptions error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error retrieving filter options: ' . $e->getMessage(),
             ], 500);
         }
     }

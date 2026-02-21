@@ -24,6 +24,7 @@ import HelpCenterScreen from './src/screens/both/helpCenter';
 import SwitchRoleScreen from './src/screens/both/switchRole';
 import RoleAddScreen from './src/screens/both/addRoleRegistration';
 import { api_config } from './src/config/api';
+import { set_unauthorized_handler, reset_unauthorized_guard } from './src/config/api';
 import EmailVerificationScreen from './src/screens/both/emailVerification';
 import ProfilePictureScreen from './src/screens/both/profilePic';
 import HomepageScreen from './src/screens/both/homepage';
@@ -236,6 +237,8 @@ export default function App() {
     };
 
     const handle_login_success = async (userData?: any) => {
+        // Reset the 401 guard so the fresh token can trigger logout if it later becomes invalid
+        reset_unauthorized_guard();
         // Store user data from login response
         if (userData) {
             set_user_data(userData);
@@ -280,6 +283,14 @@ export default function App() {
         // Navigate to auth choice screen
         set_app_state('auth_choice');
     };
+
+    // Register handle_logout as the global 401 handler so any api_request that
+    // receives a 401 (token invalid / DB reset) immediately triggers logout
+    // instead of retrying or silently failing.
+    useEffect(() => {
+        set_unauthorized_handler(handle_logout);
+        // No cleanup needed — the handler remains registered for app lifetime
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Show loading screen while checking stored authentication
     if (checking_auth) {

@@ -62,9 +62,9 @@ class FeedService
     /**
      * API: paginated contractor list for mobile owner feed.
      */
-    public function ownerFeedApi(?int $excludeUserId, int $page = 1, int $perPage = 15): array
+    public function ownerFeedApi(?int $excludeUserId, int $page = 1, int $perPage = 15, array $filters = []): array
     {
-        return $this->feed->getActiveContractors($excludeUserId, $page, $perPage);
+        return $this->feed->getActiveContractors($excludeUserId, $page, $perPage, $filters);
     }
 
     /* =====================================================================
@@ -95,7 +95,7 @@ class FeedService
      * Resolves the contractor's type_id so matching projects sort first,
      * and excludes projects the contractor already bid on.
      */
-    public function contractorFeedApi(?int $userId, int $page = 1, int $perPage = 15): array
+    public function contractorFeedApi(?int $userId, int $page = 1, int $perPage = 15, array $filters = []): array
     {
         $contractorId     = null;
         $contractorTypeId = null;
@@ -108,7 +108,7 @@ class FeedService
             }
         }
 
-        return $this->feed->getApprovedProjects($contractorId, $contractorTypeId, $page, $perPage);
+        return $this->feed->getApprovedProjects($contractorId, $contractorTypeId, $page, $perPage, $filters);
     }
 
     /* =====================================================================
