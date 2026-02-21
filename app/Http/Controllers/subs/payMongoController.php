@@ -101,7 +101,7 @@ class payMongoController extends Controller
                         'subscription_tier' => $planTier,
                         'amount' => $plan['amount'] / 100,
                         'transaction_number' => $checkoutSessionId,
-                        'is_approved' => 0, // Pending
+                        'is_approved' => config('app.env') === 'local' ? 1 : 0,
                         'transaction_date' => now(),
                         'expiration_date' => now()->addMonth(),
                         'payment_type' => 'PayMongo'
@@ -198,7 +198,7 @@ class payMongoController extends Controller
                         'payment_for' => 'boosted_post',
                         'amount' => 49.00,
                         'transaction_number' => $checkoutSessionId,
-                        'is_approved' => 0, // Pending
+                        'is_approved' => config('app.env') === 'local' ? 1 : 0,
                         'transaction_date' => now(),
                         'expiration_date' => now()->addDays(7),
                         'payment_type' => 'PayMongo'
@@ -300,16 +300,6 @@ class payMongoController extends Controller
                             DB::table('platform_payments')
                                 ->where('platform_payment_id', $lockedPayment->platform_payment_id)
                                 ->update(['is_approved' => 1]);
-
-                            // Apply Boost logic if needed
-                            if ($lockedPayment->payment_for === 'boosted_post' && $lockedPayment->project_id) {
-                                DB::table('projects')
-                                    ->where('project_id', $lockedPayment->project_id)
-                                    ->update([
-                                    'is_boosted' => 1,
-                                    'boost_expires_at' => now()->addDays(7)
-                                ]);
-                            }
                         }
                     });
 
@@ -356,17 +346,6 @@ class payMongoController extends Controller
                             ->update(['is_approved' => 1]);
 
                         Log::info('Webhook: Payment marked as approved for ID: ' . $payment->platform_payment_id);
-
-                        // If boosted post, update project
-                        if ($lockedPayment->payment_for === 'boosted_post' && $lockedPayment->project_id) {
-                            DB::table('projects')
-                                ->where('project_id', $lockedPayment->project_id)
-                                ->update([
-                                'is_boosted' => 1,
-                                'boost_expires_at' => now()->addDays(7)
-                            ]);
-                            Log::info('Webhook: Project ' . $lockedPayment->project_id . ' boosted.');
-                        }
                     }
                     else {
                         Log::info('Webhook: Payment already approved (Idempotent check).');
