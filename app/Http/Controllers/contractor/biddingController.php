@@ -182,10 +182,17 @@ class biddingController extends Controller
         }
     }
 
-    public function update(biddingRequest $request)
+    public function update(Request $request)
     {
         try {
+            // Support both web (Session) and mobile (Sanctum / user_id param) auth
             $user = Session::get('user');
+            if (!$user && $request->user()) {
+                $user = $request->user();
+            }
+            if (!$user && $request->input('user_id')) {
+                $user = DB::table('users')->where('user_id', $request->input('user_id'))->first();
+            }
             if (!$user) {
                 return response()->json(['success' => false, 'message' => 'User not authenticated.'], 401);
             }
@@ -195,13 +202,43 @@ class biddingController extends Controller
                 ->where('user_id', $user->user_id)
                 ->first();
 
+            // Also check staff membership (representative) for mobile
+            if (!$contractor) {
+                $contractorUser = DB::table('contractor_users')
+                    ->where('user_id', $user->user_id)
+                    ->where('is_active', 1)
+                    ->where('is_deleted', 0)
+                    ->first();
+
+                if ($contractorUser) {
+                    $contractor = DB::table('contractors')
+                        ->where('contractor_id', $contractorUser->contractor_id)
+                        ->first();
+                }
+            }
+
             if (!$contractor) {
                 return response()->json(['success' => false, 'message' => 'Contractor profile not found.'], 404);
             }
 
+            // Resolve bid_id from request body or route parameter
+            $bidId = $request->input('bid_id') ?: $request->route('id');
+
+            if (!$bidId) {
+                return response()->json(['success' => false, 'message' => 'Bid ID is required.'], 400);
+            }
+
+            // Validate basic inputs
+            if (!$request->input('proposed_cost') || !is_numeric($request->input('proposed_cost'))) {
+                return response()->json(['success' => false, 'message' => 'Proposed cost is required and must be numeric.'], 422);
+            }
+            if (!$request->input('estimated_timeline')) {
+                return response()->json(['success' => false, 'message' => 'Estimated timeline is required.'], 422);
+            }
+
             // Verify bid belongs to contractor
             $bid = DB::table('bids')
-                ->where('bid_id', $request->bid_id)
+                ->where('bid_id', $bidId)
                 ->where('contractor_id', $contractor->contractor_id)
                 ->first();
 
@@ -215,31 +252,40 @@ class biddingController extends Controller
             }
 
             // Update bid
-            $this->biddingClass->updateBid($request->bid_id, [
-                'proposed_cost' => $request->proposed_cost,
-                'estimated_timeline' => $request->estimated_timeline,
-                'contractor_notes' => $request->contractor_notes
+            $this->biddingClass->updateBid($bidId, [
+                'proposed_cost' => $request->input('proposed_cost'),
+                'estimated_timeline' => $request->input('estimated_timeline'),
+                'contractor_notes' => $request->input('contractor_notes')
             ]);
 
             // Handle new file uploads
             if ($request->hasFile('bid_files')) {
-                foreach ($request->file('bid_files') as $file) {
-                    $fileName = time() . '_' . $file->getClientOriginalName();
-                    $filePath = $file->storeAs('bid_files', $fileName, 'public');
+                $files = $request->file('bid_files');
+                if (!is_array($files)) {
+                    $files = [$files];
+                }
+                foreach ($files as $file) {
+                    if ($file && $file->isValid()) {
+                        $fileName = time() . '_' . uniqid() . '_' . $file->getClientOriginalName();
+                        $filePath = $file->storeAs('bid_files', $fileName, 'public');
 
-                    $this->biddingClass->createBidFile([
-                        'bid_id' => $request->bid_id,
-                        'file_name' => $file->getClientOriginalName(),
-                        'file_path' => $filePath,
-                        'description' => null
-                    ]);
+                        $this->biddingClass->createBidFile([
+                            'bid_id' => $bidId,
+                            'file_name' => $file->getClientOriginalName(),
+                            'file_path' => $filePath,
+                            'description' => null
+                        ]);
+                    }
                 }
             }
 
             // Handle file deletions
             if ($request->has('delete_files')) {
-                foreach ($request->delete_files as $fileId) {
-                    $this->biddingClass->deleteBidFile($fileId);
+                $deleteFiles = $request->input('delete_files');
+                if (is_array($deleteFiles)) {
+                    foreach ($deleteFiles as $fileId) {
+                        $this->biddingClass->deleteBidFile($fileId);
+                    }
                 }
             }
 
@@ -250,6 +296,7 @@ class biddingController extends Controller
 
         }
         catch (\Exception $e) {
+            \Log::error('Bid update error: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
             return response()->json([
                 'success' => false,
                 'message' => 'An error occurred: ' . $e->getMessage()
@@ -641,6 +688,13 @@ class biddingController extends Controller
                 ], 200);
             }
 
+            // Fetch bid files (attachments the contractor uploaded)
+            $bidFiles = DB::table('bid_files')
+                ->where('bid_id', $bid->bid_id)
+                ->select('file_id', 'bid_id', 'file_name', 'file_path', 'description', 'uploaded_at')
+                ->get();
+            $bid->files = $bidFiles->toArray();
+
             return response()->json([
                 'success' => true,
                 'message' => 'Bid retrieved successfully',
@@ -733,13 +787,20 @@ class biddingController extends Controller
                 ->orderBy('bids.submitted_at', 'desc')
                 ->get();
 
-            // Fetch project files for each bid
+            // Fetch project files and bid files for each bid
             foreach ($bids as $bid) {
                 $projectFiles = DB::table('project_files')
                     ->where('project_id', $bid->project_id)
                     ->select('file_type', 'file_path')
                     ->get();
                 $bid->project_files = $projectFiles;
+
+                // Fetch bid files (attachments the contractor uploaded)
+                $bidFiles = DB::table('bid_files')
+                    ->where('bid_id', $bid->bid_id)
+                    ->select('file_id', 'bid_id', 'file_name', 'file_path', 'description', 'uploaded_at')
+                    ->get();
+                $bid->files = $bidFiles->toArray();
             }
 
             return response()->json([

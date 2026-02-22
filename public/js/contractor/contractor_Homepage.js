@@ -43,31 +43,28 @@ class ContractorHomepage {
     }
 
     init() {
-        // Prefer server-provided projects when available; otherwise display mock data immediately while API loads
-        if (window.serverProjects && Array.isArray(window.serverProjects) && window.serverProjects.length > 0) {
-            this.projects = window.serverProjects;
-        } else {
-            this.projects = this.getMockProjects();
-        }
-        this.filteredProjects = [...this.projects];
+        this.projects = [];
+        this.filteredProjects = [];
 
-        // Setup filter functionality (must be before renderProjects to populate options)
+        // Pagination
+        this.currentPage = 1;
+        this.perPage = 15;
+        this.hasMore = false;
+        this.totalResults = 0;
+        this.isLoading = false;
+
+        // Setup filter functionality
         this.setupFilters();
-
-        // Render projects
-        this.renderProjects();
 
         // Setup navbar search functionality
         this.setupNavbarSearch();
 
-        // Load projects from API in background (will override if API returns data)
-        this.loadProjects();
+        // Fetch projects from API (server-side search)
+        this.fetchFromApi();
     }
 
     setupNavbarSearch() {
-        // Wait a bit for navbar to be fully loaded
         setTimeout(() => {
-            // Get the navbar search input
             const navbarSearchInput = document.querySelector('.navbar-search-input');
             const navbarSearchButton = document.querySelector('.navbar-search-btn');
 
@@ -76,90 +73,136 @@ class ContractorHomepage {
                 return;
             }
 
-            // Store reference for later use
             this.navbarSearchInput = navbarSearchInput;
 
-            // Debounce function for search input
             let searchTimeout;
-            const debounceSearch = (value) => {
+
+            navbarSearchInput.addEventListener('input', (e) => {
                 clearTimeout(searchTimeout);
-                searchTimeout = setTimeout(() => {
-                    this.handleSearch(value);
-                }, 300); // 300ms delay
-            };
-
-            // Create named handler functions for easy removal
-            const inputHandler = (e) => {
                 const value = e.target.value.trim();
-                if (value.length === 0) {
-                    // Clear search immediately if empty
-                    clearTimeout(searchTimeout);
-                    this.handleSearch('');
+                if (!value) {
+                    this.currentSearchTerm = '';
+                    this.fetchFromApi();
                 } else {
-                    debounceSearch(value);
+                    searchTimeout = setTimeout(() => {
+                        this.currentSearchTerm = value;
+                        this.fetchFromApi();
+                    }, 350);
                 }
-            };
+            });
 
-            const keypressHandler = (e) => {
+            navbarSearchInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
                     clearTimeout(searchTimeout);
-                    this.handleSearch(e.target.value.trim());
+                    this.currentSearchTerm = e.target.value.trim();
+                    this.fetchFromApi();
                 }
-            };
+            });
 
-            const keydownHandler = (e) => {
+            navbarSearchInput.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape') {
                     navbarSearchInput.value = '';
                     clearTimeout(searchTimeout);
-                    this.handleSearch('');
+                    this.currentSearchTerm = '';
+                    this.fetchFromApi();
                 }
-            };
+            });
 
-            const buttonClickHandler = (e) => {
-                e.preventDefault();
-                clearTimeout(searchTimeout);
-                this.handleSearch(navbarSearchInput.value.trim());
-            };
-
-            // Store handlers for potential cleanup
-            this.searchHandlers = {
-                input: inputHandler,
-                keypress: keypressHandler,
-                keydown: keydownHandler,
-                buttonClick: buttonClickHandler
-            };
-
-            // Search on input with debouncing
-            navbarSearchInput.addEventListener('input', inputHandler);
-
-            // Search on Enter key (immediate, no debounce)
-            navbarSearchInput.addEventListener('keypress', keypressHandler);
-
-            // Clear search on Escape key
-            navbarSearchInput.addEventListener('keydown', keydownHandler);
-
-            // Search on button click (immediate, no debounce)
             if (navbarSearchButton) {
-                navbarSearchButton.addEventListener('click', buttonClickHandler);
+                navbarSearchButton.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    clearTimeout(searchTimeout);
+                    this.currentSearchTerm = navbarSearchInput.value.trim();
+                    this.fetchFromApi();
+                });
             }
 
             console.log('Navbar search initialized for contractor homepage');
         }, 100);
     }
 
-    handleSearch(query) {
-        const searchTerm = query.toLowerCase().trim();
+    /**
+     * Build query string from current search + filters + pagination
+     */
+    buildApiParams(page = 1) {
+        const params = new URLSearchParams();
+        params.set('page', page.toString());
+        params.set('per_page', this.perPage.toString());
 
-        // Store search term for later use
-        this.currentSearchTerm = searchTerm;
+        if (window.userId) params.set('user_id', window.userId.toString());
+        if (this.currentSearchTerm) params.set('search', this.currentSearchTerm);
+        if (this.activeFilters.province) params.set('province', this.activeFilters.province);
+        if (this.activeFilters.city) params.set('city', this.activeFilters.city);
+        if (this.activeFilters.propertyType) params.set('property_type', this.activeFilters.propertyType);
+        if (this.activeFilters.budgetMin) params.set('budget_min', this.activeFilters.budgetMin);
+        if (this.activeFilters.budgetMax) params.set('budget_max', this.activeFilters.budgetMax);
 
-        // Apply both search and filters together
-        this.applySearchAndFilters();
+        return params.toString();
+    }
 
-        // Update UI
-        this.renderProjects();
-        this.updateEmptyState();
+    /**
+     * Fetch projects from backend API (server-side search/filter/pagination)
+     */
+    async fetchFromApi(page = 1) {
+        if (this.isLoading) return;
+        this.isLoading = true;
+        this.showLoadingState();
+
+        try {
+            const qs = this.buildApiParams(page);
+            const response = await fetch(`${this.apiUrl}?${qs}`, {
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            });
+            const data = await response.json();
+
+            if (data.success && data.data) {
+                const results = Array.isArray(data.data) ? data.data : [];
+                if (page === 1) {
+                    this.projects = results;
+                } else {
+                    this.projects = [...this.projects, ...results];
+                }
+                this.filteredProjects = [...this.projects];
+                this.currentPage = page;
+                this.hasMore = data.pagination?.has_more || false;
+                this.totalResults = data.pagination?.total || results.length;
+            } else {
+                if (page === 1) {
+                    this.projects = [];
+                    this.filteredProjects = [];
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching projects:', error);
+            if (page === 1) {
+                this.projects = [];
+                this.filteredProjects = [];
+            }
+        } finally {
+            this.isLoading = false;
+            this.hideLoadingState();
+            this.renderProjects();
+            this.updateEmptyState();
+        }
+    }
+
+    showLoadingState() {
+        if (!this.projectsGrid) return;
+        let loader = document.getElementById('searchLoadingIndicator');
+        if (!loader) {
+            loader = document.createElement('div');
+            loader.id = 'searchLoadingIndicator';
+            loader.style.cssText = 'text-align:center;padding:24px;color:#EC7E00;font-size:14px;';
+            loader.innerHTML = '<i class="fi fi-rr-spinner" style="animation:spin 1s linear infinite;display:inline-block;margin-right:6px;"></i> Searching...';
+            this.projectsGrid.parentNode.insertBefore(loader, this.projectsGrid);
+        }
+        loader.style.display = '';
+    }
+
+    hideLoadingState() {
+        const loader = document.getElementById('searchLoadingIndicator');
+        if (loader) loader.style.display = 'none';
     }
 
     updateEmptyState() {
@@ -182,55 +225,13 @@ class ContractorHomepage {
     }
 
     async loadProjects() {
-        // Load projects in background and update if API succeeds
-        try {
-            const url = window.userId ? `${this.apiUrl}?user_id=${window.userId}` : this.apiUrl;
-            const response = await fetch(url);
-            const data = await response.json();
-
-            if (data.success && data.data && data.data.length > 0) {
-                this.projects = data.data;
-                // Re-apply current search and filters after loading new data
-                this.applySearchAndFilters();
-                this.populateFilterOptions();
-                this.renderProjects();
-            }
-            // If API fails or returns no data, keep using mock data already displayed
-        } catch (error) {
-            console.error('Error loading projects:', error);
-            // Keep using mock data already displayed
-        }
+        // Replaced by fetchFromApi()
+        this.fetchFromApi();
     }
 
+    // Legacy — replaced by server-side filtering via fetchFromApi
     applySearchAndFilters() {
-        // Start with all projects
-        let projectsToFilter = [...this.projects];
-
-        // Apply active filters first
-        if (this.hasActiveFilters()) {
-            projectsToFilter = this.applyFilters(projectsToFilter);
-        }
-
-        // Then apply search if there's a search term
-        if (this.currentSearchTerm) {
-            projectsToFilter = projectsToFilter.filter(project => {
-                const title = (project.title || project.project_title || '').toLowerCase();
-                const description = (project.description || project.project_description || '').toLowerCase();
-                const ownerName = (project.owner_name || project.owner || project.property_owner_name || '').toLowerCase();
-                const location = (project.project_location || this.formatLocation(project)).toLowerCase();
-                const projectType = (project.type_name || project.project_type || project.type || '').toLowerCase();
-                const budget = (project.budget_range_min || project.budget || project.estimated_budget || 0).toString();
-
-                return title.includes(this.currentSearchTerm) ||
-                    description.includes(this.currentSearchTerm) ||
-                    ownerName.includes(this.currentSearchTerm) ||
-                    location.includes(this.currentSearchTerm) ||
-                    projectType.includes(this.currentSearchTerm) ||
-                    budget.includes(this.currentSearchTerm);
-            });
-        }
-
-        this.filteredProjects = projectsToFilter;
+        this.filteredProjects = [...this.projects];
     }
 
     renderProjects() {
@@ -779,91 +780,29 @@ class ContractorHomepage {
     }
 
     applyFiltersFromUI() {
-        // Get filter values from UI
+        // Extract province name from selected option (value is PSGC code)
         let provinceName = '';
         if (this.filterProvince && this.filterProvince.selectedIndex > 0) {
-            // Use text content (Name) for filtering, not the Code
             const selectedOption = this.filterProvince.options[this.filterProvince.selectedIndex];
             provinceName = selectedOption.dataset.name || selectedOption.text;
         }
 
         this.activeFilters = {
-            province: provinceName, // Filter by Name
+            province: provinceName,
             city: this.filterCity ? this.filterCity.value : '',
             propertyType: this.filterPropertyType ? this.filterPropertyType.value : '',
             budgetMin: this.filterBudgetMin ? this.filterBudgetMin.value : '',
             budgetMax: this.filterBudgetMax ? this.filterBudgetMax.value : ''
         };
 
-        // Apply both filters and search
-        this.applySearchAndFilters();
-
-        // Update UI
+        // Re-fetch from server with new filters
         this.updateFilterBadge();
-        this.renderProjects();
-        this.updateEmptyState();
-        this.closeFilterDropdown();
+        this.fetchFromApi();
     }
 
+    // Legacy — filtering is done server-side now
     applyFilters(projects) {
-        let filtered = [...projects];
-
-        // Filter by province
-        if (this.activeFilters.province) {
-            filtered = filtered.filter(project => {
-                const pLocation = (project.project_location || '').toLowerCase();
-                const pProvince = (project.province || '').toLowerCase();
-                const filterVal = this.activeFilters.province.toLowerCase();
-                // Check if project.province matches OR if location string contains it
-                return pProvince === filterVal || pLocation.includes(filterVal);
-            });
-        }
-
-        // Filter by city
-        if (this.activeFilters.city) {
-            filtered = filtered.filter(project => {
-                const pCity = (project.city || '').toLowerCase();
-                const pLocation = (project.project_location || '').toLowerCase();
-                const filterVal = this.activeFilters.city.toLowerCase();
-                return pCity === filterVal || pLocation.includes(filterVal);
-            });
-        }
-
-        // Filter by property type
-        if (this.activeFilters.propertyType) {
-            filtered = filtered.filter(project => {
-                const type = project.property_type || project.project_type || project.type_name || '';
-                return type.toLowerCase() === this.activeFilters.propertyType.toLowerCase();
-            });
-        }
-
-        // Filter by budget range (Min/Max)
-        const userMin = this.activeFilters.budgetMin ? parseFloat(this.activeFilters.budgetMin) : null;
-        const userMax = this.activeFilters.budgetMax ? parseFloat(this.activeFilters.budgetMax) : null;
-
-        if (userMin !== null || userMax !== null) {
-            filtered = filtered.filter(project => {
-                // Project budget might be single value or range
-                let pMin = 0;
-                let pMax = 0;
-
-                if (project.budget_range_min !== undefined && project.budget_range_max !== undefined) {
-                    pMin = parseFloat(project.budget_range_min) || 0;
-                    pMax = parseFloat(project.budget_range_max) || 0;
-                } else {
-                    const b = parseFloat(project.budget || project.estimated_budget || 0);
-                    pMin = b;
-                    pMax = b;
-                }
-
-                if (userMin !== null && pMax < userMin) return false;
-                if (userMax !== null && pMin > userMax) return false;
-
-                return true;
-            });
-        }
-
-        return filtered;
+        return projects;
     }
 
     clearFilters() {
@@ -890,13 +829,9 @@ class ContractorHomepage {
         // Update city options
         this.updateCityOptions();
 
-        // Re-apply search (if any) after clearing filters
-        this.applySearchAndFilters();
-
-        // Update UI
+        // Re-fetch from server without filters
         this.updateFilterBadge();
-        this.renderProjects();
-        this.updateEmptyState();
+        this.fetchFromApi();
     }
 
     hasActiveFilters() {
@@ -919,95 +854,6 @@ class ContractorHomepage {
         }
     }
 
-    // Mock data for development/testing
-    getMockProjects() {
-        return [
-            {
-                id: 1,
-                title: 'Modern Two-Storey House Construction',
-                owner_name: 'Emmanuelle Santos',
-                description: 'Looking for an experienced contractor to build a modern two-storey house with 3 bedrooms, 2 bathrooms, and an open floor plan. The project includes foundation, framing, roofing, electrical, and plumbing work.',
-                city: 'Manila',
-                province: 'Metro Manila',
-                deadline: '2024-12-31',
-                project_type: 'Residential',
-                budget: 2500000,
-                status: 'open',
-                created_at: '2024-01-15',
-                image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=400&h=300&fit=crop'
-            },
-            {
-                id: 2,
-                title: 'Office Building Renovation',
-                owner_name: 'John Smith',
-                description: 'Complete renovation of a 5-story office building. Includes interior design, electrical upgrades, HVAC system replacement, and facade improvements.',
-                city: 'Makati',
-                province: 'Metro Manila',
-                deadline: '2024-11-30',
-                project_type: 'Commercial',
-                budget: 5000000,
-                status: 'open',
-                created_at: '2024-01-10',
-                image: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=400&h=300&fit=crop'
-            },
-            {
-                id: 3,
-                title: 'Luxury Villa Construction',
-                owner_name: 'Maria Garcia',
-                description: 'High-end villa construction with modern amenities, sustainable design features, swimming pool, and landscaped gardens. Premium materials required.',
-                city: 'Quezon City',
-                province: 'Metro Manila',
-                deadline: '2025-03-31',
-                project_type: 'Residential',
-                budget: 8000000,
-                status: 'open',
-                created_at: '2024-01-05',
-                image: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=400&h=300&fit=crop'
-            },
-            {
-                id: 4,
-                title: 'Warehouse Construction',
-                owner_name: 'Robert Johnson',
-                description: 'Industrial warehouse construction with loading docks, office space, and parking area. Must comply with building codes and safety regulations.',
-                city: 'Caloocan',
-                province: 'Metro Manila',
-                deadline: '2024-10-15',
-                project_type: 'Industrial',
-                budget: 3500000,
-                status: 'active',
-                created_at: '2023-12-20',
-                image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=400&h=300&fit=crop'
-            },
-            {
-                id: 5,
-                title: 'Apartment Complex Development',
-                owner_name: 'Sarah Williams',
-                description: 'Multi-unit apartment complex with 20 units, common areas, parking, and modern facilities. Project includes site development and landscaping.',
-                city: 'Pasig',
-                province: 'Metro Manila',
-                deadline: '2025-06-30',
-                project_type: 'Residential',
-                budget: 12000000,
-                status: 'open',
-                created_at: '2024-01-20',
-                image: 'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=400&h=300&fit=crop'
-            },
-            {
-                id: 6,
-                title: 'Retail Store Fit-Out',
-                owner_name: 'Michael Brown',
-                description: 'Interior fit-out for a new retail store including fixtures, lighting, flooring, and display systems. Fast-track project with tight deadline.',
-                city: 'Taguig',
-                province: 'Metro Manila',
-                deadline: '2024-09-30',
-                project_type: 'Commercial',
-                budget: 800000,
-                status: 'open',
-                created_at: '2024-01-18',
-                image: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=400&h=300&fit=crop'
-            }
-        ];
-    }
 }
 
 // Initialize when DOM is ready

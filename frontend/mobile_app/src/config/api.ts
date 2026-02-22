@@ -1,13 +1,9 @@
 // API configuration for connecting to Laravel backend
-const API_BASE_URL = 'http://192.168.254.112:8000'; //'https://legaturaph.com'
+const API_BASE_URL = 'http://192.168.254.109:8086'; //'https://legaturaph.com'
 
 import { storage_service } from '../utils/storage';
 
-// ---------------------------------------------------------------------------
-// Global 401 / Unauthorized handler
-// Register once from App.tsx so ALL api_request calls trigger logout when the
-// stored token has been invalidated (e.g. after a DB reset or server restart).
-// ---------------------------------------------------------------------------
+
 let _unauthorizedHandler: (() => void) | null = null;
 let _handlingUnauthorized = false; // prevents repeated logout calls when multiple requests are in-flight
 

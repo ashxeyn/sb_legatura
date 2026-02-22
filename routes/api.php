@@ -178,6 +178,8 @@ Route::get('/contractor/projects', [\App\Http\Controllers\both\homepageControlle
 Route::post('/contractor/projects/{projectId}/bid', [\App\Http\Controllers\contractor\biddingController::class , 'apiSubmitBid']);
 Route::get('/contractor/projects/{projectId}/my-bid', [\App\Http\Controllers\contractor\biddingController::class , 'apiGetMyBid']);
 Route::get('/contractor/my-bids', [\App\Http\Controllers\contractor\biddingController::class , 'apiGetMyBids']);
+Route::put('/contractor/bids/{id}', [\App\Http\Controllers\contractor\biddingController::class , 'update']);
+Route::post('/contractor/bids/{id}', [\App\Http\Controllers\contractor\biddingController::class , 'update']); // POST with _method=PUT for FormData
 
 // Contractor milestone setup endpoints
 Route::get('/contractor/my-projects', [\App\Http\Controllers\contractor\cprocessController::class , 'apiGetContractorProjects']);

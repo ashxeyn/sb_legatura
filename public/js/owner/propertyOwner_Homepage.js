@@ -35,105 +35,187 @@ class PropertyOwnerHomepage {
             rating: '',
             experience: ''
         };
+
+        // Search state
+        this.currentSearchTerm = '';
+
+        // Pagination
+        this.currentPage = 1;
+        this.perPage = 15;
+        this.hasMore = false;
+        this.totalResults = 0;
+        this.isLoading = false;
+
+        // Debounce timer
+        this._searchTimeout = null;
         
         this.init();
     }
 
     init() {
-        // Display mock data immediately while API loads
-        this.contractors = this.getMockContractors();
-        this.filteredContractors = [...this.contractors];
-        
-        // Setup filter functionality (must be before renderContractors to populate options)
+        // Setup filter functionality
         this.setupFilters();
-        
-        // Render contractors
-        this.renderContractors();
-        
+
         // Setup navbar search functionality
         this.setupNavbarSearch();
-        
-        // Load contractors from API in background
-        this.loadContractors();
+
+        // Load contractors from API (server-side search)
+        this.fetchFromApi();
     }
 
     setupNavbarSearch() {
         // Get the navbar search input
         const navbarSearchInput = document.querySelector('.navbar-search-input');
         const navbarSearchButton = document.querySelector('.navbar-search-btn');
-        
+
         if (navbarSearchInput) {
-            // Search on input
+            this.navbarSearchInput = navbarSearchInput;
+
+            // Debounced search on input
             navbarSearchInput.addEventListener('input', (e) => {
-                this.handleSearch(e.target.value);
+                clearTimeout(this._searchTimeout);
+                const value = e.target.value.trim();
+                if (!value) {
+                    this.currentSearchTerm = '';
+                    this.fetchFromApi();
+                } else {
+                    this._searchTimeout = setTimeout(() => {
+                        this.currentSearchTerm = value;
+                        this.fetchFromApi();
+                    }, 350);
+                }
             });
 
-            // Search on Enter key
+            // Immediate search on Enter
             navbarSearchInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
-                    this.handleSearch(e.target.value);
+                    clearTimeout(this._searchTimeout);
+                    this.currentSearchTerm = e.target.value.trim();
+                    this.fetchFromApi();
+                }
+            });
+
+            // Escape clears search
+            navbarSearchInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    navbarSearchInput.value = '';
+                    clearTimeout(this._searchTimeout);
+                    this.currentSearchTerm = '';
+                    this.fetchFromApi();
                 }
             });
         }
 
         if (navbarSearchButton) {
-            // Search on button click
             navbarSearchButton.addEventListener('click', () => {
                 if (navbarSearchInput) {
-                    this.handleSearch(navbarSearchInput.value);
+                    clearTimeout(this._searchTimeout);
+                    this.currentSearchTerm = navbarSearchInput.value.trim();
+                    this.fetchFromApi();
                 }
             });
         }
     }
 
-    handleSearch(query) {
-        const searchTerm = query.toLowerCase().trim();
-        
-        // Apply search on already filtered contractors
-        let contractorsToSearch = this.contractors;
-        
-        // First apply active filters
-        if (this.hasActiveFilters()) {
-            contractorsToSearch = this.applyFilters(this.contractors);
+    /**
+     * Build query string from current search + filters + pagination
+     */
+    buildApiParams(page = 1) {
+        const params = new URLSearchParams();
+        params.set('page', page.toString());
+        params.set('per_page', this.perPage.toString());
+
+        if (this.currentSearchTerm) {
+            params.set('search', this.currentSearchTerm);
         }
-        
-        if (!searchTerm) {
-            this.filteredContractors = contractorsToSearch;
-        } else {
-            this.filteredContractors = contractorsToSearch.filter(contractor => {
-                const name = (contractor.company_name || contractor.name || '').toLowerCase();
-                const specialty = (contractor.specialty || contractor.contractor_type || '').toLowerCase();
-                const location = this.formatLocation(contractor).toLowerCase();
-                const contractorType = (contractor.contractor_type || '').toLowerCase();
-                
-                return name.includes(searchTerm) || 
-                       specialty.includes(searchTerm) || 
-                       location.includes(searchTerm) ||
-                       contractorType.includes(searchTerm);
-            });
+        if (this.activeFilters.contractorType) {
+            params.set('type_id', this.activeFilters.contractorType);
         }
-        
-        this.renderContractors();
+        if (this.activeFilters.province) {
+            params.set('province', this.activeFilters.province);
+        }
+        if (this.activeFilters.city) {
+            params.set('city', this.activeFilters.city);
+        }
+        if (this.activeFilters.experience) {
+            params.set('min_experience', this.activeFilters.experience);
+        }
+        // Note: rating filter is not yet supported server-side.
+        // It will be applied client-side as a post-filter below.
+
+        return params.toString();
     }
 
-    async loadContractors() {
-        // Load contractors in background and update if API succeeds
+    /**
+     * Fetch contractors from backend API (server-side search/filter/pagination)
+     */
+    async fetchFromApi(page = 1) {
+        if (this.isLoading) return;
+        this.isLoading = true;
+        this.showLoadingState();
+
         try {
-            const response = await fetch(this.apiUrl);
+            const qs = this.buildApiParams(page);
+            const response = await fetch(`${this.apiUrl}?${qs}`, {
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            });
             const data = await response.json();
 
-            if (data.success && data.data && data.data.length > 0) {
-                this.contractors = data.data;
+            if (data.success && data.data) {
+                let results = Array.isArray(data.data) ? data.data : [];
+
+                // Client-side rating post-filter (not available server-side)
+                if (this.activeFilters.rating) {
+                    const minRating = parseFloat(this.activeFilters.rating);
+                    results = results.filter(c => (c.rating || 0) >= minRating);
+                }
+
+                if (page === 1) {
+                    this.contractors = results;
+                } else {
+                    this.contractors = [...this.contractors, ...results];
+                }
                 this.filteredContractors = [...this.contractors];
-                this.populateFilterOptions();
-                this.renderContractors();
+                this.currentPage = page;
+                this.hasMore = data.pagination?.has_more || false;
+                this.totalResults = data.pagination?.total || results.length;
+            } else {
+                if (page === 1) {
+                    this.contractors = [];
+                    this.filteredContractors = [];
+                }
             }
-            // If API fails or returns no data, keep using mock data already displayed
         } catch (error) {
-            console.error('Error loading contractors:', error);
-            // Keep using mock data already displayed
+            console.error('Error fetching contractors:', error);
+            if (page === 1) {
+                this.contractors = [];
+                this.filteredContractors = [];
+            }
+        } finally {
+            this.isLoading = false;
+            this.hideLoadingState();
+            this.renderContractors();
         }
+    }
+
+    showLoadingState() {
+        if (!this.contractorsGrid) return;
+        // Show a small loading indicator at top of grid
+        let loader = document.getElementById('searchLoadingIndicator');
+        if (!loader) {
+            loader = document.createElement('div');
+            loader.id = 'searchLoadingIndicator';
+            loader.style.cssText = 'text-align:center;padding:24px;color:#EC7E00;font-size:14px;';
+            loader.innerHTML = '<i class="fi fi-rr-spinner" style="animation:spin 1s linear infinite;display:inline-block;margin-right:6px;"></i> Searching...';
+            this.contractorsGrid.parentNode.insertBefore(loader, this.contractorsGrid);
+        }
+        loader.style.display = '';
+    }
+
+    hideLoadingState() {
+        const loader = document.getElementById('searchLoadingIndicator');
+        if (loader) loader.style.display = 'none';
     }
 
 
@@ -356,8 +438,26 @@ class PropertyOwnerHomepage {
     setupFilters() {
         if (!this.filterIconBtn || !this.filterDropdown) return;
 
-        // Populate filter options
+        // Populate filter options from API
         this.populateFilterOptions();
+
+        // Load provinces from PSGC API
+        if (this.filterProvince) {
+            this.filterProvince.innerHTML = '<option value="">All Provinces</option>';
+            fetch('/api/psgc/provinces')
+                .then(res => res.json())
+                .then(data => {
+                    const provinces = data.data || data || [];
+                    provinces.forEach(p => {
+                        const option = document.createElement('option');
+                        option.value = p.code;
+                        option.textContent = p.name;
+                        option.dataset.name = p.name;
+                        this.filterProvince.appendChild(option);
+                    });
+                })
+                .catch(err => console.error('Error loading provinces:', err));
+        }
 
         // Toggle dropdown on filter icon click
         this.filterIconBtn.addEventListener('click', (e) => {
@@ -404,83 +504,63 @@ class PropertyOwnerHomepage {
     }
 
     populateFilterOptions() {
-        if (!this.contractors || this.contractors.length === 0) return;
+        // Fetch filter options from the backend API
+        fetch('/api/search/filter-options', {
+            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (!data.success || !data.data) return;
+            const opts = data.data;
 
-        // Get unique values
-        const contractorTypes = new Set();
-        const provinces = new Set();
-        const cities = new Set();
+            // Populate contractor types from API
+            if (this.filterContractorType && opts.contractor_types) {
+                const currentValue = this.filterContractorType.value;
+                this.filterContractorType.innerHTML = '<option value="">All Types</option>';
+                opts.contractor_types.forEach(ct => {
+                    const option = document.createElement('option');
+                    option.value = ct.type_id;
+                    option.textContent = ct.type_name;
+                    this.filterContractorType.appendChild(option);
+                });
+                if (currentValue) this.filterContractorType.value = currentValue;
+            }
 
-        this.contractors.forEach(contractor => {
-            const type = contractor.contractor_type || contractor.specialty || '';
-            if (type) contractorTypes.add(type);
-
-            if (contractor.province) provinces.add(contractor.province);
-            if (contractor.city) cities.add(contractor.city);
-        });
-
-        // Populate contractor types
-        if (this.filterContractorType) {
-            const currentValue = this.filterContractorType.value;
-            this.filterContractorType.innerHTML = '<option value="">All Types</option>';
-            Array.from(contractorTypes).sort().forEach(type => {
-                const option = document.createElement('option');
-                option.value = type;
-                option.textContent = type;
-                this.filterContractorType.appendChild(option);
-            });
-            if (currentValue) this.filterContractorType.value = currentValue;
-        }
-
-        // Populate provinces
-        if (this.filterProvince) {
-            const currentValue = this.filterProvince.value;
-            this.filterProvince.innerHTML = '<option value="">All Provinces</option>';
-            Array.from(provinces).sort().forEach(province => {
-                const option = document.createElement('option');
-                option.value = province;
-                option.textContent = province;
-                this.filterProvince.appendChild(option);
-            });
-            if (currentValue) this.filterProvince.value = currentValue;
-        }
-
-        // Populate cities (will be updated based on province selection)
-        this.updateCityOptions();
+            // Provinces are loaded via PSGC in setupFilters or are already populated
+        })
+        .catch(err => console.error('Error loading filter options:', err));
     }
 
     updateCityOptions() {
         if (!this.filterCity || !this.filterProvince) return;
 
-        const selectedProvince = this.filterProvince.value;
-        const cities = new Set();
-
-        this.contractors.forEach(contractor => {
-            if (contractor.city) {
-                // If province is selected, only show cities in that province
-                if (selectedProvince && contractor.province === selectedProvince) {
-                    cities.add(contractor.city);
-                } else if (!selectedProvince) {
-                    cities.add(contractor.city);
-                }
-            }
-        });
-
-        const currentValue = this.filterCity.value;
+        const selectedProvinceCode = this.filterProvince.value;
         this.filterCity.innerHTML = '<option value="">All Cities</option>';
-        Array.from(cities).sort().forEach(city => {
-            const option = document.createElement('option');
-            option.value = city;
-            option.textContent = city;
-            this.filterCity.appendChild(option);
-        });
-        
-        // Reset city if province changed and city is no longer valid
-        if (currentValue && !Array.from(cities).includes(currentValue)) {
-            this.filterCity.value = '';
-        } else if (currentValue) {
-            this.filterCity.value = currentValue;
+
+        if (!selectedProvinceCode) {
+            this.filterCity.disabled = true;
+            return;
         }
+
+        this.filterCity.disabled = false;
+        this.filterCity.innerHTML = '<option value="">Loading...</option>';
+
+        // Fetch cities from PSGC API for selected province
+        fetch(`/api/psgc/provinces/${selectedProvinceCode}/cities`)
+            .then(res => res.json())
+            .then(data => {
+                this.filterCity.innerHTML = '<option value="">All Cities</option>';
+                const cities = data.data || data || [];
+                cities.forEach(city => {
+                    const option = document.createElement('option');
+                    option.value = city.name;
+                    option.textContent = city.name;
+                    this.filterCity.appendChild(option);
+                });
+            })
+            .catch(() => {
+                this.filterCity.innerHTML = '<option value="">All Cities</option>';
+            });
     }
 
     toggleFilterDropdown() {
@@ -507,68 +587,31 @@ class PropertyOwnerHomepage {
     }
 
     applyFiltersFromUI() {
+        // Extract province name from selected option (value is PSGC code)
+        let provinceName = '';
+        if (this.filterProvince && this.filterProvince.selectedIndex > 0) {
+            const selectedOption = this.filterProvince.options[this.filterProvince.selectedIndex];
+            provinceName = selectedOption.dataset.name || selectedOption.text;
+        }
+
         // Get filter values from UI
         this.activeFilters = {
             contractorType: this.filterContractorType ? this.filterContractorType.value : '',
-            province: this.filterProvince ? this.filterProvince.value : '',
+            province: provinceName,
             city: this.filterCity ? this.filterCity.value : '',
             rating: this.filterRating ? this.filterRating.value : '',
             experience: this.filterExperience ? this.filterExperience.value : ''
         };
 
-        // Apply filters
-        this.filteredContractors = this.applyFilters(this.contractors);
-        
-        // Update UI
+        // Re-fetch from server with new filters
         this.updateFilterBadge();
-        this.renderContractors();
         this.closeFilterDropdown();
+        this.fetchFromApi();
     }
 
+    // Kept for legacy compatibility but no longer primary path
     applyFilters(contractors) {
-        let filtered = [...contractors];
-
-        // Filter by contractor type
-        if (this.activeFilters.contractorType) {
-            filtered = filtered.filter(contractor => {
-                const type = contractor.contractor_type || contractor.specialty || '';
-                return type === this.activeFilters.contractorType;
-            });
-        }
-
-        // Filter by province
-        if (this.activeFilters.province) {
-            filtered = filtered.filter(contractor => {
-                return contractor.province === this.activeFilters.province;
-            });
-        }
-
-        // Filter by city
-        if (this.activeFilters.city) {
-            filtered = filtered.filter(contractor => {
-                return contractor.city === this.activeFilters.city;
-            });
-        }
-
-        // Filter by minimum rating
-        if (this.activeFilters.rating) {
-            const minRating = parseFloat(this.activeFilters.rating);
-            filtered = filtered.filter(contractor => {
-                const rating = contractor.rating || 0;
-                return rating >= minRating;
-            });
-        }
-
-        // Filter by minimum experience
-        if (this.activeFilters.experience) {
-            const minExperience = parseInt(this.activeFilters.experience);
-            filtered = filtered.filter(contractor => {
-                const experience = contractor.years_experience || contractor.experience || 0;
-                return experience >= minExperience;
-            });
-        }
-
-        return filtered;
+        return contractors;
     }
 
     clearFilters() {
@@ -591,12 +634,9 @@ class PropertyOwnerHomepage {
         // Update city options
         this.updateCityOptions();
 
-        // Reset filtered contractors
-        this.filteredContractors = [...this.contractors];
-        
-        // Update UI
+        // Re-fetch from server without filters
         this.updateFilterBadge();
-        this.renderContractors();
+        this.fetchFromApi();
     }
 
     hasActiveFilters() {
@@ -619,101 +659,6 @@ class PropertyOwnerHomepage {
         }
     }
 
-    // Mock data for development/testing
-    getMockContractors() {
-        return [
-            {
-                id: 1,
-                company_name: 'ABC Company',
-                years_experience: 123,
-                contractor_type: 'Landscaping Contractor',
-                street_address: 'asdasda',
-                barangay: 'Catacdegan Nuevo',
-                city: 'Manabo',
-                province: 'Abra',
-                postal_code: '2311',
-                rating: 5.0,
-                reviews_count: 0,
-                projects_completed: 0,
-                specialty: 'adasd'
-            },
-            {
-                id: 2,
-                company_name: "ADAD's Inc.",
-                years_experience: 23,
-                contractor_type: 'Electrical Contractor',
-                street_address: 'adad',
-                barangay: 'Singi',
-                city: 'Vinzons',
-                province: 'Camarines Norte',
-                postal_code: '2311',
-                rating: 5.0,
-                reviews_count: 0,
-                projects_completed: 0,
-                specialty: 'sdada'
-            },
-            {
-                id: 3,
-                company_name: 'BuildRight Construction',
-                years_experience: 45,
-                contractor_type: 'General Contractor',
-                street_address: '123 Main Street',
-                barangay: 'Poblacion',
-                city: 'Manila',
-                province: 'Metro Manila',
-                postal_code: '1000',
-                rating: 4.8,
-                reviews_count: 127,
-                projects_completed: 89,
-                specialty: 'Residential and Commercial Construction'
-            },
-            {
-                id: 4,
-                company_name: 'PlumbPro Services',
-                years_experience: 30,
-                contractor_type: 'Plumbing Contractor',
-                street_address: '456 Oak Avenue',
-                barangay: 'San Antonio',
-                city: 'Quezon City',
-                province: 'Metro Manila',
-                postal_code: '1100',
-                rating: 4.9,
-                reviews_count: 203,
-                projects_completed: 156,
-                specialty: 'Plumbing Installation and Repair'
-            },
-            {
-                id: 5,
-                company_name: 'RoofMaster Solutions',
-                years_experience: 67,
-                contractor_type: 'Roofing Contractor',
-                street_address: '789 Pine Road',
-                barangay: 'Makati',
-                city: 'Makati',
-                province: 'Metro Manila',
-                postal_code: '1200',
-                rating: 4.7,
-                reviews_count: 89,
-                projects_completed: 67,
-                specialty: 'Roof Installation and Maintenance'
-            },
-            {
-                id: 6,
-                company_name: 'PaintWorks Studio',
-                years_experience: 15,
-                contractor_type: 'Painting Contractor',
-                street_address: '321 Elm Street',
-                barangay: 'Taguig',
-                city: 'Taguig',
-                province: 'Metro Manila',
-                postal_code: '1630',
-                rating: 4.6,
-                reviews_count: 145,
-                projects_completed: 112,
-                specialty: 'Interior and Exterior Painting'
-            }
-        ];
-    }
 }
 
 // Initialize when DOM is ready

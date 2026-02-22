@@ -22,8 +22,12 @@ class biddingRequest extends FormRequest
             'bid_files.*' => 'nullable|file|max:10240|mimes:pdf,doc,docx,jpg,jpeg,png,zip,rar'
         ];
 
-        // For update, bid_id is required
+        // For update, bid_id is required (from body or route param)
         if ($this->isMethod('put') || $this->isMethod('patch')) {
+            // If bid_id not in body, merge from route parameter
+            if (!$this->has('bid_id') && $this->route('id')) {
+                $this->merge(['bid_id' => $this->route('id')]);
+            }
             $rules['bid_id'] = 'required|integer|exists:bids,bid_id';
         }
 

@@ -565,6 +565,76 @@ export class projects_service {
   }
 
   /**
+   * Update an existing bid (contractor) — only for submitted/under_review bids
+   */
+  static async update_bid(
+    bidId: number,
+    userId: number,
+    bidData: {
+      proposed_cost: number;
+      estimated_timeline: string;
+      contractor_notes?: string;
+      bidFiles?: Array<any>;
+      deleteFileIds?: number[];
+    }
+  ): Promise<ApiResponse> {
+    try {
+      // Always use FormData to keep it consistent and support file uploads
+      const formData = new FormData();
+      formData.append('user_id', userId.toString());
+      formData.append('bid_id', bidId.toString());
+      formData.append('proposed_cost', bidData.proposed_cost.toString());
+      formData.append('estimated_timeline', bidData.estimated_timeline);
+      if (bidData.contractor_notes) formData.append('contractor_notes', bidData.contractor_notes);
+
+      // Append new files
+      if (bidData.bidFiles && Array.isArray(bidData.bidFiles) && bidData.bidFiles.length > 0) {
+        bidData.bidFiles.forEach((file: any, index: number) => {
+          const uri = file.uri;
+          const derivedName = file.name || file.fileName || (uri && uri.split('/').pop()) || `bid_file_${index}`;
+          const name = derivedName.includes('.') ? derivedName : `${derivedName}.jpg`;
+          const type = file.type || file.mimeType || (name.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
+          const fileObj: any = { uri, name, type };
+          formData.append('bid_files[]', fileObj as any);
+        });
+      }
+
+      // Append file IDs to delete
+      if (bidData.deleteFileIds && bidData.deleteFileIds.length > 0) {
+        bidData.deleteFileIds.forEach((fileId) => {
+          formData.append('delete_files[]', fileId.toString());
+        });
+      }
+
+      const url = `${api_config.base_url}/api/contractor/bids/${bidId}`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      return {
+        success: response.ok && (data.success !== false),
+        message: data.message || (response.ok ? 'Bid updated' : 'Failed to update bid'),
+        data: data,
+        status: response.status,
+      };
+    } catch (error) {
+      console.error('Error updating bid:', error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to update bid',
+        status: 500,
+      };
+    }
+  }
+
+  /**
    * Get contractor's existing bid for a project
    */
   static async get_my_bid(projectId: number, userId: number): Promise<ApiResponse> {

@@ -12,13 +12,15 @@ import {
   Modal,
   Image,
   Linking,
+  Dimensions,
 } from 'react-native';
 import { StatusBar, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { MaterialIcons, Feather } from '@expo/vector-icons';
+import { MaterialIcons, Feather, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { projects_service } from '../../services/projects_service';
 import MilestoneSetup from './milestoneSetup';
+import PlaceBid from './placeBid';
 import { api_config } from '../../config/api';
 
 interface Bid {
@@ -45,6 +47,14 @@ interface Bid {
   project_files?: Array<{
     file_type: string;
     file_path: string;
+  }>;
+  files?: Array<{
+    file_id: number;
+    bid_id: number;
+    file_name: string;
+    file_path: string;
+    description?: string;
+    uploaded_at?: string;
   }>;
 }
 
@@ -91,6 +101,9 @@ export default function MyBids({ userData, onClose }: MyBidsProps) {
   const [selectedProject, setSelectedProject] = useState<any>(null);
   const [showMilestoneSetup, setShowMilestoneSetup] = useState(false);
   const [isLoadingProject, setIsLoadingProject] = useState(false);
+  const [showEditBid, setShowEditBid] = useState(false);
+  const [editBidProject, setEditBidProject] = useState<any>(null);
+  const [previewFile, setPreviewFile] = useState<{ url: string; name: string; isImage: boolean } | null>(null);
 
   // Debug effect to track state changes
   useEffect(() => {
@@ -236,9 +249,16 @@ export default function MyBids({ userData, onClose }: MyBidsProps) {
     return `${api_config.base_url}/api/files/${filePath}`;
   };
 
-  const handleOpenFile = (filePath: string) => {
+  const handleOpenFile = (filePath: string, fileName?: string) => {
     const url = getFileUrl(filePath);
-    if (url) Linking.openURL(url);
+    if (!url) return;
+    const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(filePath);
+    if (isImage) {
+      setPreviewFile({ url, name: fileName || filePath.split('/').pop() || 'Image', isImage: true });
+    } else {
+      // For PDFs and other docs, open externally
+      Linking.openURL(url);
+    }
   };
 
   const getBidStatusConfig = (status: string) => {
@@ -268,6 +288,48 @@ export default function MyBids({ userData, onClose }: MyBidsProps) {
     rejected: bids.filter(b => b.bid_status === 'rejected').length,
   };
 
+  // Helper: check if a bid status is editable
+  const isEditableStatus = (status: string) => ['pending', 'submitted', 'under_review'].includes(status);
+
+  // Helper: open Place Bid screen in edit mode for a given bid
+  const openEditBid = (bid: Bid) => {
+    // Build a project-shaped object from the bid data for PlaceBid
+    setEditBidProject({
+      project_id: bid.project_id,
+      project_title: bid.project_title,
+      project_description: bid.project_description,
+      project_location: bid.project_location,
+      budget_range_min: bid.budget_range_min,
+      budget_range_max: bid.budget_range_max,
+      property_type: bid.property_type,
+      type_name: bid.type_name,
+      bidding_deadline: bid.bidding_due,
+      owner_name: bid.owner_name,
+    });
+    setShowDetailsModal(false);
+    setShowEditBid(true);
+  };
+
+  // Show Edit Bid screen (PlaceBid in edit mode)
+  if (showEditBid && editBidProject) {
+    return (
+      <PlaceBid
+        project={editBidProject}
+        userId={userData?.user_id || 0}
+        initialEditMode={true}
+        onClose={() => {
+          setShowEditBid(false);
+          setEditBidProject(null);
+        }}
+        onBidSubmitted={() => {
+          setShowEditBid(false);
+          setEditBidProject(null);
+          fetchBids(); // Refresh the bids list
+        }}
+      />
+    );
+  }
+
   // Show Milestone Setup screen if selected - MUST be first check before any other rendering
   if (showMilestoneSetup && selectedProject) {
     console.log('MyBids - Rendering MilestoneSetup with project:', selectedProject);
@@ -296,7 +358,7 @@ export default function MyBids({ userData, onClose }: MyBidsProps) {
 
   if (isLoading && !refreshing) {
     return (
-      <View style={[styles.container, { paddingTop: statusBarHeight }]}>
+      <View style={styles.container}>
         <StatusBar hidden={true} />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.primary} />
@@ -308,7 +370,7 @@ export default function MyBids({ userData, onClose }: MyBidsProps) {
 
   if (isLoadingProject) {
     return (
-      <View style={[styles.container, { paddingTop: statusBarHeight }]}>
+      <View style={styles.container}>
         <StatusBar hidden={true} />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.primary} />
@@ -319,7 +381,7 @@ export default function MyBids({ userData, onClose }: MyBidsProps) {
   }
 
   return (
-    <View style={[styles.container, { paddingTop: statusBarHeight }]}>
+    <View style={styles.container}>
       <StatusBar hidden={true} />
 
       {/* Header */}
@@ -506,6 +568,19 @@ export default function MyBids({ userData, onClose }: MyBidsProps) {
                       <Text style={styles.setupButtonText}>Setup</Text>
                     </TouchableOpacity>
                   )}
+                  {isEditableStatus(bid.bid_status) && (
+                    <TouchableOpacity
+                      style={styles.editBidCardButton}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        openEditBid(bid);
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <Feather name="edit-2" size={14} color={COLORS.primary} />
+                      <Text style={styles.editBidCardButtonText}>Edit Bid</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               </TouchableOpacity>
             );
@@ -521,7 +596,7 @@ export default function MyBids({ userData, onClose }: MyBidsProps) {
         onRequestClose={() => setShowDetailsModal(false)}
       >
         {selectedBid && (
-          <View style={[styles.modalContainer, { paddingTop: statusBarHeight }]}>
+          <View style={styles.modalContainer}>
             <View style={styles.modalHeader}>
               <TouchableOpacity
                 style={styles.modalCloseButton}
@@ -644,7 +719,7 @@ export default function MyBids({ userData, onClose }: MyBidsProps) {
                   {selectedBid.project_files && selectedBid.project_files.length > 0 ? (
                     <View style={styles.documentsGrid}>
                       {selectedBid.project_files.map((file, index) => {
-                        const fileUrl = `http://192.168.254.113:8083/storage/${file.file_path}`;
+                        const fileUrl = getFileUrl(file.file_path);
                         const isImage = file.file_path.match(/\.(jpg|jpeg|png|gif)$/i);
                         const fileTypeLabel = file.file_type.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 
@@ -660,7 +735,7 @@ export default function MyBids({ userData, onClose }: MyBidsProps) {
                             </View>
                             {isImage ? (
                               <TouchableOpacity
-                                onPress={() => Linking.openURL(fileUrl)}
+                                onPress={() => setPreviewFile({ url: fileUrl, name: fileTypeLabel, isImage: true })}
                                 activeOpacity={0.8}
                               >
                                 <Image
@@ -726,29 +801,70 @@ export default function MyBids({ userData, onClose }: MyBidsProps) {
                 <View style={styles.modalSection}>
                   <Text style={styles.modalSectionTitle}>Attached Documents ({selectedBid.files.length})</Text>
                   <View style={styles.filesCard}>
-                    {selectedBid.files.map((file, idx) => (
-                      <TouchableOpacity
-                        key={file.file_id || idx}
-                        style={[styles.fileItem, idx === selectedBid.files.length - 1 && { borderBottomWidth: 0 }]}
-                        onPress={() => handleOpenFile(file.file_path)}
-                      >
-                        <View style={styles.fileIcon}>
-                          <Feather name={file.file_name && file.file_name.endsWith('.pdf') ? 'file-text' : 'file'} size={20} color={COLORS.primary} />
-                        </View>
-                        <View style={styles.fileInfo}>
-                          <Text style={styles.fileName} numberOfLines={1}>{file.file_name}</Text>
-                          {file.description && <Text style={styles.fileDescription} numberOfLines={1}>{file.description}</Text>}
-                        </View>
-                        <Feather name="download" size={18} color={COLORS.textMuted} />
-                      </TouchableOpacity>
-                    ))}
+                    {selectedBid.files.map((file, idx) => {
+                      const isImg = /\.(jpg|jpeg|png|gif|webp)$/i.test(file.file_path || '');
+                      return (
+                        <TouchableOpacity
+                          key={file.file_id || idx}
+                          style={[styles.fileItem, idx === selectedBid.files.length - 1 && { borderBottomWidth: 0 }]}
+                          onPress={() => handleOpenFile(file.file_path, file.file_name)}
+                        >
+                          <View style={styles.fileIcon}>
+                            <Feather name={isImg ? 'image' : file.file_name?.endsWith('.pdf') ? 'file-text' : 'file'} size={20} color={COLORS.primary} />
+                          </View>
+                          <View style={styles.fileInfo}>
+                            <Text style={styles.fileName} numberOfLines={1}>{file.file_name}</Text>
+                            {file.description && <Text style={styles.fileDescription} numberOfLines={1}>{file.description}</Text>}
+                          </View>
+                          <Feather name={isImg ? 'eye' : 'download'} size={18} color={COLORS.textMuted} />
+                        </TouchableOpacity>
+                      );
+                    })}
                   </View>
+                </View>
+              )}
+
+              {/* Edit Bid Button (for editable statuses) */}
+              {isEditableStatus(selectedBid.bid_status) && (
+                <View style={styles.modalSection}>
+                  <TouchableOpacity
+                    style={styles.editBidModalButton}
+                    onPress={() => openEditBid(selectedBid)}
+                    activeOpacity={0.8}
+                  >
+                    <Feather name="edit-2" size={18} color="#FFFFFF" />
+                    <Text style={styles.editBidModalButtonText}>Edit Bid</Text>
+                  </TouchableOpacity>
                 </View>
               )}
 
             </ScrollView>
           </View>
         )}
+      </Modal>
+
+      {/* File Preview Modal */}
+      <Modal visible={!!previewFile} transparent animationType="fade" onRequestClose={() => setPreviewFile(null)}>
+        <View style={styles.previewOverlay}>
+          <View style={styles.previewHeader}>
+            <TouchableOpacity onPress={() => setPreviewFile(null)} style={styles.previewCloseBtn}>
+              <Ionicons name="close" size={28} color="#FFF" />
+            </TouchableOpacity>
+            <Text style={styles.previewTitle} numberOfLines={1}>{previewFile?.name}</Text>
+            <TouchableOpacity onPress={() => { if (previewFile?.url) Linking.openURL(previewFile.url); }} style={styles.previewCloseBtn}>
+              <Feather name="external-link" size={22} color="#FFF" />
+            </TouchableOpacity>
+          </View>
+          {previewFile?.isImage && (
+            <View style={styles.previewImageContainer}>
+              <Image
+                source={{ uri: previewFile.url }}
+                style={styles.previewImage}
+                resizeMode="contain"
+              />
+            </View>
+          )}
+        </View>
       </Modal>
     </View>
   );
@@ -1250,5 +1366,110 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFFFFF',
     marginLeft: 6,
+  },
+  editBidCardButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primaryLight,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+  },
+  editBidCardButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.primary,
+    marginLeft: 6,
+  },
+  editBidModalButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.primary,
+    paddingVertical: 14,
+    borderRadius: 12,
+    gap: 8,
+  },
+  editBidModalButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  filesCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    overflow: 'hidden',
+  },
+  fileItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  fileIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: COLORS.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  fileInfo: {
+    flex: 1,
+    marginRight: 8,
+  },
+  fileName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  fileDescription: {
+    fontSize: 12,
+    color: COLORS.textMuted,
+    marginTop: 2,
+  },
+  previewOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+  },
+  previewHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: Platform.OS === 'ios' ? 50 : 16,
+    paddingHorizontal: 12,
+    paddingBottom: 12,
+  },
+  previewCloseBtn: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+  },
+  previewTitle: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FFF',
+    textAlign: 'center',
+    marginHorizontal: 8,
+  },
+  previewImageContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  previewImage: {
+    width: Dimensions.get('window').width,
+    height: Dimensions.get('window').height * 0.75,
   },
 });

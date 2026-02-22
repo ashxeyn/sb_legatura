@@ -14,11 +14,15 @@ import {
   KeyboardAvoidingView,
   Platform,
   Modal,
+  Image,
+  Dimensions,
+  Linking,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons, Feather, Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import { projects_service } from '../../services/projects_service';
+import { api_config } from '../../config/api';
 
 // Color palette
 const COLORS = {
@@ -63,9 +67,10 @@ interface PlaceBidProps {
   userId: number;
   onClose: () => void;
   onBidSubmitted?: () => void;
+  initialEditMode?: boolean;
 }
 
-export default function PlaceBid({ project, userId, onClose, onBidSubmitted }: PlaceBidProps) {
+export default function PlaceBid({ project, userId, onClose, onBidSubmitted, initialEditMode = false }: PlaceBidProps) {
   const insets = useSafeAreaInsets();
   const [proposedCost, setProposedCost] = useState('');
   const [estimatedTimeline, setEstimatedTimeline] = useState('');
@@ -73,10 +78,14 @@ export default function PlaceBid({ project, userId, onClose, onBidSubmitted }: P
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [existingBid, setExistingBid] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
   const [bidFiles, setBidFiles] = useState<Array<any>>([]);
+  const [existingBidFiles, setExistingBidFiles] = useState<Array<any>>([]);
+  const [deleteFileIds, setDeleteFileIds] = useState<number[]>([]);
   const [showBudgetWarning, setShowBudgetWarning] = useState(false);
   const [budgetWarningMessage, setBudgetWarningMessage] = useState<{type: 'high' | 'low', message: string} | null>(null);
   const [pendingSubmission, setPendingSubmission] = useState(false);
+  const [previewFile, setPreviewFile] = useState<{ url: string; name: string } | null>(null);
 
   const statusBarHeight = insets.top || (Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 44);
 
@@ -102,6 +111,14 @@ export default function PlaceBid({ project, userId, onClose, onBidSubmitted }: P
         setProposedCost(backendResponse.data.proposed_cost?.toString() || '');
         setEstimatedTimeline(backendResponse.data.estimated_timeline?.toString() || '');
         setContractorNotes(backendResponse.data.contractor_notes || '');
+        // Load existing bid files from server
+        if (backendResponse.data.files && backendResponse.data.files.length > 0) {
+          setExistingBidFiles(backendResponse.data.files);
+        }
+        // Auto-enable editing if opened from My Bids with initialEditMode
+        if (initialEditMode && ['submitted', 'under_review', 'pending'].includes(backendResponse.data.bid_status)) {
+          setIsEditing(true);
+        }
       } else {
         // No existing bid found - user can submit a new one
         setExistingBid(null);
@@ -227,6 +244,11 @@ export default function PlaceBid({ project, userId, onClose, onBidSubmitted }: P
     setBidFiles(bidFiles.filter((_, i) => i !== index));
   };
 
+  const handleRemoveExistingFile = (fileId: number) => {
+    setDeleteFileIds([...deleteFileIds, fileId]);
+    setExistingBidFiles(existingBidFiles.filter((f) => f.file_id !== fileId));
+  };
+
   const checkBudgetRange = (): { outOfRange: boolean; type?: 'high' | 'low'; message?: string } => {
     const cost = parseFloat(proposedCost.replace(/,/g, ''));
     const minBudget = project.budget_range_min;
@@ -255,9 +277,9 @@ export default function PlaceBid({ project, userId, onClose, onBidSubmitted }: P
   const handleSubmit = async () => {
     if (!validateForm()) return;
 
-    // Check if already has a non-cancelled bid
-    if (existingBid && existingBid.bid_status !== 'cancelled') {
-      Alert.alert('Already Submitted', 'You have already submitted a bid for this project.');
+    // Block new submission only if bid exists AND is not editable AND user is not in edit mode
+    if (existingBid && existingBid.bid_status !== 'cancelled' && !isEditing) {
+      Alert.alert('Already Submitted', 'You have already submitted a bid for this project. Tap "Edit Bid" to modify it.');
       return;
     }
 
@@ -284,17 +306,33 @@ export default function PlaceBid({ project, userId, onClose, onBidSubmitted }: P
     setPendingSubmission(false);
 
     try {
-      const response = await projects_service.submit_bid(project.project_id, userId, {
-        proposed_cost: parseFloat(proposedCost.replace(/,/g, '')),
-        estimated_timeline: estimatedTimeline,
-        contractor_notes: contractorNotes.trim() || undefined,
-        bidFiles: bidFiles,
-      });
+      let response;
+
+      if (isEditing && existingBid) {
+        // Update existing bid
+        response = await projects_service.update_bid(existingBid.bid_id, userId, {
+          proposed_cost: parseFloat(proposedCost.replace(/,/g, '')),
+          estimated_timeline: estimatedTimeline,
+          contractor_notes: contractorNotes.trim() || undefined,
+          bidFiles: bidFiles.filter((f: any) => f.uri), // Only new files (with uri)
+          deleteFileIds: deleteFileIds.length > 0 ? deleteFileIds : undefined,
+        });
+      } else {
+        // Submit new bid
+        response = await projects_service.submit_bid(project.project_id, userId, {
+          proposed_cost: parseFloat(proposedCost.replace(/,/g, '')),
+          estimated_timeline: estimatedTimeline,
+          contractor_notes: contractorNotes.trim() || undefined,
+          bidFiles: bidFiles,
+        });
+      }
 
       if (response.success) {
         Alert.alert(
-          'Bid Submitted!',
-          'Your bid has been submitted successfully. The property owner will review your proposal.',
+          isEditing ? 'Bid Updated!' : 'Bid Submitted!',
+          isEditing
+            ? 'Your bid has been updated successfully.'
+            : 'Your bid has been submitted successfully. The property owner will review your proposal.',
           [
             {
               text: 'OK',
@@ -306,10 +344,10 @@ export default function PlaceBid({ project, userId, onClose, onBidSubmitted }: P
           ]
         );
       } else {
-        Alert.alert('Error', response.message || 'Failed to submit bid. Please try again.');
+        Alert.alert('Error', response.message || `Failed to ${isEditing ? 'update' : 'submit'} bid. Please try again.`);
       }
     } catch (error) {
-      console.error('Error submitting bid:', error);
+      console.error(`Error ${isEditing ? 'updating' : 'submitting'} bid:`, error);
       Alert.alert('Error', 'An unexpected error occurred. Please try again.');
     } finally {
       setIsSubmitting(false);
@@ -330,7 +368,7 @@ export default function PlaceBid({ project, userId, onClose, onBidSubmitted }: P
 
   if (isLoading) {
     return (
-      <SafeAreaView style={[styles.container, { paddingTop: statusBarHeight }]}>
+      <SafeAreaView style={styles.container}>
         <StatusBar hidden={true} />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.primary} />
@@ -341,7 +379,7 @@ export default function PlaceBid({ project, userId, onClose, onBidSubmitted }: P
   }
 
   return (
-    <SafeAreaView style={[styles.container, { paddingTop: statusBarHeight }]}>
+    <SafeAreaView style={styles.container}>
       <StatusBar hidden={true} />
 
       {/* Budget Warning Modal */}
@@ -399,7 +437,7 @@ export default function PlaceBid({ project, userId, onClose, onBidSubmitted }: P
         <TouchableOpacity onPress={onClose} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Place Bid</Text>
+        <Text style={styles.headerTitle}>{isEditing ? 'Edit Bid' : 'Place Bid'}</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -455,15 +493,20 @@ export default function PlaceBid({ project, userId, onClose, onBidSubmitted }: P
             )}
           </View>
 
-          {/* Existing Bid Warning */}
+          {/* Existing Bid Info */}
           {existingBid && existingBid.bid_status !== 'cancelled' && (
-            <View style={styles.warningCard}>
-              <MaterialIcons name="info" size={20} color={COLORS.warning} />
+            <View style={[styles.warningCard, isEditing && { backgroundColor: COLORS.infoLight }]}>
+              <MaterialIcons name={isEditing ? 'edit' : 'info'} size={20} color={isEditing ? COLORS.info : COLORS.warning} />
               <View style={styles.warningContent}>
-                <Text style={styles.warningTitle}>You've Already Submitted a Bid</Text>
+                <Text style={styles.warningTitle}>
+                  {isEditing ? 'Editing Your Bid' : "You've Already Submitted a Bid"}
+                </Text>
                 <Text style={styles.warningText}>
                   Your current bid: {formatCurrency(existingBid.proposed_cost)} • {existingBid.estimated_timeline} months
                 </Text>
+                {!isEditing && ['submitted', 'under_review'].includes(existingBid.bid_status) && (
+                  <Text style={[styles.warningStatus, { color: COLORS.info }]}>You can edit this bid</Text>
+                )}
                 <Text style={styles.warningStatus}>Status: {existingBid.bid_status}</Text>
               </View>
             </View>
@@ -485,7 +528,7 @@ export default function PlaceBid({ project, userId, onClose, onBidSubmitted }: P
                   placeholder="Enter your proposed amount"
                   placeholderTextColor={COLORS.textMuted}
                   keyboardType="numeric"
-                  editable={!existingBid || existingBid.bid_status === 'cancelled'}
+                  editable={!existingBid || existingBid.bid_status === 'cancelled' || isEditing}
                 />
               </View>
               <Text style={styles.inputHint}>
@@ -505,7 +548,7 @@ export default function PlaceBid({ project, userId, onClose, onBidSubmitted }: P
                   placeholder="e.g., 3"
                   placeholderTextColor={COLORS.textMuted}
                   keyboardType="number-pad"
-                  editable={!existingBid || existingBid.bid_status === 'cancelled'}
+                  editable={!existingBid || existingBid.bid_status === 'cancelled' || isEditing}
                 />
                 <Text style={styles.inputSuffix}>months</Text>
               </View>
@@ -517,14 +560,62 @@ export default function PlaceBid({ project, userId, onClose, onBidSubmitted }: P
             {/* Attachments */}
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Attachments (optional)</Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                <TouchableOpacity style={styles.addFileButton} onPress={handlePickFiles} activeOpacity={0.8}>
-                  <Feather name="paperclip" size={16} color={COLORS.text} />
-                  <Text style={{ marginLeft: 8, color: COLORS.text }}>Add Files</Text>
-                </TouchableOpacity>
-                <Text style={styles.inputHint}>Max 5 files, 5MB each</Text>
-              </View>
 
+              {/* Existing server files */}
+              {existingBidFiles.length > 0 && (
+                <View style={{ marginBottom: 8, gap: 6 }}>
+                  <Text style={{ fontSize: 12, color: COLORS.textSecondary, marginBottom: 4 }}>
+                    Uploaded Files ({existingBidFiles.length})
+                  </Text>
+                  {existingBidFiles.map((file) => {
+                    const isImg = /\.(jpg|jpeg|png|gif|webp)$/i.test(file.file_name || '');
+                    const fileUrl = file.file_path?.startsWith('http') ? file.file_path : `${api_config.base_url}/api/files/${file.file_path}`;
+                    return (
+                      <TouchableOpacity
+                        key={file.file_id}
+                        style={styles.fileRow}
+                        activeOpacity={0.7}
+                        onPress={() => {
+                          if (isImg) {
+                            setPreviewFile({ url: fileUrl, name: file.file_name });
+                          } else {
+                            Linking.openURL(fileUrl);
+                          }
+                        }}
+                      >
+                        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                          <Feather
+                            name={file.file_name?.endsWith('.pdf') ? 'file-text' : isImg ? 'image' : 'file'}
+                            size={16}
+                            color={COLORS.primary}
+                            style={{ marginRight: 8 }}
+                          />
+                          <Text style={styles.fileName} numberOfLines={1}>{file.file_name}</Text>
+                          <Feather name={isImg ? 'eye' : 'external-link'} size={14} color={COLORS.textMuted} style={{ marginLeft: 8 }} />
+                        </View>
+                        {isEditing && (
+                          <TouchableOpacity onPress={() => handleRemoveExistingFile(file.file_id)} style={styles.removeFileButton}>
+                            <Feather name="x" size={16} color={COLORS.error} />
+                          </TouchableOpacity>
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              )}
+
+              {/* Add files button - only when editable */}
+              {(!existingBid || existingBid.bid_status === 'cancelled' || isEditing) && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                  <TouchableOpacity style={styles.addFileButton} onPress={handlePickFiles} activeOpacity={0.8}>
+                    <Feather name="paperclip" size={16} color={COLORS.text} />
+                    <Text style={{ marginLeft: 8, color: COLORS.text }}>Add Files</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.inputHint}>Max 5 files, 5MB each</Text>
+                </View>
+              )}
+
+              {/* Newly picked local files */}
               {bidFiles.length > 0 && (
                 <View style={{ marginTop: 12, gap: 8 }}>
                   {bidFiles.map((file, idx) => (
@@ -536,6 +627,11 @@ export default function PlaceBid({ project, userId, onClose, onBidSubmitted }: P
                     </View>
                   ))}
                 </View>
+              )}
+
+              {/* Show "No attachments" when viewing read-only and no files */}
+              {existingBid && existingBid.bid_status !== 'cancelled' && !isEditing && existingBidFiles.length === 0 && bidFiles.length === 0 && (
+                <Text style={{ fontSize: 13, color: COLORS.textMuted, fontStyle: 'italic' }}>No attachments</Text>
               )}
             </View>
 
@@ -551,7 +647,7 @@ export default function PlaceBid({ project, userId, onClose, onBidSubmitted }: P
                 multiline
                 numberOfLines={5}
                 textAlignVertical="top"
-                editable={!existingBid || existingBid.bid_status === 'cancelled'}
+                editable={!existingBid || existingBid.bid_status === 'cancelled' || isEditing}
               />
               <Text style={styles.charCount}>{contractorNotes.length}/5000</Text>
             </View>
@@ -571,9 +667,10 @@ export default function PlaceBid({ project, userId, onClose, onBidSubmitted }: P
           </View>
         </ScrollView>
 
-        {/* Submit Button */}
+        {/* Submit / Edit Button */}
         <View style={styles.submitContainer}>
           {(!existingBid || existingBid.bid_status === 'cancelled') ? (
+            /* New bid submission */
             <TouchableOpacity
               style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
               onPress={handleSubmit}
@@ -589,14 +686,89 @@ export default function PlaceBid({ project, userId, onClose, onBidSubmitted }: P
                 </>
               )}
             </TouchableOpacity>
+          ) : existingBid && ['submitted', 'under_review'].includes(existingBid.bid_status) ? (
+            /* Editable bid — show Edit Bid or Update Bid button */
+            isEditing ? (
+              <View style={{ gap: 10 }}>
+                <TouchableOpacity
+                  style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
+                  onPress={handleSubmit}
+                  disabled={isSubmitting}
+                  activeOpacity={0.8}
+                >
+                  {isSubmitting ? (
+                    <ActivityIndicator size="small" color={COLORS.surface} />
+                  ) : (
+                    <>
+                      <Feather name="check" size={20} color={COLORS.surface} />
+                      <Text style={styles.submitButtonText}>Update Bid</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.cancelEditButton]}
+                  onPress={() => {
+                    // Revert to original values
+                    setProposedCost(existingBid.proposed_cost?.toString() || '');
+                    setEstimatedTimeline(existingBid.estimated_timeline?.toString() || '');
+                    setContractorNotes(existingBid.contractor_notes || '');
+                    setBidFiles([]);
+                    setIsEditing(false);
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.cancelEditButtonText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={{ gap: 10 }}>
+                <View style={styles.alreadySubmittedContainer}>
+                  <MaterialIcons name="check-circle" size={24} color={COLORS.success} />
+                  <Text style={styles.alreadySubmittedText}>Bid Submitted</Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.editBidButton}
+                  onPress={() => setIsEditing(true)}
+                  activeOpacity={0.8}
+                >
+                  <Feather name="edit-2" size={18} color={COLORS.primary} />
+                  <Text style={styles.editBidButtonText}>Edit Bid</Text>
+                </TouchableOpacity>
+              </View>
+            )
           ) : (
+            /* Non-editable statuses (accepted, rejected) */
             <View style={styles.alreadySubmittedContainer}>
               <MaterialIcons name="check-circle" size={24} color={COLORS.success} />
-              <Text style={styles.alreadySubmittedText}>Bid Already Submitted</Text>
+              <Text style={styles.alreadySubmittedText}>Bid {existingBid?.bid_status === 'accepted' ? 'Accepted' : existingBid?.bid_status === 'rejected' ? 'Rejected' : 'Submitted'}</Text>
             </View>
           )}
         </View>
       </KeyboardAvoidingView>
+
+      {/* File Preview Modal */}
+      <Modal visible={!!previewFile} transparent animationType="fade" onRequestClose={() => setPreviewFile(null)}>
+        <View style={styles.previewOverlay}>
+          <View style={styles.previewHeader}>
+            <TouchableOpacity onPress={() => setPreviewFile(null)} style={styles.previewCloseBtn}>
+              <Ionicons name="close" size={28} color="#FFF" />
+            </TouchableOpacity>
+            <Text style={styles.previewTitle} numberOfLines={1}>{previewFile?.name}</Text>
+            <TouchableOpacity onPress={() => { if (previewFile?.url) Linking.openURL(previewFile.url); }} style={styles.previewCloseBtn}>
+              <Feather name="external-link" size={22} color="#FFF" />
+            </TouchableOpacity>
+          </View>
+          {previewFile && (
+            <View style={styles.previewImageContainer}>
+              <Image
+                source={{ uri: previewFile.url }}
+                style={styles.previewImage}
+                resizeMode="contain"
+              />
+            </View>
+          )}
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -870,6 +1042,36 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.success,
   },
+  editBidButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.primaryLight,
+    borderRadius: 12,
+    paddingVertical: 14,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+  },
+  editBidButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: COLORS.primary,
+  },
+  cancelEditButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.background,
+    borderRadius: 12,
+    paddingVertical: 14,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  cancelEditButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+  },
   // Budget Warning Modal Styles
   modalOverlay: {
     flex: 1,
@@ -947,5 +1149,42 @@ const styles = StyleSheet.create({
   },
   modalButtonTextSecondary: {
     color: COLORS.text,
+  },
+  previewOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+  },
+  previewHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: Platform.OS === 'ios' ? 50 : 16,
+    paddingHorizontal: 12,
+    paddingBottom: 12,
+  },
+  previewCloseBtn: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+  },
+  previewTitle: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FFF',
+    textAlign: 'center',
+    marginHorizontal: 8,
+  },
+  previewImageContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  previewImage: {
+    width: Dimensions.get('window').width,
+    height: Dimensions.get('window').height * 0.75,
   },
 });
