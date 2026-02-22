@@ -212,6 +212,9 @@ Route::get('/debug/ping', function (Request $request) {
 // PayMongo webhook endpoint (API routes bypass CSRF)
 Route::post('/paymongo/webhook', [payMongoController::class , 'handleWebhook']);
 
+// Verify a boost payment by checking PayMongo directly (used by mobile deep-link)
+Route::post('/boost/verify', [payMongoController::class, 'verifyBoostPayment']);
+
 // Debug: Check token validity (no auth required)
 Route::get('/debug/token-check', function (Request $request) {
     $token = $request->bearerToken();
@@ -425,7 +428,7 @@ Route::middleware('auth:sanctum')->group(function () {
         );
 
         // NOTE: pinned project endpoints removed
-    
+
         // Milestones (Contractor)
         Route::prefix('milestones')->group(function () {
             Route::get('/', [cprocessController::class , 'getMilestones']);
@@ -496,3 +499,13 @@ Route::prefix('disputes')->group(function () {
 // Progress approve/reject routes - outside middleware group so controller can handle auth manually
 Route::post('/progress/{id}/approve', [progressUploadController::class , 'approveProgress']);
 Route::post('/progress/{id}/reject', [progressUploadController::class , 'rejectProgress']);
+
+// Accessible at http://192.168.100.27:8000/api/boost/checkout
+// No CSRF required (because it's in api.php)
+// No Authentication required (middleware removed)
+// routes/api.php
+// In routes/api.php
+// routes/api.php
+
+// This version is clean, single-prefixed, and authenticated
+Route::post('/boost/checkout', [\App\Http\Controllers\subs\payMongoController::class, 'createBoostCheckout']);

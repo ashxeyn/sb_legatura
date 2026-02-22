@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StatusBar, View, Text, Alert } from 'react-native';
+import { StatusBar, View, Text, Alert, Linking } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import LoadingScreen from './src/screens/loadingScreen';
 import OnboardingScreen from './src/screens/onboardingScreen';
@@ -23,8 +23,7 @@ import ViewProfileScreen from './src/screens/both/viewProfile';
 import HelpCenterScreen from './src/screens/both/helpCenter';
 import SwitchRoleScreen from './src/screens/both/switchRole';
 import RoleAddScreen from './src/screens/both/addRoleRegistration';
-import { api_config } from './src/config/api';
-import { set_unauthorized_handler, reset_unauthorized_guard } from './src/config/api';
+import { api_config, api_request, set_unauthorized_handler, reset_unauthorized_guard } from './src/config/api';
 import EmailVerificationScreen from './src/screens/both/emailVerification';
 import ProfilePictureScreen from './src/screens/both/profilePic';
 import HomepageScreen from './src/screens/both/homepage';
@@ -291,6 +290,126 @@ export default function App() {
         set_unauthorized_handler(handle_logout);
         // No cleanup needed — the handler remains registered for app lifetime
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Deep link handler: catch Expo return from payment checkout and show confirmation
+    useEffect(() => {
+        const handleUrl = async (event: { url: string }) => {
+            try {
+                const url = event.url || '';
+                // Look for payment-callback and project_id in query
+                if (url.includes('/--/payment-callback')) {
+                    const match = url.match(/[?&]project_id=([^&]+)/);
+                    const projectId = match ? decodeURIComponent(match[1]) : null;
+                    if (projectId) {
+                        // Check status param in deep-link (if provided by server)
+                        const statusMatch = url.match(/[?&]status=([^&]+)/);
+                        const status = statusMatch ? decodeURIComponent(statusMatch[1]) : null;
+
+                        // If status explicitly indicates cancel/back, treat as pending immediately
+                        if (status === 'cancel') {
+                            // @ts-ignore
+                            global.pendingPaymentProjectId = projectId;
+                            console.log('Deep link returned with status=cancel for', projectId);
+                            Alert.alert('Payment Pending', 'Payment was not completed. Complete the payment in the checkout to activate the boost.', [{ text: 'OK' }]);
+                            return;
+                        }
+
+                        // For status=success or when no explicit status, first ask server to verify
+                        // the PayMongo checkout session directly. This speeds up detection when
+                        // webhooks are delayed.
+                        try {
+                            const verify = await api_request('/api/boost/verify', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ project_id: projectId })
+                            });
+
+                            if (verify.success && verify.approved) {
+                                try {
+                                    // @ts-ignore
+                                    if (global.handlePaymentCallback) {
+                                        // @ts-ignore
+                                        await global.handlePaymentCallback(projectId);
+                                        return;
+                                    }
+                                } catch (e) {
+                                    console.warn('Error calling global.handlePaymentCallback after verify:', e);
+                                }
+                                Alert.alert('Payment Complete', `Boost activated for project ${projectId}!`, [{ text: 'OK' }]);
+                                return;
+                            }
+
+                            // Not yet approved — fall back to queue + polling as before
+                            // @ts-ignore
+                            global.pendingPaymentProjectId = projectId;
+                            console.log('Queued pendingPaymentProjectId (not approved yet):', projectId);
+
+                            // Poll server for a short window to auto-detect approval (e.g., ~32s)
+                            let attempts = 0;
+                            const maxAttempts = 8;
+                            const pollIntervalMs = 4000;
+                            const pollInterval = setInterval(async () => {
+                                attempts++;
+                                try {
+                                    const check = await api_request('/subs/modal-data', { method: 'GET' });
+                                    const found2 = check.data?.boostedPosts?.find((b: any) => String(b.id) === String(projectId) || String(b.project_id) === String(projectId));
+                                    if (found2) {
+                                        clearInterval(pollInterval);
+                                        try {
+                                            // @ts-ignore
+                                            if (global.handlePaymentCallback) {
+                                                // @ts-ignore
+                                                await global.handlePaymentCallback(projectId);
+                                                return;
+                                            }
+                                        } catch (e) {
+                                            console.warn('Error calling global.handlePaymentCallback during poll:', e);
+                                        }
+                                        Alert.alert('Payment Complete', `Boost activated for project ${projectId}!`, [{ text: 'OK' }]);
+                                        return;
+                                    }
+                                } catch (e) {
+                                    console.warn('Polling error for payment status:', e);
+                                }
+
+                                if (attempts >= maxAttempts) {
+                                    clearInterval(pollInterval);
+                                    Alert.alert('Payment Pending', 'No completed payment was detected yet. Complete the payment in the checkout to activate the boost.', [{ text: 'OK' }]);
+                                }
+                            }, pollIntervalMs);
+
+                            return;
+                        } catch (e) {
+                            console.warn('Deep link verification error:', e);
+                        }
+                    }
+                    // Do not show a blind success message here — only show success when
+                    // the server confirms the boost/payment. Log the event for debugging.
+                    console.log('Deep link received but no verification performed or project_id missing.');
+                }
+            } catch (e) {
+                console.warn('Deep link handling error:', e);
+            }
+        };
+
+        // Handle initial URL if app was cold-started by the deep link
+        (async () => {
+            try {
+                const initial = await Linking.getInitialURL();
+                if (initial) handleUrl({ url: initial });
+            } catch (e) {
+                console.warn('Error getting initial URL:', e);
+            }
+        })();
+
+        // Subscribe to deep link events
+        const sub = Linking.addEventListener('url', handleUrl as any);
+        return () => {
+            // @ts-ignore - removeEventListener for older RN versions
+            if (sub && (sub as any).remove) (sub as any).remove();
+            else Linking.removeEventListener('url', handleUrl as any);
+        };
+    }, []);
 
     // Show loading screen while checking stored authentication
     if (checking_auth) {

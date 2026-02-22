@@ -5,7 +5,6 @@ namespace App\Http\Controllers\subs;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
@@ -54,6 +53,10 @@ class payMongoController extends Controller
         $plan = $plans[$planTier];
         $secretKey = env('PAYMONGO_TEST_SECRET_KEY', env('PAYMONGO_SECRET_KEY'));
 
+        // Prepare billing info from user record (supports both Eloquent user and DB row)
+        $username = is_object($user) ? ($user->username ?? $user->name ?? '') : ($user['username'] ?? $user['name'] ?? '');
+        $email = is_object($user) ? ($user->email ?? '') : ($user['email'] ?? '');
+
         // Ensure secret key is present
         if (!$secretKey) {
             Log::error('PayMongo Secret Key missing in .env');
@@ -66,8 +69,8 @@ class payMongoController extends Controller
                 'data' => [
                     'attributes' => [
                         'billing' => [
-                            'name' => $user->username,
-                            'email' => $user->email,
+                            'name' => $username,
+                            'email' => $email,
                         ],
                         'line_items' => [[
                                 'currency' => 'PHP',
@@ -131,28 +134,66 @@ class payMongoController extends Controller
     /**
      * Create Boost Checkout Session
      */
-    public function createBoostCheckout(Request $request)
-    {
-        // Manual session check replacing Auth::user()
-        if (!Session::has('user')) {
-            return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
-        }
+public function createBoostCheckout(Request $request)
+{
+
+    // Try to get authenticated user via Sanctum first
+    $user = $request->user();
+
+    // Fallback: web session user
+    if (!$user && Session::has('user')) {
         $user = Session::get('user');
-
-        if (!$user) {
-            return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
+        if ($user) {
+            Log::info('createBoostCheckout: Using session user fallback: ' . ($user->user_id ?? 'unknown'));
         }
+    }
 
-        // Get Property Owner ID
-        $owner = DB::table('property_owners')->where('user_id', $user->user_id)->first();
-        if (!$owner) {
-            Log::error('createBoostCheckout: Owner profile not found for user ' . $user->user_id);
-            return response()->json(['success' => false, 'message' => 'Owner profile not found'], 404);
+    // Fallback: allow mobile clients to pass X-User-Id header or user_id in body
+    if (!$user) {
+        $fallbackUserId = $request->header('X-User-Id') ?? $request->input('user_id');
+        if ($fallbackUserId) {
+            $user = DB::table('users')->where('user_id', $fallbackUserId)->first();
+            if ($user) {
+                Log::info('createBoostCheckout: Using fallback user from header/body: ' . $fallbackUserId);
+            }
         }
+    }
+
+    if (!$user) {
+        return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
+    }
+
+    // Normalize user id for lookups and metadata
+    $userId = is_object($user) ? ($user->user_id ?? $user->id ?? null) : ($user['user_id'] ?? $user['id'] ?? null);
+
+    // Prepare billing info from user record (supports both Eloquent user and DB row)
+    $username = is_object($user) ? ($user->username ?? $user->name ?? '') : ($user['username'] ?? $user['name'] ?? '');
+    $email = is_object($user) ? ($user->email ?? '') : ($user['email'] ?? '');
+
+    // Get Property Owner record
+    $owner = DB::table('property_owners')->where('user_id', $userId)->first();
+
+    if (!$owner) {
+        Log::error('createBoostCheckout: Owner profile not found for user ' . $userId);
+        return response()->json(['success' => false, 'message' => 'Owner profile not found'], 404);
+    }
 
         $projectId = $request->input('project_id');
         if (!$projectId) {
             return response()->json(['success' => false, 'message' => 'Project ID required'], 400);
+        }
+
+        // Verify project exists and belongs to this owner (ownership validation)
+        $project = DB::table('projects')->where('project_id', $projectId)->first();
+        if (!$project) {
+            Log::warning('createBoostCheckout: Project not found: ' . $projectId);
+            return response()->json(['success' => false, 'message' => 'Project not found'], 404);
+        }
+
+        // Expecting projects.owner_id to reference property_owners.owner_id
+        if (isset($project->owner_id) && $project->owner_id != $owner->owner_id) {
+            Log::warning('createBoostCheckout: Ownership mismatch. User owner_id: ' . $owner->owner_id . ' project owner_id: ' . ($project->owner_id ?? 'null'));
+            return response()->json(['success' => false, 'message' => 'Forbidden: you do not own this project'], 403);
         }
 
         $secretKey = env('PAYMONGO_TEST_SECRET_KEY', env('PAYMONGO_SECRET_KEY'));
@@ -163,8 +204,8 @@ class payMongoController extends Controller
                 'data' => [
                     'attributes' => [
                         'billing' => [
-                            'name' => $user->username,
-                            'email' => $user->email,
+                            'name' => $username,
+                            'email' => $email,
                         ],
                         'line_items' => [[
                                 'currency' => 'PHP',
@@ -174,10 +215,25 @@ class payMongoController extends Controller
                                 'quantity' => 1
                             ]],
                         'payment_method_types' => ['card', 'gcash', 'paymaya', 'grab_pay'],
-                        'success_url' => route('payment.callback', ['type' => 'boost', 'project_id' => $projectId]),
-                        'cancel_url' => url('/owner/homepage?boost=cancelled'),
+                        // Allow mobile clients to provide a deep-link return URL (e.g. exp://... or myapp://...)
+                        // If provided, craft distinct success/cancel URLs by appending a status param
+                        // so the app can distinguish actual success vs user-cancel/back actions.
+                        'success_url' => (function() use ($request, $projectId) {
+                            $base = $request->input('return_url');
+                            if ($base) {
+                                return $base . (strpos($base, '?') !== false ? '&' : '?') . 'status=success';
+                            }
+                            return route('payment.callback', ['type' => 'boost', 'project_id' => $projectId]);
+                        })(),
+                        'cancel_url' => (function() use ($request) {
+                            $base = $request->input('return_url');
+                            if ($base) {
+                                return $base . (strpos($base, '?') !== false ? '&' : '?') . 'status=cancel';
+                            }
+                            return url('/owner/homepage?boost=cancelled');
+                        })(),
                         'metadata' => [
-                            'user_id' => $user->user_id,
+                            'user_id' => $userId,
                             'project_id' => $projectId,
                             'type' => 'boost'
                         ]
@@ -192,13 +248,16 @@ class payMongoController extends Controller
 
                 // Insert into platform_payments
                 try {
+                    // Always mark new boost checkouts as not approved initially.
+                    // Previously this used env-local auto-approve which caused the app
+                    // to show boosts as active immediately during local testing.
                     DB::table('platform_payments')->insert([
                         'owner_id' => $owner->owner_id,
                         'project_id' => $projectId,
                         'payment_for' => 'boosted_post',
                         'amount' => 49.00,
                         'transaction_number' => $checkoutSessionId,
-                        'is_approved' => config('app.env') === 'local' ? 1 : 0,
+                        'is_approved' => 0,
                         'transaction_date' => now(),
                         'expiration_date' => now()->addDays(7),
                         'payment_type' => 'PayMongo'
@@ -275,7 +334,7 @@ class payMongoController extends Controller
 
             if ($response->successful()) {
                 $data = $response->json()['data'];
-                // Check payment status 
+                // Check payment status
                 // Accessing data.attributes.payment_intent.attributes.status or data.attributes.payments
                 // Simplified check: if payments array is not empty and status is paid
                 $payments = $data['attributes']['payments'] ?? [];
@@ -403,6 +462,106 @@ class payMongoController extends Controller
         catch (\Exception $e) {
             Log::error('Cancel Subscription Error: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Internal server error'], 500);
+        }
+
+    }
+
+    /**
+     * Verify a boost payment by querying PayMongo for the checkout session status.
+     * Accepts either project_id (preferred) or transaction_number in body.
+     */
+    public function verifyBoostPayment(Request $request)
+    {
+        // Try to identify user via Sanctum, session, or X-User-Id fallback
+        $user = $request->user();
+        if (!$user && Session::has('user')) {
+            $user = Session::get('user');
+        }
+        if (!$user) {
+            $fallbackUserId = $request->header('X-User-Id') ?? $request->input('user_id');
+            if ($fallbackUserId) {
+                $user = DB::table('users')->where('user_id', $fallbackUserId)->first();
+            }
+        }
+
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
+        }
+
+        $projectId = $request->input('project_id');
+        $transactionNumber = $request->input('transaction_number');
+
+        if (!$transactionNumber) {
+            if (!$projectId) {
+                return response()->json(['success' => false, 'message' => 'project_id or transaction_number required'], 400);
+            }
+
+            // Find latest pending platform_payment for this project
+            $payment = DB::table('platform_payments')
+                ->where('project_id', $projectId)
+                ->where('payment_for', 'boosted_post')
+                ->where('is_approved', 0)
+                ->orderByDesc('platform_payment_id')
+                ->first();
+
+            if (!$payment) {
+                return response()->json(['success' => false, 'message' => 'No pending payment found'], 404);
+            }
+
+            $transactionNumber = $payment->transaction_number;
+        }
+
+        $secretKey = env('PAYMONGO_TEST_SECRET_KEY', env('PAYMONGO_SECRET_KEY'));
+        if (!$secretKey) return response()->json(['success' => false, 'message' => 'Server configuration error'], 500);
+
+        try {
+            $response = Http::withBasicAuth($secretKey, '')
+                ->get('https://api.paymongo.com/v1/checkout_sessions/' . $transactionNumber);
+
+            Log::info('verifyBoostPayment: PayMongo query', ['transaction' => $transactionNumber, 'status' => $response->status(), 'body' => $response->body()]);
+
+            if (!$response->successful()) {
+                return response()->json(['success' => false, 'message' => 'PayMongo query failed', 'status' => $response->status()], 502);
+            }
+
+            $data = $response->json()['data'] ?? null;
+            $payments = $data['attributes']['payments'] ?? [];
+            $isPaid = false;
+
+            foreach ($payments as $p) {
+                Log::info('verifyBoostPayment: payment entry', ['payment' => $p]);
+                if (($p['attributes']['status'] ?? '') === 'paid') {
+                    $isPaid = true;
+                    break;
+                }
+            }
+
+            if ($isPaid) {
+                // Mark payment approved (idempotent)
+                $updated = false;
+                DB::transaction(function () use ($transactionNumber, &$updated) {
+                    $paymentRow = DB::table('platform_payments')->where('transaction_number', $transactionNumber)->lockForUpdate()->first();
+                    if ($paymentRow) {
+                        if ($paymentRow->is_approved == 0) {
+                            $affected = DB::table('platform_payments')->where('platform_payment_id', $paymentRow->platform_payment_id)->update(['is_approved' => 1]);
+                            $updated = $affected > 0;
+                            Log::info('verifyBoostPayment: updated platform_payments', ['platform_payment_id' => $paymentRow->platform_payment_id, 'affected' => $affected]);
+                        } else {
+                            Log::info('verifyBoostPayment: payment already approved', ['platform_payment_id' => $paymentRow->platform_payment_id]);
+                        }
+                    } else {
+                        Log::warning('verifyBoostPayment: paymentRow not found for transaction', ['transaction' => $transactionNumber]);
+                    }
+                });
+
+                return response()->json(['success' => true, 'approved' => true, 'updated' => $updated]);
+            }
+
+            return response()->json(['success' => true, 'approved' => false]);
+        }
+        catch (\Exception $e) {
+            Log::error('verifyBoostPayment Error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Server error'], 500);
         }
     }
 }

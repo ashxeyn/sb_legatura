@@ -46,6 +46,7 @@ const getStorageUrl = (filePath?: string, defaultSubfolder = 'profiles') => {
 
 // Import profile screens
 import PropertyOwnerProfile from '../owner/profile';
+import BoostScreen from '../owner/boostScreen';
 import ContractorProfile from '../contractor/profile';
 import CheckProfile from './checkProfile';
 
@@ -149,6 +150,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
 
   // Create project screen state
   const [showCreateProject, setShowCreateProject] = useState(false);
+  const [showBoosts, setShowBoosts] = useState(false);
   const [contractorTypes, setContractorTypes] = useState<ContractorTypeOption[]>([]);
   const [isSubmittingProject, setIsSubmittingProject] = useState(false);
 
@@ -372,7 +374,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
           // Transform backend contractor data to frontend format
           const transformedContractors = contractors_service.transform_contractors(contractorsData);
           setPopularContractors(transformedContractors);
-          
+
           // Update pagination state
           if (response.pagination) {
             setHasMoreContractors(response.pagination.has_more);
@@ -424,7 +426,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
 
         if (response.success && projectsData && Array.isArray(projectsData)) {
           setAvailableProjects(projectsData);
-          
+
           // Update pagination state
           if (response.pagination) {
             setHasMoreProjects(response.pagination.has_more);
@@ -471,6 +473,43 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
     }
   }, [userType]);
 
+  // Expose a global callback so App.tsx can trigger a refresh after payment deep-link
+  useEffect(() => {
+    // @ts-ignore
+    global.handlePaymentCallback = async (projectId: string | number) => {
+      try {
+        // For contractors, refresh the approved projects list
+        await refreshProjects();
+        // For owners, we may want to refresh owner projects elsewhere (projectList/dashboard)
+        // Confirmation handled in UI; no alert popup here.
+      } catch (e) {
+        console.warn('handlePaymentCallback error:', e);
+      }
+    };
+
+    // If a pending project id was queued by App.tsx (cold-start), process it now
+    // @ts-ignore
+    (async () => {
+      try {
+        // @ts-ignore
+        const pending = global.pendingPaymentProjectId;
+        if (pending) {
+          // @ts-ignore
+          await global.handlePaymentCallback(pending);
+          // @ts-ignore
+          delete global.pendingPaymentProjectId;
+        }
+      } catch (e) {
+        console.warn('Error processing queued pendingPaymentProjectId:', e);
+      }
+    })();
+
+    return () => {
+      // @ts-ignore
+      delete global.handlePaymentCallback;
+    };
+  }, [refreshProjects]);
+
   /**
    * Load more contractors (infinite scroll)
    */
@@ -484,7 +523,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
       setLoadingMore(true);
       const nextPage = contractorsPage + 1;
       console.log('Loading more contractors - page:', nextPage);
-      
+
       const response = await contractors_service.get_active_contractors(undefined, nextPage, PER_PAGE);
       const contractorsData = response.data?.data || response.data;
 
@@ -493,7 +532,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
         console.log(`Loaded ${transformedContractors.length} more contractors`);
         setPopularContractors(prev => [...prev, ...transformedContractors]);
         setContractorsPage(nextPage);
-        
+
         if (response.pagination) {
           setHasMoreContractors(response.pagination.has_more);
           console.log('Has more contractors:', response.pagination.has_more);
@@ -519,7 +558,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
       setLoadingMore(true);
       const nextPage = projectsPage + 1;
       console.log('Loading more projects - page:', nextPage);
-      
+
       const response = await projects_service.get_approved_projects(nextPage, PER_PAGE);
       const projectsData = response.data?.data || response.data;
 
@@ -527,7 +566,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
         console.log(`Loaded ${projectsData.length} more projects`);
         setAvailableProjects(prev => [...prev, ...projectsData]);
         setProjectsPage(nextPage);
-        
+
         if (response.pagination) {
           setHasMoreProjects(response.pagination.has_more);
           console.log('Has more projects:', response.pagination.has_more);
@@ -548,14 +587,14 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
     const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
     const paddingToBottom = 100; // Increased threshold for earlier loading
     const isCloseToBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - paddingToBottom;
-    
+
     console.log('Scroll end detected:', {
       layoutHeight: layoutMeasurement.height,
       scrollY: contentOffset.y,
       contentHeight: contentSize.height,
       isCloseToBottom,
     });
-    
+
     if (isCloseToBottom) {
       console.log('Triggering load more...');
       loadMoreFn();
@@ -1134,7 +1173,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
                   {renderContractorCard({ item: contractor })}
                 </View>
               ))}
-              
+
               {/* Loading More Indicator */}
               {loadingMore && (
                 <View style={styles.loadingMoreContainer}>
@@ -1142,7 +1181,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
                   <Text style={styles.loadingMoreText}>Loading more...</Text>
                 </View>
               )}
-              
+
               {/* End of List Indicator */}
               {!loadingMore && !hasMoreContractors && (
                 <View style={styles.endOfListContainer}>
@@ -1238,7 +1277,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
           {!isLoading && !error && availableProjects.length > 0 && (
             <>
               {availableProjects.map((project) => renderProjectCard(project))}
-              
+
               {/* Loading More Indicator */}
               {loadingMore && (
                 <View style={styles.loadingMoreContainer}>
@@ -1246,7 +1285,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
                   <Text style={styles.loadingMoreText}>Loading more...</Text>
                 </View>
               )}
-              
+
               {/* End of List Indicator */}
               {!loadingMore && !hasMoreProjects && (
                 <View style={styles.endOfListContainer}>
@@ -1293,6 +1332,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
         onEditProfile={onEditProfile}
         onOpenHelp={onOpenHelp}
         onOpenSwitchRole={onOpenSwitchRole}
+        onOpenBoosts={() => setShowBoosts(true)}
         userData={{
           username: userData?.username,
           email: userData?.email,
@@ -1304,6 +1344,15 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
       />
     );
   };
+
+  // If Boosts screen is open, show it full screen
+  if (showBoosts) {
+    return (
+      <BoostScreen
+        navigation={{ goBack: () => setShowBoosts(false) }}
+      />
+    );
+  }
 
   // Render dashboard based on user type
   const renderDashboardContent = () => {

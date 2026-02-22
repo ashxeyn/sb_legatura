@@ -21,6 +21,7 @@ interface ProfileScreenProps {
   onViewProfile?: () => void;
   onOpenHelp?: () => void;
   onOpenSwitchRole?: () => void; // ✅ Navigate to switch role screen
+  onOpenBoosts?: () => void; // Navigate to Boosts screen
   userData?: {
     username?: string;
     email?: string;
@@ -42,7 +43,7 @@ interface MenuItem {
   danger?: boolean;
 }
 
-export default function ProfileScreen({ onLogout, onViewProfile, onEditProfile, onOpenHelp, onOpenSwitchRole, userData }: ProfileScreenProps) {
+export default function ProfileScreen({ onLogout, onViewProfile, onEditProfile, onOpenHelp, onOpenSwitchRole, onOpenBoosts, userData }: ProfileScreenProps) {
   const insets = useSafeAreaInsets();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [roleLabel, setRoleLabel] = useState<string>('Property Owner');
@@ -190,6 +191,25 @@ export default function ProfileScreen({ onLogout, onViewProfile, onEditProfile, 
           subtitle: 'Version 1.0.0',
           showArrow: true,
           onPress: () => Alert.alert('About', 'Legatura v1.0.0\n\nConnecting Property Owners with Contractors'),
+        },
+      ],
+    },
+    {
+      title: 'Promotions',
+      items: [
+        {
+          id: 'boosts',
+          icon: 'rocket-outline',
+          label: 'Boosts',
+          subtitle: 'Promote your project to the top',
+          showArrow: true,
+          onPress: () => {
+            if (typeof onOpenBoosts === 'function') {
+              onOpenBoosts();
+            } else {
+              Alert.alert('Boosts', 'Open Boosts screen (not implemented in parent)');
+            }
+          },
         },
       ],
     },
