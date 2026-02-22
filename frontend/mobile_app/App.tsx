@@ -27,6 +27,7 @@ import { api_config, api_request, set_unauthorized_handler, reset_unauthorized_g
 import EmailVerificationScreen from './src/screens/both/emailVerification';
 import ProfilePictureScreen from './src/screens/both/profilePic';
 import HomepageScreen from './src/screens/both/homepage';
+import SubscriptionScreen from './src/screens/contractor/subscriptionScreen';
 import ChangePasswordScreen from './src/screens/both/changePassword';
 import { auth_service } from './src/services/auth_service';
 import { storage_service } from './src/utils/storage';
@@ -36,7 +37,7 @@ type AppState = 'loading' | 'onboarding' | 'auth_choice' | 'login' | 'signup' | 
     'contractor_company_info' | 'contractor_account_setup' | 'contractor_email_verification' | 'contractor_business_documents' | 'contractor_profile_picture' |
     // Property Owner Flow
     'po_personal_info' | 'po_account_setup' | 'po_email_verification' | 'po_role_verification' | 'po_profile_picture' |
-    'force_change_password' |
+    'force_change_password' | 'subscription' |
     'main' | 'edit_profile' | 'view_profile' | 'help_center' | 'switch_role' | 'add_role_registration';
 
 
@@ -290,6 +291,26 @@ export default function App() {
         set_unauthorized_handler(handle_logout);
         // No cleanup needed — the handler remains registered for app lifetime
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Expose app state setter globally so deeply-nested screens/components
+    // that are not inside the Homepage render tree can still switch to
+    // the subscription screen without requiring prop plumbing.
+    useEffect(() => {
+        // @ts-ignore
+        global.set_app_state = (s: AppState) => {
+            try {
+                set_app_state(s);
+            } catch (e) {
+                console.warn('global.set_app_state failed', e);
+            }
+        };
+        return () => {
+            try {
+                // @ts-ignore
+                delete global.set_app_state;
+            } catch (e) { /* ignore */ }
+        };
+    }, [set_app_state]);
 
     // Deep link handler: catch Expo return from payment checkout and show confirmation
     useEffect(() => {
@@ -699,6 +720,15 @@ export default function App() {
                     onOpenSwitchRole={() => set_app_state('switch_role')}
                     initialTab={initial_home_tab}
                 />
+            </SafeAreaProvider>
+        );
+    }
+
+
+    if (app_state === 'subscription') {
+        return (
+            <SafeAreaProvider>
+                <SubscriptionScreen onBack={() => set_app_state('main')} />
             </SafeAreaProvider>
         );
     }

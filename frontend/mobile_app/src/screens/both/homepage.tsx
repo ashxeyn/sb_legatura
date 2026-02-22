@@ -1309,6 +1309,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
           onViewProfile={onViewProfile}
           onOpenHelp={onOpenHelp}
           onOpenSwitchRole={onOpenSwitchRole}
+          onOpenSubscription={() => set_app_state('subscription')}
           userData={{
             username: userData?.username,
             email: userData?.email,

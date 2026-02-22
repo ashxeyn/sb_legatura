@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput, ActivityIndicator, Alert, Modal, FlatList, SafeAreaView, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'react-native';
@@ -48,6 +48,41 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
   const [submitting, setSubmitting] = useState(false);
   const [currentRoleInfo, setCurrentRoleInfo] = useState<any>(null);
   const [hasBoth, setHasBoth] = useState<boolean>(() => !!(user?.is_contractor && user?.is_owner));
+  const pollingRef = useRef<any>(null);
+
+  const startRoleApprovalPoll = (attemptsLimit = 30, intervalMs = 4000) => {
+    if (pollingRef.current) return;
+    let attempts = 0;
+    pollingRef.current = setInterval(async () => {
+      attempts++;
+      try {
+        const res = await role_service.get_current_role();
+        if (res && res.success) {
+          const ut = res.user_type || res.data?.user_type;
+          if (ut === 'both') {
+            setHasBoth(true);
+            if (pollingRef.current) {
+              clearInterval(pollingRef.current);
+              pollingRef.current = null;
+            }
+            Alert.alert('Role Approved', 'Your account now has both roles.');
+          }
+        }
+      } catch (e) {
+        // ignore transient errors
+      }
+      if (attempts >= attemptsLimit && pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+      }
+    }, intervalMs);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
+  }, []);
   const [blockedDueToPending, setBlockedDueToPending] = useState<boolean>(false);
   const [pendingInfo, setPendingInfo] = useState<any>(null);
   const [dropdowns, setDropdowns] = useState<any>({
@@ -642,6 +677,7 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
             Alert.alert('Application Submitted', 'Your application has been received and is pending administrative review and approval.', [
               { text: 'OK', onPress: handleComplete }
             ]);
+            startRoleApprovalPoll();
           } else {
             Alert.alert('Error', res?.message || 'Finalization failed');
           }
@@ -783,6 +819,7 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
                 },
               ]
             );
+            startRoleApprovalPoll();
           } else {
             Alert.alert('Error', res?.message || 'Finalization failed');
           }

@@ -13,6 +13,7 @@ import {
 import { View as SafeAreaView, StatusBar, Platform, AppState } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import ImageFallback from '../../components/ImageFallbackFixed';
 import { contractors_service } from '../../services/contractors_service';
 import { role_service } from '../../services/role_service';
@@ -25,6 +26,7 @@ interface ContractorProfileScreenProps {
   onLogout: () => void;
   onOpenHelp?: () => void;
   onOpenSwitchRole?: () => void; // ✅ Navigate to switch role screen
+  onOpenSubscription?: () => void; // Navigate to Subscription screen
   userData?: {
     username?: string;
     email?: string;
@@ -60,6 +62,13 @@ export default function ContractorProfileScreen({ onLogout, onOpenHelp, onOpenSw
   const getInitials = (name: string) => {
     return name ? name.substring(0, 2).toUpperCase() : 'CO';
   };
+
+  let navigation: any = null;
+  try {
+    navigation = useNavigation();
+  } catch (e) {
+    navigation = null;
+  }
 
   // Handle logout with confirmation
   const handleLogout = () => {
@@ -218,6 +227,47 @@ export default function ContractorProfileScreen({ onLogout, onOpenHelp, onOpenSw
           onPress: () => Alert.alert('Coming Soon', 'This feature is under development.'),
         },
       ],
+    },    {
+      title: 'Promotions',
+      items: [
+        {
+          id: 'subscription',
+          icon: 'card-outline',
+          label: 'Subscription',
+          subtitle: 'Manage your subscription plan',
+          showArrow: true,
+          onPress: () => {
+            if (typeof onOpenSubscription === 'function') {
+              onOpenSubscription();
+              return;
+            }
+
+            // Try navigation if available
+            if (navigation && typeof navigation.navigate === 'function') {
+              try {
+                navigation.navigate('Subscription');
+                return;
+              } catch (e) {
+                // ignore and fallback
+              }
+            }
+
+            // As a last resort, call global app-state setter if present (App.tsx exposes this)
+            try {
+              // @ts-ignore
+              if (typeof global.set_app_state === 'function') {
+                // @ts-ignore
+                global.set_app_state('subscription');
+                return;
+              }
+            } catch (e) {
+              // ignore
+            }
+
+            Alert.alert('Subscription', 'Open subscription screen (not available here).');
+          },
+        },
+      ],
     },
     {
       title: 'Support',
@@ -288,6 +338,8 @@ export default function ContractorProfileScreen({ onLogout, onOpenHelp, onOpenSw
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Settings</Text>
         </View>
+
+
 
         {/* Profile Card */}
         <View style={styles.profileCard}>
@@ -600,6 +652,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F0F0F0',
     marginLeft: 70,
   },
+
   logoutSection: {
     marginTop: 32,
     paddingHorizontal: 16,

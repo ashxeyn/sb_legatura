@@ -10,6 +10,7 @@ use App\Models\admin\userVerificationClass;
 use App\Models\accounts\accountClass;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use App\Http\Requests\admin\rejectVerificationRequest;
 use App\Http\Requests\admin\propertyOwnerRequest;
 use App\Http\Requests\admin\contractorRequest;
@@ -1027,6 +1028,21 @@ class userManagementController extends authController
             return response()->json($result, 404);
         }
 
+        // Recalculate and ensure users.user_type reflects current profiles (contractor/owner/both)
+        try {
+            $hasContractor = DB::table('contractors')->where('user_id', $id)->exists();
+            $hasOwner = DB::table('property_owners')->where('user_id', $id)->exists();
+            if ($hasContractor && $hasOwner) {
+                DB::table('users')->where('user_id', $id)->update(['user_type' => 'both']);
+            } elseif ($hasContractor) {
+                DB::table('users')->where('user_id', $id)->update(['user_type' => 'contractor']);
+            } elseif ($hasOwner) {
+                DB::table('users')->where('user_id', $id)->update(['user_type' => 'property_owner']);
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('approveVerification: failed to reconcile users.user_type', ['user_id' => $id, 'error' => $e->getMessage()]);
+        }
+
         return response()->json($result);
     }
 
@@ -1417,16 +1433,40 @@ class userManagementController extends authController
             return response()->json(['success' => false, 'message' => 'User not found'], 404);
         }
 
+        $updatePayload = [
+            'verification_status' => 'approved',
+            'verification_date' => now(),
+        ];
+
+        // Only set `is_active` if the column exists in the contractors table
+        if (Schema::hasColumn('contractors', 'is_active')) {
+            $updatePayload['is_active'] = 1;
+        } else {
+            \Log::warning("approveContractorVerification: 'is_active' column not present on contractors table; skipping setting is_active for user_id {$id}");
+        }
+
         $updated = DB::table('contractors')
             ->where('user_id', $id)
-            ->update([
-                'verification_status' => 'approved',
-                'verification_date' => now(),
-                'is_active' => 1
-            ]);
+            ->update($updatePayload);
 
         if ($updated) {
             \Log::info("Contractor verification approved for user_id: {$id}");
+
+            // Ensure users.user_type reflects both roles if a property_owner profile exists
+            try {
+                $hasOwner = DB::table('property_owners')->where('user_id', $id)->exists();
+                if ($hasOwner) {
+                    DB::table('users')->where('user_id', $id)->update(['user_type' => 'both']);
+                } else {
+                    // Only contractor profile exists; set to contractor unless already both
+                    $currentType = DB::table('users')->where('user_id', $id)->value('user_type');
+                    if ($currentType !== 'both' && $currentType !== 'contractor') {
+                        DB::table('users')->where('user_id', $id)->update(['user_type' => 'contractor']);
+                    }
+                }
+            } catch (\Throwable $e) {
+                \Log::warning('approveContractorVerification: failed to update users.user_type', ['user_id' => $id, 'error' => $e->getMessage()]);
+            }
             return response()->json([
                 'success' => true,
                 'message' => 'Contractor verification approved successfully'

@@ -3,6 +3,7 @@
 namespace App\Models\admin;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use App\Models\User;
 
 class userVerificationClass
@@ -79,13 +80,19 @@ class userVerificationClass
         // If a specific role was requested, only update that profile table
         if ($targetRole === 'contractor') {
             // Approve contractor profile and mark contractor as active
+            $updatePayload = [
+                'verification_status' => 'approved',
+                'verification_date' => now(),
+            ];
+            if (Schema::hasColumn('contractors', 'is_active')) {
+                $updatePayload['is_active'] = 1;
+            } else {
+                \Log::warning("ApproveVerification: 'is_active' column missing on contractors table for user_id {$userId}");
+            }
+
             $affected = DB::table('contractors')
                 ->where('user_id', $userId)
-                ->update([
-                    'verification_status' => 'approved',
-                    'verification_date' => now(),
-                    'is_active' => 1
-                ]);
+                ->update($updatePayload);
 
             \Log::info('ApproveVerification: contractors update', ['user_id' => $userId, 'affected_rows' => $affected]);
 
@@ -122,13 +129,16 @@ class userVerificationClass
             $hasOwner = DB::table('property_owners')->where('user_id', $userId)->exists();
 
             if ($hasContractor) {
+                $updatePayload = [
+                    'verification_status' => 'approved',
+                    'verification_date' => now(),
+                ];
+                if (Schema::hasColumn('contractors', 'is_active')) {
+                    $updatePayload['is_active'] = 1;
+                }
                 $affected = DB::table('contractors')
                     ->where('user_id', $userId)
-                    ->update([
-                        'verification_status' => 'approved',
-                        'verification_date' => now(),
-                        'is_active' => 1
-                    ]);
+                    ->update($updatePayload);
                 \Log::info('ApproveVerification: contractors update', ['user_id' => $userId, 'affected_rows' => $affected]);
 
                 // Activate any contractor_users record linking this user to the contractor
@@ -184,11 +194,14 @@ class userVerificationClass
         // If target is contractor, ONLY update contractors table
         if ($targetRole === 'contractor') {
             // Update contractors table only (verification fields moved here)
-            $affectedContractors = DB::table('contractors')->where('user_id', $userId)->update([
+            $rejectPayload = [
                 'verification_status' => 'rejected',
                 'rejection_reason' => $reason,
-                'is_active' => 0
-            ]);
+            ];
+            if (Schema::hasColumn('contractors', 'is_active')) {
+                $rejectPayload['is_active'] = 0;
+            }
+            $affectedContractors = DB::table('contractors')->where('user_id', $userId)->update($rejectPayload);
             \Log::info('RejectVerification: contractors update', [
                 'user_id' => $userId,
                 'affected_rows' => $affectedContractors

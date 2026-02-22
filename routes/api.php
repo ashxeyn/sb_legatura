@@ -212,6 +212,12 @@ Route::get('/debug/ping', function (Request $request) {
 // PayMongo webhook endpoint (API routes bypass CSRF)
 Route::post('/paymongo/webhook', [payMongoController::class , 'handleWebhook']);
 
+// Subscription checkout for mobile clients (supports X-User-Id and return_url)
+Route::post('/subscribe/checkout', [payMongoController::class, 'createSubscriptionCheckout']);
+
+// Cancel subscription (mobile API)
+Route::post('/subscribe/cancel', [payMongoController::class, 'cancelSubscription']);
+
 // Verify a boost payment by checking PayMongo directly (used by mobile deep-link)
 Route::post('/boost/verify', [payMongoController::class, 'verifyBoostPayment']);
 

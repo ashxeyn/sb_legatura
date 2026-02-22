@@ -165,6 +165,26 @@ class platformPaymentClass
                         $post->percentage = 0;
                     }
 
+                    // Attach any project_files rows if present
+                    try {
+                        // Only include project files that are either 'desired design' or 'others'
+                        $files = DB::table('project_files')
+                            ->where('project_id', $post->id)
+                            ->whereIn('file_type', ['desired design', 'others'])
+                            ->get();
+                        $post->project_files = $files->map(function ($f) {
+                            return [
+                                'file_id' => $f->file_id ?? null,
+                                'project_id' => $f->project_id ?? null,
+                                'file_type' => $f->file_type ?? null,
+                                'file_path' => $f->file_path ?? null,
+                                'uploaded_at' => $f->uploaded_at ?? null,
+                            ];
+                        })->toArray();
+                    } catch (\Throwable $e) {
+                        $post->project_files = [];
+                    }
+
                     return $post;
                 });
             }
@@ -221,6 +241,26 @@ class platformPaymentClass
             $projects->transform(function ($project) {
                 $project->image = 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?w=400&h=400&fit=crop';
                 $project->date = \Carbon\Carbon::parse($project->date)->format('F Y');
+                // Attach project files if any
+                try {
+                    // Only include project files that are either 'desired design' or 'others'
+                    $files = DB::table('project_files')
+                        ->where('project_id', $project->id)
+                        ->whereIn('file_type', ['desired design', 'others'])
+                        ->get();
+                    $project->project_files = $files->map(function ($f) {
+                        return [
+                            'file_id' => $f->file_id ?? null,
+                            'project_id' => $f->project_id ?? null,
+                            'file_type' => $f->file_type ?? null,
+                            'file_path' => $f->file_path ?? null,
+                            'uploaded_at' => $f->uploaded_at ?? null,
+                        ];
+                    })->toArray();
+                } catch (\Throwable $e) {
+                    $project->project_files = [];
+                }
+
                 return $project;
             });
 

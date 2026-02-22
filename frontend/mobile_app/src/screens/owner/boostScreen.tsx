@@ -27,6 +27,7 @@ export default function BoostScreen({ navigation }: any) {
 	const [selectedTab, setSelectedTab] = useState<'active' | 'dashboard'>('active');
 	const [searchQuery, setSearchQuery] = useState<string>('');
 	const [processingId, setProcessingId] = useState<number | null>(null);
+	const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
 
 	const calcBoostProgress = (item: any) => {
 		// Prefer server-calculated percentage if provided
@@ -147,8 +148,69 @@ export default function BoostScreen({ navigation }: any) {
 		const { pct, daysLeft } = calcBoostProgress(item);
 		const endsAt = item.ends_at || item.expiration_date || item.expiration || item.expire_at || item.endsAt || null;
 		const endsAtText = formatDiffForHumans(endsAt);
-		const img = item.image_url || item.image || (item.files && item.files[0]) || item.project_image || null;
-		const imgUrl = img ? (typeof img === 'string' && img.startsWith('http') ? img : `${api_config.base_url}/storage/${img}`) : null;
+		// Prefer project file "desired design" first, then fall back to API image fields.
+		const files = item.project_files || item.files || item.project_files_list || [];
+		let imgUrl: string | null = null;
+
+		// --- STEP 1: PRIORITIZE THE DATABASE FILE (Desired Design) ---
+		if (Array.isArray(files) && files.length > 0) {
+			console.log('Project files for item:', (item.id || item.project_id || item.projectId || '?'), files);
+			const readPath = (f: any) => f?.file_path || f?.path || f?.file || f?.fileUrl || f?.file_url || f?.url || f?.file_path_server || null;
+			const desired = files.find((f: any) => {
+				const ft = String(f.file_type || f.type || '').toLowerCase();
+				return ft === 'desired design' || /desired[_ ]?design/.test(ft);
+			});
+
+			const pick = desired || files[0];
+			const pth = readPath(pick);
+			if (pth) {
+				let rawPath = String(pth).replace(/\\/g, '/').replace(/^\\+/, '');
+				if (rawPath.toLowerCase().startsWith('http')) {
+					imgUrl = rawPath;
+				} else if (rawPath.toLowerCase().startsWith('storage/')) {
+					imgUrl = `${api_config.base_url}/${rawPath}`;
+				} else {
+					imgUrl = `${api_config.base_url}/storage/${rawPath}`;
+				}
+				try { imgUrl = encodeURI(imgUrl); } catch (e) { /* ignore */ }
+				console.log('Boost image URL from project file:', imgUrl, 'picked:', pick);
+			}
+		}
+
+		// --- STEP 2: FALLBACK TO image_url IF NO FILE FOUND ---
+		if (!imgUrl && item.image_url) {
+			imgUrl = String(item.image_url);
+		}
+
+		// --- STEP 3: ADDITIONAL FALLBACKS (other API image fields) ---
+		if (!imgUrl) {
+			const imageCandidates = ['image_url', 'image', 'thumbnail', 'cover_image', 'photo', 'imageUrl', 'image_path', 'imagePath'];
+			for (const key of imageCandidates) {
+				const v = item[key] || item[key.toString().replace(/_([a-z])/g, (m, p1) => p1.toUpperCase())];
+				if (v) {
+					imgUrl = String(v);
+					break;
+				}
+			}
+		}
+
+		// --- STEP 4: FINAL FALLBACK ---
+		if (!imgUrl) {
+			imgUrl = 'https://via.placeholder.com/400x200?text=No+Design+Found';
+		}
+
+		// Normalize and ensure absolute URL where applicable
+		if (imgUrl) {
+			try {
+				let raw = String(imgUrl).replace(/\\/g, '/');
+				raw = raw.replace(/^\\+/, '');
+				if (!raw.toLowerCase().startsWith('http')) {
+					if (raw.toLowerCase().startsWith('storage/')) imgUrl = `${api_config.base_url}/${raw}`;
+					else imgUrl = `${api_config.base_url}/storage/${raw}`;
+				} else imgUrl = raw;
+				imgUrl = encodeURI(imgUrl);
+			} catch (e) { /* ignore */ }
+		}
 
 		const getProgressColor = (d: number | null) => {
 			if (d === null) return '#EC7E00';
@@ -169,15 +231,28 @@ export default function BoostScreen({ navigation }: any) {
 		const fillPct = normalizedPct > 0 ? Math.max(normalizedPct, 6) : 0;
 		const fillWidth = `${Number.isFinite(fillPct) ? fillPct : 0}%` as any;
 
-		return (
-			<View style={styles.boostCard}>
-				{imgUrl ? (
-					<View style={styles.thumb}><Image source={{ uri: imgUrl }} style={{ width: '100%', height: '100%', borderRadius: 8 }} /></View>
-				) : (
-					<View style={[styles.thumb, { justifyContent: 'center', alignItems: 'center' }]}>
-						<Text style={{ color: '#999' }}>No image</Text>
-					</View>
-				)}
+			const loadFailed = !!(imgUrl && failedImages[imgUrl]);
+
+			return (
+				<View style={styles.boostCard}>
+					{imgUrl && !loadFailed ? (
+						<View style={styles.thumb}>
+							<Image
+								source={{ uri: imgUrl }}
+								style={{ width: '100%', height: '100%', borderRadius: 8 }}
+								resizeMode="cover"
+								onLoad={() => console.log('Boost image loaded:', imgUrl)}
+								onError={(e) => {
+									console.warn('Boost image load error:', imgUrl, e.nativeEvent || e);
+									setFailedImages(prev => ({ ...prev, [imgUrl]: true }));
+								}}
+							/>
+						</View>
+					) : (
+						<View style={[styles.thumb, { justifyContent: 'center', alignItems: 'center' }]}>
+							<Text style={{ color: '#999' }}>No image</Text>
+						</View>
+					)}
 				<View style={styles.boostContent}>
 					<Text style={styles.projectTitle}>{item.title || item.project_title || 'Untitled'}</Text>
 					<Text style={styles.infoLine}>{item.owner_name || item.owner || 'Only me'}</Text>
