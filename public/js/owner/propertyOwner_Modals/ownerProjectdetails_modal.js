@@ -8,7 +8,7 @@ class ProjectDetailsModal {
         this.modal = null;
         this.overlay = null;
         this.currentProject = null;
-        
+
         this.init();
     }
 
@@ -16,7 +16,7 @@ class ProjectDetailsModal {
         // Get modal elements
         this.modal = document.getElementById('projectDetailsModal');
         this.overlay = document.getElementById('projectModalOverlay');
-        
+
         if (!this.modal) {
             console.error('Project Details Modal not found');
             return;
@@ -30,11 +30,11 @@ class ProjectDetailsModal {
         // Close button
         const closeBtn = document.getElementById('closeProjectModalBtn');
         const closeModalBtn = document.getElementById('closeModalBtn');
-        
+
         if (closeBtn) {
             closeBtn.addEventListener('click', () => this.close());
         }
-        
+
         if (closeModalBtn) {
             closeModalBtn.addEventListener('click', () => this.close());
         }
@@ -60,11 +60,44 @@ class ProjectDetailsModal {
         // Review Milestone button
         const reviewMilestoneBtn = document.getElementById('reviewMilestoneBtn');
         if (reviewMilestoneBtn) {
-            reviewMilestoneBtn.addEventListener('click', () => {
+            reviewMilestoneBtn.addEventListener('click', async () => {
                 if (this.currentProject) {
-                    // Navigate to milestone report page with project ID
-                    const milestoneReportUrl = `/owner/projects/milestone-report?project_id=${this.currentProject.id}`;
-                    window.location.href = milestoneReportUrl;
+                    try {
+                        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+
+                        const response = await fetch('/owner/projects/set-milestone', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken || ''
+                            },
+                            body: JSON.stringify({
+                                project_id: this.currentProject.id
+                            })
+                        });
+
+                        const text = await response.text();
+                        console.log('Session response text:', text); // Debugging
+
+                        let data = {};
+                        try {
+                            data = JSON.parse(text);
+                        } catch (e) {
+                            console.error('Failed to parse response as JSON:', text);
+                            throw new Error('Server returned invalid JSON for session set.');
+                        }
+
+                        if (data.success) {
+                            console.log('Navigating to milestone report for project:', this.currentProject.id);
+                            window.location.href = '/owner/projects/milestone-report';
+                        } else {
+                            console.error('Failed to set milestone session:', data.message);
+                            this.showNotification('Could not navigate to milestone report.');
+                        }
+                    } catch (error) {
+                        console.error('Error setting milestone session:', error);
+                        this.showNotification('An error occurred. Please try again.');
+                    }
                 }
             });
         }
@@ -85,7 +118,7 @@ class ProjectDetailsModal {
 
         this.currentProject = project;
         this.populateModal(project);
-        
+
         if (this.modal) {
             this.modal.classList.add('active');
             document.body.style.overflow = 'hidden'; // Prevent background scrolling
@@ -108,11 +141,11 @@ class ProjectDetailsModal {
         // Title and Location
         const titleElement = document.getElementById('modalProjectTitle');
         const locationText = document.getElementById('modalLocationText');
-        
+
         if (titleElement) {
             titleElement.textContent = project.title || 'Untitled Project';
         }
-        
+
         if (locationText) {
             locationText.textContent = project.location || 'Location not specified';
         }
@@ -141,11 +174,11 @@ class ProjectDetailsModal {
         // Lot Size and Floor Area
         const lotSizeElement = document.getElementById('modalLotSize');
         const floorAreaElement = document.getElementById('modalFloorArea');
-        
+
         if (lotSizeElement) {
             lotSizeElement.textContent = project.lotSize || 'Not specified';
         }
-        
+
         if (floorAreaElement) {
             floorAreaElement.textContent = project.floorArea || 'Not specified';
         }
@@ -175,14 +208,14 @@ class ProjectDetailsModal {
 
         // Default specifications based on project type
         const defaultSpecs = this.getDefaultSpecifications(project);
-        
+
         // If project has custom specifications, use those
         const specifications = project.specifications || defaultSpecs;
 
         specifications.forEach(spec => {
             const specItem = document.createElement('div');
             specItem.className = 'spec-item';
-            
+
             specItem.innerHTML = `
                 <div class="spec-icon">
                     <i class="${spec.icon || 'fi fi-rr-settings'}"></i>
@@ -192,7 +225,7 @@ class ProjectDetailsModal {
                     <span class="spec-value">${spec.value}</span>
                 </div>
             `;
-            
+
             specsContainer.appendChild(specItem);
         });
     }
@@ -263,7 +296,7 @@ class ProjectDetailsModal {
 
     populateContractorInfo(project) {
         const contractor = project.contractor || {};
-        
+
         // Avatar
         const avatarElement = document.getElementById('modalContractorAvatar');
         if (avatarElement) {
@@ -313,15 +346,15 @@ class ProjectDetailsModal {
         // Status Badge
         const statusBadge = document.getElementById('modalStatusBadge');
         const statusText = document.getElementById('modalStatusText');
-        
+
         if (statusBadge && statusText) {
             // Remove existing status classes
             statusBadge.className = 'status-badge-modal';
-            
+
             // Add appropriate status class
             const status = project.status || 'pending';
             statusBadge.classList.add(`status-${status}`);
-            
+
             // Set status text
             statusText.textContent = status.replace('_', ' ').toUpperCase();
         }
@@ -329,12 +362,12 @@ class ProjectDetailsModal {
         // Progress
         const progressPercentage = document.getElementById('modalProgressPercentage');
         const progressBar = document.getElementById('modalProgressBar');
-        
+
         if (progressPercentage) {
             const progress = project.progress || 0;
             progressPercentage.textContent = `${progress}%`;
         }
-        
+
         if (progressBar) {
             const progress = project.progress || 0;
             progressBar.style.width = `${progress}%`;

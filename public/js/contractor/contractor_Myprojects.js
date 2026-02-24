@@ -44,9 +44,20 @@ class ContractorMyProjects {
             const data = window.serverProjects;
             this.projects = (Array.isArray(data) ? data : []).map(p => {
                 const milestones = Array.isArray(p.milestones) ? p.milestones : [];
-                const totalMs = milestones.length;
-                const doneMs = totalMs ? milestones.filter(m => (m.milestone_status === 'approved' || m.milestone_status === 'completed')).length : 0;
-                const progress = totalMs ? Math.round((doneMs / totalMs) * 100) : 0;
+                // Count milestone ITEMS (individual tasks), not milestone plan records
+                let totalItems = 0;
+                let doneItems = 0;
+                let totalCost = 0;
+                milestones.forEach(m => {
+                    if (Array.isArray(m.items)) {
+                        m.items.forEach(item => {
+                            totalItems++;
+                            if (item.item_status === 'completed') doneItems++;
+                            totalCost += parseFloat(item.milestone_item_cost || 0);
+                        });
+                    }
+                });
+                const progress = totalItems ? Math.round((doneItems / totalItems) * 100) : 0;
 
                 const ownerInfo = p.owner_info || null;
                 const ownerName = ownerInfo ? (ownerInfo.username || ((ownerInfo.first_name || '') + ' ' + (ownerInfo.last_name || ''))) : (p.owner_name || '');
@@ -55,6 +66,14 @@ class ContractorMyProjects {
                 let budget = '-';
                 if (p.budget_range_min && p.budget_range_max) {
                     try { budget = '₱' + Number(p.budget_range_min).toLocaleString() + ' - ₱' + Number(p.budget_range_max).toLocaleString(); } catch (e) { budget = '-'; }
+                }
+
+                // Project image from files
+                let projectImage = p.project_image || '';
+                if (!projectImage && Array.isArray(p.files) && p.files.length > 0) {
+                    const firstFile = p.files[0];
+                    const filePath = typeof firstFile === 'string' ? firstFile : (firstFile.file_path || '');
+                    if (filePath) projectImage = '/storage/' + filePath.replace(/^\//, '');
                 }
 
                 const display = p.display_status || p.project_status || '';
@@ -88,16 +107,34 @@ class ContractorMyProjects {
                     description: p.project_description || '',
                     location: p.project_location || '',
                     budget: budget,
+                    lotSize: p.lot_size ? p.lot_size + ' sqm' : 'Not specified',
+                    floorArea: p.floor_area ? p.floor_area + ' sqm' : 'Not specified',
                     status: status,
                     statusText: statusText,
                     date: p.created_at || '',
                     progress: progress,
-                    owner: { name: ownerName, avatar: ownerAvatar, username: ownerInfo ? ownerInfo.username : null, profile_pic: ownerInfo ? ownerInfo.profile_pic : null },
-                    image: p.project_image || '',
+                    owner: {
+                        name: ownerName,
+                        avatar: ownerAvatar,
+                        username: ownerInfo ? ownerInfo.username : null,
+                        profile_pic: ownerInfo ? ownerInfo.profile_pic : null,
+                        email: ownerInfo ? (ownerInfo.email || '') : '',
+                        phone: ownerInfo ? (ownerInfo.phone_number || '') : '',
+                        initials: ownerAvatar
+                    },
+                    image: projectImage,
                     awaitingSetup: awaitingSetup,
                     awaitingApproval: awaitingApproval,
                     statusInfo: p.project_status || display || '',
                     proposed_cost: p.proposed_cost,
+                    milestones: {
+                        total: totalItems,
+                        completed: doneItems,
+                        totalCost: totalCost > 0 ? '₱' + totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '₱0'
+                    },
+                    totalMilestones: totalItems,
+                    completedMilestones: doneItems,
+                    totalCost: totalCost > 0 ? '₱' + totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '₱0',
                     raw: p
                 };
             });
@@ -139,9 +176,20 @@ class ContractorMyProjects {
 
                 this.projects = (Array.isArray(data) ? data : []).map(p => {
                     const milestones = Array.isArray(p.milestones) ? p.milestones : [];
-                    const totalMs = milestones.length;
-                    const doneMs = totalMs ? milestones.filter(m => (m.milestone_status === 'approved' || m.milestone_status === 'completed')).length : 0;
-                    const progress = totalMs ? Math.round((doneMs / totalMs) * 100) : 0;
+                    // Count milestone ITEMS (individual tasks), not milestone plan records
+                    let totalItems = 0;
+                    let doneItems = 0;
+                    let totalCost = 0;
+                    milestones.forEach(m => {
+                        if (Array.isArray(m.items)) {
+                            m.items.forEach(item => {
+                                totalItems++;
+                                if (item.item_status === 'completed') doneItems++;
+                                totalCost += parseFloat(item.milestone_item_cost || 0);
+                            });
+                        }
+                    });
+                    const progress = totalItems ? Math.round((doneItems / totalItems) * 100) : 0;
 
                     const ownerInfo = p.owner_info || null;
                     const ownerName = ownerInfo ? (ownerInfo.username || ((ownerInfo.first_name || '') + ' ' + (ownerInfo.last_name || ''))) : (p.owner_name || '');
@@ -150,6 +198,14 @@ class ContractorMyProjects {
                     let budget = '-';
                     if (p.budget_range_min && p.budget_range_max) {
                         try { budget = '₱' + Number(p.budget_range_min).toLocaleString() + ' - ₱' + Number(p.budget_range_max).toLocaleString(); } catch (e) { budget = '-'; }
+                    }
+
+                    // Project image from files
+                    let projectImage = p.project_image || '';
+                    if (!projectImage && Array.isArray(p.files) && p.files.length > 0) {
+                        const firstFile = p.files[0];
+                        const filePath = typeof firstFile === 'string' ? firstFile : (firstFile.file_path || '');
+                        if (filePath) projectImage = '/storage/' + filePath.replace(/^\//, '');
                     }
 
                     const display = p.display_status || p.project_status || '';
@@ -178,15 +234,33 @@ class ContractorMyProjects {
                         description: p.project_description || '',
                         location: p.project_location || '',
                         budget: budget,
+                        lotSize: p.lot_size ? p.lot_size + ' sqm' : 'Not specified',
+                        floorArea: p.floor_area ? p.floor_area + ' sqm' : 'Not specified',
                         status: status,
                         statusText: statusText,
                         date: p.created_at || '',
                         progress: progress,
-                        owner: { name: ownerName, avatar: ownerAvatar, username: ownerInfo ? ownerInfo.username : null, profile_pic: ownerInfo ? ownerInfo.profile_pic : null },
-                        image: p.project_image || '',
+                        owner: {
+                            name: ownerName,
+                            avatar: ownerAvatar,
+                            username: ownerInfo ? ownerInfo.username : null,
+                            profile_pic: ownerInfo ? ownerInfo.profile_pic : null,
+                            email: ownerInfo ? (ownerInfo.email || '') : '',
+                            phone: ownerInfo ? (ownerInfo.phone_number || '') : '',
+                            initials: ownerAvatar
+                        },
+                        image: projectImage,
                         awaitingSetup: awaitingSetup,
                         statusInfo: p.project_status || display || '',
                         proposed_cost: p.proposed_cost,
+                        milestones: {
+                            total: totalItems,
+                            completed: doneItems,
+                            totalCost: totalCost > 0 ? '₱' + totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '₱0'
+                        },
+                        totalMilestones: totalItems,
+                        completedMilestones: doneItems,
+                        totalCost: totalCost > 0 ? '₱' + totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '₱0',
                         raw: p
                     };
                 });

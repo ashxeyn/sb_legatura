@@ -7,7 +7,7 @@
     left: 0;
     width: 100%;
     height: 100%;
-    z-index: 1000;
+    z-index: 2000;
     overflow-y: auto;
 }
 
@@ -26,7 +26,7 @@
     height: 100%;
     background-color: rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(4px);
-    z-index: 1001;
+    z-index: 2001;
     animation: fadeIn 0.3s ease-out;
 }
 
@@ -39,7 +39,7 @@
     max-width: 800px;
     max-height: 90vh;
     margin: 2rem auto;
-    z-index: 1002;
+    z-index: 2002;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
     animation: slideUp 0.3s ease-out;
     display: flex;
@@ -352,11 +352,25 @@
     animation: slideInRight 0.4s ease-out both;
 }
 
-.file-item:nth-child(1) { animation-delay: 0.1s; }
-.file-item:nth-child(2) { animation-delay: 0.2s; }
-.file-item:nth-child(3) { animation-delay: 0.3s; }
-.file-item:nth-child(4) { animation-delay: 0.4s; }
-.file-item:nth-child(5) { animation-delay: 0.5s; }
+.file-item:nth-child(1) {
+    animation-delay: 0.1s;
+}
+
+.file-item:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.file-item:nth-child(3) {
+    animation-delay: 0.3s;
+}
+
+.file-item:nth-child(4) {
+    animation-delay: 0.4s;
+}
+
+.file-item:nth-child(5) {
+    animation-delay: 0.5s;
+}
 
 .file-item::before {
     content: '';
@@ -589,6 +603,7 @@
     from {
         opacity: 0;
     }
+
     to {
         opacity: 1;
     }
@@ -599,6 +614,7 @@
         transform: translateY(50px);
         opacity: 0;
     }
+
     to {
         transform: translateY(0);
         opacity: 1;
@@ -610,6 +626,7 @@
         transform: translateY(50px) scale(0.9);
         opacity: 0;
     }
+
     to {
         transform: translateY(0) scale(1);
         opacity: 1;
@@ -621,6 +638,7 @@
         transform: translateY(0) scale(1);
         opacity: 1;
     }
+
     to {
         transform: translateY(50px) scale(0.9);
         opacity: 0;
@@ -632,6 +650,7 @@
         opacity: 0;
         transform: translateY(20px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -694,8 +713,8 @@
     }
 }
 
-/* Approval Confirmation Modal */
-.confirmation-modal {
+/* Submission Success Modal */
+.upload-success-modal {
     display: none;
     position: fixed;
     top: 0;
@@ -706,7 +725,7 @@
     overflow-y: auto;
 }
 
-.confirmation-modal.active {
+.upload-success-modal.active {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -994,6 +1013,7 @@
     from {
         transform: rotate(0deg);
     }
+
     to {
         transform: rotate(360deg);
     }
@@ -1005,6 +1025,7 @@
         transform: scale(0);
         opacity: 0;
     }
+
     to {
         transform: scale(1);
         opacity: 1;
@@ -1016,6 +1037,7 @@
         transform: scale(1);
         opacity: 1;
     }
+
     100% {
         transform: scale(1.5);
         opacity: 0;
@@ -1027,46 +1049,48 @@
         transform: scale(0) rotate(-45deg);
         opacity: 0;
     }
+
     50% {
         transform: scale(1.2) rotate(5deg);
     }
+
     100% {
         transform: scale(1) rotate(0deg);
         opacity: 1;
     }
 }
 
-/* Responsive for Confirmation Modal */
+/* Responsive for Success Modal */
 @media (max-width: 640px) {
-    .confirmation-modal-container {
+    .upload-success-modal-container {
         width: 95%;
         margin: 1rem auto;
     }
 
-    .confirmation-modal-header,
-    .confirmation-modal-body,
-    .confirmation-modal-footer {
+    .upload-success-modal-header,
+    .upload-success-modal-body,
+    .upload-success-modal-footer {
         padding: 1.25rem;
     }
 
-    .confirmation-icon-wrapper {
+    .success-icon-wrapper {
         width: 60px;
         height: 60px;
     }
 
-    .confirmation-icon {
+    .success-icon {
         font-size: 2rem;
     }
 
-    .confirmation-modal-title {
+    .upload-success-modal-title {
         font-size: 1.25rem;
     }
 
-    .confirmation-modal-footer {
+    .upload-success-modal-footer {
         flex-direction: column;
     }
 
-    .confirmation-btn {
+    .success-btn {
         width: 100%;
     }
 }
@@ -1443,9 +1467,17 @@
     animation: slideInRight 0.4s ease-out both;
 }
 
-.uploaded-file-item:nth-child(1) { animation-delay: 0.1s; }
-.uploaded-file-item:nth-child(2) { animation-delay: 0.2s; }
-.uploaded-file-item:nth-child(3) { animation-delay: 0.3s; }
+.uploaded-file-item:nth-child(1) {
+    animation-delay: 0.1s;
+}
+
+.uploaded-file-item:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.uploaded-file-item:nth-child(3) {
+    animation-delay: 0.3s;
+}
 
 .uploaded-file-item:hover {
     border-color: #EEA24B;
@@ -1620,9 +1652,12 @@
 
 /* Animations */
 @keyframes float {
-    0%, 100% {
+
+    0%,
+    100% {
         transform: translateY(0);
     }
+
     50% {
         transform: translateY(-10px);
     }
@@ -1633,6 +1668,7 @@
         opacity: 0;
         transform: translateX(-20px);
     }
+
     to {
         opacity: 1;
         transform: translateX(0);
@@ -2314,7 +2350,8 @@
     font-size: 1rem;
 }
 
-.form-input, .form-textarea {
+.form-input,
+.form-textarea {
     padding: 0.75rem 1rem;
     border: 2px solid #e5e7eb;
     border-radius: 0.5rem;
@@ -2323,7 +2360,8 @@
     transition: all 0.3s ease;
 }
 
-.form-input:focus, .form-textarea:focus {
+.form-input:focus,
+.form-textarea:focus {
     outline: none;
     border-color: #f97316;
     box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
@@ -2464,3 +2502,20 @@
     box-shadow: 0 4px 12px rgba(249, 115, 22, 0.4);
 }
 
+/* Inline Validation Errors */
+.error-message {
+    font-size: 0.8rem;
+    color: #ef4444;
+    margin-top: 0.25rem;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.is-invalid {
+    border-color: #ef4444 !important;
+    background-color: rgba(239, 68, 68, 0.05) !important;
+}
+
+.is-invalid:focus {
+    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.2) !important;
+    border-color: #ef4444 !important;
+}

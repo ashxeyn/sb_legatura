@@ -414,7 +414,7 @@ class ContractorDashboard {
             if (initialsEl) {
                 const parts = (name || '').trim().split(/\s+/).filter(Boolean);
                 let initials = 'U';
-                if (parts.length === 1) initials = parts[0].slice(0,2).toUpperCase();
+                if (parts.length === 1) initials = parts[0].slice(0, 2).toUpperCase();
                 else if (parts.length >= 2) initials = (parts[0][0] + parts[1][0]).toUpperCase();
                 initialsEl.textContent = initials;
             }
@@ -451,7 +451,7 @@ class ContractorDashboard {
                 const milestones = p.milestones || [];
                 const progress = this.computeProgressFromMilestones(milestones);
                 const ownerName = p.owner_name || '';
-                const ownerInitials = ownerName ? ownerName.split(/\s+/).map(s=>s[0]).slice(0,2).join('').toUpperCase() : 'PO';
+                const ownerInitials = ownerName ? ownerName.split(/\s+/).map(s => s[0]).slice(0, 2).join('').toUpperCase() : 'PO';
                 const status = p.display_status || p.project_status || 'in_progress';
                 return {
                     id: p.project_id,
@@ -526,8 +526,8 @@ class ContractorDashboard {
             const card = node.querySelector('.project-card');
 
             // Owner initials (mimic PHP logic)
-            const ownerName = (p.owner && p.owner.name) ? p.owner.name.trim() : (p.raw && p.raw.owner_name ? (p.raw.owner_name+'').trim() : '');
-            const initials = ownerName ? ownerName.split(/\s+/).filter(Boolean).map(w => w.charAt(0).toUpperCase()).slice(0,2).join('') : '—';
+            const ownerName = (p.owner && p.owner.name) ? p.owner.name.trim() : (p.raw && p.raw.owner_name ? (p.raw.owner_name + '').trim() : '');
+            const initials = ownerName ? ownerName.split(/\s+/).filter(Boolean).map(w => w.charAt(0).toUpperCase()).slice(0, 2).join('') : '—';
             const ownerInitialsEl = node.querySelector('.owner-initials');
             if (ownerInitialsEl) ownerInitialsEl.textContent = initials || '—';
 
@@ -644,16 +644,7 @@ class ContractorDashboard {
             this.animateNumber('statInProgress', this.stats.inProgress);
         }
 
-        // Update project counts
-        const allProjectsCount = document.getElementById('allProjectsCount');
-        if (allProjectsCount) {
-            allProjectsCount.textContent = this.stats.total;
-        }
 
-        const finishedProjectsCount = document.getElementById('finishedProjectsCount');
-        if (finishedProjectsCount) {
-            finishedProjectsCount.textContent = this.stats.completed;
-        }
     }
 
     animateNumber(elementId, targetValue) {
@@ -935,7 +926,7 @@ class ContractorDashboard {
         // Add click animation
         this.pulseAnimation(card);
         if (event) {
-        this.createRippleEffect(event, card);
+            this.createRippleEffect(event, card);
         }
 
         // Navigate to my bids page

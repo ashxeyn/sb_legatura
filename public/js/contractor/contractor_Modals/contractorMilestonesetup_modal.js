@@ -834,25 +834,42 @@ class MilestoneSetupModal {
     }
 
     async confirmAndSubmit() {
-        // Prepare final data
-        const finalData = {
-            project: this.projectData,
-            planName: this.formData.planName,
-            paymentMode: this.formData.paymentMode,
-            startDate: this.formData.startDate,
-            endDate: this.formData.endDate,
-            totalBudget: this.formData.totalBudget,
-            downpaymentAmount: this.formData.downpaymentAmount,
-            milestones: this.milestones
-        };
+        const confirmBtn = document.getElementById('confirmSubmitBtn');
+        const originalContent = confirmBtn.innerHTML;
 
-        console.log('Milestone Setup Data:', finalData);
+        try {
+            // Prepare final data
+            const finalData = {
+                project: this.projectData,
+                planName: this.formData.planName,
+                paymentMode: this.formData.paymentMode,
+                startDate: this.formData.startDate,
+                endDate: this.formData.endDate,
+                totalBudget: this.formData.totalBudget,
+                downpaymentAmount: this.formData.downpaymentAmount,
+                milestones: this.milestones
+            };
 
-        // Close confirmation modal
-        this.closeConfirmationModal();
+            // Show loading state
+            confirmBtn.disabled = true;
+            confirmBtn.innerHTML = '<i class="fi fi-rr-spinner spinner-rotate"></i> <span>Submitting...</span>';
 
-        // Submit to backend
-        await this.submitMilestonesToBackend();
+            // Submit to backend
+            const success = await this.submitMilestonesToBackend();
+
+            if (success) {
+                // Close confirmation modal only on success
+                this.closeConfirmationModal();
+            } else {
+                // Reset button on failure
+                confirmBtn.disabled = false;
+                confirmBtn.innerHTML = originalContent;
+            }
+        } catch (error) {
+            console.error('Submission error:', error);
+            confirmBtn.disabled = false;
+            confirmBtn.innerHTML = originalContent;
+        }
     }
 
     /**
@@ -1010,22 +1027,25 @@ class MilestoneSetupModal {
                 const errors = data.errors || {};
                 const errorMessages = Object.values(errors).flat();
                 this.showNotification(errorMessages[0] || 'Validation failed', 'error');
-                return;
+                return false;
             }
 
             if (response.status === 500) {
                 // Server error
                 this.showNotification(data.message || 'Server error occurred', 'error');
-                return;
+                return false;
             }
 
             if (!response.ok || !data.success) {
                 this.showNotification(data.message || 'Failed to submit milestone', 'error');
-                return;
+                return false;
             }
 
             // Success!
             this.showNotification(data.message || 'Milestone setup created successfully!', 'success');
+
+            // Close main modal immediately
+            this.closeModal();
 
             // Redirect if URL provided
             if (data.redirect_url) {
@@ -1033,16 +1053,17 @@ class MilestoneSetupModal {
                     window.location.href = data.redirect_url;
                 }, 1500);
             } else {
-                // Close modal after success
+                // Reload page after a delay to show toast
                 setTimeout(() => {
-                    this.closeModal();
-                    // Reload page to show updated data
                     window.location.reload();
                 }, 1500);
             }
+
+            return true;
         } catch (error) {
             console.error('Milestone submission error:', error);
             this.showNotification('Network error. Please try again.', 'error');
+            return false;
         }
     }
 

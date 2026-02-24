@@ -10,15 +10,18 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use App\Models\contractor\contractorClass;
+use App\Models\contractor\progressUploadClass;
 use App\Services\notificationService;
 
 class cprocessController extends Controller
 {
     protected $contractorClass;
+    protected $progressUploadClass;
 
     public function __construct()
     {
         $this->contractorClass = new contractorClass();
+        $this->progressUploadClass = new progressUploadClass();
     }
 
     public function showHomepage(Request $request)
@@ -55,40 +58,40 @@ class cprocessController extends Controller
                     'property_owners.owner_id as owner_id',
                     DB::raw("CONCAT(property_owners.first_name, ' ', COALESCE(property_owners.middle_name, ''), ' ', property_owners.last_name) as owner_name")
                 )
-                    ->orderBy('project_relationships.created_at', 'desc')
-                    ->get();
+                ->orderBy('project_relationships.created_at', 'desc')
+                ->get();
 
-                // attach files for each project (keep objects so Blade can use -> syntax)
-                $projects = $projects->map(function($proj) {
-                    $files = DB::table('project_files')
-                        ->where('project_id', $proj->project_id)
-                        ->get();
-                    $proj->files = $files;
-                    return $proj;
-                });
+            // attach files for each project (keep objects so Blade can use -> syntax)
+            $projects = $projects->map(function ($proj) {
+                $files = DB::table('project_files')
+                    ->where('project_id', $proj->project_id)
+                    ->get();
+                $proj->files = $files;
+                return $proj;
+            });
         } catch (\Throwable $e) {
             \Log::error('Failed to fetch projects for contractor homepage: ' . $e->getMessage());
             $projects = collect([]);
         }
-            // Fetch approved projects via the owner projectsClass (centralized logic)
-            try {
-                $projectsClass = new \App\Models\owner\projectsClass();
-                $projects = $projectsClass->getApprovedProjects();
+        // Fetch approved projects via the owner projectsClass (centralized logic)
+        try {
+            $projectsClass = new \App\Models\owner\projectsClass();
+            $projects = $projectsClass->getApprovedProjects();
 
-                // attach files for each project using the same class helper
-                $projects = $projects->map(function($proj) use ($projectsClass) {
-                    $files = $projectsClass->getProjectFiles($proj->project_id);
-                    $proj->files = $files;
-                    return $proj;
-                });
-            } catch (\Throwable $e) {
-                \Log::error('Failed to fetch projects for contractor homepage via projectsClass: ' . $e->getMessage());
-                $projects = collect([]);
-            }
+            // attach files for each project using the same class helper
+            $projects = $projects->map(function ($proj) use ($projectsClass) {
+                $files = $projectsClass->getProjectFiles($proj->project_id);
+                $proj->files = $files;
+                return $proj;
+            });
+        } catch (\Throwable $e) {
+            \Log::error('Failed to fetch projects for contractor homepage via projectsClass: ' . $e->getMessage());
+            $projects = collect([]);
+        }
 
         // Prepare a lightweight JS-friendly payload for the front-end script
         try {
-            $jsProjects = $projects->map(function($p) {
+            $jsProjects = $projects->map(function ($p) {
                 // Safely get first file path for image (support array or collection)
                 $firstFilePath = null;
                 if (!empty($p->files)) {
@@ -104,7 +107,7 @@ class cprocessController extends Controller
                     }
                 }
 
-                return (object)[
+                return (object) [
                     'project_id' => $p->project_id,
                     'title' => $p->project_title,
                     'description' => $p->project_description,
@@ -186,17 +189,182 @@ class cprocessController extends Controller
 
     public function showMyBids(Request $request)
     {
-        return view('contractor.contractor_Mybids');
+        $user = Session::get('user');
+        $userId = is_object($user) ? ($user->user_id ?? null) : ($user['user_id'] ?? null);
+        $bids = collect([]);
+
+        if ($userId) {
+            // Resolve contractor — same logic as apiGetMyBids
+            $contractor = DB::table('contractors')->where('user_id', $userId)->first();
+
+            if (!$contractor) {
+                $contractorUser = DB::table('contractor_users')
+                    ->where('user_id', $userId)
+                    ->where('is_active', 1)
+                    ->where('is_deleted', 0)
+                    ->first();
+                if ($contractorUser) {
+                    $contractor = DB::table('contractors')
+                        ->where('contractor_id', $contractorUser->contractor_id)
+                        ->first();
+                }
+            }
+
+            if ($contractor) {
+                $bids = DB::table('bids')
+                    ->join('projects', 'bids.project_id', '=', 'projects.project_id')
+                    ->leftJoin('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
+                    ->leftJoin('property_owners', 'project_relationships.owner_id', '=', 'property_owners.owner_id')
+                    ->leftJoin('users', 'property_owners.user_id', '=', 'users.user_id')
+                    ->leftJoin('contractor_types', 'projects.type_id', '=', 'contractor_types.type_id')
+                    ->where('bids.contractor_id', $contractor->contractor_id)
+                    ->whereNotIn('bids.bid_status', ['cancelled'])
+                    ->select(
+                        'bids.bid_id',
+                        'bids.project_id',
+                        'bids.proposed_cost',
+                        'bids.estimated_timeline',
+                        'bids.contractor_notes',
+                        'bids.bid_status',
+                        'bids.submitted_at',
+                        'projects.project_title',
+                        'projects.project_description',
+                        'projects.project_location',
+                        'projects.budget_range_min',
+                        'projects.budget_range_max',
+                        'projects.lot_size',
+                        'projects.floor_area',
+                        'projects.property_type',
+                        'projects.to_finish',
+                        'projects.project_status',
+                        'contractor_types.type_name',
+                        'project_relationships.bidding_due',
+                        'users.username as owner_name'
+                    )
+                    ->orderBy('bids.submitted_at', 'desc')
+                    ->get();
+
+                // Attach project files for each bid
+                foreach ($bids as $bid) {
+                    $projectFiles = DB::table('project_files')
+                        ->where('project_id', $bid->project_id)
+                        ->select('file_type', 'file_path')
+                        ->get();
+                    $bid->project_files = $projectFiles;
+                }
+            }
+        }
+
+        return view('contractor.contractor_Mybids', [
+            'bids' => $bids,
+            'userId' => $userId,
+        ]);
+    }
+
+    public function setMilestoneSession(Request $request)
+    {
+        $request->validate([
+            'project_id' => 'required|integer'
+        ]);
+
+        Session::put('current_milestone_project_id', $request->project_id);
+
+        return response()->json(['success' => true]);
+    }
+
+    public function setMilestoneItemSession(Request $request)
+    {
+        $request->validate([
+            'item_id' => 'required|integer',
+            'project_id' => 'required|integer',
+        ]);
+
+        Session::put('current_milestone_item_id', $request->item_id);
+        Session::put('current_milestone_project_id', $request->project_id);
+
+        return response()->json(['success' => true]);
     }
 
     public function showMilestoneReport(Request $request)
     {
-        return view('contractor.contractor_MilestoneReport');
+        $user = Session::get('user');
+        if (!$user) {
+            return redirect('/accounts/login');
+        }
+
+        // Use PRG Session pattern to hide ID from URL
+        $projectId = Session::get('current_milestone_project_id');
+
+        // Fallback for hardcoded direct links during dev
+        if (!$projectId && $request->has('project_id')) {
+            $projectId = $request->query('project_id');
+            Session::put('current_milestone_project_id', $projectId);
+        }
+
+        if (!$projectId) {
+            return redirect('/contractor/myprojects')->with('error', 'Project ID is required.');
+        }
+
+        // Get contractor via model (supports staff members too)
+        $contractor = $this->contractorClass->getContractorByUserId($user->user_id);
+
+        if (!$contractor) {
+            $contractorUser = $this->contractorClass->getContractorUserByUserId($user->user_id);
+            if ($contractorUser && isset($contractorUser->contractor_id)) {
+                $contractor = DB::table('contractors')
+                    ->where('contractor_id', $contractorUser->contractor_id)
+                    ->first();
+            }
+        }
+
+        if (!$contractor) {
+            return redirect('/contractor/myprojects')->with('error', 'Contractor profile not found.');
+        }
+
+        // Fetch project and verify contractor access via accepted bid
+        $project = $this->contractorClass->getProjectForContractor($projectId, $contractor->contractor_id);
+
+        if (!$project) {
+            return redirect('/contractor/myprojects')->with('error', 'Project not found or access denied.');
+        }
+
+        // Fetch milestone plans with items, progress reports, and payments
+        $milestones = $this->contractorClass->getProjectMilestonesWithItems($projectId, $contractor->contractor_id);
+
+        // Fetch all payments for the project (for the payment history modal)
+        $allPayments = $this->contractorClass->getProjectPayments($projectId);
+
+        return view('contractor.contractor_MilestoneReport', [
+            'project' => $project,
+            'milestones' => $milestones,
+            'allPayments' => $allPayments,
+        ]);
     }
 
     public function showMilestoneProgressReport(Request $request)
     {
-        return view('contractor.contractor_MilestoneprogressReport');
+        $user = Session::get('user');
+        if (!$user) {
+            return redirect('/accounts/login');
+        }
+
+        $itemId = Session::get('current_milestone_item_id');
+        $projectId = Session::get('current_milestone_project_id');
+
+        // Fallback for hardcoded direct links
+        if (!$itemId && $request->has('item_id')) {
+            $itemId = $request->query('item_id');
+            Session::put('current_milestone_item_id', $itemId);
+        }
+
+        if (!$itemId) {
+            return redirect('/contractor/projects/milestone-report')->with('error', 'Milestone Item ID is required.');
+        }
+
+        return view('contractor.contractor_MilestoneprogressReport', [
+            'itemId' => $itemId,
+            'projectId' => $projectId
+        ]);
     }
 
     protected function checkContractorAccess(Request $request)
@@ -793,7 +961,7 @@ class cprocessController extends Controller
                     Log::warning("Attempt to edit milestone {$milestoneId} blocked: {$blockingPaymentsCount} payment(s) reference its items.");
                     return response()->json([
                         'success' => false,
-                        'errors' => ["Cannot modify milestone items because {$blockingPaymentsCount} payment(s) are associated with existing milestone items. Remove or resolve those payments before editing the milestone." ]
+                        'errors' => ["Cannot modify milestone items because {$blockingPaymentsCount} payment(s) are associated with existing milestone items. Remove or resolve those payments before editing the milestone."]
                     ], 409);
                 }
 
@@ -887,7 +1055,7 @@ class cprocessController extends Controller
             $msg = $isEditing
                 ? "Contractor updated a milestone for \"{$projTitle}\". Please review."
                 : "Contractor submitted a milestone plan for \"{$projTitle}\". Please review.";
-            notificationService::create($ownerUserId, $subType, $title, $msg, 'normal', 'milestone', (int)$milestoneId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int)$step1['project_id'], 'tab' => 'milestones']]);
+            notificationService::create($ownerUserId, $subType, $title, $msg, 'normal', 'milestone', (int) $milestoneId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int) $step1['project_id'], 'tab' => 'milestones']]);
         }
 
         if ($request->expectsJson()) {
@@ -959,7 +1127,7 @@ class cprocessController extends Controller
                 ->join('contractor_types as ct', 'p.type_id', '=', 'ct.type_id')
                 ->join('property_owners as po', 'pr.owner_id', '=', 'po.owner_id')
                 ->join('users as u', 'po.user_id', '=', 'u.user_id')
-                ->join('bids as b', function($join) use ($contractor) {
+                ->join('bids as b', function ($join) use ($contractor) {
                     $join->on('p.project_id', '=', 'b.project_id')
                         ->where('b.contractor_id', '=', $contractor->contractor_id)
                         ->where('b.bid_status', '=', 'accepted');
@@ -997,9 +1165,9 @@ class cprocessController extends Controller
                 $milestones = DB::table('milestones')
                     ->where('project_id', $project->project_id)
                     ->where('contractor_id', $contractor->contractor_id)
-                    ->where(function($query) {
+                    ->where(function ($query) {
                         $query->whereNull('is_deleted')
-                              ->orWhere('is_deleted', 0);
+                            ->orWhere('is_deleted', 0);
                     })
                     ->get();
 
@@ -1015,12 +1183,7 @@ class cprocessController extends Controller
                         $mItemId = $mItem->item_id;
 
                         // Latest progress report status
-                        $latestProgress = DB::table('progress')
-                            ->where('milestone_item_id', $mItemId)
-                            ->whereNotIn('progress_status', ['deleted'])
-                            ->orderBy('submitted_at', 'desc')
-                            ->select('progress_status', 'submitted_at')
-                            ->first();
+                        $latestProgress = $this->progressUploadClass->getLatestProgressForItem($mItemId);
                         $mItem->latest_progress_status = $latestProgress->progress_status ?? null;
                         $mItem->latest_progress_date = $latestProgress->submitted_at ?? null;
 
@@ -1066,18 +1229,20 @@ class cprocessController extends Controller
                 // Add owner_info for contractor view
                 $ownerInfo = DB::table('property_owners as po')
                     ->join('users as u', 'po.user_id', '=', 'u.user_id')
-                    ->where('po.owner_id', function($query) use ($project) {
+                    ->where('po.owner_id', function ($query) use ($project) {
                         $query->select('owner_id')
-                              ->from('project_relationships')
-                              ->join('projects', 'project_relationships.rel_id', '=', 'projects.relationship_id')
-                              ->where('projects.project_id', $project->project_id)
-                              ->limit(1);
+                            ->from('project_relationships')
+                            ->join('projects', 'project_relationships.rel_id', '=', 'projects.relationship_id')
+                            ->where('projects.project_id', $project->project_id)
+                            ->limit(1);
                     })
                     ->select(
                         'po.owner_id',
                         'po.first_name',
                         'po.last_name',
+                        'po.phone_number',
                         'u.username',
+                        'u.email',
                         'u.profile_pic'
                     )
                     ->first();
@@ -1163,7 +1328,7 @@ class cprocessController extends Controller
             ], 404);
         }
 
-        $milestones = $this->contractorClass->getProjectMilestones($projectId, $contractor->contractor_id);
+        $milestones = $this->contractorClass->getProjectMilestonesWithItems($projectId, $contractor->contractor_id);
 
         return response()->json([
             'success' => true,

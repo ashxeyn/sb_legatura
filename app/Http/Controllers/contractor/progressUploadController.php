@@ -166,16 +166,31 @@ class progressUploadController extends Controller
 
             $validated = $request->validated();
 
-            // Previously we prevented creating a new progress when an existing one
-            // existed unless its status was 'needs_revision' or 'deleted'.
-            // Allow contractors to submit progress reports regardless of previous statuses.
+            // ── Single active progress report enforcement ──
+            // Prevent uploading a new report if there's already one that is 'submitted' (pending review).
+            // Allow new uploads if previous ones are 'approved', 'rejected' or 'deleted'.
+            $existingActiveReport = DB::table('progress')
+                ->where('milestone_item_id', $validated['item_id'])
+                ->where('progress_status', 'submitted')
+                ->exists();
 
-            // Verify that the milestone item belongs to a project assigned to a specific contractor
+            if ($existingActiveReport) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You cannot submit a new progress report while another is pending review.'
+                ], 422);
+            }
+
+            // Verify that the milestone item belongs to a project assigned to this contractor
+            // Check via selected_contractor_id OR via the milestone's own contractor_id
             $milestoneItem = DB::table('milestone_items as mi')
                 ->join('milestones as m', 'mi.milestone_id', '=', 'm.milestone_id')
                 ->join('projects as p', 'm.project_id', '=', 'p.project_id')
                 ->where('mi.item_id', $validated['item_id'])
-                ->where('p.selected_contractor_id', $contractor->contractor_id)
+                ->where(function ($query) use ($contractor) {
+                    $query->where('p.selected_contractor_id', $contractor->contractor_id)
+                        ->orWhere('m.contractor_id', $contractor->contractor_id);
+                })
                 ->select('mi.item_id', 'm.milestone_id', 'p.project_id', 'p.project_title', 'mi.milestone_item_title')
                 ->first();
 
@@ -187,21 +202,11 @@ class progressUploadController extends Controller
             }
 
             // ── Sequential enforcement: previous item must be completed first ──
-            $currentItemDetail = DB::table('milestone_items')
-                ->where('item_id', $milestoneItem->item_id)
-                ->first();
-            if ($currentItemDetail) {
-                $prevItem = DB::table('milestone_items')
-                    ->where('milestone_id', $currentItemDetail->milestone_id)
-                    ->where('sequence_order', '<', $currentItemDetail->sequence_order)
-                    ->orderBy('sequence_order', 'desc')
-                    ->first();
-                if ($prevItem && ($prevItem->item_status ?? '') !== 'completed') {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'You must complete the previous milestone item first before submitting progress for this one.',
-                    ], 422);
-                }
+            if (!$this->progressUploadClass->isItemUnlocked($milestoneItem->item_id, $contractor->contractor_id)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You must complete the previous milestone item first before submitting progress for this one.',
+                ], 422);
             }
 
             // Validate that files are present
@@ -313,37 +318,37 @@ class progressUploadController extends Controller
                 throw $fileException;
             }
 
-                // Notify project owner about progress upload
-                $ownerUserId = DB::table('projects as p')
-                    ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
-                    ->join('property_owners as po', 'pr.owner_id', '=', 'po.owner_id')
-                    ->where('p.project_id', $milestoneItem->project_id)
-                    ->value('po.user_id');
-                if ($ownerUserId) {
-                    notificationService::create($ownerUserId, 'progress_submitted', 'Progress Uploaded', "Contractor uploaded progress for \"{$milestoneItem->milestone_item_title}\" on \"{$milestoneItem->project_title}\".", 'normal', 'progress', (int)$progressId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int)$milestoneItem->project_id, 'tab' => 'progress']]);
-                }
+            // Notify project owner about progress upload
+            $ownerUserId = DB::table('projects as p')
+                ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
+                ->join('property_owners as po', 'pr.owner_id', '=', 'po.owner_id')
+                ->where('p.project_id', $milestoneItem->project_id)
+                ->value('po.user_id');
+            if ($ownerUserId) {
+                notificationService::create($ownerUserId, 'progress_submitted', 'Progress Uploaded', "Contractor uploaded progress for \"{$milestoneItem->milestone_item_title}\" on \"{$milestoneItem->project_title}\".", 'normal', 'progress', (int) $progressId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int) $milestoneItem->project_id, 'tab' => 'progress']]);
+            }
 
-                if ($request->expectsJson()) {
-                    return response()->json([
-                        'success' => true,
-                        'message' => 'Progress files uploaded successfully',
-                        'data' => [
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Progress files uploaded successfully',
+                    'data' => [
                         'progress_id' => $progressId,
-                            'uploaded_files' => $uploadedFiles,
-                            'files_count' => count($uploadedFiles),
-                            'milestone_item' => [
-                                'item_id' => $milestoneItem->item_id,
-                                'title' => $milestoneItem->milestone_item_title,
-                                'project_title' => $milestoneItem->project_title
-                            ]
+                        'uploaded_files' => $uploadedFiles,
+                        'files_count' => count($uploadedFiles),
+                        'milestone_item' => [
+                            'item_id' => $milestoneItem->item_id,
+                            'title' => $milestoneItem->milestone_item_title,
+                            'project_title' => $milestoneItem->project_title
                         ]
-                    ], 201);
-                } else {
-                    return response()->json([
-                        'success' => true,
-                        'message' => 'Progress files uploaded successfully',
-                        'files_count' => count($uploadedFiles)
-                    ], 201);
+                    ]
+                ], 201);
+            } else {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Progress files uploaded successfully',
+                    'files_count' => count($uploadedFiles)
+                ], 201);
             }
         } catch (\Exception $e) {
             $userId = null;
@@ -586,7 +591,7 @@ class progressUploadController extends Controller
                 ->where('mi.item_id', $itemId)
                 ->where(function ($query) use ($user) {
                     $query->where('po.user_id', $user->user_id)
-                          ->orWhere('c.user_id', $user->user_id);
+                        ->orWhere('c.user_id', $user->user_id);
                 })
                 ->select('mi.item_id', 'p.project_id', 'p.project_title')
                 ->first();
@@ -640,7 +645,7 @@ class progressUploadController extends Controller
         }
     }
 
-    public function updateProgress(Request $request, $progressId)
+    public function updateProgress(progressUploadRequest $request, $progressId)
     {
         try {
             $authCheck = $this->checkContractorAccess($request);
@@ -661,6 +666,8 @@ class progressUploadController extends Controller
                 ], 404);
             }
 
+            $validated = $request->validated();
+
             // Get the progress and verify ownership
             $progress = $this->progressUploadClass->getProgressById($progressId);
 
@@ -676,7 +683,10 @@ class progressUploadController extends Controller
                 ->join('milestones as m', 'mi.milestone_id', '=', 'm.milestone_id')
                 ->join('projects as p', 'm.project_id', '=', 'p.project_id')
                 ->where('mi.item_id', $progress->item_id)
-                ->where('p.selected_contractor_id', $contractor->contractor_id)
+                ->where(function ($query) use ($contractor) {
+                    $query->where('p.selected_contractor_id', $contractor->contractor_id)
+                        ->orWhere('m.contractor_id', $contractor->contractor_id);
+                })
                 ->first();
 
             if (!$milestoneItem) {
@@ -693,15 +703,9 @@ class progressUploadController extends Controller
                 ], 403);
             }
 
-            if ($request->has('purpose')) {
-                $request->validate([
-                    'purpose' => 'required|string|max:1000'
-                ]);
-            }
-
             $updateData = [];
-            if ($request->has('purpose')) {
-                $updateData['purpose'] = $request->purpose;
+            if (isset($validated['purpose'])) {
+                $updateData['purpose'] = $validated['purpose'];
             }
             if (!empty($updateData)) {
                 $this->progressUploadClass->updateProgress($progressId, $updateData);
@@ -808,8 +812,10 @@ class progressUploadController extends Controller
             $milestoneItem = DB::table('milestone_items as mi')
                 ->join('milestones as m', 'mi.milestone_id', '=', 'm.milestone_id')
                 ->join('projects as p', 'm.project_id', '=', 'p.project_id')
-                ->where('mi.item_id', $progress->item_id)
-                ->where('p.selected_contractor_id', $contractor->contractor_id)
+                ->where(function ($query) use ($contractor) {
+                    $query->where('p.selected_contractor_id', $contractor->contractor_id)
+                        ->orWhere('m.contractor_id', $contractor->contractor_id);
+                })
                 ->first();
 
             if (!$milestoneItem) {
@@ -962,9 +968,7 @@ class progressUploadController extends Controller
             }
 
             // Update status
-            DB::table('progress')
-                ->where('progress_id', $progressId)
-                ->update(['progress_status' => 'approved']);
+            $this->progressUploadClass->updateProgressStatus($progressId, 'approved');
 
             // Notify contractor that progress was approved
             $progInfo = DB::table('progress as pr')
@@ -977,7 +981,7 @@ class progressUploadController extends Controller
             if ($progInfo) {
                 $cUserId = DB::table('contractor_users')->where('contractor_id', $progInfo->contractor_id)->where('is_active', 1)->where('is_deleted', 0)->value('user_id');
                 if ($cUserId) {
-                    notificationService::create($cUserId, 'progress_approved', 'Progress Approved', "Your progress for \"{$progInfo->milestone_item_title}\" on \"{$progInfo->project_title}\" was approved.", 'normal', 'progress', (int)$progressId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int)$progInfo->project_id, 'tab' => 'progress']]);
+                    notificationService::create($cUserId, 'progress_approved', 'Progress Approved', "Your progress for \"{$progInfo->milestone_item_title}\" on \"{$progInfo->project_title}\" was approved.", 'normal', 'progress', (int) $progressId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int) $progInfo->project_id, 'tab' => 'progress']]);
                 }
             }
 
@@ -1113,12 +1117,8 @@ class progressUploadController extends Controller
             // Optional rejection reason
             $reason = $request->input('reason', null);
 
-            DB::table('progress')
-                ->where('progress_id', $progressId)
-                ->update([
-                    'progress_status' => 'rejected',
-                    'delete_reason' => $reason
-                ]);
+            // Update status
+            $this->progressUploadClass->updateProgressStatus($progressId, 'rejected', $reason);
 
             // Notify contractor that progress was rejected
             $progInfo = DB::table('progress as pr')
@@ -1132,7 +1132,7 @@ class progressUploadController extends Controller
                 $cUserId = DB::table('contractor_users')->where('contractor_id', $progInfo->contractor_id)->where('is_active', 1)->where('is_deleted', 0)->value('user_id');
                 if ($cUserId) {
                     $reasonNote = $reason ? " Reason: {$reason}" : '';
-                    notificationService::create($cUserId, 'progress_rejected', 'Progress Rejected', "Your progress for \"{$progInfo->milestone_item_title}\" on \"{$progInfo->project_title}\" was rejected.{$reasonNote}", 'high', 'progress', (int)$progressId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int)$progInfo->project_id, 'tab' => 'progress']]);
+                    notificationService::create($cUserId, 'progress_rejected', 'Progress Rejected', "Your progress for \"{$progInfo->milestone_item_title}\" on \"{$progInfo->project_title}\" was rejected.{$reasonNote}", 'high', 'progress', (int) $progressId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int) $progInfo->project_id, 'tab' => 'progress']]);
                 }
             }
 
@@ -1158,5 +1158,42 @@ class progressUploadController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Display a progress document with proper rendering/download logic
+     */
+    public function viewProgressDocument(Request $request)
+    {
+        $filePath = $request->query('file');
+        $documentName = $request->query('name', 'Document');
+
+        // Validate file path
+        if (!$filePath) {
+            abort(404, 'Document not found');
+        }
+
+        // Security: Ensure the file path doesn't contain directory traversal
+        if (str_contains($filePath, '..') || str_contains($filePath, '//')) {
+            abort(403, 'Invalid file path');
+        }
+
+        // Generate the document URL using Laravel storage asset
+        $documentUrl = asset('storage/' . ltrim($filePath, '/'));
+
+        // Get the file extension
+        $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+
+        // For PDFs, browsers have built-in viewers that users prefer
+        if ($extension === 'pdf') {
+            return redirect($documentUrl);
+        }
+
+        return view('contractor.progressViewer', [
+            'documentUrl' => $documentUrl,
+            'documentName' => $documentName,
+            'extension' => $extension,
+            'filePath' => $filePath
+        ]);
     }
 }

@@ -7,7 +7,7 @@ class PropertyOwnerMilestoneReport {
     constructor() {
         this.milestoneData = null;
         this.projectId = null;
-        
+
         this.init();
     }
 
@@ -15,10 +15,10 @@ class PropertyOwnerMilestoneReport {
         // Get project ID from URL parameters if available
         const urlParams = new URLSearchParams(window.location.search);
         this.projectId = urlParams.get('project_id');
-        
+
         // Load milestone data
         this.loadMilestoneData();
-        
+
         // Setup event listeners
         this.setupEventListeners();
     }
@@ -64,7 +64,7 @@ class PropertyOwnerMilestoneReport {
                     costPercentage: 30,
                     date: "2024-04-30",
                     description: "Masonry work, wall construction, and finishing materials installation."
-                    
+
                 },
                 {
                     id: 1,
@@ -75,11 +75,11 @@ class PropertyOwnerMilestoneReport {
                     costPercentage: 30,
                     date: "2024-03-15",
                     description: "Complete structural framework including foundation, columns, beams, and roof structure."
-                    
+
                 }
             ]
         };
-        
+
         this.renderMilestoneReport();
     }
 
@@ -87,12 +87,42 @@ class PropertyOwnerMilestoneReport {
         // Milestone click handlers will be added after rendering
     }
 
-    handleMilestoneClick(milestoneId) {
+    async handleMilestoneClick(milestoneId) {
         const milestone = this.milestoneData.milestones.find(m => m.id === milestoneId);
         if (milestone) {
-            // Navigate to milestone progress report page with project and milestone IDs
-            const progressReportUrl = `/owner/projects/milestone-progress-report?project_id=${this.projectId || this.milestoneData.projectId}&milestone_id=${milestoneId}`;
-            window.location.href = progressReportUrl;
+            if (window.openViewProgressReportModal) {
+                window.openViewProgressReportModal(milestoneId);
+                return;
+            }
+
+            try {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+                const projectId = this.projectId || this.milestoneData.projectId;
+
+                const response = await fetch('/owner/projects/set-milestone-item', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken || ''
+                    },
+                    body: JSON.stringify({
+                        item_id: milestoneId,
+                        project_id: projectId
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    window.location.href = '/owner/projects/milestone-progress-report';
+                } else {
+                    console.error('Failed to set milestone item session:', data.message);
+                    this.showNotification('Could not navigate to progress report.');
+                }
+            } catch (error) {
+                console.error('Error setting milestone item session:', error);
+                this.showNotification('An error occurred. Please try again.');
+            }
         }
     }
 
@@ -227,11 +257,11 @@ class PropertyOwnerMilestoneReport {
                     <div class="milestone-timeline">
                         <!-- Milestones (rendered in reverse order for column-reverse display) -->
                         ${this.milestoneData.milestones && this.milestoneData.milestones.length > 0
-                            ? [...this.milestoneData.milestones].reverse().map((milestone, reverseIndex) => {
-                                // Calculate original index for alternating left/right
-                                const originalIndex = this.milestoneData.milestones.length - 1 - reverseIndex;
-                                const isEven = originalIndex % 2 === 0;
-                                return `
+                ? [...this.milestoneData.milestones].reverse().map((milestone, reverseIndex) => {
+                    // Calculate original index for alternating left/right
+                    const originalIndex = this.milestoneData.milestones.length - 1 - reverseIndex;
+                    const isEven = originalIndex % 2 === 0;
+                    return `
                                     <div class="milestone-timeline-item ${isEven ? 'milestone-right' : 'milestone-left'}" data-milestone-id="${milestone.id}">
                                         <div class="milestone-node" style="background: linear-gradient(135deg, #EEA24B 0%, #F57C00 100%);">
                                             <span class="milestone-progress-number">${milestone.progress}</span>
@@ -244,9 +274,9 @@ class PropertyOwnerMilestoneReport {
                                         </div>
                                     </div>
                                 `;
-                            }).join('')
-                            : ''
-                        }
+                }).join('')
+                : ''
+            }
                         
                         <!-- Start Point (at bottom) -->
                         <div class="timeline-start">
@@ -267,7 +297,7 @@ class PropertyOwnerMilestoneReport {
                 </div>
             </div>
         `;
-        
+
         // Add click event listeners to milestones
         setTimeout(() => {
             const milestoneItems = container.querySelectorAll('.milestone-timeline-item');
@@ -278,11 +308,11 @@ class PropertyOwnerMilestoneReport {
                     const milestoneId = parseInt(item.getAttribute('data-milestone-id'));
                     this.handleMilestoneClick(milestoneId);
                 });
-                
+
                 // Add cursor pointer style
                 item.style.cursor = 'pointer';
             });
-            
+
             // Payment history button
             const paymentHistoryBtn = document.getElementById('paymentHistoryBtn');
             if (paymentHistoryBtn) {

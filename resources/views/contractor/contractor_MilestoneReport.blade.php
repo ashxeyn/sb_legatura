@@ -37,29 +37,461 @@
         <!-- Content Section -->
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div id="milestoneReportContainer" class="bg-white rounded-xl shadow-md p-6">
-                <!-- Milestone Report content will be dynamically inserted here -->
-                <div class="text-center py-16">
-                    <i class="fi fi-rr-file-chart text-6xl text-gray-300 mb-4"></i>
-                    <h3 class="text-xl font-semibold text-gray-700 mb-2">Milestone Report</h3>
-                    <p class="text-gray-500">Milestone information will be displayed here</p>
+                @if(isset($project) && isset($milestones) && count($milestones) > 0)
+                    @php
+                        $milestonePlan = $milestones[0];
+                        $milestoneItemsList = $milestonePlan->items ?? [];
+                        $totalCost = 0;
+                        $pendingApproval = 0;
+                        $cumulativePercentage = 0;
+
+                        foreach ($milestoneItemsList as $mi) {
+                            $totalCost += floatval($mi->milestone_item_cost ?? 0);
+                            $miStatus = $mi->item_status ?? 'pending';
+                            if ($miStatus === 'submitted' || $miStatus === 'pending') {
+                                $pendingApproval++;
+                            }
+                        }
+
+                        $projectTotalCost = (isset($milestonePlan->total_project_cost) && floatval($milestonePlan->total_project_cost) > 0)
+                            ? floatval($milestonePlan->total_project_cost)
+                            : $totalCost;
+                    @endphp
+
+                    <div class="milestone-report-content">
+                        <!-- Project Header -->
+                        <div class="report-header mb-6">
+                            <h2 class="text-2xl font-bold text-gray-900 mb-3">
+                                {{ $project->project_title ?? 'Milestone Report' }}
+                            </h2>
+
+                            @if(!empty($project->project_description))
+                                <div class="project-description-section mb-6">
+                                    <h3 class="description-title">Project Description</h3>
+                                    <p class="description-text">{{ $project->project_description }}</p>
+                                </div>
+                            @endif
+
+                            <div class="project-stats flex gap-4 text-sm text-gray-600 mb-6 pb-6 border-b border-gray-200">
+                                @if(!empty($project->project_location))
+                                    <span class="location-stat">
+                                        <i class="fi fi-rr-marker"></i>
+                                        {{ $project->project_location }}
+                                    </span>
+                                @endif
+                                <span><i class="fi fi-rr-calendar"></i> Total Milestones:
+                                    {{ count($milestoneItemsList) }}</span>
+                                <span><i class="fi fi-rr-clock"></i> Pending Approval: {{ $pendingApproval }}</span>
+                                <span><i class="fi fi-rr-money"></i> Total Cost:
+                                    ₱{{ number_format($projectTotalCost, 0) }}</span>
+                            </div>
+                        </div>
+
+                        <!-- Milestone Timeline -->
+                        <div class="milestone-timeline-container">
+                            <div class="milestone-timeline">
+                                @php $itemIndex = 0;
+                                $cumulativePercentage = 0; @endphp
+                                        @foreach($milestoneItemsList as $item)
+                                            @php
+                                                $itemIndex++;
+                                                $cumulativePercentage += floatval($item->percentage_progress ?? 0);
+                                                $isEven = ($itemIndex - 1) % 2 === 0;
+                                                $itemCost = floatval($item->milestone_item_cost ?? 0);
+                                                $itemStatus = $item->item_status ?? 'pending';
+                                                $isItemCompleted = $itemStatus === 'completed';
+                                                $isItemHalted = $itemStatus === 'halt';
+
+                                                // Sequential locking (first item always unlocked)
+                                                if ($itemIndex === 1) {
+                                                    $prevComplete = true;
+                                                }
+                                                $isItemLocked = !$prevComplete && !$isItemCompleted;
+
+                                                // Node gradient based on state
+                                                if ($isItemCompleted) {
+                                                    $nodeGradient = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+                                                    $nodeIcon = '✓';
+                                                } elseif ($isItemHalted) {
+                                                    $nodeGradient = 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
+                                                    $nodeIcon = '⏸';
+                                                } elseif ($isItemLocked) {
+                                                    $nodeGradient = 'linear-gradient(135deg, #9ca3af 0%, #6b7280 100%)';
+                                                    $nodeIcon = '🔒';
+                                                } else {
+                                                    $nodeGradient = 'linear-gradient(135deg, #EEA24B 0%, #F57C00 100%)';
+                                                    $nodeIcon = $cumulativePercentage;
+                                                }
+
+                                                // Track for next iteration
+                                                $prevComplete = $isItemCompleted;
+                                            @endphp
+                                            <div class="milestone-timeline-item {{ $isEven ? 'milestone-right' : 'milestone-left' }} {{ $isItemLocked ? 'milestone-locked' : '' }} {{ $isItemCompleted ? 'milestone-completed' : '' }} {{ $isItemHalted ? 'milestone-halted' : '' }}"
+                                                data-milestone-id="{{ $item->item_id }}"
+                                                title="{{ $isItemLocked ? 'Complete the previous milestone first' : 'Click to view progress reports' }}"
+                                                style="cursor: {{ $isItemLocked ? 'not-allowed' : 'pointer' }};">
+                                                <div class="milestone-node"
+                                                    style="background: {{ $nodeGradient }};">
+                                                    @if($isItemCompleted)
+                                                        <span class="milestone-progress-number" style="font-size: 1rem;">✓</span>
+                                                    @elseif($isItemHalted)
+                                                        <i class="fi fi-rr-pause" style="color: white; font-size: 0.8rem;"></i>
+                                                    @elseif($isItemLocked)
+                                                        <i class="fi fi-rr-lock" style="color: white; font-size: 0.8rem;"></i>
+                                                    @else
+                                                        <span class="milestone-progress-number">{{ $cumulativePercentage }}</span>
+                                                    @endif
+                                                </div>
+                                                <div
+                                                    class="milestone-content {{ $isEven ? 'milestone-content-right' : 'milestone-content-left' }}">
+                                                    <div class="milestone-number">Milestone {{ $itemIndex }}</div>
+                                                    <div class="milestone-title">{{ $item->milestone_item_title ?? 'Untitled' }}</div>
+                                                    <div class="milestone-cost">₱{{ number_format($itemCost, 0) }}</div>
+                                                    <div class="milestone-percentage">{{ floatval($item->percentage_progress ?? 0) }}%</div>
+
+                                                    @if($isItemCompleted)
+                                                        <div class="milestone-status-badge badge-completed">
+                                                            <i class="fi fi-rr-check-circle"></i> Completed
+                                                        </div>
+                                                    @elseif($isItemHalted)
+                                                        <div class="milestone-status-badge badge-halted">
+                                                            <i class="fi fi-rr-pause-circle"></i> Halted
+                                                        </div>
+                                                    @elseif($isItemLocked)
+                                                        <div class="milestone-status-badge badge-locked">
+                                                            <i class="fi fi-rr-lock"></i> Locked
+                                                        </div>
+                                                    @else
+                                                        <div style="font-size: 0.75rem; color: #f97316; margin-top: 0.5rem; font-weight: 600;">
+                                                            <i class="fi fi-rr-arrow-right"></i> Click to view details
+                                                        </div>
+                                                    @endif
+                                                </div>
+                                            </div>
+                                        @endforeach
+
+                                        <!-- Start Point (at bottom) -->
+                                        <div class="timeline-start">
+                                            <div class="start-node"></div>
+                                            <div class="start-label">
+                                                <div class="start-text">Start</div>
+                                                <div class="start-percentage">0%</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Payment History Button -->
+                                    <div class="payment-history-container">
+                                        <button class="payment-history-btn" id="paymentHistoryBtn">
+                                            Payment history
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                @else
+                    <div class="text-center py-16">
+                        <i class="fi fi-rr-file-chart text-6xl text-gray-300 mb-4"></i>
+                        <h3 class="text-xl font-semibold text-gray-700 mb-2">No Milestone Data</h3>
+                        <p class="text-gray-500">No milestones have been set up for this project yet.</p>
+                    </div>
+                @endif
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Payment History Modal -->
-    @include('contractor.contractor_Modals.contractorPaymenthistory_Modal')
+        <!-- Payment History Modal -->
+        @include('contractor.contractor_Modals.contractorPaymenthistory_Modal')
+
+        <!-- Hidden Timeline Templates for JS to copy -->
+        <div id="hidden-timeline-templates" style="display: none;">
+            @if(isset($milestones[0]->items))
+                @foreach($milestones[0]->items as $item)
+                    <div id="timeline_html_{{ $item->item_id }}">
+                        @php $reports = collect($item->progress_reports ?? [])->sortByDesc('progress_id')->values()->all();
+                        $totalReports = count($reports); @endphp
+                        @foreach($reports as $index => $report)
+                            @php
+                                $status = $report->progress_status ?? 'pending';
+                                $statusLabels = ['approved' => 'Approved', 'pending' => 'Pending', 'submitted' => 'Submitted', 'rejected' => 'Rejected'];
+                                $statusColors = ['approved' => 'badge-success', 'rejected' => 'badge-error', 'submitted' => 'badge-warning', 'pending' => 'badge-pending'];
+                                $isLast = $index === $totalReports - 1;
+
+                                // Status dot classes
+                                $dotClass = 'report-dot';
+                                if ($status === 'approved')
+                                    $dotClass .= ' report-dot-approved';
+                                elseif ($status === 'rejected')
+                                    $dotClass .= ' report-dot-rejected';
+                                else
+                                    $dotClass .= ' report-dot-pending';
+
+                                // Status icon
+                                $dotIconHtml = '';
+                                if ($status === 'approved')
+                                    $dotIconHtml = '<i class="fi fi-rr-check"></i>';
+                                elseif ($status === 'rejected')
+                                    $dotIconHtml = '<i class="fi fi-rr-cross-small"></i>';
+                                elseif ($status === 'submitted')
+                                    $dotIconHtml = '';
+                                else
+                                    $dotIconHtml = '<i class="fi fi-rr-time-past"></i>';
+
+                                // Line color
+                                $lineClass = 'report-line';
+                                if (!$isLast) {
+                                    $nextStatus = $reports[$index + 1]->progress_status ?? 'pending';
+                                    if ($nextStatus === 'approved')
+                                        $lineClass .= ' report-line-approved';
+                                    elseif ($nextStatus === 'rejected')
+                                        $lineClass .= ' report-line-rejected';
+                                    else
+                                        $lineClass .= ' report-line-pending';
+                                }
+                            @endphp
+                            <div class="report-timeline-item">
+                                <div class="report-timeline-left">
+                                    <div class="{{ $dotClass }}">{!! $dotIconHtml !!}</div>
+                                    @if(!$isLast) <div class="{{ $lineClass }}"></div> @endif
+                                </div>
+                                <div class="report-timeline-content">
+                                    <div class="report-title-row">
+                                        <span class="report-title">{{ $report->progress_title ?? 'Progress Report' }}</span>
+                                        <div class="report-actions-wrapper">
+                                            <span class="report-status-badge {{ $statusColors[$status] ?? 'badge-pending' }}">
+                                                {{ $statusLabels[$status] ?? $status }}
+                                            </span>
+                                            @if($status === 'submitted')
+                                                <!-- Pencil icon for editing, JS will attach listener -->
+                                                <button class="edit-progress-btn" data-progress-id="{{ $report->progress_id }}" data-item-id="{{ $item->item_id }}" style="background: #f3f4f6; border: 1px solid #e5e7eb; cursor: pointer; color: #6b7280; font-size: 0.9rem; padding: 6px; display: flex; align-items: center; justify-content: center; border-radius: 50%; transition: background-color 0.2s;" title="Edit Report" onmouseover="this.style.background='#e5e7eb'; this.style.color='#1f2937'" onmouseout="this.style.background='#f3f4f6'; this.style.color='#6b7280'">
+                                                    <i class="fi fi-rr-pencil"></i>
+                                                </button>
+                                            @endif
+                                        </div>
+                                    </div>
+                                    @if(!empty($report->purpose) || !empty($report->progress_description))
+                                        <p class="report-description">{{ $report->progress_description ?? $report->purpose }}</p>
+                                    @endif
+                                    @if(!empty($report->files))
+                                        <div class="report-files-list" style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.35rem;">
+                                            @foreach($report->files as $file)
+                                                @php
+                                                    $viewerUrl = '/contractor/progress/document/view?file=' . urlencode(ltrim($file->file_path, '/')) . '&name=' . urlencode($file->original_name ?? basename($file->file_path));
+                                                @endphp
+                                                <a href="{{ $viewerUrl }}" target="_blank" class="report-file-link" style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: #3b82f6; text-decoration: none; padding: 0.25rem 0.5rem; background: #f3f4f6; border-radius: 0.375rem; width: fit-content; border: 1px solid #e5e7eb; transition: background-color 0.2s;">
+                                                    <i class="fi fi-rr-clip" style="color: #6b7280;"></i>
+                                                    <span>{{ $file->original_name ?? basename($file->file_path) }}</span>
+                                                </a>
+                                            @endforeach
+                                        </div>
+                                    @endif
+                                    <span class="report-date" style="margin-top: 0.5rem; display: block; color: #6b7280; font-size: 0.875rem;">
+                                        {{ isset($report->submitted_at) ? \Carbon\Carbon::parse($report->submitted_at)->format('l, d F Y') : 'Not specified' }}
+                                    </span>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                @endforeach
+            @endif
+        </div>
+
+        <!-- View Progress Report Modal -->
+        @include('contractor.contractor_Modals.contractorMilestoneprogressReport_Modal')
+
+        {{-- Pre-compute data for JS modal interactions only --}}
+        @php
+            $milestoneItemsData = [];
+            $paymentHistoryData = null;
+
+            if (isset($project) && isset($milestones) && count($milestones) > 0) {
+                $milestonePlan = $milestones[0];
+
+                // Build per-item detail data for the progress report modal
+                if (isset($milestonePlan->items)) {
+                    $seqIndex = 0;
+                    $previousItemCompleted = true; // First item always unlocked
+
+                    // Determine project-level halted state
+                    $isProjectHalted = ($project->project_status ?? '') === 'halt';
+                    // Determine milestone-level approved state
+                    $milestoneStatus = $milestonePlan->milestone_status ?? 'pending';
+                    $isMilestoneApproved = in_array($milestoneStatus, ['approved', 'active', 'completed', 'in_progress']);
+
+                    foreach ($milestonePlan->items as $item) {
+                        $seqIndex++;
+                        $itemStatus = $item->item_status ?? 'pending';
+                        $isCompleted = $itemStatus === 'completed';
+                        $isHalted = $itemStatus === 'halt';
+                        $isLocked = !$previousItemCompleted && !$isCompleted;
+                        $itemCostVal = floatval($item->milestone_item_cost ?? 0);
+
+                        // Compute payment summary for this item
+                        $itemPayments = $item->payments ?? collect();
+                        $itemTotalPaid = 0;
+                        $itemTotalSubmitted = 0;
+                        foreach ($itemPayments as $p) {
+                            $pAmount = floatval($p->amount ?? 0);
+                            if (($p->payment_status ?? '') === 'approved')
+                                $itemTotalPaid += $pAmount;
+                            if (($p->payment_status ?? '') === 'submitted')
+                                $itemTotalSubmitted += $pAmount;
+                        }
+                        $itemRemaining = max(0, $itemCostVal - $itemTotalPaid);
+
+                        $milestoneItemsData[$item->item_id] = [
+                            'id' => $item->item_id,
+                            'sequenceNumber' => $seqIndex,
+                            'title' => $item->milestone_item_title ?? 'Untitled',
+                            'description' => $item->milestone_item_description ?? '',
+                            'status' => $item->item_status ?? 'pending',
+                            'date' => $item->date_to_finish ?? '',
+                            'cost' => $itemCostVal,
+                            'costFormatted' => '₱' . number_format($itemCostVal, 2),
+                            'attachmentName' => $item->attachment_name ?? null,
+                            'attachmentPath' => $item->attachment_path ?? null,
+                            'progressReports' => collect($item->progress_reports ?? [])->map(function ($pr) {
+                                return [
+                                    'id' => $pr->progress_id ?? null,
+                                    'title' => $pr->progress_title ?? ($pr->purpose ?? 'Progress Report'),
+                                    'description' => $pr->progress_description ?? ($pr->purpose ?? ''),
+                                    'status' => $pr->progress_status ?? 'pending',
+                                    'date' => isset($pr->submitted_at)
+                                        ? \Carbon\Carbon::parse($pr->submitted_at)->format('l, d F Y')
+                                        : 'Not specified',
+                                    'files' => collect($pr->files ?? [])->map(function ($f) {
+                                        return [
+                                            'id' => $f->file_id ?? null,
+                                            'name' => $f->original_name ?? basename($f->file_path),
+                                            'path' => asset('storage/' . ltrim($f->file_path, '/')),
+                                            'rawPath' => ltrim($f->file_path, '/')
+                                        ];
+                                    })->toArray(),
+                                ];
+                            })->toArray(),
+                            'payments' => collect($itemPayments)->map(function ($p) {
+                                return [
+                                    'id' => $p->payment_id ?? null,
+                                    'amount' => floatval($p->amount ?? 0),
+                                    'amountFormatted' => '₱' . number_format(floatval($p->amount ?? 0), 2),
+                                    'type' => ucfirst(str_replace('_', ' ', $p->payment_type ?? 'Payment')),
+                                    'transactionNumber' => $p->transaction_number ?? null,
+                                    'receiptPhoto' => $p->receipt_photo ?? null,
+                                    'date' => isset($p->transaction_date)
+                                        ? \Carbon\Carbon::parse($p->transaction_date)->format('l, d F Y')
+                                        : 'Not specified',
+                                    'status' => $p->payment_status ?? 'submitted',
+                                    'reason' => $p->reason ?? null,
+                                ];
+                            })->toArray(),
+                            'paymentSummary' => [
+                                'expected' => $itemCostVal,
+                                'expectedFormatted' => '₱' . number_format($itemCostVal, 2),
+                                'totalPaid' => $itemTotalPaid,
+                                'totalPaidFormatted' => '₱' . number_format($itemTotalPaid, 2),
+                                'totalSubmitted' => $itemTotalSubmitted,
+                                'totalSubmittedFormatted' => '₱' . number_format($itemTotalSubmitted, 2),
+                                'remaining' => $itemRemaining,
+                                'remainingFormatted' => '₱' . number_format($itemRemaining, 2),
+                                'progressPercent' => $itemCostVal > 0 ? min(100, (($itemTotalPaid + $itemTotalSubmitted) / $itemCostVal) * 100) : 0,
+                            ],
+
+                            // --- Condition flags (matching TSX milestoneDetail logic) ---
+                            'isCompleted' => $isCompleted,
+                            'isPreviousItemComplete' => $previousItemCompleted,
+                            'isLocked' => $isLocked,
+                            'isHalted' => $isHalted,
+                            'isProjectHalted' => $isProjectHalted,
+                            'isMilestoneApproved' => $isMilestoneApproved,
+                            'hasApprovedReport' => collect($item->progress_reports ?? [])->contains(fn($pr) => ($pr->progress_status ?? '') === 'approved'),
+                            'hasActiveReport' => collect($item->progress_reports ?? [])->contains(fn($pr) => ($pr->progress_status ?? '') === 'submitted'),
+                            'latestReportStatus' => optional(collect($item->progress_reports ?? [])->first())->progress_status ?? null,
+                            'latestPaymentStatus' => optional(collect($itemPayments)->first())->payment_status ?? null,
+                            'canSubmitReport' => (
+                                $isMilestoneApproved
+                                && !$isCompleted
+                                && !$isHalted
+                                && !$isProjectHalted
+                                && $previousItemCompleted
+                                && !collect($item->progress_reports ?? [])->contains(fn($pr) => ($pr->progress_status ?? '') === 'submitted')
+                            ),
+                        ];
+
+                        // Track for sequential locking: next item is unlocked only if this one is completed
+                        $previousItemCompleted = $isCompleted;
+                    }
+                }
+
+                // Build payment history data for the payment modal
+                $paymentEntries = [];
+                $totalPaid = 0;
+                $projectTotalCost = (isset($milestonePlan->total_project_cost) && floatval($milestonePlan->total_project_cost) > 0)
+                    ? floatval($milestonePlan->total_project_cost)
+                    : collect($milestonePlan->items ?? [])->sum(fn($i) => floatval($i->milestone_item_cost ?? 0));
+
+                if (isset($allPayments)) {
+                    foreach ($allPayments as $payment) {
+                        $amount = floatval($payment->amount ?? 0);
+                        if (($payment->payment_status ?? '') === 'approved') {
+                            $totalPaid += $amount;
+                        }
+
+                        $paymentEntries[] = [
+                            'id' => $payment->payment_id,
+                            'type' => ucfirst(str_replace('_', ' ', $payment->payment_type ?? 'payment')),
+                            'milestoneNumber' => $payment->sequence_order ?? 0,
+                            'milestoneTitle' => $payment->milestone_item_title ?? '',
+                            'amount' => '₱' . number_format($amount, 0),
+                            'date' => $payment->transaction_date
+                                ? \Carbon\Carbon::parse($payment->transaction_date)->format('m/d/Y')
+                                : '',
+                            'time' => $payment->transaction_date
+                                ? \Carbon\Carbon::parse($payment->transaction_date)->format('h:i A')
+                                : '',
+                            'status' => $payment->payment_status ?? 'submitted',
+                            'unread' => (($payment->payment_status ?? '') === 'submitted'),
+                        ];
+                    }
+                }
+
+                $paymentHistoryData = [
+                    'payments' => $paymentEntries,
+                    'summary' => [
+                        'totalEstimated' => '₱' . number_format($projectTotalCost, 0),
+                        'totalPaid' => $totalPaid,
+                        'totalRemaining' => '₱' . number_format(max(0, $projectTotalCost - $totalPaid), 0),
+                    ],
+                ];
+            }
+        @endphp
+
+        <script>
+            // Data for JS modal interactions only (not page rendering)
+            window.milestoneItemsData = @json($milestoneItemsData);
+            window.paymentHistoryData = @json($paymentHistoryData);
+            window.projectTitle = @json($project->project_title ?? 'Project');
+            window.currentProjectId = @json($project->project_id ?? 0);
+        </script>
+    <!-- View Progress Report Modal (Detail modal for milestone item) -->
+    @include('contractor.contractor_Modals.contractorMilestoneprogressReport_Modal')
+
+    <!-- Progress Report Modal (for submitting) -->
+    @include('contractor.contractor_Modals.contractorProgressreport_Modal')
 @endsection
 
 @section('extra_css')
     <link rel="stylesheet" href="{{ asset('css/contractor/contractor_MilestoneReport.css') }}">
     <link rel="stylesheet" href="{{ asset('css/contractor/contractor_Myprojects.css') }}">
     <link rel="stylesheet" href="{{ asset('css/contractor/contractor_Modals/contractorPaymenthistory_Modal.css') }}">
+    <link rel="stylesheet"
+        href="{{ asset('css/contractor/contractor_Modals/contractorMilestoneprogressReport_Modal.css') }}?v={{ time() }}">
+    <link rel="stylesheet" href="{{ asset('css/contractor/contractor_Modals/contractorProgressreport_Modal.css') }}">
 @endsection
 
 @section('extra_js')
     <script src="{{ asset('js/contractor/contractor_MilestoneReport.js') }}?v={{ time() }}"></script>
     <script src="{{ asset('js/contractor/contractor_Modals/contractorPaymenthistory_Modal.js') }}"></script>
+    <script src="{{ asset('js/contractor/contractor_Modals/contractorMilestoneprogressReport_Modal.js') }}?v={{ time() }}"></script>
+    <script src="{{ asset('js/contractor/contractor_Modals/contractorProgressreport_Modal.js') }}"></script>
     <script>
         // Set Dashboard link as active when on milestone report page
         document.addEventListener('DOMContentLoaded', () => {
@@ -70,7 +502,7 @@
                     link.classList.add('active');
                 }
             });
-            
+
             // Update navbar search placeholder
             const navbarSearchInput = document.querySelector('.navbar-search-input');
             if (navbarSearchInput) {

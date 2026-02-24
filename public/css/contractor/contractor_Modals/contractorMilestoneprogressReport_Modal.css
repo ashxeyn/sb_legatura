@@ -352,11 +352,25 @@
     animation: slideInRight 0.4s ease-out both;
 }
 
-.file-item:nth-child(1) { animation-delay: 0.1s; }
-.file-item:nth-child(2) { animation-delay: 0.2s; }
-.file-item:nth-child(3) { animation-delay: 0.3s; }
-.file-item:nth-child(4) { animation-delay: 0.4s; }
-.file-item:nth-child(5) { animation-delay: 0.5s; }
+.file-item:nth-child(1) {
+    animation-delay: 0.1s;
+}
+
+.file-item:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.file-item:nth-child(3) {
+    animation-delay: 0.3s;
+}
+
+.file-item:nth-child(4) {
+    animation-delay: 0.4s;
+}
+
+.file-item:nth-child(5) {
+    animation-delay: 0.5s;
+}
 
 .file-item::before {
     content: '';
@@ -589,6 +603,7 @@
     from {
         opacity: 0;
     }
+
     to {
         opacity: 1;
     }
@@ -599,6 +614,7 @@
         transform: translateY(50px);
         opacity: 0;
     }
+
     to {
         transform: translateY(0);
         opacity: 1;
@@ -610,6 +626,7 @@
         transform: translateY(50px) scale(0.9);
         opacity: 0;
     }
+
     to {
         transform: translateY(0) scale(1);
         opacity: 1;
@@ -621,6 +638,7 @@
         transform: translateY(0) scale(1);
         opacity: 1;
     }
+
     to {
         transform: translateY(50px) scale(0.9);
         opacity: 0;
@@ -632,6 +650,7 @@
         opacity: 0;
         transform: translateY(20px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -994,6 +1013,7 @@
     from {
         transform: rotate(0deg);
     }
+
     to {
         transform: rotate(360deg);
     }
@@ -1005,6 +1025,7 @@
         transform: scale(0);
         opacity: 0;
     }
+
     to {
         transform: scale(1);
         opacity: 1;
@@ -1016,6 +1037,7 @@
         transform: scale(1);
         opacity: 1;
     }
+
     100% {
         transform: scale(1.5);
         opacity: 0;
@@ -1027,9 +1049,11 @@
         transform: scale(0) rotate(-45deg);
         opacity: 0;
     }
+
     50% {
         transform: scale(1.2) rotate(5deg);
     }
+
     100% {
         transform: scale(1) rotate(0deg);
         opacity: 1;
@@ -1443,9 +1467,17 @@
     animation: slideInRight 0.4s ease-out both;
 }
 
-.uploaded-file-item:nth-child(1) { animation-delay: 0.1s; }
-.uploaded-file-item:nth-child(2) { animation-delay: 0.2s; }
-.uploaded-file-item:nth-child(3) { animation-delay: 0.3s; }
+.uploaded-file-item:nth-child(1) {
+    animation-delay: 0.1s;
+}
+
+.uploaded-file-item:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.uploaded-file-item:nth-child(3) {
+    animation-delay: 0.3s;
+}
 
 .uploaded-file-item:hover {
     border-color: #EEA24B;
@@ -1620,9 +1652,12 @@
 
 /* Animations */
 @keyframes float {
-    0%, 100% {
+
+    0%,
+    100% {
         transform: translateY(0);
     }
+
     50% {
         transform: translateY(-10px);
     }
@@ -1633,6 +1668,7 @@
         opacity: 0;
         transform: translateX(-20px);
     }
+
     to {
         opacity: 1;
         transform: translateX(0);
@@ -2510,7 +2546,7 @@
     border-bottom: 2px solid #f3f4f6;
     background: linear-gradient(135deg, #ffffff 0%, #fef3e7 100%);
     position: relative;
-    overflow: hidden;
+    overflow: visible;
 }
 
 .view-progress-report-modal .modal-header::before {
@@ -2571,6 +2607,7 @@
     from {
         opacity: 0;
     }
+
     to {
         opacity: 1;
     }
@@ -2581,9 +2618,692 @@
         opacity: 0;
         transform: translateY(30px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
     }
 }
 
+/* ============================================ */
+/* Milestone Detail Modal - Additional Sections */
+/* ============================================ */
+
+/* Modal Divider */
+.modal-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent 0%, #e5e7eb 30%, #e5e7eb 70%, transparent 100%);
+    margin: 1.5rem 0;
+}
+
+/* Section Subtitle */
+.section-subtitle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin: 0 0 1rem 0;
+}
+
+.section-subtitle i {
+    color: #EEA24B;
+    font-size: 1.1rem;
+}
+
+/* ---- Progress Reports Timeline ---- */
+.progress-reports-section {
+    margin-bottom: 1rem;
+}
+
+.reports-timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.report-timeline-item {
+    display: flex;
+    gap: 1rem;
+    min-height: 80px;
+}
+
+.report-timeline-left {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 28px;
+}
+
+.report-dot {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 0.75rem;
+    border: 3px solid #e5e7eb;
+    background: #f9fafb;
+    color: #94a3b8;
+    transition: all 0.3s ease;
+}
+
+.report-dot i {
+    font-size: 0.7rem;
+}
+
+.report-dot-approved {
+    background: #10b981;
+    border-color: #10b981;
+    color: white;
+}
+
+.report-dot-rejected {
+    background: #ef4444;
+    border-color: #ef4444;
+    color: white;
+}
+
+.report-dot-pending {
+    background: #f9fafb;
+    border-color: #f59e0b;
+    color: #f59e0b;
+}
+
+.report-line {
+    width: 2px;
+    flex: 1;
+    min-height: 20px;
+    margin: 4px 0;
+    background: #e5e7eb;
+}
+
+.report-line-approved {
+    background: #10b981;
+}
+
+.report-line-rejected {
+    background: #ef4444;
+}
+
+.report-line-pending {
+    background: #f59e0b;
+}
+
+.report-timeline-content {
+    flex: 1;
+    padding-bottom: 1.25rem;
+}
+
+.report-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.375rem;
+    flex-wrap: wrap;
+}
+
+.report-title {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.report-description {
+    font-size: 0.8125rem;
+    color: #64748b;
+    line-height: 1.5;
+    margin: 0.25rem 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    line-clamp: 3;
+    overflow: hidden;
+}
+
+.report-date {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    font-weight: 500;
+}
+
+/* Status Badges */
+.report-status-badge,
+.payment-status-badge {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    padding: 0.2rem 0.6rem;
+    border-radius: 9999px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    flex-shrink: 0;
+}
+
+.badge-success {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.badge-error {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.badge-warning {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.badge-pending {
+    background: #e0e7ff;
+    color: #3730a3;
+}
+
+/* ---- Payments Section ---- */
+.payments-section {
+    margin-bottom: 1rem;
+}
+
+/* Payment Balance Summary */
+.payment-balance-summary {
+    background: linear-gradient(135deg, #f9fafb 0%, #f1f5f9 100%);
+    border: 1px solid #e2e8f0;
+    border-radius: 0.75rem;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.25rem;
+}
+
+.balance-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.35rem 0;
+}
+
+.balance-label {
+    font-size: 0.8125rem;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.balance-label-bold {
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.balance-value {
+    font-size: 0.875rem;
+    color: #1f2937;
+    font-weight: 600;
+}
+
+.balance-value-bold {
+    font-weight: 700;
+    font-size: 0.9375rem;
+}
+
+.balance-success {
+    color: #10b981 !important;
+}
+
+.balance-warning {
+    color: #f59e0b !important;
+}
+
+.balance-accent {
+    color: #EEA24B !important;
+}
+
+.balance-total-row {
+    border-top: 1px solid #e2e8f0;
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+}
+
+.balance-progress-bg {
+    width: 100%;
+    height: 6px;
+    background: #e2e8f0;
+    border-radius: 3px;
+    margin-top: 0.75rem;
+    overflow: hidden;
+}
+
+.balance-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #EEA24B 0%, #10b981 100%);
+    border-radius: 3px;
+    transition: width 0.5s ease;
+}
+
+/* Payment Cards */
+.payment-cards-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.payment-card {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.75rem;
+    padding: 1.25rem;
+    transition: all 0.3s ease;
+}
+
+.payment-card:hover {
+    border-color: #EEA24B;
+    box-shadow: 0 4px 12px rgba(238, 162, 75, 0.15);
+}
+
+.payment-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.payment-card-title-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #EEA24B;
+    font-weight: 600;
+}
+
+.payment-card-title {
+    font-size: 0.9375rem;
+    color: #1f2937;
+    font-weight: 600;
+}
+
+.payment-card-amount {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    background: linear-gradient(135deg, #fef3e7 0%, #fff7ed 100%);
+    border-radius: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.payment-amount-label {
+    font-size: 0.8125rem;
+    color: #92400e;
+    font-weight: 500;
+}
+
+.payment-amount-value {
+    font-size: 1.125rem;
+    color: #1f2937;
+    font-weight: 700;
+}
+
+.payment-card-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.payment-detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.25rem 0;
+}
+
+.payment-detail-label {
+    font-size: 0.8125rem;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.payment-detail-value {
+    font-size: 0.8125rem;
+    color: #1f2937;
+    font-weight: 600;
+}
+
+/* Payment Rejection Reason */
+.payment-rejection-reason {
+    margin-top: 0.75rem;
+    padding: 0.75rem;
+    background: #fee2e2;
+    border: 1px solid #fecaca;
+    border-radius: 0.5rem;
+}
+
+.rejection-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #991b1b;
+    font-weight: 600;
+    font-size: 0.8125rem;
+    margin-bottom: 0.375rem;
+}
+
+.rejection-header i {
+    font-size: 0.875rem;
+}
+
+.rejection-text {
+    font-size: 0.8125rem;
+    color: #991b1b;
+    line-height: 1.5;
+    margin: 0;
+}
+
+/* Payment Receipt Photo */
+.payment-receipt-photo {
+    margin-top: 0.75rem;
+}
+
+.receipt-label {
+    font-size: 0.8125rem;
+    color: #64748b;
+    font-weight: 500;
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.receipt-image {
+    width: 100%;
+    max-height: 300px;
+    object-fit: contain;
+    border-radius: 0.5rem;
+    border: 1px solid #e2e8f0;
+}
+
+/* Status badge colors for the info section */
+.status-badge-view.status-completed {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.status-badge-view.status-halt {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.status-badge-view.status-submitted {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+/* No Files Message */
+.no-files-message {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    color: #94a3b8;
+    gap: 0.5rem;
+}
+
+.no-files-message i {
+    font-size: 1.5rem;
+}
+
+.no-files-message p {
+    margin: 0;
+    font-size: 0.875rem;
+}
+
+/* Attachment File Item */
+.attachment-file-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    transition: all 0.3s ease;
+}
+
+.attachment-file-item:hover {
+    border-color: #EEA24B;
+    background: #fef3e7;
+}
+
+.file-item-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #e0e7ff;
+    border-radius: 0.375rem;
+    color: #3b82f6;
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+.file-item-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.file-item-name {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #1f2937;
+    word-break: break-word;
+}
+
+.file-item-size {
+    font-size: 0.75rem;
+    color: #94a3b8;
+}
+
+.file-download-btn {
+    background: none;
+    border: none;
+    color: #64748b;
+    cursor: pointer;
+    padding: 0.375rem;
+    border-radius: 0.375rem;
+    transition: all 0.3s ease;
+}
+
+.file-download-btn:hover {
+    color: #EEA24B;
+    background: rgba(238, 162, 75, 0.1);
+}
+
+/* Responsive for new sections */
+@media (max-width: 640px) {
+    .payment-card {
+        padding: 1rem;
+    }
+
+    .report-title-row {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .payment-card-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+
+    .balance-row {
+        font-size: 0.8rem;
+    }
+}
+
+/* Submit Progress Report Button in modal footer */
+.submit-progress-btn {
+    background: linear-gradient(135deg, #EEA24B 0%, #F57C00 100%);
+    color: white !important;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    box-shadow: 0 2px 8px rgba(238, 162, 75, 0.3);
+}
+
+.submit-progress-btn:hover {
+    background: linear-gradient(135deg, #F57C00 0%, #EF6C00 100%);
+    box-shadow: 0 4px 12px rgba(238, 162, 75, 0.4);
+    transform: translateY(-1px);
+}
+
+.submit-progress-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(238, 162, 75, 0.3);
+}
+
+.submit-progress-btn i {
+    font-size: 1rem;
+}
+
+/* Submit button inside attachments section */
+.attachments-submit-btn {
+    width: 100%;
+    margin-top: 1rem;
+    justify-content: center;
+}
+
+/* ---- Modal Alert Banners ---- */
+.modal-alert {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.875rem 1.25rem;
+    border-radius: 0.75rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    line-height: 1.5;
+}
+
+.modal-alert i {
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.alert-locked {
+    background: #f3f4f6;
+    color: #6b7280;
+    border: 1px solid #d1d5db;
+}
+
+.alert-halted {
+    background: #fef2f2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+}
+
+.alert-rejected {
+    background: #fef2f2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+}
+
+.alert-pending {
+    background: #eff6ff;
+    color: #1e40af;
+    border: 1px solid #bfdbfe;
+}
+
+.alert-completed {
+    background: #ecfdf5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+}
+
+/* Report Actions Menu */
+.report-actions-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.report-menu-container {
+    position: relative;
+    display: inline-block;
+}
+
+.report-menu-btn {
+    background: transparent;
+    border: none;
+    color: #6b7280;
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.report-menu-btn:hover {
+    color: #1f2937;
+    background: #f3f4f6;
+}
+
+.report-dropdown {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 100%;
+    margin-top: 0.25rem;
+    background: white;
+    min-width: 160px;
+    border-radius: 0.5rem;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e5e7eb;
+    z-index: 1050;
+    overflow: hidden;
+}
+
+.report-dropdown.active {
+    display: block;
+    animation: fadeInDropdown 0.2s ease-out;
+}
+
+.report-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    width: 100%;
+    border: none;
+    background: transparent;
+    text-align: left;
+    color: #4b5563;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    font-size: 0.875rem;
+}
+
+.report-dropdown-item:hover {
+    background: #f9fafb;
+    color: #EEA24B;
+}
+
+@keyframes fadeInDropdown {
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

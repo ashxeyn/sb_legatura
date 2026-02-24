@@ -1,64 +1,168 @@
 /**
  * View Progress Report Modal JavaScript
- * Handles viewing submitted progress reports (read-only)
+ * Populates the modal with PHP-precomputed data from window.milestoneItemsData
+ * Handles modal open/close and UI interactions only
  */
 
 class ContractorViewProgressReportModal {
     constructor() {
         this.modal = null;
         this.overlay = null;
-        this.currentReport = null;
-        
+        this.currentItemId = null;
+
         this.init();
     }
 
     init() {
         this.modal = document.getElementById('viewProgressReportModal');
         this.overlay = document.getElementById('viewProgressReportModalOverlay');
-        
+
         if (!this.modal || !this.overlay) {
             console.error('View Progress Report Modal elements not found');
             return;
         }
 
+        this.setupReportMenuHandlers();
         this.setupEventListeners();
     }
 
     setupEventListeners() {
-        // Close buttons
         const closeBtn = document.getElementById('closeViewProgressReportModalBtn');
         const closeViewBtn = document.getElementById('closeViewReportBtn');
-        
-        if (closeBtn) {
-            closeBtn.addEventListener('click', () => this.close());
-        }
-        
-        if (closeViewBtn) {
-            closeViewBtn.addEventListener('click', () => this.close());
+
+        if (closeBtn) closeBtn.addEventListener('click', () => this.close());
+        if (closeViewBtn) closeViewBtn.addEventListener('click', () => this.close());
+        if (this.overlay) this.overlay.addEventListener('click', () => this.close());
+
+        // Submit Progress Report button
+        const submitBtn = document.getElementById('submitProgressReportBtn');
+        if (submitBtn) {
+            submitBtn.addEventListener('click', () => this.handleSubmitProgressReport());
         }
 
-        // Overlay click to close
-        if (this.overlay) {
-            this.overlay.addEventListener('click', () => this.close());
-        }
-
-        // Close on Escape key
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && this.isOpen()) {
-                this.close();
-            }
+            if (e.key === 'Escape' && this.isOpen()) this.close();
         });
+
+        // Approve Button
+        const approveBtn = document.getElementById('approveProgressBtn');
+        if (approveBtn) {
+            approveBtn.addEventListener('click', () => this.handleApprove());
+        }
+
+        // Reject Button
+        const rejectBtn = document.getElementById('rejectProgressBtn');
+        if (rejectBtn) {
+            rejectBtn.addEventListener('click', () => this.handleReject());
+        }
     }
 
-    open(report, milestoneData) {
-        if (!report) {
-            console.error('No report data provided');
+    handleApprove() {
+        const itemsData = window.milestoneItemsData || {};
+        const item = itemsData[this.currentItemId];
+        if (!item) return;
+
+        // Open payment modal if this is the owner view
+        if (window.contractorProgressreportModalInstance) {
+            window.contractorProgressreportModalInstance.openPayment({
+                project_id: window.currentProjectId || 0,
+                milestoneItemId: item.id,
+                milestoneTitle: `Milestone ${item.sequenceNumber}: ${item.title}`
+            });
+        }
+    }
+
+    handleReject() {
+        const itemsData = window.milestoneItemsData || {};
+        const item = itemsData[this.currentItemId];
+        if (!item) return;
+
+        // Find the latest progress report to reject
+        const latestReport = item.progressReports && item.progressReports.length > 0
+            ? item.progressReports[0]
+            : null;
+
+        if (latestReport && window.contractorProgressreportModalInstance) {
+            window.contractorProgressreportModalInstance.openRejection({
+                progress_id: latestReport.id,
+                milestoneTitle: `Milestone ${item.sequenceNumber}: ${item.title}`
+            });
+        } else {
+            alert('No submitted report found to reject.');
+        }
+    }
+
+    async handleSubmitProgressReport() {
+        const itemsData = window.milestoneItemsData || {};
+        const item = itemsData[this.currentItemId];
+
+        if (!item) {
+            console.error('No item data for submit');
             return;
         }
 
-        this.currentReport = report;
-        this.populateModal(report, milestoneData);
-        
+        // If the progress report upload modal is available on this page, open it directly
+        if (window.openProgressReportModal) {
+            window.openProgressReportModal({
+                projectTitle: window.projectTitle || 'Project',
+                milestoneTitle: `Milestone ${item.sequenceNumber}: ${item.title}`,
+                milestoneItemId: item.id
+            });
+            return;
+        }
+
+        // Fallback: Navigate to the dedicated progress report page via PRG session pattern
+        try {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+
+            // Assume projectId is available globally or we can get it from the URL as fallback
+            const urlParams = new URLSearchParams(window.location.search);
+            const projectId = window.currentProjectId || urlParams.get('project_id') || 0;
+
+            const response = await fetch('/contractor/projects/set-milestone-item', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken || ''
+                },
+                body: JSON.stringify({
+                    item_id: item.id,
+                    project_id: projectId
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                // Close the view modal
+                this.close();
+                window.location.href = '/contractor/projects/milestone-progress-report';
+            } else {
+                console.error('Failed to set milestone item session');
+                alert('Could not navigate to progress report.');
+            }
+        } catch (error) {
+            console.error('Error setting milestone item session:', error);
+            alert('An error occurred. Please try again.');
+        }
+    }
+
+    /**
+     * Open the modal for a given milestone item ID.
+     * Reads all data from window.milestoneItemsData (PHP-precomputed).
+     */
+    open(itemId) {
+        const itemsData = window.milestoneItemsData || {};
+        const item = itemsData[itemId];
+
+        if (!item) {
+            console.error('Milestone item data not found for ID:', itemId);
+            return;
+        }
+
+        this.currentItemId = itemId;
+        this.populateModal(item);
+
         if (this.modal) {
             this.modal.classList.add('active');
             document.body.style.overflow = 'hidden';
@@ -70,183 +174,371 @@ class ContractorViewProgressReportModal {
             this.modal.classList.remove('active');
             document.body.style.overflow = '';
         }
-        this.currentReport = null;
+        this.currentItemId = null;
     }
 
     isOpen() {
         return this.modal && this.modal.classList.contains('active');
     }
 
-    populateModal(report, milestoneData) {
-        // Report Title
-        const titleElement = document.getElementById('viewModalReportTitle');
-        if (titleElement) {
-            titleElement.textContent = report.title || 'Progress Report';
-        }
+    populateModal(item) {
+        const projectTitle = window.projectTitle || 'Project';
 
-        // Milestone Title
-        const milestoneTitleElement = document.getElementById('viewModalMilestoneTitle');
-        if (milestoneTitleElement) {
-            milestoneTitleElement.textContent = milestoneData?.milestoneTitle || 'Milestone';
-        }
+        // Header title
+        this.setText('viewModalReportTitle', `Milestone ${item.sequenceNumber}: ${item.title}`);
 
-        // Project Title
-        const projectTitleElement = document.getElementById('viewModalProjectTitle');
-        if (projectTitleElement) {
-            projectTitleElement.textContent = milestoneData?.projectTitle || 'Project';
-        }
+        // Info section
+        this.setText('viewModalMilestoneTitle', item.title);
+        this.setText('viewModalProjectTitle', projectTitle);
+        this.setText('viewModalTargetDate', item.date || 'Not specified');
+        this.setText('viewModalCost', item.costFormatted || '-');
 
-        // Submitted Date
-        const submittedDateElement = document.getElementById('viewModalSubmittedDate');
-        if (submittedDateElement) {
-            submittedDateElement.textContent = report.date || 'Not specified';
-        }
-
-        // Status Badge
-        const statusElement = document.getElementById('viewModalStatus');
-        if (statusElement) {
-            // Remove existing status classes
-            statusElement.className = 'status-badge-view';
-            
-            const status = report.status || 'not_submitted';
-            statusElement.classList.add(`status-${status}`);
-            
-            // Set status text
-            const statusText = {
-                'approved': 'Approved',
-                'pending': 'Pending Approval',
-                'not_submitted': 'Not Submitted',
-                'rejected': 'Rejected'
+        // Status badge
+        const statusEl = document.getElementById('viewModalStatus');
+        if (statusEl) {
+            statusEl.className = 'status-badge-view';
+            const status = item.status || 'pending';
+            statusEl.classList.add(`status-${status}`);
+            const statusLabels = {
+                'approved': 'Approved', 'pending': 'Pending', 'submitted': 'Submitted',
+                'rejected': 'Rejected', 'completed': 'Completed', 'halt': 'Halted'
             };
-            statusElement.textContent = statusText[status] || status;
+            statusEl.textContent = statusLabels[status] || status;
         }
+
+        // --- Alert Banners (matching TSX StatusAlerts logic) ---
+        this.populateAlerts(item);
 
         // Description
-        const descriptionElement = document.getElementById('viewModalDescription');
-        if (descriptionElement) {
-            descriptionElement.textContent = report.description || 'No description available.';
+        this.setText('viewModalDescription', item.description || 'No description provided for this milestone.');
+
+        // Button visibility logic
+        const submitBtn = document.getElementById('submitProgressReportBtn');
+        const approveBtn = document.getElementById('approveProgressBtn');
+        const rejectBtn = document.getElementById('rejectProgressBtn');
+
+        // Determine if current user is owner (can check global variable or context)
+        const isOwner = window.isOwnerMode || false;
+
+        if (isOwner) {
+            // Owner view: Show Approve/Reject if there's a submitted report and it's not already approved
+            const canAction = item.status === 'submitted';
+            if (approveBtn) approveBtn.style.display = canAction ? 'flex' : 'none';
+            if (rejectBtn) rejectBtn.style.display = canAction ? 'flex' : 'none';
+            if (submitBtn) submitBtn.style.display = 'none';
+        } else {
+            // Contractor view: Show Submit if conditions met
+            if (submitBtn) submitBtn.style.display = item.canSubmitReport ? 'flex' : 'none';
+            if (approveBtn) approveBtn.style.display = 'none';
+            if (rejectBtn) rejectBtn.style.display = 'none';
         }
 
-        // Files/Attachments
-        this.populateFiles(report.files || []);
+        // Progress Reports
+        this.populateProgressReports(item.progressReports || [], item.canSubmitReport || false, item.id);
+
+        // Payments
+        this.populatePayments(item.payments || [], item.paymentSummary || {});
     }
 
-    populateFiles(files) {
-        const fileListContainer = document.getElementById('viewModalFileList');
-        const noFilesMessage = document.getElementById('noFilesMessage');
-        
-        if (!fileListContainer) return;
-        
-        fileListContainer.innerHTML = '';
-        
-        if (!files || files.length === 0) {
-            if (noFilesMessage) {
-                noFilesMessage.style.display = 'flex';
+    populateAlerts(item) {
+        // Hide all alerts first
+        const alertIds = [
+            'alertLockedBanner', 'alertHaltedBanner', 'alertRejectedReportBanner',
+            'alertRejectedPaymentBanner', 'alertPendingBanner', 'alertCompletedBanner'
+        ];
+        alertIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = 'none';
+        });
+
+        // Show relevant alerts based on item conditions
+        if (item.isCompleted) {
+            this.showAlert('alertCompletedBanner');
+            return; // No other alerts needed for completed items
+        }
+
+        if (item.isLocked) {
+            this.showAlert('alertLockedBanner');
+            return; // No other alerts for locked items
+        }
+
+        if (item.isHalted || item.isProjectHalted) {
+            this.showAlert('alertHaltedBanner');
+        }
+
+        if (item.latestReportStatus === 'rejected') {
+            this.showAlert('alertRejectedReportBanner');
+        }
+
+        if (item.latestPaymentStatus === 'rejected') {
+            this.showAlert('alertRejectedPaymentBanner');
+        }
+
+        // Pending review (has submitted reports or payments awaiting approval)
+        if (item.latestReportStatus === 'submitted' || item.latestPaymentStatus === 'submitted') {
+            this.showAlert('alertPendingBanner');
+        }
+    }
+
+    showAlert(id) {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'flex';
+    }
+
+
+
+    populateProgressReports(reports, canSubmitReport = false, itemId) {
+        const section = document.getElementById('progressReportsSection');
+        const container = document.getElementById('viewModalReportsTimeline');
+
+        if (!container || !section) return;
+
+        container.innerHTML = '';
+
+        const hasReports = reports && reports.length > 0;
+
+        if (section) {
+            section.style.display = (hasReports || canSubmitReport) ? 'block' : 'none';
+        }
+
+        if (!hasReports) return;
+
+        if (itemId) {
+            const templateDiv = document.getElementById('timeline_html_' + itemId);
+            if (templateDiv) {
+                container.innerHTML = templateDiv.innerHTML;
             }
-            return;
         }
-        
-        if (noFilesMessage) {
-            noFilesMessage.style.display = 'none';
-        }
-        
-        files.forEach(file => {
-            const fileItem = document.createElement('div');
-            fileItem.className = 'attachment-file-item';
-            
-            const fileIcon = this.getFileIcon(file.name || file.type);
-            const fileSize = this.formatFileSize(file.size || 0);
-            
-            fileItem.innerHTML = `
-                <div class="file-item-icon">
-                    <i class="${fileIcon}"></i>
-                </div>
-                <div class="file-item-info">
-                    <div class="file-item-name">${file.name || 'Untitled'}</div>
-                    <div class="file-item-size">${fileSize}</div>
-                </div>
-                <button class="file-download-btn" data-url="${file.url || '#'}" title="Download file">
-                    <i class="fi fi-rr-download"></i>
-                </button>
-            `;
-            
-            const downloadBtn = fileItem.querySelector('.file-download-btn');
-            downloadBtn.addEventListener('click', (e) => {
+
+        const editButtons = container.querySelectorAll('.edit-progress-btn');
+        editButtons.forEach(btn => {
+            btn.addEventListener('click', (e) => {
                 e.preventDefault();
-                this.handleFileDownload(file);
+                const progressId = btn.getAttribute('data-progress-id');
+                const reportData = reports.find(r => r.id == progressId);
+                if (reportData && window.contractorProgressreportModalInstance) {
+                    const t = window.contractorViewProgressReportModalInstance; if (t) t.close();
+                    const editData = {
+                        milestoneItemId: itemId,
+                        project_id: window.currentProjectId || '',
+                        title: window.projectTitle || ''
+                    };
+                    window.contractorProgressreportModalInstance.openEdit(editData, reportData);
+                }
             });
-            
-            fileListContainer.appendChild(fileItem);
         });
     }
 
-    getFileIcon(filename) {
-        const ext = filename.split('.').pop().toLowerCase();
-        const iconMap = {
-            'pdf': 'fi fi-rr-file-pdf',
-            'doc': 'fi fi-rr-file-word',
-            'docx': 'fi fi-rr-file-word',
-            'jpg': 'fi fi-rr-file-image',
-            'jpeg': 'fi fi-rr-file-image',
-            'png': 'fi fi-rr-file-image',
-            'gif': 'fi fi-rr-file-image'
-        };
-        
-        return iconMap[ext] || 'fi fi-rr-file';
-    }
+    setupReportMenuHandlers() {
+        window.toggleReportMenu = (event, btn) => {
+            event.preventDefault();
+            event.stopPropagation();
 
-    formatFileSize(bytes) {
-        if (bytes === 0) return '0 Bytes';
-        const k = 1024;
-        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
-    }
-
-    handleFileDownload(file) {
-        console.log('Downloading file:', file.name);
-        // TODO: Implement actual file download
-        this.showNotification(`Downloading ${file.name}...`);
-        
-        // In production, trigger actual download
-        // window.open(file.url, '_blank');
-    }
-
-    showNotification(message) {
-        const toast = document.createElement('div');
-        toast.className = 'fixed bottom-4 right-4 bg-orange-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
-        toast.textContent = message;
-        toast.style.cssText = 'animation: slideUp 0.3s ease-out;';
-
-        document.body.appendChild(toast);
-
-        setTimeout(() => {
-            toast.style.animation = 'slideDown 0.3s ease-out';
-            setTimeout(() => {
-                if (document.body.contains(toast)) {
-                    document.body.removeChild(toast);
+            // Close all other dropdowns
+            document.querySelectorAll('.report-dropdown.active').forEach(menu => {
+                if (menu !== btn.nextElementSibling) {
+                    menu.classList.remove('active');
                 }
-            }, 300);
-        }, 3000);
+            });
+
+            // Toggle this dropdown
+            const dropdown = btn.nextElementSibling;
+            if (dropdown) {
+                dropdown.classList.toggle('active');
+            }
+        };
+
+        window.handleSendReport = (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            // Close the current dropdown
+            const dropdown = event.target.closest('.report-dropdown');
+            if (dropdown) dropdown.classList.remove('active');
+
+            // Show dispute prompt matching TSX
+            if (window.confirm('File a Dispute\n\nWould you like to file a dispute or report an issue?')) {
+                window.alert('Info: Please go to milestone detail to file a specific dispute');
+            }
+        };
+
+        window.handleReportHistory = (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            const dropdown = event.target.closest('.report-dropdown');
+            if (dropdown) dropdown.classList.remove('active');
+
+            // For now, just show an alert as report history modal is not implemented yet
+            window.alert('Report history feature coming soon');
+        };
+
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.report-menu-container')) {
+                document.querySelectorAll('.report-dropdown.active').forEach(menu => {
+                    menu.classList.remove('active');
+                });
+            }
+        });
+    }
+
+    populatePayments(payments, summary) {
+        const section = document.getElementById('paymentsSection');
+        const divider = document.getElementById('paymentsDivider');
+        const container = document.getElementById('viewModalPaymentCards');
+        const summaryEl = document.getElementById('paymentBalanceSummary');
+
+        if (!container) return;
+        container.innerHTML = '';
+
+        if (!payments || payments.length === 0) {
+            if (section) section.style.display = 'none';
+            if (divider) divider.style.display = 'none';
+            return;
+        }
+
+        if (section) section.style.display = 'block';
+        if (divider) divider.style.display = 'block';
+
+        // Populate balance summary
+        if (summaryEl && summary.expected > 0) {
+            summaryEl.style.display = 'block';
+            this.setText('balanceExpected', summary.expectedFormatted || '-');
+            this.setText('balancePaid', summary.totalPaidFormatted || '-');
+            this.setText('balanceRemaining', summary.remainingFormatted || '-');
+
+            const pendingRow = document.getElementById('balancePendingRow');
+            if (summary.totalSubmitted > 0) {
+                if (pendingRow) pendingRow.style.display = 'flex';
+                this.setText('balancePending', summary.totalSubmittedFormatted || '-');
+            } else {
+                if (pendingRow) pendingRow.style.display = 'none';
+            }
+
+            const progressFill = document.getElementById('balanceProgressFill');
+            if (progressFill) {
+                progressFill.style.width = `${Math.min(100, summary.progressPercent || 0)}%`;
+            }
+
+            // Color the remaining value
+            const remainingEl = document.getElementById('balanceRemaining');
+            if (remainingEl) {
+                remainingEl.className = 'balance-value balance-value-bold';
+                if (summary.remaining <= 0) remainingEl.classList.add('balance-success');
+                else remainingEl.classList.add('balance-accent');
+            }
+        } else if (summaryEl) {
+            summaryEl.style.display = 'none';
+        }
+
+        // Populate payment cards
+        payments.forEach(payment => {
+            const status = payment.status || 'submitted';
+            const statusLabels = {
+                'approved': 'Approved', 'rejected': 'Rejected', 'submitted': 'Submitted'
+            };
+            const statusColors = {
+                'approved': 'badge-success', 'rejected': 'badge-error', 'submitted': 'badge-warning'
+            };
+
+            let cardHTML = `
+                <div class="payment-card">
+                    <div class="payment-card-header">
+                        <div class="payment-card-title-row">
+                            <i class="fi fi-rr-credit-card"></i>
+                            <span class="payment-card-title">Payment Receipt</span>
+                        </div>
+                        <span class="payment-status-badge ${statusColors[status] || 'badge-pending'}">
+                            ${statusLabels[status] || status}
+                        </span>
+                    </div>
+                    <div class="payment-card-amount">
+                        <span class="payment-amount-label">Amount</span>
+                        <span class="payment-amount-value">${payment.amountFormatted || '₱0.00'}</span>
+                    </div>
+                    <div class="payment-card-details">
+                        <div class="payment-detail-row">
+                            <span class="payment-detail-label">Date:</span>
+                            <span class="payment-detail-value">${payment.date || '-'}</span>
+                        </div>
+                        <div class="payment-detail-row">
+                            <span class="payment-detail-label">Method:</span>
+                            <span class="payment-detail-value">${payment.type || '-'}</span>
+                        </div>
+                        ${payment.transactionNumber ? `
+                        <div class="payment-detail-row">
+                            <span class="payment-detail-label">Reference #:</span>
+                            <span class="payment-detail-value">${payment.transactionNumber}</span>
+                        </div>` : ''}
+                    </div>
+            `;
+
+            // Rejection reason
+            if (status === 'rejected' && payment.reason) {
+                cardHTML += `
+                    <div class="payment-rejection-reason">
+                        <div class="rejection-header">
+                            <i class="fi fi-rr-info"></i>
+                            <span>Decline Reason:</span>
+                        </div>
+                        <p class="rejection-text">${payment.reason}</p>
+                    </div>
+                `;
+            }
+
+            // Receipt photo
+            if (payment.receiptPhoto) {
+                cardHTML += `
+                    <div class="payment-receipt-photo">
+                        <span class="receipt-label">Receipt Photo:</span>
+                        <img src="/api/files/${payment.receiptPhoto}" alt="Receipt" class="receipt-image" onerror="this.style.display='none'">
+                    </div>
+                `;
+            }
+
+            cardHTML += `</div>`;
+
+            const cardEl = document.createElement('div');
+            cardEl.innerHTML = cardHTML;
+            container.appendChild(cardEl.firstElementChild);
+        });
+    }
+
+    setText(id, text) {
+        const el = document.getElementById(id);
+        if (el) el.textContent = text;
+    }
+
+    getFileIconClass(ext) {
+        const map = {
+            'pdf': 'fi fi-rr-file-pdf', 'doc': 'fi fi-rr-file-word', 'docx': 'fi fi-rr-file-word',
+            'jpg': 'fi fi-rr-file-image', 'jpeg': 'fi fi-rr-file-image', 'png': 'fi fi-rr-file-image',
+            'gif': 'fi fi-rr-file-image', 'webp': 'fi fi-rr-file-image'
+        };
+        return map[ext] || 'fi fi-rr-file';
     }
 }
 
 // Initialize modal when DOM is ready
-let contractorViewProgressReportModalInstance = null;
+window.contractorViewProgressReportModalInstance = null;
 
 document.addEventListener('DOMContentLoaded', () => {
-    contractorViewProgressReportModalInstance = new ContractorViewProgressReportModal();
+    window.contractorViewProgressReportModalInstance = new ContractorViewProgressReportModal();
 });
 
 // Export for use in other scripts
 window.ContractorViewProgressReportModal = ContractorViewProgressReportModal;
-window.openViewProgressReportModal = (report, milestoneData) => {
-    if (contractorViewProgressReportModalInstance) {
-        contractorViewProgressReportModalInstance.open(report, milestoneData);
+
+/**
+ * Opens the modal for a given milestone item ID.
+ * All data is read from window.milestoneItemsData (PHP-precomputed).
+ */
+window.openViewProgressReportModal = (itemId) => {
+    if (window.contractorViewProgressReportModalInstance) {
+        window.contractorViewProgressReportModalInstance.open(itemId);
     } else {
         setTimeout(() => {
-            if (contractorViewProgressReportModalInstance) {
-                contractorViewProgressReportModalInstance.open(report, milestoneData);
+            if (window.contractorViewProgressReportModalInstance) {
+                window.contractorViewProgressReportModalInstance.open(itemId);
             }
         }, 100);
     }

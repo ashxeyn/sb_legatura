@@ -8,7 +8,7 @@ class ContractorMilestoneProgressReport {
         this.milestoneData = null;
         this.projectId = null;
         this.milestoneId = null;
-        
+
         this.init();
     }
 
@@ -17,10 +17,10 @@ class ContractorMilestoneProgressReport {
         const urlParams = new URLSearchParams(window.location.search);
         this.projectId = urlParams.get('project_id');
         this.milestoneId = urlParams.get('milestone_id');
-        
+
         // Setup event listeners
         this.setupEventListeners();
-        
+
         // Load milestone progress data
         this.loadMilestoneProgressData();
     }
@@ -125,9 +125,9 @@ class ContractorMilestoneProgressReport {
                 }
             ]
         };
-        
+
         this.renderMilestoneProgress();
-        
+
         // Setup event listeners after initial render
         this.setupEventListeners();
     }
@@ -145,7 +145,7 @@ class ContractorMilestoneProgressReport {
                     this.handleViewMore(reportId);
                 });
             });
-            
+
             // Report item click handlers for expand/collapse
             const reportItems = document.querySelectorAll('.progress-report-item');
             reportItems.forEach(item => {
@@ -157,7 +157,7 @@ class ContractorMilestoneProgressReport {
                         this.toggleReportDescription(item);
                     });
                 }
-                
+
                 // Click on entire item to expand/collapse
                 item.addEventListener('click', (e) => {
                     // Don't trigger if clicking on "View more" link
@@ -172,7 +172,7 @@ class ContractorMilestoneProgressReport {
     toggleReportDescription(reportItem) {
         const description = reportItem.querySelector('.report-description');
         const isExpanded = reportItem.classList.contains('expanded');
-        
+
         if (isExpanded) {
             // Collapse
             reportItem.classList.remove('expanded');
@@ -183,16 +183,16 @@ class ContractorMilestoneProgressReport {
             reportItem.classList.add('expanded');
             description.classList.add('expanded');
             this.animateExpand(description);
-            
+
             // Smooth scroll to expanded item if needed
             setTimeout(() => {
                 const rect = reportItem.getBoundingClientRect();
                 const isInViewport = rect.top >= 0 && rect.bottom <= window.innerHeight;
-                
+
                 if (!isInViewport) {
-                    reportItem.scrollIntoView({ 
-                        behavior: 'smooth', 
-                        block: 'center' 
+                    reportItem.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'center'
                     });
                 }
             }, 100);
@@ -202,7 +202,7 @@ class ContractorMilestoneProgressReport {
     animateExpand(element) {
         element.style.maxHeight = '0';
         element.style.opacity = '0';
-        
+
         requestAnimationFrame(() => {
             element.style.transition = 'max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease';
             element.style.maxHeight = element.scrollHeight + 'px';
@@ -213,7 +213,7 @@ class ContractorMilestoneProgressReport {
     animateCollapse(element) {
         element.style.maxHeight = element.scrollHeight + 'px';
         element.style.opacity = '1';
-        
+
         requestAnimationFrame(() => {
             element.style.transition = 'max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease';
             element.style.maxHeight = '0';
@@ -226,10 +226,10 @@ class ContractorMilestoneProgressReport {
         if (report) {
             // Check report status to determine which modal to open
             const isNotSubmitted = report.status === 'not_submitted' || !report.status;
-            
+
             if (isNotSubmitted) {
                 // Open submission modal for creating new report
-            if (window.openProgressReportModal) {
+                if (window.openProgressReportModal) {
                     window.openProgressReportModal({
                         projectId: this.projectId,
                         milestoneId: this.milestoneId,
@@ -237,8 +237,8 @@ class ContractorMilestoneProgressReport {
                         projectTitle: this.milestoneData?.projectTitle || 'Project',
                         milestoneTitle: this.milestoneData?.milestoneTitle || 'Milestone'
                     });
-            } else {
-                console.error('Progress Report Modal not initialized');
+                } else {
+                    console.error('Progress Report Modal not initialized');
                     this.showNotification('Progress report submission modal not available', 'error');
                 }
             } else {
@@ -301,25 +301,25 @@ class ContractorMilestoneProgressReport {
                     <h4 class="progress-reports-title text-lg font-semibold text-gray-900 mb-6">Progress Reports</h4>
                     <div class="progress-reports-timeline">
                         ${this.milestoneData.reports && this.milestoneData.reports.length > 0
-                            ? this.milestoneData.reports.map((report, index) => {
-                                const statusClass = report.status || 'not_submitted';
-                                const isApproved = report.status === 'approved';
-                                const isPending = report.status === 'pending';
-                                const isNotSubmitted = report.status === 'not_submitted' || !report.status;
-                                
-                                // Determine icon and colors based on status
-                                let iconClass = 'fi fi-rr-cross'; // default for not submitted
-                                let iconColor = '#9ca3af'; // gray
-                                
-                                if (isApproved) {
-                                    iconClass = 'fi fi-rr-check';
-                                    iconColor = '#10b981'; // green
-                                } else if (isPending) {
-                                    iconClass = 'fi fi-rr-clock';
-                                    iconColor = '#f59e0b'; // orange
-                                }
-                                
-                                return `
+                ? this.milestoneData.reports.map((report, index) => {
+                    const statusClass = report.status || 'not_submitted';
+                    const isApproved = report.status === 'approved';
+                    const isPending = report.status === 'pending';
+                    const isNotSubmitted = report.status === 'not_submitted' || !report.status;
+
+                    // Determine icon and colors based on status
+                    let iconClass = 'fi fi-rr-cross'; // default for not submitted
+                    let iconColor = '#9ca3af'; // gray
+
+                    if (isApproved) {
+                        iconClass = 'fi fi-rr-check';
+                        iconColor = '#10b981'; // green
+                    } else if (isPending) {
+                        iconClass = 'fi fi-rr-clock';
+                        iconColor = '#f59e0b'; // orange
+                    }
+
+                    return `
                                     <div class="progress-report-item report-status-${statusClass}" data-report-id="${report.id}">
                                     <div class="report-timeline-marker">
                                             <div class="report-checkmark-icon" style="background-color: ${iconColor}; border-color: ${iconColor};">
@@ -343,14 +343,14 @@ class ContractorMilestoneProgressReport {
                                     </div>
                                 </div>
                                 `;
-                            }).join('')
-                            : '<p class="text-gray-500 text-center py-8">No progress reports available</p>'
-                        }
+                }).join('')
+                : '<p class="text-gray-500 text-center py-8">No progress reports available</p>'
+            }
                     </div>
                 </div>
             </div>
         `;
-        
+
         // Re-setup event listeners after rendering
         this.setupEventListeners();
     }

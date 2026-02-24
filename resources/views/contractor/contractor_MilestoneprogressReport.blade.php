@@ -19,7 +19,8 @@
                             <i class="fi fi-rr-angle-right breadcrumb-separator"></i>
                             <a href="{{ route('contractor.myprojects') }}" class="breadcrumb-link">My Projects</a>
                             <i class="fi fi-rr-angle-right breadcrumb-separator"></i>
-                            <a href="{{ route('contractor.projects.milestone-report') }}" class="breadcrumb-link">Milestone Report</a>
+                            <a href="{{ route('contractor.projects.milestone-report') }}" class="breadcrumb-link">Milestone
+                                Report</a>
                             <i class="fi fi-rr-angle-right breadcrumb-separator"></i>
                             <span class="breadcrumb-current">Milestone Progress</span>
                         </div>
@@ -51,7 +52,7 @@
 
     <!-- Progress Report Modal (for submitting) -->
     @include('contractor.contractor_Modals.contractorProgressreport_Modal')
-    
+
     <!-- View Progress Report Modal (for viewing existing reports) -->
     @include('contractor.contractor_Modals.contractorMilestoneprogressReport_Modal')
 @endsection
@@ -60,7 +61,8 @@
     <link rel="stylesheet" href="{{ asset('css/contractor/contractor_MilestoneprogressReport.css') }}?v={{ time() }}">
     <link rel="stylesheet" href="{{ asset('css/contractor/contractor_Myprojects.css') }}">
     <link rel="stylesheet" href="{{ asset('css/contractor/contractor_Modals/contractorProgressreport_Modal.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/contractor/contractor_Modals/contractorMilestoneprogressReport_Modal.css') }}">
+    <link rel="stylesheet"
+        href="{{ asset('css/contractor/contractor_Modals/contractorMilestoneprogressReport_Modal.css') }}?v={{ time() }}">
 @endsection
 
 @section('extra_js')
@@ -77,11 +79,27 @@
                     link.classList.add('active');
                 }
             });
-            
+
             // Update navbar search placeholder
             const navbarSearchInput = document.querySelector('.navbar-search-input');
             if (navbarSearchInput) {
                 navbarSearchInput.placeholder = 'Search milestone progress...';
+            }
+
+            // Auto-open submit modal if item_id is provided by the server
+            const itemId = '{{ $itemId ?? "" }}';
+
+            if (itemId && window.openProgressReportModal) {
+                // Wait a brief moment to ensure milestoneItemsData is loaded by the main JS file
+                setTimeout(() => {
+                    const itemsData = window.milestoneItemsData || {};
+                    const item = itemsData[parseInt(itemId)];
+                    window.openProgressReportModal({
+                        projectTitle: window.projectTitle || 'Project',
+                        milestoneTitle: item ? `Milestone ${item.sequenceNumber}: ${item.title}` : 'Milestone',
+                        milestoneItemId: parseInt(itemId),
+                    });
+                }, 150);
             }
         });
     </script>

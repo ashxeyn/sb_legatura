@@ -31,62 +31,51 @@
 
             <!-- Report Form -->
             <form id="progressReportForm" class="progress-report-form">
-                <!-- Report Title -->
-                <div class="form-group">
-                    <label for="reportTitle" class="form-label">
-                        <i class="fi fi-rr-edit"></i>
-                        Report Title
-                    </label>
-                    <input 
-                        type="text" 
-                        id="reportTitle" 
-                        name="reportTitle" 
-                        class="form-input" 
-                        placeholder="e.g., Progress Report 1.1 - Foundation Complete"
-                        required
-                    >
-                </div>
+                <input type="hidden" name="item_id" id="formItemId" value="">
+                <input type="hidden" id="editingProgressId" value="">
+                <input type="hidden" name="deleted_file_ids" id="deletedFileIds" value="">
 
-                <!-- Report Description -->
+                <!-- Purpose (matches TSX "purpose" field) -->
                 <div class="form-group">
-                    <label for="reportDescription" class="form-label">
+                    <label for="reportPurpose" class="form-label">
                         <i class="fi fi-rr-document"></i>
-                        Description
+                        Purpose <span style="color: #ef4444;">*</span>
                     </label>
-                    <textarea 
-                        id="reportDescription" 
-                        name="reportDescription" 
-                        class="form-textarea" 
-                        rows="5" 
-                        placeholder="Describe the progress made, work completed, and any relevant details..."
-                        required
-                    ></textarea>
+                    <p class="form-hint">Describe the progress made on this milestone (max 1000 characters)</p>
+                    <textarea id="reportPurpose" name="purpose" class="form-textarea" rows="5" maxlength="1000"
+                        placeholder="Describe the work completed, materials used, or progress made..."
+                        required></textarea>
+                    <div class="char-counter">
+                        <span id="purposeCharCount">0</span>/1000
+                    </div>
+                    <div class="error-message" id="error_purpose"
+                        style="display: none; color: #ef4444; font-size: 0.8rem; margin-top: 0.25rem;"></div>
                 </div>
 
-                <!-- File Upload -->
+                <!-- File Upload (matches TSX: required, 1-10 files, PDF/DOC/DOCX/ZIP/JPG/PNG, 10MB each) -->
                 <div class="form-group">
                     <label for="reportFiles" class="form-label">
                         <i class="fi fi-rr-clip"></i>
-                        Attachments (Optional)
+                        Attachments <span style="color: #ef4444;">*</span>
                     </label>
+                    <p class="form-hint">Upload 1-10 files (PDF, DOC, DOCX, ZIP, JPG, JPEG, PNG). Max 10MB each.</p>
                     <div class="file-upload-area">
-                        <input 
-                            type="file" 
-                            id="reportFiles" 
-                            name="reportFiles[]" 
-                            class="file-input" 
-                            multiple 
-                            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                        >
+                        <input type="file" id="reportFiles" name="progress_files[]" class="file-input" multiple
+                            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.zip">
                         <label for="reportFiles" class="file-upload-label">
                             <i class="fi fi-rr-cloud-upload"></i>
                             <span>Click to upload or drag and drop</span>
-                            <span class="file-upload-hint">PDF, Images, or Documents (Max 10MB each)</span>
+                            <span class="file-upload-hint">PDF, Images, Documents, or ZIP (Max 10MB each)</span>
                         </label>
+                    </div>
+                    <div class="files-counter" id="filesCounter" style="display: none;">
+                        <span id="fileCount">0</span>/10 files
                     </div>
                     <div id="filePreviewContainer" class="file-preview-container">
                         <!-- Selected files will appear here -->
                     </div>
+                    <div class="error-message" id="error_progress_files"
+                        style="display: none; color: #ef4444; font-size: 0.8rem; margin-top: 0.25rem;"></div>
                 </div>
             </form>
         </div>
@@ -105,34 +94,34 @@
     </div>
 </div>
 
-<!-- Submission Confirmation Modal -->
-<div id="submissionConfirmationModal" class="confirmation-modal">
-    <div class="modal-overlay" id="submissionConfirmationModalOverlay"></div>
-    <div class="confirmation-modal-container">
+<!-- Submission Success Modal -->
+<div id="progressUploadSuccessModal" class="upload-success-modal">
+    <div class="modal-overlay" id="progressUploadSuccessModalOverlay"></div>
+    <div class="upload-success-modal-container">
         <!-- Modal Header -->
-        <div class="confirmation-modal-header">
-            <div class="confirmation-icon-wrapper">
-                <i class="fi fi-rr-check-circle confirmation-icon"></i>
+        <div class="upload-success-modal-header">
+            <div class="success-icon-wrapper">
+                <i class="fi fi-rr-check-circle success-icon"></i>
             </div>
-            <h2 class="confirmation-modal-title">Report Submitted Successfully</h2>
-            <button class="confirmation-close-btn" id="closeSubmissionConfirmationBtn" aria-label="Close modal">
+            <h2 class="upload-success-modal-title">Report Submitted Successfully</h2>
+            <button class="success-close-btn" id="closeUploadSuccessBtn" aria-label="Close modal">
                 <i class="fi fi-rr-cross"></i>
             </button>
         </div>
 
         <!-- Modal Body -->
-        <div class="confirmation-modal-body">
-            <p class="confirmation-message">
+        <div class="upload-success-modal-body">
+            <p class="success-message">
                 Your progress report has been submitted successfully!
             </p>
-            <p class="confirmation-submessage">
+            <p class="success-submessage">
                 The property owner will be notified and can review your report.
             </p>
         </div>
 
         <!-- Modal Footer -->
-        <div class="confirmation-modal-footer">
-            <button class="confirmation-btn confirm-btn" id="closeSubmissionBtn">
+        <div class="upload-success-modal-footer">
+            <button class="success-btn done-btn" id="doneSuccessBtn">
                 <i class="fi fi-rr-check"></i>
                 Done
             </button>
@@ -140,81 +129,7 @@
     </div>
 </div>
 
-<!-- Original Approval Confirmation Modal (kept for reference/viewing existing reports) -->
-<div id="approvalConfirmationModal" class="confirmation-modal">
-    <div class="modal-overlay" id="approvalConfirmationModalOverlay"></div>
-    <div class="confirmation-modal-container">
-        <!-- Modal Header -->
-        <div class="confirmation-modal-header">
-            <div class="confirmation-icon-wrapper">
-                <i class="fi fi-rr-check-circle confirmation-icon"></i>
-            </div>
-            <h2 class="confirmation-modal-title">Confirm Approval</h2>
-            <button class="confirmation-close-btn" id="closeConfirmationModalBtn" aria-label="Close modal">
-                <i class="fi fi-rr-cross"></i>
-            </button>
-        </div>
-
-        <!-- Modal Body -->
-        <div class="confirmation-modal-body">
-            <p class="confirmation-message">
-                Are you sure you want to approve this progress report?
-            </p>
-            <p class="confirmation-submessage">
-                This action will mark the report as approved and notify the contractor.
-            </p>
-        </div>
-
-        <!-- Modal Footer -->
-        <div class="confirmation-modal-footer">
-            <button class="confirmation-btn cancel-btn" id="cancelApprovalBtn">
-                Cancel
-            </button>
-            <button class="confirmation-btn confirm-btn" id="confirmApprovalBtn">
-                <i class="fi fi-rr-check"></i>
-                Confirm Approval
-            </button>
-        </div>
-    </div>
-</div>
-
-<!-- Download Confirmation Modal -->
-<div id="downloadConfirmationModal" class="confirmation-modal">
-    <div class="modal-overlay" id="downloadConfirmationModalOverlay"></div>
-    <div class="confirmation-modal-container">
-        <!-- Modal Header -->
-        <div class="confirmation-modal-header">
-            <div class="confirmation-icon-wrapper">
-                <i class="fi fi-rr-download confirmation-icon"></i>
-            </div>
-            <h2 class="confirmation-modal-title">Confirm Download</h2>
-            <button class="confirmation-close-btn" id="closeDownloadConfirmationModalBtn" aria-label="Close modal">
-                <i class="fi fi-rr-cross"></i>
-            </button>
-        </div>
-
-        <!-- Modal Body -->
-        <div class="confirmation-modal-body">
-            <p class="confirmation-message" id="downloadConfirmationMessage">
-                Are you sure you want to download this file?
-            </p>
-            <p class="confirmation-submessage" id="downloadConfirmationSubmessage">
-                The file will be downloaded to your device.
-            </p>
-        </div>
-
-        <!-- Modal Footer -->
-        <div class="confirmation-modal-footer">
-            <button class="confirmation-btn cancel-btn" id="cancelDownloadBtn">
-                Cancel
-            </button>
-            <button class="confirmation-btn confirm-btn" id="confirmDownloadBtn">
-                <i class="fi fi-rr-download"></i>
-                Download
-            </button>
-        </div>
-    </div>
-</div>
+<!-- Removes approval and download confirmation modals from upload form -->
 
 <!-- Rejection Reason Modal -->
 <div id="rejectionReasonModal" class="rejection-modal">
@@ -230,7 +145,8 @@
             </div>
             <div class="rejection-milestone-info">
                 <span class="rejection-milestone-label">Milestone:</span>
-                <span class="rejection-milestone-value" id="rejectionMilestoneValue">Milestone 1: Structural Framing</span>
+                <span class="rejection-milestone-value" id="rejectionMilestoneValue">Milestone 1: Structural
+                    Framing</span>
             </div>
         </div>
 
@@ -239,26 +155,23 @@
             <!-- Rejection Reason Textarea -->
             <div class="rejection-reason-section">
                 <label for="rejectionReasonTextarea" class="rejection-label">Reason for Rejection</label>
-                <textarea 
-                    id="rejectionReasonTextarea" 
-                    class="rejection-textarea" 
-                    placeholder="Describe the reason for the rejection"
-                    rows="6"
-                ></textarea>
+                <textarea id="rejectionReasonTextarea" class="rejection-textarea"
+                    placeholder="Describe the reason for the rejection" rows="6"></textarea>
             </div>
 
             <!-- Upload Section -->
             <div class="rejection-upload-section">
                 <h4 class="rejection-upload-title">Upload Supporting Documents</h4>
                 <div class="rejection-upload-area" id="rejectionUploadArea">
-                    <input type="file" id="rejectionFileInput" multiple accept="image/*,.pdf,.doc,.docx" style="display: none;">
+                    <input type="file" id="rejectionFileInput" multiple accept="image/*,.pdf,.doc,.docx"
+                        style="display: none;">
                     <div class="upload-content">
                         <i class="fi fi-rr-cloud-upload upload-icon"></i>
                         <p class="upload-text">Upload image or file</p>
                     </div>
                 </div>
                 <p class="upload-hint">e.g., document, photos, etc.</p>
-                
+
                 <!-- Uploaded Files List -->
                 <div class="rejection-uploaded-files" id="rejectionUploadedFiles">
                     <!-- Files will be dynamically inserted here -->
@@ -303,34 +216,20 @@
                 <!-- Receipt Number -->
                 <div class="payment-input-group">
                     <label for="receiptNumberInput" class="payment-input-label">Receipt number</label>
-                    <input 
-                        type="text" 
-                        id="receiptNumberInput" 
-                        class="payment-input" 
-                        placeholder="Enter receipt number"
-                    >
+                    <input type="text" id="receiptNumberInput" class="payment-input" placeholder="Enter receipt number">
                 </div>
 
                 <!-- Amount Paid -->
                 <div class="payment-input-group">
                     <label for="amountPaidInput" class="payment-input-label">Amount paid</label>
-                    <input 
-                        type="text" 
-                        id="amountPaidInput" 
-                        class="payment-input" 
-                        placeholder="Enter amount paid"
-                    >
+                    <input type="text" id="amountPaidInput" class="payment-input" placeholder="Enter amount paid">
                 </div>
 
                 <!-- Description -->
                 <div class="payment-input-group">
                     <label for="paymentDescriptionTextarea" class="payment-input-label">Description</label>
-                    <textarea 
-                        id="paymentDescriptionTextarea" 
-                        class="payment-textarea" 
-                        placeholder="Enter payment description"
-                        rows="4"
-                    ></textarea>
+                    <textarea id="paymentDescriptionTextarea" class="payment-textarea"
+                        placeholder="Enter payment description" rows="4"></textarea>
                 </div>
             </div>
 
@@ -344,7 +243,7 @@
                         <p class="payment-upload-text">Upload image or file</p>
                     </div>
                 </div>
-                
+
                 <!-- Uploaded Receipt Preview -->
                 <div class="payment-uploaded-receipt" id="paymentUploadedReceipt">
                     <!-- Receipt preview will be dynamically inserted here -->

@@ -471,6 +471,7 @@
         transform: translateY(100%);
         opacity: 0;
     }
+
     to {
         transform: translateY(0);
         opacity: 1;
@@ -482,6 +483,7 @@
         transform: translateY(0);
         opacity: 1;
     }
+
     to {
         transform: translateY(100%);
         opacity: 0;
@@ -494,6 +496,7 @@
         opacity: 0;
         transform: translateX(-20px);
     }
+
     to {
         opacity: 1;
         transform: translateX(0);
@@ -506,10 +509,12 @@
         transform: scale(1);
         opacity: 0.7;
     }
+
     50% {
         transform: scale(1.5);
         opacity: 0.3;
     }
+
     100% {
         transform: scale(2);
         opacity: 0;
@@ -522,6 +527,7 @@
         max-height: 0;
         opacity: 0;
     }
+
     to {
         max-height: 1000px;
         opacity: 1;
@@ -552,6 +558,7 @@
         max-width: 300px;
     }
 }
+
 @media (max-width: 640px) {
     .milestone-progress-report-header {
         padding: 1rem;
@@ -638,4 +645,3 @@
 .report-status-pending:hover .report-checkmark-icon::before {
     display: none;
 }
-

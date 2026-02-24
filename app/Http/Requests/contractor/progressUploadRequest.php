@@ -15,21 +15,33 @@ class progressUploadRequest extends FormRequest
 
     public function rules()
     {
-        return [
+        $rules = [
             'item_id' => [
                 'required',
                 'integer',
                 'exists:milestone_items,item_id'
             ],
             'purpose' => 'required|string|max:1000',
-            'progress_files' => 'required|array|min:1|max:10',
-            'progress_files.*' => [
+        ];
+
+        if ($this->isMethod('put') || $this->isMethod('patch')) {
+            $rules['progress_files'] = 'nullable|array|max:10';
+            $rules['progress_files.*'] = [
+                'file',
+                'mimes:pdf,doc,docx,zip,jpg,jpeg,png',
+                'max:10240' // 10MB
+            ];
+        } else {
+            $rules['progress_files'] = 'required|array|min:1|max:10';
+            $rules['progress_files.*'] = [
                 'required',
                 'file',
                 'mimes:pdf,doc,docx,zip,jpg,jpeg,png',
                 'max:10240' // 10MB
-            ]
-        ];
+            ];
+        }
+
+        return $rules;
     }
 
     public function messages()

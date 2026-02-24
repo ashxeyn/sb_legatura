@@ -72,7 +72,7 @@ class dashboardClass
     public function getOwnerProjects(int $ownerId): \Illuminate\Support\Collection
     {
         $projects = DB::table('projects as p')
-            ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.relationship_id')
+            ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
             ->where('pr.owner_id', $ownerId)
             ->select(
                 'p.project_id',
@@ -86,7 +86,7 @@ class dashboardClass
                 'p.property_type',
                 'p.type_id',
                 'p.to_finish',
-                'pr.relationship_id',
+                'pr.rel_id as relationship_id',
                 'pr.project_post_status',
                 'pr.bidding_due',
                 'pr.created_at',
@@ -117,8 +117,7 @@ class dashboardClass
                     ->select(
                         'c.contractor_id',
                         'c.company_name',
-                        'u.first_name',
-                        'u.last_name',
+                        'u.username',
                         'u.profile_pic'
                     )
                     ->first();
@@ -139,18 +138,18 @@ class dashboardClass
     public function computeOwnerStats(\Illuminate\Support\Collection $projects): array
     {
         $total = $projects->count();
-        $pending = $projects->where('project_post_status', 'under_review')->count()
-                + $projects->where('project_post_status', 'approved')->count();
-        $active = $projects->filter(fn($p) => isset($p->display_status) && $p->display_status === 'in_progress')->count();
-        $inProgress = $projects->filter(fn($p) =>
+        $pending = $projects->where('project_post_status', 'under_review')->count();
+        $active = $projects->where('project_post_status', 'approved')->count();
+        $inProgress = $projects->filter(
+            fn($p) =>
             isset($p->accepted_bid) && $p->accepted_bid
             && (!isset($p->display_status) || $p->display_status !== 'completed')
         )->count();
 
         return [
-            'total'      => $total,
-            'pending'    => $pending,
-            'active'     => $active,
+            'total' => $total,
+            'pending' => $pending,
+            'active' => $active,
             'inProgress' => $inProgress,
         ];
     }
@@ -179,7 +178,7 @@ class dashboardClass
         $projectIds = $bids->pluck('project_id')->unique()->toArray();
 
         $projects = DB::table('projects as p')
-            ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.relationship_id')
+            ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
             ->whereIn('p.project_id', $projectIds)
             ->select(
                 'p.project_id',
@@ -193,7 +192,7 @@ class dashboardClass
                 'p.property_type',
                 'p.type_id',
                 'p.to_finish',
-                'pr.relationship_id',
+                'pr.rel_id as relationship_id',
                 'pr.project_post_status',
                 'pr.owner_id',
                 'pr.bidding_due',
@@ -218,8 +217,8 @@ class dashboardClass
                     ->where('po.owner_id', $project->owner_id)
                     ->select(
                         'po.owner_id',
-                        'u.first_name',
-                        'u.last_name',
+                        'po.first_name',
+                        'po.last_name',
                         'u.profile_pic'
                     )
                     ->first();
@@ -247,17 +246,17 @@ class dashboardClass
     public function computeContractorStats(\Illuminate\Support\Collection $projects): array
     {
         $totalBids = $projects->filter(fn($p) => isset($p->bid_id) && $p->bid_id)->count();
-        $pending   = $projects->filter(fn($p) => isset($p->bid_status) && $p->bid_status && $p->bid_status !== 'accepted')->count();
-        $won       = $projects->filter(fn($p) => isset($p->bid_status) && $p->bid_status === 'accepted')->count();
+        $pending = $projects->filter(fn($p) => isset($p->bid_status) && in_array($p->bid_status, ['submitted', 'under_review']))->count();
+        $won = $projects->filter(fn($p) => isset($p->bid_status) && $p->bid_status === 'accepted')->count();
         $inProgress = $projects->filter(fn($p) => isset($p->display_status) && $p->display_status === 'in_progress')->count();
-        $completed  = $projects->filter(fn($p) => isset($p->display_status) && $p->display_status === 'completed')->count();
+        $completed = $projects->filter(fn($p) => isset($p->display_status) && $p->display_status === 'completed')->count();
 
         return [
-            'total'      => $totalBids,
-            'pending'    => $pending,
-            'active'     => $won,
+            'total' => $totalBids,
+            'pending' => $pending,
+            'active' => $won,
             'inProgress' => $inProgress,
-            'completed'  => $completed,
+            'completed' => $completed,
         ];
     }
 
@@ -272,7 +271,7 @@ class dashboardClass
     {
         $milestones = DB::table('milestones')
             ->where('project_id', $project->project_id)
-            ->orderBy('milestone_order', 'asc')
+            ->orderBy('milestone_id', 'asc')
             ->get();
 
         foreach ($milestones as $milestone) {

@@ -34,17 +34,17 @@ class progressUploadClass
     public function createProgressFile($data)
     {
         try {
-        $fileId = DB::table('progress_files')->insertGetId([
+            $fileId = DB::table('progress_files')->insertGetId([
                 'progress_id' => $data['progress_id'],
-            'file_path' => $data['file_path'],
+                'file_path' => $data['file_path'],
                 'original_name' => $data['original_name'] ?? null
-        ]);
+            ]);
 
             if (!$fileId) {
                 throw new \Exception('Failed to create progress file entry in database');
             }
 
-        return $fileId;
+            return $fileId;
         } catch (\Exception $e) {
             Log::error('createProgressFile error: ' . $e->getMessage(), [
                 'data' => $data,
@@ -247,5 +247,59 @@ class progressUploadClass
                 'proj.selected_contractor_id as contractor_id'
             )
             ->first();
+    }
+
+    /**
+     * Get the latest progress report for a specific milestone item.
+     */
+    public function getLatestProgressForItem($itemId)
+    {
+        return DB::table('progress')
+            ->where('milestone_item_id', $itemId)
+            ->whereNotIn('progress_status', ['deleted'])
+            ->orderBy('submitted_at', 'desc')
+            ->first();
+    }
+
+    /**
+     * Check if a milestone item is unlocked for the contractor.
+     * Logic: First item is always unlocked. Subsequent items are unlocked only if the PREVIOUS item is completed.
+     */
+    public function isItemUnlocked($itemId, $contractorId)
+    {
+        $item = DB::table('milestone_items')
+            ->where('item_id', $itemId)
+            ->first();
+
+        if (!$item)
+            return false;
+
+        // If it's the first item in the sequence, it's unlocked
+        if ($item->sequence_order == 1) {
+            return true;
+        }
+
+        // Check the previous item in the sequence for the same milestone
+        $prevItem = DB::table('milestone_items')
+            ->where('milestone_id', $item->milestone_id)
+            ->where('sequence_order', $item->sequence_order - 1)
+            ->first();
+
+        if (!$prevItem)
+            return true; // Fallback if no prev item found for some reason
+
+        // Check if prev item is completed (status in database)
+        // Usually, 'item_status' = 'completed' or having an 'approved' progress report
+        $isCompleted = ($prevItem->item_status === 'completed');
+
+        // If not explicitly marked as completed, check for an approved progress report
+        if (!$isCompleted) {
+            $isCompleted = DB::table('progress')
+                ->where('milestone_item_id', $prevItem->item_id)
+                ->where('progress_status', 'approved')
+                ->exists();
+        }
+
+        return $isCompleted;
     }
 }

@@ -168,7 +168,8 @@
     padding: 0 2rem;
     display: flex;
     flex-direction: column-reverse;
-    --milestone-gap: 4rem; /* Adjust this value to change gap between milestones */
+    --milestone-gap: 4rem;
+    /* Adjust this value to change gap between milestones */
 }
 
 /* Vertical Timeline Line */
@@ -179,13 +180,11 @@
     top: 0;
     bottom: 0;
     width: 2px;
-    background: repeating-linear-gradient(
-        to bottom,
-        #d1d5db 0px,
-        #d1d5db 8px,
-        transparent 8px,
-        transparent 16px
-    );
+    background: repeating-linear-gradient(to bottom,
+            #d1d5db 0px,
+            #d1d5db 8px,
+            transparent 8px,
+            transparent 16px);
     transform: translateX(-50%);
     z-index: 1;
 }
@@ -444,6 +443,7 @@
         transform: translateY(100%);
         opacity: 0;
     }
+
     to {
         transform: translateY(0);
         opacity: 1;
@@ -455,8 +455,124 @@
         transform: translateY(0);
         opacity: 1;
     }
+
     to {
         transform: translateY(100%);
         opacity: 0;
+    }
+}
+
+/* ============================================ */
+/* Milestone Timeline - State Styles            */
+/* ============================================ */
+
+/* Locked milestone item */
+.milestone-timeline-item.milestone-locked {
+    opacity: 0.5;
+    pointer-events: auto;
+    /* Keep clickable for toast feedback */
+}
+
+.milestone-timeline-item.milestone-locked .milestone-content {
+    filter: grayscale(0.6);
+}
+
+.milestone-timeline-item.milestone-locked:hover .milestone-content {
+    transform: none !important;
+    box-shadow: none !important;
+    border-color: #d1d5db !important;
+}
+
+/* Completed milestone item */
+.milestone-timeline-item.milestone-completed .milestone-content {
+    border-left-color: #10b981;
+    border-color: #a7f3d0;
+    background: linear-gradient(135deg, #ecfdf5 0%, #ffffff 100%);
+}
+
+.milestone-timeline-item.milestone-completed .milestone-node {
+    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.2);
+}
+
+/* Halted milestone item */
+.milestone-timeline-item.milestone-halted .milestone-content {
+    border-left-color: #ef4444;
+    border-color: #fecaca;
+    background: linear-gradient(135deg, #fef2f2 0%, #ffffff 100%);
+}
+
+.milestone-timeline-item.milestone-halted .milestone-node {
+    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.2);
+}
+
+/* Status badges on timeline cards */
+.milestone-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    padding: 0.25rem 0.6rem;
+    border-radius: 9999px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 0.5rem;
+}
+
+.milestone-status-badge.badge-completed {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.milestone-status-badge.badge-halted {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.milestone-status-badge.badge-locked {
+    background: #e5e7eb;
+    color: #6b7280;
+}
+
+/* Toast notification */
+.milestone-toast {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    animation: toastSlideUp 0.3s ease-out;
+    transition: opacity 0.3s ease;
+}
+
+.milestone-toast-warning {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    color: #92400e;
+    border: 1px solid #f59e0b;
+}
+
+.milestone-toast-info {
+    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+    color: #1e40af;
+    border: 1px solid #3b82f6;
+}
+
+@keyframes toastSlideUp {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
     }
 }

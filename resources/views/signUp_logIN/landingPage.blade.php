@@ -221,7 +221,7 @@
                             <div class="panel-card-emoji">🔥</div>
                             <div>
                                 <div class="panel-card-title">Boost Your Project</div>
-                                <div class="panel-card-meta">Reach 10,000+ contractors</div>
+                                <div class="panel-card-meta">Reach upto 1,000+ contractors</div>
                             </div>
                             <span class="panel-card-price">₱49<span style="font-size: 0.75em; font-weight: 400; opacity: 0.8;">/project</span></span>
                         </button>
@@ -229,7 +229,7 @@
                     <ul class="panel-list">
                         <li><i class="fi fi-rr-check-circle"></i> Instant visibility boost for your project</li>
                         <li><i class="fi fi-rr-check-circle"></i> Attract more qualified contractor bids</li>
-                        <li><i class="fi fi-rr-check-circle"></i> Active boost duration of 3 days</li>
+                        <li><i class="fi fi-rr-check-circle"></i> Active boost duration of 7 days</li>
                         <li><i class="fi fi-rr-check-circle"></i> Track engagement and bid metrics</li>
                     </ul>
                 </div>
@@ -273,7 +273,6 @@
                     <ul class="panel-list">
                         <li><i class="fi fi-rr-check-circle"></i> Unlock AI-driven analytics</li>
                         <li><i class="fi fi-rr-check-circle"></i> Unlimited bids and boosted reach</li>
-                        <li><i class="fi fi-rr-check-circle"></i> 7-day free trial on sign up</li>
                     </ul>
 
                 </div>

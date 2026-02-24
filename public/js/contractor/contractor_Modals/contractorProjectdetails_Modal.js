@@ -8,7 +8,7 @@ class ProjectDetailsModal {
         this.modal = null;
         this.overlay = null;
         this.currentProject = null;
-        
+
         this.init();
     }
 
@@ -16,7 +16,7 @@ class ProjectDetailsModal {
         // Get modal elements
         this.modal = document.getElementById('projectDetailsModal');
         this.overlay = document.getElementById('projectModalOverlay');
-        
+
         if (!this.modal) {
             console.error('Project Details Modal not found');
             return;
@@ -30,11 +30,11 @@ class ProjectDetailsModal {
         // Close button
         const closeBtn = document.getElementById('closeProjectModalBtn');
         const closeModalBtn = document.getElementById('closeModalBtn');
-        
+
         if (closeBtn) {
             closeBtn.addEventListener('click', () => this.close());
         }
-        
+
         if (closeModalBtn) {
             closeModalBtn.addEventListener('click', () => this.close());
         }
@@ -60,12 +60,44 @@ class ProjectDetailsModal {
         // Review Milestone button
         const reviewMilestoneBtn = document.getElementById('reviewMilestoneBtn');
         if (reviewMilestoneBtn) {
-            reviewMilestoneBtn.addEventListener('click', () => {
+            reviewMilestoneBtn.addEventListener('click', async () => {
                 if (this.currentProject) {
-                    // Navigate to contractor milestone report page with project ID
-                    const milestoneReportUrl = `/contractor/projects/milestone-report?project_id=${this.currentProject.id}`;
-                    window.location.href = milestoneReportUrl;
-                    console.log('Navigating to milestone report for project:', this.currentProject.id);
+                    try {
+                        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+
+                        const response = await fetch('/contractor/projects/set-milestone', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken || ''
+                            },
+                            body: JSON.stringify({
+                                project_id: this.currentProject.id
+                            })
+                        });
+
+                        const text = await response.text();
+                        console.log('Session response text:', text); // Debugging
+
+                        let data = {};
+                        try {
+                            data = JSON.parse(text);
+                        } catch (e) {
+                            console.error('Failed to parse response as JSON:', text);
+                            throw new Error('Server returned invalid JSON for session set.');
+                        }
+
+                        if (data.success) {
+                            console.log('Navigating to milestone report for project:', this.currentProject.id);
+                            window.location.href = '/contractor/projects/milestone-report';
+                        } else {
+                            console.error('Failed to set milestone session:', data.message);
+                            this.showNotification('Could not navigate to milestone report.');
+                        }
+                    } catch (error) {
+                        console.error('Error setting milestone session:', error);
+                        this.showNotification('An error occurred. Please try again.');
+                    }
                 }
             });
         }
@@ -86,7 +118,7 @@ class ProjectDetailsModal {
 
         this.currentProject = project;
         this.populateModal(project);
-        
+
         if (this.modal) {
             this.modal.classList.add('active');
             document.body.style.overflow = 'hidden'; // Prevent background scrolling
@@ -106,24 +138,30 @@ class ProjectDetailsModal {
     }
 
     populateModal(project) {
+        // Try to get PHP-precomputed data if available
+        const phpData = (window.projectDetailsData && project.id)
+            ? window.projectDetailsData[project.id]
+            : null;
+
         // Title and Location
         const titleElement = document.getElementById('modalProjectTitle');
         const locationText = document.getElementById('modalLocationText');
-        
+
         if (titleElement) {
-            titleElement.textContent = project.title || 'Untitled Project';
+            titleElement.textContent = (phpData ? phpData.title : null) || project.title || 'Untitled Project';
         }
-        
+
         if (locationText) {
-            locationText.textContent = project.location || 'Location not specified';
+            locationText.textContent = (phpData ? phpData.location : null) || project.location || 'Location not specified';
         }
 
         // Project Image
         const imageElement = document.getElementById('modalProjectImage');
         if (imageElement) {
-            if (project.image) {
-                imageElement.src = project.image;
-                imageElement.alt = project.title || 'Project image';
+            const imgSrc = (phpData ? phpData.image : null) || project.image || '';
+            if (imgSrc) {
+                imageElement.src = imgSrc;
+                imageElement.alt = (phpData ? phpData.title : null) || project.title || 'Project image';
             } else {
                 imageElement.src = 'https://via.placeholder.com/800x300/EEA24B/ffffff?text=Project+Image';
                 imageElement.alt = project.title || 'Project image';
@@ -133,41 +171,41 @@ class ProjectDetailsModal {
         // Description
         const descriptionElement = document.getElementById('modalProjectDescription');
         if (descriptionElement) {
-            descriptionElement.textContent = project.description || 'No description available.';
+            descriptionElement.textContent = (phpData ? phpData.description : null) || project.description || 'No description available.';
         }
 
         // Specifications
-        this.populateSpecifications(project);
+        this.populateSpecifications(project, phpData);
 
-        // Lot Size and Floor Area
+        // Lot Size and Floor Area — use PHP-precomputed values
         const lotSizeElement = document.getElementById('modalLotSize');
         const floorAreaElement = document.getElementById('modalFloorArea');
-        
+
         if (lotSizeElement) {
-            lotSizeElement.textContent = project.lotSize || 'Not specified';
-        }
-        
-        if (floorAreaElement) {
-            floorAreaElement.textContent = project.floorArea || 'Not specified';
+            lotSizeElement.textContent = (phpData ? phpData.lotSize : null) || project.lotSize || 'Not specified';
         }
 
-        // Budget Range
+        if (floorAreaElement) {
+            floorAreaElement.textContent = (phpData ? phpData.floorArea : null) || project.floorArea || 'Not specified';
+        }
+
+        // Budget Range — use PHP-precomputed value
         const budgetElement = document.getElementById('modalBudgetRange');
         if (budgetElement) {
-            budgetElement.textContent = project.budget || 'Not specified';
+            budgetElement.textContent = (phpData ? phpData.budget : null) || project.budget || 'Not specified';
         }
 
-        // Contractor & Agreement
-        this.populateContractorInfo(project);
+        // Owner Info — use PHP-precomputed values
+        this.populateContractorInfo(project, phpData);
 
-        // Status and Progress
-        this.populateStatusAndProgress(project);
+        // Status and Progress — use PHP-precomputed values
+        this.populateStatusAndProgress(project, phpData);
 
-        // Milestone Setup
-        this.populateMilestoneData(project);
+        // Milestone Setup — use PHP-precomputed values
+        this.populateMilestoneData(project, phpData);
     }
 
-    populateSpecifications(project) {
+    populateSpecifications(project, phpData) {
         const specsContainer = document.getElementById('modalSpecifications');
         if (!specsContainer) return;
 
@@ -175,15 +213,15 @@ class ProjectDetailsModal {
         specsContainer.innerHTML = '';
 
         // Default specifications based on project type
-        const defaultSpecs = this.getDefaultSpecifications(project);
-        
+        const defaultSpecs = this.getDefaultSpecifications(project, phpData);
+
         // If project has custom specifications, use those
         const specifications = project.specifications || defaultSpecs;
 
         specifications.forEach(spec => {
             const specItem = document.createElement('div');
             specItem.className = 'spec-item';
-            
+
             specItem.innerHTML = `
                 <div class="spec-icon">
                     <i class="${spec.icon || 'fi fi-rr-settings'}"></i>
@@ -193,19 +231,20 @@ class ProjectDetailsModal {
                     <span class="spec-value">${spec.value}</span>
                 </div>
             `;
-            
+
             specsContainer.appendChild(specItem);
         });
     }
 
-    getDefaultSpecifications(project) {
+    getDefaultSpecifications(project, phpData) {
         // Generate specifications based on project data
         const specs = [];
 
-        if (project.type) {
+        const projectType = (phpData ? phpData.type : null) || project.type;
+        if (projectType) {
             specs.push({
                 label: 'Project Type',
-                value: project.type,
+                value: projectType,
                 icon: 'fi fi-rr-briefcase'
             });
         }
@@ -262,9 +301,9 @@ class ProjectDetailsModal {
         return specs;
     }
 
-    populateContractorInfo(project) {
-        const owner = project.owner || {};
-        
+    populateContractorInfo(project, phpData) {
+        const owner = phpData ? phpData.owner : (project.owner || {});
+
         // Avatar
         const avatarElement = document.getElementById('modalOwnerAvatar');
         if (avatarElement) {
@@ -277,91 +316,94 @@ class ProjectDetailsModal {
             nameElement.textContent = owner.name || 'Property Owner';
         }
 
-        // Email
+        // Email — from PHP-precomputed data
         const emailElement = document.getElementById('modalOwnerEmail');
         if (emailElement) {
             emailElement.textContent = owner.email || 'Not provided';
         }
 
-        // Phone
+        // Phone — from PHP-precomputed data
         const phoneElement = document.getElementById('modalOwnerPhone');
         if (phoneElement) {
             phoneElement.textContent = owner.phone || 'Not provided';
         }
 
-        // Project Posted Date
+        // Project Posted Date — from PHP-precomputed data
         const projectPostedElement = document.getElementById('modalProjectPosted');
         if (projectPostedElement) {
-            const postedDate = project.date || project.createdAt || 'Not specified';
+            const postedDate = (phpData ? phpData.postedDate : null) || project.date || project.createdAt || 'Not specified';
             projectPostedElement.textContent = postedDate;
         }
     }
 
-    populateStatusAndProgress(project) {
+    populateStatusAndProgress(project, phpData) {
         // Status Badge
         const statusBadge = document.getElementById('modalStatusBadge');
         const statusText = document.getElementById('modalStatusText');
-        
+
         if (statusBadge && statusText) {
             // Remove existing status classes
             statusBadge.className = 'status-badge-modal';
-            
-            // Add appropriate status class
-            const status = project.status || 'pending';
+
+            // Add appropriate status class — prefer PHP-precomputed
+            const status = (phpData ? phpData.status : null) || project.status || 'pending';
             statusBadge.classList.add(`status-${status}`);
-            
-            // Set status text
-            statusText.textContent = status.replace('_', ' ').toUpperCase();
+
+            // Set status text — prefer PHP-precomputed
+            const displayText = (phpData ? phpData.statusText : null) || status.replace('_', ' ').toUpperCase();
+            statusText.textContent = displayText;
         }
 
-        // Progress
+        // Progress — prefer PHP-precomputed
         const progressPercentage = document.getElementById('modalProgressPercentage');
         const progressBar = document.getElementById('modalProgressBar');
-        
+        const progress = (phpData ? phpData.progress : null) ?? project.progress ?? 0;
+
         if (progressPercentage) {
-            const progress = project.progress || 0;
             progressPercentage.textContent = `${progress}%`;
         }
-        
+
         if (progressBar) {
-            const progress = project.progress || 0;
             progressBar.style.width = `${progress}%`;
         }
     }
 
-    populateMilestoneData(project) {
+    populateMilestoneData(project, phpData) {
         const milestoneSection = document.getElementById('milestoneSection');
-        
+
         // Always show milestone section like owner's modal
         if (milestoneSection) {
             milestoneSection.style.display = 'block';
         }
 
+        // Use PHP-precomputed milestone data if available
+        const phpMilestones = phpData ? phpData.milestones : null;
+
         // Milestone Count Indicator
         const milestoneCountElement = document.getElementById('modalMilestoneCount');
         if (milestoneCountElement) {
-            const totalMilestones = project.milestones?.total || project.totalMilestones || 1;
+            const totalMilestones = (phpMilestones ? phpMilestones.total : null) || project.milestones?.total || project.totalMilestones || 0;
             milestoneCountElement.textContent = totalMilestones;
         }
 
         // Total Milestones
         const totalMilestonesElement = document.getElementById('modalTotalMilestones');
         if (totalMilestonesElement) {
-            const totalMilestones = project.milestones?.total || project.totalMilestones || 1;
+            const totalMilestones = (phpMilestones ? phpMilestones.total : null) || project.milestones?.total || project.totalMilestones || 0;
             totalMilestonesElement.textContent = totalMilestones;
         }
 
         // Completed Milestones
         const completedMilestonesElement = document.getElementById('modalCompletedMilestones');
         if (completedMilestonesElement) {
-            const completedMilestones = project.milestones?.completed || project.completedMilestones || 0;
+            const completedMilestones = (phpMilestones ? phpMilestones.completed : null) ?? project.milestones?.completed ?? project.completedMilestones ?? 0;
             completedMilestonesElement.textContent = completedMilestones;
         }
 
         // Total Cost
         const totalCostElement = document.getElementById('modalTotalCost');
         if (totalCostElement) {
-            const totalCost = project.milestones?.totalCost || project.totalCost || project.budget || '₱0';
+            const totalCost = (phpMilestones ? phpMilestones.totalCost : null) || project.milestones?.totalCost || project.totalCost || project.budget || '₱0';
             totalCostElement.textContent = totalCost;
         }
     }

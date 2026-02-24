@@ -1,3 +1,140 @@
+{{-- Project Details Modal --}}
+{{-- Pre-compute project display data from PHP for modal population --}}
+@php
+    $projectDetailsMap = [];
+    if (isset($projects) && count($projects) > 0) {
+        foreach ($projects as $pr) {
+            $p = is_array($pr) ? (object) $pr : $pr;
+            $pid = $p->project_id ?? null;
+            if (!$pid)
+                continue;
+
+            // Owner info
+            $ownerInfo = null;
+            if (isset($p->owner_info)) {
+                $ownerInfo = is_array($p->owner_info) ? (object) $p->owner_info : $p->owner_info;
+            }
+            $ownerName = '';
+            $ownerEmail = '';
+            $ownerPhone = '';
+            if ($ownerInfo) {
+                $ownerName = $ownerInfo->username ?? trim(($ownerInfo->first_name ?? '') . ' ' . ($ownerInfo->last_name ?? ''));
+                $ownerEmail = $ownerInfo->email ?? '';
+                $ownerPhone = $ownerInfo->phone_number ?? '';
+            }
+            if (!$ownerName) {
+                $ownerName = $p->owner_name ?? '';
+            }
+            $ownerInitials = collect(explode(' ', $ownerName))->filter()->map(function ($w) {
+                return strtoupper(substr($w, 0, 1));
+            })->take(2)->join('');
+
+            // Image
+            $imageSrc = '';
+            if (!empty($p->files)) {
+                $files = $p->files;
+                if (is_array($files) && count($files) > 0) {
+                    $first = $files[0];
+                } elseif (is_object($files) && method_exists($files, 'first')) {
+                    $first = $files->first();
+                } else {
+                    $first = null;
+                }
+                if ($first) {
+                    $fPath = is_string($first) ? $first : (is_array($first) ? ($first['file_path'] ?? '') : ($first->file_path ?? ''));
+                    if ($fPath)
+                        $imageSrc = asset('storage/' . ltrim($fPath, '/'));
+                }
+            }
+            if (!$imageSrc && !empty($p->image_path)) {
+                $imageSrc = asset('storage/' . ltrim($p->image_path, '/'));
+            }
+            if (!$imageSrc && !empty($p->project_image)) {
+                $imageSrc = $p->project_image;
+            }
+
+            // Budget
+            $budgetDisplay = 'Not specified';
+            if (!empty($p->budget_range_min) && !empty($p->budget_range_max)) {
+                $budgetDisplay = '₱' . number_format($p->budget_range_min) . ' - ₱' . number_format($p->budget_range_max);
+            }
+
+            // Status
+            $displayStatus = $p->display_status ?? ($p->project_status ?? '');
+            $statusText = $displayStatus ? ucfirst(str_replace('_', ' ', $displayStatus)) : '';
+            if ($displayStatus === 'waiting_milestone_setup')
+                $statusText = 'Needs Setup';
+            elseif ($displayStatus === 'waiting_for_approval')
+                $statusText = 'Waiting for Approval';
+
+            // Milestones
+            $milestones = [];
+            if (isset($p->milestones)) {
+                $milestones = is_array($p->milestones) ? $p->milestones : (is_object($p->milestones) && method_exists($p->milestones, 'toArray') ? $p->milestones->toArray() : []);
+            }
+            // Count milestone ITEMS (individual tasks), not milestone plan records
+            $totalMilestoneItems = 0;
+            $completedMilestoneItems = 0;
+            $totalCost = 0;
+            foreach ($milestones as $m) {
+                $m = is_array($m) ? (object) $m : $m;
+                $items = [];
+                if (isset($m->items)) {
+                    $items = is_array($m->items) ? $m->items : (is_object($m->items) && method_exists($m->items, 'toArray') ? $m->items->toArray() : []);
+                }
+                foreach ($items as $item) {
+                    $item = is_array($item) ? (object) $item : $item;
+                    $totalMilestoneItems++;
+                    $itemStatus = $item->item_status ?? '';
+                    if ($itemStatus === 'completed') {
+                        $completedMilestoneItems++;
+                    }
+                    $totalCost += floatval($item->milestone_item_cost ?? 0);
+                }
+            }
+            $progress = $totalMilestoneItems > 0 ? round(($completedMilestoneItems / $totalMilestoneItems) * 100) : 0;
+            $totalCostDisplay = '₱' . number_format($totalCost, 2);
+
+            // Project posted date
+            $postedDate = $p->created_at ?? '';
+            if ($postedDate) {
+                try {
+                    $postedDate = \Carbon\Carbon::parse($postedDate)->format('F j, Y');
+                } catch (\Exception $e) {
+                    // keep raw value
+                }
+            }
+
+            $projectDetailsMap[$pid] = [
+                'id' => $pid,
+                'title' => $p->project_title ?? '—',
+                'description' => $p->project_description ?? '',
+                'location' => $p->project_location ?? '—',
+                'image' => $imageSrc,
+                'type' => $p->type_name ?? ($p->property_type ?? ''),
+                'lotSize' => !empty($p->lot_size) ? $p->lot_size . ' sqm' : 'Not specified',
+                'floorArea' => !empty($p->floor_area) ? $p->floor_area . ' sqm' : 'Not specified',
+                'budget' => $budgetDisplay,
+                'status' => $displayStatus,
+                'statusText' => $statusText,
+                'progress' => $progress,
+                'owner' => [
+                    'name' => $ownerName ?: '—',
+                    'initials' => $ownerInitials ?: '—',
+                    'email' => $ownerEmail ?: 'Not provided',
+                    'phone' => $ownerPhone ?: 'Not provided',
+                ],
+                'postedDate' => $postedDate ?: 'Not specified',
+                'milestones' => [
+                    'total' => $totalMilestoneItems,
+                    'completed' => $completedMilestoneItems,
+                    'totalCost' => $totalCostDisplay,
+                ],
+            ];
+        }
+    }
+@endphp
+
 <!-- Project Details Modal -->
 <div id="projectDetailsModal" class="project-details-modal">
     <div class="modal-overlay" id="projectModalOverlay"></div>
@@ -213,3 +350,8 @@
         </div>
     </div>
 </div>
+
+{{-- Expose pre-computed project details data from PHP for the modal JS --}}
+<script>
+    window.projectDetailsData = @json($projectDetailsMap);
+</script>
