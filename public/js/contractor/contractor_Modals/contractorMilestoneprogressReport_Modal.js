@@ -475,12 +475,12 @@ class ContractorViewProgressReportModal {
             // Rejection reason
             if (status === 'rejected' && payment.reason) {
                 cardHTML += `
-                    <div class="payment-rejection-reason">
-                        <div class="rejection-header">
+                    <div class="payment-rejection-reason" style="margin-top: 1rem; padding: 0.75rem; background: #fef2f2; border-radius: 0.5rem; border: 1px solid #fee2e2;">
+                        <div class="rejection-header" style="display: flex; align-items: center; gap: 0.5rem; color: #991b1b; font-weight: 600; font-size: 0.85rem; margin-bottom: 0.25rem;">
                             <i class="fi fi-rr-info"></i>
                             <span>Decline Reason:</span>
                         </div>
-                        <p class="rejection-text">${payment.reason}</p>
+                        <p class="rejection-text" style="color: #b91c1c; font-size: 0.85rem; margin: 0;">${payment.reason}</p>
                     </div>
                 `;
             }
@@ -488,9 +488,23 @@ class ContractorViewProgressReportModal {
             // Receipt photo
             if (payment.receiptPhoto) {
                 cardHTML += `
-                    <div class="payment-receipt-photo">
-                        <span class="receipt-label">Receipt Photo:</span>
-                        <img src="/api/files/${payment.receiptPhoto}" alt="Receipt" class="receipt-image" onerror="this.style.display='none'">
+                    <div class="payment-receipt-photo" style="margin-top: 1rem;">
+                        <span class="receipt-label" style="display: block; font-size: 0.75rem; color: #64748b; margin-bottom: 0.5rem;">Receipt Photo:</span>
+                        <img src="/storage/${payment.receiptPhoto}" alt="Receipt" class="receipt-image" style="width: 100%; border-radius: 0.5rem; border: 1px solid #e2e8f0; cursor: pointer;" onclick="window.open(this.src)" onerror="this.style.display='none'">
+                    </div>
+                `;
+            }
+
+            // Action Buttons for CONTRACTOR (when payment is submitted)
+            if (status === 'submitted') {
+                cardHTML += `
+                    <div class="payment-card-actions" style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                        <button class="modal-btn reject-payment-btn" data-payment-id="${payment.id}" style="flex: 1; padding: 0.5rem; font-size: 0.85rem; background: #ef4444; color: white; border: none; border-radius: 0.375rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.375rem;">
+                            <i class="fi fi-rr-cross"></i> Decline
+                        </button>
+                        <button class="modal-btn approve-payment-btn" data-payment-id="${payment.id}" style="flex: 1; padding: 0.5rem; font-size: 0.85rem; background: #10b981; color: white; border: none; border-radius: 0.375rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.375rem;">
+                            <i class="fi fi-rr-check"></i> Approve
+                        </button>
                     </div>
                 `;
             }
@@ -499,7 +513,30 @@ class ContractorViewProgressReportModal {
 
             const cardEl = document.createElement('div');
             cardEl.innerHTML = cardHTML;
-            container.appendChild(cardEl.firstElementChild);
+            const finalCard = cardEl.firstElementChild;
+            container.appendChild(finalCard);
+
+            // Attach listeners to buttons (now via window global handlers)
+            const approveBtn = finalCard.querySelector('.approve-payment-btn');
+            const rejectBtn = finalCard.querySelector('.reject-payment-btn');
+
+            if (approveBtn) {
+                approveBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    if (window.openPaymentApproveModal) {
+                        window.openPaymentApproveModal(payment.id);
+                    }
+                });
+            }
+
+            if (rejectBtn) {
+                rejectBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    if (window.openPaymentRejectModal) {
+                        window.openPaymentRejectModal(payment.id);
+                    }
+                });
+            }
         });
     }
 

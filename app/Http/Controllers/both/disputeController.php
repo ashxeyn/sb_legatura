@@ -357,7 +357,7 @@ class disputeController extends Controller
                 // Notify the other party about the dispute
                 if (isset($againstUserId) && $againstUserId) {
                     $projTitle = DB::table('projects')->where('project_id', $validated['project_id'])->value('project_title');
-                    notificationService::create((int)$againstUserId, 'dispute_opened', 'Dispute Filed', "A {$validated['dispute_type']} dispute has been filed against you on \"{$projTitle}\".", 'critical', 'dispute', (int)$disputeId, ['screen' => 'DisputeDetails', 'params' => ['disputeId' => (int)$disputeId]]);
+                    notificationService::create((int) $againstUserId, 'dispute_opened', 'Dispute Filed', "A {$validated['dispute_type']} dispute has been filed against you on \"{$projTitle}\".", 'critical', 'dispute', (int) $disputeId, ['screen' => 'DisputeDetails', 'params' => ['disputeId' => (int) $disputeId]]);
                 }
 
                 if ($request->expectsJson()) {
@@ -644,7 +644,7 @@ class disputeController extends Controller
 
         // Determine if user is contractor
         $isContractor = ($userType === 'contractor' || $userType === 'both') &&
-                       ($currentRole === 'contractor');
+            ($currentRole === 'contractor');
 
         $projects = $this->disputeClass->getUserProjects($userId);
 
@@ -998,7 +998,7 @@ class disputeController extends Controller
             // Notify the other party about the dispute update
             if (isset($dispute->against_user_id) && $dispute->against_user_id) {
                 $projTitle = DB::table('projects')->where('project_id', $dispute->project_id)->value('project_title');
-                notificationService::create((int)$dispute->against_user_id, 'dispute_updated', 'Dispute Updated', "A dispute on \"{$projTitle}\" has been updated.", 'normal', 'dispute', (int)$disputeId, ['screen' => 'DisputeDetails', 'params' => ['disputeId' => (int)$disputeId]]);
+                notificationService::create((int) $dispute->against_user_id, 'dispute_updated', 'Dispute Updated', "A dispute on \"{$projTitle}\" has been updated.", 'normal', 'dispute', (int) $disputeId, ['screen' => 'DisputeDetails', 'params' => ['disputeId' => (int) $disputeId]]);
             }
 
             return response()->json([
@@ -1058,7 +1058,7 @@ class disputeController extends Controller
             // Notify the other party about dispute cancellation
             if (isset($dispute->against_user_id) && $dispute->against_user_id) {
                 $projTitle = DB::table('projects')->where('project_id', $dispute->project_id)->value('project_title');
-                notificationService::create((int)$dispute->against_user_id, 'dispute_resolved', 'Dispute Cancelled', "A dispute on \"{$projTitle}\" has been cancelled.", 'normal', 'dispute', (int)$disputeId, ['screen' => 'DisputeDetails', 'params' => ['disputeId' => (int)$disputeId]]);
+                notificationService::create((int) $dispute->against_user_id, 'dispute_resolved', 'Dispute Cancelled', "A dispute on \"{$projTitle}\" has been cancelled.", 'normal', 'dispute', (int) $disputeId, ['screen' => 'DisputeDetails', 'params' => ['disputeId' => (int) $disputeId]]);
             }
 
             return response()->json([
@@ -1184,8 +1184,14 @@ class disputeController extends Controller
         // Verify payment belongs to contractor's project
         $payment = DB::table('milestone_payments as mp')
             ->join('projects as p', 'mp.project_id', '=', 'p.project_id')
+            ->leftJoin('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
             ->where('mp.payment_id', $paymentId)
-            ->select('mp.*', 'p.selected_contractor_id', 'mp.contractor_user_id')
+            ->select(
+                'mp.*',
+                'p.selected_contractor_id as p_contractor_id',
+                'pr.selected_contractor_id as pr_contractor_id',
+                'mp.contractor_user_id as payment_c_user_id'
+            )
             ->first();
 
         if (!$payment) {
@@ -1195,11 +1201,34 @@ class disputeController extends Controller
             ], 404);
         }
 
-        // Check if contractor has access
+        // Get the actual selected contractor ID for the project
+        $selectedContractorId = $payment->p_contractor_id ?? $payment->pr_contractor_id;
+
+        // Check if current user is associated with this contractor/project
         $hasAccess = false;
-        if ($payment->contractor_user_id && $payment->contractor_user_id == $user->user_id) {
-            $hasAccess = true;
-        } else if ($payment->selected_contractor_id && $payment->selected_contractor_id == $contractor->contractor_id) {
+
+        // 1. Check via contract_users table (supports both owners and team members)
+        $userContractorProfiles = DB::table('contractor_users')
+            ->where('user_id', $user->user_id)
+            ->where('is_active', 1)
+            ->where('is_deleted', 0)
+            ->get();
+
+        foreach ($userContractorProfiles as $profile) {
+            // Check if the profile matches the payment's assigned contractor_user_id
+            if ($payment->payment_c_user_id && $payment->payment_c_user_id == $profile->contractor_user_id) {
+                $hasAccess = true;
+                break;
+            }
+            // Check if the profile belongs to the contractor company assigned to this project
+            if ($selectedContractorId && $profile->contractor_id == $selectedContractorId) {
+                $hasAccess = true;
+                break;
+            }
+        }
+
+        // 2. Fallback: check historical/legacy owner match
+        if (!$hasAccess && $contractor && $selectedContractorId && $selectedContractorId == $contractor->contractor_id) {
             $hasAccess = true;
         }
 
@@ -1234,7 +1263,7 @@ class disputeController extends Controller
                 ->value('po.user_id');
             if ($ownerUserId) {
                 $projTitle = DB::table('projects')->where('project_id', $payment->project_id)->value('project_title');
-                notificationService::create((int)$ownerUserId, 'payment_approved', 'Payment Approved', "Your payment for \"{$projTitle}\" has been approved by the contractor.", 'normal', 'payment', (int)$paymentId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int)$payment->project_id, 'tab' => 'payments']]);
+                notificationService::create((int) $ownerUserId, 'payment_approved', 'Payment Approved', "Your payment for \"{$projTitle}\" has been approved by the contractor.", 'normal', 'payment', (int) $paymentId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int) $payment->project_id, 'tab' => 'payments']]);
             }
 
             return response()->json([
@@ -1302,8 +1331,14 @@ class disputeController extends Controller
         // Verify payment belongs to contractor's project
         $payment = DB::table('milestone_payments as mp')
             ->join('projects as p', 'mp.project_id', '=', 'p.project_id')
+            ->leftJoin('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
             ->where('mp.payment_id', $paymentId)
-            ->select('mp.*', 'p.selected_contractor_id', 'mp.contractor_user_id')
+            ->select(
+                'mp.*',
+                'p.selected_contractor_id as p_contractor_id',
+                'pr.selected_contractor_id as pr_contractor_id',
+                'mp.contractor_user_id as payment_c_user_id'
+            )
             ->first();
 
         if (!$payment) {
@@ -1313,11 +1348,34 @@ class disputeController extends Controller
             ], 404);
         }
 
-        // Check if contractor has access
+        // Get the actual selected contractor ID for the project
+        $selectedContractorId = $payment->p_contractor_id ?? $payment->pr_contractor_id;
+
+        // Check if current user is associated with this contractor/project
         $hasAccess = false;
-        if ($payment->contractor_user_id && $payment->contractor_user_id == $user->user_id) {
-            $hasAccess = true;
-        } else if ($payment->selected_contractor_id && $payment->selected_contractor_id == $contractor->contractor_id) {
+
+        // 1. Check via contract_users table (supports both owners and team members)
+        $userContractorProfiles = DB::table('contractor_users')
+            ->where('user_id', $user->user_id)
+            ->where('is_active', 1)
+            ->where('is_deleted', 0)
+            ->get();
+
+        foreach ($userContractorProfiles as $profile) {
+            // Check if the profile matches the payment's assigned contractor_user_id
+            if ($payment->payment_c_user_id && $payment->payment_c_user_id == $profile->contractor_user_id) {
+                $hasAccess = true;
+                break;
+            }
+            // Check if the profile belongs to the contractor company assigned to this project
+            if ($selectedContractorId && $profile->contractor_id == $selectedContractorId) {
+                $hasAccess = true;
+                break;
+            }
+        }
+
+        // 2. Fallback: check historical/legacy owner match
+        if (!$hasAccess && $contractor && $selectedContractorId && $selectedContractorId == $contractor->contractor_id) {
             $hasAccess = true;
         }
 
@@ -1355,7 +1413,7 @@ class disputeController extends Controller
                 $projTitle = DB::table('projects')->where('project_id', $payment->project_id)->value('project_title');
                 $reason = $request->input('reason', '');
                 $reasonNote = $reason ? " Reason: {$reason}" : '';
-                notificationService::create((int)$ownerUserId, 'payment_rejected', 'Payment Rejected', "Your payment for \"{$projTitle}\" was rejected by the contractor.{$reasonNote}", 'high', 'payment', (int)$paymentId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int)$payment->project_id, 'tab' => 'payments']]);
+                notificationService::create((int) $ownerUserId, 'payment_rejected', 'Payment Rejected', "Your payment for \"{$projTitle}\" was rejected by the contractor.{$reasonNote}", 'high', 'payment', (int) $paymentId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int) $payment->project_id, 'tab' => 'payments']]);
             }
 
             return response()->json([

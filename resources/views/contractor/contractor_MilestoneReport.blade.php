@@ -476,6 +476,10 @@
 
     <!-- Progress Report Modal (for submitting) -->
     @include('contractor.contractor_Modals.contractorProgressreport_Modal')
+
+    <!-- Payment Action Modals -->
+    @include('contractor.contractor_Modals.contractorPaymentapprove_Modal')
+    @include('contractor.contractor_Modals.contractorPaymentreject_Modal')
 @endsection
 
 @section('extra_css')
@@ -489,9 +493,9 @@
 
 @section('extra_js')
     <script src="{{ asset('js/contractor/contractor_MilestoneReport.js') }}?v={{ time() }}"></script>
-    <script src="{{ asset('js/contractor/contractor_Modals/contractorPaymenthistory_Modal.js') }}"></script>
     <script src="{{ asset('js/contractor/contractor_Modals/contractorMilestoneprogressReport_Modal.js') }}?v={{ time() }}"></script>
     <script src="{{ asset('js/contractor/contractor_Modals/contractorProgressreport_Modal.js') }}"></script>
+    <script src="{{ asset('js/contractor/contractor_Modals/contractorPaymentvalidation_Modal.js') }}"></script>
     <script>
         // Set Dashboard link as active when on milestone report page
         document.addEventListener('DOMContentLoaded', () => {

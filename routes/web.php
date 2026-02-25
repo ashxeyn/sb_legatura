@@ -286,6 +286,7 @@ Route::post('/owner/projects/{projectId}/bids/{bidId}/accept', [\App\Http\Contro
 Route::post('/owner/milestones/{milestoneId}/approve', [milestoneController::class, 'webApproveMilestone']);
 Route::post('/owner/milestones/{milestoneId}/reject', [milestoneController::class, 'webRejectMilestone']);
 Route::post('/contractor/payments/{paymentId}/approve', [disputeController::class, 'approvePayment']);
+Route::post('/contractor/payments/{paymentId}/reject', [disputeController::class, 'rejectPayment']);
 
 // Protected Document Viewer (for important documents with watermark)
 Route::get('/contractor/document/view', [\App\Http\Controllers\contractor\documentViewController::class, 'viewProtectedDocument'])

@@ -1,24 +1,28 @@
 /* Progress Report Modal Styles */
 
-.progress-report-modal {
+.progress-report-modal,
+.payment-reject-modal {
     display: none;
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    z-index: 2000;
+    z-index: 5000;
+    /* Extremely high wrapper */
     overflow-y: auto;
 }
 
-.progress-report-modal.active {
+.progress-report-modal.active,
+.payment-reject-modal.active {
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
 /* Modal Overlay */
-.modal-overlay {
+.modal-overlay,
+.payment-reject-modal-overlay {
     position: fixed;
     top: 0;
     left: 0;
@@ -26,7 +30,8 @@
     height: 100%;
     background-color: rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(4px);
-    z-index: 2001;
+    z-index: 5001;
+    /* Above wrapper */
     animation: fadeIn 0.3s ease-out;
 }
 
@@ -39,7 +44,8 @@
     max-width: 800px;
     max-height: 90vh;
     margin: 2rem auto;
-    z-index: 2002;
+    z-index: 5005;
+    /* Higher than overlay (5001) */
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
     animation: slideUp 0.3s ease-out;
     display: flex;
@@ -2518,4 +2524,46 @@
 .is-invalid:focus {
     box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.2) !important;
     border-color: #ef4444 !important;
+}
+
+/* Form Groups & Labels */
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 0.5rem;
+}
+
+.required {
+    color: #ef4444;
+    margin-left: 0.25rem;
+}
+
+.form-textarea {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 0.5rem;
+    font-size: 0.9375rem;
+    color: #1f2937;
+    background-color: #ffffff;
+    transition: all 0.2s ease;
+    resize: vertical;
+    min-height: 100px;
+    font-family: inherit;
+}
+
+.form-textarea:focus {
+    outline: none;
+    border-color: #EEA24B;
+    box-shadow: 0 0 0 4px rgba(238, 162, 75, 0.1);
+}
+
+.form-textarea::placeholder {
+    color: #9ca3af;
 }
