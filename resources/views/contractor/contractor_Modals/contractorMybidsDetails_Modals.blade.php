@@ -57,7 +57,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Property Owner -->
                     <div class="owner-info-section">
                         <div class="owner-info-label">Property Owner</div>
@@ -87,7 +87,7 @@
                     <div class="specifications-grid" id="modalBidSpecifications">
                         <!-- Specifications will be populated dynamically -->
                     </div>
-                    
+
                     <!-- Budget and Timeline -->
                     <div class="budget-timeline-section">
                         <div class="budget-timeline-item">
@@ -170,6 +170,18 @@
                         <div class="bid-notes-label">Your Proposal Message</div>
                         <p class="bid-notes-text" id="modalBidNotes"></p>
                     </div>
+
+                    <!-- Bid Documents -->
+                    <div class="bid-documents-section mt-6">
+                        <div class="bid-notes-label mb-3">YOUR BID DOCUMENTS</div>
+                        <div class="documents-list" id="modalYourBidDocuments">
+                            <!-- Bid documents will be populated dynamically -->
+                        </div>
+                        <div class="no-documents-message" id="noBidDocumentsMessage" style="display: none;">
+                            <i class="fi fi-rr-inbox"></i>
+                            <p>No documents submitted with this bid</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -203,7 +215,8 @@
         <div class="confirmation-content">
             <h3 class="confirmation-title">Withdraw Bid?</h3>
             <p class="confirmation-message" id="withdrawConfirmationMessage">
-                Are you sure you want to withdraw your bid? This action cannot be undone and the property owner will be notified.
+                Are you sure you want to withdraw your bid? This action cannot be undone and the property owner will be
+                notified.
             </p>
             <div class="confirmation-bid-info" id="withdrawBidInfo">
                 <div class="confirmation-bid-detail">

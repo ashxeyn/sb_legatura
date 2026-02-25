@@ -38,6 +38,49 @@ class ContractorMilestoneReport {
                 this.handlePaymentHistory();
             });
         }
+
+        // Edit milestone button
+        const editMilestoneBtn = document.getElementById('editMilestoneBtn');
+        if (editMilestoneBtn) {
+            editMilestoneBtn.addEventListener('click', () => {
+                this.handleEditMilestone(editMilestoneBtn);
+            });
+        }
+    }
+
+    handleEditMilestone(button) {
+        const milestoneId = button.getAttribute('data-milestone-id');
+        const planName = button.getAttribute('data-plan-name');
+        const paymentMode = button.getAttribute('data-payment-mode');
+        const startDate = button.getAttribute('data-start-date');
+        const endDate = button.getAttribute('data-end-date');
+        const totalBudget = button.getAttribute('data-total-budget');
+        const downpayment = button.getAttribute('data-downpayment');
+
+        const milestoneData = {
+            id: milestoneId,
+            project_id: window.currentProjectId,
+            title: planName,
+            payment_mode: paymentMode,
+            start_date: startDate,
+            end_date: endDate,
+            proposed_cost: totalBudget, // Use proposed_cost to match openModal logic
+            downpayment_amount: downpayment
+        };
+
+        // Get milestone items from window.milestoneItemsData
+        // (This was pre-populated by Blade)
+        const itemsData = window.milestoneItemsData || {};
+
+        if (window.openMilestoneSetupModal) {
+            if (window.milestoneSetupModal && window.milestoneSetupModal.openEditModal) {
+                window.milestoneSetupModal.openEditModal(milestoneData, itemsData);
+            } else {
+                window.openMilestoneSetupModal(milestoneData);
+            }
+        } else {
+            console.error('Milestone Setup Modal not initialized');
+        }
     }
 
     handleMilestoneClick(milestoneId) {

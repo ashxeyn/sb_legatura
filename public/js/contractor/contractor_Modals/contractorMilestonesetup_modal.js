@@ -16,7 +16,8 @@ class MilestoneSetupModal {
             endDate: '',
             totalBudget: 0,
             downpaymentAmount: 0,
-            numberOfMilestones: 1
+            numberOfMilestones: 1,
+            milestoneId: null
         };
 
         this.init();
@@ -196,7 +197,6 @@ class MilestoneSetupModal {
         }
 
         // Pre-fill budget if available
-        // Pre-fill budget using proposed_cost from accepted bid
         if (projectData.proposed_cost) {
             const budgetInput = document.getElementById('totalBudget');
             if (budgetInput) {
@@ -207,23 +207,10 @@ class MilestoneSetupModal {
         } else if (projectData.budget) {
             const budgetInput = document.getElementById('totalBudget');
             if (budgetInput) {
-                // Extract numbers from budget string (e.g., "₱2.92M" -> 2920000)
                 const budgetValue = this.parseBudget(projectData.budget);
                 this.formData.totalBudget = budgetValue;
                 budgetInput.value = this.formatNumber(budgetValue);
             }
-        }
-
-        // Set today as minimum date for start date (already set in setupEventListeners)
-        const startDateInput = document.getElementById('startDate');
-        if (startDateInput) {
-            const today = new Date().toISOString().split('T')[0];
-            startDateInput.setAttribute('min', today);
-        }
-
-        const endDateInput = document.getElementById('endDate');
-        if (endDateInput && this.formData.startDate) {
-            endDateInput.setAttribute('min', this.formData.startDate);
         }
 
         // Show modal
@@ -233,6 +220,76 @@ class MilestoneSetupModal {
             document.body.style.overflow = 'hidden';
         }
 
+        this.updateStepDisplay();
+    }
+
+    /**
+     * Open modal in Edit Mode with pre-populated data
+     */
+    openEditModal(milestoneData = {}, itemsData = {}) {
+        this.resetForm();
+        this.projectData = milestoneData;
+        this.milestoneItemsData = itemsData;
+
+        // Populate Form Data
+        this.formData.milestoneId = milestoneData.id;
+        this.formData.planName = milestoneData.title;
+        this.formData.paymentMode = milestoneData.payment_mode;
+        this.formData.startDate = milestoneData.start_date;
+        this.formData.endDate = milestoneData.end_date;
+        this.formData.totalBudget = parseFloat(milestoneData.proposed_cost) || 0;
+        this.formData.downpaymentAmount = parseFloat(milestoneData.downpayment_amount) || 0;
+
+        // Set Step 1 UI
+        const planNameInput = document.getElementById('milestonePlanName');
+        if (planNameInput) planNameInput.value = this.formData.planName;
+
+        const paymentModeCards = document.querySelectorAll('.payment-mode-card');
+        paymentModeCards.forEach(card => {
+            const radio = card.querySelector('input[type="radio"]');
+            if (radio && radio.value === this.formData.paymentMode) {
+                radio.checked = true;
+                card.classList.add('active');
+            } else {
+                card.classList.remove('active');
+            }
+        });
+        this.toggleDownpaymentField();
+
+        // Set Step 2 UI
+        const startDateInput = document.getElementById('startDate');
+        if (startDateInput) startDateInput.value = this.formData.startDate;
+
+        const endDateInput = document.getElementById('endDate');
+        if (endDateInput) {
+            endDateInput.value = this.formData.endDate;
+            endDateInput.setAttribute('min', this.formData.startDate);
+        }
+
+        const totalBudgetInput = document.getElementById('totalBudget');
+        if (totalBudgetInput) totalBudgetInput.value = this.formatNumber(this.formData.totalBudget);
+
+        const downpaymentInput = document.getElementById('downpaymentAmount');
+        if (downpaymentInput) downpaymentInput.value = this.formatNumber(this.formData.downpaymentAmount);
+
+        // Pre-set number of milestones for Step 3
+        const items = Object.values(itemsData);
+        this.formData.numberOfMilestones = items.length || 1;
+
+        // Set project name in header
+        const projectNameEl = document.getElementById('milestoneProjectName');
+        if (projectNameEl && milestoneData.title) {
+            projectNameEl.textContent = milestoneData.title;
+        }
+
+        // Show modal
+        const overlay = document.getElementById('milestoneSetupModalOverlay');
+        if (overlay) {
+            overlay.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        this.currentStep = 1;
         this.updateStepDisplay();
     }
 
@@ -276,7 +333,8 @@ class MilestoneSetupModal {
             endDate: '',
             totalBudget: 0,
             downpaymentAmount: 0,
-            numberOfMilestones: 1
+            numberOfMilestones: 1,
+            milestoneId: null
         };
 
         // Reset form inputs
@@ -568,17 +626,22 @@ class MilestoneSetupModal {
 
         container.innerHTML = '';
 
-        const remainingBudget = this.formData.totalBudget - this.formData.downpaymentAmount;
-        const numMilestones = this.formData.numberOfMilestones || 1;
-        const amountPerMilestone = 0; // No pre-fill
-        const percentagePerMilestone = 0; // No pre-fill
-
-        for (let i = 0; i < numMilestones; i++) {
-            this.addMilestone(i + 1, amountPerMilestone, percentagePerMilestone);
+        if (this.formData.milestoneId && this.milestoneItemsData) {
+            // Edit mode: use existing items
+            const items = Object.values(this.milestoneItemsData).sort((a, b) => (a.sequenceNumber || 0) - (b.sequenceNumber || 0));
+            items.forEach((item, index) => {
+                this.addMilestone(index + 1, item.cost, item.percentage, item);
+            });
+        } else {
+            // New mode: generate empty ones
+            const numMilestones = this.formData.numberOfMilestones || 1;
+            for (let i = 0; i < numMilestones; i++) {
+                this.addMilestone(i + 1, 0, 0);
+            }
         }
     }
 
-    addMilestone(milestoneNumber = null, defaultAmount = 0, defaultPercentage = 0) {
+    addMilestone(milestoneNumber = null, defaultAmount = 0, defaultPercentage = 0, itemData = null) {
         const template = document.getElementById('milestoneItemTemplate');
         if (!template) return;
 
@@ -608,6 +671,18 @@ class MilestoneSetupModal {
             if (percentageInput) {
                 percentageInput.value = defaultPercentage;
             }
+        }
+
+        // Set existing item data if provided
+        if (itemData) {
+            const nameInput = clone.querySelector('.milestone-name');
+            if (nameInput) nameInput.value = itemData.title;
+
+            const descInput = clone.querySelector('.milestone-description');
+            if (descInput) descInput.value = itemData.description;
+
+            const targetDateInput = clone.querySelector('.milestone-target-date');
+            if (targetDateInput) targetDateInput.value = itemData.date;
         }
 
         // Set minimum date for target date
@@ -909,10 +984,11 @@ class MilestoneSetupModal {
                     'X-Requested-With': 'XMLHttpRequest'
                 },
                 body: JSON.stringify({
-                    project_id: this.projectData.id || this.projectData.project_id,
+                    project_id: this.projectData.project_id || this.projectData.id,
                     milestone_name: this.formData.planName,
                     milestone_description: this.formData.planName,
-                    payment_mode: this.formData.paymentMode
+                    payment_mode: this.formData.paymentMode,
+                    milestone_id: this.formData.milestoneId
                 })
             });
 
@@ -930,7 +1006,15 @@ class MilestoneSetupModal {
             }
 
             if (!response.ok || !data.success) {
-                this.showNotification(data.message || 'Failed to validate step 1', 'error');
+                // Determine if errors is an array to display properly
+                let errorMsg = 'Failed to validate step 1';
+                if (data.errors && Array.isArray(data.errors) && data.errors.length > 0) {
+                    errorMsg = data.errors[0];
+                } else if (data.message) {
+                    errorMsg = data.message;
+                }
+
+                this.showNotification(errorMsg, 'error');
                 return false;
             }
 
@@ -941,6 +1025,7 @@ class MilestoneSetupModal {
             return false;
         }
     }
+
 
     /**
      * Validate Step 2 with backend
@@ -1068,36 +1153,49 @@ class MilestoneSetupModal {
     }
 
     showNotification(message, type = 'info') {
-        const toast = document.createElement('div');
-        toast.className = `milestone-toast milestone-toast-${type}`;
-        toast.textContent = message;
-        toast.style.cssText = `
-            position: fixed;
-            bottom: 2rem;
-            right: 2rem;
-            padding: 1rem 1.5rem;
-            border-radius: 0.75rem;
-            color: white;
-            font-weight: 500;
-            z-index: 10000;
-            animation: slideInUp 0.3s ease;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-        `;
+        try {
+            const toast = document.createElement('div');
+            toast.className = 'site-toast site-toast-' + type;
+            toast.style.position = 'fixed';
+            toast.style.right = '20px';
+            toast.style.top = '20px';
+            toast.style.zIndex = '11000';
+            toast.style.padding = '12px 16px';
+            toast.style.borderRadius = '8px';
+            toast.style.boxShadow = '0 2px 10px rgba(0,0,0,0.12)';
 
-        if (type === 'success') {
-            toast.style.background = 'linear-gradient(135deg, #10B981 0%, #059669 100%)';
-        } else if (type === 'error') {
-            toast.style.background = 'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)';
-        } else {
-            toast.style.background = 'linear-gradient(135deg, #EEA24B 0%, #E89A3C 100%)';
+            // Set background color based on type
+            let bgColor = '#374151'; // Default info/dark
+            if (type === 'success') bgColor = '#16a34a'; // Green
+            if (type === 'error') bgColor = '#ef4444'; // Red
+            if (type === 'warning') bgColor = '#f59e0b'; // Orange
+
+            toast.style.background = bgColor;
+            toast.style.color = '#fff';
+            toast.textContent = message;
+
+            // Initial animation state
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(-8px)';
+            toast.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+
+            document.body.appendChild(toast);
+
+            // Trigger enter animation
+            requestAnimationFrame(() => {
+                toast.style.opacity = '1';
+                toast.style.transform = 'translateY(0)';
+            });
+
+            // Trigger exit animation and remove
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(-8px)';
+                setTimeout(() => toast.remove(), 350);
+            }, 3000); // Wait 3 seconds before hiding
+        } catch (e) {
+            console.error('showNotification failed', e);
         }
-
-        document.body.appendChild(toast);
-
-        setTimeout(() => {
-            toast.style.animation = 'slideOutDown 0.3s ease';
-            setTimeout(() => toast.remove(), 300);
-        }, 3000);
     }
     /**
      * Show inline error message
@@ -1262,6 +1360,7 @@ let milestoneSetupModal;
 
 document.addEventListener('DOMContentLoaded', () => {
     milestoneSetupModal = new MilestoneSetupModal();
+    window.milestoneSetupModal = milestoneSetupModal;
 });
 
 // Export function to open modal

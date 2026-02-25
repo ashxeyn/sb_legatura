@@ -4,6 +4,7 @@ namespace App\Http\Controllers\contractor;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\contractor\biddingRequest;
+use App\Http\Requests\contractor\editBiddingRequest;
 use App\Models\contractor\biddingClass;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Session;
@@ -106,8 +107,7 @@ class biddingController extends Controller
                 // Update status back to submitted
                 $this->biddingClass->reactivateBid($existingBid->bid_id);
                 $bidId = $existingBid->bid_id;
-            }
-            else {
+            } else {
                 // Create new bid
                 $bidId = $this->biddingClass->createBid([
                     'project_id' => $request->project_id,
@@ -148,14 +148,14 @@ class biddingController extends Controller
             if ($ownerUserId) {
                 $projTitle = DB::table('projects')->where('project_id', $request->project_id)->value('project_title');
                 notificationService::create(
-                    (int)$ownerUserId,
+                    (int) $ownerUserId,
                     'bid_received',
                     'New Bid Received',
                     "A contractor has submitted a bid for \"{$projTitle}\".",
                     'normal',
                     'bid',
-                    (int)$bidId,
-                ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int)$request->project_id, 'tab' => 'bids']]
+                    (int) $bidId,
+                    ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int) $request->project_id, 'tab' => 'bids']]
                 );
             }
 
@@ -168,8 +168,7 @@ class biddingController extends Controller
                 'bid_id' => $bidId
             ], 201);
 
-        }
-        catch (\Throwable $e) {
+        } catch (\Throwable $e) {
             // Rollback Transaction on error
             DB::rollBack();
             Log::error("Bid submission CRITICAL ERROR: " . $e->getMessage() . " in " . $e->getFile() . ":" . $e->getLine());
@@ -182,7 +181,7 @@ class biddingController extends Controller
         }
     }
 
-    public function update(Request $request)
+    public function update(editBiddingRequest $request)
     {
         try {
             // Support both web (Session) and mobile (Sanctum / user_id param) auth
@@ -221,20 +220,8 @@ class biddingController extends Controller
                 return response()->json(['success' => false, 'message' => 'Contractor profile not found.'], 404);
             }
 
-            // Resolve bid_id from request body or route parameter
-            $bidId = $request->input('bid_id') ?: $request->route('id');
-
-            if (!$bidId) {
-                return response()->json(['success' => false, 'message' => 'Bid ID is required.'], 400);
-            }
-
-            // Validate basic inputs
-            if (!$request->input('proposed_cost') || !is_numeric($request->input('proposed_cost'))) {
-                return response()->json(['success' => false, 'message' => 'Proposed cost is required and must be numeric.'], 422);
-            }
-            if (!$request->input('estimated_timeline')) {
-                return response()->json(['success' => false, 'message' => 'Estimated timeline is required.'], 422);
-            }
+            // Resolve bid_id from request body or route parameters
+            $bidId = $request->input('bid_id') ?? $request->route('bidId') ?? $request->route('id') ?? $request->input('id');
 
             // Verify bid belongs to contractor
             $bid = DB::table('bids')
@@ -294,8 +281,7 @@ class biddingController extends Controller
                 'message' => 'Bid updated successfully!'
             ], 200);
 
-        }
-        catch (\Exception $e) {
+        } catch (\Exception $e) {
             \Log::error('Bid update error: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
             return response()->json([
                 'success' => false,
@@ -348,8 +334,7 @@ class biddingController extends Controller
                 'message' => 'Bid cancelled successfully!'
             ], 200);
 
-        }
-        catch (\Exception $e) {
+        } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'An error occurred: ' . $e->getMessage()
@@ -404,25 +389,25 @@ class biddingController extends Controller
                 ->join('users as u', 'c.user_id', '=', 'u.user_id')
                 ->leftJoin('contractor_types as ct', 'c.type_id', '=', 'ct.type_id')
                 ->select(
-                'b.bid_id',
-                'b.project_id',
-                'b.contractor_id',
-                'b.proposed_cost',
-                'b.estimated_timeline',
-                'b.contractor_notes',
-                'b.bid_status',
-                'b.submitted_at',
-                'c.company_name',
-                'c.company_phone',
-                'c.company_email',
-                'c.company_website',
-                'c.years_of_experience',
-                'c.completed_projects',
-                'c.picab_category',
-                'u.username',
-                'u.profile_pic',
-                'ct.type_name'
-            )
+                    'b.bid_id',
+                    'b.project_id',
+                    'b.contractor_id',
+                    'b.proposed_cost',
+                    'b.estimated_timeline',
+                    'b.contractor_notes',
+                    'b.bid_status',
+                    'b.submitted_at',
+                    'c.company_name',
+                    'c.company_phone',
+                    'c.company_email',
+                    'c.company_website',
+                    'c.years_of_experience',
+                    'c.completed_projects',
+                    'c.picab_category',
+                    'u.username',
+                    'u.profile_pic',
+                    'ct.type_name'
+                )
                 ->where('b.project_id', $projectId)
                 ->whereNotIn('b.bid_status', ['cancelled'])
                 ->orderBy('b.submitted_at', 'desc')
@@ -444,8 +429,7 @@ class biddingController extends Controller
                 'data' => $bids
             ], 200);
 
-        }
-        catch (\Exception $e) {
+        } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Error retrieving bids: ' . $e->getMessage()
@@ -609,14 +593,14 @@ class biddingController extends Controller
             if ($ownerUserId) {
                 $projTitle = DB::table('projects')->where('project_id', $projectId)->value('project_title');
                 notificationService::create(
-                    (int)$ownerUserId,
+                    (int) $ownerUserId,
                     'bid_received',
                     'New Bid Received',
                     "A contractor has submitted a bid for \"{$projTitle}\".",
                     'normal',
                     'bid',
-                    (int)$bidId,
-                ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int)$projectId, 'tab' => 'bids']]
+                    (int) $bidId,
+                    ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int) $projectId, 'tab' => 'bids']]
                 );
             }
 
@@ -630,15 +614,13 @@ class biddingController extends Controller
                 ]
             ], 201);
 
-        }
-        catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Validation failed',
                 'errors' => $e->errors()
             ], 422);
-        }
-        catch (\Exception $e) {
+        } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Error submitting bid: ' . $e->getMessage()
@@ -701,8 +683,7 @@ class biddingController extends Controller
                 'data' => $bid
             ], 200);
 
-        }
-        catch (\Exception $e) {
+        } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Error retrieving bid: ' . $e->getMessage()
@@ -763,27 +744,27 @@ class biddingController extends Controller
                 ->where('bids.contractor_id', $contractor->contractor_id)
                 ->whereNotIn('bids.bid_status', ['cancelled'])
                 ->select(
-                'bids.bid_id',
-                'bids.project_id',
-                'bids.proposed_cost',
-                'bids.estimated_timeline',
-                'bids.contractor_notes',
-                'bids.bid_status',
-                'bids.submitted_at',
-                'projects.project_title',
-                'projects.project_description',
-                'projects.project_location',
-                'projects.budget_range_min',
-                'projects.budget_range_max',
-                'projects.lot_size',
-                'projects.floor_area',
-                'projects.property_type',
-                'projects.to_finish',
-                'projects.project_status',
-                'contractor_types.type_name',
-                'project_relationships.bidding_due',
-                'users.username as owner_name'
-            )
+                    'bids.bid_id',
+                    'bids.project_id',
+                    'bids.proposed_cost',
+                    'bids.estimated_timeline',
+                    'bids.contractor_notes',
+                    'bids.bid_status',
+                    'bids.submitted_at',
+                    'projects.project_title',
+                    'projects.project_description',
+                    'projects.project_location',
+                    'projects.budget_range_min',
+                    'projects.budget_range_max',
+                    'projects.lot_size',
+                    'projects.floor_area',
+                    'projects.property_type',
+                    'projects.to_finish',
+                    'projects.project_status',
+                    'contractor_types.type_name',
+                    'project_relationships.bidding_due',
+                    'users.username as owner_name'
+                )
                 ->orderBy('bids.submitted_at', 'desc')
                 ->get();
 
@@ -809,8 +790,7 @@ class biddingController extends Controller
                 'data' => $bids
             ], 200);
 
-        }
-        catch (\Exception $e) {
+        } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Error retrieving bids: ' . $e->getMessage()

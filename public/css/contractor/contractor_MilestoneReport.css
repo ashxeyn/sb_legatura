@@ -565,6 +565,18 @@
     border: 1px solid #3b82f6;
 }
 
+.milestone-toast-success {
+    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+    color: #065f46;
+    border: 1px solid #10b981;
+}
+
+.milestone-toast-error {
+    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+    color: #991b1b;
+    border: 1px solid #ef4444;
+}
+
 @keyframes toastSlideUp {
     from {
         opacity: 0;

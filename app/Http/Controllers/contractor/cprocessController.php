@@ -244,13 +244,19 @@ class cprocessController extends Controller
                     ->orderBy('bids.submitted_at', 'desc')
                     ->get();
 
-                // Attach project files for each bid
+                // Attach project files and bid files for each bid
                 foreach ($bids as $bid) {
                     $projectFiles = DB::table('project_files')
                         ->where('project_id', $bid->project_id)
                         ->select('file_type', 'file_path')
                         ->get();
                     $bid->project_files = $projectFiles;
+
+                    $bidFiles = DB::table('bid_files')
+                        ->where('bid_id', $bid->bid_id)
+                        ->select('file_id', 'file_name', 'file_path')
+                        ->get();
+                    $bid->bid_files = $bidFiles;
                 }
             }
         }

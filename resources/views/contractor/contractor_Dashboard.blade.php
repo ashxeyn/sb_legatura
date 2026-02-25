@@ -324,7 +324,7 @@
                                     <div class="project-info">
                                         <h3 class="project-title">My Projects</h3>
                                         <p class="project-subtitle"><span
-                                                id="allProjectsCount">{{ $stats['active'] ?? 0 }}</span> active projects</p>
+                                                id="allProjectsCount">{{ $stats['inProgress'] ?? 0 }}</span> active projects</p>
                                     </div>
                                 </div>
                                 <div class="project-card-right">

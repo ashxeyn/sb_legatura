@@ -56,14 +56,189 @@
                         $projectTotalCost = (isset($milestonePlan->total_project_cost) && floatval($milestonePlan->total_project_cost) > 0)
                             ? floatval($milestonePlan->total_project_cost)
                             : $totalCost;
+
+                        // Build detail data for modals
+                        $milestoneItemsData = [];
+                        $paymentHistoryData = null;
+
+                        if (isset($milestonePlan->items)) {
+                            $seqIndex = 0;
+                            $previousItemCompleted = true; // First item always unlocked
+
+                            // Determine project-level halted state
+                            $isProjectHalted = ($project->project_status ?? '') === 'halt';
+                            // Determine milestone-level approved state
+                            $milestoneStatus = $milestonePlan->milestone_status ?? 'pending';
+                            $isMilestoneApproved = in_array($milestoneStatus, ['approved', 'active', 'completed', 'in_progress']);
+
+                            foreach ($milestonePlan->items as $item) {
+                                $seqIndex++;
+                                $itemStatus = $item->item_status ?? 'pending';
+                                $isCompleted = $itemStatus === 'completed';
+                                $isHalted = $itemStatus === 'halt';
+                                $isLocked = !$previousItemCompleted && !$isCompleted;
+                                $itemCostVal = floatval($item->milestone_item_cost ?? 0);
+
+                                // Compute payment summary for this item
+                                $itemPayments = $item->payments ?? collect();
+                                $itemTotalPaid = 0;
+                                $itemTotalSubmitted = 0;
+                                foreach ($itemPayments as $p) {
+                                    $pAmount = floatval($p->amount ?? 0);
+                                    if (($p->payment_status ?? '') === 'approved')
+                                        $itemTotalPaid += $pAmount;
+                                    if (($p->payment_status ?? '') === 'submitted')
+                                        $itemTotalSubmitted += $pAmount;
+                                }
+                                $itemRemaining = max(0, $itemCostVal - $itemTotalPaid);
+
+                                $milestoneItemsData[$item->item_id] = [
+                                    'id' => $item->item_id,
+                                    'sequenceNumber' => $seqIndex,
+                                    'title' => $item->milestone_item_title ?? 'Untitled',
+                                    'description' => $item->milestone_item_description ?? '',
+                                    'status' => $item->item_status ?? 'pending',
+                                    'date' => isset($item->date_to_finish) ? date('Y-m-d', strtotime($item->date_to_finish)) : '',
+                                    'percentage' => floatval($item->percentage_progress ?? 0),
+                                    'cost' => $itemCostVal,
+                                    'costFormatted' => '₱' . number_format($itemCostVal, 2),
+                                    'attachmentName' => $item->attachment_name ?? null,
+                                    'attachmentPath' => $item->attachment_path ?? null,
+                                    'progressReports' => collect($item->progress_reports ?? [])->map(function ($pr) {
+                                        return [
+                                            'id' => $pr->progress_id ?? null,
+                                            'title' => $pr->progress_title ?? ($pr->purpose ?? 'Progress Report'),
+                                            'description' => $pr->progress_description ?? ($pr->purpose ?? ''),
+                                            'status' => $pr->progress_status ?? 'pending',
+                                            'date' => isset($pr->submitted_at)
+                                                ? \Carbon\Carbon::parse($pr->submitted_at)->format('l, d F Y')
+                                                : 'Not specified',
+                                            'files' => collect($pr->files ?? [])->map(function ($f) {
+                                                return [
+                                                    'id' => $f->file_id ?? null,
+                                                    'name' => $f->original_name ?? basename($f->file_path),
+                                                    'path' => asset('storage/' . ltrim($f->file_path, '/')),
+                                                    'rawPath' => ltrim($f->file_path, '/')
+                                                ];
+                                            })->toArray(),
+                                        ];
+                                    })->toArray(),
+                                    'payments' => collect($itemPayments)->map(function ($p) {
+                                        return [
+                                            'id' => $p->payment_id ?? null,
+                                            'amount' => floatval($p->amount ?? 0),
+                                            'amountFormatted' => '₱' . number_format(floatval($p->amount ?? 0), 2),
+                                            'type' => ucfirst(str_replace('_', ' ', $p->payment_type ?? 'Payment')),
+                                            'transactionNumber' => $p->transaction_number ?? null,
+                                            'receiptPhoto' => $p->receipt_photo ?? null,
+                                            'date' => isset($p->transaction_date)
+                                                ? \Carbon\Carbon::parse($p->transaction_date)->format('l, d F Y')
+                                                : 'Not specified',
+                                            'status' => $p->payment_status ?? 'submitted',
+                                            'reason' => $p->reason ?? null,
+                                        ];
+                                    })->toArray(),
+                                    'paymentSummary' => [
+                                        'expected' => $itemCostVal,
+                                        'expectedFormatted' => '₱' . number_format($itemCostVal, 2),
+                                        'totalPaid' => $itemTotalPaid,
+                                        'totalPaidFormatted' => '₱' . number_format($itemTotalPaid, 2),
+                                        'totalSubmitted' => $itemTotalSubmitted,
+                                        'totalSubmittedFormatted' => '₱' . number_format($itemTotalSubmitted, 2),
+                                        'remaining' => $itemRemaining,
+                                        'remainingFormatted' => '₱' . number_format($itemRemaining, 2),
+                                        'progressPercent' => $itemCostVal > 0 ? min(100, (($itemTotalPaid + $itemTotalSubmitted) / $itemCostVal) * 100) : 0,
+                                    ],
+
+                                    // --- Condition flags (matching TSX milestoneDetail logic) ---
+                                    'isCompleted' => $isCompleted,
+                                    'isPreviousItemComplete' => $previousItemCompleted,
+                                    'isLocked' => $isLocked,
+                                    'isHalted' => $isHalted,
+                                    'isProjectHalted' => $isProjectHalted,
+                                    'isMilestoneApproved' => $isMilestoneApproved,
+                                    'hasApprovedReport' => collect($item->progress_reports ?? [])->contains(fn($pr) => ($pr->progress_status ?? '') === 'approved'),
+                                    'hasActiveReport' => collect($item->progress_reports ?? [])->contains(fn($pr) => ($pr->progress_status ?? '') === 'submitted'),
+                                    'latestReportStatus' => optional(collect($item->progress_reports ?? [])->first())->progress_status ?? null,
+                                    'latestPaymentStatus' => optional(collect($itemPayments)->first())->payment_status ?? null,
+                                    'canSubmitReport' => (
+                                        $isMilestoneApproved
+                                        && !$isCompleted
+                                        && !$isHalted
+                                        && !$isProjectHalted
+                                        && $previousItemCompleted
+                                        && !collect($item->progress_reports ?? [])->contains(fn($pr) => ($pr->progress_status ?? '') === 'submitted')
+                                    ),
+                                ];
+
+                                // Track for sequential locking: next item is unlocked only if this one is completed
+                                $previousItemCompleted = $isCompleted;
+                            }
+                        }
+
+                        // Build payment history data for the payment modal
+                        $paymentEntries = [];
+                        $totalPaid = 0;
+                        if (isset($allPayments)) {
+                            foreach ($allPayments as $payment) {
+                                $amount = floatval($payment->amount ?? 0);
+                                if (($payment->payment_status ?? '') === 'approved') {
+                                    $totalPaid += $amount;
+                                }
+
+                                $paymentEntries[] = [
+                                    'id' => $payment->payment_id,
+                                    'type' => ucfirst(str_replace('_', ' ', $payment->payment_type ?? 'payment')),
+                                    'milestoneNumber' => $payment->sequence_order ?? 0,
+                                    'milestoneTitle' => $payment->milestone_item_title ?? '',
+                                    'amount' => '₱' . number_format($amount, 0),
+                                    'date' => $payment->transaction_date
+                                        ? \Carbon\Carbon::parse($payment->transaction_date)->format('m/d/Y')
+                                        : '',
+                                    'time' => $payment->transaction_date
+                                        ? \Carbon\Carbon::parse($payment->transaction_date)->format('h:i A')
+                                        : '',
+                                    'status' => $payment->payment_status ?? 'submitted',
+                                    'unread' => (($payment->payment_status ?? '') === 'submitted'),
+                                ];
+                            }
+                        }
+
+                        $paymentHistoryData = [
+                            'payments' => $paymentEntries,
+                            'summary' => [
+                                'totalEstimated' => '₱' . number_format($projectTotalCost, 0),
+                                'totalPaid' => $totalPaid,
+                                'totalRemaining' => '₱' . number_format(max(0, $projectTotalCost - $totalPaid), 0),
+                            ],
+                        ];
                     @endphp
 
                     <div class="milestone-report-content">
                         <!-- Project Header -->
                         <div class="report-header mb-6">
-                            <h2 class="text-2xl font-bold text-gray-900 mb-3">
-                                {{ $project->project_title ?? 'Milestone Report' }}
-                            </h2>
+                            <div class="flex items-start justify-between mb-3">
+                                <h2 class="text-2xl font-bold text-gray-900">
+                                    {{ $project->project_title ?? 'Milestone Report' }}
+                                </h2>
+
+                                @if(in_array($milestonePlan->setup_status ?? '', ['not_started', 'rejected', 'submitted']) || in_array($milestonePlan->milestone_status ?? '', ['not_started', 'rejected']))
+                                    <button type="button" 
+                                            class="flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all text-sm font-medium border border-blue-100" 
+                                            id="editMilestoneBtn"
+                                            title="Edit Milestone Setup"
+                                            data-milestone-id="{{ $milestonePlan->milestone_id }}"
+                                            data-plan-name="{{ $milestonePlan->milestone_name ?? '' }}"
+                                            data-payment-mode="{{ $milestonePlan->payment_mode ?? '' }}"
+                                            data-start-date="{{ isset($milestonePlan->start_date) ? date('Y-m-d', strtotime($milestonePlan->start_date)) : '' }}"
+                                            data-end-date="{{ isset($milestonePlan->end_date) ? date('Y-m-d', strtotime($milestonePlan->end_date)) : '' }}"
+                                            data-total-budget="{{ $projectTotalCost }}"
+                                            data-downpayment="{{ $milestonePlan->downpayment_amount ?? 0 }}"
+                                    >
+                                        <i class="fi fi-rr-pencil"></i>
+                                    </button>
+                                @endif
+                            </div>
 
                             @if(!empty($project->project_description))
                                 <div class="project-description-section mb-6">
@@ -298,171 +473,6 @@
         <!-- View Progress Report Modal -->
         @include('contractor.contractor_Modals.contractorMilestoneprogressReport_Modal')
 
-        {{-- Pre-compute data for JS modal interactions only --}}
-        @php
-            $milestoneItemsData = [];
-            $paymentHistoryData = null;
-
-            if (isset($project) && isset($milestones) && count($milestones) > 0) {
-                $milestonePlan = $milestones[0];
-
-                // Build per-item detail data for the progress report modal
-                if (isset($milestonePlan->items)) {
-                    $seqIndex = 0;
-                    $previousItemCompleted = true; // First item always unlocked
-
-                    // Determine project-level halted state
-                    $isProjectHalted = ($project->project_status ?? '') === 'halt';
-                    // Determine milestone-level approved state
-                    $milestoneStatus = $milestonePlan->milestone_status ?? 'pending';
-                    $isMilestoneApproved = in_array($milestoneStatus, ['approved', 'active', 'completed', 'in_progress']);
-
-                    foreach ($milestonePlan->items as $item) {
-                        $seqIndex++;
-                        $itemStatus = $item->item_status ?? 'pending';
-                        $isCompleted = $itemStatus === 'completed';
-                        $isHalted = $itemStatus === 'halt';
-                        $isLocked = !$previousItemCompleted && !$isCompleted;
-                        $itemCostVal = floatval($item->milestone_item_cost ?? 0);
-
-                        // Compute payment summary for this item
-                        $itemPayments = $item->payments ?? collect();
-                        $itemTotalPaid = 0;
-                        $itemTotalSubmitted = 0;
-                        foreach ($itemPayments as $p) {
-                            $pAmount = floatval($p->amount ?? 0);
-                            if (($p->payment_status ?? '') === 'approved')
-                                $itemTotalPaid += $pAmount;
-                            if (($p->payment_status ?? '') === 'submitted')
-                                $itemTotalSubmitted += $pAmount;
-                        }
-                        $itemRemaining = max(0, $itemCostVal - $itemTotalPaid);
-
-                        $milestoneItemsData[$item->item_id] = [
-                            'id' => $item->item_id,
-                            'sequenceNumber' => $seqIndex,
-                            'title' => $item->milestone_item_title ?? 'Untitled',
-                            'description' => $item->milestone_item_description ?? '',
-                            'status' => $item->item_status ?? 'pending',
-                            'date' => $item->date_to_finish ?? '',
-                            'cost' => $itemCostVal,
-                            'costFormatted' => '₱' . number_format($itemCostVal, 2),
-                            'attachmentName' => $item->attachment_name ?? null,
-                            'attachmentPath' => $item->attachment_path ?? null,
-                            'progressReports' => collect($item->progress_reports ?? [])->map(function ($pr) {
-                                return [
-                                    'id' => $pr->progress_id ?? null,
-                                    'title' => $pr->progress_title ?? ($pr->purpose ?? 'Progress Report'),
-                                    'description' => $pr->progress_description ?? ($pr->purpose ?? ''),
-                                    'status' => $pr->progress_status ?? 'pending',
-                                    'date' => isset($pr->submitted_at)
-                                        ? \Carbon\Carbon::parse($pr->submitted_at)->format('l, d F Y')
-                                        : 'Not specified',
-                                    'files' => collect($pr->files ?? [])->map(function ($f) {
-                                        return [
-                                            'id' => $f->file_id ?? null,
-                                            'name' => $f->original_name ?? basename($f->file_path),
-                                            'path' => asset('storage/' . ltrim($f->file_path, '/')),
-                                            'rawPath' => ltrim($f->file_path, '/')
-                                        ];
-                                    })->toArray(),
-                                ];
-                            })->toArray(),
-                            'payments' => collect($itemPayments)->map(function ($p) {
-                                return [
-                                    'id' => $p->payment_id ?? null,
-                                    'amount' => floatval($p->amount ?? 0),
-                                    'amountFormatted' => '₱' . number_format(floatval($p->amount ?? 0), 2),
-                                    'type' => ucfirst(str_replace('_', ' ', $p->payment_type ?? 'Payment')),
-                                    'transactionNumber' => $p->transaction_number ?? null,
-                                    'receiptPhoto' => $p->receipt_photo ?? null,
-                                    'date' => isset($p->transaction_date)
-                                        ? \Carbon\Carbon::parse($p->transaction_date)->format('l, d F Y')
-                                        : 'Not specified',
-                                    'status' => $p->payment_status ?? 'submitted',
-                                    'reason' => $p->reason ?? null,
-                                ];
-                            })->toArray(),
-                            'paymentSummary' => [
-                                'expected' => $itemCostVal,
-                                'expectedFormatted' => '₱' . number_format($itemCostVal, 2),
-                                'totalPaid' => $itemTotalPaid,
-                                'totalPaidFormatted' => '₱' . number_format($itemTotalPaid, 2),
-                                'totalSubmitted' => $itemTotalSubmitted,
-                                'totalSubmittedFormatted' => '₱' . number_format($itemTotalSubmitted, 2),
-                                'remaining' => $itemRemaining,
-                                'remainingFormatted' => '₱' . number_format($itemRemaining, 2),
-                                'progressPercent' => $itemCostVal > 0 ? min(100, (($itemTotalPaid + $itemTotalSubmitted) / $itemCostVal) * 100) : 0,
-                            ],
-
-                            // --- Condition flags (matching TSX milestoneDetail logic) ---
-                            'isCompleted' => $isCompleted,
-                            'isPreviousItemComplete' => $previousItemCompleted,
-                            'isLocked' => $isLocked,
-                            'isHalted' => $isHalted,
-                            'isProjectHalted' => $isProjectHalted,
-                            'isMilestoneApproved' => $isMilestoneApproved,
-                            'hasApprovedReport' => collect($item->progress_reports ?? [])->contains(fn($pr) => ($pr->progress_status ?? '') === 'approved'),
-                            'hasActiveReport' => collect($item->progress_reports ?? [])->contains(fn($pr) => ($pr->progress_status ?? '') === 'submitted'),
-                            'latestReportStatus' => optional(collect($item->progress_reports ?? [])->first())->progress_status ?? null,
-                            'latestPaymentStatus' => optional(collect($itemPayments)->first())->payment_status ?? null,
-                            'canSubmitReport' => (
-                                $isMilestoneApproved
-                                && !$isCompleted
-                                && !$isHalted
-                                && !$isProjectHalted
-                                && $previousItemCompleted
-                                && !collect($item->progress_reports ?? [])->contains(fn($pr) => ($pr->progress_status ?? '') === 'submitted')
-                            ),
-                        ];
-
-                        // Track for sequential locking: next item is unlocked only if this one is completed
-                        $previousItemCompleted = $isCompleted;
-                    }
-                }
-
-                // Build payment history data for the payment modal
-                $paymentEntries = [];
-                $totalPaid = 0;
-                $projectTotalCost = (isset($milestonePlan->total_project_cost) && floatval($milestonePlan->total_project_cost) > 0)
-                    ? floatval($milestonePlan->total_project_cost)
-                    : collect($milestonePlan->items ?? [])->sum(fn($i) => floatval($i->milestone_item_cost ?? 0));
-
-                if (isset($allPayments)) {
-                    foreach ($allPayments as $payment) {
-                        $amount = floatval($payment->amount ?? 0);
-                        if (($payment->payment_status ?? '') === 'approved') {
-                            $totalPaid += $amount;
-                        }
-
-                        $paymentEntries[] = [
-                            'id' => $payment->payment_id,
-                            'type' => ucfirst(str_replace('_', ' ', $payment->payment_type ?? 'payment')),
-                            'milestoneNumber' => $payment->sequence_order ?? 0,
-                            'milestoneTitle' => $payment->milestone_item_title ?? '',
-                            'amount' => '₱' . number_format($amount, 0),
-                            'date' => $payment->transaction_date
-                                ? \Carbon\Carbon::parse($payment->transaction_date)->format('m/d/Y')
-                                : '',
-                            'time' => $payment->transaction_date
-                                ? \Carbon\Carbon::parse($payment->transaction_date)->format('h:i A')
-                                : '',
-                            'status' => $payment->payment_status ?? 'submitted',
-                            'unread' => (($payment->payment_status ?? '') === 'submitted'),
-                        ];
-                    }
-                }
-
-                $paymentHistoryData = [
-                    'payments' => $paymentEntries,
-                    'summary' => [
-                        'totalEstimated' => '₱' . number_format($projectTotalCost, 0),
-                        'totalPaid' => $totalPaid,
-                        'totalRemaining' => '₱' . number_format(max(0, $projectTotalCost - $totalPaid), 0),
-                    ],
-                ];
-            }
-        @endphp
 
         <script>
             // Data for JS modal interactions only (not page rendering)
@@ -477,6 +487,9 @@
     <!-- Progress Report Modal (for submitting) -->
     @include('contractor.contractor_Modals.contractorProgressreport_Modal')
 
+    <!-- Milestone Setup Modal (for editing) -->
+    @include('contractor.contractor_Modals.contractorMilestonesetup_modal')
+
     <!-- Payment Action Modals -->
     @include('contractor.contractor_Modals.contractorPaymentapprove_Modal')
     @include('contractor.contractor_Modals.contractorPaymentreject_Modal')
@@ -485,6 +498,7 @@
 @section('extra_css')
     <link rel="stylesheet" href="{{ asset('css/contractor/contractor_MilestoneReport.css') }}">
     <link rel="stylesheet" href="{{ asset('css/contractor/contractor_Myprojects.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/contractor/contractor_Modals/contractorMilestonesetup_modal.css') }}?v={{ time() }}">
     <link rel="stylesheet" href="{{ asset('css/contractor/contractor_Modals/contractorPaymenthistory_Modal.css') }}">
     <link rel="stylesheet"
         href="{{ asset('css/contractor/contractor_Modals/contractorMilestoneprogressReport_Modal.css') }}?v={{ time() }}">
@@ -493,8 +507,10 @@
 
 @section('extra_js')
     <script src="{{ asset('js/contractor/contractor_MilestoneReport.js') }}?v={{ time() }}"></script>
+    <script src="{{ asset('js/contractor/contractor_Modals/contractorMilestonesetup_modal.js') }}?v={{ time() }}"></script>
     <script src="{{ asset('js/contractor/contractor_Modals/contractorMilestoneprogressReport_Modal.js') }}?v={{ time() }}"></script>
     <script src="{{ asset('js/contractor/contractor_Modals/contractorProgressreport_Modal.js') }}"></script>
+    <script src="{{ asset('js/contractor/contractor_Modals/contractorPaymenthistory_Modal.js') }}"></script>
     <script src="{{ asset('js/contractor/contractor_Modals/contractorPaymentvalidation_Modal.js') }}"></script>
     <script>
         // Set Dashboard link as active when on milestone report page

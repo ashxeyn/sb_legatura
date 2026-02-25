@@ -91,7 +91,8 @@
                         </div>
                     </div>
                     <div class="file-preview-container" id="filePreviewContainer-{{ $projectId }}">
-                        <!-- File previews will be added here -->
+                        <div id="existingFilesContainer-{{ $projectId }}"></div>
+                        <div id="newFilesContainer-{{ $projectId }}"></div>
                     </div>
                     <small class="form-hint form-hint-disclaimer">
                         Your uploaded land title is required for verification. This document is solely for project

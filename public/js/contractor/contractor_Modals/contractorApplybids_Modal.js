@@ -19,6 +19,137 @@ window.openBidModal = function (projectId) {
     }
 };
 
+// Global function to open a bid modal in edit mode
+window.openEditBidModal = function (projectId, bidData) {
+    const modalId = `applyBidModal-${projectId}`;
+    const modal = document.getElementById(modalId);
+
+    if (modal) {
+        // Update modal title and button text
+        const title = modal.querySelector('.modal-title');
+        if (title) title.textContent = 'Edit Bid proposal';
+
+        const submitBtn = document.getElementById(`submitApplyBidBtn-${projectId}`);
+        if (submitBtn) {
+            const btnSpan = submitBtn.querySelector('span');
+            if (btnSpan) btnSpan.textContent = 'Update Bid';
+        }
+
+        // Pre-fill form fields
+        const costInput = document.getElementById(`modalProposedCost-${projectId}`);
+        const timelineInput = document.getElementById(`modalEstimatedTimeline-${projectId}`);
+        const notesInput = document.getElementById(`modalCompellingMessage-${projectId}`);
+
+        if (costInput) {
+            // Format cost with commas for consistent UI
+            const cost = parseFloat(bidData.proposed_cost);
+            costInput.value = cost.toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
+        if (timelineInput) timelineInput.value = bidData.estimated_timeline;
+        if (notesInput) {
+            notesInput.value = bidData.contractor_notes || '';
+            // Trigger character count update
+            const charCount = document.getElementById(`messageCharCount-${projectId}`);
+            if (charCount) charCount.textContent = notesInput.value.length;
+        }
+
+        // Add hidden PUT method and bid_id to form
+        const form = modal.querySelector('form');
+        if (form) {
+            // Update form action to point to the update endpoint (if needed)
+            // The route contractor/bids/{bidId} exists
+            form.action = `/contractor/bids/${bidData.bid_id}`;
+
+            // Remove any existing hidden inputs we might have added
+            const oldMethod = form.querySelector('input[name="_method"]');
+            if (oldMethod) oldMethod.remove();
+            const oldBidId = form.querySelector('input[name="bid_id"]');
+            if (oldBidId) oldBidId.remove();
+
+            // Add new ones
+            const methodInput = document.createElement('input');
+            methodInput.type = 'hidden';
+            methodInput.name = '_method';
+            methodInput.value = 'PUT';
+            form.appendChild(methodInput);
+
+            const bidIdInput = document.createElement('input');
+            bidIdInput.type = 'hidden';
+            bidIdInput.name = 'bid_id';
+            bidIdInput.value = bidData.bid_id;
+            form.appendChild(bidIdInput);
+
+            // Set isEditing flag on form for success logic
+            form.dataset.isEditing = "true";
+
+            // Clear any previous deletion trackers
+            const deletionContainer = document.getElementById(`deleteFilesContainer-${projectId}`) || document.createElement('div');
+            deletionContainer.id = `deleteFilesContainer-${projectId}`;
+            deletionContainer.innerHTML = '';
+            form.appendChild(deletionContainer);
+
+            // Render existing files
+            const existingContainer = document.getElementById(`existingFilesContainer-${projectId}`);
+            if (existingContainer && bidData.bid_files && bidData.bid_files.length > 0) {
+                existingContainer.innerHTML = ''; // Clear existing previews
+
+                bidData.bid_files.forEach(file => {
+                    const fileItem = document.createElement('div');
+                    fileItem.className = 'file-preview-item existing-file';
+                    fileItem.id = `existing-file-${file.file_id}`;
+
+                    // Icon based on type (simple check or default)
+                    const fileIcon = '<i class="fi fi-rr-file"></i>';
+                    const fileName = file.file_name.length > 20 ? file.file_name.substring(0, 17) + '...' : file.file_name;
+
+                    fileItem.innerHTML = `
+                        <div class="file-preview-icon">${fileIcon}</div>
+                        <div class="file-preview-info">
+                            <span class="file-preview-name">${fileName}</span>
+                            <span class="file-preview-size">Existing File</span>
+                        </div>
+                        <button type="button" class="file-preview-remove" onclick="window.markFileForDeletion(${projectId}, ${file.file_id})">
+                            <i class="fi fi-rr-trash"></i>
+                        </button>
+                    `;
+                    existingContainer.appendChild(fileItem);
+                });
+            }
+        }
+
+        // Open modal
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    } else {
+        console.error(`Bid modal not found for project ${projectId}`);
+    }
+};
+
+// Global function to mark an existing file for deletion
+window.markFileForDeletion = function (projectId, fileId) {
+    const fileItem = document.getElementById(`existing-file-${fileId}`);
+    if (fileItem) {
+        if (confirm('Are you sure you want to remove this file? It will be deleted when you update the bid.')) {
+            fileItem.remove();
+
+            const form = document.getElementById(`applyBidForm-${projectId}`);
+            if (form) {
+                const deletionContainer = document.getElementById(`deleteFilesContainer-${projectId}`);
+                if (deletionContainer) {
+                    const deleteInput = document.createElement('input');
+                    deleteInput.type = 'hidden';
+                    deleteInput.name = 'delete_files[]';
+                    deleteInput.value = fileId;
+                    deletionContainer.appendChild(deleteInput);
+                }
+            }
+        }
+    }
+};
+
 // Global function to close a specific bid modal
 window.closeBidModal = function (modalId) {
     const modal = document.getElementById(modalId);
@@ -30,16 +161,39 @@ window.closeBidModal = function (modalId) {
         const form = modal.querySelector('form');
         if (form) {
             form.reset();
+
+            const projectId = modalId.replace('applyBidModal-', '');
+
+            // Reset Edit Mode changes
+            form.action = '/contractor/bids';
+            delete form.dataset.isEditing;
+
+            const title = modal.querySelector('.modal-title');
+            if (title) title.textContent = 'Apply for Bid';
+
+            const submitBtn = document.getElementById(`submitApplyBidBtn-${projectId}`);
+            if (submitBtn) {
+                const btnSpan = submitBtn.querySelector('span');
+                if (btnSpan) btnSpan.textContent = 'Submit';
+            }
+
+            const oldMethod = form.querySelector('input[name="_method"]');
+            if (oldMethod) oldMethod.remove();
+            const oldBidId = form.querySelector('input[name="bid_id"]');
+            if (oldBidId) oldBidId.remove();
+            const deletionContainer = document.getElementById(`deleteFilesContainer-${projectId}`);
+            if (deletionContainer) deletionContainer.remove();
+
             // Reset character count
             const charCount = modal.querySelector('[id^="messageCharCount"]');
             if (charCount) {
                 charCount.textContent = '0';
             }
             // Clear file previews
-            const filePreview = modal.querySelector('[id^="filePreviewContainer"]');
-            if (filePreview) {
-                filePreview.innerHTML = '';
-            }
+            const existingPreview = document.getElementById(`existingFilesContainer-${projectId}`);
+            if (existingPreview) existingPreview.innerHTML = '';
+            const newPreview = document.getElementById(`newFilesContainer-${projectId}`);
+            if (newPreview) newPreview.innerHTML = '';
         }
     }
 };
@@ -79,11 +233,19 @@ window.closeBudgetWarningModal = function (projectId) {
 };
 
 window.handleEditBudget = function (projectId) {
-    window[`editBidAmount_${projectId}`]();
+    window.closeBudgetWarningModal(projectId);
+    const input = document.getElementById(`modalProposedCost-${projectId}`);
+    if (input) {
+        setTimeout(() => input.focus(), 100);
+    }
 };
 
 window.handleContinueBudget = function (projectId) {
-    window[`continueBidSubmission_${projectId}`]();
+    window.closeBudgetWarningModal(projectId);
+    const continueFunc = window[`continueBidSubmission_${projectId}`];
+    if (typeof continueFunc === 'function') {
+        continueFunc();
+    }
 };
 
 // Close on Escape key
@@ -317,7 +479,7 @@ document.addEventListener('DOMContentLoaded', function () {
         };
 
         window[`editBidAmount_${projectId}`] = function () {
-            closeBudgetWarningModal();
+            window.closeBudgetWarningModal(projectId);
             // Focus back on the proposed cost input
             if (proposedCostInput) {
                 proposedCostInput.focus();
@@ -411,15 +573,22 @@ document.addEventListener('DOMContentLoaded', function () {
             const data = await response.json();
 
             if (response.ok && data.success) {
-                // Determine which modal to close
-                // If it was the apply bid modal
-                window.closeBidModal(`applyBidModal-${projectId}`);
-                // If it was via budget warning continue, that modal is already closed by handleContinueBudget
-
                 // Show success toast
                 showToast(data.message || 'Bid submitted successfully!', 'success');
 
-                // Remove project card from UI without reload
+                const form = document.getElementById(`applyBidForm-${projectId}`);
+                const isEditing = form && form.dataset.isEditing === "true";
+
+                // Determine which modal to close
+                window.closeBidModal(`applyBidModal-${projectId}`);
+
+                // If editing, reload to show updated values
+                if (isEditing) {
+                    setTimeout(() => location.reload(), 1500);
+                    return;
+                }
+
+                // Remove project card from UI without reload (for NEW bids)
                 const bidButton = document.querySelector(`.apply-bid-button[data-project-id="${projectId}"]`);
                 if (bidButton) {
                     const card = bidButton.closest('.project-card');
@@ -509,13 +678,15 @@ document.addEventListener('DOMContentLoaded', function () {
             uploadArea.classList.remove('drag-over');
 
             const files = Array.from(e.dataTransfer.files);
-            handleFiles(files, fileInput, filePreviewContainer, selectedFiles);
+            const newContainer = document.getElementById(`newFilesContainer-${projectId}`);
+            handleFiles(files, fileInput, newContainer || filePreviewContainer, selectedFiles);
         });
 
         // File input change
         fileInput.addEventListener('change', (e) => {
             const files = Array.from(e.target.files);
-            handleFiles(files, fileInput, filePreviewContainer, selectedFiles);
+            const newContainer = document.getElementById(`newFilesContainer-${projectId}`);
+            handleFiles(files, fileInput, newContainer || filePreviewContainer, selectedFiles);
         });
 
         // Handle files function
@@ -612,77 +783,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // Make functions globally available
-    window.showBudgetWarningModal = function (type, message, projectId) {
-        const modal = document.getElementById(`budgetWarningModal-${projectId}`);
-        const title = document.getElementById(`budgetWarningTitle-${projectId}`);
-        const msg = document.getElementById(`budgetWarningMessage-${projectId}`);
-        const iconContainer = document.getElementById(`budgetWarningIcon-${projectId}`);
-        const iconSymbol = document.getElementById(`budgetWarningIconSymbol-${projectId}`);
-
-        if (modal && title && msg && iconContainer && iconSymbol) {
-            msg.textContent = message;
-
-            // Update styling based on type
-            iconContainer.className = 'modal-icon-container'; // reset
-            iconSymbol.className = ''; // reset
-
-            if (type === 'high') {
-                title.textContent = 'Bid Above Budget Range';
-                iconContainer.classList.add('warning');
-                iconSymbol.className = 'fi fi-rr-trending-up';
-            } else {
-                title.textContent = 'Bid Below Budget Range';
-                iconContainer.classList.add('info');
-                iconSymbol.className = 'fi fi-rr-trending-down';
-            }
-
-            modal.classList.remove('hidden');
-        }
-    };
-
-    window.closeBudgetWarningModal = function (projectId) {
-        // If projectId is not provided, try to close all open budget modals??
-        // Or just handle specific one. The call site usually passes projectId.
-        // If undefined, maybe look for open modals.
-        if (!projectId) {
-            const openModals = document.querySelectorAll('.budget-warning-modal:not(.hidden)');
-            openModals.forEach(m => m.classList.add('hidden'));
-            return;
-        }
-        const modal = document.getElementById(`budgetWarningModal-${projectId}`);
-        if (modal) {
-            modal.classList.add('hidden');
-        }
-    };
-
-    window.handleEditBudget = function (projectId) {
-        closeBudgetWarningModal(projectId);
-        // Focus on the proposed cost input
-        const input = document.getElementById(`modalProposedCost-${projectId}`);
-        if (input) {
-            // Small delay to allow modal transition
-            setTimeout(() => {
-                input.focus();
-                // Select values? No, just focus.
-            }, 100);
-        }
-    };
-
-    window.handleContinueBudget = function (projectId) {
-        closeBudgetWarningModal(projectId);
-
-        // Find the form
-        const form = document.getElementById(`applyBidForm-${projectId}`);
-        if (form) {
-            const continueFunc = window[`continueBidSubmission_${projectId}`];
-            if (typeof continueFunc === 'function') {
-                continueFunc();
-            } else {
-                console.error('Continue function not found for project:', projectId);
-            }
-        }
-    };
+    // Budget warning handlers moved to top level
 
     // Global Toast Function
     window.showToast = function (message, type = 'info') {

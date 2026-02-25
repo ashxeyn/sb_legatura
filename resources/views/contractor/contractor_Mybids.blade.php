@@ -266,6 +266,10 @@
                                         <span>View Details</span>
                                     </button>
                                     @if($tabStatus === 'pending')
+                                        <button class="action-btn edit-bid-btn px-4 py-2 rounded-lg transition-colors font-medium text-sm flex items-center justify-center gap-2 bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-100"
+                                                onclick='window.handleEditBid({{ $bid->project_id }}, @json($bid)); event.stopPropagation();'>
+                                            <i class="fi fi-rr-pencil"></i>
+                                        </button>
                                         <button class="action-btn withdraw-btn px-4 py-2 rounded-lg transition-colors font-medium text-sm flex items-center justify-center gap-2 bg-gray-200 text-gray-700 hover:bg-gray-300"
                                                 onclick="window.handleWithdrawBid({{ $bid->bid_id }})">
                                             <i class="fi fi-rr-cross-circle"></i>
@@ -298,7 +302,7 @@
                     <div class="project-image-wrapper">
                         <img src="" alt="Project" class="bid-card-image">
                     </div>
-                    
+
                     <!-- Project Info -->
                     <div class="flex-1 min-w-0">
                         <div class="flex items-start justify-between mb-3">
@@ -381,6 +385,22 @@
         </div>
     </template>
 
+    <!-- Apply Bid Modals -->
+    @if($hasBids)
+        @foreach($bids as $bidItem)
+            @php $bid = is_array($bidItem) ? (object)$bidItem : $bidItem; @endphp
+            @include('contractor.contractor_Modals.contractorApplybids_Modal', ['project' => $bid])
+        @endforeach
+    @endif
+
+    <!-- Individual Budget Warning Modals for each bid -->
+    @if($hasBids)
+        @foreach($bids as $bidItem)
+            @php $bid = is_array($bidItem) ? (object)$bidItem : $bidItem; @endphp
+            @include('contractor.contractor_Modals.budgetWarning_Modal', ['project' => $bid])
+        @endforeach
+    @endif
+
     <!-- Bid Details Modal -->
     @include('contractor.contractor_Modals.contractorMybidsDetails_Modals')
 
@@ -395,10 +415,12 @@
 
 @section('extra_css')
     <link rel="stylesheet" href="{{ asset('css/contractor/contractor_Mybids.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/contractor/contractor_Modals/contractorApplybids_Modal.css') }}">
     <link rel="stylesheet" href="{{ asset('css/contractor/contractor_Modals/contractorMybidsDetails_Modals.css') }}">
 @endsection
 
 @section('extra_js')
+    <script src="{{ asset('js/contractor/contractor_Modals/contractorApplybids_Modal.js') }}"></script>
     <script src="{{ asset('js/contractor/contractor_Modals/contractorMybidsDetails_Modals.js') }}"></script>
     <script src="{{ asset('js/contractor/contractor_Mybids.js') }}?v={{ time() }}"></script>
     <script>
@@ -411,7 +433,7 @@
                     link.classList.add('active');
                 }
             });
-            
+
             // Update navbar search placeholder
             const navbarSearchInput = document.querySelector('.navbar-search-input');
             if (navbarSearchInput) {

@@ -25,9 +25,6 @@ class ContractorMyBids {
         // Setup event listeners
         this.setupEventListeners();
 
-        // Setup confirmation modal
-        this.setupConfirmationModal();
-
         // Initial render - show pending tab
         this.applyTabFilter('pending');
     }
@@ -106,6 +103,7 @@ class ContractorMyBids {
                     timeline: bid.estimated_timeline || '',
                     proposalMessage: bid.contractor_notes || '',
                     projectFiles: bid.project_files || [],
+                    bidFiles: bid.bid_files || [],
                     specifications: [],
                     documents: []
                 };
@@ -167,6 +165,14 @@ class ContractorMyBids {
         window.handleWithdrawBid = (bidId) => {
             const bid = this.bids.find(b => b.id === bidId);
             if (bid) this.handleWithdraw(bid);
+        };
+
+        window.handleEditBid = (projectId, bidData) => {
+            if (window.openEditBidModal) {
+                window.openEditBidModal(projectId, bidData);
+            } else {
+                console.error('openEditBidModal function not found');
+            }
         };
     }
 
@@ -347,97 +353,14 @@ class ContractorMyBids {
         }
     }
 
-    setupConfirmationModal() {
-        this.confirmationModal = document.getElementById('withdrawConfirmationModal');
-        this.confirmationOverlay = document.getElementById('withdrawConfirmationOverlay');
-
-        // Cancel withdraw button
-        const cancelWithdrawBtn = document.getElementById('cancelWithdrawBtn');
-        if (cancelWithdrawBtn) {
-            cancelWithdrawBtn.addEventListener('click', () => this.closeWithdrawConfirmation());
-        }
-
-        // Confirm withdraw button
-        const confirmWithdrawBtn = document.getElementById('confirmWithdrawBtn');
-        if (confirmWithdrawBtn) {
-            confirmWithdrawBtn.addEventListener('click', () => this.confirmWithdraw());
-        }
-
-        // Overlay click to close
-        if (this.confirmationOverlay) {
-            this.confirmationOverlay.addEventListener('click', () => this.closeWithdrawConfirmation());
-        }
-
-        // Escape key to close
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && this.isConfirmationOpen()) {
-                this.closeWithdrawConfirmation();
-            }
-        });
-    }
-
     handleWithdraw(bid) {
-        console.log('Withdraw bid:', bid);
-        this.currentBidToWithdraw = bid;
-        this.showWithdrawConfirmation(bid);
-    }
-
-    showWithdrawConfirmation(bid) {
-        if (!bid) return;
-
-        // Populate confirmation modal with bid details
-        const projectTitle = document.getElementById('confirmWithdrawProjectTitle');
-        const bidAmount = document.getElementById('confirmWithdrawBidAmount');
-
-        if (projectTitle) {
-            projectTitle.textContent = bid.projectTitle || 'Untitled Project';
+        console.log('Withdraw bid delegated to modal:', bid);
+        if (window.showBidWithdrawConfirmation) {
+            window.showBidWithdrawConfirmation(bid);
+        } else {
+            console.error('Withdraw confirmation helper not found');
+            this.showNotification('Unable to initiate withdrawal', 'error');
         }
-
-        if (bidAmount) {
-            bidAmount.textContent = bid.bidAmount || 'N/A';
-        }
-
-        // Show confirmation modal
-        if (this.confirmationModal) {
-            this.confirmationModal.classList.add('active');
-        }
-    }
-
-    closeWithdrawConfirmation() {
-        if (this.confirmationModal) {
-            this.confirmationModal.classList.remove('active');
-        }
-        this.currentBidToWithdraw = null;
-    }
-
-    isConfirmationOpen() {
-        return this.confirmationModal && this.confirmationModal.classList.contains('active');
-    }
-
-    confirmWithdraw() {
-        if (!this.currentBidToWithdraw) return;
-
-        console.log('Withdrawing bid:', this.currentBidToWithdraw.id);
-
-        // Close confirmation modal
-        this.closeWithdrawConfirmation();
-
-        // Show success notification
-        this.showNotification(`Bid #${this.currentBidToWithdraw.id} withdrawn successfully`, 'success');
-
-        // TODO: Implement actual API call to withdraw bid
-        // Example:
-        // fetch(`/api/bids/${this.currentBidToWithdraw.id}/withdraw`, { method: 'POST' })
-        //     .then(response => response.json())
-        //     .then(data => {
-        //         if (data.success) {
-        //             // Update bid status to withdrawn
-        //             this.currentBidToWithdraw.status = 'withdrawn';
-        //             this.currentBidToWithdraw.statusText = 'Withdrawn';
-        //             // Refresh the view
-        //             this.applyTabFilter(this.currentTabFilter);
-        //         }
-        //     });
     }
 
     showNotification(message, type = 'info') {

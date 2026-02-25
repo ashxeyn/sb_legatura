@@ -240,13 +240,20 @@ class contractorClass
 	 */
 	public function getProjectMilestonesWithItems($projectId, $contractorId)
 	{
-		$milestones = DB::table('milestones')
-			->where('project_id', $projectId)
-			->where('contractor_id', $contractorId)
+		$milestones = DB::table('milestones as m')
+			->join('payment_plans as pp', 'm.plan_id', '=', 'pp.plan_id')
+			->where('m.project_id', $projectId)
+			->where('m.contractor_id', $contractorId)
 			->where(function ($query) {
-				$query->whereNull('is_deleted')
-					->orWhere('is_deleted', 0);
+				$query->whereNull('m.is_deleted')
+					->orWhere('m.is_deleted', 0);
 			})
+			->select(
+				'm.*',
+				'pp.payment_mode',
+				'pp.total_project_cost',
+				'pp.downpayment_amount'
+			)
 			->get();
 
 		$result = [];

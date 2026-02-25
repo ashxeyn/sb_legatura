@@ -8,7 +8,7 @@ class ContractorBidDetailsModal {
         this.modal = null;
         this.overlay = null;
         this.currentBid = null;
-        
+
         this.init();
     }
 
@@ -17,7 +17,7 @@ class ContractorBidDetailsModal {
         this.overlay = document.getElementById('bidModalOverlay');
         this.confirmationModal = document.getElementById('withdrawConfirmationModal');
         this.confirmationOverlay = document.getElementById('withdrawConfirmationOverlay');
-        
+
         if (!this.modal || !this.overlay) {
             console.error('Bid Details Modal elements not found');
             return;
@@ -30,11 +30,11 @@ class ContractorBidDetailsModal {
         // Close buttons
         const closeBtn = document.getElementById('closeBidModalBtn');
         const closeFooterBtn = document.getElementById('closeBidModalFooterBtn');
-        
+
         if (closeBtn) {
             closeBtn.addEventListener('click', () => this.close());
         }
-        
+
         if (closeFooterBtn) {
             closeFooterBtn.addEventListener('click', () => this.close());
         }
@@ -53,11 +53,11 @@ class ContractorBidDetailsModal {
         // Confirmation modal buttons
         const cancelWithdrawBtn = document.getElementById('cancelWithdrawBtn');
         const confirmWithdrawBtn = document.getElementById('confirmWithdrawBtn');
-        
+
         if (cancelWithdrawBtn) {
             cancelWithdrawBtn.addEventListener('click', () => this.closeWithdrawConfirmation());
         }
-        
+
         if (confirmWithdrawBtn) {
             confirmWithdrawBtn.addEventListener('click', () => this.confirmWithdraw());
         }
@@ -87,7 +87,7 @@ class ContractorBidDetailsModal {
 
         this.currentBid = bidData;
         this.populateModal(bidData);
-        
+
         if (this.modal) {
             this.modal.classList.add('active');
             document.body.style.overflow = 'hidden';
@@ -121,6 +121,9 @@ class ContractorBidDetailsModal {
 
         // Your Bid
         this.populateYourBid(bid);
+
+        // Your Bid Documents
+        this.populateBidDocuments(bid);
 
         // Show/hide withdraw button based on status
         this.updateWithdrawButton(bid);
@@ -175,11 +178,11 @@ class ContractorBidDetailsModal {
         // Owner Info
         const ownerAvatar = document.getElementById('modalBidOwnerAvatar');
         const ownerName = document.getElementById('modalBidOwnerName');
-        
+
         if (ownerAvatar && bid.owner) {
             ownerAvatar.textContent = bid.owner.avatar || 'OW';
         }
-        
+
         if (ownerName && bid.owner) {
             ownerName.textContent = bid.owner.name || 'Property Owner';
         }
@@ -193,9 +196,9 @@ class ContractorBidDetailsModal {
 
     populateSpecifications(bid) {
         const specificationsGrid = document.getElementById('modalBidSpecifications');
-        
+
         if (!specificationsGrid) return;
-        
+
         // Sample specifications - replace with actual bid.specifications
         const specifications = bid.specifications || [
             { icon: 'fi-rr-bed', label: 'Bedrooms', value: '4 Bedrooms' },
@@ -231,11 +234,11 @@ class ContractorBidDetailsModal {
     populateDocuments(bid) {
         const documentsList = document.getElementById('modalBidDocuments');
         const noDocumentsMessage = document.getElementById('noDocumentsMessage');
-        
+
         if (!documentsList || !noDocumentsMessage) return;
 
-        const documents = bid.documents || [];
-        
+        const documents = bid.projectFiles || [];
+
         if (documents.length === 0) {
             documentsList.style.display = 'none';
             noDocumentsMessage.style.display = 'block';
@@ -244,27 +247,82 @@ class ContractorBidDetailsModal {
 
         documentsList.style.display = 'grid';
         noDocumentsMessage.style.display = 'none';
-        
-        documentsList.innerHTML = documents.map(doc => `
-            <div class="document-item" data-url="${doc.url || '#'}">
-                <div class="document-icon">
-                    <i class="${this.getDocumentIcon(doc.type)}"></i>
+
+        documentsList.innerHTML = documents.map(doc => {
+            const fileName = doc.file_name || doc.original_name || 'Document';
+            const filePath = doc.file_path || '';
+            const fileType = fileName.split('.').pop().toLowerCase();
+
+            return `
+                <div class="document-item" data-path="${filePath}" data-name="${fileName}">
+                    <div class="document-icon">
+                        <i class="${this.getDocumentIcon(fileType)}"></i>
+                    </div>
+                    <div class="document-info">
+                        <span class="document-name">${fileName}</span>
+                        <span class="document-size">Project Document</span>
+                    </div>
+                    <div class="document-download">
+                        <i class="fi fi-rr-eye"></i>
+                    </div>
                 </div>
-                <div class="document-info">
-                    <span class="document-name">${doc.name}</span>
-                    <span class="document-size">${this.formatFileSize(doc.size)}</span>
-                </div>
-                <div class="document-download">
-                    <i class="fi fi-rr-download"></i>
-                </div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
 
         // Add click handlers for document downloads
         documentsList.querySelectorAll('.document-item').forEach(item => {
             item.addEventListener('click', () => {
-                const url = item.getAttribute('data-url');
-                this.handleDocumentDownload(url);
+                const path = item.getAttribute('data-path');
+                const name = item.getAttribute('data-name');
+                this.handleDocumentDownload(path, name);
+            });
+        });
+    }
+
+    populateBidDocuments(bid) {
+        const documentsList = document.getElementById('modalYourBidDocuments');
+        const noDocumentsMessage = document.getElementById('noBidDocumentsMessage');
+
+        if (!documentsList || !noDocumentsMessage) return;
+
+        const documents = bid.bidFiles || [];
+
+        if (documents.length === 0) {
+            documentsList.style.display = 'none';
+            noDocumentsMessage.style.display = 'block';
+            return;
+        }
+
+        documentsList.style.display = 'grid';
+        noDocumentsMessage.style.display = 'none';
+
+        documentsList.innerHTML = documents.map(doc => {
+            const fileName = doc.file_name || doc.original_name || 'Document';
+            const filePath = doc.file_path || '';
+            const fileType = fileName.split('.').pop().toLowerCase();
+
+            return `
+                <div class="document-item" data-path="${filePath}" data-name="${fileName}">
+                    <div class="document-icon">
+                        <i class="${this.getDocumentIcon(fileType)}"></i>
+                    </div>
+                    <div class="document-info">
+                        <span class="document-name">${fileName}</span>
+                        <span class="document-size">Bid Document</span>
+                    </div>
+                    <div class="document-download">
+                        <i class="fi fi-rr-eye"></i>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        // Add click handlers for document downloads
+        documentsList.querySelectorAll('.document-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const path = item.getAttribute('data-path');
+                const name = item.getAttribute('data-name');
+                this.handleDocumentDownload(path, name);
             });
         });
     }
@@ -316,11 +374,11 @@ class ContractorBidDetailsModal {
         // Populate confirmation modal with bid details
         const projectTitle = document.getElementById('confirmWithdrawProjectTitle');
         const bidAmount = document.getElementById('confirmWithdrawBidAmount');
-        
+
         if (projectTitle) {
             projectTitle.textContent = this.currentBid.projectTitle || 'Untitled Project';
         }
-        
+
         if (bidAmount) {
             bidAmount.textContent = this.currentBid.bidAmount || 'N/A';
         }
@@ -341,38 +399,74 @@ class ContractorBidDetailsModal {
         return this.confirmationModal && this.confirmationModal.classList.contains('active');
     }
 
-    confirmWithdraw() {
-        if (!this.currentBid) return;
+    async confirmWithdraw() {
+        if (!this.currentBid || !this.currentBid.id) return;
 
-        console.log('Withdrawing bid:', this.currentBid.id);
-        
-        // Close confirmation modal
-        this.closeWithdrawConfirmation();
-        
-        // Close main modal
-        this.close();
-        
-        // Show success notification
-        this.showNotification('Bid withdrawn successfully', 'success');
-        
-        // TODO: Implement actual API call to withdraw bid
-        // Example:
-        // fetch(`/api/bids/${this.currentBid.id}/withdraw`, { method: 'POST' })
-        //     .then(response => response.json())
-        //     .then(data => {
-        //         if (data.success) {
-        //             // Refresh the bids list
-        //             window.location.reload();
-        //         }
-        //     });
+        const bidId = this.currentBid.id;
+        console.log('Withdrawing bid:', bidId);
+
+        const confirmBtn = document.getElementById('confirmWithdrawBtn');
+        const originalContent = confirmBtn ? confirmBtn.innerHTML : '';
+
+        // Show loading state
+        if (confirmBtn) {
+            confirmBtn.disabled = true;
+            confirmBtn.innerHTML = '<i class=\"fi fi-rr-spinner-alt animate-spin\"></i> <span>Withdrawing...</span>';
+        }
+
+        try {
+            const csrfToken = document.querySelector('meta[name=\"csrf-token\"]')?.getAttribute('content');
+
+            const response = await fetch(`/contractor/bids/${bidId}/cancel`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                // Show success notification
+                this.showNotification(data.message || 'Bid withdrawn successfully', 'success');
+
+                // Close modals
+                this.closeWithdrawConfirmation();
+                this.close();
+
+                // Reload page after a short delay to refresh status
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            } else {
+                this.showNotification(data.message || 'Failed to withdraw bid', 'error');
+                // Reset button state
+                if (confirmBtn) {
+                    confirmBtn.disabled = false;
+                    confirmBtn.innerHTML = originalContent;
+                }
+            }
+        } catch (error) {
+            console.error('Error withdrawing bid:', error);
+            this.showNotification('An error occurred. Please try again.', 'error');
+
+            // Reset button state
+            if (confirmBtn) {
+                confirmBtn.disabled = false;
+                confirmBtn.innerHTML = originalContent;
+            }
+        }
     }
 
-    handleDocumentDownload(url) {
-        console.log('Downloading document:', url);
-        this.showNotification('Downloading document...');
-        
-        // TODO: Implement actual document download
-        // window.open(url, '_blank');
+    handleDocumentDownload(path, name) {
+        if (!path) return;
+        console.log('Viewing document:', path);
+
+        const viewerUrl = `/contractor/progress/document/view?file=${encodeURIComponent(path)}&name=${encodeURIComponent(name || 'Document')}`;
+        window.open(viewerUrl, '_blank');
     }
 
     getDocumentIcon(type) {
@@ -386,7 +480,7 @@ class ContractorBidDetailsModal {
             'jpeg': 'fi fi-rr-file-image',
             'png': 'fi fi-rr-file-image'
         };
-        
+
         return iconMap[type] || 'fi fi-rr-file';
     }
 
@@ -401,7 +495,7 @@ class ContractorBidDetailsModal {
     showNotification(message, type = 'info') {
         const toast = document.createElement('div');
         toast.className = 'fixed bottom-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50 text-white';
-        
+
         // Set color based on type
         if (type === 'success') {
             toast.classList.add('bg-green-500');
@@ -410,12 +504,12 @@ class ContractorBidDetailsModal {
         } else {
             toast.classList.add('bg-orange-500');
         }
-        
+
         toast.textContent = message;
         toast.style.animation = 'slideUp 0.3s ease-out';
-        
+
         document.body.appendChild(toast);
-        
+
         setTimeout(() => {
             toast.style.animation = 'slideDown 0.3s ease-out';
             setTimeout(() => {
@@ -431,18 +525,31 @@ class ContractorBidDetailsModal {
 let contractorBidDetailsModalInstance = null;
 
 document.addEventListener('DOMContentLoaded', () => {
-    contractorBidDetailsModalInstance = new ContractorBidDetailsModal();
+    window.contractorBidDetailsModalInstance = new ContractorBidDetailsModal();
 });
 
 // Export for use in other scripts
-window.ContractorBidDetailsModal = ContractorBidDetailsModal;
 window.openBidDetailsModal = (bidData) => {
-    if (contractorBidDetailsModalInstance) {
-        contractorBidDetailsModalInstance.open(bidData);
+    if (window.contractorBidDetailsModalInstance) {
+        window.contractorBidDetailsModalInstance.open(bidData);
     } else {
         setTimeout(() => {
-            if (contractorBidDetailsModalInstance) {
-                contractorBidDetailsModalInstance.open(bidData);
+            if (window.contractorBidDetailsModalInstance) {
+                window.contractorBidDetailsModalInstance.open(bidData);
+            }
+        }, 100);
+    }
+};
+
+window.showBidWithdrawConfirmation = (bidData) => {
+    if (window.contractorBidDetailsModalInstance) {
+        window.contractorBidDetailsModalInstance.open(bidData);
+        window.contractorBidDetailsModalInstance.showWithdrawConfirmation();
+    } else {
+        setTimeout(() => {
+            if (window.contractorBidDetailsModalInstance) {
+                window.contractorBidDetailsModalInstance.open(bidData);
+                window.contractorBidDetailsModalInstance.showWithdrawConfirmation();
             }
         }, 100);
     }
