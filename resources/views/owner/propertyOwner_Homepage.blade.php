@@ -5,12 +5,32 @@
 @section('content')
     <div class="property-owner-homepage">
         <!-- Post Project Section -->
+        @php
+            $sessionUser  = session('user');
+            $sessionUserId = $sessionUser->user_id ?? ($sessionUser->id ?? null);
+            $hpOwnerRecord = $sessionUserId ? \DB::table('property_owners')->where('user_id', $sessionUserId)->first() : null;
+            $hpFreshUser   = $sessionUserId ? \DB::table('users')->where('user_id', $sessionUserId)->first() : null;
+            $hpFirstName   = $hpOwnerRecord->first_name ?? '';
+            $hpLastName    = $hpOwnerRecord->last_name  ?? '';
+            $hpFullName    = trim($hpFirstName . ' ' . $hpLastName) ?: ($sessionUser->username ?? 'User');
+            $hpProfilePic  = $hpFreshUser->profile_pic ?? ($sessionUser->profile_pic ?? null);
+            $hpParts       = preg_split('/\s+/', trim($hpFullName));
+            $hpInitials    = strtoupper(substr($hpParts[0], 0, 1) . (isset($hpParts[1]) ? substr($hpParts[1], 0, 1) : ''));
+        @endphp
         <div class="post-project-section">
             <div class="post-project-container">
                 <div class="avatar-container">
-                    <div class="user-avatar navbar-avatar-initials">
-                        <span>ES</span>
-                    </div>
+                    @if($hpProfilePic)
+                        <div class="user-avatar navbar-avatar-initials">
+                            <img src="{{ asset('storage/' . $hpProfilePic) }}" alt="{{ $hpFullName }}"
+                                style="width:100%;height:100%;object-fit:cover;display:block;"
+                                onerror="this.style.display='none'; this.parentElement.innerHTML='<span>{{ $hpInitials }}</span>';">
+                        </div>
+                    @else
+                        <div class="user-avatar navbar-avatar-initials">
+                            <span>{{ $hpInitials }}</span>
+                        </div>
+                    @endif
                 </div>
                 <button type="button" class="post-project-button" id="openPostModalBtn" aria-label="Post your project">
                     <span class="post-project-text">Post your project ...</span>
@@ -115,53 +135,80 @@
                     @if(isset($contractors) && count($contractors) > 0)
                         @foreach($contractors as $contractor)
                             <div class="contractor-card">
-                                <div class="contractor-header">
-                                    <div class="contractor-avatar">
+                                <!-- Cover Photo (uses coverPhotoUri with fallback) -->
+                                @php
+                                    $coverPhoto = $contractor->cover_photo ?? null;
+                                    $defaultCover = asset('img/defaults/cp_default.jpg');
+                                    $coverPhotoUri = $coverPhoto ? asset('storage/' . $coverPhoto) : $defaultCover;
+                                @endphp
+                                <div class="contractor-cover" style="background-color: #F0F0F0; background-image: url('{{ $coverPhotoUri }}'); background-size: cover; background-position: center; position: relative;">
+                                    {{-- keep a hidden img to trigger onerror fallback for broken storage URLs --}}
+                                    @if($coverPhoto)
+                                        <img src="{{ $coverPhotoUri }}" alt="{{ $contractor->company_name }}" class="cover-photo visually-hidden" onerror="this.closest('.contractor-cover').style.backgroundImage = 'url({{ $defaultCover }})'; this.remove();">
+                                    @endif
+
+                                    {{-- Avatar placed inside cover so its position is stable across renders --}}
+                                    <div class="contractor-avatar-wrapper">
                                         @php
-                                            $contractorName = trim($contractor->company_name ?? $contractor->contact_person ?? '');
+                                            $contractorName = trim($contractor->company_name ?? '');
                                             $initials = collect(explode(' ', $contractorName))->filter()->map(function($w){ return strtoupper(substr($w,0,1)); })->take(2)->join('');
+                                            $logoUrl = $contractor->logo_url ?? null;
+                                            $defaultAvatar = asset('img/defaults/contractor_default.png');
+                                            $avatarUri = $logoUrl ? asset('storage/' . $logoUrl) : $defaultAvatar;
                                         @endphp
-                                        <span class="contractor-initials">{{ $initials ?: '—' }}</span>
-                                    </div>
-                                    <div class="contractor-info">
-                                        <h3 class="contractor-name">{{ $contractor->company_name ?? '—' }}</h3>
-                                        <p class="contractor-experience">{{ $contractor->years_of_experience ?? 0 }} years experience</p>
-                                    </div>
-                                    <div class="contractor-badge">
-                                        <span class="badge-text">{{ $contractor->contractor_type_name ?? 'Contractor' }}</span>
-                                    </div>
-                                </div>
-                                
-                                <div class="contractor-details">
-                                    <div class="detail-item">
-                                        <i class="fi fi-rr-marker"></i>
-                                        <span class="detail-text location-text">{{ $contractor->city ?? $contractor->province ?? '—' }}</span>
-                                    </div>
-                                    <div class="detail-item">
-                                        <i class="fi fi-rr-star"></i>
-                                        <span class="detail-text rating-text">{{ number_format($contractor->average_rating ?? 0, 1) }} ({{ $contractor->total_reviews ?? 0 }} reviews)</span>
-                                    </div>
-                                    <div class="detail-item">
-                                        <i class="fi fi-rr-briefcase"></i>
-                                        <span class="detail-text projects-text">{{ $contractor->completed_projects ?? 0 }} completed projects</span>
-                                    </div>
-                                    <div class="detail-item">
-                                        <i class="fi fi-rr-wrench"></i>
-                                        <span class="detail-text specialty-text">{{ $contractor->specialization ?? $contractor->contractor_type_name ?? '—' }}</span>
+                                        <div class="contractor-avatar" style="background: none; padding: 0;">
+                                            @if($logoUrl)
+                                                <img src="{{ $avatarUri }}" alt="{{ $contractor->company_name }} logo" style="width:100%;height:100%;object-fit:cover;border-radius:50%;background:#f97316;" onerror="this.src='{{ $defaultAvatar }}'">
+                                            @else
+                                                <img src="{{ $defaultAvatar }}" alt="Default contractor avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;background:#f97316;">
+                                            @endif
+                                            <span class="contractor-initials" style="display:none;">{{ $initials ?: '—' }}</span>
+                                        </div>
                                     </div>
                                 </div>
 
-                                <div class="contractor-actions">
-                                    <button class="contact-button" data-contractor-id="{{ $contractor->contractor_id ?? '' }}">
-                                        <i class="fi fi-rr-envelope"></i>
-                                        <span>Contact</span>
-                                    </button>
+                                <!-- Badge Overlay (top right) -->
+                                <div class="contractor-badge-overlay">
+                                    <span class="badge-text">{{ $contractor->type_name ?? 'Contractor' }}</span>
                                 </div>
+
+                                <!-- Header: avatar (overlap) and company info -->
+                                <div class="contractor-header">
+                                    <div class="contractor-info-block">
+                                        <h3 class="contractor-name">{{ $contractor->company_name ?? '—' }}</h3>
+                                        <p class="contractor-experience">{{ $contractor->years_of_experience ?? 0 }} years experience</p>
+                                    </div>
+                                </div>
+
+                                <!-- Details -->
+                                <div class="contractor-details-container">
+                                    <div class="detail-item">
+                                        <i class="fi fi-rr-marker"></i>
+                                        <span class="detail-text">{{ $contractor->business_permit_city ?? '—' }}</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <i class="fi fi-rr-star"></i>
+                                        <span class="detail-text">4.5 rating • 0 reviews</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <i class="fi fi-rr-briefcase"></i>
+                                        <span class="detail-text">{{ $contractor->completed_projects ?? 0 }} projects completed</span>
+                                    </div>
+                                </div>
+
+                                <!-- footer intentionally left blank (contact button removed) -->
+                                <div class="contractor-card-footer"></div>
                             </div>
                         @endforeach
                     @else
                         {{-- No contractors - keep empty state below visible via JS/CSS if needed --}}
                     @endif
+                </div>
+
+                <!-- Loading Spinner for Infinite Scroll -->
+                <div id="contractorsLoading" class="contractors-loading" style="display:none; text-align:center; padding: 1.5rem;">
+                    <span class="loader"></span>
+                    <span style="margin-left: 0.5rem; color: #6b7280;">Loading more contractors...</span>
                 </div>
 
                 <!-- Empty State -->
@@ -176,44 +223,45 @@
     <!-- Contractor Card Template (Hidden) -->
     <template id="contractorCardTemplate">
         <div class="contractor-card">
-            <div class="contractor-header">
-                <div class="contractor-avatar">
-                    <span class="contractor-initials"></span>
-                </div>
-                <div class="contractor-info">
-                    <h3 class="contractor-name"></h3>
-                    <p class="contractor-experience"></p>
-                </div>
-                <div class="contractor-badge">
-                    <span class="badge-text"></span>
-                </div>
-            </div>
-            
-            <div class="contractor-details">
-                <div class="detail-item">
-                    <i class="fi fi-rr-marker"></i>
-                    <span class="detail-text location-text"></span>
-                </div>
-                <div class="detail-item">
-                    <i class="fi fi-rr-star"></i>
-                    <span class="detail-text rating-text"></span>
-                </div>
-                <div class="detail-item">
-                    <i class="fi fi-rr-briefcase"></i>
-                    <span class="detail-text projects-text"></span>
-                </div>
-                <div class="detail-item">
-                    <i class="fi fi-rr-wrench"></i>
-                    <span class="detail-text specialty-text"></span>
+            <!-- Cover Photo -->
+            <div class="contractor-cover" style="background-color: #F0F0F0; background-image: url('{{ asset('img/defaults/cp_default.jpg') }}'); background-size: cover; background-position: center; position: relative;">
+                <div class="contractor-avatar-wrapper">
+                    <div class="contractor-avatar">
+                        <img src="{{ asset('img/defaults/contractor_default.png') }}" alt="Default contractor avatar">
+                        <span class="contractor-initials"></span>
+                    </div>
                 </div>
             </div>
 
-            <div class="contractor-actions">
-                <button class="contact-button" data-contractor-id="">
-                    <i class="fi fi-rr-envelope"></i>
-                    <span>Contact</span>
-                </button>
+            <!-- Badge Overlay (top right) -->
+            <div class="contractor-badge-overlay">
+                <span class="badge-text"></span>
             </div>
+
+            <!-- Company Info -->
+            <div class="contractor-info-block">
+                <h3 class="contractor-name"></h3>
+                <p class="contractor-experience"></p>
+            </div>
+
+            <!-- Details -->
+            <div class="contractor-details-container">
+                <div class="detail-item">
+                    <i class="fi fi-rr-marker"></i>
+                    <span class="detail-text"></span>
+                </div>
+                <div class="detail-item">
+                    <i class="fi fi-rr-star"></i>
+                    <span class="detail-text"></span>
+                </div>
+                <div class="detail-item">
+                    <i class="fi fi-rr-briefcase"></i>
+                    <span class="detail-text"></span>
+                </div>
+            </div>
+
+            <!-- footer placeholder (button removed) -->
+            <div class="contractor-card-footer"></div>
         </div>
     </template>
 

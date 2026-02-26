@@ -40,15 +40,16 @@ class FeedService
             return [
                 'contractor_id'        => $c->contractor_id,
                 'company_name'         => $c->company_name,
-                'contact_person'       => $c->contact_person ?? '',
+                'contact_person'       => $c->username ?? '',
                 'years_of_experience'  => $c->years_of_experience ?? 0,
-                'contractor_type_name' => $c->contractor_type_name ?? 'Contractor',
-                'city'                 => $c->city ?? '',
-                'province'             => $c->province ?? '',
-                'average_rating'       => $c->average_rating ?? 0,
-                'total_reviews'        => $c->total_reviews ?? 0,
+                'contractor_type_name' => $c->type_name ?? 'Contractor',
+                'city'                 => $c->business_permit_city ?? '',
+                'province'             => '',
+                'average_rating'       => 4.5,
+                'total_reviews'        => 0,
                 'completed_projects'   => $c->completed_projects ?? 0,
-                'specialization'       => $c->specialization ?? $c->contractor_type_name ?? '',
+                'specialization'       => $c->services_offered ?? $c->type_name ?? '',
+                'cover_photo'          => $c->cover_photo ?? null,
             ];
         })->toArray();
 
