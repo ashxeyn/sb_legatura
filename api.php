@@ -175,7 +175,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/', [paymentUploadController::class, 'store']);
         Route::put('/{id}', [paymentUploadController::class, 'update']);
         Route::delete('/{id}', [paymentUploadController::class, 'destroy']);
-        Route::post('/{id}/approve', [disputeController::class, 'approvePayment']);
+        Route::post('/{id}/approve', [milestoneController::class, 'apiApprovePayment']);
     });
 
     // Disputes (Both)

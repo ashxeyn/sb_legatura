@@ -50,6 +50,8 @@ interface MilestoneItem {
   milestone_item_title: string;
   milestone_item_description: string;
   milestone_item_cost: number;
+  adjusted_cost?: number | null;
+  carry_forward_amount?: number | null;
   date_to_finish: string;
 }
 
@@ -666,7 +668,7 @@ export default function ProjectView({ project, userId, userRole, onClose }: Proj
                     activeOpacity={0.7}
                   >
                     <Feather name="edit-3" size={18} color="#FFFFFF" />
-                    <Text style={styles.contractorEditSetupButtonText}>Edit Milestone Setup</Text>
+                    <Text style={styles.contractorEditSetupButtonText}>Modify</Text>
                   </TouchableOpacity>
                 </View>
               ))}

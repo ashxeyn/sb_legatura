@@ -87,4 +87,40 @@ export const milestones_service = {
       };
     }
   },
+
+  /**
+   * Set or update the settlement due date for a milestone item (Contractor)
+   */
+  set_settlement_due_date: async (
+    itemId: number,
+    userId: number,
+    settlementDueDate: string,
+    extensionDate?: string | null,
+    role?: 'contractor' | 'owner'
+  ): Promise<ApiResponse> => {
+    try {
+      const body: any = {
+        user_id: userId,
+        settlement_due_date: settlementDueDate,
+      };
+      if (extensionDate) {
+        body.extension_date = extensionDate;
+      }
+      const prefix = role === 'owner' ? 'owner' : 'contractor';
+      const response = await api_request(
+        `/api/${prefix}/milestone-items/${itemId}/settlement-due-date`,
+        {
+          method: 'POST',
+          body: JSON.stringify(body),
+        }
+      );
+      return response;
+    } catch (error: any) {
+      console.error('Error setting settlement due date:', error);
+      return {
+        success: false,
+        message: error.message || 'Failed to set settlement due date',
+      };
+    }
+  },
 };

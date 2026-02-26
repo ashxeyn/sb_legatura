@@ -277,16 +277,15 @@ Route::post('/contractor/progress/approve/{progressId}', [\App\Http\Controllers\
 Route::post('/contractor/progress/reject/{progressId}', [\App\Http\Controllers\contractor\progressUploadController::class, 'rejectProgress']);
 
 // Owner Project Posting Routes
-Route::get('/owner/projects/create', [\App\Http\Controllers\owner\projectsController::class, 'showCreatePostPage']);
-Route::post('/owner/projects', [\App\Http\Controllers\owner\projectsController::class, 'store']);
-Route::get('/owner/projects/{projectId}/edit', [\App\Http\Controllers\owner\projectsController::class, 'showEditPostPage']);
-Route::put('/owner/projects/{projectId}', [\App\Http\Controllers\owner\projectsController::class, 'update']);
-Route::delete('/owner/projects/{projectId}', [\App\Http\Controllers\owner\projectsController::class, 'delete']);
-Route::post('/owner/projects/{projectId}/bids/{bidId}/accept', [\App\Http\Controllers\owner\projectsController::class, 'acceptBid']);
-Route::post('/owner/milestones/{milestoneId}/approve', [milestoneController::class, 'webApproveMilestone']);
-Route::post('/owner/milestones/{milestoneId}/reject', [milestoneController::class, 'webRejectMilestone']);
-Route::post('/contractor/payments/{paymentId}/approve', [disputeController::class, 'approvePayment']);
-Route::post('/contractor/payments/{paymentId}/reject', [disputeController::class, 'rejectPayment']);
+Route::get('/owner/projects/create', [\App\Http\Controllers\owner\projectsController::class , 'showCreatePostPage']);
+Route::post('/owner/projects', [\App\Http\Controllers\owner\projectsController::class , 'store']);
+Route::get('/owner/projects/{projectId}/edit', [\App\Http\Controllers\owner\projectsController::class , 'showEditPostPage']);
+Route::put('/owner/projects/{projectId}', [\App\Http\Controllers\owner\projectsController::class , 'update']);
+Route::delete('/owner/projects/{projectId}', [\App\Http\Controllers\owner\projectsController::class , 'delete']);
+Route::post('/owner/projects/{projectId}/bids/{bidId}/accept', [\App\Http\Controllers\owner\projectsController::class , 'acceptBid']);
+Route::post('/owner/milestones/{milestoneId}/approve', [milestoneController::class , 'webApproveMilestone']);
+Route::post('/owner/milestones/{milestoneId}/reject', [milestoneController::class , 'webRejectMilestone']);
+Route::post('/contractor/payments/{paymentId}/approve', [milestoneController::class , 'apiApprovePayment']);
 
 // Protected Document Viewer (for important documents with watermark)
 Route::get('/contractor/document/view', [\App\Http\Controllers\contractor\documentViewController::class, 'viewProtectedDocument'])

@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -22,6 +22,8 @@ import MilestoneDetail from './milestoneDetail';
 import DisputeHistory from './disputeHistory';
 import MilestoneSetup from '../contractor/milestoneSetup';
 import DownpaymentDetail from './downpaymentDetail';
+import ProjectUpdateModal from './ProjectUpdateModal';
+import { update_service, ExtensionRecord } from '../../services/update_service';
 import { api_config } from '../../config/api';
 
 // Color palette
@@ -55,6 +57,8 @@ interface MilestoneItem {
   milestone_item_title: string;
   milestone_item_description: string;
   milestone_item_cost: number;
+  adjusted_cost?: number | null;
+  carry_forward_amount?: number | null;
   date_to_finish: string;
   item_status?: string;
   // Status summary fields from backend
@@ -161,6 +165,27 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
   const [showEditMilestone, setShowEditMilestone] = useState(false);
   const [milestoneToEdit, setMilestoneToEdit] = useState<Milestone | null>(null);
   const [showDownpaymentDetail, setShowDownpaymentDetail] = useState(false);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [pendingUpdate, setPendingUpdate] = useState<ExtensionRecord | null>(null);
+
+  // ── Fetch pending update for the owner banner ──
+  const fetchPendingUpdate = useCallback(async () => {
+    if (userRole !== 'owner') return;
+    try {
+      const res = await update_service.getContext(projectId);
+      if (res.success && res.data?.pending_extension) {
+        setPendingUpdate(res.data.pending_extension as unknown as ExtensionRecord);
+      } else {
+        setPendingUpdate(null);
+      }
+    } catch {
+      setPendingUpdate(null);
+    }
+  }, [projectId, userRole]);
+
+  useEffect(() => {
+    fetchPendingUpdate();
+  }, [fetchPendingUpdate]);
 
   const isProjectHalted = projectStatus === 'halt' || projectStatus === 'on_hold' || projectStatus === 'halted';
 
@@ -583,6 +608,7 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
 
     return (
       <MilestoneDetail
+        key={selectedMilestoneDetail.item.item_id}
         route={{
           params: {
             milestoneItem: selectedMilestoneDetail.item,
@@ -613,53 +639,112 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Feather name="chevron-left" size={28} color={COLORS.text} />
+          <Feather name="chevron-left" size={24} color={COLORS.text} />
         </TouchableOpacity>
+        <Text style={styles.headerTitle}>Project Timeline</Text>
         <TouchableOpacity style={styles.menuButton} onPress={() => setShowMenu(!showMenu)}>
-          <Feather name="more-vertical" size={24} color={COLORS.text} />
+          <Feather name="more-vertical" size={20} color={COLORS.text} />
         </TouchableOpacity>
 
         {/* Menu Dropdown */}
         {showMenu && (
           <View style={styles.menuDropdown}>
             <TouchableOpacity style={styles.menuItem} onPress={handleSendReport}>
-              <Feather name="file-text" size={18} color={COLORS.text} />
+              <Feather name="file-text" size={16} color={COLORS.text} />
               <Text style={styles.menuItemText}>Send Report</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.menuItem} onPress={handleReportHistory}>
-              <Feather name="clock" size={18} color={COLORS.text} />
+              <Feather name="clock" size={16} color={COLORS.text} />
               <Text style={styles.menuItemText}>Report History</Text>
-        </TouchableOpacity>
+            </TouchableOpacity>
           </View>
         )}
       </View>
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Project Info Section */}
-        <View style={styles.projectSection}>
-          <Text style={styles.projectTitle}>{projectTitle}</Text>
-          {projectDescription && (
-            <Text style={styles.projectDescription}>
-              {projectDescription}
-            </Text>
+        {/* Milestone Setup Summary Card */}
+        <View style={styles.summaryCard}>
+          {/* Title + Update button row */}
+          {firstMilestone?.milestone_name && (
+            <View style={styles.summaryTitleRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.summaryTitleLabel}>PROJECT TITLE</Text>
+                <Text style={styles.summaryTitleText} numberOfLines={2}>{firstMilestone.milestone_name}</Text>
+              </View>
+              {userRole === 'contractor' && !isProjectCompleted && (
+                <TouchableOpacity
+                  style={styles.updateProjectBtn}
+                  onPress={() => setShowUpdateModal(true)}
+                  activeOpacity={0.8}
+                >
+                  <Feather name="edit-2" size={12} color={COLORS.accent} />
+                  <Text style={styles.updateProjectBtnText}>Update</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           )}
 
-          {/* Budget */}
-          <View style={styles.budgetRow}>
-            <View style={styles.budgetIcon}>
-              <Feather name="credit-card" size={16} color={COLORS.accent} />
+          {/* Progress — always visible */}
+          <View style={styles.progressRow}>
+            <Text style={styles.progressLabel}>{completedCount}/{totalCount} milestones</Text>
+            <View style={styles.progressBarBg}>
+              <View style={[styles.progressBarFill, { width: `${progressPercentage}%` }]} />
             </View>
-            <Text style={styles.budgetText}>{formatCurrency(totalCost)}</Text>
+            <Text style={styles.progressPercent}>{progressPercentage}%</Text>
           </View>
 
-          {/* Location */}
-          {projectLocation && (
-            <View style={styles.locationRow}>
-              <Feather name="map-pin" size={16} color={COLORS.accent} />
-              <Text style={styles.locationText}>{projectLocation}</Text>
+          {/* Key stats row: cost + timeline */}
+          <View style={styles.summaryStatsRow}>
+            <View style={styles.summaryStat}>
+              <Text style={styles.summaryStatValue}>{formatCurrency(totalCost)}</Text>
+              <Text style={styles.summaryStatLabel}>Total Cost</Text>
             </View>
-          )}
+            {firstMilestone?.start_date && firstMilestone?.end_date && (
+              <>
+                <View style={styles.summaryStatDivider} />
+                <View style={styles.summaryStat}>
+                  <Text style={styles.summaryStatValue}>{formatDate(firstMilestone.start_date)} – {formatDate(firstMilestone.end_date)}</Text>
+                  <Text style={styles.summaryStatLabel}>Timeline</Text>
+                </View>
+              </>
+            )}
+          </View>
         </View>
+
+        {/* Owner: Pending Update Banner */}
+        {userRole === 'owner' && pendingUpdate && (
+          <TouchableOpacity
+            style={styles.pendingUpdateBanner}
+            onPress={() => setShowUpdateModal(true)}
+            activeOpacity={0.8}
+          >
+            <View style={styles.pendingExtBannerInner}>
+              <View style={[
+                styles.pendingExtIconCircle,
+                { backgroundColor: pendingUpdate.status === 'revision_requested' ? '#FFF3E0' : '#FFF8E1' }
+              ]}>
+                <Feather
+                  name={pendingUpdate.status === 'revision_requested' ? 'edit-3' : 'alert-circle'}
+                  size={22}
+                  color={pendingUpdate.status === 'revision_requested' ? '#E65100' : '#F9A825'}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.pendingExtTitle}>
+                  {pendingUpdate.status === 'revision_requested'
+                    ? 'Revision Requested'
+                    : 'Pending Update Request'}
+                </Text>
+                <Text style={styles.pendingExtDesc} numberOfLines={2}>
+                  {pendingUpdate.status === 'revision_requested'
+                    ? 'You requested changes. Waiting for the contractor to revise.'
+                    : 'The contractor has submitted a proposal for review.'}
+                </Text>
+              </View>
+              <Feather name="chevron-right" size={20} color={COLORS.textMuted} />
+            </View>
+          </TouchableOpacity>
+        )}
 
         {/* Project Halted Banner */}
         {(projectStatus === 'halt' || projectStatus === 'on_hold' || projectStatus === 'halted') && (
@@ -724,7 +809,19 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
                         )}
                       </View>
                       <Text style={styles.milestoneTitle}>{item.milestone_item_title}</Text>
-                      <Text style={styles.milestoneCost}>{formatCurrency(item.milestone_item_cost || 0)}</Text>
+                      {item.adjusted_cost != null && (item.carry_forward_amount ?? 0) > 0 ? (
+                        <View>
+                          <Text style={[styles.milestoneCost, { textDecorationLine: 'line-through', color: COLORS.textMuted, fontSize: 12 }]}>{formatCurrency(item.milestone_item_cost || 0)}</Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                            <Text style={[styles.milestoneCost, { color: '#e74c3c' }]}>{formatCurrency(parseFloat(String(item.adjusted_cost)) || 0)}</Text>
+                            <View style={{ backgroundColor: '#fff3e0', borderRadius: 3, paddingHorizontal: 4, paddingVertical: 1 }}>
+                              <Text style={{ fontSize: 9, color: '#e74c3c', fontWeight: '700' }}>+CF</Text>
+                            </View>
+                          </View>
+                        </View>
+                      ) : (
+                        <Text style={styles.milestoneCost}>{formatCurrency(item.milestone_item_cost || 0)}</Text>
+                      )}
                       <Text style={styles.milestonePercent}>{itemPercentage.toFixed(2)}%</Text>
                       {renderItemStatusTags(item)}
                     </View>
@@ -814,7 +911,19 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
                         )}
                       </View>
                       <Text style={styles.milestoneTitle}>{item.milestone_item_title}</Text>
-                      <Text style={styles.milestoneCost}>{formatCurrency(item.milestone_item_cost || 0)}</Text>
+                      {item.adjusted_cost != null && (item.carry_forward_amount ?? 0) > 0 ? (
+                        <View>
+                          <Text style={[styles.milestoneCost, { textDecorationLine: 'line-through', color: COLORS.textMuted, fontSize: 12 }]}>{formatCurrency(item.milestone_item_cost || 0)}</Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                            <Text style={[styles.milestoneCost, { color: '#e74c3c' }]}>{formatCurrency(parseFloat(String(item.adjusted_cost)) || 0)}</Text>
+                            <View style={{ backgroundColor: '#fff3e0', borderRadius: 3, paddingHorizontal: 4, paddingVertical: 1 }}>
+                              <Text style={{ fontSize: 9, color: '#e74c3c', fontWeight: '700' }}>+CF</Text>
+                            </View>
+                          </View>
+                        </View>
+                      ) : (
+                        <Text style={styles.milestoneCost}>{formatCurrency(item.milestone_item_cost || 0)}</Text>
+                      )}
                       <Text style={styles.milestonePercent}>{itemPercentage.toFixed(2)}%</Text>
                       {renderItemStatusTags(item)}
                     </View>
@@ -972,7 +1081,7 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
                     activeOpacity={0.7}
                   >
                     <Feather name="edit-3" size={18} color="#FFFFFF" />
-                    <Text style={styles.contractorEditButtonText}>Edit Milestone Setup</Text>
+                    <Text style={styles.contractorEditButtonText}>Modify</Text>
                   </TouchableOpacity>
                 </View>
               ))}
@@ -1042,7 +1151,7 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
               <Feather name="chevron-left" size={28} color={COLORS.text} />
             </TouchableOpacity>
             <View style={styles.modernHeaderContent}>
-              <Text style={styles.modernHeaderTitle}>Payment history</Text>
+              <Text style={styles.modernHeaderTitle}>Payment History</Text>
             </View>
             <TouchableOpacity style={styles.moreButton} onPress={() => setShowPaymentHistoryMenu(!showPaymentHistoryMenu)}>
               <Feather name="more-vertical" size={24} color={COLORS.text} />
@@ -1600,6 +1709,16 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
           </View>
         </Modal>
       )}
+
+      {/* Project Update Modal */}
+      <ProjectUpdateModal
+        visible={showUpdateModal}
+        onClose={() => setShowUpdateModal(false)}
+        projectId={projectId}
+        userId={userId}
+        userRole={userRole}
+        onActionComplete={() => { setShowUpdateModal(false); fetchPendingUpdate(); }}
+      />
     </View>
   );
 }
@@ -1613,18 +1732,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 8,
-    paddingVertical: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  headerTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.text,
+    letterSpacing: 0.2,
   },
   backButton: {
-    width: 44,
-    height: 44,
+    width: 40,
+    height: 40,
     justifyContent: 'center',
     alignItems: 'center',
   },
   menuButton: {
-    width: 44,
-    height: 44,
+    width: 40,
+    height: 40,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1632,10 +1759,64 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
+    paddingTop: 16,
   },
 
-  // Project Section
+  // ── Summary Card ──
+  summaryCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 3,
+    padding: 14,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    gap: 12,
+  },
+  summaryTitleLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: COLORS.textMuted,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    marginBottom: 2,
+  },
+  summaryTitleText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.text,
+    lineHeight: 22,
+  },
+  summaryStatsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  summaryStat: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  summaryStatValue: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.text,
+    textAlign: 'center',
+  },
+  summaryStatLabel: {
+    fontSize: 10,
+    color: COLORS.textMuted,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+    marginTop: 2,
+  },
+  summaryStatDivider: {
+    width: 1,
+    height: 28,
+    backgroundColor: COLORS.border,
+    marginHorizontal: 8,
+  },
+
+  // Project Section (kept for compat)
   projectSection: {
     marginBottom: 32,
   },
@@ -1651,6 +1832,59 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: 16,
   },
+  setupStatusRow: {
+    flexDirection: 'row',
+    marginBottom: 16,
+  },
+  setupStatusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 3,
+    backgroundColor: COLORS.borderLight,
+  },
+  setupStatusText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: COLORS.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  progressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: COLORS.borderLight,
+    borderRadius: 3,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  progressLabel: {
+    fontSize: 11,
+    color: COLORS.textSecondary,
+    fontWeight: '600',
+  },
+  progressBarBg: {
+    flex: 1,
+    height: 4,
+    backgroundColor: COLORS.border,
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: 4,
+    backgroundColor: COLORS.accent,
+    borderRadius: 2,
+  },
+  progressPercent: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: COLORS.accent,
+    minWidth: 30,
+    textAlign: 'right',
+  },
   budgetRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1661,7 +1895,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 20,
     backgroundColor: COLORS.accentLight,
-    borderRadius: 4,
+    borderRadius: 3,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1814,8 +2048,8 @@ const styles = StyleSheet.create({
   },
   approveBtn: {
     backgroundColor: COLORS.accent,
-    borderRadius: 12,
-    paddingVertical: 16,
+    borderRadius: 3,
+    paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1826,10 +2060,12 @@ const styles = StyleSheet.create({
   },
   requestChangesBtn: {
     backgroundColor: COLORS.borderLight,
-    borderRadius: 12,
-    paddingVertical: 16,
+    borderRadius: 3,
+    paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   requestChangesBtnText: {
     fontSize: 16,
@@ -1846,15 +2082,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.surface,
-    borderRadius: 16,
-    padding: 20,
+    borderRadius: 3,
+    padding: 16,
     borderWidth: 1,
     borderColor: COLORS.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
   },
   paymentHistoryIconContainer: {
     width: 40,
@@ -1882,13 +2113,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: COLORS.success,
-    borderRadius: 16,
-    padding: 20,
-    shadowColor: COLORS.success,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 6,
+    borderRadius: 3,
+    padding: 16,
   },
   completeProjectIconContainer: {
     marginRight: 12,
@@ -1908,9 +2134,9 @@ const styles = StyleSheet.create({
   },
   projectCompletedContent: {
     backgroundColor: COLORS.successLight,
-    borderRadius: 16,
+    borderRadius: 3,
     padding: 20,
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: COLORS.success,
   },
   projectCompletedIconContainer: {
@@ -1955,15 +2181,15 @@ const styles = StyleSheet.create({
   },
   completeModalContent: {
     backgroundColor: COLORS.surface,
-    borderRadius: 24,
-    padding: 28,
+    borderRadius: 3,
+    padding: 24,
     width: '100%',
     maxWidth: 400,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.25,
-    shadowRadius: 20,
-    elevation: 10,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
   },
   completeModalIconContainer: {
     alignSelf: 'center',
@@ -1991,7 +2217,7 @@ const styles = StyleSheet.create({
   },
   completeModalList: {
     backgroundColor: COLORS.borderLight,
-    borderRadius: 12,
+    borderRadius: 3,
     padding: 16,
     marginBottom: 20,
   },
@@ -2021,8 +2247,8 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 16,
-    borderRadius: 12,
+    paddingVertical: 14,
+    borderRadius: 3,
   },
   completeCancelButton: {
     backgroundColor: COLORS.borderLight,
@@ -2139,15 +2365,10 @@ const styles = StyleSheet.create({
   },
   paymentCard: {
     backgroundColor: COLORS.surface,
-    borderRadius: 16,
+    borderRadius: 3,
     padding: 16,
     borderWidth: 1,
     borderColor: COLORS.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 1,
     marginBottom: 12,
   },
 
@@ -2242,15 +2463,10 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
     marginHorizontal: 20,
     marginTop: 24,
-    borderRadius: 16,
+    borderRadius: 3,
     padding: 20,
     borderWidth: 1,
     borderColor: COLORS.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 3,
   },
   modernSummaryRow: {
     flexDirection: 'row',
@@ -2311,9 +2527,9 @@ const styles = StyleSheet.create({
     color: COLORS.text,
   },
   paymentStatusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 3,
   },
   paymentStatusText: {
     fontSize: 12,
@@ -2359,9 +2575,9 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   detailStatusBadge: {
-    paddingHorizontal: 24,
-    paddingVertical: 10,
-    borderRadius: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 3,
   },
   detailStatusText: {
     fontSize: 15,
@@ -2372,11 +2588,11 @@ const styles = StyleSheet.create({
   },
   detailAmountCard: {
     backgroundColor: COLORS.primaryLight,
-    borderRadius: 20,
+    borderRadius: 3,
     padding: 24,
     alignItems: 'center',
     marginBottom: 20,
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: COLORS.primary,
   },
   detailAmountLabel: {
@@ -2394,16 +2610,11 @@ const styles = StyleSheet.create({
   },
   detailCard: {
     backgroundColor: COLORS.surface,
-    borderRadius: 16,
+    borderRadius: 3,
     padding: 20,
     marginBottom: 16,
     borderWidth: 1,
     borderColor: COLORS.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
   },
   detailCardHeader: {
     flexDirection: 'row',
@@ -2452,7 +2663,7 @@ const styles = StyleSheet.create({
     width: '100%',
     aspectRatio: 4 / 3,
     backgroundColor: COLORS.borderLight,
-    borderRadius: 12,
+    borderRadius: 3,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: COLORS.border,
@@ -2487,8 +2698,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
-    borderRadius: 12,
+    paddingVertical: 14,
+    borderRadius: 3,
     gap: 8,
   },
   approveButton: {
@@ -2544,17 +2755,19 @@ const styles = StyleSheet.create({
   // Menu Dropdown Styles
   menuDropdown: {
     position: 'absolute',
-    top: 50,
+    top: 48,
     right: 8,
     backgroundColor: COLORS.surface,
-    borderRadius: 12,
-    paddingVertical: 8,
-    minWidth: 180,
+    borderRadius: 3,
+    paddingVertical: 6,
+    minWidth: 170,
+    borderWidth: 1,
+    borderColor: COLORS.border,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 6,
     zIndex: 1000,
   },
   menuItem: {
@@ -2580,15 +2793,15 @@ const styles = StyleSheet.create({
   },
   rejectModalContent: {
     backgroundColor: COLORS.surface,
-    borderRadius: 16,
+    borderRadius: 3,
     padding: 24,
     width: '100%',
     maxWidth: 500,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 16,
-    elevation: 10,
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
   },
   rejectModalHeader: {
     flexDirection: 'row',
@@ -2610,7 +2823,7 @@ const styles = StyleSheet.create({
   rejectReasonInput: {
     borderWidth: 1,
     borderColor: COLORS.border,
-    borderRadius: 12,
+    borderRadius: 3,
     padding: 12,
     fontSize: 15,
     color: COLORS.text,
@@ -2632,7 +2845,7 @@ const styles = StyleSheet.create({
   rejectModalButton: {
     flex: 1,
     paddingVertical: 14,
-    borderRadius: 12,
+    borderRadius: 3,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -2665,7 +2878,7 @@ const styles = StyleSheet.create({
   },
   milestoneRejectModalContent: {
     backgroundColor: COLORS.surface,
-    borderRadius: 12,
+    borderRadius: 3,
     width: '100%',
     maxWidth: 500,
     padding: 24,
@@ -2709,7 +2922,7 @@ const styles = StyleSheet.create({
   milestoneRejectTextInput: {
     borderWidth: 1,
     borderColor: COLORS.border,
-    borderRadius: 8,
+    borderRadius: 3,
     padding: 12,
     fontSize: 14,
     color: COLORS.text,
@@ -2729,7 +2942,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 14,
     paddingHorizontal: 20,
-    borderRadius: 8,
+    borderRadius: 3,
     borderWidth: 1,
     borderColor: COLORS.border,
     alignItems: 'center',
@@ -2748,7 +2961,7 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 14,
     paddingHorizontal: 20,
-    borderRadius: 8,
+    borderRadius: 3,
     backgroundColor: COLORS.error,
   },
   milestoneRejectConfirmButtonDisabled: {
@@ -2769,9 +2982,9 @@ const styles = StyleSheet.create({
   },
   rejectionIndicatorCard: {
     backgroundColor: COLORS.errorLight,
-    borderRadius: 12,
+    borderRadius: 3,
     padding: 16,
-    borderLeftWidth: 4,
+    borderLeftWidth: 3,
     borderLeftColor: COLORS.error,
     gap: 12,
   },
@@ -2811,7 +3024,7 @@ const styles = StyleSheet.create({
   },
   rejectionReasonContainer: {
     backgroundColor: COLORS.surface,
-    borderRadius: 8,
+    borderRadius: 3,
     padding: 12,
     gap: 6,
   },
@@ -2848,16 +3061,11 @@ const styles = StyleSheet.create({
   // Contractor Rejection Indicator Styles
   contractorRejectionCard: {
     backgroundColor: '#FFF5F5',
-    borderRadius: 12,
-    padding: 18,
-    borderLeftWidth: 4,
+    borderRadius: 3,
+    padding: 16,
+    borderLeftWidth: 3,
     borderLeftColor: COLORS.error,
-    gap: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
+    gap: 14,
   },
   contractorRejectionHeader: {
     flexDirection: 'row',
@@ -2893,7 +3101,7 @@ const styles = StyleSheet.create({
   },
   contractorRejectionReasonBox: {
     backgroundColor: COLORS.surface,
-    borderRadius: 10,
+    borderRadius: 3,
     padding: 14,
     borderWidth: 1,
     borderColor: '#FFE4E6',
@@ -2922,7 +3130,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     backgroundColor: COLORS.accentLight,
-    borderRadius: 8,
+    borderRadius: 3,
     padding: 12,
     borderWidth: 1,
     borderColor: '#FFE5CC',
@@ -2938,10 +3146,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
+    gap: 8,
     backgroundColor: COLORS.accent,
-    borderRadius: 10,
-    paddingVertical: 14,
+    borderRadius: 3,
+    paddingVertical: 12,
     paddingHorizontal: 20,
   },
   contractorEditButtonText: {
@@ -2950,11 +3158,46 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
 
-  // ── Project Halted Banner ──
-  haltedBanner: {
-    marginHorizontal: 16,
+  // ── Pending Update Banner (Owner) ──
+  pendingUpdateBanner: {
+    marginHorizontal: 0,
     marginBottom: 16,
     borderRadius: 12,
+    backgroundColor: '#FFFDE7',
+    borderWidth: 1,
+    borderColor: '#FFF176',
+    overflow: 'hidden',
+  },
+  pendingExtBannerInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    gap: 12,
+  },
+  pendingExtIconCircle: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pendingExtTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: 2,
+  },
+  pendingExtDesc: {
+    fontSize: 12,
+    color: COLORS.textMuted,
+    lineHeight: 17,
+  },
+
+  // ── Project Halted Banner ──
+  haltedBanner: {
+    marginHorizontal: 0,
+    marginBottom: 16,
+    borderRadius: 3,
     backgroundColor: COLORS.errorLight,
     borderWidth: 1,
     borderColor: '#FECACA',
@@ -3034,13 +3277,40 @@ const styles = StyleSheet.create({
     gap: 3,
     paddingHorizontal: 6,
     paddingVertical: 2,
-    borderRadius: 6,
+    borderRadius: 3,
     borderWidth: 1,
   },
   statusTagText: {
     fontSize: 9,
     fontWeight: '700',
     letterSpacing: 0.3,
+  },
+
+  // ── Title row (title + update button) ──
+  summaryTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginBottom: 4,
+  },
+  // ── Update Project button ──
+  updateProjectBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: COLORS.accent,
+    backgroundColor: COLORS.accentLight,
+    marginTop: 2,
+  },
+  updateProjectBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: COLORS.accent,
   },
 });
 

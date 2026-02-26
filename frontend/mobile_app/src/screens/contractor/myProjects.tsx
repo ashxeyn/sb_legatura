@@ -19,6 +19,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import ImageFallback from '../../components/ImageFallbackFixed';
 import MilestoneSetup from './milestoneSetup';
 import ProjectView from '../both/projectView';
+import ContractorProjectDetails from './projectDetails';
 import { projects_service } from '../../services/projects_service';
 
 // Color palette
@@ -547,14 +548,16 @@ export default function MyProjects({ userData, onClose }: MyProjectsProps) {
 
   if (showProjectDetails && selectedProject) {
     return (
-      <ProjectView
+      <ContractorProjectDetails
         project={selectedProject}
         userId={userData?.user_id}
-        userRole="contractor"
         onClose={() => {
           setShowProjectDetails(false);
           setSelectedProject(null);
           fetchProjects(); // Refresh projects after viewing
+        }}
+        onProjectUpdated={(updated) => {
+          setSelectedProject(updated);
         }}
       />
     );
