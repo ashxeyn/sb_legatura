@@ -9,7 +9,6 @@ use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
 use App\Events\messageSentEvent;
 use App\Models\User;
-use Illuminate\Support\Facades\Cache;
 
 class messageClass extends Model
 {
@@ -51,15 +50,15 @@ class messageClass extends Model
             ->where('message_id', $this->message_id)
             ->get()
             ->map(function ($att) {
-            return (object)[
-                'attachment_id' => $att->attachment_id,
-                'message_id' => $att->message_id,
-                'file_path' => $att->file_path,
-                'file_name' => $att->file_name,
-                'file_type' => $att->file_type,
-                'url' => url('storage/' . $att->file_path)
-            ];
-        });
+                return (object) [
+                    'attachment_id' => $att->attachment_id,
+                    'message_id' => $att->message_id,
+                    'file_path' => $att->file_path,
+                    'file_name' => $att->file_name,
+                    'file_type' => $att->file_type,
+                    'url' => url('storage/' . $att->file_path)
+                ];
+            });
     }
 
     /**
@@ -80,7 +79,7 @@ class messageClass extends Model
                 'file_type' => $file->getMimeType()
             ]);
 
-            return (object)[
+            return (object) [
                 'attachment_id' => $attachmentId,
                 'message_id' => $this->message_id,
                 'file_path' => $path,
@@ -88,8 +87,7 @@ class messageClass extends Model
                 'file_type' => $file->getMimeType(),
                 'url' => url('storage/' . $path)
             ];
-        }
-        catch (\Exception $e) {
+        } catch (\Exception $e) {
             \Log::error('Failed to add attachment', ['error' => $e->getMessage()]);
             return null;
         }
@@ -121,8 +119,7 @@ class messageClass extends Model
             }
 
             return false;
-        }
-        catch (\Exception $e) {
+        } catch (\Exception $e) {
             \Log::error('Failed to delete attachment', ['error' => $e->getMessage()]);
             return false;
         }
@@ -137,36 +134,36 @@ class messageClass extends Model
     {
         // Total suspended conversations (exclude admin conversations)
         $totalSuspended = DB::table('conversations')
-            ->where(function ($query) {
-            $query->where('status', 'suspended')
-                ->orWhere('is_suspended', 1);
-        })
-            ->whereNotExists(function ($query) {
-            // Exclude conversations where sender is admin
-            $query->select(DB::raw(1))
-                ->from('admin_users')
-                ->whereColumn('admin_users.admin_id', 'conversations.sender_id');
-        })
-            ->whereNotExists(function ($query) {
-            // Exclude conversations where receiver is admin
-            $query->select(DB::raw(1))
-                ->from('admin_users')
-                ->whereColumn('admin_users.admin_id', 'conversations.receiver_id');
-        })
-            ->whereNotExists(function ($query) {
-            // Exclude conversations where sender has user_type='admin'
-            $query->select(DB::raw(1))
-                ->from('users')
-                ->whereColumn('users.user_id', 'conversations.sender_id')
-                ->where('users.user_type', 'admin');
-        })
-            ->whereNotExists(function ($query) {
-            // Exclude conversations where receiver has user_type='admin'
-            $query->select(DB::raw(1))
-                ->from('users')
-                ->whereColumn('users.user_id', 'conversations.receiver_id')
-                ->where('users.user_type', 'admin');
-        })
+            ->where(function($query) {
+                $query->where('status', 'suspended')
+                      ->orWhere('is_suspended', 1);
+            })
+            ->whereNotExists(function($query) {
+                // Exclude conversations where sender is admin
+                $query->select(DB::raw(1))
+                    ->from('admin_users')
+                    ->whereColumn('admin_users.admin_id', 'conversations.sender_id');
+            })
+            ->whereNotExists(function($query) {
+                // Exclude conversations where receiver is admin
+                $query->select(DB::raw(1))
+                    ->from('admin_users')
+                    ->whereColumn('admin_users.admin_id', 'conversations.receiver_id');
+            })
+            ->whereNotExists(function($query) {
+                // Exclude conversations where sender has user_type='admin'
+                $query->select(DB::raw(1))
+                    ->from('users')
+                    ->whereColumn('users.user_id', 'conversations.sender_id')
+                    ->where('users.user_type', 'admin');
+            })
+            ->whereNotExists(function($query) {
+                // Exclude conversations where receiver has user_type='admin'
+                $query->select(DB::raw(1))
+                    ->from('users')
+                    ->whereColumn('users.user_id', 'conversations.receiver_id')
+                    ->where('users.user_type', 'admin');
+            })
             ->count();
 
         // Active conversations (last 7 days, exclude admin conversations)
@@ -174,28 +171,28 @@ class messageClass extends Model
             ->join('messages as m', 'c.conversation_id', '=', 'm.conversation_id')
             ->where('m.created_at', '>=', Carbon::now()->subDays(7))
             ->where('c.status', '!=', 'suspended')
-            ->whereNotExists(function ($query) {
-            $query->select(DB::raw(1))
-                ->from('admin_users')
-                ->whereColumn('admin_users.admin_id', 'c.sender_id');
-        })
-            ->whereNotExists(function ($query) {
-            $query->select(DB::raw(1))
-                ->from('admin_users')
-                ->whereColumn('admin_users.admin_id', 'c.receiver_id');
-        })
-            ->whereNotExists(function ($query) {
-            $query->select(DB::raw(1))
-                ->from('users')
-                ->whereColumn('users.user_id', 'c.sender_id')
-                ->where('users.user_type', 'admin');
-        })
-            ->whereNotExists(function ($query) {
-            $query->select(DB::raw(1))
-                ->from('users')
-                ->whereColumn('users.user_id', 'c.receiver_id')
-                ->where('users.user_type', 'admin');
-        })
+            ->whereNotExists(function($query) {
+                $query->select(DB::raw(1))
+                    ->from('admin_users')
+                    ->whereColumn('admin_users.admin_id', 'c.sender_id');
+            })
+            ->whereNotExists(function($query) {
+                $query->select(DB::raw(1))
+                    ->from('admin_users')
+                    ->whereColumn('admin_users.admin_id', 'c.receiver_id');
+            })
+            ->whereNotExists(function($query) {
+                $query->select(DB::raw(1))
+                    ->from('users')
+                    ->whereColumn('users.user_id', 'c.sender_id')
+                    ->where('users.user_type', 'admin');
+            })
+            ->whereNotExists(function($query) {
+                $query->select(DB::raw(1))
+                    ->from('users')
+                    ->whereColumn('users.user_id', 'c.receiver_id')
+                    ->where('users.user_type', 'admin');
+            })
             ->distinct()
             ->count('c.conversation_id');
 
@@ -203,28 +200,28 @@ class messageClass extends Model
         $flaggedMessages = DB::table('messages as m')
             ->join('conversations as c', 'm.conversation_id', '=', 'c.conversation_id')
             ->where('m.is_flagged', 1)
-            ->whereNotExists(function ($query) {
-            $query->select(DB::raw(1))
-                ->from('admin_users')
-                ->whereColumn('admin_users.admin_id', 'c.sender_id');
-        })
-            ->whereNotExists(function ($query) {
-            $query->select(DB::raw(1))
-                ->from('admin_users')
-                ->whereColumn('admin_users.admin_id', 'c.receiver_id');
-        })
-            ->whereNotExists(function ($query) {
-            $query->select(DB::raw(1))
-                ->from('users')
-                ->whereColumn('users.user_id', 'c.sender_id')
-                ->where('users.user_type', 'admin');
-        })
-            ->whereNotExists(function ($query) {
-            $query->select(DB::raw(1))
-                ->from('users')
-                ->whereColumn('users.user_id', 'c.receiver_id')
-                ->where('users.user_type', 'admin');
-        })
+            ->whereNotExists(function($query) {
+                $query->select(DB::raw(1))
+                    ->from('admin_users')
+                    ->whereColumn('admin_users.admin_id', 'c.sender_id');
+            })
+            ->whereNotExists(function($query) {
+                $query->select(DB::raw(1))
+                    ->from('admin_users')
+                    ->whereColumn('admin_users.admin_id', 'c.receiver_id');
+            })
+            ->whereNotExists(function($query) {
+                $query->select(DB::raw(1))
+                    ->from('users')
+                    ->whereColumn('users.user_id', 'c.sender_id')
+                    ->where('users.user_type', 'admin');
+            })
+            ->whereNotExists(function($query) {
+                $query->select(DB::raw(1))
+                    ->from('users')
+                    ->whereColumn('users.user_id', 'c.receiver_id')
+                    ->where('users.user_type', 'admin');
+            })
             ->distinct()
             ->count('c.conversation_id');
 
@@ -246,21 +243,21 @@ class messageClass extends Model
         $conversations = DB::table('conversations as c')
             ->join('messages as m', 'c.conversation_id', '=', 'm.conversation_id')
             ->select(
-            'c.conversation_id',
-            'c.sender_id',
-            'c.receiver_id',
-            'c.status',
-            'c.is_suspended',
-            'c.suspended_until',
-            'c.reason',
-            'm.content as last_content',
-            'm.created_at as last_sent_at'
-        )
+                'c.conversation_id',
+                'c.sender_id',
+                'c.receiver_id',
+                'c.status',
+                'c.is_suspended',
+                'c.suspended_until',
+                'c.reason',
+                'm.content as last_content',
+                'm.created_at as last_sent_at'
+            )
             ->whereRaw('m.message_id = (SELECT message_id FROM messages WHERE conversation_id = c.conversation_id ORDER BY created_at DESC LIMIT 1)')
             ->where(function ($query) use ($userId) {
-            $query->where('c.sender_id', $userId)
-                ->orWhere('c.receiver_id', $userId);
-        })
+                $query->where('c.sender_id', $userId)
+                      ->orWhere('c.receiver_id', $userId);
+            })
             ->orderBy('m.created_at', 'desc')
             ->get();
 
@@ -269,8 +266,7 @@ class messageClass extends Model
             $otherUserId = ($conv->sender_id == $userId) ? $conv->receiver_id : $conv->sender_id;
             $otherUser = self::getUserDetails($otherUserId);
 
-            if (!$otherUser)
-                continue;
+            if (!$otherUser) continue;
 
             // Calculate unread count: only count messages sent TO this user
             $isSender = ($userId == $conv->sender_id);
@@ -297,7 +293,7 @@ class messageClass extends Model
                 'unread_count' => $unreadCount,
                 'is_flagged' => $isFlagged,
                 'status' => $conv->status,
-                'is_suspended' => (bool)$conv->is_suspended,
+                'is_suspended' => (bool) $conv->is_suspended,
                 'suspended_until' => $conv->suspended_until,
                 'reason' => $conv->reason
             ];
@@ -375,8 +371,7 @@ class messageClass extends Model
             // Reload message
             return self::find($message->message_id);
 
-        }
-        catch (\Exception $e) {
+        } catch (\Exception $e) {
             DB::rollBack();
             \Log::error('Failed to store message', ['error' => $e->getMessage()]);
             return null;
@@ -396,8 +391,7 @@ class messageClass extends Model
             ->where('conversation_id', $conversationId)
             ->first();
 
-        if (!$conversation)
-            return [];
+        if (!$conversation) return [];
 
         $messages = self::where('conversation_id', $conversationId)
             ->orderBy('created_at', 'asc')
@@ -415,20 +409,20 @@ class messageClass extends Model
                 'conversation_id' => $msg->conversation_id,
                 'content' => $msg->content,
                 'sender' => $sender,
-                'is_read' => (bool)$msg->is_read,
-                'is_flagged' => (bool)$msg->is_flagged,
+                'is_read' => (bool) $msg->is_read,
+                'is_flagged' => (bool) $msg->is_flagged,
                 'flag_reason' => $msg->flag_reason,
                 'sent_at_human' => Carbon::parse($msg->created_at)->diffForHumans(),
                 'sent_at' => $msg->created_at->toIso8601String(),
                 'attachments' => $msg->attachments->map(function ($att) {
-                return [
-                'attachment_id' => $att->attachment_id,
-                'file_name' => $att->file_name,
-                'file_type' => $att->file_type,
-                'file_url' => $att->url,
-                'is_image' => str_starts_with($att->file_type, 'image/')
-                ];
-            })->toArray()
+                    return [
+                        'attachment_id' => $att->attachment_id,
+                        'file_name' => $att->file_name,
+                        'file_type' => $att->file_type,
+                        'file_url' => $att->url,
+                        'is_image' => str_starts_with($att->file_type, 'image/')
+                    ];
+                })->toArray()
             ];
         }
 
@@ -468,8 +462,7 @@ class messageClass extends Model
         // Get base user from users table
         $user = DB::table('users')->where('user_id', $userId)->first();
 
-        if (!$user)
-            return null;
+        if (!$user) return null;
 
         $name = $user->username ?? $user->email;
         $type = $user->user_type ?? 'user';
@@ -483,14 +476,12 @@ class messageClass extends Model
                 $fullName = trim(($profile->first_name ?? '') . ' ' . ($profile->middle_name ?? '') . ' ' . ($profile->last_name ?? ''));
                 $name = !empty($fullName) ? ($fullName) : ($profile->username ?? $name);
             }
-        }
-        elseif ($type === 'contractor' || $type === 'staff') {
+        } elseif ($type === 'contractor' || $type === 'staff') {
             $profile = DB::table('contractors')->where('user_id', $userId)->first();
             if ($profile) {
                 $name = $profile->company_name ?? $name;
             }
-        }
-        elseif ($type === 'owner' || $type === 'property_owner') {
+        } elseif ($type === 'owner' || $type === 'property_owner') {
             $profile = DB::table('property_owners')->where('user_id', $userId)->first();
             if ($profile) {
                 $fullName = trim(($profile->first_name ?? '') . ' ' . ($profile->last_name ?? ''));
@@ -551,9 +542,9 @@ class messageClass extends Model
         DB::table('messages')
             ->where('conversation_id', $conversationId)
             ->update([
-            'is_flagged' => 1,
-            'flag_reason' => $reason
-        ]);
+                'is_flagged' => 1,
+                'flag_reason' => $reason
+            ]);
     }
 
     /**
@@ -564,9 +555,9 @@ class messageClass extends Model
         DB::table('messages')
             ->where('conversation_id', $conversationId)
             ->update([
-            'is_flagged' => 0,
-            'flag_reason' => null
-        ]);
+                'is_flagged' => 0,
+                'flag_reason' => null
+            ]);
     }
 
     /**
@@ -606,11 +597,11 @@ class messageClass extends Model
         DB::table('conversations')
             ->where('conversation_id', $conversationId)
             ->update([
-            'status' => 'active',
-            'is_suspended' => 0,
-            'reason' => null,
-            'suspended_until' => null
-        ]);
+                'status' => 'active',
+                'is_suspended' => 0,
+                'reason' => null,
+                'suspended_until' => null
+            ]);
     }
 
     /**
@@ -689,8 +680,8 @@ class messageClass extends Model
         // Philippine phone patterns:
         // +63XXXXXXXXXX, 09XXXXXXXXX, (02) XXX-XXXX, etc.
         $phonePatterns = [
-            '/\+63\s*\d{10}/', // +63 9XX XXX XXXX
-            '/\b09\d{9}\b/', // 09XXXXXXXXX
+            '/\+63\s*\d{10}/',           // +63 9XX XXX XXXX
+            '/\b09\d{9}\b/',             // 09XXXXXXXXX
             '/\(0?2\)\s*\d{3,4}[\s-]?\d{4}/', // (02) XXX-XXXX
             '/\b0\d{2,3}[\s-]?\d{3,4}[\s-]?\d{4}\b/' // 0XX XXX XXXX
         ];
@@ -718,61 +709,21 @@ class messageClass extends Model
      */
     private static function detectSuspiciousKeywords(string $content): bool
     {
-        // Cache the keywords for 60 minutes
-        $allKeywords = Cache::remember('suspicious_keywords_v1', Carbon::now()->addMinutes(60), function () {
-            // Part 1: System Keywords (Hardcoded)
-            $systemKeywords = [
-                'viber', 'telegram', 'pay outside', 'bank transfer', 'facebook',
-                'instagram', 'twitter', 'contact'
-            ];
+        $keywords = [
+            'gcash', 'viber', 'telegram', 'pay outside', 'bank transfer',
+            'sex', 'nigga', 'vagina', 'penis', 'fuck', 'bitch', 'whore',
+            'slut', 'dick', 'cock', 'pussy', 'ass', 'bastard', 'damn',
+            'harassment', 'assault', 'rape', 'molest', 'abuse', 'facebook', 'instagram', 'twitter',
+            'porn', 'pornhub', 'negro', 'bobo', 'sinto sinto', 'kingina mo', 'putangina', 'putanginamo',
+            'nigger', 'tarantado', 'ulol', 'gago', 'tanga amputa', 'amputa', 'punyemas',
+            'tite', 'contact'
+        ];
 
-            // Part 1: Profanity Keywords (From CSV)
-            $profanityKeywords = [];
-            $csvPath = storage_path('app/public/app/profanity_dataset.csv');
-
-            if (file_exists($csvPath)) {
-                $file = fopen($csvPath, 'r');
-                // Skip header
-                fgetcsv($file);
-                while (($row = fgetcsv($file)) !== false) {
-                    if (isset($row[0])) {
-                        // Normalize keyword from CSV: lowercase and trim
-                        $profanityKeywords[] = strtolower(trim($row[0]));
-                    }
-                }
-                fclose($file);
-            }
-
-            // Combine arrays
-            return array_merge($systemKeywords, $profanityKeywords);
-        });
-
-        // Part 2: Detection Logic
-
-        // 1. Normalize message (lowercase)
         $contentLower = strtolower($content);
 
-        // 2. Check original normalized message against all keywords
-        foreach ($allKeywords as $keyword) {
+        foreach ($keywords as $keyword) {
             if (stripos($contentLower, $keyword) !== false) {
                 return true;
-            }
-        }
-
-        // 3. Evasion Detection: Strip ALL spaces and punctuation
-        // e.g. "f u c k" becomes "fuck", "b.o.b.o" becomes "bobo"
-        $contentCompressed = preg_replace('/[\s\W]+/', '', $contentLower);
-
-        // Check compressed string against keywords
-        // CONSTRAINT: Only check keywords >= 4 chars to prevent false positives
-        foreach ($allKeywords as $keyword) {
-            // Remove spaces from keyword itself just in case, though usually single words
-            $cleanKeyword = str_replace(' ', '', $keyword);
-
-            if (strlen($cleanKeyword) >= 4) {
-                if (stripos($contentCompressed, $cleanKeyword) !== false) {
-                    return true;
-                }
             }
         }
 
@@ -827,8 +778,7 @@ class messageClass extends Model
     {
         // Check admin_users table
         $isAdminUser = DB::table('admin_users')->where('admin_id', $userId)->exists();
-        if ($isAdminUser)
-            return true;
+        if ($isAdminUser) return true;
 
         // Check users table for user_type='admin'
         $user = DB::table('users')->where('user_id', $userId)->first();
@@ -846,22 +796,22 @@ class messageClass extends Model
         $conversations = DB::table('conversations as c')
             ->join('messages as m', 'c.conversation_id', '=', 'm.conversation_id')
             ->select(
-            'c.conversation_id',
-            'c.sender_id',
-            'c.receiver_id',
-            'c.status',
-            'c.is_suspended',
-            'c.no_suspends',
-            'm.content as last_content',
-            'm.created_at as last_sent_at',
-            DB::raw('(SELECT COUNT(*) FROM messages WHERE conversation_id = c.conversation_id AND is_flagged = 1) as flagged_count')
-        )
+                'c.conversation_id',
+                'c.sender_id',
+                'c.receiver_id',
+                'c.status',
+                'c.is_suspended',
+                'c.no_suspends',
+                'm.content as last_content',
+                'm.created_at as last_sent_at',
+                DB::raw('(SELECT COUNT(*) FROM messages WHERE conversation_id = c.conversation_id AND is_flagged = 1) as flagged_count')
+            )
             ->whereExists(function ($query) {
-            $query->select(DB::raw(1))
-                ->from('messages')
-                ->whereColumn('messages.conversation_id', 'c.conversation_id')
-                ->where('messages.is_flagged', 1);
-        })
+                $query->select(DB::raw(1))
+                    ->from('messages')
+                    ->whereColumn('messages.conversation_id', 'c.conversation_id')
+                    ->where('messages.is_flagged', 1);
+            })
             ->whereRaw('m.message_id = (SELECT message_id FROM messages WHERE conversation_id = c.conversation_id ORDER BY created_at DESC LIMIT 1)')
             ->orderBy('m.created_at', 'desc')
             ->get();
@@ -876,8 +826,7 @@ class messageClass extends Model
             $senderUser = self::getUserDetails($conv->sender_id);
             $receiverUser = self::getUserDetails($conv->receiver_id);
 
-            if (!$senderUser || !$receiverUser)
-                continue;
+            if (!$senderUser || !$receiverUser) continue;
 
             $result[] = [
                 'conversation_id' => $conv->conversation_id,
@@ -893,7 +842,7 @@ class messageClass extends Model
                 'flagged_count' => $conv->flagged_count,
                 'is_flagged' => true,
                 'status' => $conv->status,
-                'is_suspended' => (bool)$conv->is_suspended,
+                'is_suspended' => (bool) $conv->is_suspended,
                 'no_suspends' => $conv->no_suspends ?? 0
             ];
         }
@@ -911,17 +860,17 @@ class messageClass extends Model
         $conversations = DB::table('conversations as c')
             ->join('messages as m', 'c.conversation_id', '=', 'm.conversation_id')
             ->select(
-            'c.conversation_id',
-            'c.sender_id',
-            'c.receiver_id',
-            'c.status',
-            'c.is_suspended',
-            'c.suspended_until',
-            'c.reason as suspension_reason',
-            'c.no_suspends',
-            'm.content as last_content',
-            'm.created_at as last_sent_at'
-        )
+                'c.conversation_id',
+                'c.sender_id',
+                'c.receiver_id',
+                'c.status',
+                'c.is_suspended',
+                'c.suspended_until',
+                'c.reason as suspension_reason',
+                'c.no_suspends',
+                'm.content as last_content',
+                'm.created_at as last_sent_at'
+            )
             ->where('c.status', 'suspended')
             ->whereRaw('m.message_id = (SELECT message_id FROM messages WHERE conversation_id = c.conversation_id ORDER BY created_at DESC LIMIT 1)')
             ->orderBy('m.created_at', 'desc')
@@ -937,8 +886,7 @@ class messageClass extends Model
             $senderUser = self::getUserDetails($conv->sender_id);
             $receiverUser = self::getUserDetails($conv->receiver_id);
 
-            if (!$senderUser || !$receiverUser)
-                continue;
+            if (!$senderUser || !$receiverUser) continue;
 
             // Check if conversation has any flagged messages
             $isFlagged = DB::table('messages')
