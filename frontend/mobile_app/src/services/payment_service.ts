@@ -260,4 +260,28 @@ export class payment_service {
       };
     }
   }
+
+  /**
+   * Get backend-computed payment summary for a milestone item
+   * (includes adjusted_cost, carry_forward_amount, over_amount from allocation logic)
+   */
+  static async get_item_payment_summary(itemId: number): Promise<ApiResponse> {
+    try {
+      const response = await api_request(`/api/milestone-items/${itemId}/payment-summary`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+      });
+
+      return response;
+    } catch (error) {
+      console.error('Error fetching item payment summary:', error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to fetch payment summary',
+        status: 500,
+      };
+    }
+  }
 }

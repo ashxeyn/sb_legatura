@@ -974,29 +974,66 @@ class cprocessController extends Controller
                 // Safe to delete existing milestone items
                 $this->contractorClass->deleteMilestoneItems($milestoneId);
             } else {
-                // Create new milestone
-                $planId = $this->contractorClass->createPaymentPlan([
-                    'project_id' => $step1['project_id'],
-                    'contractor_id' => $step1['contractor_id'],
-                    'payment_mode' => $step1['payment_mode'],
-                    'total_project_cost' => $step2['total_project_cost'],
-                    'downpayment_amount' => $step2['downpayment_amount']
-                ]);
+                // ── Guard: check if a milestone already exists for this project+contractor ──
+                $existingMilestone = DB::table('milestones')
+                    ->where('project_id', $step1['project_id'])
+                    ->where('contractor_id', $step1['contractor_id'])
+                    ->first();
 
-                $milestoneDescription = isset($step1['milestone_description']) && !empty($step1['milestone_description'])
-                    ? $step1['milestone_description']
-                    : $step1['milestone_name'];
+                if ($existingMilestone) {
+                    // Reuse the existing milestone instead of creating a duplicate
+                    $milestoneId = $existingMilestone->milestone_id;
+                    Log::info("submitMilestone: reusing existing milestone id={$milestoneId} for project {$step1['project_id']}");
 
-                $milestoneId = $this->contractorClass->createMilestone([
-                    'project_id' => $step1['project_id'],
-                    'contractor_id' => $step1['contractor_id'],
-                    'plan_id' => $planId,
-                    'milestone_name' => $step1['milestone_name'],
-                    'milestone_description' => $milestoneDescription,
-                    'start_date' => $startDateFormatted,
-                    'end_date' => $endDateFormatted,
-                    'setup_status' => 'submitted'
-                ]);
+                    // Update the existing payment plan
+                    $this->contractorClass->updatePaymentPlan($existingMilestone->plan_id, [
+                        'payment_mode' => $step1['payment_mode'],
+                        'total_project_cost' => $step2['total_project_cost'],
+                        'downpayment_amount' => $step2['downpayment_amount'],
+                        'updated_at' => now()
+                    ]);
+
+                    $milestoneDescription = isset($step1['milestone_description']) && !empty($step1['milestone_description'])
+                        ? $step1['milestone_description']
+                        : $step1['milestone_name'];
+
+                    // Update existing milestone
+                    $this->contractorClass->updateMilestone($milestoneId, [
+                        'milestone_name' => $step1['milestone_name'],
+                        'milestone_description' => $milestoneDescription,
+                        'start_date' => $startDateFormatted,
+                        'end_date' => $endDateFormatted,
+                        'setup_status' => 'submitted',
+                        'updated_at' => now()
+                    ]);
+
+                    // Delete old milestone items (will be recreated below)
+                    $this->contractorClass->deleteMilestoneItems($milestoneId);
+                } else {
+                    // Create new milestone (first time for this project)
+                    $planId = $this->contractorClass->createPaymentPlan([
+                        'project_id' => $step1['project_id'],
+                        'contractor_id' => $step1['contractor_id'],
+                        'payment_mode' => $step1['payment_mode'],
+                        'total_project_cost' => $step2['total_project_cost'],
+                        'downpayment_amount' => $step2['downpayment_amount']
+                    ]);
+
+                    $milestoneDescription = isset($step1['milestone_description']) && !empty($step1['milestone_description'])
+                        ? $step1['milestone_description']
+                        : $step1['milestone_name'];
+
+                    $milestoneId = $this->contractorClass->createMilestone([
+                        'project_id' => $step1['project_id'],
+                        'contractor_id' => $step1['contractor_id'],
+                        'plan_id' => $planId,
+                        'milestone_name' => $step1['milestone_name'],
+                        'milestone_description' => $milestoneDescription,
+                        'start_date' => $startDateFormatted,
+                        'end_date' => $endDateFormatted,
+                        'setup_status' => 'submitted'
+                    ]);
+                }
             }
 
             $remainingAmount = $step2['total_project_cost'];
@@ -1274,28 +1311,31 @@ class cprocessController extends Controller
                     $project->display_status = 'waiting_milestone_setup';
                 } else {
                     // Determine milestone status breakdown
-                    $totalMilestones = count($milestones);
-                    $notStarted = DB::table('milestones')
+                    // Use setup_status to check pending owner approval (not milestone_status,
+                    // which tracks work progress and stays 'not_started' until work begins).
+                    $pendingApproval = DB::table('milestones')
                         ->where('project_id', $project->project_id)
                         ->where('contractor_id', $contractor->contractor_id)
-                        ->where('milestone_status', 'not_started')
+                        ->where('setup_status', 'submitted')
+                        ->where(function ($q) {
+                            $q->whereNull('is_deleted')->orWhere('is_deleted', 0);
+                        })
                         ->count();
 
-                    // Count milestones that are neither approved/completed nor not_started (i.e. active/in-progress)
-                    $activeMilestones = DB::table('milestones')
+                    $approvedMilestones = DB::table('milestones')
                         ->where('project_id', $project->project_id)
                         ->where('contractor_id', $contractor->contractor_id)
-                        ->whereNotIn('milestone_status', ['approved', 'completed', 'not_started'])
+                        ->where('setup_status', 'approved')
+                        ->where(function ($q) {
+                            $q->whereNull('is_deleted')->orWhere('is_deleted', 0);
+                        })
                         ->count();
 
-                    if ($notStarted === $totalMilestones) {
-                        // All milestones are not_started (pending owner approval)
+                    if ($pendingApproval > 0 && $approvedMilestones === 0) {
+                        // All milestones are still awaiting owner approval
                         $project->display_status = 'waiting_for_approval';
-                    } elseif ($activeMilestones > 0) {
-                        // There are milestones in active/in-progress states
-                        $project->display_status = 'in_progress';
                     } else {
-                        // No active milestones — default to in_progress
+                        // At least one milestone has been approved → project is active
                         $project->display_status = 'in_progress';
                     }
                 }

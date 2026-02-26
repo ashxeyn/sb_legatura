@@ -44,7 +44,6 @@ class projectAdminController extends Controller
     {
         DB::table('projects')->where('project_id', $projectId)->update([
             'project_status' => 'open',
-            'updated_at' => now()
         ]);
 
         // Notify property owner
@@ -83,7 +82,6 @@ class projectAdminController extends Controller
         $reason = $request->input('reason', 'Rejected by admin');
         DB::table('projects')->where('project_id', $projectId)->update([
             'project_status' => 'rejected',
-            'updated_at' => now()
         ]);
 
         // Notify property owner
@@ -128,7 +126,6 @@ class projectAdminController extends Controller
         DB::table('projects')->where('project_id', $projectId)->update([
             'selected_contractor_id' => $contractorId,
             'project_status' => 'in_progress', // mark as started when assigned
-            'updated_at' => now()
         ]);
         DB::table('admin_audit_logs')->insert([
             'admin_user_id' => $user->admin_user_id ?? $user->id ?? null,

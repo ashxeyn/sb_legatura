@@ -1025,16 +1025,18 @@ class projectsController extends Controller
                             // Get milestone items
                             $milestone->items = DB::table('milestone_items')
                                 ->select(
-                                    'item_id',
-                                    'sequence_order',
-                                    'percentage_progress',
-                                    'milestone_item_title',
-                                    'milestone_item_description',
-                                    'milestone_item_cost',
-                                    'date_to_finish',
-                                    // include item_status so clients know completion state
-                                    DB::raw("COALESCE(item_status, '') as item_status")
-                                )
+                                'item_id',
+                                'sequence_order',
+                                'percentage_progress',
+                                'milestone_item_title',
+                                'milestone_item_description',
+                                'milestone_item_cost',
+                                'adjusted_cost',
+                                'carry_forward_amount',
+                                'date_to_finish',
+                                // include item_status so clients know completion state
+                                DB::raw("COALESCE(item_status, '') as item_status")
+                            )
                                 ->where('milestone_id', $milestone->milestone_id)
                                 ->orderBy('sequence_order', 'asc')
                                 ->get()

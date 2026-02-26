@@ -24,6 +24,8 @@ class SendDeadlineNotifications implements ShouldQueue
         $this->checkMilestoneItemDueReminders();
         $this->checkOverdueAlerts();
         $this->checkPaymentDueReminders();
+        $this->checkSettlementDueDateReminders();
+        $this->checkOverdueSettlementAlerts();
         $this->checkDisputeResponseDeadlines();
 
         Log::info('SendDeadlineNotifications job finished');
@@ -262,6 +264,163 @@ class SendDeadlineNotifications implements ShouldQueue
                 $item->item_id,
                 ['screen' => 'ProjectDetails', 'params' => ['projectId' => $item->project_id, 'tab' => 'payments']],
                 "payment_due_{$item->item_id}"
+            );
+        }
+    }
+
+    /**
+     * Remind both parties when a settlement_due_date is approaching (7 days, 3 days, 48h, 24h).
+     * Only fires for items that are NOT fully paid.
+     */
+    private function checkSettlementDueDateReminders(): void
+    {
+        $windows = [
+            ['hours' => 168, 'label' => '7 days',    'priority' => 'medium'],
+            ['hours' => 72,  'label' => '3 days',    'priority' => 'high'],
+            ['hours' => 48,  'label' => '48 hours',  'priority' => 'high'],
+            ['hours' => 24,  'label' => '24 hours',  'priority' => 'urgent'],
+        ];
+
+        foreach ($windows as $window) {
+            $from = now()->addHours($window['hours'] - 1);
+            $to   = now()->addHours($window['hours']);
+
+            // Items with settlement_due_date falling into the window
+            $items = DB::table('milestone_items as mi')
+                ->join('milestones as m', 'mi.milestone_id', '=', 'm.milestone_id')
+                ->join('projects as p', 'm.project_id', '=', 'p.project_id')
+                ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
+                ->join('property_owners as po', 'pr.owner_id', '=', 'po.owner_id')
+                ->leftJoin('contractors as c', 'p.selected_contractor_id', '=', 'c.contractor_id')
+                ->leftJoin('contractor_users as cu', function ($join) {
+                    $join->on('c.contractor_id', '=', 'cu.contractor_id')
+                        ->where('cu.is_active', 1)
+                        ->where('cu.is_deleted', 0);
+                })
+                ->where('m.setup_status', 'approved')
+                ->whereNotNull('mi.settlement_due_date')
+                ->whereNotIn('mi.item_status', ['cancelled', 'deleted'])
+                ->whereRaw('COALESCE(mi.extension_date, mi.settlement_due_date) BETWEEN ? AND ?', [
+                    $from->format('Y-m-d'), $to->format('Y-m-d')
+                ])
+                ->select(
+                    'mi.item_id', 'mi.milestone_item_title', 'mi.milestone_item_cost',
+                    'mi.settlement_due_date', 'mi.extension_date',
+                    'p.project_id', 'p.project_title',
+                    'po.user_id as owner_user_id',
+                    'cu.user_id as contractor_user_id'
+                )
+                ->get();
+
+            foreach ($items as $item) {
+                // Check if fully paid already
+                $totalPaid = (float) DB::table('milestone_payments')
+                    ->where('item_id', $item->item_id)
+                    ->where('payment_status', 'approved')
+                    ->sum('amount');
+                $expectedAmount = (float) ($item->milestone_item_cost ?? 0);
+
+                if ($expectedAmount > 0 && $totalPaid >= $expectedAmount) {
+                    continue; // already fully paid, skip
+                }
+
+                $effectiveDate = $item->extension_date ?? $item->settlement_due_date;
+                $dueFormatted = date('M d, Y', strtotime($effectiveDate));
+                $priority = $window['priority'] ?? 'high';
+
+                // Notify owner
+                if ($item->owner_user_id) {
+                    notificationService::create(
+                        (int) $item->owner_user_id,
+                        'payment_due',
+                        'Payment Due Soon',
+                        "Payment for \"{$item->milestone_item_title}\" on \"{$item->project_title}\" is due in {$window['label']} ({$dueFormatted}).",
+                        $priority,
+                        'milestone_item',
+                        $item->item_id,
+                        ['screen' => 'ProjectDetails', 'params' => ['projectId' => $item->project_id, 'tab' => 'payments']],
+                        "settlement_due_{$window['hours']}h_{$item->item_id}"
+                    );
+                }
+
+                // Notify contractor
+                if ($item->contractor_user_id) {
+                    notificationService::create(
+                        (int) $item->contractor_user_id,
+                        'payment_due',
+                        'Payment Due Soon',
+                        "Payment for \"{$item->milestone_item_title}\" on \"{$item->project_title}\" is due in {$window['label']} ({$dueFormatted}).",
+                        $priority,
+                        'milestone_item',
+                        $item->item_id,
+                        ['screen' => 'ProjectDetails', 'params' => ['projectId' => $item->project_id, 'tab' => 'payments']],
+                        "settlement_due_{$window['hours']}h_contractor_{$item->item_id}"
+                    );
+                }
+            }
+        }
+    }
+
+    /**
+     * Alert both parties when a settlement_due_date (or extension_date) has passed
+     * and the milestone item is NOT fully paid.
+     * Fires once daily per overdue item (dedup key prevents spam).
+     */
+    private function checkOverdueSettlementAlerts(): void
+    {
+        $today = now()->format('Y-m-d');
+
+        $items = DB::table('milestone_items as mi')
+            ->join('milestones as m', 'mi.milestone_id', '=', 'm.milestone_id')
+            ->join('projects as p', 'm.project_id', '=', 'p.project_id')
+            ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
+            ->join('property_owners as po', 'pr.owner_id', '=', 'po.owner_id')
+            ->leftJoin('contractors as c', 'p.selected_contractor_id', '=', 'c.contractor_id')
+            ->leftJoin('contractor_users as cu', function ($join) {
+                $join->on('c.contractor_id', '=', 'cu.contractor_id')
+                    ->where('cu.is_active', 1)
+                    ->where('cu.is_deleted', 0);
+            })
+            ->where('m.setup_status', 'approved')
+            ->whereNotNull('mi.settlement_due_date')
+            ->whereNotIn('mi.item_status', ['cancelled', 'deleted'])
+            ->whereRaw('COALESCE(mi.extension_date, mi.settlement_due_date) < ?', [$today])
+            ->select(
+                'mi.item_id', 'mi.milestone_item_title', 'mi.milestone_item_cost',
+                'mi.settlement_due_date', 'mi.extension_date',
+                'p.project_id', 'p.project_title',
+                'po.user_id as owner_user_id',
+                'cu.user_id as contractor_user_id'
+            )
+            ->get();
+
+        foreach ($items as $item) {
+            $totalPaid = (float) DB::table('milestone_payments')
+                ->where('item_id', $item->item_id)
+                ->where('payment_status', 'approved')
+                ->sum('amount');
+            $expectedAmount = (float) ($item->milestone_item_cost ?? 0);
+
+            if ($expectedAmount > 0 && $totalPaid >= $expectedAmount) {
+                continue; // fully paid, not overdue
+            }
+
+            $remaining = $expectedAmount - $totalPaid;
+            $effectiveDate = $item->extension_date ?? $item->settlement_due_date;
+            $dueFormatted = date('M d, Y', strtotime($effectiveDate));
+            $recipients = array_filter(array_unique([$item->owner_user_id, $item->contractor_user_id]));
+
+            // Use date in dedup key so it fires once per day per item
+            notificationService::createForUsers(
+                $recipients,
+                'payment_overdue',
+                'Payment Overdue',
+                "Payment for \"{$item->milestone_item_title}\" on \"{$item->project_title}\" was due on {$dueFormatted}. Remaining balance: ₱" . number_format($remaining, 2) . ".",
+                'critical',
+                'milestone_item',
+                $item->item_id,
+                ['screen' => 'ProjectDetails', 'params' => ['projectId' => $item->project_id, 'tab' => 'payments']],
+                "settlement_overdue_{$today}_{$item->item_id}"
             );
         }
     }

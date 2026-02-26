@@ -122,25 +122,27 @@ class paymentUploadController extends Controller
 			}
 
 			// Get contractor user id from project
-		// Get primary contractor user (owner role preferred, or first active user)
+		// Get primary contractor user (owner role preferred, or first active user, then any user)
 			$project = DB::table('projects as p')
 				->leftJoin('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
 				->leftJoin('contractors as c', 'p.selected_contractor_id', '=', 'c.contractor_id')
 			->leftJoin('contractor_users as cu', function($join) {
 				$join->on('c.contractor_id', '=', 'cu.contractor_id')
-					->where('cu.is_active', '=', 1)
 					->where('cu.is_deleted', '=', 0);
 			})
 				->where('p.project_id', $validated['project_id'])
 			->select(
-				'p.project_id', 
+				'p.project_id',
+				'p.project_title',
 				'pr.owner_id', 
 				DB::raw('COALESCE(
+					MAX(CASE WHEN cu.is_active = 1 AND cu.role = "owner" THEN cu.contractor_user_id END),
+					MAX(CASE WHEN cu.is_active = 1 THEN cu.contractor_user_id END),
 					MAX(CASE WHEN cu.role = "owner" THEN cu.contractor_user_id END),
 					MIN(cu.contractor_user_id)
 				) as contractor_user_id')
 			)
-			->groupBy('p.project_id', 'pr.owner_id')
+			->groupBy('p.project_id', 'p.project_title', 'pr.owner_id')
 				->first();
 
 			// Get owner_id from property_owners table
@@ -440,8 +442,13 @@ class paymentUploadController extends Controller
 				'mp.reason',
 				'mp.updated_at',
 				'mi.milestone_item_title',
+				'mi.milestone_item_cost',
+				'mi.milestone_id',
 				'mi.sequence_order',
 				'mi.percentage_progress',
+				'mi.settlement_due_date',
+				'mi.extension_date',
+				'm.milestone_name',
 				DB::raw('CONCAT(po.first_name, " ", po.last_name) as owner_name')
 			)
 			->orderBy('mp.transaction_date', 'desc')
@@ -541,26 +548,27 @@ class paymentUploadController extends Controller
 				->orderBy('mp.payment_id', 'desc')
 				->get();
 
-			// Calculate payment summary for partial payments support
-			$milestoneItem = DB::table('milestone_items')->where('item_id', $itemId)->first();
-			$expectedAmount = $milestoneItem ? (float) ($milestoneItem->milestone_item_cost ?? 0) : 0;
-
-			$totalPaid = $payments->whereIn('payment_status', ['approved'])->sum('amount');
-			$totalSubmitted = $payments->whereIn('payment_status', ['submitted'])->sum('amount');
-			$rawRemaining = $expectedAmount - $totalPaid - $totalSubmitted;
-			$remainingBalance = max(0, $rawRemaining);
-			$overAmount = $rawRemaining < 0 ? abs($rawRemaining) : 0;
+			// Calculate payment summary using centralized service
+			$milestoneService = new \App\Services\milestoneService();
+			$summary = $milestoneService->getItemPaymentSummary((int) $itemId);
 
 			return response()->json([
 				'success' => true,
 				'data' => [
 					'payments' => $payments,
 					'total_count' => $payments->count(),
-					'expected_amount' => $expectedAmount,
-					'total_paid' => (float) $totalPaid,
-					'total_submitted' => (float) $totalSubmitted,
-					'remaining_balance' => $remainingBalance,
-					'over_amount' => (float) $overAmount,
+					// Original cost before any carry-forward adjustment
+					'expected_amount' => $summary['effective_required'] ?? 0,
+					'original_cost' => $summary['original_cost'] ?? 0,
+					'adjusted_cost' => $summary['adjusted_cost'] ?? null,
+					'carry_forward_amount' => $summary['carry_forward_amount'] ?? 0,
+					'total_paid' => $summary['total_paid'] ?? 0,
+					'total_submitted' => $summary['total_submitted'] ?? 0,
+					'remaining_balance' => $summary['remaining_balance'] ?? 0,
+					'over_amount' => $summary['over_amount'] ?? 0,
+					'derived_payment_status' => $summary['derived_status'] ?? 'Unpaid',
+					'settlement_due_date' => $summary['settlement_due_date'] ?? null,
+					'extension_date' => $summary['extension_date'] ?? null,
 				]
 			]);
 		} catch (\Exception $e) {
@@ -670,5 +678,47 @@ class paymentUploadController extends Controller
 			], 500);
 		}
 	}
-}
 
+	// ─────────────────────────────────────────────────────────────────────────
+	// STATIC HELPER — Derive dynamic payment status per milestone item
+	// ─────────────────────────────────────────────────────────────────────────
+
+	/**
+	 * Compute a human-readable payment status for a milestone item.
+	 *
+	 * Returned values: 'Unpaid' | 'Partially Paid' | 'Fully Paid' | 'Overdue'
+	 *
+	 * Overdue takes precedence when the effective due date (extension_date ?? settlement_due_date)
+	 * has passed and the item is not yet fully paid.
+	 *
+	 * @param  object|null $milestoneItem  Row from milestone_items (must include settlement_due_date, extension_date)
+	 * @param  float       $totalPaid      Sum of approved payment amounts
+	 * @param  float       $expectedAmount milestone_item_cost
+	 * @return string
+	 */
+	public static function derivePaymentStatus(?object $milestoneItem, float $totalPaid, float $expectedAmount): string
+	{
+		if (!$milestoneItem || $expectedAmount <= 0) {
+			return 'Unpaid';
+		}
+
+		$fullyPaid = $totalPaid >= $expectedAmount;
+
+		if ($fullyPaid) {
+			return 'Fully Paid';
+		}
+
+		// Determine effective due date: extension_date overrides settlement_due_date
+		$effectiveDueDate = $milestoneItem->extension_date ?? $milestoneItem->settlement_due_date ?? null;
+
+		if ($effectiveDueDate && now()->startOfDay()->gt(\Carbon\Carbon::parse($effectiveDueDate)->endOfDay())) {
+			return 'Overdue';
+		}
+
+		if ($totalPaid > 0) {
+			return 'Partially Paid';
+		}
+
+		return 'Unpaid';
+	}
+}
