@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Feb 25, 2026 at 10:47 AM
+-- Generation Time: Feb 27, 2026 at 01:33 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -900,7 +900,15 @@ INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES
 (4, '2026_02_19_154043_add_status_columns_to_contractors_table', 2),
 (5, '2026_02_22_150746_add_settlement_due_date_to_milestone_items_table', 2),
 (6, '2026_02_23_120000_add_payment_allocation_columns', 3),
-(7, '2026_02_23_144926_make_payment_id_nullable_in_payment_adjustment_logs', 4);
+(7, '2026_02_23_144926_make_payment_id_nullable_in_payment_adjustment_logs', 4),
+(8, '2026_02_25_000001_create_project_extensions_table', 5),
+(9, '2026_02_25_100000_add_budget_columns_to_project_extensions', 6),
+(10, '2026_02_25_200000_add_revision_status_to_project_extensions', 7),
+(11, '2026_02_25_300000_drop_allocation_method_from_project_extensions', 8),
+(12, '2026_02_25_400000_rename_project_extensions_to_project_updates', 9),
+(13, '2026_02_26_000001_create_milestone_date_histories_and_extension_tracking', 10),
+(14, '2026_02_27_051146_add_start_date_to_milestone_items_table', 11),
+(15, '2026_02_27_120000_create_milestone_item_updates_and_make_proposed_end_date_nullable', 11);
 
 -- --------------------------------------------------------
 
@@ -1028,7 +1036,37 @@ INSERT INTO `milestones` (`milestone_id`, `project_id`, `contractor_id`, `plan_i
 (1559, 1049, 1809, 923, 'Construction Project', 'Construction Project', 'not_started', NULL, '2025-12-19 00:00:00', '2026-12-19 23:59:59', NULL, NULL, 'approved', NULL, '2025-12-18 23:59:41', '2025-12-19 00:00:35'),
 (1560, 1054, 1809, 924, 'Project Construction for Residential Area', 'Project Construction for Residential Area', 'in_progress', NULL, '2026-01-25 00:00:00', '2028-01-25 23:59:59', NULL, NULL, 'approved', NULL, '2026-01-25 00:20:09', '2026-02-20 14:59:33'),
 (1563, 1047, 1810, 927, 'Proyekto ng bayan', 'Proyekto ng bayan', 'not_started', NULL, '2026-02-22 00:00:00', '2026-02-28 23:59:59', NULL, NULL, 'approved', NULL, '2026-02-22 07:51:59', '2026-02-22 08:08:23'),
-(1564, 1056, 1810, 928, 'Project Batumbakal', 'Project Batumbakal', 'not_started', NULL, '2026-02-23 00:00:00', '2026-02-28 23:59:59', NULL, NULL, 'approved', NULL, '2026-02-23 00:12:07', '2026-02-23 01:04:08');
+(1564, 1056, 1810, 928, 'Project Batumbakal', 'Project Batumbakal', 'not_started', NULL, '2026-02-23 00:00:00', '2026-03-07 23:59:59', NULL, NULL, 'approved', NULL, '2026-02-23 00:12:07', '2026-02-25 07:15:26');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `milestone_date_histories`
+--
+
+CREATE TABLE `milestone_date_histories` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `item_id` int(10) UNSIGNED NOT NULL COMMENT 'FK to milestone_items.item_id',
+  `previous_date` datetime NOT NULL COMMENT 'The date_to_finish before extension',
+  `new_date` datetime NOT NULL COMMENT 'The date_to_finish after extension',
+  `extension_id` int(10) UNSIGNED DEFAULT NULL COMMENT 'FK to project_updates.extension_id',
+  `changed_by` int(10) UNSIGNED NOT NULL COMMENT 'user_id who triggered the change',
+  `changed_at` datetime NOT NULL COMMENT 'When the change was applied',
+  `change_reason` varchar(500) DEFAULT NULL COMMENT 'e.g. "Project update #2 approved"',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `milestone_date_histories`
+--
+
+INSERT INTO `milestone_date_histories` (`id`, `item_id`, `previous_date`, `new_date`, `extension_id`, `changed_by`, `changed_at`, `change_reason`, `created_at`, `updated_at`) VALUES
+(1, 2790, '2026-02-18 23:59:59', '2026-02-25 23:59:59', 2, 379, '2026-02-25 15:15:26', 'Project update #2 approved (retroactive)', '2026-02-26 03:26:12', '2026-02-26 03:26:12'),
+(2, 2791, '2026-02-28 23:59:59', '2026-03-07 23:59:59', 2, 379, '2026-02-25 15:15:26', 'Project update #2 approved (retroactive)', '2026-02-26 03:26:12', '2026-02-26 03:26:12'),
+(3, 2792, '2026-02-28 23:59:59', '2026-03-07 23:59:59', 2, 379, '2026-02-25 15:15:26', 'Project update #2 approved (retroactive)', '2026-02-26 03:26:12', '2026-02-26 03:26:12'),
+(4, 2790, '2026-02-25 00:00:00', '2026-02-25 00:00:00', 4, 379, '2026-02-27 12:12:04', 'project_update_approved', '2026-02-27 04:12:04', '2026-02-27 04:12:04'),
+(5, 2791, '2026-03-02 00:00:00', '2026-03-02 00:00:00', 4, 379, '2026-02-27 12:12:04', 'project_update_approved', '2026-02-27 04:12:04', '2026-02-27 04:12:04');
 
 -- --------------------------------------------------------
 
@@ -1047,8 +1085,12 @@ CREATE TABLE `milestone_items` (
   `adjusted_cost` decimal(12,2) DEFAULT NULL COMMENT 'Required amount after underpayment carry-forward. NULL = no adjustment (use milestone_item_cost).',
   `carry_forward_amount` decimal(12,2) NOT NULL DEFAULT 0.00 COMMENT 'Shortfall amount carried forward FROM the previous item.',
   `item_status` enum('not_started','in_progress','delayed','completed','cancelled','halt','deleted') NOT NULL DEFAULT 'not_started',
+  `start_date` datetime DEFAULT NULL,
   `previous_status` varchar(50) DEFAULT NULL,
   `date_to_finish` datetime NOT NULL,
+  `original_date_to_finish` datetime DEFAULT NULL COMMENT 'Preserved first deadline before any extension',
+  `was_extended` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'Quick flag: true if date_to_finish was ever shifted by an extension',
+  `extension_count` smallint(5) UNSIGNED NOT NULL DEFAULT 0 COMMENT 'Number of times this item was extended',
   `settlement_due_date` date DEFAULT NULL COMMENT 'Payment settlement deadline set by contractor',
   `extension_date` date DEFAULT NULL COMMENT 'Optional extended deadline granted by contractor',
   `updated_at` datetime DEFAULT NULL
@@ -1058,206 +1100,244 @@ CREATE TABLE `milestone_items` (
 -- Dumping data for table `milestone_items`
 --
 
-INSERT INTO `milestone_items` (`item_id`, `milestone_id`, `sequence_order`, `percentage_progress`, `milestone_item_title`, `milestone_item_description`, `milestone_item_cost`, `adjusted_cost`, `carry_forward_amount`, `item_status`, `previous_status`, `date_to_finish`, `settlement_due_date`, `extension_date`, `updated_at`) VALUES
-(2547, 1466, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2548, 1467, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2549, 1468, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2550, 1469, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2551, 1470, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2552, 1471, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2553, 1472, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2554, 1473, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2555, 1474, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2556, 1475, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2557, 1476, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2558, 1477, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2559, 1478, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2560, 1479, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2561, 1480, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2562, 1481, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2563, 1482, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2564, 1483, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2565, 1484, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2566, 1485, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2567, 1486, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2568, 1487, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2569, 1488, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2570, 1489, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2571, 1490, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2572, 1491, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2573, 1492, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2574, 1493, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2575, 1494, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2576, 1495, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2577, 1496, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2578, 1497, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2579, 1498, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2580, 1499, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2581, 1500, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2582, 1501, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2583, 1502, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2584, 1503, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2585, 1504, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2586, 1505, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2587, 1506, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2588, 1507, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2589, 1508, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2590, 1509, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2591, 1510, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2592, 1511, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2593, 1512, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2594, 1513, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2595, 1514, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2596, 1515, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2597, 1516, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2598, 1517, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2599, 1518, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2600, 1519, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2601, 1520, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2602, 1521, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2603, 1522, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2604, 1523, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2605, 1524, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2606, 1525, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2607, 1526, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2608, 1527, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2609, 1528, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2610, 1529, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2611, 1530, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2612, 1531, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2613, 1532, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2614, 1533, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2615, 1534, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2616, 1535, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2617, 1536, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2618, 1537, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2619, 1538, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2620, 1539, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2621, 1540, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2622, 1541, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2623, 1542, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2624, 1543, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2625, 1544, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2626, 1545, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2627, 1546, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2628, 1547, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2629, 1548, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2630, 1549, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2631, 1550, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2632, 1551, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2633, 1552, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2634, 1553, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2635, 1554, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2636, 1555, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, NULL, NULL),
-(2674, 1466, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2675, 1468, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2676, 1469, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2677, 1471, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2678, 1472, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2679, 1474, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2680, 1475, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2681, 1477, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2682, 1478, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2683, 1480, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2684, 1481, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2685, 1483, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2686, 1484, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2687, 1486, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2688, 1487, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2689, 1489, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2690, 1490, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2691, 1492, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2692, 1493, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2693, 1495, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2694, 1496, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2695, 1498, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2696, 1499, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2697, 1501, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2698, 1502, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2699, 1504, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2700, 1505, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2701, 1507, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2702, 1508, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2703, 1510, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2704, 1511, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2705, 1513, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2706, 1514, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2707, 1516, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2708, 1517, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2709, 1519, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2710, 1520, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2711, 1522, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2712, 1523, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2713, 1525, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2714, 1526, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2715, 1528, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2716, 1529, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2717, 1531, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2718, 1532, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2719, 1534, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2720, 1535, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2721, 1537, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2722, 1538, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2723, 1540, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2724, 1541, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2725, 1543, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2726, 1544, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2727, 1546, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2728, 1547, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2729, 1549, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2730, 1550, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2731, 1552, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2732, 1553, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2733, 1555, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, NULL, NULL),
-(2737, 1466, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, NULL, NULL),
-(2738, 1469, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, NULL, NULL),
-(2739, 1472, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, NULL, NULL),
-(2740, 1475, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, NULL, NULL),
-(2741, 1478, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, NULL, NULL),
-(2742, 1481, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, NULL, NULL),
-(2743, 1484, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, NULL, NULL),
-(2744, 1487, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, NULL, NULL),
-(2745, 1490, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, NULL, NULL),
-(2746, 1493, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, NULL, NULL),
-(2747, 1496, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, NULL, NULL),
-(2748, 1499, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, NULL, NULL),
-(2749, 1502, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, NULL, NULL),
-(2750, 1505, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, NULL, NULL),
-(2751, 1508, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, NULL, NULL),
-(2752, 1511, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, NULL, NULL),
-(2753, 1514, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, NULL, NULL),
-(2754, 1517, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, NULL, NULL),
-(2755, 1520, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, NULL, NULL),
-(2756, 1523, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, NULL, NULL),
-(2757, 1526, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, NULL, NULL),
-(2758, 1529, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, NULL, NULL),
-(2759, 1532, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, NULL, NULL),
-(2760, 1535, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, NULL, NULL),
-(2761, 1538, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, NULL, NULL),
-(2762, 1541, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, NULL, NULL),
-(2763, 1544, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, NULL, NULL),
-(2764, 1547, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, NULL, NULL),
-(2765, 1550, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, NULL, NULL),
-(2766, 1553, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, NULL, NULL),
-(2767, 1556, 1, 10.00, 'Phase 1', 'Phase 1 Description', 4750000.00, NULL, 0.00, 'completed', NULL, '2026-01-31 23:59:59', NULL, NULL, NULL),
-(2768, 1556, 2, 10.00, 'Phase 2', 'Phase 2 Description', 4750000.00, NULL, 0.00, 'completed', NULL, '2026-02-28 23:59:59', NULL, NULL, NULL),
-(2769, 1556, 3, 30.00, 'Phase 3', 'Phase 3 Description', 14250000.00, NULL, 0.00, 'completed', NULL, '2026-03-28 23:59:59', NULL, NULL, NULL),
-(2770, 1556, 4, 30.00, 'Phase 4', 'Phase 4 Description', 14250000.00, NULL, 0.00, 'completed', NULL, '2026-04-30 23:59:59', NULL, NULL, NULL),
-(2771, 1556, 5, 20.00, 'Phase 5', 'Phase 5 Description', 9500000.00, NULL, 0.00, 'completed', NULL, '2026-05-29 23:59:59', NULL, NULL, NULL),
-(2772, 1557, 1, 80.00, 'item tite', 'jakananaaad', 34000000.00, NULL, 0.00, 'completed', 'completed', '2025-12-31 00:00:00', NULL, NULL, NULL),
-(2773, 1557, 2, 20.00, 'haianaja', 'vskakaban', 8500000.00, NULL, 0.00, 'not_started', 'in_progress', '2027-12-14 23:59:59', NULL, NULL, NULL),
-(2774, 1558, 1, 50.00, '1st', 'Hahsshha', 100000000.00, NULL, 0.00, 'completed', NULL, '2026-05-21 23:59:59', NULL, NULL, NULL),
-(2775, 1558, 2, 50.00, '2nd', 'Bzbabsbs', 100000000.00, NULL, 0.00, 'completed', NULL, '2026-12-19 23:59:59', NULL, NULL, NULL),
-(2776, 1559, 1, 50.00, 'PHASE 1', 'PHASE 1 DESC', 27495000.00, NULL, 0.00, 'not_started', NULL, '2026-03-31 23:59:59', NULL, NULL, NULL),
-(2777, 1559, 2, 50.00, 'PHASE 2', 'PHASE 2 DESC', 27495000.00, NULL, 0.00, 'not_started', NULL, '2026-02-26 23:59:59', NULL, NULL, NULL),
-(2778, 1560, 1, 30.00, 'Foundation and Framework', 'it is what it is', 6000000.00, NULL, 0.00, 'completed', NULL, '2026-04-17 23:59:59', NULL, NULL, NULL),
-(2779, 1560, 2, 50.00, 'Madami gagawin', 'Basta madami gagawin', 12000000.00, NULL, 0.00, 'completed', NULL, '2027-01-30 23:59:59', NULL, NULL, NULL),
-(2780, 1560, 3, 10.00, 'Tapos na to by this time', 'yes', 2000000.00, NULL, 0.00, 'completed', NULL, '2027-12-31 23:59:59', NULL, NULL, NULL),
-(2781, 1560, 4, 10.00, 'eeeeeeeeee', 'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeee', 1.00, NULL, 0.00, 'not_started', NULL, '2028-01-18 22:53:08', NULL, NULL, NULL),
-(2786, 1563, 1, 50.00, 'giobgy', 'ginvf', 3000.00, NULL, 0.00, 'not_started', NULL, '2026-02-25 23:59:59', NULL, NULL, NULL),
-(2787, 1563, 2, 50.00, 'dyondsuig', '', 3000.00, NULL, 0.00, 'not_started', NULL, '2026-02-28 23:59:59', NULL, NULL, NULL),
-(2790, 1564, 1, 50.00, 'Foundations', 'Foundation ngani', 20000000.00, NULL, 0.00, 'completed', NULL, '2026-02-25 23:59:59', '2026-02-26', NULL, '2026-02-25 07:54:58'),
-(2791, 1564, 2, 50.00, 'Doners', 'downers', 20000000.00, 21000000.00, 1000000.00, 'not_started', NULL, '2026-02-28 23:59:59', NULL, NULL, '2026-02-23 15:21:06');
+INSERT INTO `milestone_items` (`item_id`, `milestone_id`, `sequence_order`, `percentage_progress`, `milestone_item_title`, `milestone_item_description`, `milestone_item_cost`, `adjusted_cost`, `carry_forward_amount`, `item_status`, `start_date`, `previous_status`, `date_to_finish`, `original_date_to_finish`, `was_extended`, `extension_count`, `settlement_due_date`, `extension_date`, `updated_at`) VALUES
+(2547, 1466, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2548, 1467, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2549, 1468, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2550, 1469, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2551, 1470, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2552, 1471, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2553, 1472, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2554, 1473, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2555, 1474, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2556, 1475, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2557, 1476, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2558, 1477, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2559, 1478, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2560, 1479, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2561, 1480, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2562, 1481, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2563, 1482, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2564, 1483, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2565, 1484, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2566, 1485, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2567, 1486, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2568, 1487, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2569, 1488, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2570, 1489, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2571, 1490, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2572, 1491, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2573, 1492, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2574, 1493, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2575, 1494, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2576, 1495, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2577, 1496, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2578, 1497, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2579, 1498, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2580, 1499, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2581, 1500, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2582, 1501, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2583, 1502, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2584, 1503, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2585, 1504, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2586, 1505, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2587, 1506, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2588, 1507, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2589, 1508, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2590, 1509, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2591, 1510, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2592, 1511, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2593, 1512, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2594, 1513, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2595, 1514, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2596, 1515, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2597, 1516, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2598, 1517, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2599, 1518, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2600, 1519, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2601, 1520, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2602, 1521, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2603, 1522, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2604, 1523, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2605, 1524, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2606, 1525, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2607, 1526, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2608, 1527, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2609, 1528, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2610, 1529, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2611, 1530, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2612, 1531, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2613, 1532, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2614, 1533, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2615, 1534, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2616, 1535, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2617, 1536, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2618, 1537, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2619, 1538, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2620, 1539, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2621, 1540, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2622, 1541, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2623, 1542, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2624, 1543, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2625, 1544, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2626, 1545, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2627, 1546, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2628, 1547, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2629, 1548, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2630, 1549, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2631, 1550, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2632, 1551, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2633, 1552, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2634, 1553, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2635, 1554, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2636, 1555, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2674, 1466, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2675, 1468, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2676, 1469, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2677, 1471, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2678, 1472, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2679, 1474, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2680, 1475, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2681, 1477, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2682, 1478, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2683, 1480, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2684, 1481, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2685, 1483, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2686, 1484, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2687, 1486, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2688, 1487, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2689, 1489, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2690, 1490, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2691, 1492, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2692, 1493, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2693, 1495, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2694, 1496, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2695, 1498, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2696, 1499, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2697, 1501, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2698, 1502, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2699, 1504, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2700, 1505, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2701, 1507, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2702, 1508, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2703, 1510, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2704, 1511, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2705, 1513, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2706, 1514, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2707, 1516, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2708, 1517, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2709, 1519, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2710, 1520, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2711, 1522, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2712, 1523, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2713, 1525, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2714, 1526, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2715, 1528, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2716, 1529, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2717, 1531, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2718, 1532, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2719, 1534, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2720, 1535, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2721, 1537, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2722, 1538, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2723, 1540, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2724, 1541, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2725, 1543, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2726, 1544, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2727, 1546, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2728, 1547, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2729, 1549, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2730, 1550, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2731, 1552, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2732, 1553, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2733, 1555, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2737, 1466, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2738, 1469, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2739, 1472, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2740, 1475, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2741, 1478, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2742, 1481, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2743, 1484, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2744, 1487, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2745, 1490, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2746, 1493, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2747, 1496, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2748, 1499, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2749, 1502, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2750, 1505, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2751, 1508, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2752, 1511, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2753, 1514, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2754, 1517, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2755, 1520, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2756, 1523, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2757, 1526, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2758, 1529, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2759, 1532, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2760, 1535, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2761, 1538, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2762, 1541, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2763, 1544, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2764, 1547, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2765, 1550, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2766, 1553, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2767, 1556, 1, 10.00, 'Phase 1', 'Phase 1 Description', 4750000.00, NULL, 0.00, 'completed', NULL, NULL, '2026-01-31 23:59:59', NULL, 0, 0, NULL, NULL, NULL),
+(2768, 1556, 2, 10.00, 'Phase 2', 'Phase 2 Description', 4750000.00, NULL, 0.00, 'completed', NULL, NULL, '2026-02-28 23:59:59', NULL, 0, 0, NULL, NULL, NULL),
+(2769, 1556, 3, 30.00, 'Phase 3', 'Phase 3 Description', 14250000.00, NULL, 0.00, 'completed', NULL, NULL, '2026-03-28 23:59:59', NULL, 0, 0, NULL, NULL, NULL),
+(2770, 1556, 4, 30.00, 'Phase 4', 'Phase 4 Description', 14250000.00, NULL, 0.00, 'completed', NULL, NULL, '2026-04-30 23:59:59', NULL, 0, 0, NULL, NULL, NULL),
+(2771, 1556, 5, 20.00, 'Phase 5', 'Phase 5 Description', 9500000.00, NULL, 0.00, 'completed', NULL, NULL, '2026-05-29 23:59:59', NULL, 0, 0, NULL, NULL, NULL),
+(2772, 1557, 1, 80.00, 'item tite', 'jakananaaad', 34000000.00, NULL, 0.00, 'completed', NULL, 'completed', '2025-12-31 00:00:00', NULL, 0, 0, NULL, NULL, NULL),
+(2773, 1557, 2, 20.00, 'haianaja', 'vskakaban', 8500000.00, NULL, 0.00, 'not_started', NULL, 'in_progress', '2027-12-14 23:59:59', NULL, 0, 0, NULL, NULL, NULL),
+(2774, 1558, 1, 50.00, '1st', 'Hahsshha', 100000000.00, NULL, 0.00, 'completed', NULL, NULL, '2026-05-21 23:59:59', NULL, 0, 0, NULL, NULL, NULL),
+(2775, 1558, 2, 50.00, '2nd', 'Bzbabsbs', 100000000.00, NULL, 0.00, 'completed', NULL, NULL, '2026-12-19 23:59:59', NULL, 0, 0, NULL, NULL, NULL),
+(2776, 1559, 1, 50.00, 'PHASE 1', 'PHASE 1 DESC', 27495000.00, NULL, 0.00, 'not_started', NULL, NULL, '2026-03-31 23:59:59', NULL, 0, 0, NULL, NULL, NULL),
+(2777, 1559, 2, 50.00, 'PHASE 2', 'PHASE 2 DESC', 27495000.00, NULL, 0.00, 'not_started', NULL, NULL, '2026-02-26 23:59:59', NULL, 0, 0, NULL, NULL, NULL),
+(2778, 1560, 1, 30.00, 'Foundation and Framework', 'it is what it is', 6000000.00, NULL, 0.00, 'completed', NULL, NULL, '2026-04-17 23:59:59', NULL, 0, 0, NULL, NULL, NULL),
+(2779, 1560, 2, 50.00, 'Madami gagawin', 'Basta madami gagawin', 12000000.00, NULL, 0.00, 'completed', NULL, NULL, '2027-01-30 23:59:59', NULL, 0, 0, NULL, NULL, NULL),
+(2780, 1560, 3, 10.00, 'Tapos na to by this time', 'yes', 2000000.00, NULL, 0.00, 'completed', NULL, NULL, '2027-12-31 23:59:59', NULL, 0, 0, NULL, NULL, NULL),
+(2781, 1560, 4, 10.00, 'eeeeeeeeee', 'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeee', 1.00, NULL, 0.00, 'not_started', NULL, NULL, '2028-01-18 22:53:08', NULL, 0, 0, NULL, NULL, NULL),
+(2786, 1563, 1, 50.00, 'giobgy', 'ginvf', 3000.00, NULL, 0.00, 'not_started', NULL, NULL, '2026-02-25 23:59:59', NULL, 0, 0, NULL, NULL, NULL),
+(2787, 1563, 2, 50.00, 'dyondsuig', '', 3000.00, NULL, 0.00, 'not_started', NULL, NULL, '2026-02-28 23:59:59', NULL, 0, 0, NULL, NULL, NULL),
+(2790, 1564, 1, 33.33, 'Foundations', 'Foundation ngani', 20000000.00, NULL, 0.00, 'in_progress', '2026-02-23 00:00:00', NULL, '2026-02-25 00:00:00', '2026-02-18 23:59:59', 1, 1, '2026-02-25', NULL, '2026-02-27 12:12:04'),
+(2791, 1564, 2, 35.00, 'Doners', 'downers', 20000000.00, 21000000.00, 1000000.00, 'in_progress', '2026-02-26 00:00:00', NULL, '2026-03-02 00:00:00', '2026-02-28 23:59:59', 1, 1, '2026-03-02', NULL, '2026-02-27 12:12:04'),
+(2792, 1564, 3, 31.67, 'extension', 'hdkdykkydkhdkhd', 19000000.00, NULL, 0.00, 'not_started', '2026-03-03 00:00:00', NULL, '2026-03-07 23:59:59', '2026-02-28 23:59:59', 1, 1, NULL, NULL, '2026-02-27 12:12:04');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `milestone_item_updates`
+--
+
+CREATE TABLE `milestone_item_updates` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `milestone_item_id` int(10) UNSIGNED NOT NULL COMMENT 'FK → milestone_items.item_id',
+  `project_update_id` int(10) UNSIGNED DEFAULT NULL COMMENT 'FK → project_updates.extension_id (nullable for standalone)',
+  `proposed_start_date` date DEFAULT NULL,
+  `proposed_end_date` date DEFAULT NULL,
+  `proposed_cost` decimal(12,2) DEFAULT NULL,
+  `proposed_title` varchar(255) DEFAULT NULL,
+  `previous_start_date` date DEFAULT NULL,
+  `previous_end_date` date DEFAULT NULL,
+  `previous_cost` decimal(12,2) DEFAULT NULL,
+  `previous_title` varchar(255) DEFAULT NULL,
+  `status` enum('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+  `approved_by` int(10) UNSIGNED DEFAULT NULL,
+  `approved_at` timestamp NULL DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `milestone_item_updates`
+--
+
+INSERT INTO `milestone_item_updates` (`id`, `milestone_item_id`, `project_update_id`, `proposed_start_date`, `proposed_end_date`, `proposed_cost`, `proposed_title`, `previous_start_date`, `previous_end_date`, `previous_cost`, `previous_title`, `status`, `approved_by`, `approved_at`, `created_at`, `updated_at`) VALUES
+(1, 2790, 3, '2026-02-23', NULL, NULL, NULL, NULL, '2026-02-26', 20000000.00, 'Foundations', 'pending', NULL, NULL, '2026-02-27 03:59:51', '2026-02-27 03:59:51'),
+(2, 2791, 3, '2026-02-27', '2026-03-02', NULL, NULL, NULL, '2026-03-07', 21000000.00, 'Doners', 'pending', NULL, NULL, '2026-02-27 03:59:51', '2026-02-27 03:59:51'),
+(3, 2792, 3, '2026-03-03', NULL, NULL, NULL, NULL, '2026-03-07', 19000000.00, 'extension', 'pending', NULL, NULL, '2026-02-27 03:59:51', '2026-02-27 03:59:51'),
+(4, 2790, 4, '2026-02-23', '2026-02-25', NULL, NULL, NULL, '2026-02-26', 20000000.00, 'Foundations', 'approved', 379, '2026-02-27 04:12:04', '2026-02-27 04:07:06', '2026-02-27 04:12:04'),
+(5, 2791, 4, '2026-02-26', '2026-03-02', NULL, NULL, NULL, '2026-03-07', 21000000.00, 'Doners', 'approved', 379, '2026-02-27 04:12:04', '2026-02-27 04:07:06', '2026-02-27 04:12:04'),
+(6, 2792, 4, '2026-03-03', NULL, NULL, NULL, NULL, '2026-03-07', 19000000.00, 'extension', 'approved', 379, '2026-02-27 04:12:04', '2026-02-27 04:07:06', '2026-02-27 04:12:04');
 
 -- --------------------------------------------------------
 
@@ -1673,15 +1753,20 @@ INSERT INTO `notifications` (`notification_id`, `user_id`, `message`, `title`, `
 (3715, 154, 'A contractor has submitted a bid for \"Project 1027\".', 'New Bid Received', 'Bid Status', 0, 'App', 'normal', 'bid', 292, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1007,\"tab\":\"bids\"},\"notification_sub_type\":\"bid_received\"}', '2026-02-20 04:09:01'),
 (3716, 371, 'A contractor has submitted a bid for \"Testing again\".', 'New Bid Received', 'Bid Status', 1, 'App', 'normal', 'bid', 293, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1053,\"tab\":\"bids\"},\"notification_sub_type\":\"bid_received\"}', '2026-02-20 06:11:56'),
 (3717, 379, 'A contractor has submitted a bid for \"Commercial Building\".', 'New Bid Received', 'Bid Status', 1, 'App', 'normal', 'bid', 294, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1056,\"tab\":\"bids\"},\"notification_sub_type\":\"bid_received\"}', '2026-02-21 01:57:19'),
-(3718, 371, 'A contractor has submitted a bid for \"Testz\".', 'New Bid Received', 'Bid Status', 0, 'App', 'normal', 'bid', 295, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1047,\"tab\":\"bids\"},\"notification_sub_type\":\"bid_received\"}', '2026-02-22 02:29:15'),
+(3718, 371, 'A contractor has submitted a bid for \"Testz\".', 'New Bid Received', 'Bid Status', 1, 'App', 'normal', 'bid', 295, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1047,\"tab\":\"bids\"},\"notification_sub_type\":\"bid_received\"}', '2026-02-22 02:29:15'),
 (3719, 372, 'The property owner has already chosen a contractor for \"Testz\". Thank you for your bid.', 'Bid Not Selected', 'Bid Status', 0, 'App', 'normal', 'bid', 260, NULL, '{\"screen\":\"MyBids\",\"params\":{\"projectId\":1047},\"notification_sub_type\":\"bid_rejected\"}', '2026-02-22 07:19:27'),
-(3720, 371, 'Contractor submitted a milestone plan for \"Testz\". Please review.', 'Milestone Submitted', 'Milestone Update', 0, 'App', 'normal', 'milestone', 1563, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1047,\"tab\":\"milestones\"},\"notification_sub_type\":\"milestone_submitted\"}', '2026-02-22 07:51:59'),
+(3720, 371, 'Contractor submitted a milestone plan for \"Testz\". Please review.', 'Milestone Submitted', 'Milestone Update', 1, 'App', 'normal', 'milestone', 1563, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1047,\"tab\":\"milestones\"},\"notification_sub_type\":\"milestone_submitted\"}', '2026-02-22 07:51:59'),
 (3721, 379, 'Contractor submitted a milestone plan for \"Commercial Building\". Please review.', 'Milestone Submitted', 'Milestone Update', 1, 'App', 'normal', 'milestone', 1564, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1056,\"tab\":\"milestones\"},\"notification_sub_type\":\"milestone_submitted\"}', '2026-02-23 00:12:07'),
 (3722, 379, 'Contractor has modified and resubmitted the milestone setup for \"Commercial Building\". Please review the updated proposal.', 'Milestone Resubmitted', 'Milestone Update', 1, 'App', 'high', 'milestone', 1564, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1056,\"tab\":\"milestones\"},\"notification_sub_type\":\"milestone_resubmitted\"}', '2026-02-23 00:58:25'),
 (3723, 379, 'Contractor uploaded progress for \"Foundations\" on \"Commercial Building\".', 'Progress Uploaded', 'Progress Update', 1, 'App', 'normal', 'progress', 832, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1056,\"tab\":\"progress\"},\"notification_sub_type\":\"progress_submitted\"}', '2026-02-23 04:29:49'),
 (3725, 379, 'Your payment for \"Commercial Building\" has been approved by the contractor.', 'Payment Approved', 'Payment Status', 1, 'App', 'normal', 'payment', 825, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1056,\"tab\":\"payments\"},\"notification_sub_type\":\"payment_approved\"}', '2026-02-23 04:45:54'),
 (3726, 379, 'Contractor uploaded progress for \"Doners\" on \"Commercial Building\".', 'Progress Uploaded', 'Progress Update', 1, 'App', 'normal', 'progress', 833, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1056,\"tab\":\"progress\"},\"notification_sub_type\":\"progress_submitted\"}', '2026-02-23 04:47:56'),
-(3727, 380, 'Owner set a payment deadline of Feb 26, 2026 for \"Foundations\".', 'Payment Due Date Set', 'Payment Reminder', 0, 'App', 'high', 'milestone_item', 2790, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1056,\"tab\":\"payments\"},\"notification_sub_type\":\"payment_due\"}', '2026-02-24 23:54:58');
+(3727, 380, 'Owner set a payment deadline of Feb 26, 2026 for \"Foundations\".', 'Payment Due Date Set', 'Payment Reminder', 1, 'App', 'high', 'milestone_item', 2790, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1056,\"tab\":\"payments\"},\"notification_sub_type\":\"payment_due\"}', '2026-02-24 23:54:58'),
+(3730, 380, 'Your project update request has been approved. The project timeline and budget have been updated.', 'Budget Adjustment Approved', 'Project Alert', 1, 'App', 'high', 'project', 1056, NULL, '{\"screen\":\"ProjectTimeline\",\"params\":{\"projectId\":1056},\"notification_sub_type\":\"project_update\"}', '2026-02-25 07:15:26'),
+(3731, 379, 'Contractor submitted a project update request for \"Commercial Building\". Please review.', 'Project Update Request Submitted', 'Project Alert', 0, 'App', 'high', 'project', 1056, NULL, '{\"screen\":\"ProjectTimeline\",\"params\":{\"projectId\":1056},\"notification_sub_type\":\"project_update\"}', '2026-02-27 03:59:51'),
+(3732, 379, 'The contractor has withdrawn their update request for \"Commercial Building\".', 'Project Update Withdrawn', 'Project Alert', 0, 'App', 'normal', 'project', 1056, NULL, '{\"screen\":\"ProjectTimeline\",\"params\":{\"projectId\":1056},\"notification_sub_type\":\"project_update\"}', '2026-02-27 04:02:45'),
+(3733, 379, 'Contractor submitted a project update request for \"Commercial Building\". Please review.', 'Project Update Request Submitted', 'Project Alert', 0, 'App', 'high', 'project', 1056, NULL, '{\"screen\":\"ProjectTimeline\",\"params\":{\"projectId\":1056},\"notification_sub_type\":\"project_update\"}', '2026-02-27 04:07:06'),
+(3734, 380, 'Your project update request has been approved. The project timeline and budget have been updated.', 'Project Update Approved', 'Project Alert', 0, 'App', 'high', 'project', 1056, NULL, '{\"screen\":\"ProjectTimeline\",\"params\":{\"projectId\":1056},\"notification_sub_type\":\"project_update\"}', '2026-02-27 04:12:04');
 
 -- --------------------------------------------------------
 
@@ -1818,7 +1903,7 @@ INSERT INTO `payment_plans` (`plan_id`, `project_id`, `contractor_id`, `payment_
 (925, 1055, 1809, 'downpayment', 8000000.00, 2000000.00, 0, '2026-02-17 01:11:33', '2026-02-17 01:11:33'),
 (926, 1055, 1809, 'downpayment', 8000000.00, 2000000.00, 0, '2026-02-17 01:48:12', '2026-02-17 01:48:12'),
 (927, 1047, 1810, 'downpayment', 6898.00, 898.00, 0, '2026-02-22 07:51:59', '2026-02-22 07:51:59'),
-(928, 1056, 1810, 'downpayment', 50000000.00, 10000000.00, 0, '2026-02-23 00:12:07', '2026-02-23 00:58:24');
+(928, 1056, 1810, 'downpayment', 60000000.00, 10000000.00, 0, '2026-02-23 00:12:07', '2026-02-27 04:12:04');
 
 -- --------------------------------------------------------
 
@@ -1947,7 +2032,19 @@ INSERT INTO `personal_access_tokens` (`id`, `tokenable_type`, `tokenable_id`, `n
 (101, 'App\\Models\\User', 380, 'mobile-app', '0f6a9e9d7874ef2c0bc87f16cb1040ccabb9314a9856cff249ed69140d614d17', '[\"*\"]', NULL, NULL, '2026-02-23 04:44:33', '2026-02-23 04:44:33'),
 (102, 'App\\Models\\User', 379, 'mobile-app', 'c50ced955988aa705e768f93b718c50e8ef6f92341aeaa1e4e5136cf25a048a4', '[\"*\"]', NULL, NULL, '2026-02-23 04:46:27', '2026-02-23 04:46:27'),
 (103, 'App\\Models\\User', 380, 'mobile-app', 'eebd3d0fa6350719d08cc0fd64c86ba897138ce2abd2d65aa86b5c9a952ea904', '[\"*\"]', NULL, NULL, '2026-02-23 04:47:06', '2026-02-23 04:47:06'),
-(104, 'App\\Models\\User', 379, 'mobile-app', '98f7502efae06db5c046e8354fd1902fb5cab747acab45a478a2c3aec03cd651', '[\"*\"]', NULL, NULL, '2026-02-23 04:48:18', '2026-02-23 04:48:18');
+(104, 'App\\Models\\User', 379, 'mobile-app', '98f7502efae06db5c046e8354fd1902fb5cab747acab45a478a2c3aec03cd651', '[\"*\"]', NULL, NULL, '2026-02-23 04:48:18', '2026-02-23 04:48:18'),
+(105, 'App\\Models\\User', 380, 'mobile-app', 'cd666b8b96befd93780f4cc904b827e58723f1d27e8d2fa2a40de89376ac8d8c', '[\"*\"]', NULL, NULL, '2026-02-25 02:11:42', '2026-02-25 02:11:42'),
+(106, 'App\\Models\\User', 379, 'mobile-app', 'ba33cc35929201437e6aaea848ce7f44e657931927365cbef144707d934c3d10', '[\"*\"]', NULL, NULL, '2026-02-25 04:17:15', '2026-02-25 04:17:15'),
+(107, 'App\\Models\\User', 380, 'mobile-app', '47930c4117b9fe86cefb1fd0651217b424f98475bbdf88e6cd51c469212f8850', '[\"*\"]', NULL, NULL, '2026-02-25 06:01:49', '2026-02-25 06:01:49'),
+(108, 'App\\Models\\User', 379, 'mobile-app', 'ff3d01e33b360fbe70dcff9552e6f7bdd55270b2abb65e2cd52158a06b6ecf82', '[\"*\"]', NULL, NULL, '2026-02-25 07:01:43', '2026-02-25 07:01:43'),
+(109, 'App\\Models\\User', 380, 'mobile-app', 'd5900dcbc7ff80736749581913c83750291961bb487ffe35841473634cf30603', '[\"*\"]', NULL, NULL, '2026-02-25 23:22:18', '2026-02-25 23:22:18'),
+(110, 'App\\Models\\User', 371, 'mobile-app', 'e7a20e719e96ddc5863ba4617c5bb4e8731174451f92e815e7b48f5d07e868ae', '[\"*\"]', NULL, NULL, '2026-02-26 03:43:53', '2026-02-26 03:43:53'),
+(111, 'App\\Models\\User', 380, 'mobile-app', 'b475cdfc1255b967f1f74d46660a743f812cf6f8d185e180dd7bf392f04a1c75', '[\"*\"]', NULL, NULL, '2026-02-26 07:12:19', '2026-02-26 07:12:19'),
+(112, 'App\\Models\\User', 372, 'mobile-app', '4f55ec7ce11edd1fafabfed25d3a4d2176410990bf85a92de936d3749e27a5f7', '[\"*\"]', NULL, NULL, '2026-02-26 07:17:25', '2026-02-26 07:17:25'),
+(113, 'App\\Models\\User', 379, 'mobile-app', 'c4a91d18349d33031ad568a1d08e9f05c96481877e0116673d1eeb4058da0df4', '[\"*\"]', NULL, NULL, '2026-02-26 07:18:09', '2026-02-26 07:18:09'),
+(114, 'App\\Models\\User', 380, 'mobile-app', '922d63055d9f80b182d107cf3a50be361b365fb3874abba1751ceed05bc9c8ec', '[\"*\"]', NULL, NULL, '2026-02-27 03:41:46', '2026-02-27 03:41:46'),
+(115, 'App\\Models\\User', 380, 'mobile-app', 'b413ea6dfb6bff190d74a7252d7aae324c8a4abd36780d3c1db9227bebdd5a8d', '[\"*\"]', NULL, NULL, '2026-02-27 04:07:43', '2026-02-27 04:07:43'),
+(116, 'App\\Models\\User', 379, 'mobile-app', 'd3a06e5cfa377e38f90340940968288a4f7974e620898d993228d5fd70025e87', '[\"*\"]', NULL, NULL, '2026-02-27 04:08:22', '2026-02-27 04:08:22');
 
 -- --------------------------------------------------------
 
@@ -1982,7 +2079,8 @@ INSERT INTO `platform_payments` (`platform_payment_id`, `project_id`, `contracto
 (94, NULL, 1809, NULL, 'subscription', 'silver', 1499.00, 'cs_83ccd03dcb453c420f9170d1', '2026-02-19 00:47:48', 0, NULL, '2026-03-19 00:47:48', 'PayMongo'),
 (96, NULL, 1809, NULL, 'subscription', 'gold', 1999.00, 'cs_f8f6f0de7782cf24191133ff', '2026-02-19 01:45:57', 0, NULL, '2026-03-19 01:45:57', 'PayMongo'),
 (97, 1046, NULL, 1814, 'boosted_post', NULL, 49.00, 'cs_f5dab5282bbe15916c650ecf', '2026-02-19 01:48:17', 1, NULL, '2026-02-26 01:48:17', 'PayMongo'),
-(99, NULL, 1809, NULL, 'subscription', 'gold', 1999.00, 'cs_a3296f7cc6cf84f80ad62ed9', '2026-02-20 04:07:32', 1, NULL, '2026-03-20 04:07:32', 'PayMongo');
+(99, NULL, 1809, NULL, 'subscription', 'gold', 1999.00, 'cs_a3296f7cc6cf84f80ad62ed9', '2026-02-20 04:07:32', 1, NULL, '2026-03-20 04:07:32', 'PayMongo'),
+(100, 1055, NULL, 1814, 'boosted_post', NULL, 49.00, 'cs_0fd13e153e20ec8cb6f70f59', '2026-02-26 03:44:59', 0, NULL, '2026-03-05 03:44:59', 'PayMongo');
 
 -- --------------------------------------------------------
 
@@ -2665,6 +2763,45 @@ INSERT INTO `project_relationships` (`rel_id`, `owner_id`, `selected_contractor_
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `project_updates`
+--
+
+CREATE TABLE `project_updates` (
+  `extension_id` int(10) UNSIGNED NOT NULL,
+  `project_id` int(10) UNSIGNED NOT NULL,
+  `contractor_user_id` int(10) UNSIGNED NOT NULL COMMENT 'user_id of the submitting contractor',
+  `owner_user_id` int(10) UNSIGNED NOT NULL COMMENT 'user_id of the property owner',
+  `current_end_date` date DEFAULT NULL COMMENT 'Project end date at time of request (nullable for milestone-only updates)',
+  `proposed_end_date` date DEFAULT NULL COMMENT 'Requested new project end date (nullable for milestone-only updates)',
+  `reason` text NOT NULL,
+  `current_budget` decimal(12,2) DEFAULT NULL COMMENT 'Snapshot of total_project_cost at request time',
+  `proposed_budget` decimal(12,2) DEFAULT NULL COMMENT 'Proposed new total contract value (null = no budget change)',
+  `budget_change_type` enum('none','increase','decrease') NOT NULL DEFAULT 'none' COMMENT 'Auto-computed: none|increase|decrease',
+  `has_additional_cost` tinyint(1) NOT NULL DEFAULT 0,
+  `additional_amount` decimal(12,2) DEFAULT NULL COMMENT 'Only set when has_additional_cost = true',
+  `milestone_changes` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT 'JSON: {new_items:[], edited_items:[], deleted_item_ids:[]}' CHECK (json_valid(`milestone_changes`)),
+  `allocation_mode` enum('percentage','exact') DEFAULT NULL COMMENT 'How item costs were allocated in this request',
+  `status` enum('pending','approved','rejected','withdrawn','revision_requested') NOT NULL DEFAULT 'pending',
+  `owner_response` text DEFAULT NULL COMMENT 'Owner rejection reason or approval note',
+  `revision_notes` text DEFAULT NULL,
+  `applied_at` timestamp NULL DEFAULT NULL COMMENT 'When the extension was actually applied to the project',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `project_updates`
+--
+
+INSERT INTO `project_updates` (`extension_id`, `project_id`, `contractor_user_id`, `owner_user_id`, `current_end_date`, `proposed_end_date`, `reason`, `current_budget`, `proposed_budget`, `budget_change_type`, `has_additional_cost`, `additional_amount`, `milestone_changes`, `allocation_mode`, `status`, `owner_response`, `revision_notes`, `applied_at`, `created_at`, `updated_at`) VALUES
+(1, 1056, 380, 379, '2026-02-28', '2026-03-07', 'just to be safe hludludluxluuuuuhclhclhclhyhckykkkkgxkgxmgggxmgxmggxmgxmgxmgxmyxmyxk', 50000000.00, NULL, 'none', 0, NULL, '{\"new_items\":[],\"edited_items\":[],\"deleted_item_ids\":[]}', 'percentage', 'withdrawn', NULL, NULL, NULL, '2026-02-25 04:16:25', '2026-02-25 06:02:10'),
+(2, 1056, 380, 379, '2026-02-28', '2026-03-07', 'uhvlhlyffulylfylxlhxxlhlhclhclhchclh', 50000000.00, 60000000.00, 'increase', 1, 10000000.00, '{\"new_items\":[{\"title\":\"extension\",\"description\":\"hdkdykkydkhdkhd\",\"cost\":19000000}],\"edited_items\":[],\"deleted_item_ids\":[],\"_deleted_items\":[],\"_snapshot_meta\":{\"current_budget\":50000000,\"proposed_budget\":60000000,\"budget_change\":\"increase\",\"allocation_mode\":\"exact\",\"snapshot_at\":\"2026-02-25T15:01:17+00:00\"}}', 'exact', 'approved', NULL, NULL, '2026-02-25 07:15:26', '2026-02-25 07:01:17', '2026-02-25 07:15:26'),
+(3, 1056, 380, 379, '2026-03-07', NULL, 'hlchclhclhclhlchlchclhcl', 60000000.00, 60000000.00, 'none', 0, NULL, '{\"new_items\":[],\"edited_items\":[{\"item_id\":2790,\"start_date\":\"2026-02-23\",\"_original\":{\"title\":\"Foundations\",\"cost\":20000000,\"percentage\":33.33,\"start_date\":null,\"due_date\":\"2026-02-26\"}},{\"item_id\":2791,\"start_date\":\"2026-02-27\",\"due_date\":\"2026-03-02\",\"_original\":{\"title\":\"Doners\",\"cost\":21000000,\"percentage\":35,\"start_date\":null,\"due_date\":\"2026-03-07 23:59:59\"}},{\"item_id\":2792,\"start_date\":\"2026-03-03\",\"_original\":{\"title\":\"extension\",\"cost\":19000000,\"percentage\":31.67,\"start_date\":null,\"due_date\":\"2026-03-07 23:59:59\"}}],\"deleted_item_ids\":[],\"_deleted_items\":[],\"_snapshot_meta\":{\"current_budget\":60000000,\"proposed_budget\":60000000,\"budget_change\":\"none\",\"allocation_mode\":\"percentage\",\"snapshot_at\":\"2026-02-27T11:59:51+00:00\"}}', 'percentage', 'withdrawn', NULL, NULL, NULL, '2026-02-27 03:59:51', '2026-02-27 04:02:45'),
+(4, 1056, 380, 379, '2026-03-07', NULL, 'kgzjgsktdkyddgkgkxhfl', 60000000.00, 60000000.00, 'none', 0, NULL, '{\"new_items\":[],\"edited_items\":[{\"item_id\":2790,\"start_date\":\"2026-02-23\",\"due_date\":\"2026-02-25\",\"_original\":{\"title\":\"Foundations\",\"cost\":20000000,\"percentage\":33.33,\"start_date\":null,\"due_date\":\"2026-02-26\"}},{\"item_id\":2791,\"start_date\":\"2026-02-26\",\"due_date\":\"2026-03-02\",\"_original\":{\"title\":\"Doners\",\"cost\":21000000,\"percentage\":35,\"start_date\":null,\"due_date\":\"2026-03-07 23:59:59\"}},{\"item_id\":2792,\"start_date\":\"2026-03-03\",\"_original\":{\"title\":\"extension\",\"cost\":19000000,\"percentage\":31.67,\"start_date\":null,\"due_date\":\"2026-03-07 23:59:59\"}}],\"deleted_item_ids\":[],\"_deleted_items\":[],\"_snapshot_meta\":{\"current_budget\":60000000,\"proposed_budget\":60000000,\"budget_change\":\"none\",\"allocation_mode\":\"percentage\",\"snapshot_at\":\"2026-02-27T12:07:06+00:00\"}}', 'percentage', 'approved', NULL, NULL, '2026-02-27 04:12:04', '2026-02-27 04:07:06', '2026-02-27 04:12:04');
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `property_owners`
 --
 
@@ -3343,11 +3480,28 @@ ALTER TABLE `milestones`
   ADD KEY `plan_id` (`plan_id`);
 
 --
+-- Indexes for table `milestone_date_histories`
+--
+ALTER TABLE `milestone_date_histories`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `milestone_date_histories_item_id_index` (`item_id`),
+  ADD KEY `milestone_date_histories_extension_id_index` (`extension_id`);
+
+--
 -- Indexes for table `milestone_items`
 --
 ALTER TABLE `milestone_items`
   ADD PRIMARY KEY (`item_id`),
   ADD KEY `milestone_id` (`milestone_id`);
+
+--
+-- Indexes for table `milestone_item_updates`
+--
+ALTER TABLE `milestone_item_updates`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `milestone_item_updates_milestone_item_id_index` (`milestone_item_id`),
+  ADD KEY `milestone_item_updates_project_update_id_index` (`project_update_id`),
+  ADD KEY `milestone_item_updates_project_update_id_status_index` (`project_update_id`,`status`);
 
 --
 -- Indexes for table `milestone_payments`
@@ -3448,6 +3602,14 @@ ALTER TABLE `project_relationships`
   ADD PRIMARY KEY (`rel_id`),
   ADD KEY `fk_projectrel_owner` (`owner_id`),
   ADD KEY `fk_projectrel_contractor` (`selected_contractor_id`);
+
+--
+-- Indexes for table `project_updates`
+--
+ALTER TABLE `project_updates`
+  ADD PRIMARY KEY (`extension_id`),
+  ADD KEY `project_extensions_project_id_index` (`project_id`),
+  ADD KEY `project_extensions_project_id_status_index` (`project_id`,`status`);
 
 --
 -- Indexes for table `property_owners`
@@ -3574,7 +3736,7 @@ ALTER TABLE `message_attachments`
 -- AUTO_INCREMENT for table `migrations`
 --
 ALTER TABLE `migrations`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
 
 --
 -- AUTO_INCREMENT for table `milestones`
@@ -3583,10 +3745,22 @@ ALTER TABLE `milestones`
   MODIFY `milestone_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1565;
 
 --
+-- AUTO_INCREMENT for table `milestone_date_histories`
+--
+ALTER TABLE `milestone_date_histories`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+
+--
 -- AUTO_INCREMENT for table `milestone_items`
 --
 ALTER TABLE `milestone_items`
-  MODIFY `item_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2792;
+  MODIFY `item_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2793;
+
+--
+-- AUTO_INCREMENT for table `milestone_item_updates`
+--
+ALTER TABLE `milestone_item_updates`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `milestone_payments`
@@ -3598,7 +3772,7 @@ ALTER TABLE `milestone_payments`
 -- AUTO_INCREMENT for table `notifications`
 --
 ALTER TABLE `notifications`
-  MODIFY `notification_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3728;
+  MODIFY `notification_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3735;
 
 --
 -- AUTO_INCREMENT for table `occupations`
@@ -3622,13 +3796,13 @@ ALTER TABLE `payment_plans`
 -- AUTO_INCREMENT for table `personal_access_tokens`
 --
 ALTER TABLE `personal_access_tokens`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=105;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=117;
 
 --
 -- AUTO_INCREMENT for table `platform_payments`
 --
 ALTER TABLE `platform_payments`
-  MODIFY `platform_payment_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=100;
+  MODIFY `platform_payment_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=101;
 
 --
 -- AUTO_INCREMENT for table `progress`
@@ -3659,6 +3833,12 @@ ALTER TABLE `project_files`
 --
 ALTER TABLE `project_relationships`
   MODIFY `rel_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1057;
+
+--
+-- AUTO_INCREMENT for table `project_updates`
+--
+ALTER TABLE `project_updates`
+  MODIFY `extension_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `property_owners`

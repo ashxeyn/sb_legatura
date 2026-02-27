@@ -12,10 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('milestone_items', function (Blueprint $table) {
-            $table->date('settlement_due_date')->nullable()->after('date_to_finish')
-                  ->comment('Payment settlement deadline set by contractor');
-            $table->date('extension_date')->nullable()->after('settlement_due_date')
-                  ->comment('Optional extended deadline granted by contractor');
+            $table->datetime('start_date')->nullable()->after('item_status');
         });
     }
 
@@ -25,7 +22,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('milestone_items', function (Blueprint $table) {
-            $table->dropColumn(['settlement_due_date', 'extension_date']);
+            $table->dropColumn('start_date');
         });
     }
 };

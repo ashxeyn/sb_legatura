@@ -18,7 +18,7 @@ import { Feather } from '@expo/vector-icons';
 import { payment_service } from '../../services/payment_service';
 import { progress_service } from '../../services/progress_service';
 import PaymentReceiptForm from './paymentReceiptForm';
-import ProgressReportForm from './ProgressReportForm';
+import ProgressReportForm from './progressReportForm';
 import { api_config } from '../../config/api';
 
 // Color palette

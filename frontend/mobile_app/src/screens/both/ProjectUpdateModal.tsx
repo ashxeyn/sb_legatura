@@ -147,11 +147,19 @@ export default function ProjectUpdateModal({
   const [newTitle, setNewTitle] = useState('');
   const [newDescription, setNewDescription] = useState('');
   const [newCost, setNewCost] = useState('');
+  const [newStartDate, setNewStartDate] = useState<Date | null>(null);
+  const [newShowStartDatePicker, setNewShowStartDatePicker] = useState(false);
+  const [newDueDate, setNewDueDate] = useState<Date | null>(null);
+  const [newShowDatePicker, setNewShowDatePicker] = useState(false);
 
   // Inline edit tracking
   const [editingItemId, setEditingItemId] = useState<number | null>(null);
   const [editCostStr, setEditCostStr] = useState('');
   const [editTitleStr, setEditTitleStr] = useState('');
+  const [editStartDate, setEditStartDate] = useState<Date | null>(null);
+  const [editShowStartDatePicker, setEditShowStartDatePicker] = useState(false);
+  const [editDueDate, setEditDueDate] = useState<Date | null>(null);
+  const [editShowDatePicker, setEditShowDatePicker] = useState(false);
 
   // ── Preview ───────────────────────────────────────────────────────────────
   const [loadingPreview, setLoadingPreview] = useState(false);
@@ -202,6 +210,14 @@ export default function ProjectUpdateModal({
       setEditingItemId(null);
       setEditCostStr('');
       setEditTitleStr('');
+      setEditStartDate(null);
+      setEditShowStartDatePicker(false);
+      setEditDueDate(null);
+      setEditShowDatePicker(false);
+      setNewStartDate(null);
+      setNewShowStartDatePicker(false);
+      setNewDueDate(null);
+      setNewShowDatePicker(false);
       setPreview(null);
       setOwnerNote('');
       setRejectReason('');
@@ -241,13 +257,145 @@ export default function ProjectUpdateModal({
   /** Remaining from proposed budget */
   const remainingBudget = effectiveBudget - grandAllocated;
 
+  /** Project date bounds for milestone item date pickers */
+  const projectMinDate = ctx?.start_date
+    ? new Date(ctx.start_date.replace(' ', 'T'))
+    : undefined;
+  const projectMaxDate = proposedDate
+    ?? (ctx?.end_date ? new Date(ctx.end_date.replace(' ', 'T')) : undefined);
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Date-slot & overlap helpers  (prevent milestone item date overlapping)
+  // ─────────────────────────────────────────────────────────────────────────
+  const DAY_MS = 86_400_000;
+
+  /** Collect occupied [start, end] ranges from ALL other items. */
+  const getOccupiedRanges = (
+    excludeItemId: number | null,
+  ): { start: Date; end: Date; label: string }[] => {
+    const occupied: { start: Date; end: Date; label: string }[] = [];
+
+    for (const it of visibleItems) {
+      if (it.item_id === excludeItemId) continue;
+      const ed = editedItems[it.item_id];
+      const sStr = ed?.start_date !== undefined ? ed.start_date : (it.start_date ?? null);
+      const eStr = ed?.due_date !== undefined ? ed.due_date : (it.settlement_due_date ?? it.date_to_finish ?? null);
+      if (sStr && eStr) {
+        occupied.push({
+          start: new Date(String(sStr).replace(' ', 'T')),
+          end:   new Date(String(eStr).replace(' ', 'T')),
+          label: ed?.title ?? it.title,
+        });
+      }
+    }
+
+    for (const ni of newItems) {
+      if (ni.start_date && ni.due_date) {
+        occupied.push({
+          start: new Date(ni.start_date),
+          end:   new Date(ni.due_date),
+          label: ni.title,
+        });
+      }
+    }
+
+    occupied.sort((a, b) => a.start.getTime() - b.start.getTime());
+    return occupied;
+  };
+
+  /**
+   * Find the gap (slot) that `referenceDate` falls into among the sorted
+   * occupied ranges.  Returns { slotMin, slotMax } constrained to the project
+   * duration.  If referenceDate is null, returns project bounds.
+   */
+  const getDateSlot = (
+    excludeItemId: number | null,
+    referenceDate: Date | null,
+  ): { slotMin: Date | undefined; slotMax: Date | undefined } => {
+    const occupied = getOccupiedRanges(excludeItemId);
+
+    if (occupied.length === 0 || !referenceDate) {
+      return { slotMin: projectMinDate, slotMax: projectMaxDate };
+    }
+
+    const refTime = referenceDate.getTime();
+
+    for (let i = 0; i <= occupied.length; i++) {
+      const gapStart = i === 0
+        ? projectMinDate
+        : new Date(occupied[i - 1].end.getTime() + DAY_MS);
+      const gapEnd = i === occupied.length
+        ? projectMaxDate
+        : new Date(occupied[i].start.getTime() - DAY_MS);
+
+      const gsTime = gapStart?.getTime() ?? -Infinity;
+      const geTime = gapEnd?.getTime()   ?? Infinity;
+
+      if (refTime >= gsTime && refTime <= geTime) {
+        return { slotMin: gapStart, slotMax: gapEnd };
+      }
+    }
+
+    // referenceDate is inside an occupied range (shouldn't happen normally)
+    return { slotMin: projectMinDate, slotMax: projectMaxDate };
+  };
+
+  /**
+   * Check whether [startDate, dueDate] overlaps with any other item's range.
+   * Returns the label of the first conflicting item, or null.
+   */
+  const checkDateOverlap = (
+    excludeItemId: number | null,
+    startDate: Date | null,
+    dueDate: Date | null,
+  ): string | null => {
+    if (!startDate || !dueDate) return null;
+    const s = startDate.getTime();
+    const e = dueDate.getTime();
+
+    for (const r of getOccupiedRanges(excludeItemId)) {
+      const os = r.start.getTime();
+      const oe = r.end.getTime();
+      if (s <= oe && os <= e) return r.label;
+    }
+    return null;
+  };
+
+  // Derived overlap / slot values for the currently-open pickers
+  const editSlot = editingItemId
+    ? getDateSlot(editingItemId, editStartDate ?? editDueDate)
+    : { slotMin: projectMinDate, slotMax: projectMaxDate };
+
+  const editOverlap = editingItemId
+    ? checkDateOverlap(editingItemId, editStartDate, editDueDate)
+    : null;
+
+  const newSlot = showAddItem
+    ? getDateSlot(null, newStartDate ?? newDueDate)
+    : { slotMin: projectMinDate, slotMax: projectMaxDate };
+
+  const newOverlap = showAddItem
+    ? checkDateOverlap(null, newStartDate, newDueDate)
+    : null;
+
   // ─────────────────────────────────────────────────────────────────────────
   // Build preview payload
   // ─────────────────────────────────────────────────────────────────────────
   const buildPreviewPayload = (): PreviewPayload | null => {
-    if (!proposedDate) return null;
-    const iso = proposedDate.toISOString().split('T')[0];
-    const payload: PreviewPayload = { proposed_end_date: iso };
+    // At least one change must be present (date, budget, or milestone edits)
+    const hasEdits = Object.keys(editedItems).length > 0;
+    const hasNewItems = newItems.length > 0;
+    const hasDeletes = deletedItemIds.length > 0;
+    const hasBudget = !!proposedBudget;
+
+    if (!proposedDate && !hasBudget && !hasEdits && !hasNewItems && !hasDeletes) {
+      return null;
+    }
+
+    const payload: PreviewPayload = {};
+    if (proposedDate) {
+      payload.proposed_end_date = proposedDate.toISOString().split('T')[0];
+    }
 
     if (proposedBudget) {
       payload.proposed_budget = parseFloat(proposedBudget);
@@ -269,7 +417,7 @@ export default function ProjectUpdateModal({
   const handlePreview = async () => {
     const payload = buildPreviewPayload();
     if (!payload) {
-      Alert.alert('Missing field', 'Please choose a proposed end date first.');
+      Alert.alert('No Changes', 'Please make at least one change (date, budget, or milestone items) before previewing.');
       return;
     }
     setLoadingPreview(true);
@@ -296,25 +444,21 @@ export default function ProjectUpdateModal({
       Alert.alert('No Changes', 'Please make at least one change (date, budget, or milestone items) before submitting.');
       return;
     }
-    // Proposed date is required by backend
-    if (!proposedDate) {
-      Alert.alert('Missing Field', 'Please choose a proposed end date. This is required even when only adjusting budget or milestones.');
-      return;
-    }
     // Reason is required by backend
     if (reason.trim().length < 20) {
       Alert.alert('Reason Too Short', 'Please describe the reason for this request (at least 20 characters).');
       return;
     }
 
-    const iso = proposedDate.toISOString().split('T')[0];
-
     const data: any = {
       user_id: userId,
-      proposed_end_date: iso,
       reason: reason.trim(),
       allocation_mode: allocMode,
     };
+
+    if (proposedDate) {
+      data.proposed_end_date = proposedDate.toISOString().split('T')[0];
+    }
 
     if (proposedBudget) {
       data.proposed_budget = parseFloat(proposedBudget);
@@ -432,9 +576,33 @@ export default function ProjectUpdateModal({
   // Add new item handler
   // ─────────────────────────────────────────────────────────────────────────
   const handleAddItem = () => {
-    const rawVal = parseFloat(newCost || '0');
+    const rawVal = parseFloat((newCost || '0').replace(/,/g, ''));
     if (!newTitle.trim()) { Alert.alert('Missing', 'Title is required.'); return; }
     if (rawVal <= 0) { Alert.alert('Invalid', allocMode === 'percentage' ? 'Percentage must be greater than 0.' : 'Cost must be greater than 0.'); return; }
+
+    // Date validation
+    if (newStartDate && newDueDate && newStartDate > newDueDate) {
+      Alert.alert('Invalid Dates', 'Start date cannot be after the due date.'); return;
+    }
+    const pStart = ctx?.start_date ? new Date(ctx.start_date.replace(' ', 'T')) : null;
+    const pEnd = proposedDate ?? (ctx?.end_date ? new Date(ctx.end_date.replace(' ', 'T')) : null);
+    if (newStartDate && pStart && newStartDate < pStart) {
+      Alert.alert('Invalid Date', 'Start date cannot be before the project start date.'); return;
+    }
+    if (newStartDate && pEnd && newStartDate > pEnd) {
+      Alert.alert('Invalid Date', 'Start date cannot be after the project end date.'); return;
+    }
+    if (newDueDate && pStart && newDueDate < pStart) {
+      Alert.alert('Invalid Date', 'Due date cannot be before the project start date.'); return;
+    }
+    if (newDueDate && pEnd && newDueDate > pEnd) {
+      Alert.alert('Invalid Date', 'Due date cannot be after the project end date.'); return;
+    }
+    // Overlap check
+    const overlapNew = checkDateOverlap(null, newStartDate, newDueDate);
+    if (overlapNew) {
+      Alert.alert('Date Overlap', `This item's dates overlap with "${overlapNew}". Please adjust the dates.`); return;
+    }
 
     let cost: number;
     let pct: number | undefined;
@@ -463,10 +631,16 @@ export default function ProjectUpdateModal({
       description: newDescription.trim() || undefined,
       cost,
       percentage: pct,
+      start_date: newStartDate ? newStartDate.toISOString().split('T')[0] : undefined,
+      due_date: newDueDate ? newDueDate.toISOString().split('T')[0] : undefined,
     }]);
     setNewTitle('');
     setNewDescription('');
     setNewCost('');
+    setNewStartDate(null);
+    setNewShowStartDatePicker(false);
+    setNewDueDate(null);
+    setNewShowDatePicker(false);
     setShowAddItem(false);
     setPreview(null);
   };
@@ -484,10 +658,18 @@ export default function ProjectUpdateModal({
     setEditingItemId(item.item_id);
     setEditCostStr(String(existing?.cost ?? item.effective_cost));
     setEditTitleStr(existing?.title ?? item.title);
+    // Restore start date from pending edit, or from item's current date
+    const startSrc = existing?.start_date !== undefined ? existing.start_date : (item.start_date ?? null);
+    setEditStartDate(startSrc ? new Date(startSrc.replace(' ', 'T')) : null);
+    setEditShowStartDatePicker(false);
+    // Restore due date from pending edit, or from item's current date
+    const dueSrc = existing?.due_date ?? item.settlement_due_date ?? item.date_to_finish ?? null;
+    setEditDueDate(dueSrc ? new Date(dueSrc.replace(' ', 'T')) : null);
+    setEditShowDatePicker(false);
   };
 
   const saveEditItem = (item: MilestoneItemDetail) => {
-    const cost = parseFloat(editCostStr || '0');
+    const cost = parseFloat(editCostStr.replace(/,/g, '') || '0');
     if (cost < item.min_cost) {
       Alert.alert('Invalid', `Cost cannot be less than ${fmtCurrency(item.min_cost)} (amount already paid).`);
       return;
@@ -497,8 +679,56 @@ export default function ProjectUpdateModal({
     if (cost !== item.effective_cost) changes.cost = cost;
     if (editTitleStr.trim() && editTitleStr.trim() !== item.title) changes.title = editTitleStr.trim();
 
+    // Check if start date changed
+    const origStart = item.start_date ?? null;
+    const origStartStr = origStart ? new Date(origStart.replace(' ', 'T')).toISOString().split('T')[0] : null;
+    const newStartStr = editStartDate ? editStartDate.toISOString().split('T')[0] : null;
+    if (newStartStr !== origStartStr) {
+      changes.start_date = newStartStr;
+    }
+
+    // Check if due date changed
+    const origDue = item.settlement_due_date ?? item.date_to_finish ?? null;
+    const origDueStr = origDue ? new Date(origDue.replace(' ', 'T')).toISOString().split('T')[0] : null;
+    const newDueStr = editDueDate ? editDueDate.toISOString().split('T')[0] : null;
+    if (newDueStr !== origDueStr) {
+      changes.due_date = newDueStr;
+    }
+
+    // Validate: start_date must not be after due_date
+    if (editStartDate && editDueDate && editStartDate > editDueDate) {
+      Alert.alert('Invalid Dates', 'Start date cannot be after the due date.');
+      return;
+    }
+
+    // Validate: dates must be within project duration
+    const pStart = ctx?.start_date ? new Date(ctx.start_date.replace(' ', 'T')) : null;
+    const pEnd = proposedDate ?? (ctx?.end_date ? new Date(ctx.end_date.replace(' ', 'T')) : null);
+    if (editStartDate && pStart && editStartDate < pStart) {
+      Alert.alert('Invalid Date', 'Start date cannot be before the project start date.');
+      return;
+    }
+    if (editStartDate && pEnd && editStartDate > pEnd) {
+      Alert.alert('Invalid Date', 'Start date cannot be after the project end date.');
+      return;
+    }
+    if (editDueDate && pStart && editDueDate < pStart) {
+      Alert.alert('Invalid Date', 'Due date cannot be before the project start date.');
+      return;
+    }
+    if (editDueDate && pEnd && editDueDate > pEnd) {
+      Alert.alert('Invalid Date', 'Due date cannot be after the project end date.');
+      return;
+    }
+    // Overlap check
+    const overlapEdit = checkDateOverlap(item.item_id, editStartDate, editDueDate);
+    if (overlapEdit) {
+      Alert.alert('Date Overlap', `This item's dates overlap with "${overlapEdit}". Please adjust the dates.`);
+      return;
+    }
+
     // Only save if something actually changed
-    if (changes.cost !== undefined || changes.title !== undefined) {
+    if (changes.cost !== undefined || changes.title !== undefined || changes.start_date !== undefined || changes.due_date !== undefined) {
       setEditedItems(prev => ({ ...prev, [item.item_id]: changes }));
     } else {
       // Remove edit if nothing changed
@@ -509,6 +739,8 @@ export default function ProjectUpdateModal({
       });
     }
     setEditingItemId(null);
+    setEditShowStartDatePicker(false);
+    setEditShowDatePicker(false);
     setPreview(null);
   };
 
@@ -615,6 +847,8 @@ export default function ProjectUpdateModal({
         original_title: orig?.title ?? ctxItem?.title ?? `Item #${edit.item_id}`,
         original_cost: orig?.cost ?? ctxItem?.effective_cost ?? 0,
         original_percentage: orig?.percentage ?? ctxItem?.percentage ?? 0,
+        original_start_date: orig?.start_date ?? ctxItem?.start_date ?? null,
+        original_due_date: orig?.due_date ?? ctxItem?.settlement_due_date ?? ctxItem?.date_to_finish ?? null,
       };
     });
 
@@ -727,12 +961,17 @@ export default function ProjectUpdateModal({
                       )}
                       {costChanged && (
                         <Text style={{ fontSize: 10, color: C.textMuted }}>
-                          Cost: {fmtCurrency(edit.original_cost)} → {fmtCurrency(newCost)}
+                          Cost: {fmtCurrency(newCost)}
                         </Text>
                       )}
-                      {edit.due_date !== undefined && (
+                      {edit.start_date !== undefined && edit.start_date && (
                         <Text style={{ fontSize: 10, color: C.textMuted }}>
-                          Due date updated: {edit.due_date ? fmtDate(edit.due_date) : 'cleared'}
+                          Start: {fmtDate(edit.start_date)}
+                        </Text>
+                      )}
+                      {edit.due_date !== undefined && edit.due_date && (
+                        <Text style={{ fontSize: 10, color: C.textMuted }}>
+                          End: {fmtDate(edit.due_date)}
                         </Text>
                       )}
                     </View>
@@ -1049,7 +1288,7 @@ export default function ProjectUpdateModal({
                   <View style={styles.lockBadge}>
                     <Feather name="lock" size={12} color={C.textMuted} />
                     <Text style={styles.lockText}>
-                      {item.is_fully_paid ? 'Paid' : item.item_status}
+                      {item.is_fully_paid ? 'Fully Paid' : item.editable_reason === 'completed' ? 'Completed' : item.item_status}
                     </Text>
                   </View>
                 ) : (
@@ -1098,8 +1337,12 @@ export default function ProjectUpdateModal({
                     </Text>
                     <TextInput
                       style={styles.inlineInput}
-                      value={editCostStr}
-                      onChangeText={setEditCostStr}
+                      value={fmtInputNum(editCostStr)}
+                      onChangeText={t => {
+                        const stripped = t.replace(/,/g, '').replace(/[^0-9.]/g, '');
+                        const parts = stripped.split('.');
+                        setEditCostStr(parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : stripped);
+                      }}
                       keyboardType="decimal-pad"
                     />
                   </View>
@@ -1115,11 +1358,137 @@ export default function ProjectUpdateModal({
                 )}
               </View>
 
+              {/* Start date + Due date rows */}
+              {isEditing ? (
+                <View style={{ marginTop: 8 }}>
+                  {/* Date range hint — shows slot bounds, not full project range */}
+                  {(editSlot.slotMin || editSlot.slotMax) && (
+                    <Text style={{ fontSize: 10, color: C.textMuted, marginBottom: 6 }}>
+                      Available slot: {editSlot.slotMin ? fmtDate(editSlot.slotMin.toISOString()) : '—'} — {editSlot.slotMax ? fmtDate(editSlot.slotMax.toISOString()) : '—'}
+                    </Text>
+                  )}
+                  {/* Start Date */}
+                  <Text style={{ fontSize: 11, color: C.textMuted, marginBottom: 2 }}>Start Date</Text>
+                  <TouchableOpacity
+                    style={[styles.inlineInput, { flexDirection: 'row', alignItems: 'center', gap: 6 }]}
+                    onPress={() => setEditShowStartDatePicker(!editShowStartDatePicker)}
+                    activeOpacity={0.7}
+                  >
+                    <Feather name="calendar" size={14} color={editStartDate ? C.text : C.textMuted} />
+                    <Text style={{ flex: 1, fontSize: 13, color: editStartDate ? C.text : C.textMuted }}>
+                      {editStartDate ? fmtDate(editStartDate.toISOString()) : 'No start date set'}
+                    </Text>
+                    {editStartDate && (
+                      <TouchableOpacity onPress={() => { setEditStartDate(null); setEditShowStartDatePicker(false); }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                        <Feather name="x-circle" size={14} color={C.textMuted} />
+                      </TouchableOpacity>
+                    )}
+                  </TouchableOpacity>
+                  {editShowStartDatePicker && (
+                    <View style={{ marginTop: 4 }}>
+                      <DateTimePicker
+                        value={editStartDate ?? new Date()}
+                        mode="date"
+                        display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                        minimumDate={editSlot.slotMin}
+                        maximumDate={editDueDate ?? editSlot.slotMax}
+                        onChange={(_, date) => {
+                          if (Platform.OS === 'android') setEditShowStartDatePicker(false);
+                          if (date) setEditStartDate(date);
+                        }}
+                        style={{ width: '100%' }}
+                      />
+                    </View>
+                  )}
+                  {editStartDate && editDueDate && editStartDate > editDueDate && (
+                    <View style={[styles.warningBanner, { marginTop: 4 }]}>
+                      <Feather name="alert-triangle" size={12} color={C.error} />
+                      <Text style={styles.warningText}>Start date is after the due date</Text>
+                    </View>
+                  )}
+                  {editOverlap && (
+                    <View style={[styles.warningBanner, { marginTop: 4 }]}>
+                      <Feather name="alert-triangle" size={12} color={C.error} />
+                      <Text style={styles.warningText}>Overlaps with "{editOverlap}"</Text>
+                    </View>
+                  )}
+
+                  {/* Due Date */}
+                  <Text style={{ fontSize: 11, color: C.textMuted, marginBottom: 2, marginTop: 8 }}>Due Date</Text>
+                  <TouchableOpacity
+                    style={[styles.inlineInput, { flexDirection: 'row', alignItems: 'center', gap: 6 }]}
+                    onPress={() => setEditShowDatePicker(!editShowDatePicker)}
+                    activeOpacity={0.7}
+                  >
+                    <Feather name="calendar" size={14} color={editDueDate ? C.text : C.textMuted} />
+                    <Text style={{ flex: 1, fontSize: 13, color: editDueDate ? C.text : C.textMuted }}>
+                      {editDueDate ? fmtDate(editDueDate.toISOString()) : 'No due date set'}
+                    </Text>
+                    {editDueDate && (
+                      <TouchableOpacity onPress={() => { setEditDueDate(null); setEditShowDatePicker(false); }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                        <Feather name="x-circle" size={14} color={C.textMuted} />
+                      </TouchableOpacity>
+                    )}
+                  </TouchableOpacity>
+                  {editShowDatePicker && (
+                    <View style={{ marginTop: 4 }}>
+                      <DateTimePicker
+                        value={editDueDate ?? new Date()}
+                        mode="date"
+                        display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                        minimumDate={editStartDate ?? editSlot.slotMin}
+                        maximumDate={editSlot.slotMax}
+                        onChange={(_, date) => {
+                          if (Platform.OS === 'android') setEditShowDatePicker(false);
+                          if (date) setEditDueDate(date);
+                        }}
+                        style={{ width: '100%' }}
+                      />
+                    </View>
+                  )}
+                </View>
+              ) : (
+                <View style={{ marginTop: 4, gap: 2 }}>
+                  {(() => {
+                    const displayStart = editedItems[item.item_id]?.start_date !== undefined
+                      ? editedItems[item.item_id]?.start_date
+                      : (item.start_date ?? null);
+                    const displayDue = editedItems[item.item_id]?.due_date !== undefined
+                      ? editedItems[item.item_id]?.due_date
+                      : (item.settlement_due_date ?? item.date_to_finish ?? null);
+                    return (
+                      <>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                          <Feather name="play" size={11} color={C.textMuted} />
+                          <Text style={{ fontSize: 11, color: C.textSecondary }}>
+                            Start: {displayStart ? fmtDate(displayStart) : 'Not set'}
+                          </Text>
+                        </View>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                          <Feather name="calendar" size={11} color={C.textMuted} />
+                          <Text style={{ fontSize: 11, color: C.textSecondary }}>
+                            End: {displayDue ? fmtDate(displayDue) : 'Not set'}
+                          </Text>
+                        </View>
+                      </>
+                    );
+                  })()}
+                </View>
+              )}
+
               {hasEdit && !isEditing && (
                 <View style={[styles.warningBanner, { marginTop: 6, backgroundColor: C.accentLight }]}>
                   <Feather name="edit" size={12} color={C.accent} />
                   <Text style={[styles.warningText, { color: C.accent }]}>
-                    Modified (was {fmtCurrency(item.effective_cost)})
+                    {(() => {
+                      const e = editedItems[item.item_id];
+                      const parts: string[] = [];
+                      if (e?.cost !== undefined) parts.push(`cost: ${fmtCurrency(e.cost)}`);
+                      if (e?.title !== undefined) parts.push(`title updated`);
+                      if (e?.start_date !== undefined) parts.push(`start: ${e.start_date ? fmtDate(e.start_date) : 'cleared'}`);
+                      if (e?.due_date !== undefined) parts.push(`end: ${e.due_date ? fmtDate(e.due_date) : 'cleared'}`);
+                      return `Modified (${parts.join(', ')})`;
+                    })()}
                   </Text>
                 </View>
               )}
@@ -1175,6 +1544,12 @@ export default function ProjectUpdateModal({
                 </Text>
               )}
             </View>
+            {ni.due_date && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                <Feather name="calendar" size={11} color={C.textMuted} />
+                <Text style={{ fontSize: 11, color: C.textSecondary }}>Due: {fmtDate(ni.due_date)}</Text>
+              </View>
+            )}
           </View>
         ))}
 
@@ -1238,10 +1613,93 @@ export default function ProjectUpdateModal({
                 </>
               );
             })()}
+            {/* Start date picker */}
+            {(newSlot.slotMin || newSlot.slotMax) && (
+              <Text style={{ fontSize: 10, color: C.textMuted, marginBottom: 4 }}>
+                Available slot: {newSlot.slotMin ? fmtDate(newSlot.slotMin.toISOString()) : '—'} — {newSlot.slotMax ? fmtDate(newSlot.slotMax.toISOString()) : '—'}
+              </Text>
+            )}
+            <Text style={{ fontSize: 11, color: C.textMuted, marginBottom: 2 }}>Start Date (optional)</Text>
+            <TouchableOpacity
+              style={[styles.amountInput, { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4, justifyContent: 'flex-start' }]}
+              onPress={() => setNewShowStartDatePicker(!newShowStartDatePicker)}
+              activeOpacity={0.7}
+            >
+              <Feather name="play" size={14} color={newStartDate ? C.text : C.textMuted} />
+              <Text style={{ flex: 1, fontSize: 13, color: newStartDate ? C.text : C.textMuted }}>
+                {newStartDate ? fmtDate(newStartDate.toISOString()) : 'Tap to select a start date'}
+              </Text>
+              {newStartDate && (
+                <TouchableOpacity onPress={() => { setNewStartDate(null); setNewShowStartDatePicker(false); }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Feather name="x-circle" size={14} color={C.textMuted} />
+                </TouchableOpacity>
+              )}
+            </TouchableOpacity>
+            {newShowStartDatePicker && (
+              <View style={{ marginBottom: 8 }}>
+                <DateTimePicker
+                  value={newStartDate ?? new Date()}
+                  mode="date"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  minimumDate={newSlot.slotMin}
+                  maximumDate={newDueDate ?? newSlot.slotMax}
+                  onChange={(_, date) => {
+                    if (Platform.OS === 'android') setNewShowStartDatePicker(false);
+                    if (date) setNewStartDate(date);
+                  }}
+                  style={{ width: '100%' }}
+                />
+              </View>
+            )}
+            {newStartDate && newDueDate && newStartDate > newDueDate && (
+              <View style={[styles.warningBanner, { marginBottom: 4 }]}>
+                <Feather name="alert-triangle" size={12} color={C.error} />
+                <Text style={styles.warningText}>Start date is after the due date</Text>
+              </View>
+            )}
+            {newOverlap && (
+              <View style={[styles.warningBanner, { marginBottom: 4 }]}>
+                <Feather name="alert-triangle" size={12} color={C.error} />
+                <Text style={styles.warningText}>Overlaps with "{newOverlap}"</Text>
+              </View>
+            )}
+            {/* Due date picker */}
+            <Text style={{ fontSize: 11, color: C.textMuted, marginBottom: 2 }}>Due Date (optional)</Text>
+            <TouchableOpacity
+              style={[styles.amountInput, { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4, justifyContent: 'flex-start' }]}
+              onPress={() => setNewShowDatePicker(!newShowDatePicker)}
+              activeOpacity={0.7}
+            >
+              <Feather name="calendar" size={14} color={newDueDate ? C.text : C.textMuted} />
+              <Text style={{ flex: 1, fontSize: 13, color: newDueDate ? C.text : C.textMuted }}>
+                {newDueDate ? fmtDate(newDueDate.toISOString()) : 'Tap to select a due date'}
+              </Text>
+              {newDueDate && (
+                <TouchableOpacity onPress={() => { setNewDueDate(null); setNewShowDatePicker(false); }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Feather name="x-circle" size={14} color={C.textMuted} />
+                </TouchableOpacity>
+              )}
+            </TouchableOpacity>
+            {newShowDatePicker && (
+              <View style={{ marginBottom: 8 }}>
+                <DateTimePicker
+                  value={newDueDate ?? new Date()}
+                  mode="date"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  minimumDate={newStartDate ?? newSlot.slotMin ?? new Date()}
+                  maximumDate={newSlot.slotMax}
+                  onChange={(_, date) => {
+                    if (Platform.OS === 'android') setNewShowDatePicker(false);
+                    if (date) setNewDueDate(date);
+                  }}
+                  style={{ width: '100%' }}
+                />
+              </View>
+            )}
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <TouchableOpacity
                 style={[styles.previewBtn, { flex: 1, marginTop: 0, borderColor: C.border }]}
-                onPress={() => { setShowAddItem(false); setNewTitle(''); setNewDescription(''); setNewCost(''); }}
+                onPress={() => { setShowAddItem(false); setNewTitle(''); setNewDescription(''); setNewCost(''); setNewStartDate(null); setNewShowStartDatePicker(false); setNewDueDate(null); setNewShowDatePicker(false); }}
               >
                 <Text style={[styles.previewBtnText, { color: C.textSecondary }]}>Cancel</Text>
               </TouchableOpacity>

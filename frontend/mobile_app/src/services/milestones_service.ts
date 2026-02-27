@@ -89,6 +89,24 @@ export const milestones_service = {
   },
 
   /**
+   * Get date extension history for a milestone item
+   */
+  get_date_history: async (itemId: number): Promise<ApiResponse> => {
+    try {
+      const response = await api_request(`/api/milestone-items/${itemId}/date-history`, {
+        method: 'GET',
+      });
+      return response;
+    } catch (error: any) {
+      console.error('Error fetching date history:', error);
+      return {
+        success: false,
+        message: error.message || 'Failed to fetch date history',
+      };
+    }
+  },
+
+  /**
    * Set or update the settlement due date for a milestone item (Contractor)
    */
   set_settlement_due_date: async (

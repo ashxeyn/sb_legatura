@@ -11,7 +11,7 @@ use Illuminate\Support\Collection;
  * This service provides a single location for all bid ranking logic.
  * Modify weights and scoring rules here - all controllers will use these rules automatically.
  */
-class BidRankingService
+class bidRankingService
 {
     /**
      * CONFIGURATION - Adjust these weights to change ranking priorities

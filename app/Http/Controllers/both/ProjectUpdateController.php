@@ -3,11 +3,11 @@
 namespace App\Http\Controllers\both;
 
 use App\Http\Controllers\Controller;
-use App\Services\ProjectUpdateService;
+use App\Services\projectUpdateService;
 use Illuminate\Http\Request;
 
 /**
- * ProjectUpdateController — Enhanced v2
+ * projectUpdateController — Enhanced v2
  *
  * Contractor-only:
  *   GET  /projects/{id}/update/context          — overview + milestone items
@@ -24,9 +24,9 @@ use Illuminate\Http\Request;
  *   GET  /projects/{id}/updates                  — list history
  *   GET  /projects/{id}/update/milestone-items   — items + payment status
  */
-class ProjectUpdateController extends Controller
+class projectUpdateController extends Controller
 {
-    public function __construct(private ProjectUpdateService $service) {}
+    public function __construct(private projectUpdateService $service) {}
 
     // ── context ──────────────────────────────────────────────────────────
     public function context(Request $request, int $projectId)
@@ -45,8 +45,10 @@ class ProjectUpdateController extends Controller
     // ── preview (enhanced) ───────────────────────────────────────────────
     public function preview(Request $request, int $projectId)
     {
+        $this->sanitizeNumericFields($request);
+
         $validated = $request->validate([
-            'proposed_end_date'      => 'required|date|after:today',
+            'proposed_end_date'      => 'nullable|date|after:today',
             'proposed_budget'        => 'nullable|numeric|min:0',
             'allocation_mode'        => 'nullable|in:percentage,exact',
             'new_items'              => 'nullable|array',
@@ -54,6 +56,7 @@ class ProjectUpdateController extends Controller
             'new_items.*.description'=> 'nullable|string|max:2000',
             'new_items.*.cost'       => 'nullable|numeric|min:0',
             'new_items.*.percentage' => 'nullable|numeric|min:0|max:100',
+            'new_items.*.start_date' => 'nullable|date',
             'new_items.*.due_date'   => 'nullable|date',
             'new_items.*.attachments'=> 'nullable|array',
             'edited_items'           => 'nullable|array',
@@ -61,6 +64,7 @@ class ProjectUpdateController extends Controller
             'edited_items.*.cost'    => 'nullable|numeric|min:0',
             'edited_items.*.percentage'=> 'nullable|numeric|min:0|max:100',
             'edited_items.*.title'   => 'nullable|string|max:255',
+            'edited_items.*.start_date'=> 'nullable|date',
             'edited_items.*.due_date'=> 'nullable|date',
             'deleted_item_ids'       => 'nullable|array',
             'deleted_item_ids.*'     => 'integer',
@@ -80,9 +84,11 @@ class ProjectUpdateController extends Controller
     // ── submit (contractor) ──────────────────────────────────────────────
     public function store(Request $request, int $projectId)
     {
+        $this->sanitizeNumericFields($request);
+
         $validated = $request->validate([
             'user_id'                => 'required|integer',
-            'proposed_end_date'      => 'required|date|after:today',
+            'proposed_end_date'      => 'nullable|date|after:today',
             'reason'                 => 'required|string|min:20|max:2000',
             'proposed_budget'        => 'nullable|numeric|min:0',
             'allocation_mode'        => 'nullable|in:percentage,exact',
@@ -91,6 +97,7 @@ class ProjectUpdateController extends Controller
             'new_items.*.description'=> 'nullable|string|max:2000',
             'new_items.*.cost'       => 'nullable|numeric|min:0',
             'new_items.*.percentage' => 'nullable|numeric|min:0|max:100',
+            'new_items.*.start_date' => 'nullable|date',
             'new_items.*.due_date'   => 'nullable|date',
             'new_items.*.attachments'=> 'nullable|array',
             'edited_items'           => 'nullable|array',
@@ -98,6 +105,7 @@ class ProjectUpdateController extends Controller
             'edited_items.*.cost'    => 'nullable|numeric|min:0',
             'edited_items.*.percentage'=> 'nullable|numeric|min:0|max:100',
             'edited_items.*.title'   => 'nullable|string|max:255',
+            'edited_items.*.start_date'=> 'nullable|date',
             'edited_items.*.due_date'=> 'nullable|date',
             'deleted_item_ids'       => 'nullable|array',
             'deleted_item_ids.*'     => 'integer',
@@ -175,5 +183,32 @@ class ProjectUpdateController extends Controller
 
         $result = $this->service->withdraw($extensionId, (int) $validated['user_id']);
         return response()->json($result, $result['success'] ? 200 : 422);
+    }
+
+    // ── Sanitize: strip commas from numeric fields before validation ──────
+    private function sanitizeNumericFields(Request $request): void
+    {
+        $strip = fn ($v) => is_string($v) ? str_replace(',', '', $v) : $v;
+
+        if ($request->has('proposed_budget')) {
+            $request->merge(['proposed_budget' => $strip($request->input('proposed_budget'))]);
+        }
+        if ($request->has('additional_amount')) {
+            $request->merge(['additional_amount' => $strip($request->input('additional_amount'))]);
+        }
+
+        foreach (['new_items', 'edited_items'] as $group) {
+            $items = $request->input($group);
+            if (!is_array($items)) continue;
+            foreach ($items as $i => $item) {
+                if (isset($item['cost'])) {
+                    $items[$i]['cost'] = $strip($item['cost']);
+                }
+                if (isset($item['percentage'])) {
+                    $items[$i]['percentage'] = $strip($item['percentage']);
+                }
+            }
+            $request->merge([$group => $items]);
+        }
     }
 }

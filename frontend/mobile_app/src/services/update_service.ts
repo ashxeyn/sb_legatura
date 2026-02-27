@@ -19,6 +19,7 @@ export interface MilestoneItemDetail {
   percentage: number;
   item_status: string;
   milestone_status: string;
+  start_date: string | null;
   date_to_finish: string | null;
   settlement_due_date: string | null;
   total_paid: number;
@@ -57,6 +58,7 @@ export interface NewItemPayload {
   description?: string;
   cost: number;
   percentage?: number;
+  start_date?: string;
   due_date?: string;
   attachments?: string[];
 }
@@ -66,11 +68,12 @@ export interface EditedItemPayload {
   cost?: number;
   percentage?: number;
   title?: string;
+  start_date?: string | null;
   due_date?: string | null;
 }
 
 export interface PreviewPayload {
-  proposed_end_date: string;
+  proposed_end_date?: string | null;
   proposed_budget?: number | null;
   allocation_mode?: AllocationMode;
   new_items?: NewItemPayload[];
@@ -124,8 +127,8 @@ export interface ExtensionRecord {
   project_id: number;
   contractor_user_id: number;
   owner_user_id: number;
-  current_end_date: string;
-  proposed_end_date: string;
+  current_end_date: string | null;
+  proposed_end_date: string | null;
   reason: string;
   current_budget: number | null;
   proposed_budget: number | null;
@@ -144,7 +147,7 @@ export interface ExtensionRecord {
 
 export interface SubmitExtensionData {
   user_id: number;
-  proposed_end_date: string;
+  proposed_end_date?: string | null;
   reason: string;
   proposed_budget?: number | null;
   allocation_mode?: AllocationMode;

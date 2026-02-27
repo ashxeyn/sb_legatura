@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
- * ProjectUpdateService  –  Enhanced v2
+ * projectUpdateService  –  Enhanced v2
  *
  * Features:
  *   - Project context (overview) for the modal
@@ -30,7 +30,7 @@ use Illuminate\Support\Facades\Log;
  *   - All financial mutations inside DB::transaction()
  *   - Carry-forward / overpayment logic is preserved (untouched)
  */
-class ProjectUpdateService
+class projectUpdateService
 {
     // ───────────────────────────────────────────────────────────────────────
     // 1. READ HELPERS
@@ -129,7 +129,7 @@ class ProjectUpdateService
                 'mi.milestone_item_title', 'mi.milestone_item_description',
                 'mi.milestone_item_cost', 'mi.adjusted_cost', 'mi.carry_forward_amount',
                 'mi.percentage_progress', 'mi.item_status',
-                'mi.date_to_finish', 'mi.settlement_due_date', 'mi.extension_date',
+                'mi.start_date', 'mi.date_to_finish', 'mi.settlement_due_date', 'mi.extension_date',
                 'm.milestone_name', 'm.milestone_status'
             )
             ->orderBy('m.start_date')
@@ -149,15 +149,29 @@ class ProjectUpdateService
 
             $isFullyPaid     = $totalApproved >= $effectiveCost && $effectiveCost > 0;
             $isPartiallyPaid = $totalApproved > 0 && !$isFullyPaid;
+
+            // Auto-correct stale status: if item has activity but is still not_started,
+            // advance it to in_progress in the DB so it reflects reality.
+            if ($item->item_status === 'not_started') {
+                $hasProgress = DB::table('progress')
+                    ->where('milestone_item_id', $item->item_id)
+                    ->whereNotIn('progress_status', ['deleted'])
+                    ->exists();
+                if ($hasProgress || $totalApproved > 0) {
+                    DB::table('milestone_items')
+                        ->where('item_id', $item->item_id)
+                        ->update(['item_status' => 'in_progress', 'updated_at' => now()]);
+                    $item->item_status = 'in_progress';
+                }
+            }
+
             $isCompleted     = in_array($item->item_status, ['completed', 'cancelled']);
 
-            // Determine editability
+            // Determine editability — items are editable unless completed.
+            // Even fully paid / in_progress items can have their dates/info edited via Project Update.
             $editable = true;
             $editableReason = null;
-            if ($isFullyPaid) {
-                $editable = false;
-                $editableReason = 'fully_paid';
-            } elseif ($isCompleted) {
+            if ($item->item_status === 'completed') {
                 $editable = false;
                 $editableReason = 'completed';
             }
@@ -176,6 +190,7 @@ class ProjectUpdateService
                 'percentage'           => (float) $item->percentage_progress,
                 'item_status'          => $item->item_status,
                 'milestone_status'     => $item->milestone_status,
+                'start_date'           => $item->start_date,
                 'date_to_finish'       => $item->date_to_finish,
                 'settlement_due_date'  => $item->settlement_due_date,
                 'total_paid'           => $totalApproved,
@@ -315,6 +330,133 @@ class ProjectUpdateService
             }
         }
 
+        // ── Date-range validation ──
+        // All milestone item dates must fall within the project duration.
+        $projStart = $ctx['start_date'] ? Carbon::parse($ctx['start_date'])->startOfDay() : null;
+        $projEnd   = $proposed ?? ($ctx['end_date'] ? Carbon::parse($ctx['end_date'])->endOfDay() : null);
+
+        $dateErrors = [];
+
+        // Validate edited items dates
+        foreach ($editedItems as $edit) {
+            $itemTitle = collect($ctx['milestone_items'])->firstWhere('item_id', $edit['item_id'] ?? 0)['title'] ?? "Item #{$edit['item_id']}";
+
+            if (!empty($edit['start_date'])) {
+                $sd = Carbon::parse($edit['start_date']);
+                if ($projStart && $sd->lt($projStart)) {
+                    $dateErrors[] = "\"{$itemTitle}\" start date is before the project start date.";
+                }
+                if ($projEnd && $sd->gt($projEnd)) {
+                    $dateErrors[] = "\"{$itemTitle}\" start date exceeds the project end date.";
+                }
+            }
+            if (!empty($edit['due_date'])) {
+                $dd = Carbon::parse($edit['due_date']);
+                if ($projStart && $dd->lt($projStart)) {
+                    $dateErrors[] = "\"{$itemTitle}\" due date is before the project start date.";
+                }
+                if ($projEnd && $dd->gt($projEnd)) {
+                    $dateErrors[] = "\"{$itemTitle}\" due date exceeds the project end date.";
+                }
+            }
+            // start_date must be before due_date
+            if (!empty($edit['start_date']) && !empty($edit['due_date'])) {
+                if (Carbon::parse($edit['start_date'])->gt(Carbon::parse($edit['due_date']))) {
+                    $dateErrors[] = "\"{$itemTitle}\" start date must not be after its due date.";
+                }
+            }
+        }
+
+        // Validate new items dates
+        foreach ($newItems as $ni) {
+            $niTitle = $ni['title'] ?? 'New item';
+            if (!empty($ni['start_date'])) {
+                $sd = Carbon::parse($ni['start_date']);
+                if ($projStart && $sd->lt($projStart)) {
+                    $dateErrors[] = "\"{$niTitle}\" start date is before the project start date.";
+                }
+                if ($projEnd && $sd->gt($projEnd)) {
+                    $dateErrors[] = "\"{$niTitle}\" start date exceeds the project end date.";
+                }
+            }
+            if (!empty($ni['due_date'])) {
+                $dd = Carbon::parse($ni['due_date']);
+                if ($projStart && $dd->lt($projStart)) {
+                    $dateErrors[] = "\"{$niTitle}\" due date is before the project start date.";
+                }
+                if ($projEnd && $dd->gt($projEnd)) {
+                    $dateErrors[] = "\"{$niTitle}\" due date exceeds the project end date.";
+                }
+            }
+            if (!empty($ni['start_date']) && !empty($ni['due_date'])) {
+                if (Carbon::parse($ni['start_date'])->gt(Carbon::parse($ni['due_date']))) {
+                    $dateErrors[] = "\"{$niTitle}\" start date must not be after its due date.";
+                }
+            }
+        }
+
+        // ── Overlap validation ──
+        // Build a unified timeline of every item's effective [start, end] range,
+        // then check all pairs for overlapping ranges.
+        $timeline = [];
+
+        foreach ($ctx['milestone_items'] as $item) {
+            if (in_array($item['item_id'], $deletedItemIds)) continue;
+
+            $editEntry = collect($editedItems)->firstWhere('item_id', $item['item_id']);
+
+            // Determine effective start date (edited value takes precedence)
+            $startStr = ($editEntry && array_key_exists('start_date', $editEntry))
+                ? $editEntry['start_date']
+                : ($item['start_date'] ?? null);
+
+            // Determine effective due date
+            $endStr = ($editEntry && array_key_exists('due_date', $editEntry))
+                ? $editEntry['due_date']
+                : ($item['settlement_due_date'] ?? $item['date_to_finish'] ?? null);
+
+            if ($startStr && $endStr) {
+                $label = ($editEntry && isset($editEntry['title']))
+                    ? $editEntry['title']
+                    : ($item['title'] ?? "Item #{$item['item_id']}");
+
+                $timeline[] = [
+                    'label' => $label,
+                    'start' => Carbon::parse($startStr)->startOfDay(),
+                    'end'   => Carbon::parse($endStr)->startOfDay(),
+                ];
+            }
+        }
+
+        foreach ($newItems as $ni) {
+            if (!empty($ni['start_date']) && !empty($ni['due_date'])) {
+                $timeline[] = [
+                    'label' => $ni['title'] ?? 'New item',
+                    'start' => Carbon::parse($ni['start_date'])->startOfDay(),
+                    'end'   => Carbon::parse($ni['due_date'])->startOfDay(),
+                ];
+            }
+        }
+
+        usort($timeline, fn($a, $b) => $a['start']->timestamp - $b['start']->timestamp);
+
+        $tlCount = count($timeline);
+        for ($i = 0; $i < $tlCount - 1; $i++) {
+            for ($j = $i + 1; $j < $tlCount; $j++) {
+                // Two ranges overlap when: startA <= endB AND startB <= endA
+                if ($timeline[$i]['start']->lte($timeline[$j]['end']) && $timeline[$j]['start']->lte($timeline[$i]['end'])) {
+                    $dateErrors[] = "Date overlap: \"{$timeline[$i]['label']}\" ("
+                        . $timeline[$i]['start']->format('M d, Y') . ' – ' . $timeline[$i]['end']->format('M d, Y')
+                        . ") overlaps with \"{$timeline[$j]['label']}\" ("
+                        . $timeline[$j]['start']->format('M d, Y') . ' – ' . $timeline[$j]['end']->format('M d, Y') . ').';
+                }
+            }
+        }
+
+        if (!empty($dateErrors)) {
+            return ['success' => false, 'message' => implode(' ', $dateErrors)];
+        }
+
         // Compute total allocation
         $keptItems = collect($ctx['milestone_items'])->whereNotIn('item_id', $deletedItemIds);
         $totalAllocation = 0;
@@ -416,11 +558,14 @@ class ProjectUpdateService
             $currentEndDate  = $ctx['end_date'] ? Carbon::parse($ctx['end_date'])->format('Y-m-d') : null;
             $proposedEndDate = $data['proposed_end_date'] ?? null;
 
-            if (!$currentEndDate) {
-                return ['success' => false, 'message' => 'Cannot determine the project end date. Ensure milestones are set up.'];
-            }
-            if (!$proposedEndDate || Carbon::parse($proposedEndDate)->lte(Carbon::parse($currentEndDate))) {
-                return ['success' => false, 'message' => 'Proposed end date must be later than the current end date (' . $currentEndDate . ').'];
+            // Only validate proposed end date when it's actually provided
+            if ($proposedEndDate) {
+                if (!$currentEndDate) {
+                    return ['success' => false, 'message' => 'Cannot determine the project end date. Ensure milestones are set up.'];
+                }
+                if (Carbon::parse($proposedEndDate)->lte(Carbon::parse($currentEndDate))) {
+                    return ['success' => false, 'message' => 'Proposed end date must be later than the current end date (' . $currentEndDate . ').'];
+                }
             }
 
             // Budget — always store a value (default to current when unchanged)
@@ -472,6 +617,7 @@ class ProjectUpdateService
                         'title'      => $original['title'],
                         'cost'       => $original['effective_cost'],
                         'percentage' => $original['percentage'],
+                        'start_date' => $original['start_date'] ?? null,
                         'due_date'   => $original['settlement_due_date'] ?? $original['date_to_finish'] ?? null,
                     ];
                 }
@@ -533,6 +679,9 @@ class ProjectUpdateService
 
             $extensionId = DB::table('project_updates')->insertGetId($insertPayload);
 
+            // ── Write milestone item updates to normalized table ──
+            $this->saveMilestoneItemUpdates($extensionId, $editedItems, $ctx);
+
             // Notify owner
             $notifTitle = $budgetChangeType !== 'none'
                 ? 'Project Budget Adjustment Requested'
@@ -585,58 +734,97 @@ class ProjectUpdateService
 
         try {
             DB::transaction(function () use ($ext, $note, $ctx) {
-                $proposedEnd = Carbon::parse($ext->proposed_end_date);
-                $currentEnd  = Carbon::parse($ext->current_end_date);
-                $deltaDays   = $currentEnd->diffInDays($proposedEnd);
+                $changedBy = (int) $ctx['owner_user_id'];
+                $appliedAt = now();
 
-                // ── 1. Extend timeline ──
-                $milestones = DB::table('milestones')
-                    ->where('project_id', $ext->project_id)
-                    ->whereNull('is_deleted')
-                    ->whereNotIn('milestone_status', ['completed', 'cancelled', 'deleted'])
-                    ->get();
+                // ── 1. Extend timeline ONLY when a proposed end date was supplied ──
+                if ($ext->proposed_end_date && $ext->current_end_date) {
+                    $proposedEnd = Carbon::parse($ext->proposed_end_date);
+                    $currentEnd  = Carbon::parse($ext->current_end_date);
+                    $deltaDays   = $currentEnd->diffInDays($proposedEnd);
 
-                foreach ($milestones as $m) {
-                    $newEnd = Carbon::parse($m->end_date)->addDays($deltaDays);
-                    DB::table('milestones')
-                        ->where('milestone_id', $m->milestone_id)
-                        ->update(['end_date' => $newEnd->format('Y-m-d H:i:s'), 'updated_at' => now()]);
-
-                    $items = DB::table('milestone_items')
-                        ->where('milestone_id', $m->milestone_id)
-                        ->whereNotIn('item_status', ['completed', 'cancelled', 'deleted'])
+                    $milestones = DB::table('milestones')
+                        ->where('project_id', $ext->project_id)
+                        ->whereNull('is_deleted')
+                        ->whereNotIn('milestone_status', ['completed', 'cancelled', 'deleted'])
                         ->get();
 
-                    foreach ($items as $item) {
-                        $newDeadline = Carbon::parse($item->date_to_finish)->addDays($deltaDays);
-                        DB::table('milestone_items')
-                            ->where('item_id', $item->item_id)
-                            ->update(['date_to_finish' => $newDeadline->format('Y-m-d H:i:s'), 'updated_at' => now()]);
+                    foreach ($milestones as $m) {
+                        $newEnd = Carbon::parse($m->end_date)->addDays($deltaDays);
+                        DB::table('milestones')
+                            ->where('milestone_id', $m->milestone_id)
+                            ->update(['end_date' => $newEnd->format('Y-m-d H:i:s'), 'updated_at' => $appliedAt]);
+
+                        $items = DB::table('milestone_items')
+                            ->where('milestone_id', $m->milestone_id)
+                            ->whereNotIn('item_status', ['completed', 'cancelled', 'deleted'])
+                            ->get();
+
+                        foreach ($items as $item) {
+                            $previousDate = $item->date_to_finish;
+                            $newDeadline = Carbon::parse($previousDate)->addDays($deltaDays);
+
+                            // Preserve original_date_to_finish on first extension only
+                            $updateFields = [
+                                'date_to_finish' => $newDeadline->format('Y-m-d H:i:s'),
+                                'was_extended'   => true,
+                                'extension_count' => DB::raw('extension_count + 1'),
+                                'updated_at'     => $appliedAt,
+                            ];
+
+                            if ($item->original_date_to_finish === null) {
+                                $updateFields['original_date_to_finish'] = $previousDate;
+                            }
+
+                            DB::table('milestone_items')
+                                ->where('item_id', $item->item_id)
+                                ->update($updateFields);
+
+                            // Insert date change history record
+                            DB::table('milestone_date_histories')->insert([
+                                'item_id'       => $item->item_id,
+                                'previous_date' => $previousDate,
+                                'new_date'      => $newDeadline->format('Y-m-d H:i:s'),
+                                'extension_id'  => $ext->extension_id,
+                                'changed_by'    => $changedBy,
+                                'changed_at'    => $appliedAt,
+                                'change_reason' => "Project update #{$ext->extension_id} approved",
+                                'created_at'    => $appliedAt,
+                                'updated_at'    => $appliedAt,
+                            ]);
+                        }
                     }
                 }
 
-                // ── 2. Budget adjustment (proposed_budget is always set) ──
-                $plan = DB::table('payment_plans')
-                    ->where('project_id', $ext->project_id)
-                    ->orderByDesc('plan_id')
-                    ->first();
+                // ── 2. Budget adjustment ──
+                if ($ext->proposed_budget !== null) {
+                    $plan = DB::table('payment_plans')
+                        ->where('project_id', $ext->project_id)
+                        ->orderByDesc('plan_id')
+                        ->first();
 
-                if ($plan) {
-                    DB::table('payment_plans')
-                        ->where('plan_id', $plan->plan_id)
-                        ->update([
-                            'total_project_cost' => (float) $ext->proposed_budget,
-                            'updated_at'         => now(),
-                        ]);
+                    if ($plan) {
+                        DB::table('payment_plans')
+                            ->where('plan_id', $plan->plan_id)
+                            ->update([
+                                'total_project_cost' => (float) $ext->proposed_budget,
+                                'updated_at'         => now(),
+                            ]);
+                    }
                 }
 
-                // ── 3. Milestone changes ──
+                // ── 3. Milestone changes (from JSON — new items + deletions) ──
                 $changes = $ext->milestone_changes ? json_decode($ext->milestone_changes, true) : [];
                 $this->applyMilestoneChanges($ext->project_id, $changes, $ctx);
 
+                // ── 3a. Apply milestone item updates from normalized table ──
+                $this->applyMilestoneItemUpdates($ext->extension_id, (int) $ctx['owner_user_id']);
+
                 // ── 3b. Recalculate percentage_progress for ALL active items ──
-                $newBudget = (float) $ext->proposed_budget;
-                if ($newBudget > 0) {
+                $effectiveBudgetForPct = $ext->proposed_budget !== null
+                    ? (float) $ext->proposed_budget
+                    : ($ctx['total_cost'] ?? 0);
+                if ($effectiveBudgetForPct > 0) {
                     $allActiveItems = DB::table('milestone_items as mi')
                         ->join('milestones as m', 'mi.milestone_id', '=', 'm.milestone_id')
                         ->where('m.project_id', $ext->project_id)
@@ -649,7 +837,7 @@ class ProjectUpdateService
                         $effectiveCost = $ai->adjusted_cost !== null
                             ? (float) $ai->adjusted_cost
                             : (float) $ai->milestone_item_cost;
-                        $pct = ($effectiveCost / $newBudget) * 100;
+                        $pct = ($effectiveCost / $effectiveBudgetForPct) * 100;
 
                         DB::table('milestone_items')
                             ->where('item_id', $ai->item_id)
@@ -661,7 +849,7 @@ class ProjectUpdateService
 
                     Log::info('Recalculated percentage_progress for all items', [
                         'project_id'  => $ext->project_id,
-                        'new_budget'  => $newBudget,
+                        'new_budget'  => $effectiveBudgetForPct,
                         'items_count' => $allActiveItems->count(),
                     ]);
                 }
@@ -677,9 +865,11 @@ class ProjectUpdateService
                     ]);
 
                 Log::info('ProjectUpdate approved + applied', [
-                    'extension_id' => $ext->extension_id,
-                    'project_id'   => $ext->project_id,
-                    'delta_days'   => $deltaDays,
+                    'extension_id'  => $ext->extension_id,
+                    'project_id'    => $ext->project_id,
+                    'delta_days'    => ($ext->proposed_end_date && $ext->current_end_date)
+                        ? Carbon::parse($ext->current_end_date)->diffInDays(Carbon::parse($ext->proposed_end_date))
+                        : 0,
                     'budget_change' => $ext->budget_change_type,
                 ]);
             });
@@ -862,8 +1052,12 @@ class ProjectUpdateService
         if (!$currentEndDate) {
             return ['success' => false, 'message' => 'Cannot determine the project end date. Ensure milestones are set up.'];
         }
-        if (!$proposedEndDate || Carbon::parse($proposedEndDate)->lte(Carbon::parse($currentEndDate))) {
-            return ['success' => false, 'message' => 'Proposed end date must be later than the current end date (' . $currentEndDate . ').'];
+
+        // Only validate proposed_end_date when one is actually provided
+        if ($proposedEndDate) {
+            if (Carbon::parse($proposedEndDate)->lte(Carbon::parse($currentEndDate))) {
+                return ['success' => false, 'message' => 'Proposed end date must be later than the current end date (' . $currentEndDate . ').'];
+            }
         }
 
         // Budget — always store a value (default to current when unchanged)
@@ -944,7 +1138,7 @@ class ProjectUpdateService
         ]);
 
         $updatePayload = [
-            'current_end_date'    => $currentEndDate,
+            'current_end_date'    => $proposedEndDate ? $currentEndDate : $existing->current_end_date,
             'proposed_end_date'   => $proposedEndDate,
             'reason'              => $data['reason'] ?? $existing->reason,
             'current_budget'      => $currentBudget,
@@ -971,6 +1165,12 @@ class ProjectUpdateService
         DB::table('project_updates')
             ->where('extension_id', $existing->extension_id)
             ->update($updatePayload);
+
+        // ── Replace milestone item updates for this extension ──
+        DB::table('milestone_item_updates')
+            ->where('project_update_id', $existing->extension_id)
+            ->delete();
+        $this->saveMilestoneItemUpdates($existing->extension_id, $editedItems, $ctx);
 
         // Notify owner
         if ($ctx['owner_user_id']) {
@@ -1093,8 +1293,16 @@ class ProjectUpdateService
                 $updateFields['milestone_item_title'] = $edit['title'];
             }
 
+            if (array_key_exists('start_date', $edit)) {
+                $updateFields['start_date'] = $edit['start_date'] ?: null;
+            }
+
             if (array_key_exists('due_date', $edit)) {
-                $updateFields['settlement_due_date'] = $edit['due_date'] ?: null;
+                $dueVal = $edit['due_date'] ?: null;
+                $updateFields['settlement_due_date'] = $dueVal;
+                if ($dueVal) {
+                    $updateFields['date_to_finish'] = $dueVal;
+                }
             }
 
             DB::table('milestone_items')
@@ -1131,6 +1339,7 @@ class ProjectUpdateService
                     'adjusted_cost'               => null,
                     'carry_forward_amount'        => 0.00,
                     'item_status'                 => 'not_started',
+                    'start_date'                  => $ni['start_date'] ?? null,
                     'date_to_finish'              => $ni['due_date'] ?? $lastMilestone->end_date,
                     'settlement_due_date'         => $ni['due_date'] ?? null,
                     'updated_at'                  => now(),
@@ -1146,6 +1355,121 @@ class ProjectUpdateService
                     }
                 }
             }
+        }
+    }
+
+    /**
+     * Persist per-item proposed changes into the normalised milestone_item_updates table.
+     * Called from submit() and resubmit().
+     */
+    private function saveMilestoneItemUpdates(int $projectUpdateId, array $editedItems, array $ctx): void
+    {
+        foreach ($editedItems as $edit) {
+            $itemId = $edit['item_id'] ?? null;
+            if (!$itemId) continue;
+
+            $original = collect($ctx['milestone_items'])->firstWhere('item_id', $itemId);
+            if (!$original) continue;
+
+            // Only persist if at least one field actually changed
+            $hasDateChange  = isset($edit['start_date']) || isset($edit['due_date']);
+            $hasCostChange  = isset($edit['cost']);
+            $hasTitleChange = isset($edit['title']);
+            if (!$hasDateChange && !$hasCostChange && !$hasTitleChange) continue;
+
+            $previousEndDate = $original['settlement_due_date'] ?? $original['date_to_finish'] ?? null;
+
+            DB::table('milestone_item_updates')->insert([
+                'milestone_item_id'  => $itemId,
+                'project_update_id'  => $projectUpdateId,
+                'proposed_start_date' => $edit['start_date'] ?? null,
+                'proposed_end_date'   => $edit['due_date'] ?? null,
+                'proposed_cost'       => $hasCostChange ? (float) $edit['cost'] : null,
+                'proposed_title'      => $edit['title'] ?? null,
+                'previous_start_date' => $original['start_date']
+                    ? Carbon::parse($original['start_date'])->format('Y-m-d')
+                    : null,
+                'previous_end_date'   => $previousEndDate
+                    ? Carbon::parse($previousEndDate)->format('Y-m-d')
+                    : null,
+                'previous_cost'       => $original['effective_cost'],
+                'previous_title'      => $original['title'],
+                'status'              => 'pending',
+                'created_at'          => now(),
+                'updated_at'          => now(),
+            ]);
+        }
+    }
+
+    /**
+     * Apply milestone item updates from the normalised table on approval.
+     * Updates item dates/costs/titles and marks records as approved.
+     */
+    private function applyMilestoneItemUpdates(int $extensionId, int $approvedBy): void
+    {
+        $updates = DB::table('milestone_item_updates')
+            ->where('project_update_id', $extensionId)
+            ->where('status', 'pending')
+            ->get();
+
+        foreach ($updates as $upd) {
+            $item = DB::table('milestone_items')->where('item_id', $upd->milestone_item_id)->first();
+            if (!$item) continue;
+
+            $patch = ['updated_at' => now()];
+
+            // ── Date changes ──
+            if ($upd->proposed_start_date !== null) {
+                $patch['start_date'] = $upd->proposed_start_date;
+            }
+            if ($upd->proposed_end_date !== null) {
+                // Store extension history
+                $currentDue = $item->settlement_due_date ?? $item->date_to_finish;
+                $patch['date_to_finish']        = $upd->proposed_end_date;
+                $patch['settlement_due_date']   = $upd->proposed_end_date;
+                if ($currentDue && Carbon::parse($upd->proposed_end_date)->gt(Carbon::parse($currentDue))) {
+                    $patch['was_extended']     = true;
+                    $patch['extension_count']  = ($item->extension_count ?? 0) + 1;
+                    $patch['extension_date']   = now();
+                }
+
+                // Record in date history
+                DB::table('milestone_date_histories')->insert([
+                    'item_id'       => $item->item_id,
+                    'previous_date' => $currentDue,
+                    'new_date'      => $upd->proposed_end_date,
+                    'extension_id'  => $extensionId,
+                    'changed_by'    => $approvedBy,
+                    'change_reason' => 'project_update_approved',
+                    'changed_at'    => now(),
+                    'created_at'    => now(),
+                    'updated_at'    => now(),
+                ]);
+            }
+
+            // ── Cost change ──
+            if ($upd->proposed_cost !== null) {
+                $patch['adjusted_cost'] = (float) $upd->proposed_cost;
+            }
+
+            // ── Title change ──
+            if ($upd->proposed_title !== null) {
+                $patch['milestone_item_title'] = $upd->proposed_title;
+            }
+
+            DB::table('milestone_items')
+                ->where('item_id', $upd->milestone_item_id)
+                ->update($patch);
+
+            // Mark this record as approved
+            DB::table('milestone_item_updates')
+                ->where('id', $upd->id)
+                ->update([
+                    'status'      => 'approved',
+                    'approved_by' => $approvedBy,
+                    'approved_at' => now(),
+                    'updated_at'  => now(),
+                ]);
         }
     }
 

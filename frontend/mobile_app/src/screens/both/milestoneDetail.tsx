@@ -18,8 +18,8 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 
-import ProgressReportForm from './ProgressReportForm';
-import ProgressReportDetail from './ProgressReportDetail';
+import ProgressReportForm from './progressReportForm';
+import ProgressReportDetail from './progressReportDetail';
 import PaymentReceiptForm from './paymentReceiptForm';
 import DisputeForm from './disputeForm';
 import DisputeHistory from './disputeHistory';
@@ -154,6 +154,13 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
   const [showExtPicker, setShowExtPicker] = useState(false);
   const [dueDateObj, setDueDateObj] = useState<Date>(new Date());
   const [extDateObj, setExtDateObj] = useState<Date>(new Date());
+
+  // Work deadline extension history
+  const [dateHistories, setDateHistories] = useState<any[]>([]);
+  const [showDateHistory, setShowDateHistory] = useState(false);
+  const wasExtended = milestoneItem.was_extended || false;
+  const extensionCount = milestoneItem.extension_count || 0;
+  const originalDateToFinish = milestoneItem.original_date_to_finish || null;
 
   // Full Detail expandable sections
   const [fdExpandedSections, setFdExpandedSections] = useState<Record<string, boolean>>({
@@ -409,6 +416,18 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
 
     return () => { isMounted = false; };
   }, [milestoneItem.item_id]);
+
+  // Fetch date extension history when item was extended
+  useEffect(() => {
+    if (!wasExtended) return;
+    milestones_service.get_date_history(milestoneItem.item_id)
+      .then(res => {
+        if (res.success && res.histories) {
+          setDateHistories(res.histories);
+        }
+      })
+      .catch(err => console.error('Date history fetch error:', err));
+  }, [milestoneItem.item_id, wasExtended]);
 
   const toggleReportExpand = (reportId: number) => {
     setExpandedReports(prev => ({
@@ -750,6 +769,15 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
           {/* Menu Dropdown for Full Detail */}
           {showFullDetailMenu && (
             <View style={styles.menuDropdown}>
+              <TouchableOpacity style={styles.menuItem} onPress={() => {
+                setShowFullDetailMenu(false);
+                if (navigation.onShowSummary) {
+                  navigation.onShowSummary(milestoneItem.item_id);
+                }
+              }}>
+                <Feather name="bar-chart-2" size={18} color={COLORS.info} />
+                <Text style={[styles.menuItemText, { color: COLORS.info }]}>View Summary</Text>
+              </TouchableOpacity>
               <TouchableOpacity style={styles.menuItem} onPress={handleSendReport}>
                 <Feather name="file-text" size={18} color={COLORS.text} />
                 <Text style={styles.menuItemText}>Send Report</Text>
@@ -970,6 +998,79 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
                   </View>
                 )}
               </TouchableOpacity>
+
+              {/* ─── Work Deadline Card ─── */}
+              <View style={styles.fdDueDateCard}>
+                <View style={styles.fdDueDateHeader}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+                    <View style={[styles.fdAccordionIcon, { backgroundColor: wasExtended ? COLORS.warning + '15' : COLORS.accent + '15' }]}>
+                      <Feather name="clock" size={16} color={wasExtended ? COLORS.warning : COLORS.accent} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 14, fontWeight: '600', color: COLORS.text }}>Work Deadline</Text>
+                      <Text style={{ fontSize: 13, color: COLORS.text, fontWeight: '500', marginTop: 3 }}>
+                        {new Date(milestoneItem.date_to_finish).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                      </Text>
+                      {wasExtended && originalDateToFinish && (
+                        <View style={{ marginTop: 4 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                            <Feather name="arrow-right" size={11} color={COLORS.warning} />
+                            <Text style={{ fontSize: 11, color: COLORS.textMuted }}>
+                              Originally: {new Date(originalDateToFinish).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                            </Text>
+                          </View>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                            <View style={{ backgroundColor: COLORS.warningLight, borderRadius: 4, paddingHorizontal: 6, paddingVertical: 1 }}>
+                              <Text style={{ fontSize: 9, fontWeight: '700', color: COLORS.warning }}>
+                                Extended{extensionCount > 1 ? ` ${extensionCount}×` : ''}
+                              </Text>
+                            </View>
+                          </View>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                  {wasExtended && dateHistories.length > 0 && (
+                    <TouchableOpacity
+                      style={{ paddingHorizontal: 8, paddingVertical: 4 }}
+                      onPress={() => setShowDateHistory(!showDateHistory)}
+                    >
+                      <Feather name={showDateHistory ? 'chevron-up' : 'chevron-down'} size={16} color={COLORS.textMuted} />
+                    </TouchableOpacity>
+                  )}
+                </View>
+                {/* Expandable date history */}
+                {showDateHistory && dateHistories.length > 0 && (
+                  <View style={{ paddingHorizontal: 16, paddingBottom: 12, borderTopWidth: 1, borderTopColor: COLORS.border, marginTop: 8, paddingTop: 10 }}>
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: COLORS.textSecondary, marginBottom: 8 }}>Date History</Text>
+                    {dateHistories.map((h: any, i: number) => (
+                      <View key={h.id} style={{ flexDirection: 'row', marginBottom: i < dateHistories.length - 1 ? 8 : 0 }}>
+                        <View style={{ width: 10, alignItems: 'center', marginRight: 8 }}>
+                          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.warning, marginTop: 4 }} />
+                          {i < dateHistories.length - 1 && (
+                            <View style={{ width: 1, flex: 1, backgroundColor: COLORS.border, marginTop: 2 }} />
+                          )}
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontSize: 11, color: COLORS.text, fontWeight: '500' }}>
+                            {new Date(h.previous_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                            {' → '}
+                            {new Date(h.new_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </Text>
+                          <Text style={{ fontSize: 10, color: COLORS.textMuted, marginTop: 1 }}>
+                            {h.change_reason} • {new Date(h.changed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </Text>
+                          {h.changed_by_name && (
+                            <Text style={{ fontSize: 10, color: COLORS.textMuted }}>
+                              Approved by {h.changed_by_name}
+                            </Text>
+                          )}
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
 
               {/* ─── Due Date Card ─── */}
               <View style={styles.fdDueDateCard}>

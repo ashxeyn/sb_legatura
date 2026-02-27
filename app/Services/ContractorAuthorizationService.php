@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Log;
  *   - CAN: View projects, upload progress, approve payment validations, view property owners
  *   - CANNOT: Bid, create/edit/add milestones, manage members
  */
-class ContractorAuthorizationService
+class contractorAuthorizationService
 {
     /**
      * Roles that have full contractor access (bid, milestones, manage members).

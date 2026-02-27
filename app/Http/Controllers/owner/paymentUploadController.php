@@ -140,7 +140,13 @@ class paymentUploadController extends Controller
 					MAX(CASE WHEN cu.is_active = 1 THEN cu.contractor_user_id END),
 					MAX(CASE WHEN cu.role = "owner" THEN cu.contractor_user_id END),
 					MIN(cu.contractor_user_id)
-				) as contractor_user_id')
+				) as contractor_user_id'),
+				DB::raw('COALESCE(
+					MAX(CASE WHEN cu.is_active = 1 AND cu.role = "owner" THEN cu.user_id END),
+					MAX(CASE WHEN cu.is_active = 1 THEN cu.user_id END),
+					MAX(CASE WHEN cu.role = "owner" THEN cu.user_id END),
+					MIN(cu.user_id)
+				) as contractor_notify_user_id')
 			)
 			->groupBy('p.project_id', 'p.project_title', 'pr.owner_id')
 				->first();
@@ -247,10 +253,18 @@ class paymentUploadController extends Controller
 			$paymentId = $this->paymentClass->createPayment($data);
 			\Log::info('uploadPayment: Payment created successfully', ['payment_id' => $paymentId]);
 
+			// Auto-advance item_status from not_started to in_progress
+			DB::table('milestone_items')
+				->where('item_id', $validated['item_id'])
+				->where('item_status', 'not_started')
+				->update(['item_status' => 'in_progress', 'updated_at' => now()]);
+
 			// Notify contractor about payment upload
-			if ($project->contractor_user_id) {
+			// Use contractor_notify_user_id (users.user_id) not contractor_user_id (contractor_users PK)
+			$contractorUserId = $project->contractor_notify_user_id ?? null;
+			if ($contractorUserId) {
 				$projTitle = $project->project_title ?? '';
-				notificationService::create((int)$project->contractor_user_id, 'payment_submitted', 'Payment Uploaded', "Owner uploaded a payment for \"{$projTitle}\". Please review.", 'normal', 'payment', (int)$paymentId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int)$validated['project_id'], 'tab' => 'payments']]);
+				notificationService::create((int)$contractorUserId, 'payment_submitted', 'Payment Uploaded', "Owner uploaded a payment for \"{$projTitle}\". Please review.", 'normal', 'payment', (int)$paymentId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int)$validated['project_id'], 'tab' => 'payments']]);
 			}
 
 			return response()->json(['success' => true, 'message' => 'Payment validation uploaded', 'payment_id' => $paymentId], 201);

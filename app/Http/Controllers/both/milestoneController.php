@@ -4,7 +4,7 @@ namespace App\Http\Controllers\both;
 
 use App\Http\Controllers\Controller;
 use App\Services\milestoneService;
-use App\Services\ContractorAuthorizationService;
+use App\Services\contractorAuthorizationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Session;
@@ -35,7 +35,7 @@ class milestoneController extends Controller
 {
     public function __construct(
         protected milestoneService $milestoneService,
-        protected ContractorAuthorizationService $authService,
+        protected contractorAuthorizationService $authService,
     ) {}
 
     // ───────────────────────────────────────────────────────────────────────
@@ -547,6 +547,50 @@ class milestoneController extends Controller
     }
 
     // ───────────────────────────────────────────────────────────────────────
+    // ─── Date Extension History ──────────────────────────────────────────
+    /**
+     * GET /milestone-items/{itemId}/date-history
+     * Returns the full date change history for a milestone item.
+     */
+    public function getDateHistory(Request $request, int $itemId)
+    {
+        $item = DB::table('milestone_items')->where('item_id', $itemId)->first();
+        if (!$item) {
+            return response()->json(['success' => false, 'message' => 'Item not found.'], 404);
+        }
+
+        $histories = DB::table('milestone_date_histories as h')
+            ->leftJoin('project_updates as pu', 'h.extension_id', '=', 'pu.extension_id')
+            ->leftJoin('property_owners as po_h', 'h.changed_by', '=', 'po_h.user_id')
+            ->leftJoin('contractors as c_h', 'h.changed_by', '=', 'c_h.user_id')
+            ->where('h.item_id', $itemId)
+            ->orderBy('h.changed_at', 'asc')
+            ->select(
+                'h.id',
+                'h.previous_date',
+                'h.new_date',
+                'h.extension_id',
+                'h.changed_by',
+                'h.changed_at',
+                'h.change_reason',
+                'pu.reason as extension_reason',
+                'pu.status as extension_status',
+                DB::raw("COALESCE(CONCAT(po_h.first_name, ' ', po_h.last_name), c_h.company_name) as changed_by_name")
+            )
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'item_id' => $itemId,
+            'title'   => $item->milestone_item_title,
+            'current_date_to_finish'  => $item->date_to_finish,
+            'original_date_to_finish' => $item->original_date_to_finish,
+            'was_extended'    => (bool) $item->was_extended,
+            'extension_count' => (int) $item->extension_count,
+            'histories' => $histories,
+        ]);
+    }
+
     // HELPERS — Shared auth resolution
     // ───────────────────────────────────────────────────────────────────────
 

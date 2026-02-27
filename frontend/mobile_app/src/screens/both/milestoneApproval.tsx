@@ -22,7 +22,9 @@ import MilestoneDetail from './milestoneDetail';
 import DisputeHistory from './disputeHistory';
 import MilestoneSetup from '../contractor/milestoneSetup';
 import DownpaymentDetail from './downpaymentDetail';
-import ProjectUpdateModal from './ProjectUpdateModal';
+import ProjectUpdateModal from './projectUpdateModal';
+import ProjectSummary from './projectSummary';
+import MilestoneSummary from './milestoneSummary';
 import { update_service, ExtensionRecord } from '../../services/update_service';
 import { api_config } from '../../config/api';
 
@@ -60,6 +62,9 @@ interface MilestoneItem {
   adjusted_cost?: number | null;
   carry_forward_amount?: number | null;
   date_to_finish: string;
+  original_date_to_finish?: string | null;
+  was_extended?: boolean;
+  extension_count?: number;
   item_status?: string;
   // Status summary fields from backend
   latest_progress_status?: string | null;
@@ -167,6 +172,10 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
   const [showDownpaymentDetail, setShowDownpaymentDetail] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [pendingUpdate, setPendingUpdate] = useState<ExtensionRecord | null>(null);
+  const [approvedUpdates, setApprovedUpdates] = useState<ExtensionRecord[]>([]);
+  const [showProjectDateHistory, setShowProjectDateHistory] = useState(false);
+  const [showProjectSummary, setShowProjectSummary] = useState(false);
+  const [showMilestoneSummary, setShowMilestoneSummary] = useState<number | null>(null);
 
   // ── Fetch pending update for the owner banner ──
   const fetchPendingUpdate = useCallback(async () => {
@@ -186,6 +195,17 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
   useEffect(() => {
     fetchPendingUpdate();
   }, [fetchPendingUpdate]);
+
+  // Fetch approved updates for project-level extension history
+  useEffect(() => {
+    update_service.list(projectId)
+      .then(res => {
+        if (res.success && res.data) {
+          setApprovedUpdates(res.data.filter((u: ExtensionRecord) => u.status === 'approved'));
+        }
+      })
+      .catch(() => {});
+  }, [projectId]);
 
   const isProjectHalted = projectStatus === 'halt' || projectStatus === 'on_hold' || projectStatus === 'halted';
 
@@ -582,6 +602,9 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
     if (!isItemCompleted && item.latest_payment_status === 'submitted') {
       tags.push({ label: 'New Payment', color: COLORS.info, bg: COLORS.infoLight, icon: 'credit-card' });
     }
+    if (item.was_extended) {
+      tags.push({ label: 'Extended', color: COLORS.warning, bg: COLORS.warningLight, icon: 'clock' });
+    }
 
     if (tags.length === 0) return null;
 
@@ -598,6 +621,43 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
   };
 
   // If a milestone detail is selected, show the detail view
+  // ── Inline: Project Summary ──
+  if (showProjectSummary) {
+    return (
+      <ProjectSummary
+        route={{
+          params: {
+            projectId,
+            projectTitle,
+            userRole,
+            userId,
+            onMilestonePress: (m: any) => {
+              setShowProjectSummary(false);
+              setShowMilestoneSummary(m.item_id);
+            },
+          },
+        }}
+        navigation={{ goBack: () => setShowProjectSummary(false) }}
+      />
+    );
+  }
+
+  // ── Inline: Milestone Summary ──
+  if (showMilestoneSummary !== null) {
+    return (
+      <MilestoneSummary
+        route={{
+          params: {
+            projectId,
+            itemId: showMilestoneSummary,
+            projectTitle,
+          },
+        }}
+        navigation={{ goBack: () => setShowMilestoneSummary(null) }}
+      />
+    );
+  }
+
   if (selectedMilestoneDetail) {
     // Determine if the previous item (by sequence_order) is completed
     const currentSeq = selectedMilestoneDetail.item.sequence_order;
@@ -627,6 +687,10 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
         }}
         navigation={{
           goBack: () => setSelectedMilestoneDetail(null),
+          onShowSummary: (itemId: number) => {
+            setSelectedMilestoneDetail(null);
+            setShowMilestoneSummary(itemId);
+          },
         }}
       />
     );
@@ -681,6 +745,14 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
                   <Text style={styles.updateProjectBtnText}>Update</Text>
                 </TouchableOpacity>
               )}
+              <TouchableOpacity
+                style={[styles.updateProjectBtn, { borderColor: COLORS.info }]}
+                onPress={() => setShowProjectSummary(true)}
+                activeOpacity={0.8}
+              >
+                <Feather name="bar-chart-2" size={12} color={COLORS.info} />
+                <Text style={[styles.updateProjectBtnText, { color: COLORS.info }]}>Summary</Text>
+              </TouchableOpacity>
             </View>
           )}
 
@@ -709,6 +781,52 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
               </>
             )}
           </View>
+
+          {/* Project-level extension indicator */}
+          {approvedUpdates.length > 0 && (
+            <TouchableOpacity
+              style={{ marginTop: 8, padding: 10, backgroundColor: COLORS.warningLight, borderRadius: 8, flexDirection: 'row', alignItems: 'center' }}
+              onPress={() => setShowProjectDateHistory(!showProjectDateHistory)}
+              activeOpacity={0.8}
+            >
+              <Feather name="clock" size={14} color={COLORS.warning} />
+              <Text style={{ fontSize: 12, color: COLORS.warning, fontWeight: '600', marginLeft: 6, flex: 1 }}>
+                Timeline extended {approvedUpdates.length > 1 ? `${approvedUpdates.length} times` : 'once'}
+              </Text>
+              <Feather name={showProjectDateHistory ? 'chevron-up' : 'chevron-down'} size={14} color={COLORS.warning} />
+            </TouchableOpacity>
+          )}
+          {showProjectDateHistory && approvedUpdates.length > 0 && (
+            <View style={{ marginTop: 6, padding: 10, backgroundColor: '#FAFAFA', borderRadius: 8, borderWidth: 1, borderColor: COLORS.border }}>
+              {approvedUpdates.map((upd, idx) => (
+                <View key={upd.extension_id} style={{ marginBottom: idx < approvedUpdates.length - 1 ? 10 : 0 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.warning }} />
+                    <Text style={{ fontSize: 12, color: COLORS.text, fontWeight: '500' }}>
+                      Update #{upd.extension_id}
+                    </Text>
+                  </View>
+                  <View style={{ marginLeft: 14, marginTop: 3 }}>
+                    <Text style={{ fontSize: 11, color: COLORS.textSecondary }}>
+                      {new Date(upd.current_end_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      {' → '}
+                      {new Date(upd.proposed_end_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </Text>
+                    {upd.applied_at && (
+                      <Text style={{ fontSize: 10, color: COLORS.textMuted, marginTop: 1 }}>
+                        Approved on {new Date(upd.applied_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </Text>
+                    )}
+                    {upd.reason && (
+                      <Text style={{ fontSize: 10, color: COLORS.textMuted, marginTop: 1 }} numberOfLines={2}>
+                        Reason: {upd.reason}
+                      </Text>
+                    )}
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
         </View>
 
         {/* Owner: Pending Update Banner */}

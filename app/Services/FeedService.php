@@ -7,12 +7,12 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
- * FeedService — Business logic for assembling homepage feeds.
+ * feedService — Business logic for assembling homepage feeds.
  *
  * Keeps controllers thin. Both the web (Blade) and API (mobile) homepage
  * actions funnel through this service so feed rules are in one place.
  */
-class FeedService
+class feedService
 {
     protected feedClass $feed;
 
@@ -193,7 +193,7 @@ class FeedService
                 ];
             })->toArray();
         } catch (\Throwable $e) {
-            Log::warning('FeedService::buildJsProjects failed: ' . $e->getMessage());
+            Log::warning('feedService::buildJsProjects failed: ' . $e->getMessage());
             return [];
         }
     }
