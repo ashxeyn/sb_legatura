@@ -217,6 +217,9 @@ Route::post('/accounts/switch/owner/step1', [authController::class, 'switchOwner
 Route::post('/accounts/switch/owner/step2', [authController::class, 'switchOwnerStep2']);
 Route::post('/accounts/switch/owner/final', [authController::class, 'switchOwnerFinal']);
 
+// Web POST endpoint for role switching (session-aware) so frontend can switch roles without bearer token
+Route::post('/accounts/switch-role', [cprocessController::class, 'switchRole'])->name('accounts.switch.role');
+
 // PSGC API Routes
 Route::get('/api/psgc/provinces', [authController::class, 'getProvinces']);
 Route::get('/api/psgc/provinces/{provinceCode}/cities', [authController::class, 'getCitiesByProvince']);

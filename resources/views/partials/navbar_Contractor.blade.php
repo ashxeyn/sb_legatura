@@ -10,14 +10,16 @@
                 </a>
             </div>
 
-            <!-- Column 4-8: Search Bar -->
+            <!-- Column 4-8: Search Bar (Hidden on Dashboard and Messages) -->
             <div class="navbar-col navbar-col-5">
-                <div class="navbar-search">
-                    <input type="text" class="navbar-search-input" placeholder="Search..." aria-label="Search">
-                    <button class="navbar-search-btn" aria-label="Search button">
-                        <i class="fi fi-rr-search"></i>
-                    </button>
-                </div>
+                @if(!in_array(Route::currentRouteName(), ['contractor.dashboard', 'contractor.messages']))
+                    <div class="navbar-search">
+                        <input type="text" class="navbar-search-input" placeholder="Search..." aria-label="Search">
+                        <button class="navbar-search-btn" aria-label="Search button">
+                            <i class="fi fi-rr-search"></i>
+                        </button>
+                    </div>
+                @endif
             </div>
 
             <!-- Column 9-12: User Profile & Actions -->
@@ -28,7 +30,7 @@
                         $sess = session('user');
                         $user = null;
                         if ($sess) {
-                            $user = is_object($sess) ? $sess : (object)$sess;
+                            $user = is_object($sess) ? $sess : (object) $sess;
                         }
 
                         // Fetch subscription data directly for navbar logic (moved from AppServiceProvider)
@@ -53,7 +55,8 @@
                     <div class="navbar-user">
                         @if($profilePic)
                             <div class="navbar-avatar">
-                                <img src="{{ asset('storage/' . $profilePic) }}" alt="{{ $displayName }}" class="navbar-avatar-img">
+                                <img src="{{ asset('storage/' . $profilePic) }}" alt="{{ $displayName }}"
+                                    class="navbar-avatar-img">
                             </div>
                         @else
                             <div class="navbar-avatar navbar-avatar-initials">{{ $initials }}</div>
@@ -72,7 +75,8 @@
                             <div class="notification-dropdown-content">
                                 <div class="notification-dropdown-header">
                                     <h3 class="notification-dropdown-title">Notifications</h3>
-                                    <button type="button" class="notification-close-btn" id="notificationCloseBtn" aria-label="Close notifications">
+                                    <button type="button" class="notification-close-btn" id="notificationCloseBtn"
+                                        aria-label="Close notifications">
                                         <i class="fi fi-rr-cross-small"></i>
                                     </button>
                                 </div>

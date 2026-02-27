@@ -284,10 +284,10 @@ class authController extends Controller
     public function contractorStep1(accountRequest $request)
     {
         $businessAddress = $request->business_address_street . ', ' .
-                          $request->business_address_barangay . ', ' .
-                          $request->business_address_city . ', ' .
-                          $request->business_address_province . ' ' .
-                          $request->business_address_postal;
+            $request->business_address_barangay . ', ' .
+            $request->business_address_city . ', ' .
+            $request->business_address_province . ' ' .
+            $request->business_address_postal;
 
         // Calculate years of experience from founded_date
         $foundedDate = $request->founded_date ?? null;
@@ -344,7 +344,7 @@ class authController extends Controller
         $normalizedEmail = !empty($request->company_email) ? strtolower(trim($request->company_email)) : null;
         $clientIp = $request->ip();
         $sendKeyBase = $normalizedEmail ? 'otp_send_email_' . $normalizedEmail : 'otp_send_ip_' . $clientIp;
-        $sendLimit = (int)config('otp.send_limit_per_hour', 5);
+        $sendLimit = (int) config('otp.send_limit_per_hour', 5);
         try {
             $hourKey = $sendKeyBase . '_' . date('YmdH');
             $current = Cache::get($hourKey, 0);
@@ -386,7 +386,7 @@ class authController extends Controller
                     'hash' => $otpHash,
                     'issued_at' => now()->timestamp
                 ];
-                $ttl = (int)config('otp.ttl_seconds', 900);
+                $ttl = (int) config('otp.ttl_seconds', 900);
                 Cache::put('signup_otp_' . $normalizedEmail, $meta, now()->addSeconds($ttl));
                 \Log::info('Cached signup OTP meta for ' . $normalizedEmail);
                 // Also store an IP->email mapping for short-term fallback
@@ -414,7 +414,7 @@ class authController extends Controller
             \Log::warning('Failed to cache signup OTP: ' . $e->getMessage());
         }
 
-        $expiresAt = now()->addSeconds($ttl ?? (int)config('otp.ttl_seconds', 900))->toISOString();
+        $expiresAt = now()->addSeconds($ttl ?? (int) config('otp.ttl_seconds', 900))->toISOString();
         $masked = null;
         if (!empty($request->company_email)) {
             $parts = explode('@', $request->company_email);
@@ -462,7 +462,7 @@ class authController extends Controller
         ]);
 
         $inputOtp = $request->input('otp');
-        
+
         // Get contractor OTP data from session
         $contractorOtp = Session::get('contractor_otp');
         $contractorOtpExpiry = Session::get('contractor_otp_expiry');
@@ -499,13 +499,18 @@ class authController extends Controller
         if ($inputOtp === $contractorOtp) {
             // Clear OTP session data (but keep hash in contractor_step2 for final step)
             Session::forget(['contractor_otp', 'contractor_otp_expiry', 'contractor_otp_email', 'contractor_otp_attempts']);
-            
+
             // Set verified flag and advance to step 3
             try {
                 $s = Session::get('contractor_step2', []);
-                if (is_array($s)) { $s['otp_verified'] = true; Session::put('contractor_step2', $s); }
-            } catch (\Exception $e) { \Log::warning('Failed to update contractor session after OTP verify: ' . $e->getMessage()); }
-            
+                if (is_array($s)) {
+                    $s['otp_verified'] = true;
+                    Session::put('contractor_step2', $s);
+                }
+            } catch (\Exception $e) {
+                \Log::warning('Failed to update contractor session after OTP verify: ' . $e->getMessage());
+            }
+
             Session::put('contractor_otp_verified', true);
             Session::put('signup_step', 3);
 
@@ -516,7 +521,7 @@ class authController extends Controller
         } else {
             // Increment failed attempts
             Session::put('contractor_otp_attempts', $attempts + 1);
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'Invalid OTP. Please try again.',
@@ -607,9 +612,9 @@ class authController extends Controller
         }
 
         // Normalize step arrays and provide safe defaults to avoid undefined keys
-        $step1 = is_array($step1) ? $step1 : (is_object($step1) ? (array)$step1 : []);
-        $step2 = is_array($step2) ? $step2 : (is_object($step2) ? (array)$step2 : []);
-        $step4 = is_array($step4) ? $step4 : (is_object($step4) ? (array)$step4 : []);
+        $step1 = is_array($step1) ? $step1 : (is_object($step1) ? (array) $step1 : []);
+        $step2 = is_array($step2) ? $step2 : (is_object($step2) ? (array) $step2 : []);
+        $step4 = is_array($step4) ? $step4 : (is_object($step4) ? (array) $step4 : []);
 
         // Ensure years_of_experience exists; compute from founded_date if present
         if (empty($step1['years_of_experience'])) {
@@ -639,11 +644,16 @@ class authController extends Controller
         // send individual address parts instead of the pre-concatenated string)
         if (empty($step1['business_address'])) {
             $addressParts = [];
-            if (!empty($step1['business_address_street'])) $addressParts[] = $step1['business_address_street'];
-            if (!empty($step1['business_address_barangay'])) $addressParts[] = $step1['business_address_barangay'];
-            if (!empty($step1['business_address_city'])) $addressParts[] = $step1['business_address_city'];
-            if (!empty($step1['business_address_province'])) $addressParts[] = $step1['business_address_province'];
-            if (!empty($step1['business_address_postal'])) $addressParts[] = $step1['business_address_postal'];
+            if (!empty($step1['business_address_street']))
+                $addressParts[] = $step1['business_address_street'];
+            if (!empty($step1['business_address_barangay']))
+                $addressParts[] = $step1['business_address_barangay'];
+            if (!empty($step1['business_address_city']))
+                $addressParts[] = $step1['business_address_city'];
+            if (!empty($step1['business_address_province']))
+                $addressParts[] = $step1['business_address_province'];
+            if (!empty($step1['business_address_postal']))
+                $addressParts[] = $step1['business_address_postal'];
             if (count($addressParts) > 0) {
                 $step1['business_address'] = implode(', ', $addressParts);
                 \Log::info('Built business_address from components: ' . $step1['business_address']);
@@ -730,10 +740,14 @@ class authController extends Controller
         if (!$step2) {
             $missing[] = 'Step 2 data (account setup)';
         } else {
-            if (empty($step2['username'])) $missing[] = 'Step 2: username';
-            if (empty($step2['company_email'])) $missing[] = 'Step 2: company_email';
-            if (empty($step2['password'])) $missing[] = 'Step 2: password';
-            if (empty($step2['otp_hash'])) $missing[] = 'Step 2: OTP verification (please verify OTP first)';
+            if (empty($step2['username']))
+                $missing[] = 'Step 2: username';
+            if (empty($step2['company_email']))
+                $missing[] = 'Step 2: company_email';
+            if (empty($step2['password']))
+                $missing[] = 'Step 2: password';
+            if (empty($step2['otp_hash']))
+                $missing[] = 'Step 2: OTP verification (please verify OTP first)';
         }
         if (!$step4) {
             $missing[] = 'Step 4 data (business verification)';
@@ -807,7 +821,10 @@ class authController extends Controller
 
         if ($existingUser) {
             $userId = $existingUser->user_id ?? $existingUser->id ?? null;
-            try { \Log::info('contractorFinalStep: reusing existing user id -> ' . var_export($userId, true)); } catch (\Throwable $e) {}
+            try {
+                \Log::info('contractorFinalStep: reusing existing user id -> ' . var_export($userId, true));
+            } catch (\Throwable $e) {
+            }
 
             // If contractor already exists for this user, return success rather than duplicate
             try {
@@ -837,7 +854,7 @@ class authController extends Controller
             // Log creation result for debugging (temporary)
             try {
                 \Log::info('contractorFinalStep: created user id -> ' . var_export($userId, true));
-                \Log::info('contractorFinalStep: step2 keys -> ' . json_encode(array_keys((array)$step2)));
+                \Log::info('contractorFinalStep: step2 keys -> ' . json_encode(array_keys((array) $step2)));
             } catch (\Throwable $e) {
                 // ignore logging failure
             }
@@ -912,10 +929,10 @@ class authController extends Controller
 
         // Combine address
         $address = $request->owner_address_street . ', ' .
-                   $request->owner_address_barangay . ', ' .
-                   $request->owner_address_city . ', ' .
-                   $request->owner_address_province . ', ' .
-                   $request->owner_address_postal;
+            $request->owner_address_barangay . ', ' .
+            $request->owner_address_city . ', ' .
+            $request->owner_address_province . ', ' .
+            $request->owner_address_postal;
 
         $step1Data = [
             'first_name' => $request->first_name,
@@ -994,7 +1011,7 @@ class authController extends Controller
                     'hash' => $otpHash,
                     'issued_at' => now()->timestamp
                 ];
-                $ttl = (int)config('otp.ttl_seconds', 900);
+                $ttl = (int) config('otp.ttl_seconds', 900);
                 Cache::put('signup_otp_owner_' . $normalizedEmail, $meta, now()->addSeconds($ttl));
                 // IP mapping
                 try {
@@ -1019,10 +1036,10 @@ class authController extends Controller
             \Log::warning('Failed to cache signup OTP (owner): ' . $e->getMessage());
         }
 
-        $expiresAt = now()->addSeconds($ttl ?? (int)config('otp.ttl_seconds', 900))->toISOString();
+        $expiresAt = now()->addSeconds($ttl ?? (int) config('otp.ttl_seconds', 900))->toISOString();
 
         if ($request->expectsJson()) {
-                return response()->json([
+            return response()->json([
                 'success' => true,
                 'message' => 'OTP sent to email',
                 'step' => 3,
@@ -1055,16 +1072,16 @@ class authController extends Controller
         }
         // Idempotent success if already past OTP
         $signupStep = Session::get('signup_step');
-        if (!empty($signupStep) && (int)$signupStep >= 4) {
+        if (!empty($signupStep) && (int) $signupStep >= 4) {
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => true,
                     'message' => 'OTP already verified',
-                    'step' => (int)$signupStep,
+                    'step' => (int) $signupStep,
                     'next_step' => 'property_owner_step4'
                 ], 200);
             }
-            return response()->json(['success' => true, 'step' => (int)$signupStep], 200);
+            return response()->json(['success' => true, 'step' => (int) $signupStep], 200);
         }
 
         $inputOtp = $request->input('otp') ?? $request->otp ?? null;
@@ -1089,11 +1106,15 @@ class authController extends Controller
         $possibleKeys = ['email', 'identifier'];
         foreach ($possibleKeys as $key) {
             $val = $request->input($key);
-            if (!empty($val)) { $hasEmailInRequest = true; break; }
+            if (!empty($val)) {
+                $hasEmailInRequest = true;
+                break;
+            }
         }
         if (!$hasEmailInRequest) {
             $hdr = $request->header('X-User-Email') ?: $request->header('X-Email');
-            if ($hdr) $hasEmailInRequest = true;
+            if ($hdr)
+                $hasEmailInRequest = true;
         }
 
         if (!$hasSessionOtp && empty($otpToken) && !$hasEmailInRequest && $clientIp) {
@@ -1122,14 +1143,19 @@ class authController extends Controller
 
         // 1) Session-stored OTP
         if (is_array($step2Data) && isset($step2Data['otp_hash'])) {
-            $otpMeta = [ 'hash' => $step2Data['otp_hash'], 'issued_at' => $step2Data['otp_issued_at'] ?? null ];
+            $otpMeta = ['hash' => $step2Data['otp_hash'], 'issued_at' => $step2Data['otp_issued_at'] ?? null];
             $normalizedEmail = isset($step2Data['email']) ? strtolower(trim($step2Data['email'])) : null;
         }
 
         // 2) Token lookup
         if (!$otpMeta && !empty($otpToken)) {
             $meta = Cache::get('signup_otp_token_owner_' . $otpToken);
-            if ($meta) { $otpMeta = $meta; \Log::info('Owner OTP lookup by token HIT'); } else { \Log::info('Owner OTP lookup by token MISS'); }
+            if ($meta) {
+                $otpMeta = $meta;
+                \Log::info('Owner OTP lookup by token HIT');
+            } else {
+                \Log::info('Owner OTP lookup by token MISS');
+            }
         }
 
         // 3) Email lookup
@@ -1139,21 +1165,35 @@ class authController extends Controller
                 $val = $request->input($key);
                 if (!empty($val)) {
                     if ($key === 'identifier') {
-                        if (strpos($val, '@') !== false) { $emailCandidate = $val; break; }
-                        else { $otpToken = $val; break; }
+                        if (strpos($val, '@') !== false) {
+                            $emailCandidate = $val;
+                            break;
+                        } else {
+                            $otpToken = $val;
+                            break;
+                        }
                     }
-                    $emailCandidate = $val; break;
+                    $emailCandidate = $val;
+                    break;
                 }
             }
             if (!$emailCandidate) {
                 $hdr = $request->header('X-User-Email') ?: $request->header('X-Email');
-                if ($hdr) $emailCandidate = $hdr;
-                if (empty($emailCandidate) && isset($mappedEmailForIp) && !empty($mappedEmailForIp)) { $emailCandidate = $mappedEmailForIp; }
+                if ($hdr)
+                    $emailCandidate = $hdr;
+                if (empty($emailCandidate) && isset($mappedEmailForIp) && !empty($mappedEmailForIp)) {
+                    $emailCandidate = $mappedEmailForIp;
+                }
             }
             if ($emailCandidate) {
                 $normalizedEmail = strtolower(trim($emailCandidate));
                 $meta = Cache::get('signup_otp_owner_' . $normalizedEmail);
-                if ($meta) { $otpMeta = $meta; \Log::info('Owner OTP lookup by email HIT for ' . $normalizedEmail); } else { \Log::info('Owner OTP lookup by email MISS for ' . $normalizedEmail); }
+                if ($meta) {
+                    $otpMeta = $meta;
+                    \Log::info('Owner OTP lookup by email HIT for ' . $normalizedEmail);
+                } else {
+                    \Log::info('Owner OTP lookup by email MISS for ' . $normalizedEmail);
+                }
             }
         }
 
@@ -1164,7 +1204,10 @@ class authController extends Controller
                 if ($mapped) {
                     $normalizedEmail = $mapped;
                     $meta = Cache::get('signup_otp_owner_' . $mapped);
-                    if ($meta) { $otpMeta = $meta; \Log::info('Owner IP fallback OTP HIT for ' . $clientIp); }
+                    if ($meta) {
+                        $otpMeta = $meta;
+                        \Log::info('Owner IP fallback OTP HIT for ' . $clientIp);
+                    }
                 }
             } catch (\Exception $e) {
                 \Log::warning('Failed IP fallback lookup (owner): ' . $e->getMessage());
@@ -1190,10 +1233,15 @@ class authController extends Controller
             $issued = (int) $otpMeta['issued_at'];
             if (now()->timestamp > ($issued + $otpTtlSeconds + $graceSeconds)) {
                 try {
-                    if (!empty($normalizedEmail)) Cache::forget('signup_otp_owner_' . $normalizedEmail);
-                    if (!empty($otpToken)) Cache::forget('signup_otp_token_owner_' . $otpToken);
-                    if (!empty($clientIp)) Cache::forget('signup_otp_owner_ip_' . $clientIp);
-                } catch (\Exception $e) { \Log::warning('Failed to cleanup expired owner OTP cache: ' . $e->getMessage()); }
+                    if (!empty($normalizedEmail))
+                        Cache::forget('signup_otp_owner_' . $normalizedEmail);
+                    if (!empty($otpToken))
+                        Cache::forget('signup_otp_token_owner_' . $otpToken);
+                    if (!empty($clientIp))
+                        Cache::forget('signup_otp_owner_ip_' . $clientIp);
+                } catch (\Exception $e) {
+                    \Log::warning('Failed to cleanup expired owner OTP cache: ' . $e->getMessage());
+                }
                 if ($request->expectsJson()) {
                     return response()->json(['success' => false, 'error_code' => 'otp_expired', 'message' => 'OTP has expired. Please request a new code.', 'errors' => ['otp' => ['OTP expired']]], 422);
                 }
@@ -1204,30 +1252,50 @@ class authController extends Controller
         // Attempt verify
         $attemptKeyBase = null;
         try {
-            if (!empty($normalizedEmail)) $attemptKeyBase = 'otp_verify_attempts_' . $normalizedEmail;
-            elseif (!empty($otpToken)) $attemptKeyBase = 'otp_verify_attempts_token_' . $otpToken;
-            else $attemptKeyBase = 'otp_verify_attempts_ip_' . $clientIp;
-            $attemptLimit = (int)config('otp.verify_attempts_limit', 5);
+            if (!empty($normalizedEmail))
+                $attemptKeyBase = 'otp_verify_attempts_' . $normalizedEmail;
+            elseif (!empty($otpToken))
+                $attemptKeyBase = 'otp_verify_attempts_token_' . $otpToken;
+            else
+                $attemptKeyBase = 'otp_verify_attempts_ip_' . $clientIp;
+            $attemptLimit = (int) config('otp.verify_attempts_limit', 5);
             $attempts = Cache::get($attemptKeyBase, 0);
             if ($attempts >= $attemptLimit) {
                 return response()->json(['success' => false, 'message' => 'Too many failed OTP attempts. Please try again later.'], 429);
             }
-        } catch (\Throwable $e) { \Log::warning('OTP verify rate-limit check failed (owner): ' . $e->getMessage()); }
+        } catch (\Throwable $e) {
+            \Log::warning('OTP verify rate-limit check failed (owner): ' . $e->getMessage());
+        }
 
         $lockName = null;
-        if (!empty($normalizedEmail)) $lockName = 'signup_otp_lock_' . $normalizedEmail;
-        elseif (!empty($otpToken)) $lockName = 'signup_otp_lock_token_' . $otpToken;
+        if (!empty($normalizedEmail))
+            $lockName = 'signup_otp_lock_' . $normalizedEmail;
+        elseif (!empty($otpToken))
+            $lockName = 'signup_otp_lock_token_' . $otpToken;
 
-        $blockSeconds = (int)config('otp.verify_block_seconds', 900);
+        $blockSeconds = (int) config('otp.verify_block_seconds', 900);
 
         $verifyAndCleanup = function () use ($inputOtp, $otpMeta, $normalizedEmail, $otpToken, $clientIp, $request, $attemptKeyBase, $blockSeconds) {
             if (!$this->authService->verifyOtp($inputOtp, $otpMeta['hash'])) {
-                try { if (!empty($attemptKeyBase)) { Cache::increment($attemptKeyBase); Cache::put($attemptKeyBase, Cache::get($attemptKeyBase), now()->addSeconds($blockSeconds)); } } catch (\Throwable $e) { \Log::warning('Failed to increment owner OTP verify attempts: ' . $e->getMessage()); }
-                if ($request->expectsJson()) return response()->json(['success' => false, 'error_code' => 'invalid_otp', 'message' => 'Invalid OTP', 'errors' => ['otp' => ['Invalid OTP']]], 422);
+                try {
+                    if (!empty($attemptKeyBase)) {
+                        Cache::increment($attemptKeyBase);
+                        Cache::put($attemptKeyBase, Cache::get($attemptKeyBase), now()->addSeconds($blockSeconds));
+                    }
+                } catch (\Throwable $e) {
+                    \Log::warning('Failed to increment owner OTP verify attempts: ' . $e->getMessage());
+                }
+                if ($request->expectsJson())
+                    return response()->json(['success' => false, 'error_code' => 'invalid_otp', 'message' => 'Invalid OTP', 'errors' => ['otp' => ['Invalid OTP']]], 422);
                 return response()->json(['success' => false, 'error_code' => 'invalid_otp', 'errors' => ['otp' => ['Invalid OTP']]], 422);
             }
 
-            try { if (!empty($attemptKeyBase)) Cache::forget($attemptKeyBase); } catch (\Throwable $e) { \Log::warning('Failed to clear owner OTP attempts: ' . $e->getMessage()); }
+            try {
+                if (!empty($attemptKeyBase))
+                    Cache::forget($attemptKeyBase);
+            } catch (\Throwable $e) {
+                \Log::warning('Failed to clear owner OTP attempts: ' . $e->getMessage());
+            }
 
             // Do NOT delete the OTP cache entries yet — stateless mobile clients
             // need them during the final step to recover the otp_hash (they have
@@ -1236,7 +1304,7 @@ class authController extends Controller
             try {
                 // Give verified OTP entries a longer TTL since the user still needs
                 // to complete step 4 (documents) and the profile picture step
-                $verifiedTtl = max((int)config('otp.ttl_seconds', 900), 1800); // at least 30 minutes
+                $verifiedTtl = max((int) config('otp.ttl_seconds', 900), 1800); // at least 30 minutes
                 if (!empty($normalizedEmail)) {
                     $existing = Cache::get('signup_otp_owner_' . $normalizedEmail);
                     if (is_array($existing)) {
@@ -1252,16 +1320,24 @@ class authController extends Controller
                     }
                 }
                 // IP mapping can stay as-is — it's just a pointer to the email key
-            } catch (\Exception $e) { \Log::warning('Failed to update owner OTP cache after verify: ' . $e->getMessage()); }
+            } catch (\Exception $e) {
+                \Log::warning('Failed to update owner OTP cache after verify: ' . $e->getMessage());
+            }
 
             try {
                 $s = Session::get('owner_step2', []);
-                if (is_array($s)) { $s['otp_verified'] = true; Session::put('owner_step2', $s); }
-            } catch (\Exception $e) { \Log::warning('Failed to update owner session after OTP verify: ' . $e->getMessage()); }
+                if (is_array($s)) {
+                    $s['otp_verified'] = true;
+                    Session::put('owner_step2', $s);
+                }
+            } catch (\Exception $e) {
+                \Log::warning('Failed to update owner session after OTP verify: ' . $e->getMessage());
+            }
 
             Session::put('signup_step', 4);
 
-            if ($request->expectsJson()) return response()->json(['success' => true, 'message' => 'OTP verified successfully', 'step' => 4, 'next_step' => 'property_owner_step4'], 200);
+            if ($request->expectsJson())
+                return response()->json(['success' => true, 'message' => 'OTP verified successfully', 'step' => 4, 'next_step' => 'property_owner_step4'], 200);
             return response()->json(['success' => true, 'step' => 4]);
         };
 
@@ -1269,9 +1345,13 @@ class authController extends Controller
             try {
                 if (method_exists(Cache::store(), 'lock')) {
                     $lock = Cache::lock($lockName, 5);
-                    return $lock->block(3, function () use ($verifyAndCleanup) { return $verifyAndCleanup(); });
+                    return $lock->block(3, function () use ($verifyAndCleanup) {
+                        return $verifyAndCleanup();
+                    });
                 }
-            } catch (\Throwable $e) { \Log::warning('Owner OTP verification lock failed or unsupported: ' . $e->getMessage()); }
+            } catch (\Throwable $e) {
+                \Log::warning('Owner OTP verification lock failed or unsupported: ' . $e->getMessage());
+            }
         }
 
         return $verifyAndCleanup();
@@ -1425,9 +1505,9 @@ class authController extends Controller
             \Log::warning('Failed to decode owner step data from request: ' . $e->getMessage());
         }
 
-        $step1 = is_array($step1) ? $step1 : (is_object($step1) ? (array)$step1 : []);
-        $step2 = is_array($step2) ? $step2 : (is_object($step2) ? (array)$step2 : []);
-        $step4 = is_array($step4) ? $step4 : (is_object($step4) ? (array)$step4 : []);
+        $step1 = is_array($step1) ? $step1 : (is_object($step1) ? (array) $step1 : []);
+        $step2 = is_array($step2) ? $step2 : (is_object($step2) ? (array) $step2 : []);
+        $step4 = is_array($step4) ? $step4 : (is_object($step4) ? (array) $step4 : []);
 
         // Provide defaults
         $step1['first_name'] = $step1['first_name'] ?? '';
@@ -1461,11 +1541,16 @@ class authController extends Controller
         // Build address from components if address is empty but components exist
         if (empty($step1['address'])) {
             $addressParts = [];
-            if (!empty($step1['owner_address_street'])) $addressParts[] = $step1['owner_address_street'];
-            if (!empty($step1['owner_address_barangay'])) $addressParts[] = $step1['owner_address_barangay'];
-            if (!empty($step1['owner_address_city'])) $addressParts[] = $step1['owner_address_city'];
-            if (!empty($step1['owner_address_province'])) $addressParts[] = $step1['owner_address_province'];
-            if (!empty($step1['owner_address_postal'])) $addressParts[] = $step1['owner_address_postal'];
+            if (!empty($step1['owner_address_street']))
+                $addressParts[] = $step1['owner_address_street'];
+            if (!empty($step1['owner_address_barangay']))
+                $addressParts[] = $step1['owner_address_barangay'];
+            if (!empty($step1['owner_address_city']))
+                $addressParts[] = $step1['owner_address_city'];
+            if (!empty($step1['owner_address_province']))
+                $addressParts[] = $step1['owner_address_province'];
+            if (!empty($step1['owner_address_postal']))
+                $addressParts[] = $step1['owner_address_postal'];
             if (count($addressParts) > 0) {
                 $step1['address'] = implode(', ', $addressParts);
             }
@@ -1535,16 +1620,22 @@ class authController extends Controller
 
         // More detailed validation
         $missing = [];
-        if (!$step1) $missing[] = 'Step 1 data (personal information)';
+        if (!$step1)
+            $missing[] = 'Step 1 data (personal information)';
         if (!$step2) {
             $missing[] = 'Step 2 data (account setup)';
         } else {
-            if (empty($step2['username'])) $missing[] = 'Step 2: username';
-            if (empty($step2['email'])) $missing[] = 'Step 2: email';
-            if (empty($step2['password'])) $missing[] = 'Step 2: password';
-            if (empty($step2['otp_hash'])) $missing[] = 'Step 2: OTP verification (please verify OTP first)';
+            if (empty($step2['username']))
+                $missing[] = 'Step 2: username';
+            if (empty($step2['email']))
+                $missing[] = 'Step 2: email';
+            if (empty($step2['password']))
+                $missing[] = 'Step 2: password';
+            if (empty($step2['otp_hash']))
+                $missing[] = 'Step 2: OTP verification (please verify OTP first)';
         }
-        if (!$step4) $missing[] = 'Step 4 data (verification documents)';
+        if (!$step4)
+            $missing[] = 'Step 4 data (verification documents)';
 
         if (!empty($missing)) {
             \Log::warning('propertyOwnerFinalStep: Missing required data', [
@@ -1605,15 +1696,22 @@ class authController extends Controller
         try {
             if (!empty($step2['username']) || !empty($step2['email'])) {
                 $q = DB::table('users');
-                if (!empty($step2['username'])) $q->where('username', $step2['username']);
-                if (!empty($step2['email'])) $q->orWhere('email', $step2['email']);
+                if (!empty($step2['username']))
+                    $q->where('username', $step2['username']);
+                if (!empty($step2['email']))
+                    $q->orWhere('email', $step2['email']);
                 $existingUser = $q->first();
             }
-        } catch (\Throwable $e) { \Log::warning('Existing owner user lookup failed: ' . $e->getMessage()); }
+        } catch (\Throwable $e) {
+            \Log::warning('Existing owner user lookup failed: ' . $e->getMessage());
+        }
 
         if ($existingUser) {
             $userId = $existingUser->user_id ?? $existingUser->id ?? null;
-            try { \Log::info('propertyOwnerFinalStep: reusing existing user id -> ' . var_export($userId, true)); } catch (\Throwable $e) {}
+            try {
+                \Log::info('propertyOwnerFinalStep: reusing existing user id -> ' . var_export($userId, true));
+            } catch (\Throwable $e) {
+            }
 
             try {
                 $existingOwner = DB::table('property_owners')->where('user_id', $userId)->first();
@@ -1626,7 +1724,9 @@ class authController extends Controller
                         'pending_role_request' => $existingOwner->verification_status === 'pending',
                     ], 200);
                 }
-            } catch (\Throwable $e) { \Log::warning('Existing owner lookup failed: ' . $e->getMessage()); }
+            } catch (\Throwable $e) {
+                \Log::warning('Existing owner lookup failed: ' . $e->getMessage());
+            }
         } else {
             // Do NOT set user_type to property_owner yet; keep original user_type
             \Log::info('propertyOwnerFinalStep: About to create user with', [
@@ -1645,7 +1745,10 @@ class authController extends Controller
                 'user_type' => 'property_owner',
             ]);
 
-            try { \Log::info('propertyOwnerFinalStep: created user id -> ' . var_export($userId, true)); } catch (\Throwable $e) {}
+            try {
+                \Log::info('propertyOwnerFinalStep: created user id -> ' . var_export($userId, true));
+            } catch (\Throwable $e) {
+            }
         }
 
         // Create property owner
@@ -1667,7 +1770,10 @@ class authController extends Controller
             'verification_status' => 'pending', // Mark as pending until admin approval
         ]);
 
-        try { \Log::info('propertyOwnerFinalStep: created owner id -> ' . var_export($ownerId, true)); } catch (\Throwable $e) {}
+        try {
+            \Log::info('propertyOwnerFinalStep: created owner id -> ' . var_export($ownerId, true));
+        } catch (\Throwable $e) {
+        }
 
         // Clear session
         Session::forget(['signup_user_type', 'signup_step', 'owner_step1', 'owner_step2', 'owner_step4']);
@@ -1677,10 +1783,15 @@ class authController extends Controller
             $normalizedEmail = isset($step2['email']) ? strtolower(trim($step2['email'])) : null;
             $otpTokenFromRequest = $request->input('otp_token') ?? null;
             $clientIp = $request->ip();
-            if (!empty($normalizedEmail)) Cache::forget('signup_otp_owner_' . $normalizedEmail);
-            if (!empty($otpTokenFromRequest)) Cache::forget('signup_otp_token_owner_' . $otpTokenFromRequest);
-            if (!empty($clientIp)) Cache::forget('signup_otp_owner_ip_' . $clientIp);
-        } catch (\Throwable $e) { \Log::warning('Failed to clean up owner OTP cache in final step: ' . $e->getMessage()); }
+            if (!empty($normalizedEmail))
+                Cache::forget('signup_otp_owner_' . $normalizedEmail);
+            if (!empty($otpTokenFromRequest))
+                Cache::forget('signup_otp_token_owner_' . $otpTokenFromRequest);
+            if (!empty($clientIp))
+                Cache::forget('signup_otp_owner_ip_' . $clientIp);
+        } catch (\Throwable $e) {
+            \Log::warning('Failed to clean up owner OTP cache in final step: ' . $e->getMessage());
+        }
 
         if ($request->expectsJson()) {
             return response()->json([
@@ -1723,37 +1834,37 @@ class authController extends Controller
 
 
     //Handles Profile update
-   public function updateProfile(Request $request)
-{
-    // 1. Check if user is authenticated
-    $user = $request->user();
+    public function updateProfile(Request $request)
+    {
+        // 1. Check if user is authenticated
+        $user = $request->user();
 
-    if (!$user) {
-        return response()->json([
-            'success' => false,
-            'message' => 'User not authenticated. Please log in again.'
-        ], 401);
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User not authenticated. Please log in again.'
+            ], 401);
+        }
+
+        $request->validate([
+            'image' => 'required|image|mimes:jpeg,png,jpg|max:5120',
+            'type' => 'required|in:profile,cover'
+        ]);
+
+        $type = $request->type;
+        $folder = ($type === 'profile') ? 'profile_pics' : 'cover_photos';
+        $column = ($type === 'profile') ? 'profile_pic' : 'cover_photo';
+
+        // Delete old file if it exists
+        if ($user->$column) {
+            Storage::disk('public')->delete($user->$column);
+        }
+
+        $path = $request->file('image')->store($folder, 'public');
+        $user->update([$column => $path]);
+
+        return response()->json(['success' => true, 'path' => $path]);
     }
-
-    $request->validate([
-        'image' => 'required|image|mimes:jpeg,png,jpg|max:5120',
-        'type' => 'required|in:profile,cover'
-    ]);
-
-    $type = $request->type;
-    $folder = ($type === 'profile') ? 'profile_pics' : 'cover_photos';
-    $column = ($type === 'profile') ? 'profile_pic' : 'cover_photo';
-
-    // Delete old file if it exists
-    if ($user->$column) {
-        Storage::disk('public')->delete($user->$column);
-    }
-
-    $path = $request->file('image')->store($folder, 'public');
-    $user->update([$column => $path]);
-
-    return response()->json(['success' => true, 'path' => $path]);
-}
     // Logout
     public function logout()
     {
@@ -1822,16 +1933,40 @@ class authController extends Controller
 
             $currentRole = $userType;
 
-            // Check if user already has both roles
-            if ($userType === 'both') {
-                if (request()->expectsJson()) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'You already have both roles',
-                        'redirect_url' => '/dashboard'
-                    ], 400);
-                } else {
-                    return redirect('/dashboard')->with('error', 'You already have both roles');
+            // Determine owner approval and active flags by checking property_owners for this user.
+            $isApprovedOwner = false;
+            $isActiveOwner = false;
+            try {
+                $ownerApproved = DB::table('property_owners')
+                    ->where('user_id', $userId)
+                    ->where('verification_status', 'approved')
+                    ->where('is_active', 1)
+                    ->first();
+                $isApprovedOwner = !!$ownerApproved;
+                $isActiveOwner = ($ownerApproved && intval($ownerApproved->is_active) === 1);
+            } catch (\Throwable $e) {
+                // If DB check fails, keep defaults and log for troubleshooting
+                Log::warning('showSwitchForm owner check failed: ' . $e->getMessage());
+            }
+
+            // check if user has a pending owner profile switch request
+            if ($userType === 'contractor') {
+                $pendingOwner = DB::table('property_owners')
+                    ->where('user_id', $userId)
+                    ->where('verification_status', 'pending')
+                    ->first();
+
+                if ($pendingOwner) {
+                    if (request()->expectsJson()) {
+                        return response()->json([
+                            'success' => true,
+                            'is_pending_owner' => true,
+                            'message' => 'Your property owner profile is currently awaiting admin approval.',
+                            'redirect_url' => '/owner/dashboard'
+                        ], 200);
+                    } else {
+                        return redirect('/owner/dashboard')->with('info', 'Your property owner profile is currently awaiting admin approval.');
+                    }
                 }
             }
 
@@ -1844,6 +1979,19 @@ class authController extends Controller
 
             // Get existing user data
             $existingData = $this->getExistingUserData($userId, $currentRole);
+
+            // Debug logging to help diagnose missing prefill data for web modal
+            try {
+                Log::info('showSwitchForm debug', [
+                    'user_id' => $userId,
+                    'current_role' => $currentRole,
+                    'existing_data_keys' => is_array($existingData) ? array_keys($existingData) : null,
+                    'session_owner_step1' => Session::get('owner_step1'),
+                    'session_switch_owner_step1' => Session::get('switch_owner_step1')
+                ]);
+            } catch (\Throwable $e) {
+                // swallow logging errors to avoid breaking the endpoint
+            }
 
             if (request()->expectsJson()) {
                 // Return JSON - Laravel will automatically convert collections to arrays (same as showSignupForm)
@@ -1859,7 +2007,9 @@ class authController extends Controller
                         'picab_categories' => $picabCategories,
                         'provinces' => $provinces
                     ],
-                    'is_switch_mode' => true
+                    'is_switch_mode' => true,
+                    'is_approved_owner' => $isApprovedOwner,
+                    'is_active_owner' => $isActiveOwner
                 ], 200);
             } else {
                 return view('accounts.signup', compact(
@@ -1895,19 +2045,27 @@ class authController extends Controller
         $data = [
             'user' => $user ? (array) $user : null,
         ];
-
-        if ($currentRole === 'contractor') {
+        // Always attempt to include contractor and property_owner related rows when present
+        // This ensures the frontend prefill logic has access to any existing data regardless
+        // of the user's current role (helps when user_type is 'both').
+        try {
             $contractor = DB::table('contractors')->where('user_id', $userId)->first();
             if ($contractor) {
                 $contractorUser = DB::table('contractor_users')->where('user_id', $userId)->first();
                 $data['contractor'] = (array) $contractor;
                 $data['contractor_user'] = $contractorUser ? (array) $contractorUser : null;
             }
-        } elseif ($currentRole === 'property_owner' || $currentRole === 'owner') {
+        } catch (\Throwable $e) {
+            Log::warning('getExistingUserData contractor fetch failed: ' . $e->getMessage());
+        }
+
+        try {
             $owner = DB::table('property_owners')->where('user_id', $userId)->first();
             if ($owner) {
                 $data['property_owner'] = (array) $owner;
             }
+        } catch (\Throwable $e) {
+            Log::warning('getExistingUserData property_owner fetch failed: ' . $e->getMessage());
         }
 
         return $data;
@@ -1943,10 +2101,19 @@ class authController extends Controller
         if ($request->has('company_name')) {
             // This is company information step
             $companyData = $request->only([
-                'company_name', 'company_phone', 'years_of_experience',
-                'contractor_type_id', 'contractor_type_other_text', 'services_offered',
-                'business_address_street', 'business_address_barangay', 'business_address_city',
-                'business_address_province', 'business_address_postal', 'company_website', 'company_social_media'
+                'company_name',
+                'company_phone',
+                'years_of_experience',
+                'contractor_type_id',
+                'contractor_type_other_text',
+                'services_offered',
+                'business_address_street',
+                'business_address_barangay',
+                'business_address_city',
+                'business_address_province',
+                'business_address_postal',
+                'company_website',
+                'company_social_media'
             ]);
 
             // Build business address
@@ -1971,7 +2138,7 @@ class authController extends Controller
             ]);
         } else {
             // This is account information step (step 2)
-            $step1Data = array_merge($step1Data, $request->only(['first_name','middle_name','last_name','username','company_email']));
+            $step1Data = array_merge($step1Data, $request->only(['first_name', 'middle_name', 'last_name', 'username', 'company_email']));
         }
 
         Session::put('switch_contractor_step1', $step1Data);
@@ -2058,8 +2225,12 @@ class authController extends Controller
         $step2 = $request->input('step2_data') ?: Session::get('switch_contractor_step2');
 
         // Normalize step arrays
-        if (!is_array($step1)) { $step1 = is_object($step1) ? (array)$step1 : []; }
-        if (!is_array($step2)) { $step2 = is_object($step2) ? (array)$step2 : []; }
+        if (!is_array($step1)) {
+            $step1 = is_object($step1) ? (array) $step1 : [];
+        }
+        if (!is_array($step2)) {
+            $step2 = is_object($step2) ? (array) $step2 : [];
+        }
 
         // Ensure DTI/SEC path is available for strict NOT NULL column
         if (empty($step2['dti_sec_registration_photo'])) {
@@ -2252,7 +2423,9 @@ class authController extends Controller
                     $pat = \Laravel\Sanctum\PersonalAccessToken::findToken($bearer);
                     if ($pat) {
                         $userModel = \App\Models\User::find($pat->tokenable_id);
-                        if ($userModel) { $user = $userModel; }
+                        if ($userModel) {
+                            $user = $userModel;
+                        }
                     }
                 }
             } catch (\Throwable $e) {
@@ -2294,7 +2467,9 @@ class authController extends Controller
                     $pat = \Laravel\Sanctum\PersonalAccessToken::findToken($bearer);
                     if ($pat) {
                         $userModel = \App\Models\User::find($pat->tokenable_id);
-                        if ($userModel) { $user = $userModel; }
+                        if ($userModel) {
+                            $user = $userModel;
+                        }
                     }
                 }
             } catch (\Throwable $e) {
@@ -2357,7 +2532,9 @@ class authController extends Controller
                     $pat = \Laravel\Sanctum\PersonalAccessToken::findToken($bearer);
                     if ($pat) {
                         $userModel = \App\Models\User::find($pat->tokenable_id);
-                        if ($userModel) { $user = $userModel; }
+                        if ($userModel) {
+                            $user = $userModel;
+                        }
                     }
                 }
             } catch (\Throwable $e) {
@@ -2375,21 +2552,27 @@ class authController extends Controller
         $ownerStep1Raw = $request->input('owner_step1_data') ?: Session::get('owner_step1');
         if (is_string($ownerStep1Raw)) {
             $decoded = json_decode($ownerStep1Raw, true);
-            if (json_last_error() === JSON_ERROR_NONE) { $ownerStep1Raw = $decoded; }
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $ownerStep1Raw = $decoded;
+            }
         }
         $ownerStep1 = is_array($ownerStep1Raw) ? $ownerStep1Raw : [];
 
         $switchStep1Raw = $request->input('switch_step1_data') ?: Session::get('switch_owner_step1');
         if (is_string($switchStep1Raw)) {
             $decoded = json_decode($switchStep1Raw, true);
-            if (json_last_error() === JSON_ERROR_NONE) { $switchStep1Raw = $decoded; }
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $switchStep1Raw = $decoded;
+            }
         }
         $switchStep1 = is_array($switchStep1Raw) ? $switchStep1Raw : [];
 
         $switchStep2Raw = $request->input('switch_step2_data') ?: Session::get('switch_owner_step2');
         if (is_string($switchStep2Raw)) {
             $decoded = json_decode($switchStep2Raw, true);
-            if (json_last_error() === JSON_ERROR_NONE) { $switchStep2Raw = $decoded; }
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $switchStep2Raw = $decoded;
+            }
         }
         $switchStep2 = is_array($switchStep2Raw) ? $switchStep2Raw : [];
 
@@ -2470,7 +2653,7 @@ class authController extends Controller
                 'date_of_birth' => $validated['date_of_birth'] ?? ($ownerStep1['date_of_birth'] ?? null),
                 'age' => $ownerStep1['age'] ?? null,
                 'occupation_id' => $validated['occupation_id'] ?? ($ownerStep1['occupation_id'] ?? null),
-                'occupation_other' => $validated['occupation_other'] ?? ($ownerStep1['occupation_other'] ?? null),
+                'occupation_other' => $validated['occupation_other_text'] ?? ($ownerStep1['occupation_other_text'] ?? null),
                 'address' => $validated['address'] ?? ($ownerStep1['address'] ?? null),
                 'verification_status' => 'pending',
                 'verification_date' => null,
@@ -2500,13 +2683,13 @@ class authController extends Controller
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => true,
-                    'message' => 'Role switch successful! You now have both roles.',
-                    'user_type' => 'both',
+                    'message' => 'Request submitted — awaiting admin approval',
+                    'user_type' => $updatedUser->user_type ?? ($user->user_type ?? 'property_owner'),
                     'current_role' => 'owner',
-                    'redirect_url' => '/dashboard'
+                    'redirect_url' => '/contractor/homepage'
                 ], 201);
             } else {
-                return response()->json(['success' => true, 'message' => 'Role switch successful! You now have both roles.', 'redirect' => '/dashboard']);
+                return response()->json(['success' => true, 'message' => 'Request submitted — awaiting admin approval', 'redirect' => '/contractor/homepage']);
             }
 
         } catch (\Exception $e) {
@@ -2549,7 +2732,7 @@ class authController extends Controller
     {
         $contractorTypes = $this->accountClass->getContractorTypes();
         $provinces = $this->psgcService->getProvinces();
-        
+
         return response()->json([
             'success' => true,
             'data' => [
@@ -2564,7 +2747,7 @@ class authController extends Controller
     {
         // Always set signup type so profile photo page routes correctly
         Session::put('signup_user_type', 'contractor');
-        
+
         $contractorTypes = $this->accountClass->getContractorTypes();
         $provinces = $this->psgcService->getProvinces();
 
@@ -2574,7 +2757,7 @@ class authController extends Controller
 
         // Fetch cities based on selected province
         $cities = $selectedProvince ? $this->psgcService->getCitiesByProvince($selectedProvince) : [];
-        
+
         // Fetch barangays based on selected city
         $barangays = $selectedCity ? $this->psgcService->getBarangaysByCity($selectedCity) : [];
 
@@ -2584,12 +2767,12 @@ class authController extends Controller
             if ($request->input('step') === '2' && $isAjaxRequest) {
                 return $this->storeContractorStep2($request);
             }
-            
+
             // Check for Step 3 submission (Business Documents) - always handled (AJAX or regular)
             if ($request->input('step') === '3' || ($request->has('pcab_number') && $request->has('pcab_category'))) {
                 return $this->storeContractorStep3($request, $isAjaxRequest);
             }
-            
+
             // Handle form submission (all steps or Steps 1 & 2)
             return $this->storeContractorStep1($request);
         }
@@ -2626,7 +2809,7 @@ class authController extends Controller
             // Generate 6-digit OTP and hash it
             $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
             $otpHash = $this->authService->hashOtp($otp);
-            
+
             // Store Step 2 data in session (include OTP hash for final step)
             $step2Data = [
                 'first_name' => $validated['first_name'],
@@ -2639,7 +2822,7 @@ class authController extends Controller
                 'otp_issued_at' => now()->timestamp
             ];
             Session::put('contractor_step2', $step2Data);
-            
+
             // Store OTP in session with 10-minute expiry (for verification)
             Session::put('contractor_otp', $otp);
             Session::put('contractor_otp_expiry', now()->addMinutes(10));
@@ -2695,7 +2878,7 @@ class authController extends Controller
             'business_address_postal' => 'required|string|max:10',
             'company_website' => 'nullable|url|max:255',
             'company_social_media' => 'nullable|string|max:255',
-            
+
             // Step 2: Account Setup (matching mobile ContractorAccountInfo)
             'first_name' => 'required|string|max:255',
             'middle_name' => 'nullable|string|max:255',
@@ -2704,7 +2887,7 @@ class authController extends Controller
             'company_email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:8|confirmed',
             'password_confirmation' => 'required|string',
-            
+
             // Step 3: Verification (if present)
             'pcab_number' => 'nullable|string|max:255',
             'pcab_category' => 'nullable|string|max:255',
@@ -2724,10 +2907,10 @@ class authController extends Controller
 
         // Build full business address
         $businessAddress = $validated['business_address_street'] . ', ' .
-                          $validated['business_address_barangay'] . ', ' .
-                          $validated['business_address_city'] . ', ' .
-                          $validated['business_address_province'] . ' ' .
-                          $validated['business_address_postal'];
+            $validated['business_address_barangay'] . ', ' .
+            $validated['business_address_city'] . ', ' .
+            $validated['business_address_province'] . ' ' .
+            $validated['business_address_postal'];
 
         // Calculate years of experience from founded_date
         $yearsOfExperience = null;
@@ -3097,38 +3280,7 @@ class authController extends Controller
         ], 200);
     }
 
-    /**
-     * API: Force change password (for first-time member login)
-     *
-e,
-                'message' => 'Validation failed',
-                'errors' => $e->errors()
-            ], 422);
-        } catch (\Exception $e) {
-            // Log the actual error for debugging
-            \Illuminate\Support\Facades\Log::error('Registration error: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'An error occurred during registration: ' . $e->getMessage(),
-                'debug' => [
-                    'error' => $e->getMessage(),
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine()
-                ]
-            ], 500);
-        }
-    }
 
-    // API Test Connection
-    public function apiTest()
-    {
-        return response()->json([
-            'success' => true,
-            'message' => 'API connection successful',
-            'timestamp' => now(),
-            'server' => 'Laravel ' . app()->version()
-        ], 200);
-    }
 
     /**
      * API: Force change password (for first-time member login)
@@ -3210,7 +3362,7 @@ e,
     {
         try {
             $inputOtp = $request->input('otp');
-            
+
             if (empty($inputOtp) || !preg_match('/^\d{6}$/', $inputOtp)) {
                 return response()->json([
                     'success' => false,
@@ -3225,7 +3377,7 @@ e,
 
             if ($contractorOtp && $contractorOtpEmail) {
                 // Contractor OTP verification
-                
+
                 // Check if OTP has expired
                 if ($contractorOtpExpiry && now()->isAfter($contractorOtpExpiry)) {
                     return response()->json([
@@ -3257,7 +3409,7 @@ e,
                 } else {
                     // Increment failed attempts
                     Session::put('contractor_otp_attempts', $attempts + 1);
-                    
+
                     return response()->json([
                         'success' => false,
                         'message' => 'Invalid OTP. Please try again.'

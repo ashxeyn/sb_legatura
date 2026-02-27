@@ -61,15 +61,32 @@ class dashboardController extends Controller
 
         // Role guard
         $currentRole = session('current_role', $user->user_type ?? null);
-        $userType    = $user->user_type ?? null;
-        $isOwner     = in_array($userType, ['property_owner', 'both'])
-                    && in_array($currentRole, ['owner', 'property_owner']);
+        $userType = $user->user_type ?? null;
 
-        if (!$isOwner && !$isLocalOrTesting) {
-            return redirect('/dashboard')->with('error', 'Only property owners can access this dashboard.');
+        // Fetch owner record to check verification status
+        $ownerRecord = DB::table('property_owners')->where('user_id', $user->user_id)->first();
+        $verificationStatus = $ownerRecord->verification_status ?? null;
+
+        // Require approved owner status for owner dashboard. Allow access when
+        // session role is owner and there is an approved property_owner record,
+        // even if the user's `user_type` hasn't been updated to 'property_owner'/'both'.
+        $hasApprovedOwnerRecord = ($verificationStatus === 'approved');
+        $isOwnerStrict = in_array($currentRole, ['owner', 'property_owner']) &&
+            ($hasApprovedOwnerRecord || in_array($userType, ['property_owner', 'both']));
+
+        if (!$isOwnerStrict && !$isLocalOrTesting) {
+            $msg = ($verificationStatus === 'pending')
+                ? 'Your property owner profile is still pending approval.'
+                : 'Access denied. Property owner dashboard requires approval.';
+            return redirect('/dashboard')->with('error', $msg);
         }
 
-        return view('owner.propertyOwner_Dashboard');
+        $isViewOnly = false; // Overriding since we are blocking access anyway
+
+        return view('owner.propertyOwner_Dashboard', [
+            'verificationStatus' => $verificationStatus,
+            'isViewOnly' => $isViewOnly
+        ]);
     }
 
     /* =====================================================================
@@ -88,7 +105,7 @@ class dashboardController extends Controller
             return $accessCheck;
         }
 
-        $user   = Session::get('user') ?: $request->user();
+        $user = Session::get('user') ?: $request->user();
         $userId = is_object($user) ? ($user->user_id ?? null) : ($user['user_id'] ?? null);
 
         // Resolve display name
@@ -106,9 +123,9 @@ class dashboardController extends Controller
 
         if ($userId) {
             try {
-                $data     = $this->dashboardService->contractorDashboardData($userId);
+                $data = $this->dashboardService->contractorDashboardData($userId);
                 $projects = $data['projects'];
-                $stats    = $data['stats'];
+                $stats = $data['stats'];
             } catch (\Exception $e) {
                 Log::error('DashboardController::contractorDashboard failed: ' . $e->getMessage());
             }
@@ -116,7 +133,7 @@ class dashboardController extends Controller
 
         return view('contractor.contractor_Dashboard', [
             'projects' => $projects,
-            'stats'    => $stats,
+            'stats' => $stats,
             'userName' => $userName,
         ]);
     }
@@ -138,14 +155,26 @@ class dashboardController extends Controller
             return redirect('/accounts/login');
         }
 
-        $sessionCurrentRole = session('current_role');
-        $sessionUserType    = session('userType');
-        $userType    = isset($user->user_type) ? $user->user_type : ($sessionCurrentRole ?? null);
-        $currentRole = $sessionCurrentRole ?? $userType ?? $sessionUserType ?? null;
+        $activeRole = session('active_role');
+        $currentRole = $activeRole ?? session('current_role', $user->user_type ?? null);
 
-        $viewData = $this->dashboardService->unifiedDashboardData($user, $currentRole, $userType);
+        if ($currentRole === 'owner') {
+            // Check verification status before allowing access to owner homepage
+            $owner = DB::table('property_owners')->where('user_id', $user->user_id)->first();
+            if (!$owner || strtolower($owner->verification_status) !== 'approved') {
+                $statusMsg = ($owner && strtolower($owner->verification_status) === 'pending')
+                    ? 'Your property owner profile is still pending admin approval.'
+                    : 'A property owner profile is required to access this role.';
 
-        return view('both.dashboard', $viewData);
+                // If blocked, force back to contractor role for safety
+                session(['active_role' => 'contractor']);
+                session(['current_role' => 'contractor']);
+                return redirect()->route('contractor.homepage')->with('error', $statusMsg);
+            }
+            return redirect()->route('owner.homepage');
+        }
+
+        return redirect()->route('contractor.homepage');
     }
 
     /* =====================================================================
@@ -165,15 +194,15 @@ class dashboardController extends Controller
         }
 
         $sessionCurrentRole = session('current_role');
-        $sessionUserType    = session('userType');
-        $userType    = isset($user->user_type) ? $user->user_type : ($sessionCurrentRole ?? null);
+        $sessionUserType = session('userType');
+        $userType = isset($user->user_type) ? $user->user_type : ($sessionCurrentRole ?? null);
         $currentRole = $sessionCurrentRole ?? $userType ?? $sessionUserType ?? null;
 
         $viewData = $this->dashboardService->unifiedDashboardData($user, $currentRole, $userType);
 
         return response()->json([
-            'success'  => true,
-            'data'     => $viewData,
+            'success' => true,
+            'data' => $viewData,
         ]);
     }
 
@@ -233,8 +262,8 @@ class dashboardController extends Controller
         if (!Session::has('user')) {
             if ($request->expectsJson()) {
                 return response()->json([
-                    'success'      => false,
-                    'message'      => 'Authentication required',
+                    'success' => false,
+                    'message' => 'Authentication required',
                     'redirect_url' => '/accounts/login',
                 ], 401);
             }
@@ -246,8 +275,8 @@ class dashboardController extends Controller
         if (!in_array($user->user_type, ['contractor', 'both'])) {
             if ($request->expectsJson()) {
                 return response()->json([
-                    'success'      => false,
-                    'message'      => 'Access denied. Only contractors can access this page.',
+                    'success' => false,
+                    'message' => 'Access denied. Only contractors can access this page.',
                     'redirect_url' => '/dashboard',
                 ], 403);
             }
@@ -266,7 +295,7 @@ class dashboardController extends Controller
                 } catch (\Exception $e) {
                     Log::warning('Failed to update preferred_role', [
                         'user_id' => $user->user_id,
-                        'error'   => $e->getMessage(),
+                        'error' => $e->getMessage(),
                     ]);
                 }
             }

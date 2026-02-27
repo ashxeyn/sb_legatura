@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const switchToContractorModal = document.getElementById('switchToContractorModal');
     const switchAccountModal = document.getElementById('switchAccountModal');
     const switchToContractorModalOverlay = document.getElementById('switchToContractorModalOverlay');
-    const backToSwitchAccountBtn = document.getElementById('backToSwitchAccountBtn');
+    const backToSwitchAccountFromContractorBtn = document.getElementById('backToSwitchAccountFromContractorBtn');
     const contractorAccountForm = document.getElementById('contractorAccountForm');
     const companyDetailsNextBtn = document.getElementById('companyDetailsNextBtn');
     const authorizedRepresentativeForm = document.getElementById('authorizedRepresentativeForm');
@@ -55,8 +55,8 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Handle back button
-    if (backToSwitchAccountBtn) {
-        backToSwitchAccountBtn.addEventListener('click', function(e) {
+    if (backToSwitchAccountFromContractorBtn) {
+        backToSwitchAccountFromContractorBtn.addEventListener('click', function(e) {
             e.preventDefault();
             // Hide contractor form modal
             switchToContractorModal.classList.add('hidden');
@@ -81,7 +81,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (companyDetailsNextBtn) {
         companyDetailsNextBtn.addEventListener('click', function(e) {
             e.preventDefault();
-            
+
             // Validate company details form
             if (contractorAccountForm.checkValidity()) {
                 // Hide company details form modal
@@ -123,22 +123,22 @@ document.addEventListener('DOMContentLoaded', function() {
     if (authorizedRepForm) {
         authorizedRepForm.addEventListener('submit', function(e) {
             e.preventDefault();
-            
+
             // Get form data
             const contractorData = new FormData(contractorAccountForm);
             const repData = new FormData(authorizedRepForm);
-            
+
             // Combine both forms data
             const allData = {
                 ...Object.fromEntries(contractorData),
                 ...Object.fromEntries(repData)
             };
-            
+
             console.log('Complete Contractor Account Data:', allData);
-            
+
             // TODO: Send to backend API endpoint
             alert('Account setup complete! (Backend integration pending)');
-            
+
             // Close modal and reset
             authorizedRepresentativeForm.classList.add('hidden');
             switchToContractorModal.classList.add('hidden');
@@ -150,7 +150,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (authorizedRepNextBtn) {
         authorizedRepNextBtn.addEventListener('click', function(e) {
             e.preventDefault();
-            
+
             // Validate authorized rep form
             if (authorizedRepForm.checkValidity()) {
                 // Hide authorized representative form
@@ -190,7 +190,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (verificationNextBtn) {
         verificationNextBtn.addEventListener('click', function(e) {
             e.preventDefault();
-            
+
             // Validate verification form
             if (verificationForm.checkValidity()) {
                 // Hide verification documents form
@@ -230,13 +230,13 @@ document.addEventListener('DOMContentLoaded', function() {
     if (profilePictureFormElement) {
         profilePictureFormElement.addEventListener('submit', function(e) {
             e.preventDefault();
-            
+
             // Get form data from all four forms
             const contractorData = new FormData(contractorAccountForm);
             const repData = new FormData(authorizedRepForm);
             const verificationData = new FormData(verificationForm);
             const profileData = new FormData(profilePictureFormElement);
-            
+
             // Combine all forms data
             const allData = {
                 ...Object.fromEntries(contractorData),
@@ -244,12 +244,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 ...Object.fromEntries(verificationData),
                 ...Object.fromEntries(profileData)
             };
-            
+
             console.log('Complete Contractor Account Setup Data:', allData);
-            
+
             // TODO: Send to backend API endpoint
             alert('Contractor account setup complete!');
-            
+
             // Close modal and reset
             profilePictureForm.classList.add('hidden');
             document.body.style.overflow = '';
@@ -259,12 +259,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // Province and City relationship (placeholder - can be enhanced with real data)
     const provinceSelect = document.getElementById('province');
     const citySelect = document.getElementById('city');
-    
+
     if (provinceSelect && citySelect) {
         provinceSelect.addEventListener('change', function() {
             // Clear current cities
             citySelect.innerHTML = '<option value="" disabled selected>Select City</option>';
-            
+
             // Add placeholder cities based on province (you can expand this with real data)
             const cities = {
                 'metro-manila': ['Manila', 'Quezon City', 'Makati', 'Taguig', 'Pasig', 'Mandaluyong'],
@@ -276,7 +276,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 'laguna': ['Calamba', 'Santa Rosa', 'Biñan', 'San Pablo'],
                 'cavite': ['Bacoor', 'Imus', 'Dasmariñas', 'Tagaytay']
             };
-            
+
             const selectedProvince = this.value;
             if (cities[selectedProvince]) {
                 cities[selectedProvince].forEach(city => {
@@ -299,7 +299,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 reader.onload = function(event) {
                     // Get the label element
                     const label = document.querySelector('label[for="dtiSecFile"]');
-                    
+
                     // Check if preview already exists
                     let previewImg = label.querySelector('.file-preview-image');
                     if (!previewImg) {
@@ -307,14 +307,14 @@ document.addEventListener('DOMContentLoaded', function() {
                         previewImg = document.createElement('img');
                         previewImg.className = 'file-preview-image';
                         label.insertBefore(previewImg, label.firstChild);
-                        
+
                         // Hide the upload icon and text when preview is shown
                         const uploadIcon = label.querySelector('.file-upload-icon');
                         const uploadText = label.querySelector('.file-upload-text');
                         if (uploadIcon) uploadIcon.style.display = 'none';
                         if (uploadText) uploadText.textContent = 'Change File';
                     }
-                    
+
                     previewImg.src = event.target.result;
                 };
                 reader.readAsDataURL(file);
@@ -332,7 +332,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 reader.onload = function(event) {
                     // Get the circle element
                     const circle = document.querySelector('.profile-picture-circle');
-                    
+
                     // Check if preview already exists
                     let previewImg = circle.querySelector('.profile-preview-image');
                     if (!previewImg) {
@@ -340,12 +340,12 @@ document.addEventListener('DOMContentLoaded', function() {
                         previewImg = document.createElement('img');
                         previewImg.className = 'profile-preview-image';
                         circle.appendChild(previewImg);
-                        
+
                         // Hide the building icon
                         const buildingIcon = circle.querySelector('i');
                         if (buildingIcon) buildingIcon.style.display = 'none';
                     }
-                    
+
                     previewImg.src = event.target.result;
                 };
                 reader.readAsDataURL(file);
@@ -357,13 +357,13 @@ document.addEventListener('DOMContentLoaded', function() {
     if (contractorCompleteBtn) {
         contractorCompleteBtn.addEventListener('click', function(e) {
             e.preventDefault();
-            
+
             // Validate the form first
             if (!profilePictureFormElement.checkValidity()) {
                 profilePictureFormElement.reportValidity();
                 return;
             }
-            
+
             // Show confirmation modal
             profilePictureForm.classList.add('hidden');
             contractorConfirmationModal.classList.remove('hidden');
@@ -397,7 +397,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const authRepData = new FormData(authorizedRepForm);
             const verificationData = new FormData(verificationForm);
             const profilePicData = new FormData(profilePictureFormElement);
-            
+
             const combinedData = {
                 // Company Details
                 companyName: companyData.get('company_name'),
@@ -420,13 +420,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Profile Picture
                 profilePicture: profilePicData.get('profile_picture')
             };
-            
+
             // Log the data (replace with API call later)
             console.log('Combined Contractor Account Data:', combinedData);
-            
+
             // TODO: Send to backend API endpoint
             alert('Contractor account setup complete!');
-            
+
             // Close modal and reset all forms
             contractorConfirmationModal.classList.add('hidden');
             contractorAccountForm.reset();

@@ -688,8 +688,11 @@ class ContractorHomepage {
         // Fetch Provinces from PSGC API
         if (this.filterProvince) {
             try {
-                const response = await fetch('/api/psgc/provinces');
-                const provinces = await response.json();
+                const res = await fetch('/api/psgc/provinces');
+                const json = await res.json();
+
+                // API returns { success: true, data: [...] }
+                const provinces = Array.isArray(json?.data) ? json.data : [];
 
                 // Sort by name
                 provinces.sort((a, b) => a.name.localeCompare(b.name));
@@ -697,20 +700,9 @@ class ContractorHomepage {
                 this.filterProvince.innerHTML = '<option value="">All Provinces</option>';
                 provinces.forEach(p => {
                     const option = document.createElement('option');
-                    option.value = p.code; // Store code, but maybe text is needed for filtering? 
-                    // Wait, existing projects have 'Metro Manila' or 'Cebu' as text.
-                    // The API returns codes and names.
-                    // If projects store NAMES, I should use p.name as value? 
-                    // Previous code (Step 1608) suggests fetching cities by CODE.
-                    // So value must be CODE to fetch cities.
-                    // BUT filtering must match project data (which is likely Name).
-                    // I will use CODE as value to fetch cities, but when Filtering, I might need to map or check Name.
-                    // Actually, let's see how 'owner.js' does it.
-                    // Step 1608: "Handle PSGC selects to send names instead of codes if needed".
-                    // If `projects` table stores Names, I need to match Names.
-                    // I'll store Name in data attribute? Or just use Code and look up Name?
-                    // Let's use Code as value for the dropdown logic, and data-name for filtering.
+                    // Use PSGC code as the option value (used to fetch cities)
                     option.value = p.code;
+                    // Keep readable name for filtering and display
                     option.dataset.name = p.name;
                     option.textContent = p.name;
                     this.filterProvince.appendChild(option);
@@ -730,22 +722,18 @@ class ContractorHomepage {
 
         if (provinceCode) {
             try {
-                const response = await fetch(`/api/psgc/provinces/${provinceCode}/cities`);
-                const cities = await response.json();
+                const res = await fetch(`/api/psgc/provinces/${provinceCode}/cities`);
+                const json = await res.json();
+
+                // API returns { success: true, data: [...] }
+                const cities = Array.isArray(json?.data) ? json.data : [];
 
                 cities.sort((a, b) => a.name.localeCompare(b.name));
 
                 cities.forEach(c => {
                     const option = document.createElement('option');
-                    option.value = c.name; // Use Name for city filtering as it's likely stored as name
-                    // Wait, if I use Code for Province, I need Code to fetch cities.
-                    // But for City, I only need to filter.
-                    // Projects likely store "Davao City", "Makati City".
-                    // So City value should be NAME.
-                    // What about Province value?
-                    // If I filter by Province, and projects store "Davao del Sur", but value is "112400000".
-                    // I need to use the Name for filtering.
-                    // In `applyFilters`, I'll get the selected option's text (or data-name).
+                    // For city selection we use the NAME because project records typically store readable names
+                    option.value = c.name;
                     option.textContent = c.name;
                     this.filterCity.appendChild(option);
                 });

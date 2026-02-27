@@ -47,13 +47,27 @@ class homepageController extends Controller
         }
 
         $currentRole = session('current_role', $user->user_type ?? null);
-        $userType    = $user->user_type ?? null;
-        $isOwner     = in_array($userType, ['property_owner', 'both'])
-                    && in_array($currentRole, ['owner', 'property_owner']);
+        $userType = $user->user_type ?? null;
+
+        // Fetch owner record to check verification status
+        $ownerRecord = DB::table('property_owners')->where('user_id', $user->user_id)->first();
+        $verificationStatus = $ownerRecord->verification_status ?? null;
+
+        // Strictly require approved status for owner homepage.
+        // Allow access when the session role is owner AND the user either has
+        // user_type 'property_owner'/'both' OR an approved property_owners record.
+        $hasApprovedOwnerRecord = ($verificationStatus === 'approved');
+        $isOwner = in_array($currentRole, ['owner', 'property_owner']) &&
+            ($hasApprovedOwnerRecord || in_array($userType, ['property_owner', 'both']));
 
         if (!$isOwner) {
-            return redirect('/dashboard')->with('error', 'Only property owners can access this page.');
+            $msg = ($verificationStatus === 'pending')
+                ? 'Your property owner profile is still pending approval.'
+                : 'Access denied. Property owner profile required.';
+            return redirect('/dashboard')->with('error', $msg);
         }
+
+        $isViewOnly = false; // Overriding since we are blocking access anyway
 
         $excludeUserId = ($userType === 'both') ? $user->user_id : null;
 
@@ -72,8 +86,8 @@ class homepageController extends Controller
         if ($request->ajax() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
             $html = view('owner.partials.contractor_cards_list', ['contractors' => $contractors])->render();
             return response()->json([
-                'success'    => true,
-                'html'       => $html,
+                'success' => true,
+                'html' => $html,
                 'pagination' => $pagination,
             ], 200);
         }
@@ -82,9 +96,9 @@ class homepageController extends Controller
         $jsContractors = $this->feedService->ownerHomepageData($excludeUserId)['jsContractors'] ?? [];
 
         return view('owner.propertyOwner_Homepage', [
-            'contractors'     => $contractors,
-            'pagination'      => $pagination,
-            'jsContractors'   => $jsContractors,
+            'contractors' => $contractors,
+            'pagination' => $pagination,
+            'jsContractors' => $jsContractors,
             'contractorTypes' => $this->feedService->getContractorTypes(),
         ]);
     }
@@ -110,8 +124,8 @@ class homepageController extends Controller
         } catch (\Throwable $e) {
             Log::error('HomepageController::contractorHomepage failed: ' . $e->getMessage());
             $data = [
-                'projects'      => collect([]),
-                'jsProjects'    => [],
+                'projects' => collect([]),
+                'jsProjects' => [],
                 'propertyTypes' => [],
             ];
         }
@@ -132,22 +146,22 @@ class homepageController extends Controller
     public function apiGetContractors(Request $request)
     {
         try {
-            $page        = max(1, (int) $request->query('page', 1));
-            $perPage     = min(50, max(1, (int) $request->query('per_page', 15)));
+            $page = max(1, (int) $request->query('page', 1));
+            $perPage = min(50, max(1, (int) $request->query('per_page', 15)));
             $excludeUser = $request->query('exclude_user_id');
 
             // Collect filter params (all optional)
             $filters = array_filter([
-                'search'          => $request->query('search'),
-                'type_id'         => $request->query('type_id'),
-                'location'        => $request->query('location'),
-                'province'        => $request->query('province'),
-                'city'            => $request->query('city'),
-                'min_experience'  => $request->query('min_experience'),
-                'max_experience'  => $request->query('max_experience'),
-                'picab_category'  => $request->query('picab_category'),
-                'min_completed'   => $request->query('min_completed'),
-            ], fn ($v) => $v !== null && $v !== '');
+                'search' => $request->query('search'),
+                'type_id' => $request->query('type_id'),
+                'location' => $request->query('location'),
+                'province' => $request->query('province'),
+                'city' => $request->query('city'),
+                'min_experience' => $request->query('min_experience'),
+                'max_experience' => $request->query('max_experience'),
+                'picab_category' => $request->query('picab_category'),
+                'min_completed' => $request->query('min_completed'),
+            ], fn($v) => $v !== null && $v !== '');
 
             $result = $this->feedService->ownerFeedApi(
                 $excludeUser ? (int) $excludeUser : null,
@@ -157,11 +171,11 @@ class homepageController extends Controller
             );
 
             return response()->json([
-                'success'    => true,
-                'message'    => 'Contractors retrieved successfully',
-                'data'       => $result['data'],
+                'success' => true,
+                'message' => 'Contractors retrieved successfully',
+                'data' => $result['data'],
                 'pagination' => $result['pagination'],
-                'filters'    => $filters,
+                'filters' => $filters,
             ], 200);
         } catch (\Exception $e) {
             Log::error('apiGetContractors error: ' . $e->getMessage());
@@ -187,7 +201,7 @@ class homepageController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Contractor types retrieved successfully',
-                'data'    => $this->feedService->getContractorTypes(),
+                'data' => $this->feedService->getContractorTypes(),
             ], 200);
         } catch (\Exception $e) {
             Log::error('apiGetContractorTypes error: ' . $e->getMessage());
@@ -212,35 +226,35 @@ class homepageController extends Controller
     public function apiGetApprovedProjects(Request $request)
     {
         try {
-            $page    = max(1, (int) $request->query('page', 1));
+            $page = max(1, (int) $request->query('page', 1));
             $perPage = min(50, max(1, (int) $request->query('per_page', 15)));
-            $userId  = $this->resolveUserId($request);
+            $userId = $this->resolveUserId($request);
 
             // Collect filter params (all optional)
             $filters = array_filter([
-                'search'         => $request->query('search'),
-                'type_id'        => $request->query('type_id'),
-                'property_type'  => $request->query('property_type'),
-                'location'       => $request->query('location'),
-                'province'       => $request->query('province'),
-                'city'           => $request->query('city'),
-                'budget_min'     => $request->query('budget_min'),
-                'budget_max'     => $request->query('budget_max'),
+                'search' => $request->query('search'),
+                'type_id' => $request->query('type_id'),
+                'property_type' => $request->query('property_type'),
+                'location' => $request->query('location'),
+                'province' => $request->query('province'),
+                'city' => $request->query('city'),
+                'budget_min' => $request->query('budget_min'),
+                'budget_max' => $request->query('budget_max'),
                 'project_status' => $request->query('project_status'),
-                'min_lot_size'   => $request->query('min_lot_size'),
-                'max_lot_size'   => $request->query('max_lot_size'),
+                'min_lot_size' => $request->query('min_lot_size'),
+                'max_lot_size' => $request->query('max_lot_size'),
                 'min_floor_area' => $request->query('min_floor_area'),
                 'max_floor_area' => $request->query('max_floor_area'),
-            ], fn ($v) => $v !== null && $v !== '');
+            ], fn($v) => $v !== null && $v !== '');
 
             $result = $this->feedService->contractorFeedApi($userId, $page, $perPage, $filters);
 
             return response()->json([
-                'success'    => true,
-                'message'    => 'Projects retrieved successfully',
-                'data'       => $result['data'],
+                'success' => true,
+                'message' => 'Projects retrieved successfully',
+                'data' => $result['data'],
                 'pagination' => $result['pagination'],
-                'filters'    => $filters,
+                'filters' => $filters,
             ], 200);
         } catch (\Exception $e) {
             Log::error('apiGetApprovedProjects error: ' . $e->getMessage());
@@ -268,7 +282,7 @@ class homepageController extends Controller
     {
         try {
             $contractorTypes = $this->feedService->getContractorTypes();
-            $propertyTypes   = (new \App\Models\both\feedClass)->getEnumValues('projects', 'property_type');
+            $propertyTypes = (new \App\Models\both\feedClass)->getEnumValues('projects', 'property_type');
 
             $picabCategories = ['AAAA', 'AAA', 'AA', 'A', 'B', 'C', 'D', 'Trade/E'];
 
@@ -280,11 +294,11 @@ class homepageController extends Controller
 
             return response()->json([
                 'success' => true,
-                'data'    => [
-                    'contractor_types'  => $contractorTypes,
-                    'property_types'    => $propertyTypes,
-                    'project_statuses'  => $projectStatuses,
-                    'picab_categories'  => $picabCategories,
+                'data' => [
+                    'contractor_types' => $contractorTypes,
+                    'property_types' => $propertyTypes,
+                    'project_statuses' => $projectStatuses,
+                    'picab_categories' => $picabCategories,
                 ],
             ], 200);
         } catch (\Exception $e) {
@@ -355,7 +369,7 @@ class homepageController extends Controller
                 } catch (\Exception $e) {
                     Log::warning('Failed to update preferred_role', [
                         'user_id' => $user->user_id,
-                        'error'   => $e->getMessage(),
+                        'error' => $e->getMessage(),
                     ]);
                 }
             }

@@ -48,28 +48,30 @@
 
     <!-- Edit Profile Information Modal (Available on all pages) -->
     @include('owner.propertyOwner_Modals.ownerAccountsettings_Modal')
-    
+
     <!-- Help & Support Modal (Available on all pages) -->
     @include('partials.helpSupport_Modal')
-    
+
     <!-- Contact Us Modal (Available on all pages) -->
     @include('partials.contactUs_Modal')
-    
+
     <!-- Privacy Policy Modal (Available on all pages) -->
     @include('partials.privacyPolicy_Modal')
-    
+
     <!-- Switch Account Modal (Available on all pages) -->
     @include('partials.switchAccount_Modal')
-    
+
     <!-- Switch to Contractor Form Modal -->
     @include('partials.switchAccount_CONTRACTOR_Modal')
-    
+    <!-- Pending Contractor->Owner Modal -->
+    @include('partials.pendingContractorOwner')
+
     <!-- Security Modal (Available on all pages) -->
     @include('partials.security_Modal')
-    
+
     <!-- Settings Modal (Available on all pages) -->
     @include('partials.settings_Modal')
-    
+
     <!-- Boost Modal (Available on all pages) -->
     @include('partials.boost_Modal')
 

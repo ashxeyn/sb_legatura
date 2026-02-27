@@ -451,7 +451,46 @@ class cprocessController extends Controller
             ], 401);
         }
 
-        if ($user->user_type !== 'both') {
+        // Allow switching in these cases:
+        // - user_type is 'both' (normal multi-role accounts)
+        // - switching to 'owner' and an approved owner profile exists for this user
+        $userType = is_object($user) ? ($user->user_type ?? null) : ($user['user_type'] ?? null);
+        $userId = is_object($user) ? ($user->user_id ?? null) : ($user['user_id'] ?? null);
+        // Determine desired role early and validate it before access checks
+        $targetRole = $request->input('role');
+        if (!in_array($targetRole, ['contractor', 'owner'])) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid role specified. Must be "contractor" or "owner".'
+                ], 400);
+            } else {
+                return redirect('/dashboard')->with('error', 'Invalid role specified.');
+            }
+        }
+
+        $canSwitch = false;
+        if ($userType === 'both') {
+            $canSwitch = true;
+        } else {
+            // If switching to owner, allow when an approved owner profile exists
+            if ($targetRole === 'owner' && $userId) {
+                try {
+                    $ownerCheck = DB::table('property_owners')->where('user_id', $userId)->first();
+                    if ($ownerCheck && strtolower($ownerCheck->verification_status) === 'approved') {
+                        $canSwitch = true;
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning('switchRole owner-check failed: ' . $e->getMessage());
+                }
+            }
+            // If switching to contractor and the account is contractor, allow as well
+            if ($targetRole === 'contractor' && in_array($userType, ['contractor'])) {
+                $canSwitch = true;
+            }
+        }
+
+        if (!$canSwitch) {
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => false,
@@ -475,7 +514,29 @@ class cprocessController extends Controller
             }
         }
 
+        // If switching to owner, check if the profile is approved
+        if ($targetRole === 'owner') {
+            $userId = is_object($user) ? ($user->user_id ?? null) : ($user['user_id'] ?? null);
+            $owner = DB::table('property_owners')->where('user_id', $userId)->first();
+
+            if (!$owner || strtolower($owner->verification_status) !== 'approved' || intval($owner->is_active) !== 1) {
+                $statusMsg = ($owner && strtolower($owner->verification_status) === 'pending')
+                    ? 'Your property owner profile is still pending admin approval.'
+                    : 'A property owner profile is required to access this role.';
+
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => $statusMsg
+                    ], 403);
+                } else {
+                    return redirect()->back()->with('error', $statusMsg);
+                }
+            }
+        }
+
         Session::put('current_role', $targetRole);
+        Session::put('active_role', $targetRole);
 
         // Persist active role for stateless clients using Sanctum
         try {
@@ -497,17 +558,38 @@ class cprocessController extends Controller
             Log::warning('switchRole persist preferred_role failed: ' . $e->getMessage());
         }
 
-        if ($request->expectsJson()) {
+        // If switching to owner and an approved owner profile exists, redirect to owner homepage
+        if ($targetRole === 'owner') {
+            $ownerRecord = null;
+            try {
+                $userId = is_object($user) ? ($user->user_id ?? null) : ($user['user_id'] ?? null);
+                if ($userId) {
+                    $ownerRecord = DB::table('property_owners')->where('user_id', $userId)->first();
+                }
+            } catch (\Throwable $e) {
+                Log::warning('switchRole: failed to fetch owner record: ' . $e->getMessage());
+            }
 
+            // If owner exists and is approved, send them to the owner homepage (primary owner landing)
+            if ($ownerRecord && strtolower($ownerRecord->verification_status) === 'approved') {
+                $redirectUrl = route('owner.homepage');
+            } else {
+                $redirectUrl = route('owner.dashboard');
+            }
+        } else {
+            $redirectUrl = route('contractor.homepage');
+        }
+
+        if ($request->expectsJson()) {
             return response()->json([
                 'success' => true,
                 'message' => "Successfully switched to {$targetRole} role",
                 'current_role' => $targetRole,
-                'redirect_url' => '/dashboard'
+                'active_role' => $targetRole,
+                'redirect_url' => $redirectUrl
             ]);
         } else {
-
-            return redirect('/dashboard')->with('success', "Successfully switched to {$targetRole} role");
+            return redirect($redirectUrl)->with('success', "Successfully switched to {$targetRole} role");
         }
     }
 

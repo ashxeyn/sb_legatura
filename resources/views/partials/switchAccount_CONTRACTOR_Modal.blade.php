@@ -3,7 +3,7 @@
     <div class="modal-overlay" id="switchToContractorModalOverlay"></div>
     <div class="switch-account-modal-container max-w-2xl">
         <!-- Back Button -->
-        <button type="button" class="back-button" id="backToSwitchAccountBtn">
+        <button type="button" class="back-button" id="backToSwitchAccountFromContractorBtn">
             <i class="fi fi-rr-arrow-left"></i>
             <span>Back</span>
         </button>
@@ -23,15 +23,15 @@
                 <!-- Company Details Section -->
                 <div class="form-section">
                     <h3 class="form-section-title">Company Details</h3>
-                    
+
                     <!-- Company Name -->
                     <div class="form-group">
                         <label for="companyName" class="form-label">
                             Company Name <span class="required">*</span>
                         </label>
-                        <input 
-                            type="text" 
-                            id="companyName" 
+                        <input
+                            type="text"
+                            id="companyName"
                             name="company_name"
                             class="form-input"
                             placeholder="Enter company name"
@@ -44,9 +44,9 @@
                         <label for="companyPhone" class="form-label">
                             Company Phone <span class="required">*</span>
                         </label>
-                        <input 
-                            type="tel" 
-                            id="companyPhone" 
+                        <input
+                            type="tel"
+                            id="companyPhone"
                             name="company_phone"
                             class="form-input"
                             placeholder="09171234567"
@@ -59,9 +59,9 @@
                         <label for="yearsExperience" class="form-label">
                             Years of Experience <span class="required">*</span>
                         </label>
-                        <input 
-                            type="number" 
-                            id="yearsExperience" 
+                        <input
+                            type="number"
+                            id="yearsExperience"
                             name="years_experience"
                             class="form-input"
                             placeholder="e.g. 5"
@@ -76,8 +76,8 @@
                             Contractor Type <span class="required">*</span>
                         </label>
                         <div class="select-wrapper">
-                            <select 
-                                id="contractorType" 
+                            <select
+                                id="contractorType"
                                 name="contractor_type"
                                 class="form-select"
                                 required
@@ -102,15 +102,15 @@
                 <!-- Business Address Section -->
                 <div class="form-section">
                     <h3 class="form-section-title">Business Address</h3>
-                    
+
                     <!-- Street/Building No -->
                     <div class="form-group">
                         <label for="streetAddress" class="form-label">
                             Street/Building No. <span class="required">*</span>
                         </label>
-                        <input 
-                            type="text" 
-                            id="streetAddress" 
+                        <input
+                            type="text"
+                            id="streetAddress"
                             name="street_address"
                             class="form-input"
                             placeholder="e.g. 123 Main Street"
@@ -124,8 +124,8 @@
                             Province <span class="required">*</span>
                         </label>
                         <div class="select-wrapper">
-                            <select 
-                                id="province" 
+                            <select
+                                id="province"
                                 name="province"
                                 class="form-select"
                                 required
@@ -150,8 +150,8 @@
                             City/Municipality <span class="required">*</span>
                         </label>
                         <div class="select-wrapper">
-                            <select 
-                                id="city" 
+                            <select
+                                id="city"
                                 name="city"
                                 class="form-select"
                                 required
@@ -208,15 +208,15 @@
                 <!-- Personal Details Section -->
                 <div class="form-section">
                     <h3 class="form-section-title">Personal Details</h3>
-                    
+
                     <!-- First Name -->
                     <div class="form-group">
                         <label for="firstName" class="form-label">
                             First Name <span class="required">*</span>
                         </label>
-                        <input 
-                            type="text" 
-                            id="firstName" 
+                        <input
+                            type="text"
+                            id="firstName"
                             name="first_name"
                             class="form-input"
                             placeholder="Enter first name"
@@ -230,9 +230,9 @@
                         <label for="middleName" class="form-label">
                             Middle Name (Optional)
                         </label>
-                        <input 
-                            type="text" 
-                            id="middleName" 
+                        <input
+                            type="text"
+                            id="middleName"
                             name="middle_name"
                             class="form-input"
                             placeholder="Enter middle name"
@@ -245,9 +245,9 @@
                         <label for="lastName" class="form-label">
                             Last Name <span class="required">*</span>
                         </label>
-                        <input 
-                            type="text" 
-                            id="lastName" 
+                        <input
+                            type="text"
+                            id="lastName"
                             name="last_name"
                             class="form-input"
                             placeholder="Enter last name"
@@ -260,15 +260,15 @@
                 <!-- Account Details Section -->
                 <div class="form-section">
                     <h3 class="form-section-title">Account Details</h3>
-                    
+
                     <!-- Username -->
                     <div class="form-group">
                         <label for="username" class="form-label">
                             Username <span class="required">*</span>
                         </label>
-                        <input 
-                            type="text" 
-                            id="username" 
+                        <input
+                            type="text"
+                            id="username"
                             name="username"
                             class="form-input"
                             placeholder="Enter username"
@@ -282,9 +282,9 @@
                         <label for="personalEmail" class="form-label">
                             Personal Email <span class="required">*</span>
                         </label>
-                        <input 
-                            type="email" 
-                            id="personalEmail" 
+                        <input
+                            type="email"
+                            id="personalEmail"
                             name="personal_email"
                             class="form-input"
                             placeholder="Enter personal email"
@@ -330,15 +330,15 @@
                 <!-- PICAB Information Section -->
                 <div class="form-section">
                     <h3 class="form-section-title">PICAB Information</h3>
-                    
+
                     <!-- PICAB Number -->
                     <div class="form-group">
                         <label for="picabNumber" class="form-label">
                             PICAB Number <span class="required">*</span>
                         </label>
-                        <input 
-                            type="text" 
-                            id="picabNumber" 
+                        <input
+                            type="text"
+                            id="picabNumber"
                             name="picab_number"
                             class="form-input"
                             placeholder="Enter PICAB"
@@ -351,9 +351,9 @@
                         <label for="picabExpiration" class="form-label">
                             PICAB Expiration <span class="required">*</span>
                         </label>
-                        <input 
-                            type="date" 
-                            id="picabExpiration" 
+                        <input
+                            type="date"
+                            id="picabExpiration"
                             name="picab_expiration"
                             class="form-input"
                             required
@@ -364,16 +364,16 @@
                 <!-- Business Documents Section -->
                 <div class="form-section">
                     <h3 class="form-section-title">Business Documents</h3>
-                    
+
                     <!-- DTI/SEC Registration Photo -->
                     <div class="form-group">
                         <label for="dtiSecFile" class="form-label">
                             DTI/SEC Registration Photo <span class="required">*</span>
                         </label>
                         <div class="file-upload-area">
-                            <input 
-                                type="file" 
-                                id="dtiSecFile" 
+                            <input
+                                type="file"
+                                id="dtiSecFile"
                                 name="dti_sec_file"
                                 class="file-input hidden"
                                 accept=".jpg,.jpeg,.png,.pdf"
@@ -428,9 +428,9 @@
                     <!-- Profile Picture Upload -->
                     <div class="form-group">
                         <div class="profile-picture-upload-area">
-                            <input 
-                                type="file" 
-                                id="profilePictureFile" 
+                            <input
+                                type="file"
+                                id="profilePictureFile"
                                 name="profile_picture"
                                 class="file-input hidden"
                                 accept=".jpg,.jpeg,.png"

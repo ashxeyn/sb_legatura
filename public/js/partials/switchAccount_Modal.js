@@ -9,19 +9,21 @@ class SwitchAccountModal {
         this.overlay = document.getElementById('switchAccountModalOverlay');
         this.loadingOverlay = document.getElementById('switchAccountLoading');
         this.currentAccountType = null; // Will be set based on current page
+        this.isPendingOwner = false; // Track if owner profile is pending
+        this.isApprovedOwner = false; // Track if owner profile is approved for switch
         this.init();
     }
 
     init() {
         this.detectCurrentAccount();
         this.setupEventListeners();
-        this.updateCurrentAccountUI();
+        // UI will be updated after fetching status in open()
     }
 
     detectCurrentAccount() {
         // Detect current account type based on URL or page context
         const path = window.location.pathname;
-        
+
         if (path.includes('/contractor/') || path.includes('contractor')) {
             this.currentAccountType = 'contractor';
         } else if (path.includes('/owner/') || path.includes('owner') || path.includes('property')) {
@@ -69,7 +71,7 @@ class SwitchAccountModal {
             switchAccountLink.addEventListener('click', (e) => {
                 e.preventDefault();
                 this.open();
-                
+
                 // Close account settings modal if open
                 const accountSettingsModal = document.getElementById('accountSettingsModal');
                 if (accountSettingsModal && accountSettingsModal.classList.contains('show')) {
@@ -78,19 +80,7 @@ class SwitchAccountModal {
             });
         }
 
-        // Switch to Owner button
-        const switchToOwnerBtn = document.querySelectorAll('[data-target="owner"]');
-        switchToOwnerBtn.forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.preventDefault();
-                if (this.currentAccountType !== 'owner') {
-                    // Show owner form modal instead of switching directly
-                    this.showOwnerFormModal();
-                } else {
-                    this.switchAccount('owner');
-                }
-            });
-        });
+        // Owner switch logic moved to switchAccount_OWNER_Modal.js
 
         // Switch to Contractor button
         const switchToContractorBtn = document.querySelectorAll('[data-target="contractor"]');
@@ -98,10 +88,10 @@ class SwitchAccountModal {
             btn.addEventListener('click', (e) => {
                 e.preventDefault();
                 if (this.currentAccountType !== 'contractor') {
-                    // Show contractor form modal instead of switching directly
-                    this.showContractorFormModal();
-                } else {
+                    // Switch directly to contractor (assuming already exists for users in this switcher)
                     this.switchAccount('contractor');
+                } else {
+                    this.showNotification('You are already viewing the Contractor side', 'info');
                 }
             });
         });
@@ -110,14 +100,7 @@ class SwitchAccountModal {
         const ownerCard = document.getElementById('switchToOwner');
         const contractorCard = document.getElementById('switchToContractor');
 
-        if (ownerCard) {
-            ownerCard.addEventListener('click', (e) => {
-                // Only if not clicking the button directly
-                if (!e.target.closest('.account-switch-btn') && this.currentAccountType !== 'owner') {
-                    this.switchAccount('owner');
-                }
-            });
-        }
+        // Card click handling for owner moved to switchAccount_OWNER_Modal.js
 
         if (contractorCard) {
             contractorCard.addEventListener('click', (e) => {
@@ -134,12 +117,14 @@ class SwitchAccountModal {
         const contractorCard = document.getElementById('switchToContractor');
         const ownerBadge = document.getElementById('ownerCurrentBadge');
         const contractorBadge = document.getElementById('contractorCurrentBadge');
+        const ownerPendingBadge = document.getElementById('ownerPendingBadge');
 
         // Reset all
         if (ownerCard) ownerCard.classList.remove('current-account');
         if (contractorCard) contractorCard.classList.remove('current-account');
         if (ownerBadge) ownerBadge.style.display = 'none';
         if (contractorBadge) contractorBadge.style.display = 'none';
+        if (ownerPendingBadge) ownerPendingBadge.style.display = 'none';
 
         // Set current
         if (this.currentAccountType === 'owner') {
@@ -148,6 +133,11 @@ class SwitchAccountModal {
         } else if (this.currentAccountType === 'contractor') {
             if (contractorCard) contractorCard.classList.add('current-account');
             if (contractorBadge) contractorBadge.style.display = 'block';
+
+            // Show pending badge if contractor has a pending owner profile
+            if (this.isPendingOwner && ownerPendingBadge) {
+                ownerPendingBadge.style.display = 'block';
+            }
         }
 
         // Update button states
@@ -175,7 +165,7 @@ class SwitchAccountModal {
         }
     }
 
-    switchAccount(targetAccountType) {
+    async switchAccount(targetAccountType) {
         if (this.currentAccountType === targetAccountType) {
             this.showNotification('You are already on this account type', 'info');
             return;
@@ -185,35 +175,33 @@ class SwitchAccountModal {
         this.showLoading();
         this.close();
 
-        // Simulate account switch - In production, make API call
-        setTimeout(() => {
-            // Redirect to the appropriate dashboard
-            let redirectUrl = '';
-            
-            if (targetAccountType === 'owner') {
-                redirectUrl = '/owner/homepage'; // Update with your actual route
-                this.showNotification('Switching to Property Owner account...', 'success');
-            } else if (targetAccountType === 'contractor') {
-                redirectUrl = '/contractor/homepage'; // Update with your actual route
-                this.showNotification('Switching to Contractor account...', 'success');
-            }
+        try {
+            const response = await fetch('/api/role/switch', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({ role: targetAccountType })
+            });
 
-            // In production, make actual API call to switch account
-            // const response = await fetch('/api/switch-account', {
-            //     method: 'POST',
-            //     headers: {
-            //         'Content-Type': 'application/json',
-            //         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-            //     },
-            //     body: JSON.stringify({ accountType: targetAccountType })
-            // });
+            const json = await response.json();
 
-            setTimeout(() => {
+            if (json.success) {
+                this.showNotification(json.message || `Switching to ${targetAccountType} account...`, 'success');
+                setTimeout(() => {
+                    window.location.href = json.redirect_url || (targetAccountType === 'owner' ? '/owner/homepage' : '/contractor/homepage');
+                }, 1000);
+            } else {
                 this.hideLoading();
-                // Redirect to the new account dashboard
-                window.location.href = redirectUrl;
-            }, 1500);
-        }, 500);
+                this.showNotification(json.message || 'Failed to switch role', 'error');
+            }
+        } catch (err) {
+            this.hideLoading();
+            console.error('Role switch error:', err);
+            this.showNotification('An error occurred during role switch', 'error');
+        }
     }
 
     showLoading() {
@@ -228,18 +216,30 @@ class SwitchAccountModal {
         }
     }
 
-    open() {
+    async open() {
         if (this.modal) {
             this.modal.classList.add('active');
             document.body.style.overflow = 'hidden';
-            
+
             // Scroll to top of modal content
             const modalBody = this.modal.querySelector('.switch-account-modal-body');
             if (modalBody) {
                 modalBody.scrollTop = 0;
             }
 
-            // Update UI based on current account
+            // Fetch account status to check for pending owner
+            try {
+                const resp = await fetch('/accounts/switch', {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                const json = await resp.json();
+                this.isPendingOwner = !!json.is_pending_owner;
+                this.isApprovedOwner = !!json.is_approved_owner;
+            } catch (err) {
+                console.error('Failed to check account status:', err);
+            }
+
+            // Update UI based on current account and pending status
             this.updateCurrentAccountUI();
         }
     }
@@ -258,23 +258,11 @@ class SwitchAccountModal {
     showContractorFormModal() {
         // Close the main switch account modal
         this.close();
-        
+
         // Show the contractor form modal
         const contractorFormModal = document.getElementById('switchToContractorModal');
         if (contractorFormModal) {
             contractorFormModal.classList.remove('hidden');
-            document.body.style.overflow = 'hidden';
-        }
-    }
-
-    showOwnerFormModal() {
-        // Close the main switch account modal
-        this.close();
-        
-        // Show the owner form modal
-        const ownerFormModal = document.getElementById('switchToOwnerModal');
-        if (ownerFormModal) {
-            ownerFormModal.classList.remove('hidden');
             document.body.style.overflow = 'hidden';
         }
     }
@@ -288,7 +276,7 @@ class SwitchAccountModal {
         } else if (type === 'error') {
             bgColor = '#ef4444';
         }
-        
+
         toast.className = 'fixed bottom-4 right-4 text-white px-6 py-3 rounded-lg shadow-lg z-50';
         toast.style.backgroundColor = bgColor;
         toast.style.zIndex = '9999';
@@ -315,14 +303,14 @@ let switchAccountModalInstance = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     switchAccountModalInstance = new SwitchAccountModal();
-    
+
     // Expose globally if needed
     window.openSwitchAccountModal = () => {
         if (switchAccountModalInstance) {
             switchAccountModalInstance.open();
         }
     };
-    
+
     window.closeSwitchAccountModal = () => {
         if (switchAccountModalInstance) {
             switchAccountModalInstance.close();

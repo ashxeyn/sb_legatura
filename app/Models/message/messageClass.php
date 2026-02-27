@@ -385,7 +385,7 @@ class messageClass extends Model
      * @param int $limit
      * @return array
      */
-    public static function getConversationHistory(int|string $conversationId, int $limit = 50): array
+    public static function getConversationHistory(int|string $conversationId, ?int $limit = null): array
     {
         $conversation = DB::table('conversations')
             ->where('conversation_id', $conversationId)
@@ -393,10 +393,14 @@ class messageClass extends Model
 
         if (!$conversation) return [];
 
-        $messages = self::where('conversation_id', $conversationId)
-            ->orderBy('created_at', 'asc')
-            ->limit($limit)
-            ->get();
+        $query = self::where('conversation_id', $conversationId)
+            ->orderBy('created_at', 'asc');
+
+        if ($limit !== null) {
+            $query->limit($limit);
+        }
+
+        $messages = $query->get();
 
         $result = [];
         foreach ($messages as $msg) {
@@ -708,27 +712,75 @@ class messageClass extends Model
      * @return bool
      */
     private static function detectSuspiciousKeywords(string $content): bool
-    {
-        $keywords = [
-            'gcash', 'viber', 'telegram', 'pay outside', 'bank transfer',
-            'sex', 'nigga', 'vagina', 'penis', 'fuck', 'bitch', 'whore',
-            'slut', 'dick', 'cock', 'pussy', 'ass', 'bastard', 'damn',
-            'harassment', 'assault', 'rape', 'molest', 'abuse', 'facebook', 'instagram', 'twitter',
-            'porn', 'pornhub', 'negro', 'bobo', 'sinto sinto', 'kingina mo', 'putangina', 'putanginamo',
-            'nigger', 'tarantado', 'ulol', 'gago', 'tanga amputa', 'amputa', 'punyemas',
-            'tite', 'contact'
-        ];
+{
+    $path = storage_path('app/profanity_dataset.csv');
 
-        $contentLower = strtolower($content);
+    $exclude = [
+        'gcash',
+        'viber',
+        'facebook',
+        'instagram',
+        'twitter',
+        'tiktok',
+        'youtube',
+        'linkedin',
+        'pinterest'
+    ];
 
-        foreach ($keywords as $keyword) {
-            if (stripos($contentLower, $keyword) !== false) {
-                return true;
+    $keywords = [];
+
+    try {
+        if (file_exists($path) && is_readable($path)) {
+            if (($handle = fopen($path, 'r')) !== false) {
+                while (($row = fgetcsv($handle)) !== false) {
+                    foreach ($row as $cell) {
+                        $w = trim((string) $cell);
+                        if ($w === '') continue;
+                        $lw = strtolower($w);
+                        if (in_array($lw, $exclude, true)) continue;
+                        $keywords[] = $lw;
+                    }
+                }
+                fclose($handle);
             }
         }
-
-        return false;
+    } catch (\Exception $e) {
+        \Log::error('Failed to load profanity dataset', ['error' => $e->getMessage()]);
     }
+
+    if (empty($keywords)) {
+        $keywords = [
+            'sex', 'vagina', 'penis', 'fuck', 'bitch', 'whore', 'slut', 'dick', 'cock', 'pussy', 'ass', 'bastard', 'damn', 'harassment', 'assault', 'rape', 'molest', 'abuse', 'porn'
+        ];
+    }
+
+    $contentLower = strtolower($content);
+
+    // Also create a version that strips non-alphanumeric characters
+    // to catch spaced-out or punctuation-separated characters (e.g., f  u c k or f.u.c.k)
+    $normalized = preg_replace('/[^a-z0-9]+/i', '', $contentLower);
+
+    foreach ($keywords as $keyword) {
+        if ($keyword === '') continue;
+
+        // Direct substring match first
+        if (stripos($contentLower, $keyword) !== false || stripos($normalized, $keyword) !== false) {
+            return true;
+        }
+
+        // Build a regex that allows any non-alphanumeric characters between letters
+        // e.g., 'fuck' -> /f[^A-Za-z0-9]*u[^A-Za-z0-9]*c[^A-Za-z0-9]*k/i
+        $letters = preg_split('//u', preg_quote($keyword, '/'), -1, PREG_SPLIT_NO_EMPTY);
+        if (empty($letters)) continue;
+        $pattern = '/'.implode('[^A-Za-z0-9]*', $letters).'/i';
+
+        if (preg_match($pattern, $content)) {
+            return true;
+        }
+    }
+
+    return false;
+}
 
     /**
      * SECURITY: Validate message content against all rules

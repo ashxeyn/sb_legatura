@@ -16,6 +16,7 @@
     justify-content: center;
     padding: 2rem 1rem;
 }
+
 /* Account Setup Form Modal */
 #accountSetupForm {
     display: none;
@@ -53,6 +54,26 @@
     justify-content: center;
     padding: 2rem 1rem;
 }
+
+/* Identity Verification Form Modal */
+#identityVerificationOwnerForm {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2000;
+    overflow-y: auto;
+}
+
+#identityVerificationOwnerForm:not(.hidden) {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 2rem 1rem;
+}
+
 .switch-account-modal.hidden {
     display: none !important;
 }
@@ -310,6 +331,7 @@
 .owner-form-submit-btn:active {
     transform: translateY(0);
 }
+
 /* Profile Picture Section */
 .profile-picture-section {
     display: flex;
@@ -494,6 +516,13 @@
     gap: 1rem;
 }
 
+/* Right-align single action buttons (e.g., pending notices) */
+.confirmation-actions.single-action {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0;
+}
+
 .confirmation-cancel-btn,
 .confirmation-confirm-btn {
     padding: 0.875rem 1.5rem;
@@ -563,8 +592,87 @@
         width: 100%;
     }
 }
+
 .owner-form-submit-btn i {
     font-size: 1.125rem;
+}
+
+/* Validation Error Styles */
+.owner-account-form .validation-error {
+    display: none;
+    color: #ef4444;
+    font-size: 0.75rem;
+    margin-top: 0.25rem;
+    min-height: 1rem;
+    font-weight: 500;
+}
+
+.owner-account-form .validation-error.active {
+    display: block;
+}
+
+/* Pending Status Container */
+.pending-status-container {
+    padding: 2.5rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    background: #fff;
+    border-radius: 1rem;
+}
+
+.pending-icon-large {
+    width: 80px;
+    height: 80px;
+    background: #fff3cd;
+    color: #856404;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 4px 12px rgba(255, 193, 7, 0.2);
+}
+
+.pending-status-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin-bottom: 0.75rem;
+}
+
+.pending-status-description {
+    font-size: 1rem;
+    color: #6b7280;
+    line-height: 1.5;
+    margin-bottom: 2rem;
+    max-width: 400px;
+}
+
+.pending-info-card {
+    background: #f3f4f6;
+    border-left: 4px solid #EEA24B;
+    padding: 1rem 1.25rem;
+    border-radius: 0.5rem;
+    text-align: left;
+    width: 100%;
+    margin-bottom: 2.5rem;
+}
+
+.info-card-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: #374151;
+    font-size: 0.9375rem;
+    font-weight: 500;
+}
+
+.info-card-item i {
+    color: #EEA24B;
+    font-size: 1.1rem;
 }
 
 /* Responsive Design */
@@ -585,5 +693,235 @@
 
     .form-section-title {
         font-size: 1.125rem;
+    }
+}
+
+/* Document Upload Styles */
+.file-upload-box {
+    border: 2px dashed #d1d5db;
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: #f9fafb;
+}
+
+.file-upload-box:hover {
+    border-color: #f97316;
+    background: #fef3f2;
+}
+
+.file-upload-box.has-file {
+    border-color: #10b981;
+    background: #f0fdf4;
+}
+
+.file-upload-label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+}
+
+.file-upload-label i {
+    font-size: 1.5rem;
+    color: #6b7280;
+}
+
+.file-upload-box:hover .file-upload-label i {
+    color: #f97316;
+}
+
+.file-upload-box.has-file .file-upload-label i {
+    color: #10b981;
+}
+
+.file-status {
+    font-size: 0.875rem;
+    color: #4b5563;
+    font-weight: 500;
+}
+
+.file-upload-box.full-width {
+    grid-column: span 2;
+}
+
+@media (max-width: 640px) {
+    .documents-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .file-upload-box.full-width {
+        grid-column: span 1;
+    }
+}
+
+/* Role Switch Summary Premium Styles */
+.role-switch-summary {
+    margin: 1.5rem 0;
+    text-align: left;
+    max-height: 400px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.role-switch-summary::-webkit-scrollbar {
+    width: 6px;
+}
+
+.role-switch-summary::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+.role-switch-summary::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 10px;
+}
+
+.summary-card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 1.25rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    overflow: hidden;
+}
+
+.summary-section {
+    border-bottom: 1px solid #f3f4f6;
+    padding: 1.25rem;
+}
+
+.summary-section:last-child {
+    border-bottom: none;
+}
+
+.summary-section-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.summary-section-header i {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.75rem;
+    font-size: 1rem;
+}
+
+.summary-section-header span {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: #374151;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+/* Icon Variants */
+.personal i {
+    background: #eff6ff;
+    color: #2563eb;
+}
+
+.address i {
+    background: #fff7ed;
+    color: #ea580c;
+}
+
+.identity i {
+    background: #f0fdf4;
+    color: #16a34a;
+}
+
+.account i {
+    background: #faf5ff;
+    color: #9333ea;
+}
+
+.summary-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.summary-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+}
+
+.summary-row.vertical {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+}
+
+.summary-row-label {
+    font-size: 0.8125rem;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+.summary-row-value {
+    font-size: 0.875rem;
+    color: #111827;
+    font-weight: 600;
+    text-align: right;
+}
+
+.summary-row.vertical .summary-row-value {
+    text-align: left;
+    line-height: 1.5;
+}
+
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+}
+
+.summary-file-item {
+    background: #f9fafb;
+    border: 1px solid #f3f4f6;
+    border-radius: 0.75rem;
+    padding: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.summary-file-label {
+    font-size: 0.75rem;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+.summary-file-status {
+    font-size: 0.75rem;
+    color: #9ca3af;
+    font-weight: 600;
+}
+
+.summary-file-status.success {
+    color: #059669;
+}
+
+@media (max-width: 480px) {
+    .summary-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.125rem;
+    }
+
+    .summary-row-value {
+        text-align: left;
     }
 }

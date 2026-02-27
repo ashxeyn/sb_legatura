@@ -221,7 +221,7 @@ class messageController extends Controller
             //     'message_id' => $message->message_id,
             //     'conversation_id' => $message->conversation_id
             // ]);
-            broadcast(new messageSentEvent($message))->toOthers();
+            broadcast(new messageSentEvent($message));
 
             // Get conversation to retrieve sender/receiver info
             $conversation = DB::table('conversations')

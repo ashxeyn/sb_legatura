@@ -195,7 +195,7 @@ class accountRequest extends FormRequest
             'date_of_birth' => [
                 'required',
                 'date',
-                'before:today'
+                'before:-18 years'
             ],
             'phone_number' => [
                 'required',
@@ -320,7 +320,7 @@ class accountRequest extends FormRequest
             'date_of_birth' => [
                 'required',
                 'date',
-                'before:today'
+                'before:-18 years'
             ],
             'phone_number' => [
                 'required',
@@ -328,7 +328,7 @@ class accountRequest extends FormRequest
                 'regex:/^09[0-9]{9}$/'
             ],
             'occupation_id' => 'required|integer',
-            'occupation_other' => 'nullable|string|max:255',
+            'occupation_other_text' => 'nullable|string|max:255',
             'address' => 'required|string|max:500',
             'profile_pic' => 'nullable|file|mimes:jpg,jpeg,png|max:5120'
         ];
@@ -343,7 +343,7 @@ class accountRequest extends FormRequest
             'password.regex' => 'Password must contain at least one uppercase letter, one number, and one special character',
             'picab_expiration_date.after' => 'PICAB expiration date must be in the future',
             'business_permit_expiration.after' => 'Business permit expiration date must be in the future',
-            'date_of_birth.before' => 'Please enter a valid date of birth',
+            'date_of_birth.before' => 'You must be at least 18 years old.',
             'dti_sec_registration_photo.max' => 'File size must not exceed 5MB',
             'valid_id_photo.max' => 'Valid ID front photo size must not exceed 5MB',
             'valid_id_photo.mimes' => 'Valid ID front photo must be a JPG, PNG, or PDF file',

@@ -35,6 +35,7 @@
                             <i class="fi fi-rr-home"></i>
                         </div>
                         <span class="account-card-badge current" id="ownerCurrentBadge">Current Account</span>
+                        <span class="account-card-badge pending" id="ownerPendingBadge">Pending Approval</span>
                     </div>
                     <div class="account-card-body">
                         <h3 class="account-card-title">Property Owner</h3>
@@ -61,7 +62,7 @@
                         </ul>
                     </div>
                     <div class="account-card-footer">
-                        <button class="account-switch-btn owner-btn" data-target="owner">
+                        <button type="button" class="account-switch-btn owner-btn" data-target="owner">
                             <i class="fi fi-rr-arrow-right"></i>
                             <span>Switch to Property Owner</span>
                         </button>
@@ -101,7 +102,7 @@
                         </ul>
                     </div>
                     <div class="account-card-footer">
-                        <button class="account-switch-btn contractor-btn" data-target="contractor">
+                        <button type="button" class="account-switch-btn contractor-btn" data-target="contractor">
                             <i class="fi fi-rr-arrow-right"></i>
                             <span>Switch to Contractor</span>
                         </button>
@@ -115,7 +116,8 @@
                 <div class="switch-info-content">
                     <p class="switch-info-title">Switching Accounts</p>
                     <p class="switch-info-text">
-                        When you switch accounts, your current session will be saved. You can switch back anytime without losing any data.
+                        When you switch accounts, your current session will be saved. You can switch back anytime
+                        without losing any data.
                     </p>
                 </div>
             </div>
