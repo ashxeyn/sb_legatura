@@ -652,45 +652,65 @@ document.addEventListener('DOMContentLoaded', () => {
 					nextBtn.innerHTML = originalText;
 				});
 			} else if (currentStep === totalSteps) {
-				// Step 3: Submit the form with all data
-				// Show loading state
+				// Step 3: Submit via AJAX (supports file upload + keeps user on step 3 if errors occur)
 				const originalText = nextBtn.innerHTML;
 				nextBtn.disabled = true;
 				nextBtn.classList.add('loading');
 				nextBtn.innerHTML = '<span class="spinner"></span>Submitting...';
 
-				// Set the step value for backend routing
-				const stepInput = document.getElementById('stepInput');
-				if (stepInput) {
-					stepInput.value = '3';
-				}
+				// Build FormData from Step 3 fields only
+				const step3FormData = new FormData();
 
-				// Convert PSGC codes to names before form submission (to match mobile app format)
-				const convertAddressCodestoNames = () => {
-					const provinceValueEl = document.getElementById('provinceValue');
-					const cityValueEl = document.getElementById('cityValue');
-					const barangayValueEl = document.getElementById('barangayValue');
+				// CSRF token
+				const csrfTokenInput = document.querySelector('input[name="_token"]');
+				if (csrfTokenInput) step3FormData.append('_token', csrfTokenInput.value);
+				step3FormData.append('step', '3');
 
-					const getNameByCode = (items, code) => {
-						if (!code || !Array.isArray(items)) return code;
-						const match = items.find(item => String(item.code) === String(code));
-						return match ? match.name : code;
-					};
+				// Collect Step 3 inputs (including file)
+				const step3Element = document.getElementById('step-3');
+				step3Element.querySelectorAll('input, select, textarea').forEach(input => {
+					if (!input.name) return;
+					if (input.type === 'file') {
+						if (input.files && input.files[0]) {
+							step3FormData.append(input.name, input.files[0]);
+						}
+					} else {
+						step3FormData.append(input.name, input.value);
+					}
+				});
 
-					const provinceName = getNameByCode(modalData.provinces, provinceValueEl?.value);
-					const cityName = getNameByCode(modalData.cities, cityValueEl?.value);
-					const barangayName = getNameByCode(modalData.barangays, barangayValueEl?.value);
-
-					if (provinceValueEl && provinceName) provinceValueEl.value = provinceName;
-					if (cityValueEl && cityName) cityValueEl.value = cityName;
-					if (barangayValueEl && barangayName) barangayValueEl.value = barangayName;
-				};
-
-				// Convert before submission
-				convertAddressCodestoNames();
-
-				// Now submit the form
-				form.submit();
+				fetch(form.action, {
+					method: 'POST',
+					body: step3FormData,
+					headers: { 'X-Requested-With': 'XMLHttpRequest' },
+					credentials: 'include'
+				})
+				.then(response => response.json())
+				.then(data => {
+					if (data.success) {
+						showToast('Documents submitted! Redirecting...', 'success', 1500);
+						setTimeout(() => {
+							window.location.href = data.redirect_url || '/add-profile-photo';
+						}, 1500);
+					} else {
+						if (data.errors) {
+							const errorMessages = Object.values(data.errors).flat().join('\n');
+							showToast('Validation Error:\n' + errorMessages, 'error', 6000);
+						} else {
+							showToast(data.message || 'Error submitting documents. Please try again.', 'error', 4000);
+						}
+						nextBtn.disabled = false;
+						nextBtn.classList.remove('loading');
+						nextBtn.innerHTML = originalText;
+					}
+				})
+				.catch(error => {
+					console.error('Step 3 submission error:', error);
+					showToast('Network error. Please try again.', 'error');
+					nextBtn.disabled = false;
+					nextBtn.classList.remove('loading');
+					nextBtn.innerHTML = originalText;
+				});
 			}
 		}
 	});

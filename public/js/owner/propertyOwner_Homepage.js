@@ -41,10 +41,13 @@ class PropertyOwnerHomepage {
 
         // Pagination
         this.currentPage = 1;
-        this.perPage = 15;
+        this.perPage = 10;
         this.hasMore = false;
         this.totalResults = 0;
         this.isLoading = false;
+        this.fullServerContractors = null; // when Blade injects full list
+        this._onScrollBound = null;
+        this._lastScrollY = 0;
 
         // Debounce timer
         this._searchTimeout = null;
@@ -59,8 +62,124 @@ class PropertyOwnerHomepage {
         // Setup navbar search functionality
         this.setupNavbarSearch();
 
-        // Load contractors from API (server-side search)
-        this.fetchFromApi();
+        // Prefer server-provided contractors injected by Blade. If not present, fetch from API.
+        if (window.serverContractors && Array.isArray(window.serverContractors) && window.serverContractors.length > 0) {
+            this.loadFromServerData();
+        } else {
+            this.fetchFromApi();
+        }
+
+        // Attach infinite scroll handler
+        this._onScrollBound = this._handleScroll.bind(this);
+        window.addEventListener('scroll', this._onScrollBound, { passive: true });
+    }
+
+    /**
+     * Load contractors provided by the server-side Blade view (window.serverContractors)
+     * and normalize fields so createContractorCard receives the expected shape.
+     */
+    loadFromServerData() {
+        try {
+            const srv = Array.isArray(window.serverContractors) ? window.serverContractors : [];
+            // keep full list for paging
+            this.fullServerContractors = srv.map((c) => ({
+                id: c.contractor_id ?? c.id ?? c.user_id ?? '',
+                company_name: c.company_name ?? c.company ?? 'Unknown Company',
+                years_experience: c.years_of_experience ?? c.years_experience ?? 0,
+                contractor_type: c.contractor_type_name ?? c.type_name ?? c.contractor_type ?? 'General Contractor',
+                cover_photo: c.cover_photo ?? c.cover_photo_path ?? null,
+                logo_url: c.logo_url ?? c.logo ?? null,
+                // map location fields from server payload (FeedService/jsContractors)
+                city: c.city ?? c.business_permit_city ?? '',
+                province: c.province ?? '',
+                rating: c.average_rating ?? c.rating ?? 5.0,
+                reviews_count: c.total_reviews ?? c.reviews_count ?? 0,
+                completed_projects: c.completed_projects ?? c.projects_completed ?? 0,
+                // preserve original for any further needs
+                __raw: c,
+            }));
+
+            // Initialize paged view: load first page
+            this.currentPage = 1;
+            this.contractors = this.fullServerContractors.slice(0, this.perPage);
+            this.filteredContractors = [...this.contractors];
+            this.hasMore = this.fullServerContractors.length > this.contractors.length;
+            this.totalResults = this.fullServerContractors.length;
+            this.renderContractors();
+        } catch (err) {
+            console.error('Error loading server contractors:', err);
+            // fallback to API
+            this.fetchFromApi();
+        }
+    }
+
+    // Load next page from the full server-provided array
+    loadMoreFromServer() {
+            if (!this.fullServerContractors) return;
+            if (this.isLoading) return;
+            this.showContractorsLoading();
+            const nextPage = this.currentPage + 1;
+            const start = (nextPage - 1) * this.perPage;
+            const slice = this.fullServerContractors.slice(start, start + this.perPage);
+            if (slice.length === 0) {
+                this.hasMore = false;
+                this.hideContractorsLoading();
+                return;
+            }
+            this.isLoading = true;
+            setTimeout(() => { // simulate async for smooth UX
+                this.contractors = [...this.contractors, ...slice];
+                this.filteredContractors = [...this.contractors];
+                this.currentPage = nextPage;
+                this.hasMore = this.fullServerContractors.length > this.contractors.length;
+                this.isLoading = false;
+                this.renderContractors();
+                this.hideContractorsLoading();
+            }, 350);
+    }
+
+        showContractorsLoading() {
+            const loader = document.getElementById('contractorsLoading');
+            if (loader) loader.style.display = 'block';
+        }
+        hideContractorsLoading() {
+            const loader = document.getElementById('contractorsLoading');
+            if (loader) loader.style.display = 'none';
+        }
+
+    _handleScroll() {
+        if (this.isLoading) return;
+
+        const scrollY = window.scrollY || window.pageYOffset;
+        const scrollingDown = scrollY > this._lastScrollY;
+        const thresholdBottom = 300; // px from bottom to trigger load more
+        const thresholdTop = 200; // px from top to trigger collapse to first page
+        const scrollBottom = window.innerHeight + scrollY;
+        const docHeight = document.documentElement.scrollHeight;
+
+        // Scrolling down: load more when near bottom
+        if (scrollingDown && this.hasMore && (scrollBottom >= docHeight - thresholdBottom)) {
+            if (this.fullServerContractors) {
+                this.loadMoreFromServer();
+            } else {
+                this.fetchFromApi(this.currentPage + 1);
+            }
+        }
+
+        // Scrolling up: if near top, collapse back to first page (show only first 10)
+        if (!scrollingDown && scrollY <= thresholdTop && this.fullServerContractors && this.currentPage > 1) {
+            // Restore to first page
+            this.currentPage = 1;
+            this.contractors = this.fullServerContractors.slice(0, this.perPage);
+            this.filteredContractors = [...this.contractors];
+            this.hasMore = this.fullServerContractors.length > this.contractors.length;
+            this.totalResults = this.fullServerContractors.length;
+            this.renderContractors();
+            // optionally scroll slightly so subsequent up/down events behave normally
+            // window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        this._lastScrollY = scrollY;
     }
 
     setupNavbarSearch() {
@@ -256,22 +375,50 @@ class PropertyOwnerHomepage {
         const rating = contractor.rating || 5.0;
         const reviews = contractor.reviews_count || contractor.total_reviews || 0;
         const projectsCompleted = contractor.projects_completed || contractor.completed_projects || 0;
-        const specialty = contractor.specialty || contractorType;
         const contractorId = contractor.id || contractor.user_id || '';
 
-        // Populate card data
+        // Populate card data (mobile-style structure)
+        // Badge overlay
+        card.querySelector('.contractor-badge-overlay .badge-text').textContent = contractorType;
+        
+        // Avatar
         const avatar = card.querySelector('.contractor-avatar');
         card.querySelector('.contractor-initials').textContent = initials;
-        card.querySelector('.contractor-name').textContent = companyName;
-        card.querySelector('.contractor-experience').textContent = `${experience} years experience`;
-        card.querySelector('.badge-text').textContent = contractorType;
-        card.querySelector('.location-text').textContent = location;
-        card.querySelector('.rating-text').textContent = `${rating} rating • ${reviews} reviews`;
-        card.querySelector('.projects-text').textContent = `${projectsCompleted} projects completed`;
-        card.querySelector('.specialty-text').textContent = specialty;
-        card.querySelector('.contact-button').setAttribute('data-contractor-id', contractorId);
 
-        // Assign different color to each contractor avatar
+        // Render logo image if available, otherwise use web default avatar
+        const logoPath = contractor.logo_url || contractor.logo || null;
+        const webDefaultAvatar = '/img/defaults/contractor_default.png';
+        if (logoPath) {
+            const logoUri = (logoPath.startsWith && (logoPath.startsWith('http://') || logoPath.startsWith('https://')))
+                ? logoPath
+                : `${window.location.origin}/storage/${logoPath}`;
+            avatar.innerHTML = `<img src="${logoUri}" alt="${companyName} logo" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+            // fallback to default on error
+            const img = avatar.querySelector('img');
+            if (img) img.onerror = function() { this.src = webDefaultAvatar; };
+        } else {
+            avatar.innerHTML = `<img src="${webDefaultAvatar}" alt="Default contractor avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+        }
+        
+        // Company info block
+        card.querySelector('.contractor-info-block .contractor-name').textContent = companyName;
+        card.querySelector('.contractor-info-block .contractor-experience').textContent = `${experience} years experience`;
+        
+        // Details container
+        const detailItems = card.querySelectorAll('.contractor-details-container .detail-item');
+        if (detailItems.length >= 1) {
+            detailItems[0].querySelector('.detail-text').textContent = location;
+        }
+        if (detailItems.length >= 2) {
+            detailItems[1].querySelector('.detail-text').textContent = `${rating.toFixed(1)} rating • ${reviews} reviews`;
+        }
+        if (detailItems.length >= 3) {
+            detailItems[2].querySelector('.detail-text').textContent = `${projectsCompleted} projects completed`;
+        }
+        
+        // contact button removed; no attribute to set
+
+        // Assign different color to each contractor avatar (keeps gradient behind image)
         const colorIndex = this.getAvatarColorIndex(contractorId, companyName);
         avatar.classList.add(`color-${colorIndex}`);
 
@@ -313,8 +460,11 @@ class PropertyOwnerHomepage {
         if (contractor.barangay) {
             parts.push(contractor.barangay);
         }
+        // Accept several possible city keys returned by API or server-side jsContractors
         if (contractor.city) {
             parts.push(contractor.city);
+        } else if (contractor.business_permit_city) {
+            parts.push(contractor.business_permit_city);
         }
         if (contractor.province) {
             parts.push(contractor.province);
@@ -327,15 +477,7 @@ class PropertyOwnerHomepage {
     }
 
     setupCardInteractions() {
-        // Contact button handlers
-        const contactButtons = document.querySelectorAll('.contact-button');
-        contactButtons.forEach(button => {
-            button.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const contractorId = button.getAttribute('data-contractor-id');
-                this.handleContactClick(contractorId);
-            });
-        });
+        // Contact button handlers removed (no longer present)
 
         // Play button handlers
         const playButtons = document.querySelectorAll('.play-button');

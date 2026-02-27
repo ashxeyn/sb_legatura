@@ -254,6 +254,12 @@ class progressUploadController extends Controller
                 'progress_status' => 'submitted'
             ]);
 
+            // Auto-advance item_status from not_started to in_progress
+            DB::table('milestone_items')
+                ->where('item_id', $validated['item_id'])
+                ->where('item_status', 'not_started')
+                ->update(['item_status' => 'in_progress', 'updated_at' => now()]);
+
             // Ensure the progress_uploads directory exists
             if (!Storage::disk('public')->exists('progress_uploads')) {
                 Storage::disk('public')->makeDirectory('progress_uploads');

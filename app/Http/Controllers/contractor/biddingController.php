@@ -453,7 +453,7 @@ class biddingController extends Controller
             }
 
             // Authorization check: Only owner/representative can place bids
-            $authService = app(\App\Services\ContractorAuthorizationService::class);
+            $authService = app(\App\Services\contractorAuthorizationService::class);
             $authError = $authService->validateBiddingAccess($userId);
             if ($authError) {
                 return response()->json([

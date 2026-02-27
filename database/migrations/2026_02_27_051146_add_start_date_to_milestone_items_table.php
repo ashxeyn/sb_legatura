@@ -11,8 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('users', function (Blueprint $table) {
-            $table->string('OTP_hash', 255)->nullable()->change();
+        Schema::table('milestone_items', function (Blueprint $table) {
+            $table->datetime('start_date')->nullable()->after('item_status');
         });
     }
 
@@ -21,8 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('users', function (Blueprint $table) {
-            $table->string('OTP_hash', 255)->nullable(false)->change();
+        Schema::table('milestone_items', function (Blueprint $table) {
+            $table->dropColumn('start_date');
         });
     }
 };

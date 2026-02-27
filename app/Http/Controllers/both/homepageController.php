@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\both;
 
 use App\Http\Controllers\Controller;
-use App\Services\FeedService;
+use App\Services\feedService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -23,9 +23,9 @@ use Laravel\Sanctum\PersonalAccessToken;
  */
 class homepageController extends Controller
 {
-    protected FeedService $feedService;
+    protected feedService $feedService;
 
-    public function __construct(FeedService $feedService)
+    public function __construct(feedService $feedService)
     {
         $this->feedService = $feedService;
     }
@@ -57,9 +57,36 @@ class homepageController extends Controller
 
         $excludeUserId = ($userType === 'both') ? $user->user_id : null;
 
-        $data = $this->feedService->ownerHomepageData($excludeUserId);
+        // Pagination params for contractors list
+        $page = max(1, (int) $request->query('page', 1));
+        $perPage = 10;
 
-        return view('owner.propertyOwner_Homepage', $data);
+        // Use the API-style feed to get paginated data
+        $result = $this->feedService->ownerFeedApi($excludeUserId, $page, $perPage, []);
+
+        // Normalize contractors collection for Blade
+        $contractors = collect($result['data']);
+        $pagination = $result['pagination'] ?? ['current_page' => $page, 'per_page' => $perPage, 'total' => $contractors->count(), 'has_more' => false];
+
+        // If AJAX request, return only the rendered contractor cards HTML (for infinite scroll)
+        if ($request->ajax() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
+            $html = view('owner.partials.contractor_cards_list', ['contractors' => $contractors])->render();
+            return response()->json([
+                'success'    => true,
+                'html'       => $html,
+                'pagination' => $pagination,
+            ], 200);
+        }
+
+        // Also prepare the jsContractors payload (first page) for client-side use
+        $jsContractors = $this->feedService->ownerHomepageData($excludeUserId)['jsContractors'] ?? [];
+
+        return view('owner.propertyOwner_Homepage', [
+            'contractors'     => $contractors,
+            'pagination'      => $pagination,
+            'jsContractors'   => $jsContractors,
+            'contractorTypes' => $this->feedService->getContractorTypes(),
+        ]);
     }
 
     /* =====================================================================

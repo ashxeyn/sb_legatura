@@ -10,10 +10,11 @@ use App\Http\Controllers\contractor\progressUploadController;
 use App\Http\Controllers\owner\paymentUploadController;
 use App\Http\Controllers\projectPosting\projectPostingController;
 use App\Http\Controllers\both\disputeController;
-use App\Http\Controllers\Both\NotificationController;
+use App\Http\Controllers\both\notificationController;
 use App\Http\Controllers\passwordController;
 use App\Http\Controllers\profileController;
 use App\Http\Controllers\both\milestoneController;
+use App\Http\Controllers\both\projectUpdateController;
 use App\Http\Controllers\subs\payMongoController;
 
 // At the very top of api.php
@@ -154,6 +155,7 @@ Route::post('/owner/milestones/{milestoneId}/approve', [milestoneController::cla
 Route::post('/owner/milestones/{milestoneId}/reject', [milestoneController::class , 'apiRejectMilestone']);
 Route::post('/owner/milestones/{milestoneId}/complete', [milestoneController::class , 'apiSetMilestoneComplete']);
 Route::post('/owner/milestone-items/{itemId}/complete', [milestoneController::class , 'apiSetMilestoneItemComplete']);
+Route::post('/owner/milestone-items/{itemId}/settlement-due-date', [milestoneController::class , 'setSettlementDueDateOwner']);
 Route::post('/owner/projects/{projectId}/complete', [projectsController::class , 'completeProject']);
 
 // Owner payment upload routes for mobile app - controller handles auth manually
@@ -187,11 +189,14 @@ Route::get('/contractor/projects/{projectId}/milestone-form', [\App\Http\Control
 Route::post('/contractor/projects/{projectId}/milestones', [milestoneController::class , 'apiSubmitMilestones']);
 Route::put('/contractor/projects/{projectId}/milestones/{milestoneId}', [milestoneController::class , 'apiUpdateMilestone']);
 
+// Contractor — settlement due date management
+Route::post('/contractor/milestone-items/{itemId}/settlement-due-date', [milestoneController::class , 'setSettlementDueDate']);
+
 // Notification endpoints - controller handles both session and token auth
-Route::get('/notifications', [NotificationController::class , 'index']);
-Route::get('/notifications/unread-count', [NotificationController::class , 'unreadCount']);
-Route::post('/notifications/{id}/read', [NotificationController::class , 'markAsRead']);
-Route::post('/notifications/read-all', [NotificationController::class , 'markAllAsRead']);
+Route::get('/notifications', [notificationController::class , 'index']);
+Route::get('/notifications/unread-count', [notificationController::class , 'unreadCount']);
+Route::post('/notifications/{id}/read', [notificationController::class , 'markAsRead']);
+Route::post('/notifications/read-all', [notificationController::class , 'markAllAsRead']);
 
 // Note: profile update registered below inside sanctum-protected group
 
@@ -491,9 +496,19 @@ Route::middleware('auth:sanctum')->group(function () {
 
 // Payment approve/reject routes - controller handles auth manually
 Route::prefix('payments')->group(function () {
-    Route::post('/{id}/approve', [disputeController::class , 'approvePayment']);
-    Route::post('/{id}/reject', [disputeController::class , 'rejectPayment']);
+    Route::post('/{id}/approve', [milestoneController::class , 'apiApprovePayment']);
+    Route::post('/{id}/reject', [milestoneController::class , 'apiRejectPayment']);
 });
+
+// Payment summary per milestone item - controller handles auth manually
+Route::get('/milestone-items/{itemId}/payment-summary', [milestoneController::class , 'apiGetItemPaymentSummary']);
+
+// Milestone item date extension history
+Route::get('/milestone-items/{itemId}/date-history', [milestoneController::class , 'getDateHistory']);
+
+// Summary reports - controller handles auth manually
+Route::get('/projects/{projectId}/summary', [\App\Http\Controllers\both\summaryController::class, 'projectSummary']);
+Route::get('/projects/{projectId}/milestones/{itemId}/summary', [\App\Http\Controllers\both\summaryController::class, 'milestoneSummary']);
 
 // Disputes routes - controller handles auth manually
 Route::prefix('disputes')->group(function () {
@@ -517,3 +532,17 @@ Route::post('/progress/{id}/reject', [progressUploadController::class , 'rejectP
 
 // This version is clean, single-prefixed, and authenticated
 Route::post('/boost/checkout', [\App\Http\Controllers\subs\payMongoController::class, 'createBoostCheckout']);
+
+// ── Project Update ──────────────────────────────────────────────────────
+// Shared (both roles)
+Route::get('/projects/{projectId}/update/context', [projectUpdateController::class, 'context']);
+Route::get('/projects/{projectId}/update/milestone-items', [projectUpdateController::class, 'milestoneItems']);
+Route::get('/projects/{projectId}/updates', [projectUpdateController::class, 'index']);
+// Contractor
+Route::post('/projects/{projectId}/update/preview', [projectUpdateController::class, 'preview']);
+Route::post('/projects/{projectId}/update', [projectUpdateController::class, 'store']);
+Route::post('/projects/{projectId}/updates/{extensionId}/withdraw', [projectUpdateController::class, 'withdraw']);
+// Owner
+Route::post('/projects/{projectId}/updates/{extensionId}/approve', [projectUpdateController::class, 'approve']);
+Route::post('/projects/{projectId}/updates/{extensionId}/reject', [projectUpdateController::class, 'reject']);
+Route::post('/projects/{projectId}/updates/{extensionId}/request-changes', [projectUpdateController::class, 'requestChanges']);

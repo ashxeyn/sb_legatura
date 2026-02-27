@@ -35,6 +35,10 @@ class notificationService
         'payment_updated'     => 'Payment Status',
         'payment_deleted'     => 'Payment Status',
         'payment_due'         => 'Payment Reminder',
+        'payment_overdue'     => 'Payment Reminder',
+        'payment_fully_paid'  => 'Payment Status',
+        'payment_overpaid'    => 'Payment Status',
+        'payment_underpaid_carry' => 'Payment Status',
         'dispute_opened'      => 'Dispute Update',
         'dispute_updated'     => 'Dispute Update',
         'dispute_cancelled'   => 'Dispute Update',
@@ -124,14 +128,14 @@ class notificationService
                 Log::info('Notification dedup skip', ['user_id' => $userId, 'dedup_key' => $dedupKey]);
                 return null;
             }
-            Log::error('NotificationService::create failed', [
+            Log::error('notificationService::create failed', [
                 'error'   => $e->getMessage(),
                 'user_id' => $userId,
                 'type'    => $subType,
             ]);
             return null;
         } catch (\Exception $e) {
-            Log::error('NotificationService::create failed', [
+            Log::error('notificationService::create failed', [
                 'error'   => $e->getMessage(),
                 'user_id' => $userId,
                 'type'    => $subType,

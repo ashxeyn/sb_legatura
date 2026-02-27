@@ -24,20 +24,37 @@
             <div class="navbar-col navbar-col-4">
                 <div class="navbar-right">
                     @php
-                        $authUser = Auth::user();
-                        $displayName = session('owner_name') ?? ($authUser?->full_name ?? trim(($authUser?->first_name ?? '') . ' ' . ($authUser?->last_name ?? '')) ?? $authUser?->username ?? 'User');
-                        $usernameHandle = session('owner_handle') ?? ('@' . ($authUser?->username ?? 'user'));
-                        $profilePic = session('owner_profile_pic') ?? $authUser?->profile_pic ?? null;
+                        $sessionUser = session('user');
+                        $userId = $sessionUser->user_id ?? ($sessionUser->id ?? null);
+                        $ownerRecord = null;
+                        $freshUser = null;
+                        if ($userId) {
+                            $ownerRecord = \DB::table('property_owners')
+                                ->where('user_id', $userId)
+                                ->first();
+                            // Always read profile_pic fresh from DB so stale session data doesn't hide an uploaded photo
+                            $freshUser = \DB::table('users')
+                                ->where('user_id', $userId)
+                                ->first();
+                        }
+                        $firstName  = $ownerRecord->first_name  ?? '';
+                        $lastName   = $ownerRecord->last_name   ?? '';
+                        $fullName   = trim($firstName . ' ' . $lastName);
+                        $displayName = $fullName ?: ($sessionUser->username ?? 'User');
+                        $usernameHandle = '@' . ($sessionUser->username ?? 'user');
+                        // Prefer the freshly-fetched profile_pic over the (possibly stale) session value
+                        $profilePic = $freshUser->profile_pic ?? ($sessionUser->profile_pic ?? null);
                         $initials = 'U';
-                        if(trim($displayName)) {
-                            $parts = preg_split('/\s+/', $displayName);
-                            $initials = strtoupper(substr($parts[0],0,1) . (isset($parts[1]) ? substr($parts[1],0,1) : ''));
+                        if (trim($displayName)) {
+                            $parts = preg_split('/\s+/', trim($displayName));
+                            $initials = strtoupper(substr($parts[0], 0, 1) . (isset($parts[1]) ? substr($parts[1], 0, 1) : ''));
                         }
                     @endphp
                     <div class="navbar-user">
                         @if($profilePic)
                             <div class="navbar-avatar">
-                                <img src="{{ asset('storage/' . $profilePic) }}" alt="{{ $displayName }}" class="navbar-avatar-img">
+                                <img src="{{ asset('storage/' . $profilePic) }}" alt="{{ $displayName }}" class="navbar-avatar-img"
+                                    onerror="var p=this.parentElement; p.innerHTML='{{ $initials }}'; p.classList.add('navbar-avatar-initials');">
                             </div>
                         @else
                             <div class="navbar-avatar navbar-avatar-initials">{{ $initials }}</div>

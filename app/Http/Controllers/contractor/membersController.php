@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\contractor;
 
 use App\Http\Controllers\Controller;
-use App\Services\ContractorAuthorizationService;
+use App\Services\contractorAuthorizationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -12,9 +12,9 @@ use App\Services\notificationService;
 
 class membersController extends Controller
 {
-    protected ContractorAuthorizationService $authService;
+    protected contractorAuthorizationService $authService;
 
-    public function __construct(ContractorAuthorizationService $authService)
+    public function __construct(contractorAuthorizationService $authService)
     {
         $this->authService = $authService;
     }

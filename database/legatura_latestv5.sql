@@ -3,8 +3,8 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Feb 08, 2026 at 05:07 PM
--- Server version: 11.4.5-MariaDB
+-- Generation Time: Feb 26, 2026 at 04:28 PM
+-- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
@@ -77,13 +77,13 @@ INSERT INTO `bids` (`bid_id`, `project_id`, `contractor_id`, `proposed_cost`, `e
 (257, 1046, 1689, 76800000.00, 195, 'Cost-effective solution without compromising quality. We have successfully completed similar projects in the area. Extended timeline allows for meticulous attention to detail.', 'rejected', NULL, '2025-12-18 18:32:27', '2026-01-28 08:06:20'),
 (258, 1046, 1690, 78200000.00, 175, 'Balanced approach combining competitive pricing with reliable execution. Our company has excellent track record and customer satisfaction ratings. We prioritize communication and transparency.', 'rejected', NULL, '2025-12-18 18:32:27', '2026-01-28 08:06:20'),
 (259, 1046, 1691, 79800000.00, 160, 'Fast-track construction with premium materials and experienced workforce. We guarantee on-time completion with penalty clauses. Highest standards of safety and quality control.', 'rejected', NULL, '2025-12-18 18:32:27', '2026-01-28 08:06:20'),
-(260, 1047, 1809, 50000000.00, 12, 'Jaosjzoaoaa', 'rejected', NULL, '2025-12-18 19:20:16', '2025-12-18 19:20:30'),
+(260, 1047, 1809, 50000000.00, 12, 'Jaosjzoaoaa', 'rejected', NULL, '2025-12-18 19:20:16', '2026-02-22 07:19:27'),
 (261, 1048, 1809, 19000000.00, 12, 'Hahah', 'accepted', NULL, '2025-12-18 21:08:52', '2025-12-18 21:09:18'),
 (262, 1049, 1809, 55000000.00, 12, 'We are the best at the industry', 'accepted', NULL, '2025-12-18 23:53:51', '2025-12-18 23:56:14'),
 (263, 1054, 1809, 30000000.00, 24, 'Just some notes for you', 'accepted', NULL, '2026-01-25 00:16:01', '2026-01-25 00:17:04'),
-(264, 1055, 1809, 5000000.00, 12, 'jfgkekyegk', 'accepted', NULL, '2026-01-25 02:14:28', '2026-01-27 15:10:04'),
-(265, 1047, 1687, 77500000.00, 180, 'sss', 'rejected', 'Contractor changed by administrator', '2026-02-05 16:16:07', '2026-02-05 08:53:59'),
-(266, 1047, 1808, 22212313.00, 123123, 'aaaaaaaaaaaaaaa', 'accepted', NULL, '2026-02-05 16:16:07', '2026-02-05 08:53:59');
+(293, 1053, 1809, 34444444.00, 23, 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'accepted', NULL, '2026-02-20 06:11:56', NULL),
+(294, 1056, 1810, 50000000.00, 24, 'oudydiydidyyky', 'accepted', NULL, '2026-02-21 01:57:19', '2026-02-23 00:09:12'),
+(295, 1047, 1810, 6898.00, 24, 'tuItskss', 'accepted', NULL, '2026-02-22 03:17:31', '2026-02-22 07:19:27');
 
 -- --------------------------------------------------------
 
@@ -105,7 +105,33 @@ CREATE TABLE `bid_files` (
 --
 
 INSERT INTO `bid_files` (`file_id`, `bid_id`, `file_name`, `file_path`, `description`, `uploaded_at`) VALUES
-(1, 266, 'nigger.pdf', 'aassas.pdf', 'ddddd', '2026-02-05 16:30:36');
+(9, 294, 'Screenshot_20260219-230933.jpg', 'bid_attachments/1771667839_6999817fd07f3_Screenshot_20260219-230933.jpg', NULL, '2026-02-21 01:57:19'),
+(10, 295, 'IMG_20260221_165037_972.jpg', 'bid_attachments/1771756154_699ada7a4ac36_IMG_20260221_165037_972.jpg', NULL, '2026-02-22 02:29:15'),
+(11, 295, 'EMBEDDED-SYSTEMS-DESIGN-Lect.pdf', 'bid_files/1771759051_699ae5cb322cb_EMBEDDED-SYSTEMS-DESIGN-Lect.pdf', NULL, '2026-02-22 03:17:31');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `cache`
+--
+
+CREATE TABLE `cache` (
+  `key` varchar(255) NOT NULL,
+  `value` mediumtext NOT NULL,
+  `expiration` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `cache_locks`
+--
+
+CREATE TABLE `cache_locks` (
+  `key` varchar(255) NOT NULL,
+  `owner` varchar(255) NOT NULL,
+  `expiration` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -138,6 +164,10 @@ CREATE TABLE `contractors` (
   `dti_sec_registration_photo` varchar(255) NOT NULL,
   `verification_status` enum('pending','approved','rejected','deleted') DEFAULT 'pending',
   `verification_date` timestamp NULL DEFAULT NULL,
+  `is_active` tinyint(4) NOT NULL DEFAULT 1,
+  `suspension_until` date DEFAULT NULL,
+  `suspension_reason` text DEFAULT NULL,
+  `deletion_reason` text DEFAULT NULL,
   `rejection_reason` text DEFAULT NULL,
   `completed_projects` int(11) DEFAULT 0,
   `created_at` timestamp NULL DEFAULT current_timestamp(),
@@ -148,130 +178,131 @@ CREATE TABLE `contractors` (
 -- Dumping data for table `contractors`
 --
 
-INSERT INTO `contractors` (`contractor_id`, `user_id`, `company_name`, `company_start_date`, `years_of_experience`, `type_id`, `contractor_type_other`, `services_offered`, `business_address`, `company_email`, `company_phone`, `company_website`, `company_social_media`, `company_description`, `picab_number`, `picab_category`, `picab_expiration_date`, `business_permit_number`, `business_permit_city`, `business_permit_expiration`, `tin_business_reg_number`, `dti_sec_registration_photo`, `verification_status`, `verification_date`, `rejection_reason`, `completed_projects`, `created_at`, `updated_at`) VALUES
-(1687, 1, 'Main Construction Co 1', '2011-12-16', 14, 8, NULL, 'General Construction', 'Zamboanga City', 'company1@example.com', '09170000001', NULL, NULL, NULL, 'PCAB-23362', 'A', '2026-12-31', 'BP-1', 'Zamboanga', '2026-01-01', 'TIN-1', 'dti_cert.jpg', 'approved', '2025-08-01 07:49:09', NULL, 5, '2025-07-30 07:49:09', '2025-12-16 08:41:07'),
-(1688, 2, 'Main Construction Co 2', '2000-12-16', 25, 5, NULL, 'General Construction', 'Zamboanga City', 'company2@example.com', '09170000002', NULL, NULL, NULL, 'PCAB-22358', 'A', '2026-12-31', 'BP-2', 'Zamboanga', '2026-01-01', 'TIN-2', 'dti_cert.jpg', 'approved', '2025-10-23 07:49:09', NULL, 43, '2025-10-21 07:49:09', '2025-12-16 08:41:07'),
-(1689, 3, 'Main Construction Co 3', '2005-12-16', 20, 6, NULL, 'General Construction', 'Zamboanga City', 'company3@example.com', '09170000003', NULL, NULL, NULL, 'PCAB-11115', 'A', '2026-12-31', 'BP-3', 'Zamboanga', '2026-01-01', 'TIN-3', 'dti_cert.jpg', 'approved', '2024-12-19 07:49:09', NULL, 28, '2024-12-17 07:49:09', '2025-12-16 08:41:07'),
-(1690, 4, 'Main Construction Co 4', '1998-12-16', 27, 4, NULL, 'General Construction', 'Zamboanga City', 'company4@example.com', '09170000004', NULL, NULL, NULL, 'PCAB-96931', 'A', '2026-12-31', 'BP-4', 'Zamboanga', '2026-01-01', 'TIN-4', 'dti_cert.jpg', 'approved', '2025-01-26 07:49:09', NULL, 23, '2025-01-24 07:49:09', '2025-12-16 08:41:07'),
-(1691, 5, 'Main Construction Co 5', '2013-12-16', 12, 1, NULL, 'General Construction', 'Zamboanga City', 'company5@example.com', '09170000005', NULL, NULL, NULL, 'PCAB-75904', 'A', '2026-12-31', 'BP-5', 'Zamboanga', '2026-01-01', 'TIN-5', 'dti_cert.jpg', 'approved', NULL, '', 4, '2025-02-19 07:49:09', '2025-12-16 08:41:07'),
-(1692, 6, 'Main Construction Co 6', '2014-12-16', 11, 9, NULL, 'General Construction', 'Zamboanga City', 'company6@example.com', '09170000006', NULL, NULL, NULL, 'PCAB-79857', 'A', '2026-12-31', 'BP-6', 'Zamboanga', '2026-01-01', 'TIN-6', 'dti_cert.jpg', 'approved', '2025-04-23 07:49:09', NULL, 24, '2025-04-21 07:49:09', '2025-12-16 08:41:07'),
-(1693, 7, 'Main Construction Co 7', '2008-12-16', 17, 6, NULL, 'General Construction', 'Zamboanga City', 'company7@example.com', '09170000007', NULL, NULL, NULL, 'PCAB-39566', 'A', '2026-12-31', 'BP-7', 'Zamboanga', '2026-01-01', 'TIN-7', 'dti_cert.jpg', 'approved', '2025-11-27 07:49:09', NULL, 38, '2025-11-25 07:49:09', '2025-12-16 08:41:07'),
-(1694, 8, 'Main Construction Co 8', '2003-12-16', 22, 7, NULL, 'General Construction', 'Zamboanga City', 'company8@example.com', '09170000008', NULL, NULL, NULL, 'PCAB-54580', 'A', '2026-12-31', 'BP-8', 'Zamboanga', '2026-01-01', 'TIN-8', 'dti_cert.jpg', 'approved', '2025-10-10 07:49:09', NULL, 19, '2025-10-08 07:49:09', '2025-12-16 08:41:07'),
-(1695, 9, 'Main Construction Co 9', '1999-12-16', 26, 9, NULL, 'General Construction', 'Zamboanga City', 'company9@example.com', '09170000009', NULL, NULL, NULL, 'PCAB-34347', 'A', '2026-12-31', 'BP-9', 'Zamboanga', '2026-01-01', 'TIN-9', 'dti_cert.jpg', 'approved', '2025-03-28 07:49:09', NULL, 47, '2025-03-26 07:49:09', '2025-12-16 08:41:07'),
-(1696, 10, 'Main Construction Co 10', '2018-12-16', 7, 6, NULL, 'General Construction', 'Zamboanga City', 'company10@example.com', '09170000010', NULL, NULL, NULL, 'PCAB-69751', 'A', '2026-12-31', 'BP-10', 'Zamboanga', '2026-01-01', 'TIN-10', 'dti_cert.jpg', 'rejected', NULL, 'Permit expired.', 37, '2025-09-23 07:49:09', '2025-12-16 08:41:07'),
-(1697, 11, 'Main Construction Co 11', '2010-12-16', 15, 9, NULL, 'General Construction', 'Zamboanga City', 'company11@example.com', '09170000011', NULL, NULL, NULL, 'PCAB-70939', 'A', '2026-12-31', 'BP-11', 'Zamboanga', '2026-01-01', 'TIN-11', 'dti_cert.jpg', 'approved', '2025-05-12 07:49:09', NULL, 20, '2025-05-10 07:49:09', '2025-12-16 08:41:07'),
-(1698, 12, 'Main Construction Co 12', '2003-12-16', 22, 1, NULL, 'General Construction', 'Zamboanga City', 'company12@example.com', '09170000012', NULL, NULL, NULL, 'PCAB-10680', 'A', '2026-12-31', 'BP-12', 'Zamboanga', '2026-01-01', 'TIN-12', 'dti_cert.jpg', 'approved', '2025-09-11 07:49:09', NULL, 38, '2025-09-09 07:49:09', '2025-12-16 08:41:07'),
-(1699, 13, 'Main Construction Co 13', '2021-12-16', 4, 1, NULL, 'General Construction', 'Zamboanga City', 'company13@example.com', '09170000013', NULL, NULL, NULL, 'PCAB-10739', 'A', '2026-12-31', 'BP-13', 'Zamboanga', '2026-01-01', 'TIN-13', 'dti_cert.jpg', 'approved', '2025-07-08 07:49:09', NULL, 18, '2025-07-06 07:49:09', '2025-12-16 08:41:07'),
-(1700, 14, 'Main Construction Co 14', '2012-12-16', 13, 4, NULL, 'General Construction', 'Zamboanga City', 'company14@example.com', '09170000014', NULL, NULL, NULL, 'PCAB-81118', 'A', '2026-12-31', 'BP-14', 'Zamboanga', '2026-01-01', 'TIN-14', 'dti_cert.jpg', 'approved', '2025-02-22 07:49:09', NULL, 11, '2025-02-20 07:49:09', '2025-12-16 08:41:07'),
-(1701, 15, 'Main Construction Co 15', '2003-12-16', 22, 5, NULL, 'General Construction', 'Zamboanga City', 'company15@example.com', '09170000015', NULL, NULL, NULL, 'PCAB-66597', 'A', '2026-12-31', 'BP-15', 'Zamboanga', '2026-01-01', 'TIN-15', 'dti_cert.jpg', 'approved', NULL, '', 12, '2025-01-08 07:49:09', '2025-12-17 14:57:33'),
-(1702, 16, 'Main Construction Co 16', '2012-12-16', 13, 2, NULL, 'General Construction', 'Zamboanga City', 'company16@example.com', '09170000016', NULL, NULL, NULL, 'PCAB-19082', 'A', '2026-12-31', 'BP-16', 'Zamboanga', '2026-01-01', 'TIN-16', 'dti_cert.jpg', 'approved', '2025-05-17 07:49:09', NULL, 25, '2025-05-15 07:49:09', '2025-12-16 08:41:07'),
-(1703, 17, 'Main Construction Co 17', '2000-12-16', 25, 5, NULL, 'General Construction', 'Zamboanga City', 'company17@example.com', '09170000017', NULL, NULL, NULL, 'PCAB-77703', 'A', '2026-12-31', 'BP-17', 'Zamboanga', '2026-01-01', 'TIN-17', 'dti_cert.jpg', 'approved', '2025-05-01 07:49:09', NULL, 12, '2025-04-29 07:49:09', '2025-12-16 08:41:07'),
-(1704, 18, 'Main Construction Co 18', '1996-12-16', 29, 2, NULL, 'General Construction', 'Zamboanga City', 'company18@example.com', '09170000018', NULL, NULL, NULL, 'PCAB-36965', 'A', '2026-12-31', 'BP-18', 'Zamboanga', '2026-01-01', 'TIN-18', 'dti_cert.jpg', 'approved', '2025-01-06 07:49:09', NULL, 9, '2025-01-04 07:49:09', '2025-12-16 08:41:07'),
-(1705, 19, 'Main Construction Co 19', '2016-12-16', 9, 2, NULL, 'General Construction', 'Zamboanga City', 'company19@example.com', '09170000019', NULL, NULL, NULL, 'PCAB-34306', 'A', '2026-12-31', 'BP-19', 'Zamboanga', '2026-01-01', 'TIN-19', 'dti_cert.jpg', 'approved', '2025-05-31 07:49:09', NULL, 28, '2025-05-29 07:49:09', '2025-12-16 08:41:07'),
-(1706, 20, 'Main Construction Co 20', '2006-12-16', 19, 3, NULL, 'General Construction', 'Zamboanga City', 'company20@example.com', '09170000020', NULL, NULL, NULL, 'PCAB-67093', 'A', '2026-12-31', 'BP-20', 'Zamboanga', '2026-01-01', 'TIN-20', 'dti_cert.jpg', 'rejected', NULL, 'Permit expired.', 6, '2025-10-18 07:49:09', '2025-12-16 08:41:07'),
-(1707, 21, 'Main Construction Co 21', '2019-12-16', 6, 2, NULL, 'General Construction', 'Zamboanga City', 'company21@example.com', '09170000021', NULL, NULL, NULL, 'PCAB-39542', 'A', '2026-12-31', 'BP-21', 'Zamboanga', '2026-01-01', 'TIN-21', 'dti_cert.jpg', 'approved', '2025-01-24 07:49:09', NULL, 10, '2025-01-22 07:49:09', '2025-12-16 08:41:07'),
-(1708, 22, 'Main Construction Co 22', '2024-12-16', 1, 3, NULL, 'General Construction', 'Zamboanga City', 'company22@example.com', '09170000022', NULL, NULL, NULL, 'PCAB-34168', 'A', '2026-12-31', 'BP-22', 'Zamboanga', '2026-01-01', 'TIN-22', 'dti_cert.jpg', 'approved', '2025-10-18 07:49:09', NULL, 11, '2025-10-16 07:49:09', '2025-12-16 08:41:07'),
-(1709, 23, 'Main Construction Co 23', '2008-12-16', 17, 6, NULL, 'General Construction', 'Zamboanga City', 'company23@example.com', '09170000023', NULL, NULL, NULL, 'PCAB-42469', 'A', '2026-12-31', 'BP-23', 'Zamboanga', '2026-01-01', 'TIN-23', 'dti_cert.jpg', 'approved', '2025-03-18 07:49:09', NULL, 15, '2025-03-16 07:49:09', '2025-12-16 08:41:07'),
-(1710, 24, 'Main Construction Co 24', '2002-12-16', 23, 5, NULL, 'General Construction', 'Zamboanga City', 'company24@example.com', '09170000024', NULL, NULL, NULL, 'PCAB-46764', 'A', '2026-12-31', 'BP-24', 'Zamboanga', '2026-01-01', 'TIN-24', 'dti_cert.jpg', 'approved', '2025-08-27 07:49:09', NULL, 32, '2025-08-25 07:49:09', '2025-12-16 08:41:07'),
-(1711, 25, 'Main Construction Co 25', '2021-12-16', 4, 1, NULL, 'General Construction', 'Zamboanga City', 'company25@example.com', '09170000025', NULL, NULL, NULL, 'PCAB-57726', 'A', '2026-12-31', 'BP-25', 'Zamboanga', '2026-01-01', 'TIN-25', 'dti_cert.jpg', 'pending', NULL, NULL, 48, '2025-05-01 07:49:09', '2025-12-16 08:41:07'),
-(1712, 26, 'Main Construction Co 26', '2017-12-16', 8, 2, NULL, 'General Construction', 'Zamboanga City', 'company26@example.com', '09170000026', NULL, NULL, NULL, 'PCAB-45837', 'A', '2026-12-31', 'BP-26', 'Zamboanga', '2026-01-01', 'TIN-26', 'dti_cert.jpg', 'approved', '2025-08-16 07:49:09', NULL, 6, '2025-08-14 07:49:09', '2025-12-16 08:41:07'),
-(1713, 27, 'Main Construction Co 27', '1998-12-16', 27, 5, NULL, 'General Construction', 'Zamboanga City', 'company27@example.com', '09170000027', NULL, NULL, NULL, 'PCAB-36243', 'A', '2026-12-31', 'BP-27', 'Zamboanga', '2026-01-01', 'TIN-27', 'dti_cert.jpg', 'approved', '2025-11-08 07:49:09', NULL, 21, '2025-11-06 07:49:09', '2025-12-16 08:41:07'),
-(1714, 28, 'Main Construction Co 28', '2003-12-16', 22, 8, NULL, 'General Construction', 'Zamboanga City', 'company28@example.com', '09170000028', NULL, NULL, NULL, 'PCAB-96216', 'A', '2026-12-31', 'BP-28', 'Zamboanga', '2026-01-01', 'TIN-28', 'dti_cert.jpg', 'approved', '2025-05-03 07:49:09', NULL, 21, '2025-05-01 07:49:09', '2025-12-16 08:41:07'),
-(1715, 29, 'Main Construction Co 29', '1997-12-16', 28, 8, NULL, 'General Construction', 'Zamboanga City', 'company29@example.com', '09170000029', NULL, NULL, NULL, 'PCAB-84101', 'A', '2026-12-31', 'BP-29', 'Zamboanga', '2026-01-01', 'TIN-29', 'dti_cert.jpg', 'approved', '2025-07-21 07:49:09', NULL, 19, '2025-07-19 07:49:09', '2025-12-16 08:41:07'),
-(1716, 30, 'Main Construction Co 30', '2010-12-16', 15, 6, NULL, 'General Construction', 'Zamboanga City', 'company30@example.com', '09170000030', NULL, NULL, NULL, 'PCAB-57206', 'A', '2026-12-31', 'BP-30', 'Zamboanga', '2026-01-01', 'TIN-30', 'dti_cert.jpg', 'rejected', NULL, 'Permit expired.', 20, '2025-05-24 07:49:09', '2025-12-16 08:41:07'),
-(1717, 31, 'Main Construction Co 31', '2006-12-16', 19, 2, NULL, 'General Construction', 'Zamboanga City', 'company31@example.com', '09170000031', NULL, NULL, NULL, 'PCAB-68035', 'A', '2026-12-31', 'BP-31', 'Zamboanga', '2026-01-01', 'TIN-31', 'dti_cert.jpg', 'approved', '2025-11-10 07:49:09', NULL, 42, '2025-11-08 07:49:09', '2025-12-16 08:41:07'),
-(1718, 32, 'Main Construction Co 32', '2006-12-16', 19, 4, NULL, 'General Construction', 'Zamboanga City', 'company32@example.com', '09170000032', NULL, NULL, NULL, 'PCAB-72477', 'A', '2026-12-31', 'BP-32', 'Zamboanga', '2026-01-01', 'TIN-32', 'dti_cert.jpg', 'approved', '2025-10-01 07:49:09', NULL, 21, '2025-09-29 07:49:09', '2025-12-16 08:41:07'),
-(1719, 33, 'Main Construction Co 33', '2017-12-16', 8, 6, NULL, 'General Construction', 'Zamboanga City', 'company33@example.com', '09170000033', NULL, NULL, NULL, 'PCAB-44442', 'A', '2026-12-31', 'BP-33', 'Zamboanga', '2026-01-01', 'TIN-33', 'dti_cert.jpg', 'approved', '2025-02-06 07:49:09', NULL, 1, '2025-02-04 07:49:09', '2025-12-16 08:41:07'),
-(1720, 34, 'Main Construction Co 34', '2012-12-16', 13, 6, NULL, 'General Construction', 'Zamboanga City', 'company34@example.com', '09170000034', NULL, NULL, NULL, 'PCAB-88849', 'A', '2026-12-31', 'BP-34', 'Zamboanga', '2026-01-01', 'TIN-34', 'dti_cert.jpg', 'approved', '2025-08-20 07:49:09', NULL, 8, '2025-08-18 07:49:09', '2025-12-16 08:41:07'),
-(1721, 35, 'Main Construction Co 35', '2015-12-16', 10, 1, NULL, 'General Construction', 'Zamboanga City', 'company35@example.com', '09170000035', NULL, NULL, NULL, 'PCAB-23798', 'A', '2026-12-31', 'BP-35', 'Zamboanga', '2026-01-01', 'TIN-35', 'dti_cert.jpg', 'pending', NULL, NULL, 42, '2025-04-22 07:49:09', '2025-12-16 08:41:07'),
-(1722, 36, 'Main Construction Co 36', '2012-12-16', 13, 8, NULL, 'General Construction', 'Zamboanga City', 'company36@example.com', '09170000036', NULL, NULL, NULL, 'PCAB-33648', 'A', '2026-12-31', 'BP-36', 'Zamboanga', '2026-01-01', 'TIN-36', 'dti_cert.jpg', 'approved', '2025-09-24 07:49:09', NULL, 44, '2025-09-22 07:49:09', '2025-12-16 08:41:07'),
-(1723, 37, 'Main Construction Co 37', '2024-12-16', 1, 2, NULL, 'General Construction', 'Zamboanga City', 'company37@example.com', '09170000037', NULL, NULL, NULL, 'PCAB-32151', 'A', '2026-12-31', 'BP-37', 'Zamboanga', '2026-01-01', 'TIN-37', 'dti_cert.jpg', 'approved', '2025-05-12 07:49:09', NULL, 22, '2025-05-10 07:49:09', '2025-12-16 08:41:07'),
-(1724, 38, 'Main Construction Co 38', '1997-12-16', 28, 7, NULL, 'General Construction', 'Zamboanga City', 'company38@example.com', '09170000038', NULL, NULL, NULL, 'PCAB-53613', 'A', '2026-12-31', 'BP-38', 'Zamboanga', '2026-01-01', 'TIN-38', 'dti_cert.jpg', 'approved', '2025-02-10 07:49:09', NULL, 27, '2025-02-08 07:49:09', '2025-12-16 08:41:07'),
-(1725, 39, 'Main Construction Co 39', '2009-12-16', 16, 8, NULL, 'General Construction', 'Zamboanga City', 'company39@example.com', '09170000039', NULL, NULL, NULL, 'PCAB-85450', 'A', '2026-12-31', 'BP-39', 'Zamboanga', '2026-01-01', 'TIN-39', 'dti_cert.jpg', 'approved', '2025-07-23 07:49:09', NULL, 42, '2025-07-21 07:49:09', '2025-12-16 08:41:07'),
-(1726, 40, 'Main Construction Co 40', '2001-12-16', 24, 6, NULL, 'General Construction', 'Zamboanga City', 'company40@example.com', '09170000040', NULL, NULL, NULL, 'PCAB-48462', 'A', '2026-12-31', 'BP-40', 'Zamboanga', '2026-01-01', 'TIN-40', 'dti_cert.jpg', 'rejected', NULL, 'Permit expired.', 11, '2025-02-04 07:49:09', '2025-12-16 08:41:07'),
-(1727, 41, 'Main Construction Co 41', '2011-12-16', 14, 9, NULL, 'General Construction', 'Zamboanga City', 'company41@example.com', '09170000041', NULL, NULL, NULL, 'PCAB-67854', 'A', '2026-12-31', 'BP-41', 'Zamboanga', '2026-01-01', 'TIN-41', 'dti_cert.jpg', 'approved', '2025-02-10 07:49:09', NULL, 25, '2025-02-08 07:49:09', '2025-12-16 08:41:07'),
-(1728, 42, 'Main Construction Co 42', '1999-12-16', 26, 9, NULL, 'General Construction', 'Zamboanga City', 'company42@example.com', '09170000042', NULL, NULL, NULL, 'PCAB-91907', 'A', '2026-12-31', 'BP-42', 'Zamboanga', '2026-01-01', 'TIN-42', 'dti_cert.jpg', 'approved', '2025-06-04 07:49:09', NULL, 19, '2025-06-02 07:49:09', '2025-12-16 08:41:07'),
-(1729, 43, 'Main Construction Co 43', '1999-12-16', 26, 3, NULL, 'General Construction', 'Zamboanga City', 'company43@example.com', '09170000043', NULL, NULL, NULL, 'PCAB-33148', 'A', '2026-12-31', 'BP-43', 'Zamboanga', '2026-01-01', 'TIN-43', 'dti_cert.jpg', 'approved', '2025-05-23 07:49:09', NULL, 31, '2025-05-21 07:49:09', '2025-12-16 08:41:07'),
-(1730, 44, 'Main Construction Co 44', '2002-12-16', 23, 6, NULL, 'General Construction', 'Zamboanga City', 'company44@example.com', '09170000044', NULL, NULL, NULL, 'PCAB-27263', 'A', '2026-12-31', 'BP-44', 'Zamboanga', '2026-01-01', 'TIN-44', 'dti_cert.jpg', 'approved', '2025-06-30 07:49:09', NULL, 7, '2025-06-28 07:49:09', '2025-12-16 08:41:07'),
-(1731, 45, 'Main Construction Co 45', '2018-12-16', 7, 9, NULL, 'General Construction', 'Zamboanga City', 'company45@example.com', '09170000045', NULL, NULL, NULL, 'PCAB-35372', 'A', '2026-12-31', 'BP-45', 'Zamboanga', '2026-01-01', 'TIN-45', 'dti_cert.jpg', 'pending', NULL, NULL, 12, '2025-04-02 07:49:09', '2025-12-16 08:41:07'),
-(1732, 46, 'Main Construction Co 46', '1999-12-16', 26, 6, NULL, 'General Construction', 'Zamboanga City', 'company46@example.com', '09170000046', NULL, NULL, NULL, 'PCAB-88247', 'A', '2026-12-31', 'BP-46', 'Zamboanga', '2026-01-01', 'TIN-46', 'dti_cert.jpg', 'approved', '2025-08-08 07:49:09', NULL, 1, '2025-08-06 07:49:09', '2025-12-16 08:41:07'),
-(1733, 47, 'Main Construction Co 47', '2006-12-16', 19, 3, NULL, 'General Construction', 'Zamboanga City', 'company47@example.com', '09170000047', NULL, NULL, NULL, 'PCAB-60406', 'A', '2026-12-31', 'BP-47', 'Zamboanga', '2026-01-01', 'TIN-47', 'dti_cert.jpg', 'approved', '2025-07-14 07:49:09', NULL, 37, '2025-07-12 07:49:09', '2025-12-16 08:41:07'),
-(1734, 48, 'Main Construction Co 48', '2007-12-16', 18, 2, NULL, 'General Construction', 'Zamboanga City', 'company48@example.com', '09170000048', NULL, NULL, NULL, 'PCAB-21775', 'A', '2026-12-31', 'BP-48', 'Zamboanga', '2026-01-01', 'TIN-48', 'dti_cert.jpg', 'approved', '2025-06-17 07:49:09', NULL, 10, '2025-06-15 07:49:09', '2025-12-16 08:41:07'),
-(1735, 49, 'Main Construction Co 49', '1996-12-16', 29, 2, NULL, 'General Construction', 'Sample, Cahayagan, Carmen, Agusan Del Norte 2311', 'company49@example.com', '09170000049', NULL, NULL, NULL, 'PCAB-80787', 'A', '2026-12-31', 'BP-49', 'Agutaya', '2026-01-01', 'TIN-49', 'dti_cert.jpg', 'approved', '2025-12-14 07:49:09', NULL, 4, '2025-12-12 07:49:09', '2025-12-16 09:56:43'),
-(1736, 50, 'Main Construction Co 50', '2023-12-16', 2, 3, NULL, 'General Construction', 'Zamboanga City', 'company50@example.com', '09170000050', NULL, NULL, NULL, 'PCAB-46129', 'A', '2026-12-31', 'BP-50', 'Zamboanga', '2026-01-01', 'TIN-50', 'dti_cert.jpg', 'rejected', NULL, 'Permit expired.', 47, '2025-08-24 07:49:09', '2025-12-16 08:41:07'),
-(1737, 51, 'Main Construction Co 51', '2014-12-16', 11, 3, NULL, 'General Construction', 'Zamboanga City', 'company51@example.com', '09170000051', NULL, NULL, NULL, 'PCAB-85340', 'A', '2026-12-31', 'BP-51', 'Zamboanga', '2026-01-01', 'TIN-51', 'dti_cert.jpg', 'approved', '2025-09-19 07:49:09', NULL, 3, '2025-09-17 07:49:09', '2025-12-16 08:41:07'),
-(1738, 52, 'Main Construction Co 52', '2006-12-16', 19, 1, NULL, 'General Construction', 'Zamboanga City', 'company52@example.com', '09170000052', NULL, NULL, NULL, 'PCAB-78141', 'A', '2026-12-31', 'BP-52', 'Zamboanga', '2026-01-01', 'TIN-52', 'dti_cert.jpg', 'approved', '2025-08-29 07:49:09', NULL, 46, '2025-08-27 07:49:09', '2025-12-16 08:41:07'),
-(1739, 53, 'Main Construction Co 53', '2022-12-16', 3, 6, NULL, 'General Construction', 'Zamboanga City', 'company53@example.com', '09170000053', NULL, NULL, NULL, 'PCAB-34145', 'A', '2026-12-31', 'BP-53', 'Zamboanga', '2026-01-01', 'TIN-53', 'dti_cert.jpg', 'approved', '2025-11-12 07:49:09', NULL, 30, '2025-11-10 07:49:09', '2025-12-16 08:41:07'),
-(1740, 54, 'Main Construction Co 54', '2006-12-16', 19, 2, NULL, 'General Construction', 'Zamboanga City', 'company54@example.com', '09170000054', NULL, NULL, NULL, 'PCAB-32105', 'A', '2026-12-31', 'BP-54', 'Zamboanga', '2026-01-01', 'TIN-54', 'dti_cert.jpg', 'approved', '2025-01-15 07:49:09', NULL, 38, '2025-01-13 07:49:09', '2025-12-16 08:41:07'),
-(1741, 55, 'Main Construction Co 55', '2002-12-16', 23, 6, NULL, 'General Construction', 'Zamboanga City', 'company55@example.com', '09170000055', NULL, NULL, NULL, 'PCAB-36431', 'A', '2026-12-31', 'BP-55', 'Zamboanga', '2026-01-01', 'TIN-55', 'dti_cert.jpg', 'pending', NULL, NULL, 0, '2025-06-01 07:49:09', '2025-12-16 08:41:07'),
-(1742, 56, 'Main Construction Co 56', '1997-12-16', 28, 3, NULL, 'General Construction', 'Zamboanga City', 'company56@example.com', '09170000056', NULL, NULL, NULL, 'PCAB-82813', 'A', '2026-12-31', 'BP-56', 'Zamboanga', '2026-01-01', 'TIN-56', 'dti_cert.jpg', 'approved', '2025-03-16 07:49:09', NULL, 38, '2025-03-14 07:49:09', '2025-12-16 08:41:07'),
-(1743, 57, 'Main Construction Co 57', '2013-12-16', 12, 1, NULL, 'General Construction', 'Zamboanga City', 'company57@example.com', '09170000057', NULL, NULL, NULL, 'PCAB-72710', 'A', '2026-12-31', 'BP-57', 'Zamboanga', '2026-01-01', 'TIN-57', 'dti_cert.jpg', 'approved', '2025-03-27 07:49:09', NULL, 12, '2025-03-25 07:49:09', '2025-12-16 08:41:07'),
-(1744, 58, 'Main Construction Co 58', '2019-12-16', 6, 8, NULL, 'General Construction', 'Zamboanga City', 'company58@example.com', '09170000058', NULL, NULL, NULL, 'PCAB-34834', 'A', '2026-12-31', 'BP-58', 'Zamboanga', '2026-01-01', 'TIN-58', 'dti_cert.jpg', 'approved', '2025-01-25 07:49:09', NULL, 9, '2025-01-23 07:49:09', '2025-12-16 08:41:07'),
-(1745, 59, 'Main Construction Co 59', '2004-12-16', 21, 6, NULL, 'General Construction', 'Zamboanga City', 'company59@example.com', '09170000059', NULL, NULL, NULL, 'PCAB-19251', 'A', '2026-12-31', 'BP-59', 'Zamboanga', '2026-01-01', 'TIN-59', 'dti_cert.jpg', 'approved', '2025-06-12 07:49:09', NULL, 44, '2025-06-10 07:49:09', '2025-12-16 08:41:07'),
-(1746, 60, 'Main Construction Co 60', '1996-12-16', 29, 4, NULL, 'General Construction', 'Zamboanga City', 'company60@example.com', '09170000060', NULL, NULL, NULL, 'PCAB-71914', 'A', '2026-12-31', 'BP-60', 'Zamboanga', '2026-01-01', 'TIN-60', 'dti_cert.jpg', 'rejected', NULL, 'Permit expired.', 46, '2025-10-15 07:49:09', '2025-12-16 08:41:07'),
-(1747, 61, 'Main Construction Co 61', '2005-12-16', 20, 3, NULL, 'General Construction', 'Zamboanga City', 'company61@example.com', '09170000061', NULL, NULL, NULL, 'PCAB-15554', 'A', '2026-12-31', 'BP-61', 'Zamboanga', '2026-01-01', 'TIN-61', 'dti_cert.jpg', 'approved', '2024-12-25 07:49:09', NULL, 15, '2024-12-23 07:49:09', '2025-12-16 08:41:07'),
-(1748, 62, 'Main Construction Co 62', '2013-12-16', 12, 7, NULL, 'General Construction', 'Zamboanga City', 'company62@example.com', '09170000062', NULL, NULL, NULL, 'PCAB-84279', 'A', '2026-12-31', 'BP-62', 'Zamboanga', '2026-01-01', 'TIN-62', 'dti_cert.jpg', 'approved', '2025-01-18 07:49:09', NULL, 1, '2025-01-16 07:49:09', '2025-12-16 08:41:07'),
-(1749, 63, 'Main Construction Co 63', '1997-12-16', 28, 4, NULL, 'General Construction', 'Zamboanga City', 'company63@example.com', '09170000063', NULL, NULL, NULL, 'PCAB-24967', 'A', '2026-12-31', 'BP-63', 'Zamboanga', '2026-01-01', 'TIN-63', 'dti_cert.jpg', 'approved', '2025-03-29 07:49:09', NULL, 2, '2025-03-27 07:49:09', '2025-12-16 08:41:07'),
-(1750, 64, 'Main Construction Co 64', '2010-12-16', 15, 5, NULL, 'General Construction', 'Zamboanga City', 'company64@example.com', '09170000064', NULL, NULL, NULL, 'PCAB-42118', 'A', '2026-12-31', 'BP-64', 'Zamboanga', '2026-01-01', 'TIN-64', 'dti_cert.jpg', 'approved', '2025-08-21 07:49:09', NULL, 7, '2025-08-19 07:49:09', '2025-12-16 08:41:07'),
-(1751, 65, 'Main Construction Co 65', '2005-12-16', 20, 1, NULL, 'General Construction', 'Zamboanga City', 'company65@example.com', '09170000065', NULL, NULL, NULL, 'PCAB-11349', 'A', '2026-12-31', 'BP-65', 'Zamboanga', '2026-01-01', 'TIN-65', 'dti_cert.jpg', 'pending', NULL, NULL, 10, '2025-01-05 07:49:09', '2025-12-16 08:41:07'),
-(1752, 66, 'Main Construction Co 66', '2002-12-16', 23, 9, NULL, 'General Construction', 'Zamboanga City', 'company66@example.com', '09170000066', NULL, NULL, NULL, 'PCAB-91407', 'A', '2026-12-31', 'BP-66', 'Zamboanga', '2026-01-01', 'TIN-66', 'dti_cert.jpg', 'approved', '2025-10-21 07:49:09', NULL, 18, '2025-10-19 07:49:09', '2025-12-16 08:41:07'),
-(1753, 67, 'Main Construction Co 67', '1999-12-16', 26, 3, NULL, 'General Construction', 'Zamboanga City', 'company67@example.com', '09170000067', NULL, NULL, NULL, 'PCAB-58294', 'A', '2026-12-31', 'BP-67', 'Zamboanga', '2026-01-01', 'TIN-67', 'dti_cert.jpg', 'approved', '2025-01-01 07:49:09', NULL, 13, '2024-12-30 07:49:09', '2025-12-16 08:41:07'),
-(1754, 68, 'Main Construction Co 68', '1997-12-16', 28, 8, NULL, 'General Construction', 'Zamboanga City', 'company68@example.com', '09170000068', NULL, NULL, NULL, 'PCAB-21255', 'A', '2026-12-31', 'BP-68', 'Zamboanga', '2026-01-01', 'TIN-68', 'dti_cert.jpg', 'approved', '2025-06-26 07:49:09', NULL, 8, '2025-06-24 07:49:09', '2025-12-16 08:41:07'),
-(1755, 69, 'Main Construction Co 69', '2021-12-16', 4, 1, NULL, 'General Construction', 'Zamboanga City', 'company69@example.com', '09170000069', NULL, NULL, NULL, 'PCAB-67993', 'A', '2026-12-31', 'BP-69', 'Zamboanga', '2026-01-01', 'TIN-69', 'dti_cert.jpg', 'approved', '2025-03-18 07:49:09', NULL, 48, '2025-03-16 07:49:09', '2025-12-16 08:41:07'),
-(1756, 70, 'Main Construction Co 70', '2000-12-16', 25, 9, NULL, 'General Construction', 'Zamboanga City', 'company70@example.com', '09170000070', NULL, NULL, NULL, 'PCAB-28285', 'A', '2026-12-31', 'BP-70', 'Zamboanga', '2026-01-01', 'TIN-70', 'dti_cert.jpg', 'rejected', NULL, 'Permit expired.', 2, '2025-07-27 07:49:09', '2025-12-16 08:41:07'),
-(1757, 71, 'Main Construction Co 71', '2003-12-16', 22, 6, NULL, 'General Construction', 'Zamboanga City', 'company71@example.com', '09170000071', NULL, NULL, NULL, 'PCAB-42832', 'A', '2026-12-31', 'BP-71', 'Zamboanga', '2026-01-01', 'TIN-71', 'dti_cert.jpg', 'approved', '2025-07-26 07:49:09', NULL, 12, '2025-07-24 07:49:09', '2025-12-16 08:41:07'),
-(1758, 72, 'Main Construction Co 72', '2019-12-16', 6, 7, NULL, 'General Construction', 'Zamboanga City', 'company72@example.com', '09170000072', NULL, NULL, NULL, 'PCAB-52638', 'A', '2026-12-31', 'BP-72', 'Zamboanga', '2026-01-01', 'TIN-72', 'dti_cert.jpg', 'approved', '2025-04-28 07:49:09', NULL, 31, '2025-04-26 07:49:09', '2025-12-16 08:41:07'),
-(1759, 73, 'Main Construction Co 73', '2004-12-16', 21, 1, NULL, 'General Construction', 'Zamboanga City', 'company73@example.com', '09170000073', NULL, NULL, NULL, 'PCAB-28803', 'A', '2026-12-31', 'BP-73', 'Zamboanga', '2026-01-01', 'TIN-73', 'dti_cert.jpg', 'approved', '2025-02-23 07:49:09', NULL, 9, '2025-02-21 07:49:09', '2025-12-16 08:41:07'),
-(1760, 74, 'Main Construction Co 74', '1997-12-16', 28, 3, NULL, 'General Construction', 'Zamboanga City', 'company74@example.com', '09170000074', NULL, NULL, NULL, 'PCAB-70844', 'A', '2026-12-31', 'BP-74', 'Zamboanga', '2026-01-01', 'TIN-74', 'dti_cert.jpg', 'approved', '2025-01-31 07:49:09', NULL, 18, '2025-01-29 07:49:09', '2025-12-16 08:41:07'),
-(1761, 75, 'Main Construction Co 75', '2007-12-16', 18, 6, NULL, 'General Construction', 'Zamboanga City', 'company75@example.com', '09170000075', NULL, NULL, NULL, 'PCAB-56597', 'A', '2026-12-31', 'BP-75', 'Zamboanga', '2026-01-01', 'TIN-75', 'dti_cert.jpg', 'pending', NULL, NULL, 35, '2025-11-17 07:49:09', '2025-12-16 08:41:07'),
-(1762, 76, 'Main Construction Co 76', '2020-12-16', 5, 3, NULL, 'General Construction', 'Zamboanga City', 'company76@example.com', '09170000076', NULL, NULL, NULL, 'PCAB-73540', 'A', '2026-12-31', 'BP-76', 'Zamboanga', '2026-01-01', 'TIN-76', 'dti_cert.jpg', 'approved', '2025-10-07 07:49:09', NULL, 26, '2025-10-05 07:49:09', '2025-12-16 08:41:07'),
-(1763, 77, 'Main Construction Co 77', '1995-12-16', 30, 8, NULL, 'General Construction', 'Zamboanga City', 'company77@example.com', '09170000077', NULL, NULL, NULL, 'PCAB-30352', 'A', '2026-12-31', 'BP-77', 'Zamboanga', '2026-01-01', 'TIN-77', 'dti_cert.jpg', 'approved', '2025-04-13 07:49:09', NULL, 33, '2025-04-11 07:49:09', '2025-12-16 08:41:07'),
-(1764, 78, 'Main Construction Co 78', '2012-12-16', 13, 4, NULL, 'General Construction', 'Zamboanga City', 'company78@example.com', '09170000078', NULL, NULL, NULL, 'PCAB-97162', 'A', '2026-12-31', 'BP-78', 'Zamboanga', '2026-01-01', 'TIN-78', 'dti_cert.jpg', 'approved', '2025-12-07 07:49:09', NULL, 27, '2025-12-05 07:49:09', '2025-12-16 08:41:07'),
-(1765, 79, 'Main Construction Co 79', '2021-12-16', 4, 8, NULL, 'General Construction', 'Zamboanga City', 'company79@example.com', '09170000079', NULL, NULL, NULL, 'PCAB-11742', 'A', '2026-12-31', 'BP-79', 'Zamboanga', '2026-01-01', 'TIN-79', 'dti_cert.jpg', 'approved', '2025-04-27 07:49:09', NULL, 27, '2025-04-25 07:49:09', '2025-12-16 08:41:07'),
-(1766, 80, 'Main Construction Co 80', '2015-12-16', 10, 5, NULL, 'General Construction', 'Zamboanga City', 'company80@example.com', '09170000080', NULL, NULL, NULL, 'PCAB-94072', 'A', '2026-12-31', 'BP-80', 'Zamboanga', '2026-01-01', 'TIN-80', 'dti_cert.jpg', 'rejected', NULL, 'Permit expired.', 43, '2025-02-08 07:49:09', '2025-12-16 08:41:07'),
-(1767, 81, 'Main Construction Co 81', '2018-12-16', 7, 4, NULL, 'General Construction', 'Zamboanga City', 'company81@example.com', '09170000081', NULL, NULL, NULL, 'PCAB-22152', 'A', '2026-12-31', 'BP-81', 'Zamboanga', '2026-01-01', 'TIN-81', 'dti_cert.jpg', 'approved', '2025-03-27 07:49:09', NULL, 6, '2025-03-25 07:49:09', '2025-12-16 08:41:07'),
-(1768, 82, 'Main Construction Co 82', '2021-12-16', 4, 4, NULL, 'General Construction', 'Zamboanga City', 'company82@example.com', '09170000082', NULL, NULL, NULL, 'PCAB-97364', 'A', '2026-12-31', 'BP-82', 'Zamboanga', '2026-01-01', 'TIN-82', 'dti_cert.jpg', 'approved', '2025-01-07 07:49:09', NULL, 4, '2025-01-05 07:49:09', '2025-12-16 08:41:07'),
-(1769, 83, 'Main Construction Co 83', '1997-12-16', 28, 7, NULL, 'General Construction', 'Zamboanga City', 'company83@example.com', '09170000083', NULL, NULL, NULL, 'PCAB-14246', 'A', '2026-12-31', 'BP-83', 'Zamboanga', '2026-01-01', 'TIN-83', 'dti_cert.jpg', 'approved', '2024-12-27 07:49:09', NULL, 47, '2024-12-25 07:49:09', '2025-12-16 08:41:07'),
-(1770, 84, 'Main Construction Co 84', '2018-12-16', 7, 1, NULL, 'General Construction', 'Zamboanga City', 'company84@example.com', '09170000084', NULL, NULL, NULL, 'PCAB-81872', 'A', '2026-12-31', 'BP-84', 'Zamboanga', '2026-01-01', 'TIN-84', 'dti_cert.jpg', 'approved', '2025-03-15 07:49:09', NULL, 25, '2025-03-13 07:49:09', '2025-12-16 08:41:07'),
-(1771, 85, 'Main Construction Co 85', '2014-12-16', 11, 6, NULL, 'General Construction', 'Zamboanga City', 'company85@example.com', '09170000085', NULL, NULL, NULL, 'PCAB-39928', 'A', '2026-12-31', 'BP-85', 'Zamboanga', '2026-01-01', 'TIN-85', 'dti_cert.jpg', 'pending', NULL, NULL, 26, '2024-12-27 07:49:09', '2025-12-16 08:41:07'),
-(1772, 86, 'Main Construction Co 86', '2022-12-16', 3, 7, NULL, 'General Construction', 'Zamboanga City', 'company86@example.com', '09170000086', NULL, NULL, NULL, 'PCAB-74824', 'A', '2026-12-31', 'BP-86', 'Zamboanga', '2026-01-01', 'TIN-86', 'dti_cert.jpg', 'approved', '2025-08-28 07:49:09', NULL, 49, '2025-08-26 07:49:09', '2025-12-16 08:41:07'),
-(1773, 87, 'Main Construction Co 87', '2014-12-16', 11, 8, NULL, 'General Construction', 'Zamboanga City', 'company87@example.com', '09170000087', NULL, NULL, NULL, 'PCAB-17198', 'A', '2026-12-31', 'BP-87', 'Zamboanga', '2026-01-01', 'TIN-87', 'dti_cert.jpg', 'approved', '2025-08-23 07:49:09', NULL, 49, '2025-08-21 07:49:09', '2025-12-16 08:41:07'),
-(1774, 88, 'Main Construction Co 88', '2009-12-16', 16, 9, NULL, 'General Construction', 'Zamboanga City', 'company88@example.com', '09170000088', NULL, NULL, NULL, 'PCAB-27581', 'A', '2026-12-31', 'BP-88', 'Zamboanga', '2026-01-01', 'TIN-88', 'dti_cert.jpg', 'approved', '2025-09-24 07:49:09', NULL, 24, '2025-09-22 07:49:09', '2025-12-16 08:41:07'),
-(1775, 89, 'Main Construction Co 89', '2009-12-16', 16, 4, NULL, 'General Construction', 'Zamboanga City', 'company89@example.com', '09170000089', NULL, NULL, NULL, 'PCAB-97920', 'A', '2026-12-31', 'BP-89', 'Zamboanga', '2026-01-01', 'TIN-89', 'dti_cert.jpg', 'approved', '2025-07-13 07:49:09', NULL, 29, '2025-07-11 07:49:09', '2025-12-16 08:41:07'),
-(1776, 90, 'Main Construction Co 90', '2024-12-16', 1, 8, NULL, 'General Construction', 'Zamboanga City', 'company90@example.com', '09170000090', NULL, NULL, NULL, 'PCAB-36143', 'A', '2026-12-31', 'BP-90', 'Zamboanga', '2026-01-01', 'TIN-90', 'dti_cert.jpg', 'rejected', NULL, 'Permit expired.', 18, '2025-04-07 07:49:09', '2025-12-16 08:41:07'),
-(1777, 91, 'Main Construction Co 91', '2008-12-16', 17, 4, NULL, 'General Construction', 'Zamboanga City', 'company91@example.com', '09170000091', NULL, NULL, NULL, 'PCAB-34191', 'A', '2026-12-31', 'BP-91', 'Zamboanga', '2026-01-01', 'TIN-91', 'dti_cert.jpg', 'approved', '2025-09-18 07:49:09', NULL, 2, '2025-09-16 07:49:09', '2025-12-16 08:41:07'),
-(1778, 92, 'Main Construction Co 92', '2002-12-16', 23, 7, NULL, 'General Construction', 'Zamboanga City', 'company92@example.com', '09170000092', NULL, NULL, NULL, 'PCAB-89813', 'A', '2026-12-31', 'BP-92', 'Zamboanga', '2026-01-01', 'TIN-92', 'dti_cert.jpg', 'approved', '2025-10-11 07:49:09', NULL, 10, '2025-10-09 07:49:09', '2025-12-16 08:41:07'),
-(1779, 93, 'Main Construction Co 93', '2021-12-16', 4, 7, NULL, 'General Construction', 'Zamboanga City', 'company93@example.com', '09170000093', NULL, NULL, NULL, 'PCAB-59197', 'A', '2026-12-31', 'BP-93', 'Zamboanga', '2026-01-01', 'TIN-93', 'dti_cert.jpg', 'approved', '2025-10-08 07:49:09', NULL, 12, '2025-10-06 07:49:09', '2025-12-16 08:41:07'),
-(1780, 94, 'Main Construction Co 94', '2017-12-16', 8, 6, NULL, 'General Construction', 'Zamboanga City', 'company94@example.com', '09170000094', NULL, NULL, NULL, 'PCAB-74178', 'A', '2026-12-31', 'BP-94', 'Zamboanga', '2026-01-01', 'TIN-94', 'dti_cert.jpg', 'approved', '2025-05-26 07:49:09', NULL, 4, '2025-05-24 07:49:09', '2025-12-16 08:41:07'),
-(1781, 95, 'Main Construction Co 95', '1997-12-16', 28, 2, NULL, 'General Construction', 'Zamboanga City', 'company95@example.com', '09170000095', NULL, NULL, NULL, 'PCAB-32796', 'A', '2026-12-31', 'BP-95', 'Zamboanga', '2026-01-01', 'TIN-95', 'dti_cert.jpg', 'pending', NULL, NULL, 21, '2025-04-03 07:49:09', '2025-12-16 08:41:07'),
-(1782, 96, 'Main Construction Co 96', '2001-12-16', 24, 1, NULL, 'General Construction', 'Zamboanga City', 'company96@example.com', '09170000096', NULL, NULL, NULL, 'PCAB-78766', 'A', '2026-12-31', 'BP-96', 'Zamboanga', '2026-01-01', 'TIN-96', 'dti_cert.jpg', 'approved', '2025-12-02 07:49:09', NULL, 11, '2025-11-30 07:49:09', '2025-12-16 08:41:07'),
-(1783, 97, 'Main Construction Co 97', '2017-12-16', 8, 1, NULL, 'General Construction', 'Zamboanga City', 'company97@example.com', '09170000097', NULL, NULL, NULL, 'PCAB-29749', 'A', '2026-12-31', 'BP-97', 'Zamboanga', '2026-01-01', 'TIN-97', 'dti_cert.jpg', 'approved', '2025-01-04 07:49:09', NULL, 13, '2025-01-02 07:49:09', '2025-12-16 08:41:07'),
-(1784, 98, 'Main Construction Co 98', '1997-12-16', 28, 4, NULL, 'General Construction', 'Zamboanga City', 'company98@example.com', '09170000098', NULL, NULL, NULL, 'PCAB-73126', 'A', '2026-12-31', 'BP-98', 'Zamboanga', '2026-01-01', 'TIN-98', 'dti_cert.jpg', 'approved', '2025-10-25 07:49:09', NULL, 30, '2025-10-23 07:49:09', '2025-12-16 08:41:07'),
-(1785, 99, 'Main Construction Co 99', '2003-12-16', 22, 7, NULL, 'General Construction', 'Zamboanga City', 'company99@example.com', '09170000099', NULL, NULL, NULL, 'PCAB-92160', 'A', '2026-12-31', 'BP-99', 'Zamboanga', '2026-01-01', 'TIN-99', 'dti_cert.jpg', 'approved', '2025-07-15 07:49:09', NULL, 28, '2025-07-13 07:49:09', '2025-12-16 08:41:07'),
-(1786, 100, 'Main Construction Co 100', '1996-12-16', 29, 9, NULL, 'General Construction', 'Zamboanga City', 'company100@example.com', '09170000100', NULL, NULL, NULL, 'PCAB-87531', 'A', '2026-12-31', 'BP-100', 'Zamboanga', '2026-01-01', 'TIN-100', 'dti_cert.jpg', 'rejected', NULL, 'Permit expired.', 27, '2025-07-02 07:49:09', '2025-12-16 08:41:07'),
-(1787, 201, 'Main Construction Co 201', '2006-12-16', 19, 6, NULL, 'General Construction', 'Zamboanga City', 'company201@example.com', '09170000201', NULL, NULL, NULL, 'PCAB-77737', 'A', '2026-12-31', 'BP-201', 'Zamboanga', '2026-01-01', 'TIN-201', 'dti_cert.jpg', 'approved', '2025-08-16 07:49:09', NULL, 42, '2025-08-14 07:49:09', '2025-12-16 08:41:07'),
-(1788, 202, 'Main Construction Co 202', '2021-12-16', 4, 2, NULL, 'General Construction', 'Zamboanga City', 'company202@example.com', '09170000202', NULL, NULL, NULL, 'PCAB-39620', 'A', '2026-12-31', 'BP-202', 'Zamboanga', '2026-01-01', 'TIN-202', 'dti_cert.jpg', 'approved', '2025-04-18 07:49:09', NULL, 35, '2025-04-16 07:49:09', '2025-12-16 08:41:07'),
-(1789, 203, 'Main Construction Co 203', '2000-12-16', 25, 8, NULL, 'General Construction', 'Zamboanga City', 'company203@example.com', '09170000203', NULL, NULL, NULL, 'PCAB-69863', 'A', '2026-12-31', 'BP-203', 'Zamboanga', '2026-01-01', 'TIN-203', 'dti_cert.jpg', 'approved', '2025-09-06 07:49:09', NULL, 15, '2025-09-04 07:49:09', '2025-12-16 08:41:07'),
-(1790, 204, 'Main Construction Co 204', '2002-12-16', 23, 3, NULL, 'General Construction', 'Zamboanga City', 'company204@example.com', '09170000204', NULL, NULL, NULL, 'PCAB-61739', 'A', '2026-12-31', 'BP-204', 'Zamboanga', '2026-01-01', 'TIN-204', 'dti_cert.jpg', 'approved', '2025-09-23 07:49:09', NULL, 41, '2025-09-21 07:49:09', '2025-12-16 08:41:07'),
-(1791, 205, 'Main Construction Co 205', '2018-12-16', 7, 1, NULL, 'General Construction', 'Zamboanga City', 'company205@example.com', '09170000205', NULL, NULL, NULL, 'PCAB-32187', 'A', '2026-12-31', 'BP-205', 'Zamboanga', '2026-01-01', 'TIN-205', 'dti_cert.jpg', 'pending', NULL, NULL, 21, '2025-05-29 07:49:09', '2025-12-16 08:41:07'),
-(1792, 206, 'Main Construction Co 206', '1999-12-16', 26, 1, NULL, 'General Construction', 'Zamboanga City', 'company206@example.com', '09170000206', NULL, NULL, NULL, 'PCAB-75939', 'A', '2026-12-31', 'BP-206', 'Zamboanga', '2026-01-01', 'TIN-206', 'dti_cert.jpg', 'approved', '2025-11-17 07:49:09', NULL, 45, '2025-11-15 07:49:09', '2025-12-16 08:41:07'),
-(1793, 207, 'Main Construction Co 207', '2006-12-16', 19, 3, NULL, 'General Construction', 'Zamboanga City', 'company207@example.com', '09170000207', NULL, NULL, NULL, 'PCAB-51453', 'A', '2026-12-31', 'BP-207', 'Zamboanga', '2026-01-01', 'TIN-207', 'dti_cert.jpg', 'approved', '2025-04-18 07:49:09', NULL, 3, '2025-04-16 07:49:09', '2025-12-16 08:41:07'),
-(1794, 208, 'Main Construction Co 208', '2009-12-16', 16, 2, NULL, 'General Construction', 'Zamboanga City', 'company208@example.com', '09170000208', NULL, NULL, NULL, 'PCAB-13265', 'A', '2026-12-31', 'BP-208', 'Zamboanga', '2026-01-01', 'TIN-208', 'dti_cert.jpg', 'approved', '2025-12-10 07:49:09', NULL, 8, '2025-12-08 07:49:09', '2025-12-16 08:41:07'),
-(1795, 209, 'Main Construction Co 209', '2003-12-16', 22, 2, NULL, 'General Construction', 'Zamboanga City', 'company209@example.com', '09170000209', NULL, NULL, NULL, 'PCAB-91806', 'A', '2026-12-31', 'BP-209', 'Zamboanga', '2026-01-01', 'TIN-209', 'dti_cert.jpg', 'approved', '2025-07-17 07:49:09', NULL, 24, '2025-07-15 07:49:09', '2025-12-16 08:41:07'),
-(1796, 210, 'Main Construction Co 210', '2021-12-16', 4, 7, NULL, 'General Construction', 'Zamboanga City', 'company210@example.com', '09170000210', NULL, NULL, NULL, 'PCAB-69228', 'A', '2026-12-31', 'BP-210', 'Zamboanga', '2026-01-01', 'TIN-210', 'dti_cert.jpg', 'rejected', NULL, 'Permit expired.', 45, '2025-06-18 07:49:09', '2025-12-16 08:41:07'),
-(1797, 211, 'Main Construction Co 211', '2014-12-16', 11, 6, NULL, 'General Construction', 'Zamboanga City', 'company211@example.com', '09170000211', NULL, NULL, NULL, 'PCAB-52834', 'A', '2026-12-31', 'BP-211', 'Zamboanga', '2026-01-01', 'TIN-211', 'dti_cert.jpg', 'approved', '2025-10-14 07:49:09', NULL, 49, '2025-10-12 07:49:09', '2025-12-16 08:41:07'),
-(1798, 212, 'Main Construction Co 212', '2011-12-16', 14, 7, NULL, 'General Construction', 'Zamboanga City', 'company212@example.com', '09170000212', NULL, NULL, NULL, 'PCAB-70043', 'A', '2026-12-31', 'BP-212', 'Zamboanga', '2026-01-01', 'TIN-212', 'dti_cert.jpg', 'approved', '2025-02-18 07:49:09', NULL, 16, '2025-02-16 07:49:09', '2025-12-16 08:41:07'),
-(1799, 213, 'Main Construction Co 213', '2019-12-16', 6, 7, NULL, 'General Construction', 'Zamboanga City', 'company213@example.com', '09170000213', NULL, NULL, NULL, 'PCAB-34511', 'A', '2026-12-31', 'BP-213', 'Zamboanga', '2026-01-01', 'TIN-213', 'dti_cert.jpg', 'approved', '2025-05-19 07:49:09', NULL, 5, '2025-05-17 07:49:09', '2025-12-16 08:41:07'),
-(1800, 214, 'Main Construction Co 214', '2006-12-16', 19, 6, NULL, 'General Construction', 'Zamboanga City', 'company214@example.com', '09170000214', NULL, NULL, NULL, 'PCAB-56516', 'A', '2026-12-31', 'BP-214', 'Zamboanga', '2026-01-01', 'TIN-214', 'dti_cert.jpg', 'approved', '2025-06-20 07:49:09', NULL, 2, '2025-06-18 07:49:09', '2025-12-16 08:41:07'),
-(1801, 215, 'Main Construction Co 215', '2011-12-16', 14, 7, NULL, 'General Construction', 'Zamboanga City', 'company215@example.com', '09170000215', NULL, NULL, NULL, 'PCAB-75873', 'A', '2026-12-31', 'BP-215', 'Zamboanga', '2026-01-01', 'TIN-215', 'dti_cert.jpg', 'pending', NULL, NULL, 5, '2025-08-12 07:49:09', '2025-12-16 08:41:07'),
-(1802, 216, 'Main Construction Co 216', '2011-12-16', 14, 1, NULL, 'General Construction', 'Zamboanga City', 'company216@example.com', '09170000216', NULL, NULL, NULL, 'PCAB-62029', 'A', '2026-12-31', 'BP-216', 'Zamboanga', '2026-01-01', 'TIN-216', 'dti_cert.jpg', 'approved', '2025-04-13 07:49:09', NULL, 27, '2025-04-11 07:49:09', '2025-12-16 08:41:07'),
-(1803, 217, 'Main Construction Co 217', '1998-12-16', 27, 9, NULL, 'General Construction', 'Zamboanga City', 'company217@example.com', '09170000217', NULL, NULL, NULL, 'PCAB-27801', 'A', '2026-12-31', 'BP-217', 'Zamboanga', '2026-01-01', 'TIN-217', 'dti_cert.jpg', 'approved', '2025-01-16 07:49:09', NULL, 49, '2025-01-14 07:49:09', '2025-12-16 08:41:07'),
-(1804, 218, 'Main Construction Co 218', '2022-12-16', 3, 8, NULL, 'General Construction', 'Zamboanga City', 'company218@example.com', '09170000218', NULL, NULL, NULL, 'PCAB-45679', 'A', '2026-12-31', 'BP-218', 'Zamboanga', '2026-01-01', 'TIN-218', 'dti_cert.jpg', 'approved', '2025-06-07 07:49:09', NULL, 23, '2025-06-05 07:49:09', '2025-12-16 08:41:07'),
-(1805, 219, 'Main Construction Co 219', '2000-12-16', 25, 4, NULL, 'General Construction', 'Zamboanga City', 'company219@example.com', '09170000219', NULL, NULL, NULL, 'PCAB-73715', 'A', '2026-12-31', 'BP-219', 'Zamboanga', '2026-01-01', 'TIN-219', 'dti_cert.jpg', 'approved', '2025-03-11 07:49:09', NULL, 13, '2025-03-09 07:49:09', '2025-12-16 08:41:07'),
-(1806, 220, 'Main Construction Co 220', '2001-12-16', 24, 5, NULL, 'General Construction', 'Zamboanga City', 'company220@example.com', '09170000220', NULL, NULL, NULL, 'PCAB-16396', 'A', '2026-12-31', 'BP-220', 'Zamboanga', '2026-01-01', 'TIN-220', 'dti_cert.jpg', 'rejected', NULL, 'Permit expired.', 49, '2025-11-08 07:49:09', '2025-12-16 08:41:07'),
-(1807, 360, 'Rone Works', '2023-01-01', 2, 9, 'Gaming', 'Nothing', 'Nothing, Amparo, City of Butuan, 160200000 7000', 'shanehart100q1@gmail.com', '09926314071', NULL, NULL, NULL, '1231232', 'AA', '2025-12-31', '12124', 'Ajuy', '2025-12-31', '13123123', 'DTI_SEC/dAbCKi0N1cEfYwEtU0cQKlsCp1EoVCeh22H3ldvV.jpg', 'approved', '2025-12-16 08:22:15', NULL, 0, '2025-12-16 08:22:15', '2025-12-16 09:21:56'),
-(1808, 361, 'Krystal Services', '2023-01-31', 2, 5, NULL, 'Nothing', 'Sample, Humilog, Remedios T. Romualdez, Agusan Del Norte 2311', 'shanehart1001d@gmail.com', '09926314033', 'https://krystal.com', 'https://krystalservices.com', 'desc to', '123341212', 'AA', '2025-12-31', '1234423123', 'Aguinaldo', '2025-12-31', '1231231ss', 'DTI_SEC/ECDYAx9WeQj2kcVgICbYIdyf7lCE903hLfOZdvBN.jpg', 'approved', '2025-12-16 08:40:00', NULL, 0, '2025-12-16 08:40:00', '2025-12-16 20:49:54'),
-(1809, 372, 'test2', '2025-12-18', 5, 7, NULL, 'yes services here and there', 'Anywhere, Saluping, Tabuan-Lasa, Basilan 7000', 'slayvibe.info@gmail.com', '09360211157', NULL, NULL, NULL, '82919910181', 'AAAA', '2026-12-18', '01917291082', 'Zamboanga City', '2025-12-18', '0198237292772', 'DTI_SEC/41dcx0yqd7nbVQK36H34tylFRgZYKrCyF5vPasPU.jpg', 'approved', '0000-00-00 00:00:00', NULL, 0, '2025-12-17 13:58:50', '2025-12-18 15:00:59');
+INSERT INTO `contractors` (`contractor_id`, `user_id`, `company_name`, `company_start_date`, `years_of_experience`, `type_id`, `contractor_type_other`, `services_offered`, `business_address`, `company_email`, `company_phone`, `company_website`, `company_social_media`, `company_description`, `picab_number`, `picab_category`, `picab_expiration_date`, `business_permit_number`, `business_permit_city`, `business_permit_expiration`, `tin_business_reg_number`, `dti_sec_registration_photo`, `verification_status`, `verification_date`, `is_active`, `suspension_until`, `suspension_reason`, `deletion_reason`, `rejection_reason`, `completed_projects`, `created_at`, `updated_at`) VALUES
+(1687, 1, 'Main Construction Co 1', '2011-12-16', 14, 8, NULL, 'General Construction', 'Zamboanga City', 'company1@example.com', '09170000001', NULL, NULL, NULL, 'PCAB-23362', 'A', '2026-12-31', 'BP-1', 'Zamboanga', '2026-01-01', 'TIN-1', 'dti_cert.jpg', 'approved', '2025-08-01 07:49:09', 1, NULL, NULL, NULL, NULL, 5, '2025-07-30 07:49:09', '2025-12-16 08:41:07'),
+(1688, 2, 'Main Construction Co 2', '2000-12-16', 25, 5, NULL, 'General Construction', 'Zamboanga City', 'company2@example.com', '09170000002', NULL, NULL, NULL, 'PCAB-22358', 'A', '2026-12-31', 'BP-2', 'Zamboanga', '2026-01-01', 'TIN-2', 'dti_cert.jpg', 'approved', '2025-10-23 07:49:09', 1, NULL, NULL, NULL, NULL, 43, '2025-10-21 07:49:09', '2025-12-16 08:41:07'),
+(1689, 3, 'Main Construction Co 3', '2005-12-16', 20, 6, NULL, 'General Construction', 'Zamboanga City', 'company3@example.com', '09170000003', NULL, NULL, NULL, 'PCAB-11115', 'A', '2026-12-31', 'BP-3', 'Zamboanga', '2026-01-01', 'TIN-3', 'dti_cert.jpg', 'approved', '2024-12-19 07:49:09', 1, NULL, NULL, NULL, NULL, 28, '2024-12-17 07:49:09', '2025-12-16 08:41:07'),
+(1690, 4, 'Main Construction Co 4', '1998-12-16', 27, 4, NULL, 'General Construction', 'Zamboanga City', 'company4@example.com', '09170000004', NULL, NULL, NULL, 'PCAB-96931', 'A', '2026-12-31', 'BP-4', 'Zamboanga', '2026-01-01', 'TIN-4', 'dti_cert.jpg', 'approved', '2025-01-26 07:49:09', 1, NULL, NULL, NULL, NULL, 23, '2025-01-24 07:49:09', '2025-12-16 08:41:07'),
+(1691, 5, 'Main Construction Co 5', '2013-12-16', 12, 1, NULL, 'General Construction', 'Zamboanga City', 'company5@example.com', '09170000005', NULL, NULL, NULL, 'PCAB-75904', 'A', '2026-12-31', 'BP-5', 'Zamboanga', '2026-01-01', 'TIN-5', 'dti_cert.jpg', 'approved', NULL, 1, NULL, NULL, NULL, '', 4, '2025-02-19 07:49:09', '2025-12-16 08:41:07'),
+(1692, 6, 'Main Construction Co 6', '2014-12-16', 11, 9, NULL, 'General Construction', 'Zamboanga City', 'company6@example.com', '09170000006', NULL, NULL, NULL, 'PCAB-79857', 'A', '2026-12-31', 'BP-6', 'Zamboanga', '2026-01-01', 'TIN-6', 'dti_cert.jpg', 'approved', '2025-04-23 07:49:09', 1, NULL, NULL, NULL, NULL, 24, '2025-04-21 07:49:09', '2025-12-16 08:41:07'),
+(1693, 7, 'Main Construction Co 7', '2008-12-16', 17, 6, NULL, 'General Construction', 'Zamboanga City', 'company7@example.com', '09170000007', NULL, NULL, NULL, 'PCAB-39566', 'A', '2026-12-31', 'BP-7', 'Zamboanga', '2026-01-01', 'TIN-7', 'dti_cert.jpg', 'approved', '2025-11-27 07:49:09', 1, NULL, NULL, NULL, NULL, 38, '2025-11-25 07:49:09', '2025-12-16 08:41:07'),
+(1694, 8, 'Main Construction Co 8', '2003-12-16', 22, 7, NULL, 'General Construction', 'Zamboanga City', 'company8@example.com', '09170000008', NULL, NULL, NULL, 'PCAB-54580', 'A', '2026-12-31', 'BP-8', 'Zamboanga', '2026-01-01', 'TIN-8', 'dti_cert.jpg', 'approved', '2025-10-10 07:49:09', 1, NULL, NULL, NULL, NULL, 19, '2025-10-08 07:49:09', '2025-12-16 08:41:07'),
+(1695, 9, 'Main Construction Co 9', '1999-12-16', 26, 9, NULL, 'General Construction', 'Zamboanga City', 'company9@example.com', '09170000009', NULL, NULL, NULL, 'PCAB-34347', 'A', '2026-12-31', 'BP-9', 'Zamboanga', '2026-01-01', 'TIN-9', 'dti_cert.jpg', 'approved', '2025-03-28 07:49:09', 1, NULL, NULL, NULL, NULL, 47, '2025-03-26 07:49:09', '2025-12-16 08:41:07'),
+(1696, 10, 'Main Construction Co 10', '2018-12-16', 7, 6, NULL, 'General Construction', 'Zamboanga City', 'company10@example.com', '09170000010', NULL, NULL, NULL, 'PCAB-69751', 'A', '2026-12-31', 'BP-10', 'Zamboanga', '2026-01-01', 'TIN-10', 'dti_cert.jpg', 'rejected', NULL, 1, NULL, NULL, NULL, 'Permit expired.', 37, '2025-09-23 07:49:09', '2025-12-16 08:41:07'),
+(1697, 11, 'Main Construction Co 11', '2010-12-16', 15, 9, NULL, 'General Construction', 'Zamboanga City', 'company11@example.com', '09170000011', NULL, NULL, NULL, 'PCAB-70939', 'A', '2026-12-31', 'BP-11', 'Zamboanga', '2026-01-01', 'TIN-11', 'dti_cert.jpg', 'approved', '2025-05-12 07:49:09', 1, NULL, NULL, NULL, NULL, 20, '2025-05-10 07:49:09', '2025-12-16 08:41:07'),
+(1698, 12, 'Main Construction Co 12', '2003-12-16', 22, 1, NULL, 'General Construction', 'Zamboanga City', 'company12@example.com', '09170000012', NULL, NULL, NULL, 'PCAB-10680', 'A', '2026-12-31', 'BP-12', 'Zamboanga', '2026-01-01', 'TIN-12', 'dti_cert.jpg', 'approved', '2025-09-11 07:49:09', 1, NULL, NULL, NULL, NULL, 38, '2025-09-09 07:49:09', '2025-12-16 08:41:07'),
+(1699, 13, 'Main Construction Co 13', '2021-12-16', 4, 1, NULL, 'General Construction', 'Zamboanga City', 'company13@example.com', '09170000013', NULL, NULL, NULL, 'PCAB-10739', 'A', '2026-12-31', 'BP-13', 'Zamboanga', '2026-01-01', 'TIN-13', 'dti_cert.jpg', 'approved', '2025-07-08 07:49:09', 1, NULL, NULL, NULL, NULL, 18, '2025-07-06 07:49:09', '2025-12-16 08:41:07'),
+(1700, 14, 'Main Construction Co 14', '2012-12-16', 13, 4, NULL, 'General Construction', 'Zamboanga City', 'company14@example.com', '09170000014', NULL, NULL, NULL, 'PCAB-81118', 'A', '2026-12-31', 'BP-14', 'Zamboanga', '2026-01-01', 'TIN-14', 'dti_cert.jpg', 'approved', '2025-02-22 07:49:09', 1, NULL, NULL, NULL, NULL, 11, '2025-02-20 07:49:09', '2025-12-16 08:41:07'),
+(1701, 15, 'Main Construction Co 15', '2003-12-16', 22, 5, NULL, 'General Construction', 'Zamboanga City', 'company15@example.com', '09170000015', NULL, NULL, NULL, 'PCAB-66597', 'A', '2026-12-31', 'BP-15', 'Zamboanga', '2026-01-01', 'TIN-15', 'dti_cert.jpg', 'approved', NULL, 1, NULL, NULL, NULL, '', 12, '2025-01-08 07:49:09', '2025-12-17 14:57:33'),
+(1702, 16, 'Main Construction Co 16', '2012-12-16', 13, 2, NULL, 'General Construction', 'Zamboanga City', 'company16@example.com', '09170000016', NULL, NULL, NULL, 'PCAB-19082', 'A', '2026-12-31', 'BP-16', 'Zamboanga', '2026-01-01', 'TIN-16', 'dti_cert.jpg', 'approved', '2025-05-17 07:49:09', 1, NULL, NULL, NULL, NULL, 25, '2025-05-15 07:49:09', '2025-12-16 08:41:07'),
+(1703, 17, 'Main Construction Co 17', '2000-12-16', 25, 5, NULL, 'General Construction', 'Zamboanga City', 'company17@example.com', '09170000017', NULL, NULL, NULL, 'PCAB-77703', 'A', '2026-12-31', 'BP-17', 'Zamboanga', '2026-01-01', 'TIN-17', 'dti_cert.jpg', 'approved', '2025-05-01 07:49:09', 1, NULL, NULL, NULL, NULL, 12, '2025-04-29 07:49:09', '2025-12-16 08:41:07'),
+(1704, 18, 'Main Construction Co 18', '1996-12-16', 29, 2, NULL, 'General Construction', 'Zamboanga City', 'company18@example.com', '09170000018', NULL, NULL, NULL, 'PCAB-36965', 'A', '2026-12-31', 'BP-18', 'Zamboanga', '2026-01-01', 'TIN-18', 'dti_cert.jpg', 'approved', '2025-01-06 07:49:09', 1, NULL, NULL, NULL, NULL, 9, '2025-01-04 07:49:09', '2025-12-16 08:41:07'),
+(1705, 19, 'Main Construction Co 19', '2016-12-16', 9, 2, NULL, 'General Construction', 'Zamboanga City', 'company19@example.com', '09170000019', NULL, NULL, NULL, 'PCAB-34306', 'A', '2026-12-31', 'BP-19', 'Zamboanga', '2026-01-01', 'TIN-19', 'dti_cert.jpg', 'approved', '2025-05-31 07:49:09', 1, NULL, NULL, NULL, NULL, 28, '2025-05-29 07:49:09', '2025-12-16 08:41:07'),
+(1706, 20, 'Main Construction Co 20', '2006-12-16', 19, 3, NULL, 'General Construction', 'Zamboanga City', 'company20@example.com', '09170000020', NULL, NULL, NULL, 'PCAB-67093', 'A', '2026-12-31', 'BP-20', 'Zamboanga', '2026-01-01', 'TIN-20', 'dti_cert.jpg', 'rejected', NULL, 1, NULL, NULL, NULL, 'Permit expired.', 6, '2025-10-18 07:49:09', '2025-12-16 08:41:07'),
+(1707, 21, 'Main Construction Co 21', '2019-12-16', 6, 2, NULL, 'General Construction', 'Zamboanga City', 'company21@example.com', '09170000021', NULL, NULL, NULL, 'PCAB-39542', 'A', '2026-12-31', 'BP-21', 'Zamboanga', '2026-01-01', 'TIN-21', 'dti_cert.jpg', 'approved', '2025-01-24 07:49:09', 1, NULL, NULL, NULL, NULL, 10, '2025-01-22 07:49:09', '2025-12-16 08:41:07'),
+(1708, 22, 'Main Construction Co 22', '2024-12-16', 1, 3, NULL, 'General Construction', 'Zamboanga City', 'company22@example.com', '09170000022', NULL, NULL, NULL, 'PCAB-34168', 'A', '2026-12-31', 'BP-22', 'Zamboanga', '2026-01-01', 'TIN-22', 'dti_cert.jpg', 'approved', '2025-10-18 07:49:09', 1, NULL, NULL, NULL, NULL, 11, '2025-10-16 07:49:09', '2025-12-16 08:41:07'),
+(1709, 23, 'Main Construction Co 23', '2008-12-16', 17, 6, NULL, 'General Construction', 'Zamboanga City', 'company23@example.com', '09170000023', NULL, NULL, NULL, 'PCAB-42469', 'A', '2026-12-31', 'BP-23', 'Zamboanga', '2026-01-01', 'TIN-23', 'dti_cert.jpg', 'approved', '2025-03-18 07:49:09', 1, NULL, NULL, NULL, NULL, 15, '2025-03-16 07:49:09', '2025-12-16 08:41:07'),
+(1710, 24, 'Main Construction Co 24', '2002-12-16', 23, 5, NULL, 'General Construction', 'Zamboanga City', 'company24@example.com', '09170000024', NULL, NULL, NULL, 'PCAB-46764', 'A', '2026-12-31', 'BP-24', 'Zamboanga', '2026-01-01', 'TIN-24', 'dti_cert.jpg', 'approved', '2025-08-27 07:49:09', 1, NULL, NULL, NULL, NULL, 32, '2025-08-25 07:49:09', '2025-12-16 08:41:07'),
+(1711, 25, 'Main Construction Co 25', '2021-12-16', 4, 1, NULL, 'General Construction', 'Zamboanga City', 'company25@example.com', '09170000025', NULL, NULL, NULL, 'PCAB-57726', 'A', '2026-12-31', 'BP-25', 'Zamboanga', '2026-01-01', 'TIN-25', 'dti_cert.jpg', 'pending', NULL, 1, NULL, NULL, NULL, NULL, 48, '2025-05-01 07:49:09', '2025-12-16 08:41:07'),
+(1712, 26, 'Main Construction Co 26', '2017-12-16', 8, 2, NULL, 'General Construction', 'Zamboanga City', 'company26@example.com', '09170000026', NULL, NULL, NULL, 'PCAB-45837', 'A', '2026-12-31', 'BP-26', 'Zamboanga', '2026-01-01', 'TIN-26', 'dti_cert.jpg', 'approved', '2025-08-16 07:49:09', 1, NULL, NULL, NULL, NULL, 6, '2025-08-14 07:49:09', '2025-12-16 08:41:07'),
+(1713, 27, 'Main Construction Co 27', '1998-12-16', 27, 5, NULL, 'General Construction', 'Zamboanga City', 'company27@example.com', '09170000027', NULL, NULL, NULL, 'PCAB-36243', 'A', '2026-12-31', 'BP-27', 'Zamboanga', '2026-01-01', 'TIN-27', 'dti_cert.jpg', 'approved', '2025-11-08 07:49:09', 1, NULL, NULL, NULL, NULL, 21, '2025-11-06 07:49:09', '2025-12-16 08:41:07'),
+(1714, 28, 'Main Construction Co 28', '2003-12-16', 22, 8, NULL, 'General Construction', 'Zamboanga City', 'company28@example.com', '09170000028', NULL, NULL, NULL, 'PCAB-96216', 'A', '2026-12-31', 'BP-28', 'Zamboanga', '2026-01-01', 'TIN-28', 'dti_cert.jpg', 'approved', '2025-05-03 07:49:09', 1, NULL, NULL, NULL, NULL, 21, '2025-05-01 07:49:09', '2025-12-16 08:41:07'),
+(1715, 29, 'Main Construction Co 29', '1997-12-16', 28, 8, NULL, 'General Construction', 'Zamboanga City', 'company29@example.com', '09170000029', NULL, NULL, NULL, 'PCAB-84101', 'A', '2026-12-31', 'BP-29', 'Zamboanga', '2026-01-01', 'TIN-29', 'dti_cert.jpg', 'approved', '2025-07-21 07:49:09', 1, NULL, NULL, NULL, NULL, 19, '2025-07-19 07:49:09', '2025-12-16 08:41:07'),
+(1716, 30, 'Main Construction Co 30', '2010-12-16', 15, 6, NULL, 'General Construction', 'Zamboanga City', 'company30@example.com', '09170000030', NULL, NULL, NULL, 'PCAB-57206', 'A', '2026-12-31', 'BP-30', 'Zamboanga', '2026-01-01', 'TIN-30', 'dti_cert.jpg', 'rejected', NULL, 1, NULL, NULL, NULL, 'Permit expired.', 20, '2025-05-24 07:49:09', '2025-12-16 08:41:07'),
+(1717, 31, 'Main Construction Co 31', '2006-12-16', 19, 2, NULL, 'General Construction', 'Zamboanga City', 'company31@example.com', '09170000031', NULL, NULL, NULL, 'PCAB-68035', 'A', '2026-12-31', 'BP-31', 'Zamboanga', '2026-01-01', 'TIN-31', 'dti_cert.jpg', 'approved', '2025-11-10 07:49:09', 1, NULL, NULL, NULL, NULL, 42, '2025-11-08 07:49:09', '2025-12-16 08:41:07'),
+(1718, 32, 'Main Construction Co 32', '2006-12-16', 19, 4, NULL, 'General Construction', 'Zamboanga City', 'company32@example.com', '09170000032', NULL, NULL, NULL, 'PCAB-72477', 'A', '2026-12-31', 'BP-32', 'Zamboanga', '2026-01-01', 'TIN-32', 'dti_cert.jpg', 'approved', '2025-10-01 07:49:09', 1, NULL, NULL, NULL, NULL, 21, '2025-09-29 07:49:09', '2025-12-16 08:41:07'),
+(1719, 33, 'Main Construction Co 33', '2017-12-16', 8, 6, NULL, 'General Construction', 'Zamboanga City', 'company33@example.com', '09170000033', NULL, NULL, NULL, 'PCAB-44442', 'A', '2026-12-31', 'BP-33', 'Zamboanga', '2026-01-01', 'TIN-33', 'dti_cert.jpg', 'approved', '2025-02-06 07:49:09', 1, NULL, NULL, NULL, NULL, 1, '2025-02-04 07:49:09', '2025-12-16 08:41:07'),
+(1720, 34, 'Main Construction Co 34', '2012-12-16', 13, 6, NULL, 'General Construction', 'Zamboanga City', 'company34@example.com', '09170000034', NULL, NULL, NULL, 'PCAB-88849', 'A', '2026-12-31', 'BP-34', 'Zamboanga', '2026-01-01', 'TIN-34', 'dti_cert.jpg', 'approved', '2025-08-20 07:49:09', 1, NULL, NULL, NULL, NULL, 8, '2025-08-18 07:49:09', '2025-12-16 08:41:07'),
+(1721, 35, 'Main Construction Co 35', '2015-12-16', 10, 1, NULL, 'General Construction', 'Zamboanga City', 'company35@example.com', '09170000035', NULL, NULL, NULL, 'PCAB-23798', 'A', '2026-12-31', 'BP-35', 'Zamboanga', '2026-01-01', 'TIN-35', 'dti_cert.jpg', 'pending', NULL, 1, NULL, NULL, NULL, NULL, 42, '2025-04-22 07:49:09', '2025-12-16 08:41:07'),
+(1722, 36, 'Main Construction Co 36', '2012-12-16', 13, 8, NULL, 'General Construction', 'Zamboanga City', 'company36@example.com', '09170000036', NULL, NULL, NULL, 'PCAB-33648', 'A', '2026-12-31', 'BP-36', 'Zamboanga', '2026-01-01', 'TIN-36', 'dti_cert.jpg', 'approved', '2025-09-24 07:49:09', 1, NULL, NULL, NULL, NULL, 44, '2025-09-22 07:49:09', '2025-12-16 08:41:07'),
+(1723, 37, 'Main Construction Co 37', '2024-12-16', 1, 2, NULL, 'General Construction', 'Zamboanga City', 'company37@example.com', '09170000037', NULL, NULL, NULL, 'PCAB-32151', 'A', '2026-12-31', 'BP-37', 'Zamboanga', '2026-01-01', 'TIN-37', 'dti_cert.jpg', 'approved', '2025-05-12 07:49:09', 1, NULL, NULL, NULL, NULL, 22, '2025-05-10 07:49:09', '2025-12-16 08:41:07'),
+(1724, 38, 'Main Construction Co 38', '1997-12-16', 28, 7, NULL, 'General Construction', 'Zamboanga City', 'company38@example.com', '09170000038', NULL, NULL, NULL, 'PCAB-53613', 'A', '2026-12-31', 'BP-38', 'Zamboanga', '2026-01-01', 'TIN-38', 'dti_cert.jpg', 'approved', '2025-02-10 07:49:09', 1, NULL, NULL, NULL, NULL, 27, '2025-02-08 07:49:09', '2025-12-16 08:41:07'),
+(1725, 39, 'Main Construction Co 39', '2009-12-16', 16, 8, NULL, 'General Construction', 'Zamboanga City', 'company39@example.com', '09170000039', NULL, NULL, NULL, 'PCAB-85450', 'A', '2026-12-31', 'BP-39', 'Zamboanga', '2026-01-01', 'TIN-39', 'dti_cert.jpg', 'approved', '2025-07-23 07:49:09', 1, NULL, NULL, NULL, NULL, 42, '2025-07-21 07:49:09', '2025-12-16 08:41:07'),
+(1726, 40, 'Main Construction Co 40', '2001-12-16', 24, 6, NULL, 'General Construction', 'Zamboanga City', 'company40@example.com', '09170000040', NULL, NULL, NULL, 'PCAB-48462', 'A', '2026-12-31', 'BP-40', 'Zamboanga', '2026-01-01', 'TIN-40', 'dti_cert.jpg', 'rejected', NULL, 1, NULL, NULL, NULL, 'Permit expired.', 11, '2025-02-04 07:49:09', '2025-12-16 08:41:07'),
+(1727, 41, 'Main Construction Co 41', '2011-12-16', 14, 9, NULL, 'General Construction', 'Zamboanga City', 'company41@example.com', '09170000041', NULL, NULL, NULL, 'PCAB-67854', 'A', '2026-12-31', 'BP-41', 'Zamboanga', '2026-01-01', 'TIN-41', 'dti_cert.jpg', 'approved', '2025-02-10 07:49:09', 1, NULL, NULL, NULL, NULL, 25, '2025-02-08 07:49:09', '2025-12-16 08:41:07'),
+(1728, 42, 'Main Construction Co 42', '1999-12-16', 26, 9, NULL, 'General Construction', 'Zamboanga City', 'company42@example.com', '09170000042', NULL, NULL, NULL, 'PCAB-91907', 'A', '2026-12-31', 'BP-42', 'Zamboanga', '2026-01-01', 'TIN-42', 'dti_cert.jpg', 'approved', '2025-06-04 07:49:09', 1, NULL, NULL, NULL, NULL, 19, '2025-06-02 07:49:09', '2025-12-16 08:41:07'),
+(1729, 43, 'Main Construction Co 43', '1999-12-16', 26, 3, NULL, 'General Construction', 'Zamboanga City', 'company43@example.com', '09170000043', NULL, NULL, NULL, 'PCAB-33148', 'A', '2026-12-31', 'BP-43', 'Zamboanga', '2026-01-01', 'TIN-43', 'dti_cert.jpg', 'approved', '2025-05-23 07:49:09', 1, NULL, NULL, NULL, NULL, 31, '2025-05-21 07:49:09', '2025-12-16 08:41:07'),
+(1730, 44, 'Main Construction Co 44', '2002-12-16', 23, 6, NULL, 'General Construction', 'Zamboanga City', 'company44@example.com', '09170000044', NULL, NULL, NULL, 'PCAB-27263', 'A', '2026-12-31', 'BP-44', 'Zamboanga', '2026-01-01', 'TIN-44', 'dti_cert.jpg', 'approved', '2025-06-30 07:49:09', 1, NULL, NULL, NULL, NULL, 7, '2025-06-28 07:49:09', '2025-12-16 08:41:07'),
+(1731, 45, 'Main Construction Co 45', '2018-12-16', 7, 9, NULL, 'General Construction', 'Zamboanga City', 'company45@example.com', '09170000045', NULL, NULL, NULL, 'PCAB-35372', 'A', '2026-12-31', 'BP-45', 'Zamboanga', '2026-01-01', 'TIN-45', 'dti_cert.jpg', 'pending', NULL, 1, NULL, NULL, NULL, NULL, 12, '2025-04-02 07:49:09', '2025-12-16 08:41:07'),
+(1732, 46, 'Main Construction Co 46', '1999-12-16', 26, 6, NULL, 'General Construction', 'Zamboanga City', 'company46@example.com', '09170000046', NULL, NULL, NULL, 'PCAB-88247', 'A', '2026-12-31', 'BP-46', 'Zamboanga', '2026-01-01', 'TIN-46', 'dti_cert.jpg', 'approved', '2025-08-08 07:49:09', 1, NULL, NULL, NULL, NULL, 1, '2025-08-06 07:49:09', '2025-12-16 08:41:07'),
+(1733, 47, 'Main Construction Co 47', '2006-12-16', 19, 3, NULL, 'General Construction', 'Zamboanga City', 'company47@example.com', '09170000047', NULL, NULL, NULL, 'PCAB-60406', 'A', '2026-12-31', 'BP-47', 'Zamboanga', '2026-01-01', 'TIN-47', 'dti_cert.jpg', 'approved', '2025-07-14 07:49:09', 1, NULL, NULL, NULL, NULL, 37, '2025-07-12 07:49:09', '2025-12-16 08:41:07'),
+(1734, 48, 'Main Construction Co 48', '2007-12-16', 18, 2, NULL, 'General Construction', 'Zamboanga City', 'company48@example.com', '09170000048', NULL, NULL, NULL, 'PCAB-21775', 'A', '2026-12-31', 'BP-48', 'Zamboanga', '2026-01-01', 'TIN-48', 'dti_cert.jpg', 'approved', '2025-06-17 07:49:09', 1, NULL, NULL, NULL, NULL, 10, '2025-06-15 07:49:09', '2025-12-16 08:41:07'),
+(1735, 49, 'Main Construction Co 49', '1996-12-16', 29, 2, NULL, 'General Construction', 'Sample, Cahayagan, Carmen, Agusan Del Norte 2311', 'company49@example.com', '09170000049', NULL, NULL, NULL, 'PCAB-80787', 'A', '2026-12-31', 'BP-49', 'Agutaya', '2026-01-01', 'TIN-49', 'dti_cert.jpg', 'approved', '2025-12-14 07:49:09', 1, NULL, NULL, NULL, NULL, 4, '2025-12-12 07:49:09', '2025-12-16 09:56:43'),
+(1736, 50, 'Main Construction Co 50', '2023-12-16', 2, 3, NULL, 'General Construction', 'Zamboanga City', 'company50@example.com', '09170000050', NULL, NULL, NULL, 'PCAB-46129', 'A', '2026-12-31', 'BP-50', 'Zamboanga', '2026-01-01', 'TIN-50', 'dti_cert.jpg', 'rejected', NULL, 1, NULL, NULL, NULL, 'Permit expired.', 47, '2025-08-24 07:49:09', '2025-12-16 08:41:07'),
+(1737, 51, 'Main Construction Co 51', '2014-12-16', 11, 3, NULL, 'General Construction', 'Zamboanga City', 'company51@example.com', '09170000051', NULL, NULL, NULL, 'PCAB-85340', 'A', '2026-12-31', 'BP-51', 'Zamboanga', '2026-01-01', 'TIN-51', 'dti_cert.jpg', 'approved', '2025-09-19 07:49:09', 1, NULL, NULL, NULL, NULL, 3, '2025-09-17 07:49:09', '2025-12-16 08:41:07'),
+(1738, 52, 'Main Construction Co 52', '2006-12-16', 19, 1, NULL, 'General Construction', 'Zamboanga City', 'company52@example.com', '09170000052', NULL, NULL, NULL, 'PCAB-78141', 'A', '2026-12-31', 'BP-52', 'Zamboanga', '2026-01-01', 'TIN-52', 'dti_cert.jpg', 'approved', '2025-08-29 07:49:09', 1, NULL, NULL, NULL, NULL, 46, '2025-08-27 07:49:09', '2025-12-16 08:41:07'),
+(1739, 53, 'Main Construction Co 53', '2022-12-16', 3, 6, NULL, 'General Construction', 'Zamboanga City', 'company53@example.com', '09170000053', NULL, NULL, NULL, 'PCAB-34145', 'A', '2026-12-31', 'BP-53', 'Zamboanga', '2026-01-01', 'TIN-53', 'dti_cert.jpg', 'approved', '2025-11-12 07:49:09', 1, NULL, NULL, NULL, NULL, 30, '2025-11-10 07:49:09', '2025-12-16 08:41:07'),
+(1740, 54, 'Main Construction Co 54', '2006-12-16', 19, 2, NULL, 'General Construction', 'Zamboanga City', 'company54@example.com', '09170000054', NULL, NULL, NULL, 'PCAB-32105', 'A', '2026-12-31', 'BP-54', 'Zamboanga', '2026-01-01', 'TIN-54', 'dti_cert.jpg', 'approved', '2025-01-15 07:49:09', 1, NULL, NULL, NULL, NULL, 38, '2025-01-13 07:49:09', '2025-12-16 08:41:07'),
+(1741, 55, 'Main Construction Co 55', '2002-12-16', 23, 6, NULL, 'General Construction', 'Zamboanga City', 'company55@example.com', '09170000055', NULL, NULL, NULL, 'PCAB-36431', 'A', '2026-12-31', 'BP-55', 'Zamboanga', '2026-01-01', 'TIN-55', 'dti_cert.jpg', 'pending', NULL, 1, NULL, NULL, NULL, NULL, 0, '2025-06-01 07:49:09', '2025-12-16 08:41:07'),
+(1742, 56, 'Main Construction Co 56', '1997-12-16', 28, 3, NULL, 'General Construction', 'Zamboanga City', 'company56@example.com', '09170000056', NULL, NULL, NULL, 'PCAB-82813', 'A', '2026-12-31', 'BP-56', 'Zamboanga', '2026-01-01', 'TIN-56', 'dti_cert.jpg', 'approved', '2025-03-16 07:49:09', 1, NULL, NULL, NULL, NULL, 38, '2025-03-14 07:49:09', '2025-12-16 08:41:07'),
+(1743, 57, 'Main Construction Co 57', '2013-12-16', 12, 1, NULL, 'General Construction', 'Zamboanga City', 'company57@example.com', '09170000057', NULL, NULL, NULL, 'PCAB-72710', 'A', '2026-12-31', 'BP-57', 'Zamboanga', '2026-01-01', 'TIN-57', 'dti_cert.jpg', 'approved', '2025-03-27 07:49:09', 1, NULL, NULL, NULL, NULL, 12, '2025-03-25 07:49:09', '2025-12-16 08:41:07'),
+(1744, 58, 'Main Construction Co 58', '2019-12-16', 6, 8, NULL, 'General Construction', 'Zamboanga City', 'company58@example.com', '09170000058', NULL, NULL, NULL, 'PCAB-34834', 'A', '2026-12-31', 'BP-58', 'Zamboanga', '2026-01-01', 'TIN-58', 'dti_cert.jpg', 'approved', '2025-01-25 07:49:09', 1, NULL, NULL, NULL, NULL, 9, '2025-01-23 07:49:09', '2025-12-16 08:41:07'),
+(1745, 59, 'Main Construction Co 59', '2004-12-16', 21, 6, NULL, 'General Construction', 'Zamboanga City', 'company59@example.com', '09170000059', NULL, NULL, NULL, 'PCAB-19251', 'A', '2026-12-31', 'BP-59', 'Zamboanga', '2026-01-01', 'TIN-59', 'dti_cert.jpg', 'approved', '2025-06-12 07:49:09', 1, NULL, NULL, NULL, NULL, 44, '2025-06-10 07:49:09', '2025-12-16 08:41:07'),
+(1746, 60, 'Main Construction Co 60', '1996-12-16', 29, 4, NULL, 'General Construction', 'Zamboanga City', 'company60@example.com', '09170000060', NULL, NULL, NULL, 'PCAB-71914', 'A', '2026-12-31', 'BP-60', 'Zamboanga', '2026-01-01', 'TIN-60', 'dti_cert.jpg', 'rejected', NULL, 1, NULL, NULL, NULL, 'Permit expired.', 46, '2025-10-15 07:49:09', '2025-12-16 08:41:07'),
+(1747, 61, 'Main Construction Co 61', '2005-12-16', 20, 3, NULL, 'General Construction', 'Zamboanga City', 'company61@example.com', '09170000061', NULL, NULL, NULL, 'PCAB-15554', 'A', '2026-12-31', 'BP-61', 'Zamboanga', '2026-01-01', 'TIN-61', 'dti_cert.jpg', 'approved', '2024-12-25 07:49:09', 1, NULL, NULL, NULL, NULL, 15, '2024-12-23 07:49:09', '2025-12-16 08:41:07'),
+(1748, 62, 'Main Construction Co 62', '2013-12-16', 12, 7, NULL, 'General Construction', 'Zamboanga City', 'company62@example.com', '09170000062', NULL, NULL, NULL, 'PCAB-84279', 'A', '2026-12-31', 'BP-62', 'Zamboanga', '2026-01-01', 'TIN-62', 'dti_cert.jpg', 'approved', '2025-01-18 07:49:09', 1, NULL, NULL, NULL, NULL, 1, '2025-01-16 07:49:09', '2025-12-16 08:41:07'),
+(1749, 63, 'Main Construction Co 63', '1997-12-16', 28, 4, NULL, 'General Construction', 'Zamboanga City', 'company63@example.com', '09170000063', NULL, NULL, NULL, 'PCAB-24967', 'A', '2026-12-31', 'BP-63', 'Zamboanga', '2026-01-01', 'TIN-63', 'dti_cert.jpg', 'approved', '2025-03-29 07:49:09', 1, NULL, NULL, NULL, NULL, 2, '2025-03-27 07:49:09', '2025-12-16 08:41:07'),
+(1750, 64, 'Main Construction Co 64', '2010-12-16', 15, 5, NULL, 'General Construction', 'Zamboanga City', 'company64@example.com', '09170000064', NULL, NULL, NULL, 'PCAB-42118', 'A', '2026-12-31', 'BP-64', 'Zamboanga', '2026-01-01', 'TIN-64', 'dti_cert.jpg', 'approved', '2025-08-21 07:49:09', 1, NULL, NULL, NULL, NULL, 7, '2025-08-19 07:49:09', '2025-12-16 08:41:07'),
+(1751, 65, 'Main Construction Co 65', '2005-12-16', 20, 1, NULL, 'General Construction', 'Zamboanga City', 'company65@example.com', '09170000065', NULL, NULL, NULL, 'PCAB-11349', 'A', '2026-12-31', 'BP-65', 'Zamboanga', '2026-01-01', 'TIN-65', 'dti_cert.jpg', 'pending', NULL, 1, NULL, NULL, NULL, NULL, 10, '2025-01-05 07:49:09', '2025-12-16 08:41:07'),
+(1752, 66, 'Main Construction Co 66', '2002-12-16', 23, 9, NULL, 'General Construction', 'Zamboanga City', 'company66@example.com', '09170000066', NULL, NULL, NULL, 'PCAB-91407', 'A', '2026-12-31', 'BP-66', 'Zamboanga', '2026-01-01', 'TIN-66', 'dti_cert.jpg', 'approved', '2025-10-21 07:49:09', 1, NULL, NULL, NULL, NULL, 18, '2025-10-19 07:49:09', '2025-12-16 08:41:07'),
+(1753, 67, 'Main Construction Co 67', '1999-12-16', 26, 3, NULL, 'General Construction', 'Zamboanga City', 'company67@example.com', '09170000067', NULL, NULL, NULL, 'PCAB-58294', 'A', '2026-12-31', 'BP-67', 'Zamboanga', '2026-01-01', 'TIN-67', 'dti_cert.jpg', 'approved', '2025-01-01 07:49:09', 1, NULL, NULL, NULL, NULL, 13, '2024-12-30 07:49:09', '2025-12-16 08:41:07'),
+(1754, 68, 'Main Construction Co 68', '1997-12-16', 28, 8, NULL, 'General Construction', 'Zamboanga City', 'company68@example.com', '09170000068', NULL, NULL, NULL, 'PCAB-21255', 'A', '2026-12-31', 'BP-68', 'Zamboanga', '2026-01-01', 'TIN-68', 'dti_cert.jpg', 'approved', '2025-06-26 07:49:09', 1, NULL, NULL, NULL, NULL, 8, '2025-06-24 07:49:09', '2025-12-16 08:41:07'),
+(1755, 69, 'Main Construction Co 69', '2021-12-16', 4, 1, NULL, 'General Construction', 'Zamboanga City', 'company69@example.com', '09170000069', NULL, NULL, NULL, 'PCAB-67993', 'A', '2026-12-31', 'BP-69', 'Zamboanga', '2026-01-01', 'TIN-69', 'dti_cert.jpg', 'approved', '2025-03-18 07:49:09', 1, NULL, NULL, NULL, NULL, 48, '2025-03-16 07:49:09', '2025-12-16 08:41:07'),
+(1756, 70, 'Main Construction Co 70', '2000-12-16', 25, 9, NULL, 'General Construction', 'Zamboanga City', 'company70@example.com', '09170000070', NULL, NULL, NULL, 'PCAB-28285', 'A', '2026-12-31', 'BP-70', 'Zamboanga', '2026-01-01', 'TIN-70', 'dti_cert.jpg', 'rejected', NULL, 1, NULL, NULL, NULL, 'Permit expired.', 2, '2025-07-27 07:49:09', '2025-12-16 08:41:07'),
+(1757, 71, 'Main Construction Co 71', '2003-12-16', 22, 6, NULL, 'General Construction', 'Zamboanga City', 'company71@example.com', '09170000071', NULL, NULL, NULL, 'PCAB-42832', 'A', '2026-12-31', 'BP-71', 'Zamboanga', '2026-01-01', 'TIN-71', 'dti_cert.jpg', 'approved', '2025-07-26 07:49:09', 1, NULL, NULL, NULL, NULL, 12, '2025-07-24 07:49:09', '2025-12-16 08:41:07'),
+(1758, 72, 'Main Construction Co 72', '2019-12-16', 6, 7, NULL, 'General Construction', 'Zamboanga City', 'company72@example.com', '09170000072', NULL, NULL, NULL, 'PCAB-52638', 'A', '2026-12-31', 'BP-72', 'Zamboanga', '2026-01-01', 'TIN-72', 'dti_cert.jpg', 'approved', '2025-04-28 07:49:09', 1, NULL, NULL, NULL, NULL, 31, '2025-04-26 07:49:09', '2025-12-16 08:41:07'),
+(1759, 73, 'Main Construction Co 73', '2004-12-16', 21, 1, NULL, 'General Construction', 'Zamboanga City', 'company73@example.com', '09170000073', NULL, NULL, NULL, 'PCAB-28803', 'A', '2026-12-31', 'BP-73', 'Zamboanga', '2026-01-01', 'TIN-73', 'dti_cert.jpg', 'approved', '2025-02-23 07:49:09', 1, NULL, NULL, NULL, NULL, 9, '2025-02-21 07:49:09', '2025-12-16 08:41:07'),
+(1760, 74, 'Main Construction Co 74', '1997-12-16', 28, 3, NULL, 'General Construction', 'Zamboanga City', 'company74@example.com', '09170000074', NULL, NULL, NULL, 'PCAB-70844', 'A', '2026-12-31', 'BP-74', 'Zamboanga', '2026-01-01', 'TIN-74', 'dti_cert.jpg', 'approved', '2025-01-31 07:49:09', 1, NULL, NULL, NULL, NULL, 18, '2025-01-29 07:49:09', '2025-12-16 08:41:07'),
+(1761, 75, 'Main Construction Co 75', '2007-12-16', 18, 6, NULL, 'General Construction', 'Zamboanga City', 'company75@example.com', '09170000075', NULL, NULL, NULL, 'PCAB-56597', 'A', '2026-12-31', 'BP-75', 'Zamboanga', '2026-01-01', 'TIN-75', 'dti_cert.jpg', 'pending', NULL, 1, NULL, NULL, NULL, NULL, 35, '2025-11-17 07:49:09', '2025-12-16 08:41:07'),
+(1762, 76, 'Main Construction Co 76', '2020-12-16', 5, 3, NULL, 'General Construction', 'Zamboanga City', 'company76@example.com', '09170000076', NULL, NULL, NULL, 'PCAB-73540', 'A', '2026-12-31', 'BP-76', 'Zamboanga', '2026-01-01', 'TIN-76', 'dti_cert.jpg', 'approved', '2025-10-07 07:49:09', 1, NULL, NULL, NULL, NULL, 26, '2025-10-05 07:49:09', '2025-12-16 08:41:07'),
+(1763, 77, 'Main Construction Co 77', '1995-12-16', 30, 8, NULL, 'General Construction', 'Zamboanga City', 'company77@example.com', '09170000077', NULL, NULL, NULL, 'PCAB-30352', 'A', '2026-12-31', 'BP-77', 'Zamboanga', '2026-01-01', 'TIN-77', 'dti_cert.jpg', 'approved', '2025-04-13 07:49:09', 1, NULL, NULL, NULL, NULL, 33, '2025-04-11 07:49:09', '2025-12-16 08:41:07'),
+(1764, 78, 'Main Construction Co 78', '2012-12-16', 13, 4, NULL, 'General Construction', 'Zamboanga City', 'company78@example.com', '09170000078', NULL, NULL, NULL, 'PCAB-97162', 'A', '2026-12-31', 'BP-78', 'Zamboanga', '2026-01-01', 'TIN-78', 'dti_cert.jpg', 'approved', '2025-12-07 07:49:09', 1, NULL, NULL, NULL, NULL, 27, '2025-12-05 07:49:09', '2025-12-16 08:41:07'),
+(1765, 79, 'Main Construction Co 79', '2021-12-16', 4, 8, NULL, 'General Construction', 'Zamboanga City', 'company79@example.com', '09170000079', NULL, NULL, NULL, 'PCAB-11742', 'A', '2026-12-31', 'BP-79', 'Zamboanga', '2026-01-01', 'TIN-79', 'dti_cert.jpg', 'approved', '2025-04-27 07:49:09', 1, NULL, NULL, NULL, NULL, 27, '2025-04-25 07:49:09', '2025-12-16 08:41:07'),
+(1766, 80, 'Main Construction Co 80', '2015-12-16', 10, 5, NULL, 'General Construction', 'Zamboanga City', 'company80@example.com', '09170000080', NULL, NULL, NULL, 'PCAB-94072', 'A', '2026-12-31', 'BP-80', 'Zamboanga', '2026-01-01', 'TIN-80', 'dti_cert.jpg', 'rejected', NULL, 1, NULL, NULL, NULL, 'Permit expired.', 43, '2025-02-08 07:49:09', '2025-12-16 08:41:07'),
+(1767, 81, 'Main Construction Co 81', '2018-12-16', 7, 4, NULL, 'General Construction', 'Zamboanga City', 'company81@example.com', '09170000081', NULL, NULL, NULL, 'PCAB-22152', 'A', '2026-12-31', 'BP-81', 'Zamboanga', '2026-01-01', 'TIN-81', 'dti_cert.jpg', 'approved', '2025-03-27 07:49:09', 1, NULL, NULL, NULL, NULL, 6, '2025-03-25 07:49:09', '2025-12-16 08:41:07'),
+(1768, 82, 'Main Construction Co 82', '2021-12-16', 4, 4, NULL, 'General Construction', 'Zamboanga City', 'company82@example.com', '09170000082', NULL, NULL, NULL, 'PCAB-97364', 'A', '2026-12-31', 'BP-82', 'Zamboanga', '2026-01-01', 'TIN-82', 'dti_cert.jpg', 'approved', '2025-01-07 07:49:09', 1, NULL, NULL, NULL, NULL, 4, '2025-01-05 07:49:09', '2025-12-16 08:41:07'),
+(1769, 83, 'Main Construction Co 83', '1997-12-16', 28, 7, NULL, 'General Construction', 'Zamboanga City', 'company83@example.com', '09170000083', NULL, NULL, NULL, 'PCAB-14246', 'A', '2026-12-31', 'BP-83', 'Zamboanga', '2026-01-01', 'TIN-83', 'dti_cert.jpg', 'approved', '2024-12-27 07:49:09', 1, NULL, NULL, NULL, NULL, 47, '2024-12-25 07:49:09', '2025-12-16 08:41:07'),
+(1770, 84, 'Main Construction Co 84', '2018-12-16', 7, 1, NULL, 'General Construction', 'Zamboanga City', 'company84@example.com', '09170000084', NULL, NULL, NULL, 'PCAB-81872', 'A', '2026-12-31', 'BP-84', 'Zamboanga', '2026-01-01', 'TIN-84', 'dti_cert.jpg', 'approved', '2025-03-15 07:49:09', 1, NULL, NULL, NULL, NULL, 25, '2025-03-13 07:49:09', '2025-12-16 08:41:07'),
+(1771, 85, 'Main Construction Co 85', '2014-12-16', 11, 6, NULL, 'General Construction', 'Zamboanga City', 'company85@example.com', '09170000085', NULL, NULL, NULL, 'PCAB-39928', 'A', '2026-12-31', 'BP-85', 'Zamboanga', '2026-01-01', 'TIN-85', 'dti_cert.jpg', 'pending', NULL, 1, NULL, NULL, NULL, NULL, 26, '2024-12-27 07:49:09', '2025-12-16 08:41:07'),
+(1772, 86, 'Main Construction Co 86', '2022-12-16', 3, 7, NULL, 'General Construction', 'Zamboanga City', 'company86@example.com', '09170000086', NULL, NULL, NULL, 'PCAB-74824', 'A', '2026-12-31', 'BP-86', 'Zamboanga', '2026-01-01', 'TIN-86', 'dti_cert.jpg', 'approved', '2025-08-28 07:49:09', 1, NULL, NULL, NULL, NULL, 49, '2025-08-26 07:49:09', '2025-12-16 08:41:07'),
+(1773, 87, 'Main Construction Co 87', '2014-12-16', 11, 8, NULL, 'General Construction', 'Zamboanga City', 'company87@example.com', '09170000087', NULL, NULL, NULL, 'PCAB-17198', 'A', '2026-12-31', 'BP-87', 'Zamboanga', '2026-01-01', 'TIN-87', 'dti_cert.jpg', 'approved', '2025-08-23 07:49:09', 1, NULL, NULL, NULL, NULL, 49, '2025-08-21 07:49:09', '2025-12-16 08:41:07'),
+(1774, 88, 'Main Construction Co 88', '2009-12-16', 16, 9, NULL, 'General Construction', 'Zamboanga City', 'company88@example.com', '09170000088', NULL, NULL, NULL, 'PCAB-27581', 'A', '2026-12-31', 'BP-88', 'Zamboanga', '2026-01-01', 'TIN-88', 'dti_cert.jpg', 'approved', '2025-09-24 07:49:09', 1, NULL, NULL, NULL, NULL, 24, '2025-09-22 07:49:09', '2025-12-16 08:41:07'),
+(1775, 89, 'Main Construction Co 89', '2009-12-16', 16, 4, NULL, 'General Construction', 'Zamboanga City', 'company89@example.com', '09170000089', NULL, NULL, NULL, 'PCAB-97920', 'A', '2026-12-31', 'BP-89', 'Zamboanga', '2026-01-01', 'TIN-89', 'dti_cert.jpg', 'approved', '2025-07-13 07:49:09', 1, NULL, NULL, NULL, NULL, 29, '2025-07-11 07:49:09', '2025-12-16 08:41:07'),
+(1776, 90, 'Main Construction Co 90', '2024-12-16', 1, 8, NULL, 'General Construction', 'Zamboanga City', 'company90@example.com', '09170000090', NULL, NULL, NULL, 'PCAB-36143', 'A', '2026-12-31', 'BP-90', 'Zamboanga', '2026-01-01', 'TIN-90', 'dti_cert.jpg', 'rejected', NULL, 1, NULL, NULL, NULL, 'Permit expired.', 18, '2025-04-07 07:49:09', '2025-12-16 08:41:07'),
+(1777, 91, 'Main Construction Co 91', '2008-12-16', 17, 4, NULL, 'General Construction', 'Zamboanga City', 'company91@example.com', '09170000091', NULL, NULL, NULL, 'PCAB-34191', 'A', '2026-12-31', 'BP-91', 'Zamboanga', '2026-01-01', 'TIN-91', 'dti_cert.jpg', 'approved', '2025-09-18 07:49:09', 1, NULL, NULL, NULL, NULL, 2, '2025-09-16 07:49:09', '2025-12-16 08:41:07'),
+(1778, 92, 'Main Construction Co 92', '2002-12-16', 23, 7, NULL, 'General Construction', 'Zamboanga City', 'company92@example.com', '09170000092', NULL, NULL, NULL, 'PCAB-89813', 'A', '2026-12-31', 'BP-92', 'Zamboanga', '2026-01-01', 'TIN-92', 'dti_cert.jpg', 'approved', '2025-10-11 07:49:09', 1, NULL, NULL, NULL, NULL, 10, '2025-10-09 07:49:09', '2025-12-16 08:41:07'),
+(1779, 93, 'Main Construction Co 93', '2021-12-16', 4, 7, NULL, 'General Construction', 'Zamboanga City', 'company93@example.com', '09170000093', NULL, NULL, NULL, 'PCAB-59197', 'A', '2026-12-31', 'BP-93', 'Zamboanga', '2026-01-01', 'TIN-93', 'dti_cert.jpg', 'approved', '2025-10-08 07:49:09', 1, NULL, NULL, NULL, NULL, 12, '2025-10-06 07:49:09', '2025-12-16 08:41:07'),
+(1780, 94, 'Main Construction Co 94', '2017-12-16', 8, 6, NULL, 'General Construction', 'Zamboanga City', 'company94@example.com', '09170000094', NULL, NULL, NULL, 'PCAB-74178', 'A', '2026-12-31', 'BP-94', 'Zamboanga', '2026-01-01', 'TIN-94', 'dti_cert.jpg', 'approved', '2025-05-26 07:49:09', 1, NULL, NULL, NULL, NULL, 4, '2025-05-24 07:49:09', '2025-12-16 08:41:07'),
+(1781, 95, 'Main Construction Co 95', '1997-12-16', 28, 2, NULL, 'General Construction', 'Zamboanga City', 'company95@example.com', '09170000095', NULL, NULL, NULL, 'PCAB-32796', 'A', '2026-12-31', 'BP-95', 'Zamboanga', '2026-01-01', 'TIN-95', 'dti_cert.jpg', 'pending', NULL, 1, NULL, NULL, NULL, NULL, 21, '2025-04-03 07:49:09', '2025-12-16 08:41:07'),
+(1782, 96, 'Main Construction Co 96', '2001-12-16', 24, 1, NULL, 'General Construction', 'Zamboanga City', 'company96@example.com', '09170000096', NULL, NULL, NULL, 'PCAB-78766', 'A', '2026-12-31', 'BP-96', 'Zamboanga', '2026-01-01', 'TIN-96', 'dti_cert.jpg', 'approved', '2025-12-02 07:49:09', 1, NULL, NULL, NULL, NULL, 11, '2025-11-30 07:49:09', '2025-12-16 08:41:07'),
+(1783, 97, 'Main Construction Co 97', '2017-12-16', 8, 1, NULL, 'General Construction', 'Zamboanga City', 'company97@example.com', '09170000097', NULL, NULL, NULL, 'PCAB-29749', 'A', '2026-12-31', 'BP-97', 'Zamboanga', '2026-01-01', 'TIN-97', 'dti_cert.jpg', 'approved', '2025-01-04 07:49:09', 1, NULL, NULL, NULL, NULL, 13, '2025-01-02 07:49:09', '2025-12-16 08:41:07'),
+(1784, 98, 'Main Construction Co 98', '1997-12-16', 28, 4, NULL, 'General Construction', 'Zamboanga City', 'company98@example.com', '09170000098', NULL, NULL, NULL, 'PCAB-73126', 'A', '2026-12-31', 'BP-98', 'Zamboanga', '2026-01-01', 'TIN-98', 'dti_cert.jpg', 'approved', '2025-10-25 07:49:09', 1, NULL, NULL, NULL, NULL, 30, '2025-10-23 07:49:09', '2025-12-16 08:41:07'),
+(1785, 99, 'Main Construction Co 99', '2003-12-16', 22, 7, NULL, 'General Construction', 'Zamboanga City', 'company99@example.com', '09170000099', NULL, NULL, NULL, 'PCAB-92160', 'A', '2026-12-31', 'BP-99', 'Zamboanga', '2026-01-01', 'TIN-99', 'dti_cert.jpg', 'approved', '2025-07-15 07:49:09', 1, NULL, NULL, NULL, NULL, 28, '2025-07-13 07:49:09', '2025-12-16 08:41:07'),
+(1786, 100, 'Main Construction Co 100', '1996-12-16', 29, 9, NULL, 'General Construction', 'Zamboanga City', 'company100@example.com', '09170000100', NULL, NULL, NULL, 'PCAB-87531', 'A', '2026-12-31', 'BP-100', 'Zamboanga', '2026-01-01', 'TIN-100', 'dti_cert.jpg', 'rejected', NULL, 1, NULL, NULL, NULL, 'Permit expired.', 27, '2025-07-02 07:49:09', '2025-12-16 08:41:07'),
+(1787, 201, 'Main Construction Co 201', '2006-12-16', 19, 6, NULL, 'General Construction', 'Zamboanga City', 'company201@example.com', '09170000201', NULL, NULL, NULL, 'PCAB-77737', 'A', '2026-12-31', 'BP-201', 'Zamboanga', '2026-01-01', 'TIN-201', 'dti_cert.jpg', 'approved', '2025-08-16 07:49:09', 1, NULL, NULL, NULL, NULL, 42, '2025-08-14 07:49:09', '2025-12-16 08:41:07'),
+(1788, 202, 'Main Construction Co 202', '2021-12-16', 4, 2, NULL, 'General Construction', 'Zamboanga City', 'company202@example.com', '09170000202', NULL, NULL, NULL, 'PCAB-39620', 'A', '2026-12-31', 'BP-202', 'Zamboanga', '2026-01-01', 'TIN-202', 'dti_cert.jpg', 'approved', '2025-04-18 07:49:09', 1, NULL, NULL, NULL, NULL, 35, '2025-04-16 07:49:09', '2025-12-16 08:41:07'),
+(1789, 203, 'Main Construction Co 203', '2000-12-16', 25, 8, NULL, 'General Construction', 'Zamboanga City', 'company203@example.com', '09170000203', NULL, NULL, NULL, 'PCAB-69863', 'A', '2026-12-31', 'BP-203', 'Zamboanga', '2026-01-01', 'TIN-203', 'dti_cert.jpg', 'approved', '2025-09-06 07:49:09', 1, NULL, NULL, NULL, NULL, 15, '2025-09-04 07:49:09', '2025-12-16 08:41:07'),
+(1790, 204, 'Main Construction Co 204', '2002-12-16', 23, 3, NULL, 'General Construction', 'Zamboanga City', 'company204@example.com', '09170000204', NULL, NULL, NULL, 'PCAB-61739', 'A', '2026-12-31', 'BP-204', 'Zamboanga', '2026-01-01', 'TIN-204', 'dti_cert.jpg', 'approved', '2025-09-23 07:49:09', 1, NULL, NULL, NULL, NULL, 41, '2025-09-21 07:49:09', '2025-12-16 08:41:07'),
+(1791, 205, 'Main Construction Co 205', '2018-12-16', 7, 1, NULL, 'General Construction', 'Zamboanga City', 'company205@example.com', '09170000205', NULL, NULL, NULL, 'PCAB-32187', 'A', '2026-12-31', 'BP-205', 'Zamboanga', '2026-01-01', 'TIN-205', 'dti_cert.jpg', 'pending', NULL, 1, NULL, NULL, NULL, NULL, 21, '2025-05-29 07:49:09', '2025-12-16 08:41:07'),
+(1792, 206, 'Main Construction Co 206', '1999-12-16', 26, 1, NULL, 'General Construction', 'Zamboanga City', 'company206@example.com', '09170000206', NULL, NULL, NULL, 'PCAB-75939', 'A', '2026-12-31', 'BP-206', 'Zamboanga', '2026-01-01', 'TIN-206', 'dti_cert.jpg', 'approved', '2025-11-17 07:49:09', 1, NULL, NULL, NULL, NULL, 45, '2025-11-15 07:49:09', '2025-12-16 08:41:07'),
+(1793, 207, 'Main Construction Co 207', '2006-12-16', 19, 3, NULL, 'General Construction', 'Zamboanga City', 'company207@example.com', '09170000207', NULL, NULL, NULL, 'PCAB-51453', 'A', '2026-12-31', 'BP-207', 'Zamboanga', '2026-01-01', 'TIN-207', 'dti_cert.jpg', 'approved', '2025-04-18 07:49:09', 1, NULL, NULL, NULL, NULL, 3, '2025-04-16 07:49:09', '2025-12-16 08:41:07'),
+(1794, 208, 'Main Construction Co 208', '2009-12-16', 16, 2, NULL, 'General Construction', 'Zamboanga City', 'company208@example.com', '09170000208', NULL, NULL, NULL, 'PCAB-13265', 'A', '2026-12-31', 'BP-208', 'Zamboanga', '2026-01-01', 'TIN-208', 'dti_cert.jpg', 'approved', '2025-12-10 07:49:09', 1, NULL, NULL, NULL, NULL, 8, '2025-12-08 07:49:09', '2025-12-16 08:41:07'),
+(1795, 209, 'Main Construction Co 209', '2003-12-16', 22, 2, NULL, 'General Construction', 'Zamboanga City', 'company209@example.com', '09170000209', NULL, NULL, NULL, 'PCAB-91806', 'A', '2026-12-31', 'BP-209', 'Zamboanga', '2026-01-01', 'TIN-209', 'dti_cert.jpg', 'approved', '2025-07-17 07:49:09', 1, NULL, NULL, NULL, NULL, 24, '2025-07-15 07:49:09', '2025-12-16 08:41:07'),
+(1796, 210, 'Main Construction Co 210', '2021-12-16', 4, 7, NULL, 'General Construction', 'Zamboanga City', 'company210@example.com', '09170000210', NULL, NULL, NULL, 'PCAB-69228', 'A', '2026-12-31', 'BP-210', 'Zamboanga', '2026-01-01', 'TIN-210', 'dti_cert.jpg', 'rejected', NULL, 1, NULL, NULL, NULL, 'Permit expired.', 45, '2025-06-18 07:49:09', '2025-12-16 08:41:07'),
+(1797, 211, 'Main Construction Co 211', '2014-12-16', 11, 6, NULL, 'General Construction', 'Zamboanga City', 'company211@example.com', '09170000211', NULL, NULL, NULL, 'PCAB-52834', 'A', '2026-12-31', 'BP-211', 'Zamboanga', '2026-01-01', 'TIN-211', 'dti_cert.jpg', 'approved', '2025-10-14 07:49:09', 1, NULL, NULL, NULL, NULL, 49, '2025-10-12 07:49:09', '2025-12-16 08:41:07'),
+(1798, 212, 'Main Construction Co 212', '2011-12-16', 14, 7, NULL, 'General Construction', 'Zamboanga City', 'company212@example.com', '09170000212', NULL, NULL, NULL, 'PCAB-70043', 'A', '2026-12-31', 'BP-212', 'Zamboanga', '2026-01-01', 'TIN-212', 'dti_cert.jpg', 'approved', '2025-02-18 07:49:09', 1, NULL, NULL, NULL, NULL, 16, '2025-02-16 07:49:09', '2025-12-16 08:41:07'),
+(1799, 213, 'Main Construction Co 213', '2019-12-16', 6, 7, NULL, 'General Construction', 'Zamboanga City', 'company213@example.com', '09170000213', NULL, NULL, NULL, 'PCAB-34511', 'A', '2026-12-31', 'BP-213', 'Zamboanga', '2026-01-01', 'TIN-213', 'dti_cert.jpg', 'approved', '2025-05-19 07:49:09', 1, NULL, NULL, NULL, NULL, 5, '2025-05-17 07:49:09', '2025-12-16 08:41:07'),
+(1800, 214, 'Main Construction Co 214', '2006-12-16', 19, 6, NULL, 'General Construction', 'Zamboanga City', 'company214@example.com', '09170000214', NULL, NULL, NULL, 'PCAB-56516', 'A', '2026-12-31', 'BP-214', 'Zamboanga', '2026-01-01', 'TIN-214', 'dti_cert.jpg', 'approved', '2025-06-20 07:49:09', 1, NULL, NULL, NULL, NULL, 2, '2025-06-18 07:49:09', '2025-12-16 08:41:07'),
+(1801, 215, 'Main Construction Co 215', '2011-12-16', 14, 7, NULL, 'General Construction', 'Zamboanga City', 'company215@example.com', '09170000215', NULL, NULL, NULL, 'PCAB-75873', 'A', '2026-12-31', 'BP-215', 'Zamboanga', '2026-01-01', 'TIN-215', 'dti_cert.jpg', 'pending', NULL, 1, NULL, NULL, NULL, NULL, 5, '2025-08-12 07:49:09', '2025-12-16 08:41:07'),
+(1802, 216, 'Main Construction Co 216', '2011-12-16', 14, 1, NULL, 'General Construction', 'Zamboanga City', 'company216@example.com', '09170000216', NULL, NULL, NULL, 'PCAB-62029', 'A', '2026-12-31', 'BP-216', 'Zamboanga', '2026-01-01', 'TIN-216', 'dti_cert.jpg', 'approved', '2025-04-13 07:49:09', 1, NULL, NULL, NULL, NULL, 27, '2025-04-11 07:49:09', '2025-12-16 08:41:07'),
+(1803, 217, 'Main Construction Co 217', '1998-12-16', 27, 9, NULL, 'General Construction', 'Zamboanga City', 'company217@example.com', '09170000217', NULL, NULL, NULL, 'PCAB-27801', 'A', '2026-12-31', 'BP-217', 'Zamboanga', '2026-01-01', 'TIN-217', 'dti_cert.jpg', 'approved', '2025-01-16 07:49:09', 1, NULL, NULL, NULL, NULL, 49, '2025-01-14 07:49:09', '2025-12-16 08:41:07'),
+(1804, 218, 'Main Construction Co 218', '2022-12-16', 3, 8, NULL, 'General Construction', 'Zamboanga City', 'company218@example.com', '09170000218', NULL, NULL, NULL, 'PCAB-45679', 'A', '2026-12-31', 'BP-218', 'Zamboanga', '2026-01-01', 'TIN-218', 'dti_cert.jpg', 'approved', '2025-06-07 07:49:09', 1, NULL, NULL, NULL, NULL, 23, '2025-06-05 07:49:09', '2025-12-16 08:41:07'),
+(1805, 219, 'Main Construction Co 219', '2000-12-16', 25, 4, NULL, 'General Construction', 'Zamboanga City', 'company219@example.com', '09170000219', NULL, NULL, NULL, 'PCAB-73715', 'A', '2026-12-31', 'BP-219', 'Zamboanga', '2026-01-01', 'TIN-219', 'dti_cert.jpg', 'approved', '2025-03-11 07:49:09', 1, NULL, NULL, NULL, NULL, 13, '2025-03-09 07:49:09', '2025-12-16 08:41:07'),
+(1806, 220, 'Main Construction Co 220', '2001-12-16', 24, 5, NULL, 'General Construction', 'Zamboanga City', 'company220@example.com', '09170000220', NULL, NULL, NULL, 'PCAB-16396', 'A', '2026-12-31', 'BP-220', 'Zamboanga', '2026-01-01', 'TIN-220', 'dti_cert.jpg', 'rejected', NULL, 1, NULL, NULL, NULL, 'Permit expired.', 49, '2025-11-08 07:49:09', '2025-12-16 08:41:07'),
+(1807, 360, 'Rone Works', '2023-01-01', 2, 9, 'Gaming', 'Nothing', 'Nothing, Amparo, City of Butuan, 160200000 7000', 'shanehart100q1@gmail.com', '09926314071', NULL, NULL, NULL, '1231232', 'AA', '2025-12-31', '12124', 'Ajuy', '2025-12-31', '13123123', 'DTI_SEC/dAbCKi0N1cEfYwEtU0cQKlsCp1EoVCeh22H3ldvV.jpg', 'approved', '2025-12-16 08:22:15', 1, NULL, NULL, NULL, NULL, 0, '2025-12-16 08:22:15', '2025-12-16 09:21:56'),
+(1808, 361, 'Krystal Services', '2023-01-31', 2, 5, NULL, 'Nothing', 'Sample, Humilog, Remedios T. Romualdez, Agusan Del Norte 2311', 'shanehart1001d@gmail.com', '09926314033', 'https://krystal.com', 'https://krystalservices.com', 'desc to', '123341212', 'AA', '2025-12-31', '1234423123', 'Aguinaldo', '2025-12-31', '1231231ss', 'DTI_SEC/ECDYAx9WeQj2kcVgICbYIdyf7lCE903hLfOZdvBN.jpg', 'approved', '2025-12-16 08:40:00', 1, NULL, NULL, NULL, NULL, 0, '2025-12-16 08:40:00', '2025-12-16 20:49:54'),
+(1809, 372, 'test2', '2025-12-18', 5, 7, NULL, 'yes services here and there', 'Anywhere, Saluping, Tabuan-Lasa, Basilan 7000', 'slayvibe.info@gmail.com', '09360211157', NULL, NULL, NULL, '82919910181', 'AAAA', '2026-12-18', '01917291082', 'Zamboanga City', '2025-12-18', '0198237292772', 'DTI_SEC/41dcx0yqd7nbVQK36H34tylFRgZYKrCyF5vPasPU.jpg', 'approved', '0000-00-00 00:00:00', 1, NULL, NULL, NULL, NULL, 0, '2025-12-17 13:58:50', '2025-12-18 15:00:59'),
+(1810, 380, 'Apex Company', '2026-02-21', 40, 8, NULL, 'iydiyditd', '456 oak ridge, Inyawan, Libertad, Antique, 7000', 'joxego4264@advarm.com', '09360521478', 'mbkyc.com', 'khfykdyo', NULL, '936336939663', 'AAA', '2027-02-02', '0292746391', 'Alcala', '2027-02-02', '13589652', 'DTI_SEC/jNfmB6LE9tIJvCij8DG61oi7HTCji94XlRwQFjcu.jpg', 'approved', NULL, 1, NULL, NULL, NULL, NULL, 0, '2026-02-21 01:34:20', '2026-02-21 09:38:34');
 
 -- --------------------------------------------------------
 
@@ -504,7 +535,8 @@ INSERT INTO `contractor_users` (`contractor_user_id`, `contractor_id`, `user_id`
 (2055, 1809, 372, 'Test2', NULL, 'Test2', '09360211157', 'owner', NULL, NULL, 0, 1, NULL, NULL, NULL, '2025-12-17 13:58:50'),
 (2056, 1809, 376, 'wwwwwww', 'wwwwwwww', 'wwwwwwww', '09987674839', 'representative', 'others', 'ddddddd', 0, 1, NULL, NULL, NULL, '2026-01-27 06:39:40'),
 (2057, 1809, 377, 'wwwwwwwwwwwww', 'wwwww', 'wwwwwwww', '09987647589', 'architect', NULL, NULL, 0, 1, NULL, NULL, NULL, '2026-01-27 06:43:03'),
-(2058, 1809, 378, 'Sah', NULL, 'Emman', '09987678987', 'others', NULL, 'Nigas', 0, 1, NULL, NULL, NULL, '2026-01-29 04:26:35');
+(2058, 1809, 378, 'Sah', NULL, 'Emman', '09987678987', 'others', NULL, 'Nigas', 0, 1, NULL, NULL, NULL, '2026-01-29 04:26:35'),
+(2059, 1810, 380, 'test4', 'test4', 'test4', '09360521479', 'owner', NULL, NULL, 0, 0, NULL, NULL, NULL, '2026-02-21 01:34:20');
 
 -- --------------------------------------------------------
 
@@ -627,41 +659,6 @@ INSERT INTO `dispute_files` (`file_id`, `dispute_id`, `storage_path`, `original_
 -- --------------------------------------------------------
 
 --
--- Table structure for table `failed_jobs`
---
-
-CREATE TABLE `failed_jobs` (
-  `id` bigint(20) UNSIGNED NOT NULL,
-  `uuid` varchar(255) NOT NULL,
-  `connection` text NOT NULL,
-  `queue` text NOT NULL,
-  `payload` longtext NOT NULL,
-  `exception` longtext NOT NULL,
-  `failed_at` timestamp NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Dumping data for table `failed_jobs`
---
-
-INSERT INTO `failed_jobs` (`id`, `uuid`, `connection`, `queue`, `payload`, `exception`, `failed_at`) VALUES
-(1, '969d75bb-e05b-4f19-a336-003a8da6ae8a', 'database', 'default', '{\"uuid\":\"969d75bb-e05b-4f19-a336-003a8da6ae8a\",\"displayName\":\"App\\\\Events\\\\messageSentEvent\",\"job\":\"Illuminate\\\\Queue\\\\CallQueuedHandler@call\",\"maxTries\":null,\"maxExceptions\":null,\"failOnTimeout\":false,\"backoff\":null,\"timeout\":null,\"retryUntil\":null,\"data\":{\"commandName\":\"Illuminate\\\\Broadcasting\\\\BroadcastEvent\",\"command\":\"O:38:\\\"Illuminate\\\\Broadcasting\\\\BroadcastEvent\\\":16:{s:5:\\\"event\\\";O:27:\\\"App\\\\Events\\\\messageSentEvent\\\":2:{s:7:\\\"message\\\";O:45:\\\"Illuminate\\\\Contracts\\\\Database\\\\ModelIdentifier\\\":5:{s:5:\\\"class\\\";s:31:\\\"App\\\\Models\\\\message\\\\messageClass\\\";s:2:\\\"id\\\";i:267;s:9:\\\"relations\\\";a:0:{}s:10:\\\"connection\\\";s:5:\\\"mysql\\\";s:15:\\\"collectionClass\\\";N;}s:12:\\\"conversation\\\";O:8:\\\"stdClass\\\":9:{s:15:\\\"conversation_id\\\";i:1000372;s:9:\\\"sender_id\\\";i:1;s:11:\\\"receiver_id\\\";i:372;s:12:\\\"is_suspended\\\";i:0;s:6:\\\"reason\\\";N;s:15:\\\"suspended_until\\\";N;s:6:\\\"status\\\";s:6:\\\"active\\\";s:10:\\\"created_at\\\";s:19:\\\"2026-02-07 06:56:53\\\";s:10:\\\"updated_at\\\";s:19:\\\"2026-02-07 09:15:12\\\";}}s:5:\\\"tries\\\";N;s:7:\\\"timeout\\\";N;s:7:\\\"backoff\\\";N;s:13:\\\"maxExceptions\\\";N;s:10:\\\"connection\\\";N;s:5:\\\"queue\\\";N;s:12:\\\"messageGroup\\\";N;s:12:\\\"deduplicator\\\";N;s:5:\\\"delay\\\";N;s:11:\\\"afterCommit\\\";N;s:10:\\\"middleware\\\";a:0:{}s:7:\\\"chained\\\";a:0:{}s:15:\\\"chainConnection\\\";N;s:10:\\\"chainQueue\\\";N;s:19:\\\"chainCatchCallbacks\\\";N;}\"},\"createdAt\":1770537547,\"delay\":null}', 'ErrorException: Undefined property: stdClass::$is_flagged in C:\\xampp\\htdocs\\sb_legatura\\app\\Events\\messageSentEvent.php:90\nStack trace:\n#0 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Foundation\\Bootstrap\\HandleExceptions.php(258): Illuminate\\Foundation\\Bootstrap\\HandleExceptions->handleError(2, \'Undefined prope...\', \'C:\\\\xampp\\\\htdocs...\', 90)\n#1 C:\\xampp\\htdocs\\sb_legatura\\app\\Events\\messageSentEvent.php(90): Illuminate\\Foundation\\Bootstrap\\HandleExceptions->Illuminate\\Foundation\\Bootstrap\\{closure}(2, \'Undefined prope...\', \'C:\\\\xampp\\\\htdocs...\', 90)\n#2 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Broadcasting\\BroadcastEvent.php(110): App\\Events\\messageSentEvent->broadcastWith()\n#3 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Broadcasting\\BroadcastEvent.php(90): Illuminate\\Broadcasting\\BroadcastEvent->getPayloadFromEvent(Object(App\\Events\\messageSentEvent))\n#4 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(36): Illuminate\\Broadcasting\\BroadcastEvent->handle(Object(Illuminate\\Broadcasting\\BroadcastManager))\n#5 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\Util.php(43): Illuminate\\Container\\BoundMethod::Illuminate\\Container\\{closure}()\n#6 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(96): Illuminate\\Container\\Util::unwrapIfClosure(Object(Closure))\n#7 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(35): Illuminate\\Container\\BoundMethod::callBoundMethod(Object(Illuminate\\Foundation\\Application), Array, Object(Closure))\n#8 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\Container.php(836): Illuminate\\Container\\BoundMethod::call(Object(Illuminate\\Foundation\\Application), Array, Array, NULL)\n#9 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Bus\\Dispatcher.php(129): Illuminate\\Container\\Container->call(Array)\n#10 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(180): Illuminate\\Bus\\Dispatcher->Illuminate\\Bus\\{closure}(Object(Illuminate\\Broadcasting\\BroadcastEvent))\n#11 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(137): Illuminate\\Pipeline\\Pipeline->Illuminate\\Pipeline\\{closure}(Object(Illuminate\\Broadcasting\\BroadcastEvent))\n#12 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Bus\\Dispatcher.php(133): Illuminate\\Pipeline\\Pipeline->then(Object(Closure))\n#13 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\CallQueuedHandler.php(134): Illuminate\\Bus\\Dispatcher->dispatchNow(Object(Illuminate\\Broadcasting\\BroadcastEvent), false)\n#14 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(180): Illuminate\\Queue\\CallQueuedHandler->Illuminate\\Queue\\{closure}(Object(Illuminate\\Broadcasting\\BroadcastEvent))\n#15 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(137): Illuminate\\Pipeline\\Pipeline->Illuminate\\Pipeline\\{closure}(Object(Illuminate\\Broadcasting\\BroadcastEvent))\n#16 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\CallQueuedHandler.php(127): Illuminate\\Pipeline\\Pipeline->then(Object(Closure))\n#17 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\CallQueuedHandler.php(68): Illuminate\\Queue\\CallQueuedHandler->dispatchThroughMiddleware(Object(Illuminate\\Queue\\Jobs\\DatabaseJob), Object(Illuminate\\Broadcasting\\BroadcastEvent))\n#18 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Jobs\\Job.php(102): Illuminate\\Queue\\CallQueuedHandler->call(Object(Illuminate\\Queue\\Jobs\\DatabaseJob), Array)\n#19 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Worker.php(451): Illuminate\\Queue\\Jobs\\Job->fire()\n#20 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Worker.php(401): Illuminate\\Queue\\Worker->process(\'database\', Object(Illuminate\\Queue\\Jobs\\DatabaseJob), Object(Illuminate\\Queue\\WorkerOptions))\n#21 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Worker.php(187): Illuminate\\Queue\\Worker->runJob(Object(Illuminate\\Queue\\Jobs\\DatabaseJob), \'database\', Object(Illuminate\\Queue\\WorkerOptions))\n#22 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Console\\WorkCommand.php(148): Illuminate\\Queue\\Worker->daemon(\'database\', \'default\', Object(Illuminate\\Queue\\WorkerOptions))\n#23 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Console\\WorkCommand.php(131): Illuminate\\Queue\\Console\\WorkCommand->runWorker(\'database\', \'default\')\n#24 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(36): Illuminate\\Queue\\Console\\WorkCommand->handle()\n#25 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\Util.php(43): Illuminate\\Container\\BoundMethod::Illuminate\\Container\\{closure}()\n#26 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(96): Illuminate\\Container\\Util::unwrapIfClosure(Object(Closure))\n#27 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(35): Illuminate\\Container\\BoundMethod::callBoundMethod(Object(Illuminate\\Foundation\\Application), Array, Object(Closure))\n#28 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\Container.php(836): Illuminate\\Container\\BoundMethod::call(Object(Illuminate\\Foundation\\Application), Array, Array, NULL)\n#29 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Console\\Command.php(211): Illuminate\\Container\\Container->call(Array)\n#30 C:\\xampp\\htdocs\\sb_legatura\\vendor\\symfony\\console\\Command\\Command.php(318): Illuminate\\Console\\Command->execute(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Illuminate\\Console\\OutputStyle))\n#31 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Console\\Command.php(180): Symfony\\Component\\Console\\Command\\Command->run(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Illuminate\\Console\\OutputStyle))\n#32 C:\\xampp\\htdocs\\sb_legatura\\vendor\\symfony\\console\\Application.php(1110): Illuminate\\Console\\Command->run(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))\n#33 C:\\xampp\\htdocs\\sb_legatura\\vendor\\symfony\\console\\Application.php(359): Symfony\\Component\\Console\\Application->doRunCommand(Object(Illuminate\\Queue\\Console\\WorkCommand), Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))\n#34 C:\\xampp\\htdocs\\sb_legatura\\vendor\\symfony\\console\\Application.php(194): Symfony\\Component\\Console\\Application->doRun(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))\n#35 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Foundation\\Console\\Kernel.php(197): Symfony\\Component\\Console\\Application->run(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))\n#36 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Foundation\\Application.php(1235): Illuminate\\Foundation\\Console\\Kernel->handle(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))\n#37 C:\\xampp\\htdocs\\sb_legatura\\artisan(16): Illuminate\\Foundation\\Application->handleCommand(Object(Symfony\\Component\\Console\\Input\\ArgvInput))\n#38 {main}', '2026-02-07 23:59:09'),
-(2, 'b040dbd7-1957-4f44-b0db-a7889f83619e', 'database', 'default', '{\"uuid\":\"b040dbd7-1957-4f44-b0db-a7889f83619e\",\"displayName\":\"App\\\\Events\\\\messageSentEvent\",\"job\":\"Illuminate\\\\Queue\\\\CallQueuedHandler@call\",\"maxTries\":null,\"maxExceptions\":null,\"failOnTimeout\":false,\"backoff\":null,\"timeout\":null,\"retryUntil\":null,\"data\":{\"commandName\":\"Illuminate\\\\Broadcasting\\\\BroadcastEvent\",\"command\":\"O:38:\\\"Illuminate\\\\Broadcasting\\\\BroadcastEvent\\\":16:{s:5:\\\"event\\\";O:27:\\\"App\\\\Events\\\\messageSentEvent\\\":2:{s:7:\\\"message\\\";O:45:\\\"Illuminate\\\\Contracts\\\\Database\\\\ModelIdentifier\\\":5:{s:5:\\\"class\\\";s:31:\\\"App\\\\Models\\\\message\\\\messageClass\\\";s:2:\\\"id\\\";i:268;s:9:\\\"relations\\\";a:0:{}s:10:\\\"connection\\\";s:5:\\\"mysql\\\";s:15:\\\"collectionClass\\\";N;}s:12:\\\"conversation\\\";O:8:\\\"stdClass\\\":9:{s:15:\\\"conversation_id\\\";i:1000371;s:9:\\\"sender_id\\\";i:1;s:11:\\\"receiver_id\\\";i:371;s:12:\\\"is_suspended\\\";i:0;s:6:\\\"reason\\\";N;s:15:\\\"suspended_until\\\";N;s:6:\\\"status\\\";s:6:\\\"active\\\";s:10:\\\"created_at\\\";s:19:\\\"2026-02-07 06:56:13\\\";s:10:\\\"updated_at\\\";s:19:\\\"2026-02-07 06:56:13\\\";}}s:5:\\\"tries\\\";N;s:7:\\\"timeout\\\";N;s:7:\\\"backoff\\\";N;s:13:\\\"maxExceptions\\\";N;s:10:\\\"connection\\\";N;s:5:\\\"queue\\\";N;s:12:\\\"messageGroup\\\";N;s:12:\\\"deduplicator\\\";N;s:5:\\\"delay\\\";N;s:11:\\\"afterCommit\\\";N;s:10:\\\"middleware\\\";a:0:{}s:7:\\\"chained\\\";a:0:{}s:15:\\\"chainConnection\\\";N;s:10:\\\"chainQueue\\\";N;s:19:\\\"chainCatchCallbacks\\\";N;}\"},\"createdAt\":1770537554,\"delay\":null}', 'ErrorException: Undefined property: stdClass::$is_flagged in C:\\xampp\\htdocs\\sb_legatura\\app\\Events\\messageSentEvent.php:90\nStack trace:\n#0 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Foundation\\Bootstrap\\HandleExceptions.php(258): Illuminate\\Foundation\\Bootstrap\\HandleExceptions->handleError(2, \'Undefined prope...\', \'C:\\\\xampp\\\\htdocs...\', 90)\n#1 C:\\xampp\\htdocs\\sb_legatura\\app\\Events\\messageSentEvent.php(90): Illuminate\\Foundation\\Bootstrap\\HandleExceptions->Illuminate\\Foundation\\Bootstrap\\{closure}(2, \'Undefined prope...\', \'C:\\\\xampp\\\\htdocs...\', 90)\n#2 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Broadcasting\\BroadcastEvent.php(110): App\\Events\\messageSentEvent->broadcastWith()\n#3 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Broadcasting\\BroadcastEvent.php(90): Illuminate\\Broadcasting\\BroadcastEvent->getPayloadFromEvent(Object(App\\Events\\messageSentEvent))\n#4 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(36): Illuminate\\Broadcasting\\BroadcastEvent->handle(Object(Illuminate\\Broadcasting\\BroadcastManager))\n#5 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\Util.php(43): Illuminate\\Container\\BoundMethod::Illuminate\\Container\\{closure}()\n#6 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(96): Illuminate\\Container\\Util::unwrapIfClosure(Object(Closure))\n#7 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(35): Illuminate\\Container\\BoundMethod::callBoundMethod(Object(Illuminate\\Foundation\\Application), Array, Object(Closure))\n#8 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\Container.php(836): Illuminate\\Container\\BoundMethod::call(Object(Illuminate\\Foundation\\Application), Array, Array, NULL)\n#9 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Bus\\Dispatcher.php(129): Illuminate\\Container\\Container->call(Array)\n#10 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(180): Illuminate\\Bus\\Dispatcher->Illuminate\\Bus\\{closure}(Object(Illuminate\\Broadcasting\\BroadcastEvent))\n#11 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(137): Illuminate\\Pipeline\\Pipeline->Illuminate\\Pipeline\\{closure}(Object(Illuminate\\Broadcasting\\BroadcastEvent))\n#12 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Bus\\Dispatcher.php(133): Illuminate\\Pipeline\\Pipeline->then(Object(Closure))\n#13 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\CallQueuedHandler.php(134): Illuminate\\Bus\\Dispatcher->dispatchNow(Object(Illuminate\\Broadcasting\\BroadcastEvent), false)\n#14 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(180): Illuminate\\Queue\\CallQueuedHandler->Illuminate\\Queue\\{closure}(Object(Illuminate\\Broadcasting\\BroadcastEvent))\n#15 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(137): Illuminate\\Pipeline\\Pipeline->Illuminate\\Pipeline\\{closure}(Object(Illuminate\\Broadcasting\\BroadcastEvent))\n#16 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\CallQueuedHandler.php(127): Illuminate\\Pipeline\\Pipeline->then(Object(Closure))\n#17 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\CallQueuedHandler.php(68): Illuminate\\Queue\\CallQueuedHandler->dispatchThroughMiddleware(Object(Illuminate\\Queue\\Jobs\\DatabaseJob), Object(Illuminate\\Broadcasting\\BroadcastEvent))\n#18 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Jobs\\Job.php(102): Illuminate\\Queue\\CallQueuedHandler->call(Object(Illuminate\\Queue\\Jobs\\DatabaseJob), Array)\n#19 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Worker.php(451): Illuminate\\Queue\\Jobs\\Job->fire()\n#20 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Worker.php(401): Illuminate\\Queue\\Worker->process(\'database\', Object(Illuminate\\Queue\\Jobs\\DatabaseJob), Object(Illuminate\\Queue\\WorkerOptions))\n#21 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Worker.php(187): Illuminate\\Queue\\Worker->runJob(Object(Illuminate\\Queue\\Jobs\\DatabaseJob), \'database\', Object(Illuminate\\Queue\\WorkerOptions))\n#22 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Console\\WorkCommand.php(148): Illuminate\\Queue\\Worker->daemon(\'database\', \'default\', Object(Illuminate\\Queue\\WorkerOptions))\n#23 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Console\\WorkCommand.php(131): Illuminate\\Queue\\Console\\WorkCommand->runWorker(\'database\', \'default\')\n#24 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(36): Illuminate\\Queue\\Console\\WorkCommand->handle()\n#25 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\Util.php(43): Illuminate\\Container\\BoundMethod::Illuminate\\Container\\{closure}()\n#26 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(96): Illuminate\\Container\\Util::unwrapIfClosure(Object(Closure))\n#27 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(35): Illuminate\\Container\\BoundMethod::callBoundMethod(Object(Illuminate\\Foundation\\Application), Array, Object(Closure))\n#28 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\Container.php(836): Illuminate\\Container\\BoundMethod::call(Object(Illuminate\\Foundation\\Application), Array, Array, NULL)\n#29 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Console\\Command.php(211): Illuminate\\Container\\Container->call(Array)\n#30 C:\\xampp\\htdocs\\sb_legatura\\vendor\\symfony\\console\\Command\\Command.php(318): Illuminate\\Console\\Command->execute(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Illuminate\\Console\\OutputStyle))\n#31 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Console\\Command.php(180): Symfony\\Component\\Console\\Command\\Command->run(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Illuminate\\Console\\OutputStyle))\n#32 C:\\xampp\\htdocs\\sb_legatura\\vendor\\symfony\\console\\Application.php(1110): Illuminate\\Console\\Command->run(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))\n#33 C:\\xampp\\htdocs\\sb_legatura\\vendor\\symfony\\console\\Application.php(359): Symfony\\Component\\Console\\Application->doRunCommand(Object(Illuminate\\Queue\\Console\\WorkCommand), Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))\n#34 C:\\xampp\\htdocs\\sb_legatura\\vendor\\symfony\\console\\Application.php(194): Symfony\\Component\\Console\\Application->doRun(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))\n#35 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Foundation\\Console\\Kernel.php(197): Symfony\\Component\\Console\\Application->run(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))\n#36 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Foundation\\Application.php(1235): Illuminate\\Foundation\\Console\\Kernel->handle(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))\n#37 C:\\xampp\\htdocs\\sb_legatura\\artisan(16): Illuminate\\Foundation\\Application->handleCommand(Object(Symfony\\Component\\Console\\Input\\ArgvInput))\n#38 {main}', '2026-02-07 23:59:15'),
-(3, '970d8dae-d2dd-412c-9657-57ad4b211a26', 'database', 'default', '{\"uuid\":\"970d8dae-d2dd-412c-9657-57ad4b211a26\",\"displayName\":\"App\\\\Events\\\\messageSentEvent\",\"job\":\"Illuminate\\\\Queue\\\\CallQueuedHandler@call\",\"maxTries\":null,\"maxExceptions\":null,\"failOnTimeout\":false,\"backoff\":null,\"timeout\":null,\"retryUntil\":null,\"data\":{\"commandName\":\"Illuminate\\\\Broadcasting\\\\BroadcastEvent\",\"command\":\"O:38:\\\"Illuminate\\\\Broadcasting\\\\BroadcastEvent\\\":16:{s:5:\\\"event\\\";O:27:\\\"App\\\\Events\\\\messageSentEvent\\\":2:{s:7:\\\"message\\\";O:45:\\\"Illuminate\\\\Contracts\\\\Database\\\\ModelIdentifier\\\":5:{s:5:\\\"class\\\";s:31:\\\"App\\\\Models\\\\message\\\\messageClass\\\";s:2:\\\"id\\\";i:269;s:9:\\\"relations\\\";a:0:{}s:10:\\\"connection\\\";s:5:\\\"mysql\\\";s:15:\\\"collectionClass\\\";N;}s:12:\\\"conversation\\\";O:8:\\\"stdClass\\\":9:{s:15:\\\"conversation_id\\\";i:371000372;s:9:\\\"sender_id\\\";i:371;s:11:\\\"receiver_id\\\";i:372;s:12:\\\"is_suspended\\\";i:0;s:6:\\\"reason\\\";N;s:15:\\\"suspended_until\\\";N;s:6:\\\"status\\\";s:6:\\\"active\\\";s:10:\\\"created_at\\\";s:19:\\\"2026-02-08 03:29:05\\\";s:10:\\\"updated_at\\\";s:19:\\\"2026-02-08 03:29:05\\\";}}s:5:\\\"tries\\\";N;s:7:\\\"timeout\\\";N;s:7:\\\"backoff\\\";N;s:13:\\\"maxExceptions\\\";N;s:10:\\\"connection\\\";N;s:5:\\\"queue\\\";N;s:12:\\\"messageGroup\\\";N;s:12:\\\"deduplicator\\\";N;s:5:\\\"delay\\\";N;s:11:\\\"afterCommit\\\";N;s:10:\\\"middleware\\\";a:0:{}s:7:\\\"chained\\\";a:0:{}s:15:\\\"chainConnection\\\";N;s:10:\\\"chainQueue\\\";N;s:19:\\\"chainCatchCallbacks\\\";N;}\"},\"createdAt\":1770537564,\"delay\":null}', 'ErrorException: Undefined property: stdClass::$is_flagged in C:\\xampp\\htdocs\\sb_legatura\\app\\Events\\messageSentEvent.php:90\nStack trace:\n#0 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Foundation\\Bootstrap\\HandleExceptions.php(258): Illuminate\\Foundation\\Bootstrap\\HandleExceptions->handleError(2, \'Undefined prope...\', \'C:\\\\xampp\\\\htdocs...\', 90)\n#1 C:\\xampp\\htdocs\\sb_legatura\\app\\Events\\messageSentEvent.php(90): Illuminate\\Foundation\\Bootstrap\\HandleExceptions->Illuminate\\Foundation\\Bootstrap\\{closure}(2, \'Undefined prope...\', \'C:\\\\xampp\\\\htdocs...\', 90)\n#2 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Broadcasting\\BroadcastEvent.php(110): App\\Events\\messageSentEvent->broadcastWith()\n#3 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Broadcasting\\BroadcastEvent.php(90): Illuminate\\Broadcasting\\BroadcastEvent->getPayloadFromEvent(Object(App\\Events\\messageSentEvent))\n#4 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(36): Illuminate\\Broadcasting\\BroadcastEvent->handle(Object(Illuminate\\Broadcasting\\BroadcastManager))\n#5 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\Util.php(43): Illuminate\\Container\\BoundMethod::Illuminate\\Container\\{closure}()\n#6 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(96): Illuminate\\Container\\Util::unwrapIfClosure(Object(Closure))\n#7 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(35): Illuminate\\Container\\BoundMethod::callBoundMethod(Object(Illuminate\\Foundation\\Application), Array, Object(Closure))\n#8 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\Container.php(836): Illuminate\\Container\\BoundMethod::call(Object(Illuminate\\Foundation\\Application), Array, Array, NULL)\n#9 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Bus\\Dispatcher.php(129): Illuminate\\Container\\Container->call(Array)\n#10 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(180): Illuminate\\Bus\\Dispatcher->Illuminate\\Bus\\{closure}(Object(Illuminate\\Broadcasting\\BroadcastEvent))\n#11 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(137): Illuminate\\Pipeline\\Pipeline->Illuminate\\Pipeline\\{closure}(Object(Illuminate\\Broadcasting\\BroadcastEvent))\n#12 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Bus\\Dispatcher.php(133): Illuminate\\Pipeline\\Pipeline->then(Object(Closure))\n#13 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\CallQueuedHandler.php(134): Illuminate\\Bus\\Dispatcher->dispatchNow(Object(Illuminate\\Broadcasting\\BroadcastEvent), false)\n#14 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(180): Illuminate\\Queue\\CallQueuedHandler->Illuminate\\Queue\\{closure}(Object(Illuminate\\Broadcasting\\BroadcastEvent))\n#15 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(137): Illuminate\\Pipeline\\Pipeline->Illuminate\\Pipeline\\{closure}(Object(Illuminate\\Broadcasting\\BroadcastEvent))\n#16 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\CallQueuedHandler.php(127): Illuminate\\Pipeline\\Pipeline->then(Object(Closure))\n#17 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\CallQueuedHandler.php(68): Illuminate\\Queue\\CallQueuedHandler->dispatchThroughMiddleware(Object(Illuminate\\Queue\\Jobs\\DatabaseJob), Object(Illuminate\\Broadcasting\\BroadcastEvent))\n#18 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Jobs\\Job.php(102): Illuminate\\Queue\\CallQueuedHandler->call(Object(Illuminate\\Queue\\Jobs\\DatabaseJob), Array)\n#19 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Worker.php(451): Illuminate\\Queue\\Jobs\\Job->fire()\n#20 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Worker.php(401): Illuminate\\Queue\\Worker->process(\'database\', Object(Illuminate\\Queue\\Jobs\\DatabaseJob), Object(Illuminate\\Queue\\WorkerOptions))\n#21 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Worker.php(187): Illuminate\\Queue\\Worker->runJob(Object(Illuminate\\Queue\\Jobs\\DatabaseJob), \'database\', Object(Illuminate\\Queue\\WorkerOptions))\n#22 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Console\\WorkCommand.php(148): Illuminate\\Queue\\Worker->daemon(\'database\', \'default\', Object(Illuminate\\Queue\\WorkerOptions))\n#23 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Console\\WorkCommand.php(131): Illuminate\\Queue\\Console\\WorkCommand->runWorker(\'database\', \'default\')\n#24 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(36): Illuminate\\Queue\\Console\\WorkCommand->handle()\n#25 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\Util.php(43): Illuminate\\Container\\BoundMethod::Illuminate\\Container\\{closure}()\n#26 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(96): Illuminate\\Container\\Util::unwrapIfClosure(Object(Closure))\n#27 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(35): Illuminate\\Container\\BoundMethod::callBoundMethod(Object(Illuminate\\Foundation\\Application), Array, Object(Closure))\n#28 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\Container.php(836): Illuminate\\Container\\BoundMethod::call(Object(Illuminate\\Foundation\\Application), Array, Array, NULL)\n#29 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Console\\Command.php(211): Illuminate\\Container\\Container->call(Array)\n#30 C:\\xampp\\htdocs\\sb_legatura\\vendor\\symfony\\console\\Command\\Command.php(318): Illuminate\\Console\\Command->execute(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Illuminate\\Console\\OutputStyle))\n#31 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Console\\Command.php(180): Symfony\\Component\\Console\\Command\\Command->run(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Illuminate\\Console\\OutputStyle))\n#32 C:\\xampp\\htdocs\\sb_legatura\\vendor\\symfony\\console\\Application.php(1110): Illuminate\\Console\\Command->run(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))\n#33 C:\\xampp\\htdocs\\sb_legatura\\vendor\\symfony\\console\\Application.php(359): Symfony\\Component\\Console\\Application->doRunCommand(Object(Illuminate\\Queue\\Console\\WorkCommand), Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))\n#34 C:\\xampp\\htdocs\\sb_legatura\\vendor\\symfony\\console\\Application.php(194): Symfony\\Component\\Console\\Application->doRun(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))\n#35 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Foundation\\Console\\Kernel.php(197): Symfony\\Component\\Console\\Application->run(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))\n#36 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Foundation\\Application.php(1235): Illuminate\\Foundation\\Console\\Kernel->handle(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))\n#37 C:\\xampp\\htdocs\\sb_legatura\\artisan(16): Illuminate\\Foundation\\Application->handleCommand(Object(Symfony\\Component\\Console\\Input\\ArgvInput))\n#38 {main}', '2026-02-07 23:59:24'),
-(4, '817cd8ce-f954-4b33-8403-ddf0d913e4cb', 'database', 'default', '{\"uuid\":\"817cd8ce-f954-4b33-8403-ddf0d913e4cb\",\"displayName\":\"App\\\\Events\\\\messageSentEvent\",\"job\":\"Illuminate\\\\Queue\\\\CallQueuedHandler@call\",\"maxTries\":null,\"maxExceptions\":null,\"failOnTimeout\":false,\"backoff\":null,\"timeout\":null,\"retryUntil\":null,\"data\":{\"commandName\":\"Illuminate\\\\Broadcasting\\\\BroadcastEvent\",\"command\":\"O:38:\\\"Illuminate\\\\Broadcasting\\\\BroadcastEvent\\\":16:{s:5:\\\"event\\\";O:27:\\\"App\\\\Events\\\\messageSentEvent\\\":2:{s:7:\\\"message\\\";O:45:\\\"Illuminate\\\\Contracts\\\\Database\\\\ModelIdentifier\\\":5:{s:5:\\\"class\\\";s:31:\\\"App\\\\Models\\\\message\\\\messageClass\\\";s:2:\\\"id\\\";i:270;s:9:\\\"relations\\\";a:0:{}s:10:\\\"connection\\\";s:5:\\\"mysql\\\";s:15:\\\"collectionClass\\\";N;}s:12:\\\"conversation\\\";O:8:\\\"stdClass\\\":9:{s:15:\\\"conversation_id\\\";i:1000372;s:9:\\\"sender_id\\\";i:1;s:11:\\\"receiver_id\\\";i:372;s:12:\\\"is_suspended\\\";i:0;s:6:\\\"reason\\\";N;s:15:\\\"suspended_until\\\";N;s:6:\\\"status\\\";s:6:\\\"active\\\";s:10:\\\"created_at\\\";s:19:\\\"2026-02-07 06:56:53\\\";s:10:\\\"updated_at\\\";s:19:\\\"2026-02-07 09:15:12\\\";}}s:5:\\\"tries\\\";N;s:7:\\\"timeout\\\";N;s:7:\\\"backoff\\\";N;s:13:\\\"maxExceptions\\\";N;s:10:\\\"connection\\\";N;s:5:\\\"queue\\\";N;s:12:\\\"messageGroup\\\";N;s:12:\\\"deduplicator\\\";N;s:5:\\\"delay\\\";N;s:11:\\\"afterCommit\\\";N;s:10:\\\"middleware\\\";a:0:{}s:7:\\\"chained\\\";a:0:{}s:15:\\\"chainConnection\\\";N;s:10:\\\"chainQueue\\\";N;s:19:\\\"chainCatchCallbacks\\\";N;}\"},\"createdAt\":1770537575,\"delay\":null}', 'ErrorException: Undefined property: stdClass::$is_flagged in C:\\xampp\\htdocs\\sb_legatura\\app\\Events\\messageSentEvent.php:90\nStack trace:\n#0 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Foundation\\Bootstrap\\HandleExceptions.php(258): Illuminate\\Foundation\\Bootstrap\\HandleExceptions->handleError(2, \'Undefined prope...\', \'C:\\\\xampp\\\\htdocs...\', 90)\n#1 C:\\xampp\\htdocs\\sb_legatura\\app\\Events\\messageSentEvent.php(90): Illuminate\\Foundation\\Bootstrap\\HandleExceptions->Illuminate\\Foundation\\Bootstrap\\{closure}(2, \'Undefined prope...\', \'C:\\\\xampp\\\\htdocs...\', 90)\n#2 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Broadcasting\\BroadcastEvent.php(110): App\\Events\\messageSentEvent->broadcastWith()\n#3 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Broadcasting\\BroadcastEvent.php(90): Illuminate\\Broadcasting\\BroadcastEvent->getPayloadFromEvent(Object(App\\Events\\messageSentEvent))\n#4 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(36): Illuminate\\Broadcasting\\BroadcastEvent->handle(Object(Illuminate\\Broadcasting\\BroadcastManager))\n#5 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\Util.php(43): Illuminate\\Container\\BoundMethod::Illuminate\\Container\\{closure}()\n#6 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(96): Illuminate\\Container\\Util::unwrapIfClosure(Object(Closure))\n#7 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(35): Illuminate\\Container\\BoundMethod::callBoundMethod(Object(Illuminate\\Foundation\\Application), Array, Object(Closure))\n#8 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\Container.php(836): Illuminate\\Container\\BoundMethod::call(Object(Illuminate\\Foundation\\Application), Array, Array, NULL)\n#9 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Bus\\Dispatcher.php(129): Illuminate\\Container\\Container->call(Array)\n#10 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(180): Illuminate\\Bus\\Dispatcher->Illuminate\\Bus\\{closure}(Object(Illuminate\\Broadcasting\\BroadcastEvent))\n#11 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(137): Illuminate\\Pipeline\\Pipeline->Illuminate\\Pipeline\\{closure}(Object(Illuminate\\Broadcasting\\BroadcastEvent))\n#12 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Bus\\Dispatcher.php(133): Illuminate\\Pipeline\\Pipeline->then(Object(Closure))\n#13 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\CallQueuedHandler.php(134): Illuminate\\Bus\\Dispatcher->dispatchNow(Object(Illuminate\\Broadcasting\\BroadcastEvent), false)\n#14 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(180): Illuminate\\Queue\\CallQueuedHandler->Illuminate\\Queue\\{closure}(Object(Illuminate\\Broadcasting\\BroadcastEvent))\n#15 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(137): Illuminate\\Pipeline\\Pipeline->Illuminate\\Pipeline\\{closure}(Object(Illuminate\\Broadcasting\\BroadcastEvent))\n#16 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\CallQueuedHandler.php(127): Illuminate\\Pipeline\\Pipeline->then(Object(Closure))\n#17 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\CallQueuedHandler.php(68): Illuminate\\Queue\\CallQueuedHandler->dispatchThroughMiddleware(Object(Illuminate\\Queue\\Jobs\\DatabaseJob), Object(Illuminate\\Broadcasting\\BroadcastEvent))\n#18 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Jobs\\Job.php(102): Illuminate\\Queue\\CallQueuedHandler->call(Object(Illuminate\\Queue\\Jobs\\DatabaseJob), Array)\n#19 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Worker.php(451): Illuminate\\Queue\\Jobs\\Job->fire()\n#20 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Worker.php(401): Illuminate\\Queue\\Worker->process(\'database\', Object(Illuminate\\Queue\\Jobs\\DatabaseJob), Object(Illuminate\\Queue\\WorkerOptions))\n#21 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Worker.php(187): Illuminate\\Queue\\Worker->runJob(Object(Illuminate\\Queue\\Jobs\\DatabaseJob), \'database\', Object(Illuminate\\Queue\\WorkerOptions))\n#22 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Console\\WorkCommand.php(148): Illuminate\\Queue\\Worker->daemon(\'database\', \'default\', Object(Illuminate\\Queue\\WorkerOptions))\n#23 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Console\\WorkCommand.php(131): Illuminate\\Queue\\Console\\WorkCommand->runWorker(\'database\', \'default\')\n#24 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(36): Illuminate\\Queue\\Console\\WorkCommand->handle()\n#25 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\Util.php(43): Illuminate\\Container\\BoundMethod::Illuminate\\Container\\{closure}()\n#26 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(96): Illuminate\\Container\\Util::unwrapIfClosure(Object(Closure))\n#27 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(35): Illuminate\\Container\\BoundMethod::callBoundMethod(Object(Illuminate\\Foundation\\Application), Array, Object(Closure))\n#28 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\Container.php(836): Illuminate\\Container\\BoundMethod::call(Object(Illuminate\\Foundation\\Application), Array, Array, NULL)\n#29 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Console\\Command.php(211): Illuminate\\Container\\Container->call(Array)\n#30 C:\\xampp\\htdocs\\sb_legatura\\vendor\\symfony\\console\\Command\\Command.php(318): Illuminate\\Console\\Command->execute(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Illuminate\\Console\\OutputStyle))\n#31 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Console\\Command.php(180): Symfony\\Component\\Console\\Command\\Command->run(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Illuminate\\Console\\OutputStyle))\n#32 C:\\xampp\\htdocs\\sb_legatura\\vendor\\symfony\\console\\Application.php(1110): Illuminate\\Console\\Command->run(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))\n#33 C:\\xampp\\htdocs\\sb_legatura\\vendor\\symfony\\console\\Application.php(359): Symfony\\Component\\Console\\Application->doRunCommand(Object(Illuminate\\Queue\\Console\\WorkCommand), Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))\n#34 C:\\xampp\\htdocs\\sb_legatura\\vendor\\symfony\\console\\Application.php(194): Symfony\\Component\\Console\\Application->doRun(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))\n#35 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Foundation\\Console\\Kernel.php(197): Symfony\\Component\\Console\\Application->run(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))\n#36 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Foundation\\Application.php(1235): Illuminate\\Foundation\\Console\\Kernel->handle(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))\n#37 C:\\xampp\\htdocs\\sb_legatura\\artisan(16): Illuminate\\Foundation\\Application->handleCommand(Object(Symfony\\Component\\Console\\Input\\ArgvInput))\n#38 {main}', '2026-02-07 23:59:36');
-INSERT INTO `failed_jobs` (`id`, `uuid`, `connection`, `queue`, `payload`, `exception`, `failed_at`) VALUES
-(5, 'ffa4e9a0-3625-4a0e-ae91-54dd5d8baa25', 'database', 'default', '{\"uuid\":\"ffa4e9a0-3625-4a0e-ae91-54dd5d8baa25\",\"displayName\":\"App\\\\Events\\\\messageSentEvent\",\"job\":\"Illuminate\\\\Queue\\\\CallQueuedHandler@call\",\"maxTries\":null,\"maxExceptions\":null,\"failOnTimeout\":false,\"backoff\":null,\"timeout\":null,\"retryUntil\":null,\"data\":{\"commandName\":\"Illuminate\\\\Broadcasting\\\\BroadcastEvent\",\"command\":\"O:38:\\\"Illuminate\\\\Broadcasting\\\\BroadcastEvent\\\":16:{s:5:\\\"event\\\";O:27:\\\"App\\\\Events\\\\messageSentEvent\\\":2:{s:7:\\\"message\\\";O:45:\\\"Illuminate\\\\Contracts\\\\Database\\\\ModelIdentifier\\\":5:{s:5:\\\"class\\\";s:31:\\\"App\\\\Models\\\\message\\\\messageClass\\\";s:2:\\\"id\\\";i:271;s:9:\\\"relations\\\";a:0:{}s:10:\\\"connection\\\";s:5:\\\"mysql\\\";s:15:\\\"collectionClass\\\";N;}s:12:\\\"conversation\\\";O:8:\\\"stdClass\\\":9:{s:15:\\\"conversation_id\\\";i:371000372;s:9:\\\"sender_id\\\";i:371;s:11:\\\"receiver_id\\\";i:372;s:12:\\\"is_suspended\\\";i:0;s:6:\\\"reason\\\";N;s:15:\\\"suspended_until\\\";N;s:6:\\\"status\\\";s:6:\\\"active\\\";s:10:\\\"created_at\\\";s:19:\\\"2026-02-08 03:29:05\\\";s:10:\\\"updated_at\\\";s:19:\\\"2026-02-08 03:29:05\\\";}}s:5:\\\"tries\\\";N;s:7:\\\"timeout\\\";N;s:7:\\\"backoff\\\";N;s:13:\\\"maxExceptions\\\";N;s:10:\\\"connection\\\";N;s:5:\\\"queue\\\";N;s:12:\\\"messageGroup\\\";N;s:12:\\\"deduplicator\\\";N;s:5:\\\"delay\\\";N;s:11:\\\"afterCommit\\\";N;s:10:\\\"middleware\\\";a:0:{}s:7:\\\"chained\\\";a:0:{}s:15:\\\"chainConnection\\\";N;s:10:\\\"chainQueue\\\";N;s:19:\\\"chainCatchCallbacks\\\";N;}\"},\"createdAt\":1770537584,\"delay\":null}', 'ErrorException: Undefined property: stdClass::$is_flagged in C:\\xampp\\htdocs\\sb_legatura\\app\\Events\\messageSentEvent.php:90\nStack trace:\n#0 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Foundation\\Bootstrap\\HandleExceptions.php(258): Illuminate\\Foundation\\Bootstrap\\HandleExceptions->handleError(2, \'Undefined prope...\', \'C:\\\\xampp\\\\htdocs...\', 90)\n#1 C:\\xampp\\htdocs\\sb_legatura\\app\\Events\\messageSentEvent.php(90): Illuminate\\Foundation\\Bootstrap\\HandleExceptions->Illuminate\\Foundation\\Bootstrap\\{closure}(2, \'Undefined prope...\', \'C:\\\\xampp\\\\htdocs...\', 90)\n#2 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Broadcasting\\BroadcastEvent.php(110): App\\Events\\messageSentEvent->broadcastWith()\n#3 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Broadcasting\\BroadcastEvent.php(90): Illuminate\\Broadcasting\\BroadcastEvent->getPayloadFromEvent(Object(App\\Events\\messageSentEvent))\n#4 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(36): Illuminate\\Broadcasting\\BroadcastEvent->handle(Object(Illuminate\\Broadcasting\\BroadcastManager))\n#5 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\Util.php(43): Illuminate\\Container\\BoundMethod::Illuminate\\Container\\{closure}()\n#6 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(96): Illuminate\\Container\\Util::unwrapIfClosure(Object(Closure))\n#7 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(35): Illuminate\\Container\\BoundMethod::callBoundMethod(Object(Illuminate\\Foundation\\Application), Array, Object(Closure))\n#8 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\Container.php(836): Illuminate\\Container\\BoundMethod::call(Object(Illuminate\\Foundation\\Application), Array, Array, NULL)\n#9 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Bus\\Dispatcher.php(129): Illuminate\\Container\\Container->call(Array)\n#10 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(180): Illuminate\\Bus\\Dispatcher->Illuminate\\Bus\\{closure}(Object(Illuminate\\Broadcasting\\BroadcastEvent))\n#11 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(137): Illuminate\\Pipeline\\Pipeline->Illuminate\\Pipeline\\{closure}(Object(Illuminate\\Broadcasting\\BroadcastEvent))\n#12 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Bus\\Dispatcher.php(133): Illuminate\\Pipeline\\Pipeline->then(Object(Closure))\n#13 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\CallQueuedHandler.php(134): Illuminate\\Bus\\Dispatcher->dispatchNow(Object(Illuminate\\Broadcasting\\BroadcastEvent), false)\n#14 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(180): Illuminate\\Queue\\CallQueuedHandler->Illuminate\\Queue\\{closure}(Object(Illuminate\\Broadcasting\\BroadcastEvent))\n#15 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(137): Illuminate\\Pipeline\\Pipeline->Illuminate\\Pipeline\\{closure}(Object(Illuminate\\Broadcasting\\BroadcastEvent))\n#16 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\CallQueuedHandler.php(127): Illuminate\\Pipeline\\Pipeline->then(Object(Closure))\n#17 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\CallQueuedHandler.php(68): Illuminate\\Queue\\CallQueuedHandler->dispatchThroughMiddleware(Object(Illuminate\\Queue\\Jobs\\DatabaseJob), Object(Illuminate\\Broadcasting\\BroadcastEvent))\n#18 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Jobs\\Job.php(102): Illuminate\\Queue\\CallQueuedHandler->call(Object(Illuminate\\Queue\\Jobs\\DatabaseJob), Array)\n#19 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Worker.php(451): Illuminate\\Queue\\Jobs\\Job->fire()\n#20 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Worker.php(401): Illuminate\\Queue\\Worker->process(\'database\', Object(Illuminate\\Queue\\Jobs\\DatabaseJob), Object(Illuminate\\Queue\\WorkerOptions))\n#21 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Worker.php(187): Illuminate\\Queue\\Worker->runJob(Object(Illuminate\\Queue\\Jobs\\DatabaseJob), \'database\', Object(Illuminate\\Queue\\WorkerOptions))\n#22 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Console\\WorkCommand.php(148): Illuminate\\Queue\\Worker->daemon(\'database\', \'default\', Object(Illuminate\\Queue\\WorkerOptions))\n#23 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Console\\WorkCommand.php(131): Illuminate\\Queue\\Console\\WorkCommand->runWorker(\'database\', \'default\')\n#24 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(36): Illuminate\\Queue\\Console\\WorkCommand->handle()\n#25 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\Util.php(43): Illuminate\\Container\\BoundMethod::Illuminate\\Container\\{closure}()\n#26 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(96): Illuminate\\Container\\Util::unwrapIfClosure(Object(Closure))\n#27 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(35): Illuminate\\Container\\BoundMethod::callBoundMethod(Object(Illuminate\\Foundation\\Application), Array, Object(Closure))\n#28 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\Container.php(836): Illuminate\\Container\\BoundMethod::call(Object(Illuminate\\Foundation\\Application), Array, Array, NULL)\n#29 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Console\\Command.php(211): Illuminate\\Container\\Container->call(Array)\n#30 C:\\xampp\\htdocs\\sb_legatura\\vendor\\symfony\\console\\Command\\Command.php(318): Illuminate\\Console\\Command->execute(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Illuminate\\Console\\OutputStyle))\n#31 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Console\\Command.php(180): Symfony\\Component\\Console\\Command\\Command->run(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Illuminate\\Console\\OutputStyle))\n#32 C:\\xampp\\htdocs\\sb_legatura\\vendor\\symfony\\console\\Application.php(1110): Illuminate\\Console\\Command->run(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))\n#33 C:\\xampp\\htdocs\\sb_legatura\\vendor\\symfony\\console\\Application.php(359): Symfony\\Component\\Console\\Application->doRunCommand(Object(Illuminate\\Queue\\Console\\WorkCommand), Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))\n#34 C:\\xampp\\htdocs\\sb_legatura\\vendor\\symfony\\console\\Application.php(194): Symfony\\Component\\Console\\Application->doRun(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))\n#35 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Foundation\\Console\\Kernel.php(197): Symfony\\Component\\Console\\Application->run(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))\n#36 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Foundation\\Application.php(1235): Illuminate\\Foundation\\Console\\Kernel->handle(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))\n#37 C:\\xampp\\htdocs\\sb_legatura\\artisan(16): Illuminate\\Foundation\\Application->handleCommand(Object(Symfony\\Component\\Console\\Input\\ArgvInput))\n#38 {main}', '2026-02-07 23:59:45'),
-(6, 'a05d0bed-3c64-46a5-9c4a-6dae22b936d3', 'database', 'default', '{\"uuid\":\"a05d0bed-3c64-46a5-9c4a-6dae22b936d3\",\"displayName\":\"App\\\\Events\\\\messageSentEvent\",\"job\":\"Illuminate\\\\Queue\\\\CallQueuedHandler@call\",\"maxTries\":null,\"maxExceptions\":null,\"failOnTimeout\":false,\"backoff\":null,\"timeout\":null,\"retryUntil\":null,\"data\":{\"commandName\":\"Illuminate\\\\Broadcasting\\\\BroadcastEvent\",\"command\":\"O:38:\\\"Illuminate\\\\Broadcasting\\\\BroadcastEvent\\\":16:{s:5:\\\"event\\\";O:27:\\\"App\\\\Events\\\\messageSentEvent\\\":2:{s:7:\\\"message\\\";O:45:\\\"Illuminate\\\\Contracts\\\\Database\\\\ModelIdentifier\\\":5:{s:5:\\\"class\\\";s:31:\\\"App\\\\Models\\\\message\\\\messageClass\\\";s:2:\\\"id\\\";i:272;s:9:\\\"relations\\\";a:0:{}s:10:\\\"connection\\\";s:5:\\\"mysql\\\";s:15:\\\"collectionClass\\\";N;}s:12:\\\"conversation\\\";O:8:\\\"stdClass\\\":9:{s:15:\\\"conversation_id\\\";i:1000372;s:9:\\\"sender_id\\\";i:1;s:11:\\\"receiver_id\\\";i:372;s:12:\\\"is_suspended\\\";i:0;s:6:\\\"reason\\\";N;s:15:\\\"suspended_until\\\";N;s:6:\\\"status\\\";s:6:\\\"active\\\";s:10:\\\"created_at\\\";s:19:\\\"2026-02-07 06:56:53\\\";s:10:\\\"updated_at\\\";s:19:\\\"2026-02-07 09:15:12\\\";}}s:5:\\\"tries\\\";N;s:7:\\\"timeout\\\";N;s:7:\\\"backoff\\\";N;s:13:\\\"maxExceptions\\\";N;s:10:\\\"connection\\\";N;s:5:\\\"queue\\\";N;s:12:\\\"messageGroup\\\";N;s:12:\\\"deduplicator\\\";N;s:5:\\\"delay\\\";N;s:11:\\\"afterCommit\\\";N;s:10:\\\"middleware\\\";a:0:{}s:7:\\\"chained\\\";a:0:{}s:15:\\\"chainConnection\\\";N;s:10:\\\"chainQueue\\\";N;s:19:\\\"chainCatchCallbacks\\\";N;}\"},\"createdAt\":1770537617,\"delay\":null}', 'ErrorException: Undefined property: stdClass::$is_flagged in C:\\xampp\\htdocs\\sb_legatura\\app\\Events\\messageSentEvent.php:90\nStack trace:\n#0 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Foundation\\Bootstrap\\HandleExceptions.php(258): Illuminate\\Foundation\\Bootstrap\\HandleExceptions->handleError(2, \'Undefined prope...\', \'C:\\\\xampp\\\\htdocs...\', 90)\n#1 C:\\xampp\\htdocs\\sb_legatura\\app\\Events\\messageSentEvent.php(90): Illuminate\\Foundation\\Bootstrap\\HandleExceptions->Illuminate\\Foundation\\Bootstrap\\{closure}(2, \'Undefined prope...\', \'C:\\\\xampp\\\\htdocs...\', 90)\n#2 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Broadcasting\\BroadcastEvent.php(110): App\\Events\\messageSentEvent->broadcastWith()\n#3 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Broadcasting\\BroadcastEvent.php(90): Illuminate\\Broadcasting\\BroadcastEvent->getPayloadFromEvent(Object(App\\Events\\messageSentEvent))\n#4 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(36): Illuminate\\Broadcasting\\BroadcastEvent->handle(Object(Illuminate\\Broadcasting\\BroadcastManager))\n#5 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\Util.php(43): Illuminate\\Container\\BoundMethod::Illuminate\\Container\\{closure}()\n#6 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(96): Illuminate\\Container\\Util::unwrapIfClosure(Object(Closure))\n#7 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(35): Illuminate\\Container\\BoundMethod::callBoundMethod(Object(Illuminate\\Foundation\\Application), Array, Object(Closure))\n#8 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\Container.php(836): Illuminate\\Container\\BoundMethod::call(Object(Illuminate\\Foundation\\Application), Array, Array, NULL)\n#9 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Bus\\Dispatcher.php(129): Illuminate\\Container\\Container->call(Array)\n#10 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(180): Illuminate\\Bus\\Dispatcher->Illuminate\\Bus\\{closure}(Object(Illuminate\\Broadcasting\\BroadcastEvent))\n#11 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(137): Illuminate\\Pipeline\\Pipeline->Illuminate\\Pipeline\\{closure}(Object(Illuminate\\Broadcasting\\BroadcastEvent))\n#12 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Bus\\Dispatcher.php(133): Illuminate\\Pipeline\\Pipeline->then(Object(Closure))\n#13 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\CallQueuedHandler.php(134): Illuminate\\Bus\\Dispatcher->dispatchNow(Object(Illuminate\\Broadcasting\\BroadcastEvent), false)\n#14 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(180): Illuminate\\Queue\\CallQueuedHandler->Illuminate\\Queue\\{closure}(Object(Illuminate\\Broadcasting\\BroadcastEvent))\n#15 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(137): Illuminate\\Pipeline\\Pipeline->Illuminate\\Pipeline\\{closure}(Object(Illuminate\\Broadcasting\\BroadcastEvent))\n#16 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\CallQueuedHandler.php(127): Illuminate\\Pipeline\\Pipeline->then(Object(Closure))\n#17 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\CallQueuedHandler.php(68): Illuminate\\Queue\\CallQueuedHandler->dispatchThroughMiddleware(Object(Illuminate\\Queue\\Jobs\\DatabaseJob), Object(Illuminate\\Broadcasting\\BroadcastEvent))\n#18 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Jobs\\Job.php(102): Illuminate\\Queue\\CallQueuedHandler->call(Object(Illuminate\\Queue\\Jobs\\DatabaseJob), Array)\n#19 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Worker.php(451): Illuminate\\Queue\\Jobs\\Job->fire()\n#20 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Worker.php(401): Illuminate\\Queue\\Worker->process(\'database\', Object(Illuminate\\Queue\\Jobs\\DatabaseJob), Object(Illuminate\\Queue\\WorkerOptions))\n#21 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Worker.php(187): Illuminate\\Queue\\Worker->runJob(Object(Illuminate\\Queue\\Jobs\\DatabaseJob), \'database\', Object(Illuminate\\Queue\\WorkerOptions))\n#22 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Console\\WorkCommand.php(148): Illuminate\\Queue\\Worker->daemon(\'database\', \'default\', Object(Illuminate\\Queue\\WorkerOptions))\n#23 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Console\\WorkCommand.php(131): Illuminate\\Queue\\Console\\WorkCommand->runWorker(\'database\', \'default\')\n#24 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(36): Illuminate\\Queue\\Console\\WorkCommand->handle()\n#25 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\Util.php(43): Illuminate\\Container\\BoundMethod::Illuminate\\Container\\{closure}()\n#26 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(96): Illuminate\\Container\\Util::unwrapIfClosure(Object(Closure))\n#27 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(35): Illuminate\\Container\\BoundMethod::callBoundMethod(Object(Illuminate\\Foundation\\Application), Array, Object(Closure))\n#28 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\Container.php(836): Illuminate\\Container\\BoundMethod::call(Object(Illuminate\\Foundation\\Application), Array, Array, NULL)\n#29 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Console\\Command.php(211): Illuminate\\Container\\Container->call(Array)\n#30 C:\\xampp\\htdocs\\sb_legatura\\vendor\\symfony\\console\\Command\\Command.php(318): Illuminate\\Console\\Command->execute(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Illuminate\\Console\\OutputStyle))\n#31 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Console\\Command.php(180): Symfony\\Component\\Console\\Command\\Command->run(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Illuminate\\Console\\OutputStyle))\n#32 C:\\xampp\\htdocs\\sb_legatura\\vendor\\symfony\\console\\Application.php(1110): Illuminate\\Console\\Command->run(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))\n#33 C:\\xampp\\htdocs\\sb_legatura\\vendor\\symfony\\console\\Application.php(359): Symfony\\Component\\Console\\Application->doRunCommand(Object(Illuminate\\Queue\\Console\\WorkCommand), Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))\n#34 C:\\xampp\\htdocs\\sb_legatura\\vendor\\symfony\\console\\Application.php(194): Symfony\\Component\\Console\\Application->doRun(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))\n#35 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Foundation\\Console\\Kernel.php(197): Symfony\\Component\\Console\\Application->run(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))\n#36 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Foundation\\Application.php(1235): Illuminate\\Foundation\\Console\\Kernel->handle(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))\n#37 C:\\xampp\\htdocs\\sb_legatura\\artisan(16): Illuminate\\Foundation\\Application->handleCommand(Object(Symfony\\Component\\Console\\Input\\ArgvInput))\n#38 {main}', '2026-02-08 00:00:19'),
-(7, 'c5ea2d98-9ff2-493b-856f-735a38b83adb', 'database', 'default', '{\"uuid\":\"c5ea2d98-9ff2-493b-856f-735a38b83adb\",\"displayName\":\"App\\\\Events\\\\messageSentEvent\",\"job\":\"Illuminate\\\\Queue\\\\CallQueuedHandler@call\",\"maxTries\":null,\"maxExceptions\":null,\"failOnTimeout\":false,\"backoff\":null,\"timeout\":null,\"retryUntil\":null,\"data\":{\"commandName\":\"Illuminate\\\\Broadcasting\\\\BroadcastEvent\",\"command\":\"O:38:\\\"Illuminate\\\\Broadcasting\\\\BroadcastEvent\\\":16:{s:5:\\\"event\\\";O:27:\\\"App\\\\Events\\\\messageSentEvent\\\":2:{s:7:\\\"message\\\";O:45:\\\"Illuminate\\\\Contracts\\\\Database\\\\ModelIdentifier\\\":5:{s:5:\\\"class\\\";s:31:\\\"App\\\\Models\\\\message\\\\messageClass\\\";s:2:\\\"id\\\";i:274;s:9:\\\"relations\\\";a:0:{}s:10:\\\"connection\\\";s:5:\\\"mysql\\\";s:15:\\\"collectionClass\\\";N;}s:12:\\\"conversation\\\";O:8:\\\"stdClass\\\":9:{s:15:\\\"conversation_id\\\";i:371000372;s:9:\\\"sender_id\\\";i:371;s:11:\\\"receiver_id\\\";i:372;s:12:\\\"is_suspended\\\";i:0;s:6:\\\"reason\\\";N;s:15:\\\"suspended_until\\\";N;s:6:\\\"status\\\";s:6:\\\"active\\\";s:10:\\\"created_at\\\";s:19:\\\"2026-02-08 03:29:05\\\";s:10:\\\"updated_at\\\";s:19:\\\"2026-02-08 03:29:05\\\";}}s:5:\\\"tries\\\";N;s:7:\\\"timeout\\\";N;s:7:\\\"backoff\\\";N;s:13:\\\"maxExceptions\\\";N;s:10:\\\"connection\\\";N;s:5:\\\"queue\\\";N;s:12:\\\"messageGroup\\\";N;s:12:\\\"deduplicator\\\";N;s:5:\\\"delay\\\";N;s:11:\\\"afterCommit\\\";N;s:10:\\\"middleware\\\";a:0:{}s:7:\\\"chained\\\";a:0:{}s:15:\\\"chainConnection\\\";N;s:10:\\\"chainQueue\\\";N;s:19:\\\"chainCatchCallbacks\\\";N;}\"},\"createdAt\":1770537994,\"delay\":null}', 'ErrorException: Undefined property: stdClass::$is_flagged in C:\\xampp\\htdocs\\sb_legatura\\app\\Events\\messageSentEvent.php:90\nStack trace:\n#0 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Foundation\\Bootstrap\\HandleExceptions.php(258): Illuminate\\Foundation\\Bootstrap\\HandleExceptions->handleError(2, \'Undefined prope...\', \'C:\\\\xampp\\\\htdocs...\', 90)\n#1 C:\\xampp\\htdocs\\sb_legatura\\app\\Events\\messageSentEvent.php(90): Illuminate\\Foundation\\Bootstrap\\HandleExceptions->Illuminate\\Foundation\\Bootstrap\\{closure}(2, \'Undefined prope...\', \'C:\\\\xampp\\\\htdocs...\', 90)\n#2 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Broadcasting\\BroadcastEvent.php(110): App\\Events\\messageSentEvent->broadcastWith()\n#3 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Broadcasting\\BroadcastEvent.php(90): Illuminate\\Broadcasting\\BroadcastEvent->getPayloadFromEvent(Object(App\\Events\\messageSentEvent))\n#4 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(36): Illuminate\\Broadcasting\\BroadcastEvent->handle(Object(Illuminate\\Broadcasting\\BroadcastManager))\n#5 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\Util.php(43): Illuminate\\Container\\BoundMethod::Illuminate\\Container\\{closure}()\n#6 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(96): Illuminate\\Container\\Util::unwrapIfClosure(Object(Closure))\n#7 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(35): Illuminate\\Container\\BoundMethod::callBoundMethod(Object(Illuminate\\Foundation\\Application), Array, Object(Closure))\n#8 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\Container.php(836): Illuminate\\Container\\BoundMethod::call(Object(Illuminate\\Foundation\\Application), Array, Array, NULL)\n#9 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Bus\\Dispatcher.php(129): Illuminate\\Container\\Container->call(Array)\n#10 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(180): Illuminate\\Bus\\Dispatcher->Illuminate\\Bus\\{closure}(Object(Illuminate\\Broadcasting\\BroadcastEvent))\n#11 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(137): Illuminate\\Pipeline\\Pipeline->Illuminate\\Pipeline\\{closure}(Object(Illuminate\\Broadcasting\\BroadcastEvent))\n#12 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Bus\\Dispatcher.php(133): Illuminate\\Pipeline\\Pipeline->then(Object(Closure))\n#13 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\CallQueuedHandler.php(134): Illuminate\\Bus\\Dispatcher->dispatchNow(Object(Illuminate\\Broadcasting\\BroadcastEvent), false)\n#14 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(180): Illuminate\\Queue\\CallQueuedHandler->Illuminate\\Queue\\{closure}(Object(Illuminate\\Broadcasting\\BroadcastEvent))\n#15 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(137): Illuminate\\Pipeline\\Pipeline->Illuminate\\Pipeline\\{closure}(Object(Illuminate\\Broadcasting\\BroadcastEvent))\n#16 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\CallQueuedHandler.php(127): Illuminate\\Pipeline\\Pipeline->then(Object(Closure))\n#17 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\CallQueuedHandler.php(68): Illuminate\\Queue\\CallQueuedHandler->dispatchThroughMiddleware(Object(Illuminate\\Queue\\Jobs\\DatabaseJob), Object(Illuminate\\Broadcasting\\BroadcastEvent))\n#18 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Jobs\\Job.php(102): Illuminate\\Queue\\CallQueuedHandler->call(Object(Illuminate\\Queue\\Jobs\\DatabaseJob), Array)\n#19 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Worker.php(451): Illuminate\\Queue\\Jobs\\Job->fire()\n#20 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Worker.php(401): Illuminate\\Queue\\Worker->process(\'database\', Object(Illuminate\\Queue\\Jobs\\DatabaseJob), Object(Illuminate\\Queue\\WorkerOptions))\n#21 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Worker.php(187): Illuminate\\Queue\\Worker->runJob(Object(Illuminate\\Queue\\Jobs\\DatabaseJob), \'database\', Object(Illuminate\\Queue\\WorkerOptions))\n#22 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Console\\WorkCommand.php(148): Illuminate\\Queue\\Worker->daemon(\'database\', \'default\', Object(Illuminate\\Queue\\WorkerOptions))\n#23 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Console\\WorkCommand.php(131): Illuminate\\Queue\\Console\\WorkCommand->runWorker(\'database\', \'default\')\n#24 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(36): Illuminate\\Queue\\Console\\WorkCommand->handle()\n#25 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\Util.php(43): Illuminate\\Container\\BoundMethod::Illuminate\\Container\\{closure}()\n#26 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(96): Illuminate\\Container\\Util::unwrapIfClosure(Object(Closure))\n#27 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(35): Illuminate\\Container\\BoundMethod::callBoundMethod(Object(Illuminate\\Foundation\\Application), Array, Object(Closure))\n#28 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\Container.php(836): Illuminate\\Container\\BoundMethod::call(Object(Illuminate\\Foundation\\Application), Array, Array, NULL)\n#29 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Console\\Command.php(211): Illuminate\\Container\\Container->call(Array)\n#30 C:\\xampp\\htdocs\\sb_legatura\\vendor\\symfony\\console\\Command\\Command.php(318): Illuminate\\Console\\Command->execute(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Illuminate\\Console\\OutputStyle))\n#31 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Console\\Command.php(180): Symfony\\Component\\Console\\Command\\Command->run(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Illuminate\\Console\\OutputStyle))\n#32 C:\\xampp\\htdocs\\sb_legatura\\vendor\\symfony\\console\\Application.php(1110): Illuminate\\Console\\Command->run(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))\n#33 C:\\xampp\\htdocs\\sb_legatura\\vendor\\symfony\\console\\Application.php(359): Symfony\\Component\\Console\\Application->doRunCommand(Object(Illuminate\\Queue\\Console\\WorkCommand), Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))\n#34 C:\\xampp\\htdocs\\sb_legatura\\vendor\\symfony\\console\\Application.php(194): Symfony\\Component\\Console\\Application->doRun(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))\n#35 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Foundation\\Console\\Kernel.php(197): Symfony\\Component\\Console\\Application->run(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))\n#36 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Foundation\\Application.php(1235): Illuminate\\Foundation\\Console\\Kernel->handle(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))\n#37 C:\\xampp\\htdocs\\sb_legatura\\artisan(16): Illuminate\\Foundation\\Application->handleCommand(Object(Symfony\\Component\\Console\\Input\\ArgvInput))\n#38 {main}', '2026-02-08 00:06:35'),
-(8, '4e45d039-a009-4abd-8de6-03ec50824d79', 'database', 'default', '{\"uuid\":\"4e45d039-a009-4abd-8de6-03ec50824d79\",\"displayName\":\"App\\\\Events\\\\messageSentEvent\",\"job\":\"Illuminate\\\\Queue\\\\CallQueuedHandler@call\",\"maxTries\":null,\"maxExceptions\":null,\"failOnTimeout\":false,\"backoff\":null,\"timeout\":null,\"retryUntil\":null,\"data\":{\"commandName\":\"Illuminate\\\\Broadcasting\\\\BroadcastEvent\",\"command\":\"O:38:\\\"Illuminate\\\\Broadcasting\\\\BroadcastEvent\\\":16:{s:5:\\\"event\\\";O:27:\\\"App\\\\Events\\\\messageSentEvent\\\":2:{s:7:\\\"message\\\";O:45:\\\"Illuminate\\\\Contracts\\\\Database\\\\ModelIdentifier\\\":5:{s:5:\\\"class\\\";s:31:\\\"App\\\\Models\\\\message\\\\messageClass\\\";s:2:\\\"id\\\";i:275;s:9:\\\"relations\\\";a:0:{}s:10:\\\"connection\\\";s:5:\\\"mysql\\\";s:15:\\\"collectionClass\\\";N;}s:12:\\\"conversation\\\";O:8:\\\"stdClass\\\":9:{s:15:\\\"conversation_id\\\";i:1000372;s:9:\\\"sender_id\\\";i:1;s:11:\\\"receiver_id\\\";i:372;s:12:\\\"is_suspended\\\";i:0;s:6:\\\"reason\\\";N;s:15:\\\"suspended_until\\\";N;s:6:\\\"status\\\";s:6:\\\"active\\\";s:10:\\\"created_at\\\";s:19:\\\"2026-02-07 06:56:53\\\";s:10:\\\"updated_at\\\";s:19:\\\"2026-02-07 09:15:12\\\";}}s:5:\\\"tries\\\";N;s:7:\\\"timeout\\\";N;s:7:\\\"backoff\\\";N;s:13:\\\"maxExceptions\\\";N;s:10:\\\"connection\\\";N;s:5:\\\"queue\\\";N;s:12:\\\"messageGroup\\\";N;s:12:\\\"deduplicator\\\";N;s:5:\\\"delay\\\";N;s:11:\\\"afterCommit\\\";N;s:10:\\\"middleware\\\";a:0:{}s:7:\\\"chained\\\";a:0:{}s:15:\\\"chainConnection\\\";N;s:10:\\\"chainQueue\\\";N;s:19:\\\"chainCatchCallbacks\\\";N;}\"},\"createdAt\":1770538010,\"delay\":null}', 'ErrorException: Undefined property: stdClass::$is_flagged in C:\\xampp\\htdocs\\sb_legatura\\app\\Events\\messageSentEvent.php:90\nStack trace:\n#0 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Foundation\\Bootstrap\\HandleExceptions.php(258): Illuminate\\Foundation\\Bootstrap\\HandleExceptions->handleError(2, \'Undefined prope...\', \'C:\\\\xampp\\\\htdocs...\', 90)\n#1 C:\\xampp\\htdocs\\sb_legatura\\app\\Events\\messageSentEvent.php(90): Illuminate\\Foundation\\Bootstrap\\HandleExceptions->Illuminate\\Foundation\\Bootstrap\\{closure}(2, \'Undefined prope...\', \'C:\\\\xampp\\\\htdocs...\', 90)\n#2 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Broadcasting\\BroadcastEvent.php(110): App\\Events\\messageSentEvent->broadcastWith()\n#3 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Broadcasting\\BroadcastEvent.php(90): Illuminate\\Broadcasting\\BroadcastEvent->getPayloadFromEvent(Object(App\\Events\\messageSentEvent))\n#4 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(36): Illuminate\\Broadcasting\\BroadcastEvent->handle(Object(Illuminate\\Broadcasting\\BroadcastManager))\n#5 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\Util.php(43): Illuminate\\Container\\BoundMethod::Illuminate\\Container\\{closure}()\n#6 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(96): Illuminate\\Container\\Util::unwrapIfClosure(Object(Closure))\n#7 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(35): Illuminate\\Container\\BoundMethod::callBoundMethod(Object(Illuminate\\Foundation\\Application), Array, Object(Closure))\n#8 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\Container.php(836): Illuminate\\Container\\BoundMethod::call(Object(Illuminate\\Foundation\\Application), Array, Array, NULL)\n#9 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Bus\\Dispatcher.php(129): Illuminate\\Container\\Container->call(Array)\n#10 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(180): Illuminate\\Bus\\Dispatcher->Illuminate\\Bus\\{closure}(Object(Illuminate\\Broadcasting\\BroadcastEvent))\n#11 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(137): Illuminate\\Pipeline\\Pipeline->Illuminate\\Pipeline\\{closure}(Object(Illuminate\\Broadcasting\\BroadcastEvent))\n#12 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Bus\\Dispatcher.php(133): Illuminate\\Pipeline\\Pipeline->then(Object(Closure))\n#13 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\CallQueuedHandler.php(134): Illuminate\\Bus\\Dispatcher->dispatchNow(Object(Illuminate\\Broadcasting\\BroadcastEvent), false)\n#14 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(180): Illuminate\\Queue\\CallQueuedHandler->Illuminate\\Queue\\{closure}(Object(Illuminate\\Broadcasting\\BroadcastEvent))\n#15 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(137): Illuminate\\Pipeline\\Pipeline->Illuminate\\Pipeline\\{closure}(Object(Illuminate\\Broadcasting\\BroadcastEvent))\n#16 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\CallQueuedHandler.php(127): Illuminate\\Pipeline\\Pipeline->then(Object(Closure))\n#17 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\CallQueuedHandler.php(68): Illuminate\\Queue\\CallQueuedHandler->dispatchThroughMiddleware(Object(Illuminate\\Queue\\Jobs\\DatabaseJob), Object(Illuminate\\Broadcasting\\BroadcastEvent))\n#18 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Jobs\\Job.php(102): Illuminate\\Queue\\CallQueuedHandler->call(Object(Illuminate\\Queue\\Jobs\\DatabaseJob), Array)\n#19 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Worker.php(451): Illuminate\\Queue\\Jobs\\Job->fire()\n#20 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Worker.php(401): Illuminate\\Queue\\Worker->process(\'database\', Object(Illuminate\\Queue\\Jobs\\DatabaseJob), Object(Illuminate\\Queue\\WorkerOptions))\n#21 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Worker.php(187): Illuminate\\Queue\\Worker->runJob(Object(Illuminate\\Queue\\Jobs\\DatabaseJob), \'database\', Object(Illuminate\\Queue\\WorkerOptions))\n#22 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Console\\WorkCommand.php(148): Illuminate\\Queue\\Worker->daemon(\'database\', \'default\', Object(Illuminate\\Queue\\WorkerOptions))\n#23 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Console\\WorkCommand.php(131): Illuminate\\Queue\\Console\\WorkCommand->runWorker(\'database\', \'default\')\n#24 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(36): Illuminate\\Queue\\Console\\WorkCommand->handle()\n#25 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\Util.php(43): Illuminate\\Container\\BoundMethod::Illuminate\\Container\\{closure}()\n#26 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(96): Illuminate\\Container\\Util::unwrapIfClosure(Object(Closure))\n#27 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(35): Illuminate\\Container\\BoundMethod::callBoundMethod(Object(Illuminate\\Foundation\\Application), Array, Object(Closure))\n#28 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\Container.php(836): Illuminate\\Container\\BoundMethod::call(Object(Illuminate\\Foundation\\Application), Array, Array, NULL)\n#29 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Console\\Command.php(211): Illuminate\\Container\\Container->call(Array)\n#30 C:\\xampp\\htdocs\\sb_legatura\\vendor\\symfony\\console\\Command\\Command.php(318): Illuminate\\Console\\Command->execute(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Illuminate\\Console\\OutputStyle))\n#31 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Console\\Command.php(180): Symfony\\Component\\Console\\Command\\Command->run(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Illuminate\\Console\\OutputStyle))\n#32 C:\\xampp\\htdocs\\sb_legatura\\vendor\\symfony\\console\\Application.php(1110): Illuminate\\Console\\Command->run(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))\n#33 C:\\xampp\\htdocs\\sb_legatura\\vendor\\symfony\\console\\Application.php(359): Symfony\\Component\\Console\\Application->doRunCommand(Object(Illuminate\\Queue\\Console\\WorkCommand), Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))\n#34 C:\\xampp\\htdocs\\sb_legatura\\vendor\\symfony\\console\\Application.php(194): Symfony\\Component\\Console\\Application->doRun(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))\n#35 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Foundation\\Console\\Kernel.php(197): Symfony\\Component\\Console\\Application->run(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))\n#36 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Foundation\\Application.php(1235): Illuminate\\Foundation\\Console\\Kernel->handle(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))\n#37 C:\\xampp\\htdocs\\sb_legatura\\artisan(16): Illuminate\\Foundation\\Application->handleCommand(Object(Symfony\\Component\\Console\\Input\\ArgvInput))\n#38 {main}', '2026-02-08 00:06:51');
-INSERT INTO `failed_jobs` (`id`, `uuid`, `connection`, `queue`, `payload`, `exception`, `failed_at`) VALUES
-(9, 'a15da938-87d0-4ff5-a90d-9eda0ec164c3', 'database', 'default', '{\"uuid\":\"a15da938-87d0-4ff5-a90d-9eda0ec164c3\",\"displayName\":\"App\\\\Events\\\\messageSentEvent\",\"job\":\"Illuminate\\\\Queue\\\\CallQueuedHandler@call\",\"maxTries\":null,\"maxExceptions\":null,\"failOnTimeout\":false,\"backoff\":null,\"timeout\":null,\"retryUntil\":null,\"data\":{\"commandName\":\"Illuminate\\\\Broadcasting\\\\BroadcastEvent\",\"command\":\"O:38:\\\"Illuminate\\\\Broadcasting\\\\BroadcastEvent\\\":16:{s:5:\\\"event\\\";O:27:\\\"App\\\\Events\\\\messageSentEvent\\\":2:{s:7:\\\"message\\\";O:45:\\\"Illuminate\\\\Contracts\\\\Database\\\\ModelIdentifier\\\":5:{s:5:\\\"class\\\";s:31:\\\"App\\\\Models\\\\message\\\\messageClass\\\";s:2:\\\"id\\\";i:276;s:9:\\\"relations\\\";a:0:{}s:10:\\\"connection\\\";s:5:\\\"mysql\\\";s:15:\\\"collectionClass\\\";N;}s:12:\\\"conversation\\\";O:8:\\\"stdClass\\\":9:{s:15:\\\"conversation_id\\\";i:1000371;s:9:\\\"sender_id\\\";i:1;s:11:\\\"receiver_id\\\";i:371;s:12:\\\"is_suspended\\\";i:0;s:6:\\\"reason\\\";N;s:15:\\\"suspended_until\\\";N;s:6:\\\"status\\\";s:6:\\\"active\\\";s:10:\\\"created_at\\\";s:19:\\\"2026-02-07 06:56:13\\\";s:10:\\\"updated_at\\\";s:19:\\\"2026-02-07 06:56:13\\\";}}s:5:\\\"tries\\\";N;s:7:\\\"timeout\\\";N;s:7:\\\"backoff\\\";N;s:13:\\\"maxExceptions\\\";N;s:10:\\\"connection\\\";N;s:5:\\\"queue\\\";N;s:12:\\\"messageGroup\\\";N;s:12:\\\"deduplicator\\\";N;s:5:\\\"delay\\\";N;s:11:\\\"afterCommit\\\";N;s:10:\\\"middleware\\\";a:0:{}s:7:\\\"chained\\\";a:0:{}s:15:\\\"chainConnection\\\";N;s:10:\\\"chainQueue\\\";N;s:19:\\\"chainCatchCallbacks\\\";N;}\"},\"createdAt\":1770538015,\"delay\":null}', 'ErrorException: Undefined property: stdClass::$is_flagged in C:\\xampp\\htdocs\\sb_legatura\\app\\Events\\messageSentEvent.php:90\nStack trace:\n#0 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Foundation\\Bootstrap\\HandleExceptions.php(258): Illuminate\\Foundation\\Bootstrap\\HandleExceptions->handleError(2, \'Undefined prope...\', \'C:\\\\xampp\\\\htdocs...\', 90)\n#1 C:\\xampp\\htdocs\\sb_legatura\\app\\Events\\messageSentEvent.php(90): Illuminate\\Foundation\\Bootstrap\\HandleExceptions->Illuminate\\Foundation\\Bootstrap\\{closure}(2, \'Undefined prope...\', \'C:\\\\xampp\\\\htdocs...\', 90)\n#2 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Broadcasting\\BroadcastEvent.php(110): App\\Events\\messageSentEvent->broadcastWith()\n#3 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Broadcasting\\BroadcastEvent.php(90): Illuminate\\Broadcasting\\BroadcastEvent->getPayloadFromEvent(Object(App\\Events\\messageSentEvent))\n#4 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(36): Illuminate\\Broadcasting\\BroadcastEvent->handle(Object(Illuminate\\Broadcasting\\BroadcastManager))\n#5 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\Util.php(43): Illuminate\\Container\\BoundMethod::Illuminate\\Container\\{closure}()\n#6 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(96): Illuminate\\Container\\Util::unwrapIfClosure(Object(Closure))\n#7 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(35): Illuminate\\Container\\BoundMethod::callBoundMethod(Object(Illuminate\\Foundation\\Application), Array, Object(Closure))\n#8 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\Container.php(836): Illuminate\\Container\\BoundMethod::call(Object(Illuminate\\Foundation\\Application), Array, Array, NULL)\n#9 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Bus\\Dispatcher.php(129): Illuminate\\Container\\Container->call(Array)\n#10 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(180): Illuminate\\Bus\\Dispatcher->Illuminate\\Bus\\{closure}(Object(Illuminate\\Broadcasting\\BroadcastEvent))\n#11 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(137): Illuminate\\Pipeline\\Pipeline->Illuminate\\Pipeline\\{closure}(Object(Illuminate\\Broadcasting\\BroadcastEvent))\n#12 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Bus\\Dispatcher.php(133): Illuminate\\Pipeline\\Pipeline->then(Object(Closure))\n#13 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\CallQueuedHandler.php(134): Illuminate\\Bus\\Dispatcher->dispatchNow(Object(Illuminate\\Broadcasting\\BroadcastEvent), false)\n#14 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(180): Illuminate\\Queue\\CallQueuedHandler->Illuminate\\Queue\\{closure}(Object(Illuminate\\Broadcasting\\BroadcastEvent))\n#15 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(137): Illuminate\\Pipeline\\Pipeline->Illuminate\\Pipeline\\{closure}(Object(Illuminate\\Broadcasting\\BroadcastEvent))\n#16 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\CallQueuedHandler.php(127): Illuminate\\Pipeline\\Pipeline->then(Object(Closure))\n#17 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\CallQueuedHandler.php(68): Illuminate\\Queue\\CallQueuedHandler->dispatchThroughMiddleware(Object(Illuminate\\Queue\\Jobs\\DatabaseJob), Object(Illuminate\\Broadcasting\\BroadcastEvent))\n#18 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Jobs\\Job.php(102): Illuminate\\Queue\\CallQueuedHandler->call(Object(Illuminate\\Queue\\Jobs\\DatabaseJob), Array)\n#19 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Worker.php(451): Illuminate\\Queue\\Jobs\\Job->fire()\n#20 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Worker.php(401): Illuminate\\Queue\\Worker->process(\'database\', Object(Illuminate\\Queue\\Jobs\\DatabaseJob), Object(Illuminate\\Queue\\WorkerOptions))\n#21 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Worker.php(187): Illuminate\\Queue\\Worker->runJob(Object(Illuminate\\Queue\\Jobs\\DatabaseJob), \'database\', Object(Illuminate\\Queue\\WorkerOptions))\n#22 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Console\\WorkCommand.php(148): Illuminate\\Queue\\Worker->daemon(\'database\', \'default\', Object(Illuminate\\Queue\\WorkerOptions))\n#23 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Console\\WorkCommand.php(131): Illuminate\\Queue\\Console\\WorkCommand->runWorker(\'database\', \'default\')\n#24 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(36): Illuminate\\Queue\\Console\\WorkCommand->handle()\n#25 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\Util.php(43): Illuminate\\Container\\BoundMethod::Illuminate\\Container\\{closure}()\n#26 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(96): Illuminate\\Container\\Util::unwrapIfClosure(Object(Closure))\n#27 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(35): Illuminate\\Container\\BoundMethod::callBoundMethod(Object(Illuminate\\Foundation\\Application), Array, Object(Closure))\n#28 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\Container.php(836): Illuminate\\Container\\BoundMethod::call(Object(Illuminate\\Foundation\\Application), Array, Array, NULL)\n#29 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Console\\Command.php(211): Illuminate\\Container\\Container->call(Array)\n#30 C:\\xampp\\htdocs\\sb_legatura\\vendor\\symfony\\console\\Command\\Command.php(318): Illuminate\\Console\\Command->execute(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Illuminate\\Console\\OutputStyle))\n#31 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Console\\Command.php(180): Symfony\\Component\\Console\\Command\\Command->run(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Illuminate\\Console\\OutputStyle))\n#32 C:\\xampp\\htdocs\\sb_legatura\\vendor\\symfony\\console\\Application.php(1110): Illuminate\\Console\\Command->run(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))\n#33 C:\\xampp\\htdocs\\sb_legatura\\vendor\\symfony\\console\\Application.php(359): Symfony\\Component\\Console\\Application->doRunCommand(Object(Illuminate\\Queue\\Console\\WorkCommand), Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))\n#34 C:\\xampp\\htdocs\\sb_legatura\\vendor\\symfony\\console\\Application.php(194): Symfony\\Component\\Console\\Application->doRun(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))\n#35 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Foundation\\Console\\Kernel.php(197): Symfony\\Component\\Console\\Application->run(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))\n#36 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Foundation\\Application.php(1235): Illuminate\\Foundation\\Console\\Kernel->handle(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))\n#37 C:\\xampp\\htdocs\\sb_legatura\\artisan(16): Illuminate\\Foundation\\Application->handleCommand(Object(Symfony\\Component\\Console\\Input\\ArgvInput))\n#38 {main}', '2026-02-08 00:06:57'),
-(10, '9f605c41-6563-4d5f-a8b4-d3127c8dec0f', 'database', 'default', '{\"uuid\":\"9f605c41-6563-4d5f-a8b4-d3127c8dec0f\",\"displayName\":\"App\\\\Events\\\\messageSentEvent\",\"job\":\"Illuminate\\\\Queue\\\\CallQueuedHandler@call\",\"maxTries\":null,\"maxExceptions\":null,\"failOnTimeout\":false,\"backoff\":null,\"timeout\":null,\"retryUntil\":null,\"data\":{\"commandName\":\"Illuminate\\\\Broadcasting\\\\BroadcastEvent\",\"command\":\"O:38:\\\"Illuminate\\\\Broadcasting\\\\BroadcastEvent\\\":16:{s:5:\\\"event\\\";O:27:\\\"App\\\\Events\\\\messageSentEvent\\\":2:{s:7:\\\"message\\\";O:45:\\\"Illuminate\\\\Contracts\\\\Database\\\\ModelIdentifier\\\":5:{s:5:\\\"class\\\";s:31:\\\"App\\\\Models\\\\message\\\\messageClass\\\";s:2:\\\"id\\\";i:277;s:9:\\\"relations\\\";a:0:{}s:10:\\\"connection\\\";s:5:\\\"mysql\\\";s:15:\\\"collectionClass\\\";N;}s:12:\\\"conversation\\\";O:8:\\\"stdClass\\\":9:{s:15:\\\"conversation_id\\\";i:1000371;s:9:\\\"sender_id\\\";i:1;s:11:\\\"receiver_id\\\";i:371;s:12:\\\"is_suspended\\\";i:0;s:6:\\\"reason\\\";N;s:15:\\\"suspended_until\\\";N;s:6:\\\"status\\\";s:6:\\\"active\\\";s:10:\\\"created_at\\\";s:19:\\\"2026-02-07 06:56:13\\\";s:10:\\\"updated_at\\\";s:19:\\\"2026-02-07 06:56:13\\\";}}s:5:\\\"tries\\\";N;s:7:\\\"timeout\\\";N;s:7:\\\"backoff\\\";N;s:13:\\\"maxExceptions\\\";N;s:10:\\\"connection\\\";N;s:5:\\\"queue\\\";N;s:12:\\\"messageGroup\\\";N;s:12:\\\"deduplicator\\\";N;s:5:\\\"delay\\\";N;s:11:\\\"afterCommit\\\";N;s:10:\\\"middleware\\\";a:0:{}s:7:\\\"chained\\\";a:0:{}s:15:\\\"chainConnection\\\";N;s:10:\\\"chainQueue\\\";N;s:19:\\\"chainCatchCallbacks\\\";N;}\"},\"createdAt\":1770538114,\"delay\":null}', 'ErrorException: Undefined property: stdClass::$is_flagged in C:\\xampp\\htdocs\\sb_legatura\\app\\Events\\messageSentEvent.php:90\nStack trace:\n#0 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Foundation\\Bootstrap\\HandleExceptions.php(258): Illuminate\\Foundation\\Bootstrap\\HandleExceptions->handleError(2, \'Undefined prope...\', \'C:\\\\xampp\\\\htdocs...\', 90)\n#1 C:\\xampp\\htdocs\\sb_legatura\\app\\Events\\messageSentEvent.php(90): Illuminate\\Foundation\\Bootstrap\\HandleExceptions->Illuminate\\Foundation\\Bootstrap\\{closure}(2, \'Undefined prope...\', \'C:\\\\xampp\\\\htdocs...\', 90)\n#2 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Broadcasting\\BroadcastEvent.php(110): App\\Events\\messageSentEvent->broadcastWith()\n#3 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Broadcasting\\BroadcastEvent.php(90): Illuminate\\Broadcasting\\BroadcastEvent->getPayloadFromEvent(Object(App\\Events\\messageSentEvent))\n#4 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(36): Illuminate\\Broadcasting\\BroadcastEvent->handle(Object(Illuminate\\Broadcasting\\BroadcastManager))\n#5 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\Util.php(43): Illuminate\\Container\\BoundMethod::Illuminate\\Container\\{closure}()\n#6 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(96): Illuminate\\Container\\Util::unwrapIfClosure(Object(Closure))\n#7 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(35): Illuminate\\Container\\BoundMethod::callBoundMethod(Object(Illuminate\\Foundation\\Application), Array, Object(Closure))\n#8 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\Container.php(836): Illuminate\\Container\\BoundMethod::call(Object(Illuminate\\Foundation\\Application), Array, Array, NULL)\n#9 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Bus\\Dispatcher.php(129): Illuminate\\Container\\Container->call(Array)\n#10 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(180): Illuminate\\Bus\\Dispatcher->Illuminate\\Bus\\{closure}(Object(Illuminate\\Broadcasting\\BroadcastEvent))\n#11 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(137): Illuminate\\Pipeline\\Pipeline->Illuminate\\Pipeline\\{closure}(Object(Illuminate\\Broadcasting\\BroadcastEvent))\n#12 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Bus\\Dispatcher.php(133): Illuminate\\Pipeline\\Pipeline->then(Object(Closure))\n#13 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\CallQueuedHandler.php(134): Illuminate\\Bus\\Dispatcher->dispatchNow(Object(Illuminate\\Broadcasting\\BroadcastEvent), false)\n#14 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(180): Illuminate\\Queue\\CallQueuedHandler->Illuminate\\Queue\\{closure}(Object(Illuminate\\Broadcasting\\BroadcastEvent))\n#15 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(137): Illuminate\\Pipeline\\Pipeline->Illuminate\\Pipeline\\{closure}(Object(Illuminate\\Broadcasting\\BroadcastEvent))\n#16 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\CallQueuedHandler.php(127): Illuminate\\Pipeline\\Pipeline->then(Object(Closure))\n#17 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\CallQueuedHandler.php(68): Illuminate\\Queue\\CallQueuedHandler->dispatchThroughMiddleware(Object(Illuminate\\Queue\\Jobs\\DatabaseJob), Object(Illuminate\\Broadcasting\\BroadcastEvent))\n#18 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Jobs\\Job.php(102): Illuminate\\Queue\\CallQueuedHandler->call(Object(Illuminate\\Queue\\Jobs\\DatabaseJob), Array)\n#19 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Worker.php(451): Illuminate\\Queue\\Jobs\\Job->fire()\n#20 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Worker.php(401): Illuminate\\Queue\\Worker->process(\'database\', Object(Illuminate\\Queue\\Jobs\\DatabaseJob), Object(Illuminate\\Queue\\WorkerOptions))\n#21 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Worker.php(187): Illuminate\\Queue\\Worker->runJob(Object(Illuminate\\Queue\\Jobs\\DatabaseJob), \'database\', Object(Illuminate\\Queue\\WorkerOptions))\n#22 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Console\\WorkCommand.php(148): Illuminate\\Queue\\Worker->daemon(\'database\', \'default\', Object(Illuminate\\Queue\\WorkerOptions))\n#23 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Console\\WorkCommand.php(131): Illuminate\\Queue\\Console\\WorkCommand->runWorker(\'database\', \'default\')\n#24 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(36): Illuminate\\Queue\\Console\\WorkCommand->handle()\n#25 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\Util.php(43): Illuminate\\Container\\BoundMethod::Illuminate\\Container\\{closure}()\n#26 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(96): Illuminate\\Container\\Util::unwrapIfClosure(Object(Closure))\n#27 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(35): Illuminate\\Container\\BoundMethod::callBoundMethod(Object(Illuminate\\Foundation\\Application), Array, Object(Closure))\n#28 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\Container.php(836): Illuminate\\Container\\BoundMethod::call(Object(Illuminate\\Foundation\\Application), Array, Array, NULL)\n#29 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Console\\Command.php(211): Illuminate\\Container\\Container->call(Array)\n#30 C:\\xampp\\htdocs\\sb_legatura\\vendor\\symfony\\console\\Command\\Command.php(318): Illuminate\\Console\\Command->execute(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Illuminate\\Console\\OutputStyle))\n#31 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Console\\Command.php(180): Symfony\\Component\\Console\\Command\\Command->run(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Illuminate\\Console\\OutputStyle))\n#32 C:\\xampp\\htdocs\\sb_legatura\\vendor\\symfony\\console\\Application.php(1110): Illuminate\\Console\\Command->run(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))\n#33 C:\\xampp\\htdocs\\sb_legatura\\vendor\\symfony\\console\\Application.php(359): Symfony\\Component\\Console\\Application->doRunCommand(Object(Illuminate\\Queue\\Console\\WorkCommand), Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))\n#34 C:\\xampp\\htdocs\\sb_legatura\\vendor\\symfony\\console\\Application.php(194): Symfony\\Component\\Console\\Application->doRun(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))\n#35 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Foundation\\Console\\Kernel.php(197): Symfony\\Component\\Console\\Application->run(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))\n#36 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Foundation\\Application.php(1235): Illuminate\\Foundation\\Console\\Kernel->handle(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))\n#37 C:\\xampp\\htdocs\\sb_legatura\\artisan(16): Illuminate\\Foundation\\Application->handleCommand(Object(Symfony\\Component\\Console\\Input\\ArgvInput))\n#38 {main}', '2026-02-08 00:08:36'),
-(11, 'e4776731-3edc-4fad-8b82-04dba53d6502', 'database', 'default', '{\"uuid\":\"e4776731-3edc-4fad-8b82-04dba53d6502\",\"displayName\":\"App\\\\Events\\\\messageSentEvent\",\"job\":\"Illuminate\\\\Queue\\\\CallQueuedHandler@call\",\"maxTries\":null,\"maxExceptions\":null,\"failOnTimeout\":false,\"backoff\":null,\"timeout\":null,\"retryUntil\":null,\"data\":{\"commandName\":\"Illuminate\\\\Broadcasting\\\\BroadcastEvent\",\"command\":\"O:38:\\\"Illuminate\\\\Broadcasting\\\\BroadcastEvent\\\":16:{s:5:\\\"event\\\";O:27:\\\"App\\\\Events\\\\messageSentEvent\\\":2:{s:7:\\\"message\\\";O:45:\\\"Illuminate\\\\Contracts\\\\Database\\\\ModelIdentifier\\\":5:{s:5:\\\"class\\\";s:31:\\\"App\\\\Models\\\\message\\\\messageClass\\\";s:2:\\\"id\\\";i:278;s:9:\\\"relations\\\";a:0:{}s:10:\\\"connection\\\";s:5:\\\"mysql\\\";s:15:\\\"collectionClass\\\";N;}s:12:\\\"conversation\\\";O:8:\\\"stdClass\\\":9:{s:15:\\\"conversation_id\\\";i:1000372;s:9:\\\"sender_id\\\";i:1;s:11:\\\"receiver_id\\\";i:372;s:12:\\\"is_suspended\\\";i:0;s:6:\\\"reason\\\";N;s:15:\\\"suspended_until\\\";N;s:6:\\\"status\\\";s:6:\\\"active\\\";s:10:\\\"created_at\\\";s:19:\\\"2026-02-07 06:56:53\\\";s:10:\\\"updated_at\\\";s:19:\\\"2026-02-07 09:15:12\\\";}}s:5:\\\"tries\\\";N;s:7:\\\"timeout\\\";N;s:7:\\\"backoff\\\";N;s:13:\\\"maxExceptions\\\";N;s:10:\\\"connection\\\";N;s:5:\\\"queue\\\";N;s:12:\\\"messageGroup\\\";N;s:12:\\\"deduplicator\\\";N;s:5:\\\"delay\\\";N;s:11:\\\"afterCommit\\\";N;s:10:\\\"middleware\\\";a:0:{}s:7:\\\"chained\\\";a:0:{}s:15:\\\"chainConnection\\\";N;s:10:\\\"chainQueue\\\";N;s:19:\\\"chainCatchCallbacks\\\";N;}\"},\"createdAt\":1770538117,\"delay\":null}', 'ErrorException: Undefined property: stdClass::$is_flagged in C:\\xampp\\htdocs\\sb_legatura\\app\\Events\\messageSentEvent.php:90\nStack trace:\n#0 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Foundation\\Bootstrap\\HandleExceptions.php(258): Illuminate\\Foundation\\Bootstrap\\HandleExceptions->handleError(2, \'Undefined prope...\', \'C:\\\\xampp\\\\htdocs...\', 90)\n#1 C:\\xampp\\htdocs\\sb_legatura\\app\\Events\\messageSentEvent.php(90): Illuminate\\Foundation\\Bootstrap\\HandleExceptions->Illuminate\\Foundation\\Bootstrap\\{closure}(2, \'Undefined prope...\', \'C:\\\\xampp\\\\htdocs...\', 90)\n#2 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Broadcasting\\BroadcastEvent.php(110): App\\Events\\messageSentEvent->broadcastWith()\n#3 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Broadcasting\\BroadcastEvent.php(90): Illuminate\\Broadcasting\\BroadcastEvent->getPayloadFromEvent(Object(App\\Events\\messageSentEvent))\n#4 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(36): Illuminate\\Broadcasting\\BroadcastEvent->handle(Object(Illuminate\\Broadcasting\\BroadcastManager))\n#5 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\Util.php(43): Illuminate\\Container\\BoundMethod::Illuminate\\Container\\{closure}()\n#6 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(96): Illuminate\\Container\\Util::unwrapIfClosure(Object(Closure))\n#7 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(35): Illuminate\\Container\\BoundMethod::callBoundMethod(Object(Illuminate\\Foundation\\Application), Array, Object(Closure))\n#8 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\Container.php(836): Illuminate\\Container\\BoundMethod::call(Object(Illuminate\\Foundation\\Application), Array, Array, NULL)\n#9 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Bus\\Dispatcher.php(129): Illuminate\\Container\\Container->call(Array)\n#10 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(180): Illuminate\\Bus\\Dispatcher->Illuminate\\Bus\\{closure}(Object(Illuminate\\Broadcasting\\BroadcastEvent))\n#11 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(137): Illuminate\\Pipeline\\Pipeline->Illuminate\\Pipeline\\{closure}(Object(Illuminate\\Broadcasting\\BroadcastEvent))\n#12 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Bus\\Dispatcher.php(133): Illuminate\\Pipeline\\Pipeline->then(Object(Closure))\n#13 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\CallQueuedHandler.php(134): Illuminate\\Bus\\Dispatcher->dispatchNow(Object(Illuminate\\Broadcasting\\BroadcastEvent), false)\n#14 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(180): Illuminate\\Queue\\CallQueuedHandler->Illuminate\\Queue\\{closure}(Object(Illuminate\\Broadcasting\\BroadcastEvent))\n#15 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(137): Illuminate\\Pipeline\\Pipeline->Illuminate\\Pipeline\\{closure}(Object(Illuminate\\Broadcasting\\BroadcastEvent))\n#16 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\CallQueuedHandler.php(127): Illuminate\\Pipeline\\Pipeline->then(Object(Closure))\n#17 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\CallQueuedHandler.php(68): Illuminate\\Queue\\CallQueuedHandler->dispatchThroughMiddleware(Object(Illuminate\\Queue\\Jobs\\DatabaseJob), Object(Illuminate\\Broadcasting\\BroadcastEvent))\n#18 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Jobs\\Job.php(102): Illuminate\\Queue\\CallQueuedHandler->call(Object(Illuminate\\Queue\\Jobs\\DatabaseJob), Array)\n#19 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Worker.php(451): Illuminate\\Queue\\Jobs\\Job->fire()\n#20 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Worker.php(401): Illuminate\\Queue\\Worker->process(\'database\', Object(Illuminate\\Queue\\Jobs\\DatabaseJob), Object(Illuminate\\Queue\\WorkerOptions))\n#21 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Worker.php(187): Illuminate\\Queue\\Worker->runJob(Object(Illuminate\\Queue\\Jobs\\DatabaseJob), \'database\', Object(Illuminate\\Queue\\WorkerOptions))\n#22 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Console\\WorkCommand.php(148): Illuminate\\Queue\\Worker->daemon(\'database\', \'default\', Object(Illuminate\\Queue\\WorkerOptions))\n#23 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Queue\\Console\\WorkCommand.php(131): Illuminate\\Queue\\Console\\WorkCommand->runWorker(\'database\', \'default\')\n#24 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(36): Illuminate\\Queue\\Console\\WorkCommand->handle()\n#25 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\Util.php(43): Illuminate\\Container\\BoundMethod::Illuminate\\Container\\{closure}()\n#26 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(96): Illuminate\\Container\\Util::unwrapIfClosure(Object(Closure))\n#27 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\BoundMethod.php(35): Illuminate\\Container\\BoundMethod::callBoundMethod(Object(Illuminate\\Foundation\\Application), Array, Object(Closure))\n#28 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Container\\Container.php(836): Illuminate\\Container\\BoundMethod::call(Object(Illuminate\\Foundation\\Application), Array, Array, NULL)\n#29 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Console\\Command.php(211): Illuminate\\Container\\Container->call(Array)\n#30 C:\\xampp\\htdocs\\sb_legatura\\vendor\\symfony\\console\\Command\\Command.php(318): Illuminate\\Console\\Command->execute(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Illuminate\\Console\\OutputStyle))\n#31 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Console\\Command.php(180): Symfony\\Component\\Console\\Command\\Command->run(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Illuminate\\Console\\OutputStyle))\n#32 C:\\xampp\\htdocs\\sb_legatura\\vendor\\symfony\\console\\Application.php(1110): Illuminate\\Console\\Command->run(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))\n#33 C:\\xampp\\htdocs\\sb_legatura\\vendor\\symfony\\console\\Application.php(359): Symfony\\Component\\Console\\Application->doRunCommand(Object(Illuminate\\Queue\\Console\\WorkCommand), Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))\n#34 C:\\xampp\\htdocs\\sb_legatura\\vendor\\symfony\\console\\Application.php(194): Symfony\\Component\\Console\\Application->doRun(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))\n#35 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Foundation\\Console\\Kernel.php(197): Symfony\\Component\\Console\\Application->run(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))\n#36 C:\\xampp\\htdocs\\sb_legatura\\vendor\\laravel\\framework\\src\\Illuminate\\Foundation\\Application.php(1235): Illuminate\\Foundation\\Console\\Kernel->handle(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))\n#37 C:\\xampp\\htdocs\\sb_legatura\\artisan(16): Illuminate\\Foundation\\Application->handleCommand(Object(Symfony\\Component\\Console\\Input\\ArgvInput))\n#38 {main}', '2026-02-08 00:08:39');
-
--- --------------------------------------------------------
-
---
 -- Table structure for table `item_files`
 --
 
@@ -670,22 +667,6 @@ CREATE TABLE `item_files` (
   `item_id` int(11) NOT NULL,
   `file_path` varchar(500) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `jobs`
---
-
-CREATE TABLE `jobs` (
-  `id` bigint(20) UNSIGNED NOT NULL,
-  `queue` varchar(255) NOT NULL,
-  `payload` longtext NOT NULL,
-  `attempts` tinyint(3) UNSIGNED NOT NULL,
-  `reserved_at` int(10) UNSIGNED DEFAULT NULL,
-  `available_at` int(10) UNSIGNED NOT NULL,
-  `created_at` int(10) UNSIGNED NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -842,7 +823,28 @@ INSERT INTO `messages` (`message_id`, `conversation_id`, `from_sender`, `content
 (311, 371000372, 1, 'test', 1, 0, NULL, '2026-02-08 07:23:55', '2026-02-08 07:23:59'),
 (312, 1000372, 1, 'www', 1, 0, NULL, '2026-02-08 07:47:02', '2026-02-08 07:47:10'),
 (313, 3000372, 1, 'sss', 0, 0, NULL, '2026-02-08 07:47:21', '2026-02-08 07:47:21'),
-(314, 371000372, 1, '', 1, 0, NULL, '2026-02-08 07:57:42', '2026-02-08 07:57:47');
+(314, 371000372, 1, '', 1, 0, NULL, '2026-02-08 07:57:42', '2026-02-08 07:57:47'),
+(315, 371000372, 0, 'hello', 1, 0, NULL, '2026-02-08 23:21:08', '2026-02-08 23:21:31'),
+(316, 371000372, 0, 'sss', 1, 0, NULL, '2026-02-08 23:21:40', '2026-02-08 23:26:59'),
+(317, 371000372, 0, 'hi', 1, 0, NULL, '2026-02-08 23:26:51', '2026-02-08 23:26:59'),
+(318, 371000372, 1, 'dd', 1, 0, NULL, '2026-02-08 23:27:02', '2026-02-08 23:27:27'),
+(319, 371000372, 1, 'hi', 1, 0, NULL, '2026-02-08 23:28:55', '2026-02-08 23:36:40'),
+(320, 371000372, 1, 'hi', 1, 0, NULL, '2026-02-08 23:36:36', '2026-02-08 23:36:40'),
+(321, 371000372, 0, 'teh', 1, 0, NULL, '2026-02-08 23:36:42', '2026-02-08 23:36:44'),
+(322, 371000372, 1, 'hi', 1, 0, NULL, '2026-02-08 23:43:39', '2026-02-08 23:43:42'),
+(323, 371000372, 0, 's', 1, 0, NULL, '2026-02-09 00:27:51', '2026-02-09 00:27:54'),
+(324, 1000371, 0, 'd', 1, 0, NULL, '2026-02-09 00:52:14', '2026-02-09 00:57:27'),
+(325, 1000372, 0, 's', 1, 0, NULL, '2026-02-09 00:52:24', '2026-02-09 00:57:30'),
+(326, 1000372, 0, 'w', 1, 0, NULL, '2026-02-09 00:52:45', '2026-02-09 00:57:30'),
+(327, 1000372, 0, 'wwwwww', 1, 0, NULL, '2026-02-09 00:52:58', '2026-02-09 00:57:30'),
+(328, 1000372, 0, 'ww', 1, 0, NULL, '2026-02-09 00:53:05', '2026-02-09 00:57:30'),
+(329, 371000372, 1, 'hi', 1, 0, NULL, '2026-02-12 20:49:55', '2026-02-12 20:50:11'),
+(330, 371000372, 1, 'hi', 1, 0, NULL, '2026-02-12 20:49:58', '2026-02-12 20:50:11'),
+(331, 371000372, 1, 'hi', 1, 0, NULL, '2026-02-12 20:50:00', '2026-02-12 20:50:11'),
+(332, 371000372, 0, 'nigger', 1, 1, 'System: Suspicious Keyword Detected', '2026-02-12 20:51:02', '2026-02-12 20:51:04'),
+(333, 371000372, 0, 'n i g g a', 1, 0, NULL, '2026-02-12 20:51:18', '2026-02-12 20:51:20'),
+(334, 371000372, 0, 'fuck you', 1, 1, 'System: Suspicious Keyword Detected', '2026-02-12 20:51:24', '2026-02-12 20:51:26'),
+(335, 371000372, 0, 'buysit', 1, 0, NULL, '2026-02-12 20:51:45', '2026-02-12 20:51:47');
 
 -- --------------------------------------------------------
 
@@ -892,13 +894,19 @@ CREATE TABLE `migrations` (
 --
 
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES
-(1, '2026_02_07_080705_increase_file_type_column_length_in_message_attachments', 1),
-(2, '2026_02_07_064812_add_chat_columns_to_messages_table', 2),
-(3, '2026_02_07_094400_add_sender_id_to_messages_table', 3),
-(4, '2026_02_07_094934_add_from_sender_to_messages_table', 4),
-(5, '2026_02_07_094856_remove_sender_id_from_messages_table', 5),
-(6, '2026_02_08_075520_create_failed_jobs_table', 6),
-(7, '2026_02_08_100000_add_no_suspends_to_conversations_table', 7);
+(1, '2026_02_18_125202_add_expiration_and_payment_type_to_platform_payments_table', 1),
+(2, '2026_02_17_063309_create_cache_table', 2),
+(3, '2026_02_19_151606_make_otp_hash_nullable_in_users_table', 2),
+(4, '2026_02_19_154043_add_status_columns_to_contractors_table', 2),
+(5, '2026_02_22_150746_add_settlement_due_date_to_milestone_items_table', 2),
+(6, '2026_02_23_120000_add_payment_allocation_columns', 3),
+(7, '2026_02_23_144926_make_payment_id_nullable_in_payment_adjustment_logs', 4),
+(8, '2026_02_25_000001_create_project_extensions_table', 5),
+(9, '2026_02_25_100000_add_budget_columns_to_project_extensions', 6),
+(10, '2026_02_25_200000_add_revision_status_to_project_extensions', 7),
+(11, '2026_02_25_300000_drop_allocation_method_from_project_extensions', 8),
+(12, '2026_02_25_400000_rename_project_extensions_to_project_updates', 9),
+(13, '2026_02_26_000001_create_milestone_date_histories_and_extension_tracking', 10);
 
 -- --------------------------------------------------------
 
@@ -913,13 +921,13 @@ CREATE TABLE `milestones` (
   `plan_id` int(11) NOT NULL,
   `milestone_name` varchar(200) NOT NULL,
   `milestone_description` text NOT NULL,
-  `milestone_status` enum('not_started','in_progress','rejected','delayed','cancelled','deleted') DEFAULT 'not_started',
+  `milestone_status` enum('not_started','in_progress','rejected','delayed','cancelled','deleted','completed') DEFAULT 'not_started',
   `previous_status` varchar(50) DEFAULT NULL,
   `start_date` datetime NOT NULL,
   `end_date` datetime NOT NULL,
   `is_deleted` tinyint(1) DEFAULT NULL,
   `reason` text DEFAULT NULL,
-  `setup_status` enum('submitted','rejected','approved','completed') NOT NULL DEFAULT 'submitted',
+  `setup_status` enum('submitted','rejected','approved') NOT NULL DEFAULT 'submitted',
   `setup_rej_reason` text DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
@@ -1022,9 +1030,39 @@ INSERT INTO `milestones` (`milestone_id`, `project_id`, `contractor_id`, `plan_i
 (1555, 1044, 1798, 919, 'Milestone 3', 'Desc', 'in_progress', NULL, '2025-12-15 15:49:09', '2026-01-14 15:49:09', NULL, NULL, 'approved', NULL, '2025-12-15 07:49:09', '2026-02-06 12:20:18'),
 (1556, 1045, 1809, 920, 'Test Project Final', 'Test Project Final', 'not_started', NULL, '2025-12-18 00:00:00', '2027-12-18 23:59:59', NULL, NULL, 'approved', NULL, '2025-12-17 14:57:31', '2026-02-05 17:50:09'),
 (1557, 1047, 1808, 921, 'Testz', 'Testz', 'not_started', NULL, '2025-12-19 00:00:00', '2027-12-21 23:59:59', NULL, NULL, 'approved', NULL, '2025-12-18 19:51:47', '2026-02-05 16:53:59'),
-(1558, 1048, 1809, 922, 'Noche buena', 'Noche buena', 'not_started', NULL, '2025-12-19 00:00:00', '2026-12-19 23:59:59', NULL, NULL, 'approved', NULL, '2025-12-18 21:10:50', '2025-12-18 21:11:04'),
+(1558, 1048, 1809, 922, 'Noche buena', 'Noche buena', 'in_progress', NULL, '2025-12-19 00:00:00', '2026-12-19 23:59:59', NULL, NULL, 'approved', NULL, '2025-12-18 21:10:50', '2026-02-20 14:59:51'),
 (1559, 1049, 1809, 923, 'Construction Project', 'Construction Project', 'not_started', NULL, '2025-12-19 00:00:00', '2026-12-19 23:59:59', NULL, NULL, 'approved', NULL, '2025-12-18 23:59:41', '2025-12-19 00:00:35'),
-(1560, 1054, 1809, 924, 'Project Construction for Residential Area', 'Project Construction for Residential Area', 'not_started', NULL, '2026-01-25 00:00:00', '2028-01-25 23:59:59', NULL, NULL, 'approved', NULL, '2026-01-25 00:20:09', '2026-01-25 00:20:58');
+(1560, 1054, 1809, 924, 'Project Construction for Residential Area', 'Project Construction for Residential Area', 'in_progress', NULL, '2026-01-25 00:00:00', '2028-01-25 23:59:59', NULL, NULL, 'approved', NULL, '2026-01-25 00:20:09', '2026-02-20 14:59:33'),
+(1563, 1047, 1810, 927, 'Proyekto ng bayan', 'Proyekto ng bayan', 'not_started', NULL, '2026-02-22 00:00:00', '2026-02-28 23:59:59', NULL, NULL, 'approved', NULL, '2026-02-22 07:51:59', '2026-02-22 08:08:23'),
+(1564, 1056, 1810, 928, 'Project Batumbakal', 'Project Batumbakal', 'not_started', NULL, '2026-02-23 00:00:00', '2026-03-07 23:59:59', NULL, NULL, 'approved', NULL, '2026-02-23 00:12:07', '2026-02-25 07:15:26');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `milestone_date_histories`
+--
+
+CREATE TABLE `milestone_date_histories` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `item_id` int(10) UNSIGNED NOT NULL COMMENT 'FK to milestone_items.item_id',
+  `previous_date` datetime NOT NULL COMMENT 'The date_to_finish before extension',
+  `new_date` datetime NOT NULL COMMENT 'The date_to_finish after extension',
+  `extension_id` int(10) UNSIGNED DEFAULT NULL COMMENT 'FK to project_updates.extension_id',
+  `changed_by` int(10) UNSIGNED NOT NULL COMMENT 'user_id who triggered the change',
+  `changed_at` datetime NOT NULL COMMENT 'When the change was applied',
+  `change_reason` varchar(500) DEFAULT NULL COMMENT 'e.g. "Project update #2 approved"',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `milestone_date_histories`
+--
+
+INSERT INTO `milestone_date_histories` (`id`, `item_id`, `previous_date`, `new_date`, `extension_id`, `changed_by`, `changed_at`, `change_reason`, `created_at`, `updated_at`) VALUES
+(1, 2790, '2026-02-18 23:59:59', '2026-02-25 23:59:59', 2, 379, '2026-02-25 15:15:26', 'Project update #2 approved (retroactive)', '2026-02-26 03:26:12', '2026-02-26 03:26:12'),
+(2, 2791, '2026-02-28 23:59:59', '2026-03-07 23:59:59', 2, 379, '2026-02-25 15:15:26', 'Project update #2 approved (retroactive)', '2026-02-26 03:26:12', '2026-02-26 03:26:12'),
+(3, 2792, '2026-02-28 23:59:59', '2026-03-07 23:59:59', 2, 379, '2026-02-25 15:15:26', 'Project update #2 approved (retroactive)', '2026-02-26 03:26:12', '2026-02-26 03:26:12');
 
 -- --------------------------------------------------------
 
@@ -1040,9 +1078,16 @@ CREATE TABLE `milestone_items` (
   `milestone_item_title` varchar(255) NOT NULL,
   `milestone_item_description` text DEFAULT NULL,
   `milestone_item_cost` decimal(12,2) NOT NULL,
+  `adjusted_cost` decimal(12,2) DEFAULT NULL COMMENT 'Required amount after underpayment carry-forward. NULL = no adjustment (use milestone_item_cost).',
+  `carry_forward_amount` decimal(12,2) NOT NULL DEFAULT 0.00 COMMENT 'Shortfall amount carried forward FROM the previous item.',
   `item_status` enum('not_started','in_progress','delayed','completed','cancelled','halt','deleted') NOT NULL DEFAULT 'not_started',
   `previous_status` varchar(50) DEFAULT NULL,
   `date_to_finish` datetime NOT NULL,
+  `original_date_to_finish` datetime DEFAULT NULL COMMENT 'Preserved first deadline before any extension',
+  `was_extended` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'Quick flag: true if date_to_finish was ever shifted by an extension',
+  `extension_count` smallint(5) UNSIGNED NOT NULL DEFAULT 0 COMMENT 'Number of times this item was extended',
+  `settlement_due_date` date DEFAULT NULL COMMENT 'Payment settlement deadline set by contractor',
+  `extension_date` date DEFAULT NULL COMMENT 'Optional extended deadline granted by contractor',
   `updated_at` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -1050,202 +1095,207 @@ CREATE TABLE `milestone_items` (
 -- Dumping data for table `milestone_items`
 --
 
-INSERT INTO `milestone_items` (`item_id`, `milestone_id`, `sequence_order`, `percentage_progress`, `milestone_item_title`, `milestone_item_description`, `milestone_item_cost`, `item_status`, `previous_status`, `date_to_finish`, `updated_at`) VALUES
-(2547, 1466, 1, 40.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2548, 1467, 1, 100.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2549, 1468, 1, 50.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2550, 1469, 1, 40.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2551, 1470, 1, 100.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2552, 1471, 1, 50.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2553, 1472, 1, 40.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2554, 1473, 1, 100.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2555, 1474, 1, 50.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2556, 1475, 1, 40.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2557, 1476, 1, 100.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2558, 1477, 1, 50.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2559, 1478, 1, 40.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2560, 1479, 1, 100.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2561, 1480, 1, 50.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2562, 1481, 1, 40.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2563, 1482, 1, 100.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2564, 1483, 1, 50.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2565, 1484, 1, 40.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2566, 1485, 1, 100.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2567, 1486, 1, 50.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2568, 1487, 1, 40.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2569, 1488, 1, 100.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2570, 1489, 1, 50.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2571, 1490, 1, 40.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2572, 1491, 1, 100.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2573, 1492, 1, 50.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2574, 1493, 1, 40.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2575, 1494, 1, 100.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2576, 1495, 1, 50.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2577, 1496, 1, 40.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2578, 1497, 1, 100.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2579, 1498, 1, 50.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2580, 1499, 1, 40.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2581, 1500, 1, 100.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2582, 1501, 1, 50.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2583, 1502, 1, 40.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2584, 1503, 1, 100.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2585, 1504, 1, 50.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2586, 1505, 1, 40.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2587, 1506, 1, 100.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2588, 1507, 1, 50.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2589, 1508, 1, 40.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2590, 1509, 1, 100.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2591, 1510, 1, 50.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2592, 1511, 1, 40.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2593, 1512, 1, 100.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2594, 1513, 1, 50.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2595, 1514, 1, 40.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2596, 1515, 1, 100.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2597, 1516, 1, 50.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2598, 1517, 1, 40.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2599, 1518, 1, 100.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2600, 1519, 1, 50.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2601, 1520, 1, 40.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2602, 1521, 1, 100.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2603, 1522, 1, 50.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2604, 1523, 1, 40.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2605, 1524, 1, 100.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2606, 1525, 1, 50.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2607, 1526, 1, 40.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2608, 1527, 1, 100.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2609, 1528, 1, 50.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2610, 1529, 1, 40.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2611, 1530, 1, 100.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2612, 1531, 1, 50.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2613, 1532, 1, 40.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2614, 1533, 1, 100.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2615, 1534, 1, 50.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2616, 1535, 1, 40.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2617, 1536, 1, 100.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2618, 1537, 1, 50.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2619, 1538, 1, 40.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2620, 1539, 1, 100.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2621, 1540, 1, 50.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2622, 1541, 1, 40.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2623, 1542, 1, 100.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2624, 1543, 1, 50.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2625, 1544, 1, 40.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2626, 1545, 1, 100.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2627, 1546, 1, 50.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2628, 1547, 1, 40.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2629, 1548, 1, 100.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2630, 1549, 1, 50.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2631, 1550, 1, 40.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2632, 1551, 1, 100.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2633, 1552, 1, 50.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2634, 1553, 1, 40.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2635, 1554, 1, 100.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2636, 1555, 1, 50.00, 'Primary Task', 'Desc', 25000.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL),
-(2674, 1466, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2675, 1468, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2676, 1469, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2677, 1471, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2678, 1472, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2679, 1474, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2680, 1475, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2681, 1477, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2682, 1478, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2683, 1480, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2684, 1481, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2685, 1483, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2686, 1484, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2687, 1486, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2688, 1487, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2689, 1489, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2690, 1490, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2691, 1492, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2692, 1493, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2693, 1495, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2694, 1496, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2695, 1498, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2696, 1499, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2697, 1501, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2698, 1502, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2699, 1504, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2700, 1505, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2701, 1507, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2702, 1508, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2703, 1510, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2704, 1511, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2705, 1513, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2706, 1514, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2707, 1516, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2708, 1517, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2709, 1519, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2710, 1520, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2711, 1522, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2712, 1523, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2713, 1525, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2714, 1526, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2715, 1528, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2716, 1529, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2717, 1531, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2718, 1532, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2719, 1534, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2720, 1535, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2721, 1537, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2722, 1538, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2723, 1540, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2724, 1541, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2725, 1543, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2726, 1544, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2727, 1546, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2728, 1547, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2729, 1549, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2730, 1550, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2731, 1552, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2732, 1553, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2733, 1555, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL),
-(2737, 1466, 3, 30.00, 'Final Task', 'Desc', 10000.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL),
-(2738, 1469, 3, 30.00, 'Final Task', 'Desc', 10000.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL),
-(2739, 1472, 3, 30.00, 'Final Task', 'Desc', 10000.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL),
-(2740, 1475, 3, 30.00, 'Final Task', 'Desc', 10000.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL),
-(2741, 1478, 3, 30.00, 'Final Task', 'Desc', 10000.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL),
-(2742, 1481, 3, 30.00, 'Final Task', 'Desc', 10000.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL),
-(2743, 1484, 3, 30.00, 'Final Task', 'Desc', 10000.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL),
-(2744, 1487, 3, 30.00, 'Final Task', 'Desc', 10000.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL),
-(2745, 1490, 3, 30.00, 'Final Task', 'Desc', 10000.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL),
-(2746, 1493, 3, 30.00, 'Final Task', 'Desc', 10000.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL),
-(2747, 1496, 3, 30.00, 'Final Task', 'Desc', 10000.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL),
-(2748, 1499, 3, 30.00, 'Final Task', 'Desc', 10000.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL),
-(2749, 1502, 3, 30.00, 'Final Task', 'Desc', 10000.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL),
-(2750, 1505, 3, 30.00, 'Final Task', 'Desc', 10000.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL),
-(2751, 1508, 3, 30.00, 'Final Task', 'Desc', 10000.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL),
-(2752, 1511, 3, 30.00, 'Final Task', 'Desc', 10000.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL),
-(2753, 1514, 3, 30.00, 'Final Task', 'Desc', 10000.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL),
-(2754, 1517, 3, 30.00, 'Final Task', 'Desc', 10000.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL),
-(2755, 1520, 3, 30.00, 'Final Task', 'Desc', 10000.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL),
-(2756, 1523, 3, 30.00, 'Final Task', 'Desc', 10000.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL),
-(2757, 1526, 3, 30.00, 'Final Task', 'Desc', 10000.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL),
-(2758, 1529, 3, 30.00, 'Final Task', 'Desc', 10000.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL),
-(2759, 1532, 3, 30.00, 'Final Task', 'Desc', 10000.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL),
-(2760, 1535, 3, 30.00, 'Final Task', 'Desc', 10000.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL),
-(2761, 1538, 3, 30.00, 'Final Task', 'Desc', 10000.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL),
-(2762, 1541, 3, 30.00, 'Final Task', 'Desc', 10000.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL),
-(2763, 1544, 3, 30.00, 'Final Task', 'Desc', 10000.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL),
-(2764, 1547, 3, 30.00, 'Final Task', 'Desc', 10000.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL),
-(2765, 1550, 3, 30.00, 'Final Task', 'Desc', 10000.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL),
-(2766, 1553, 3, 30.00, 'Final Task', 'Desc', 10000.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL),
-(2767, 1556, 1, 10.00, 'Phase 1', 'Phase 1 Description', 4750000.00, 'completed', NULL, '2026-01-31 23:59:59', NULL),
-(2768, 1556, 2, 10.00, 'Phase 2', 'Phase 2 Description', 4750000.00, 'completed', NULL, '2026-02-28 23:59:59', NULL),
-(2769, 1556, 3, 30.00, 'Phase 3', 'Phase 3 Description', 14250000.00, 'completed', NULL, '2026-03-28 23:59:59', NULL),
-(2770, 1556, 4, 30.00, 'Phase 4', 'Phase 4 Description', 14250000.00, 'completed', NULL, '2026-04-30 23:59:59', NULL),
-(2771, 1556, 5, 20.00, 'Phase 5', 'Phase 5 Description', 9500000.00, 'completed', NULL, '2026-05-29 23:59:59', NULL),
-(2772, 1557, 1, 80.00, 'item tite', 'jakananaaad', 34000000.00, 'completed', 'completed', '2025-12-31 00:00:00', NULL),
-(2773, 1557, 2, 20.00, 'haianaja', 'vskakaban', 8500000.00, 'not_started', 'in_progress', '2027-12-14 23:59:59', NULL),
-(2774, 1558, 1, 50.00, '1st', 'Hahsshha', 100000000.00, 'completed', NULL, '2026-05-21 23:59:59', NULL),
-(2775, 1558, 2, 50.00, '2nd', 'Bzbabsbs', 100000000.00, 'completed', NULL, '2026-12-19 23:59:59', NULL),
-(2776, 1559, 1, 50.00, 'PHASE 1', 'PHASE 1 DESC', 27495000.00, 'not_started', NULL, '2026-03-31 23:59:59', NULL),
-(2777, 1559, 2, 50.00, 'PHASE 2', 'PHASE 2 DESC', 27495000.00, 'not_started', NULL, '2026-02-26 23:59:59', NULL),
-(2778, 1560, 1, 30.00, 'Foundation and Framework', 'it is what it is', 6000000.00, 'completed', NULL, '2026-04-17 23:59:59', NULL),
-(2779, 1560, 2, 50.00, 'Madami gagawin', 'Basta madami gagawin', 12000000.00, 'completed', NULL, '2027-01-30 23:59:59', NULL),
-(2780, 1560, 3, 10.00, 'Tapos na to by this time', 'yes', 2000000.00, 'completed', NULL, '2027-12-31 23:59:59', NULL),
-(2781, 1560, 4, 10.00, 'eeeeeeeeee', 'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeee', 1.00, 'not_started', NULL, '2028-01-18 22:53:08', NULL);
+INSERT INTO `milestone_items` (`item_id`, `milestone_id`, `sequence_order`, `percentage_progress`, `milestone_item_title`, `milestone_item_description`, `milestone_item_cost`, `adjusted_cost`, `carry_forward_amount`, `item_status`, `previous_status`, `date_to_finish`, `original_date_to_finish`, `was_extended`, `extension_count`, `settlement_due_date`, `extension_date`, `updated_at`) VALUES
+(2547, 1466, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2548, 1467, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2549, 1468, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2550, 1469, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2551, 1470, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2552, 1471, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2553, 1472, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2554, 1473, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2555, 1474, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2556, 1475, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2557, 1476, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2558, 1477, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2559, 1478, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2560, 1479, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2561, 1480, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2562, 1481, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2563, 1482, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2564, 1483, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2565, 1484, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2566, 1485, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2567, 1486, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2568, 1487, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2569, 1488, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2570, 1489, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2571, 1490, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2572, 1491, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2573, 1492, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2574, 1493, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2575, 1494, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2576, 1495, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2577, 1496, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2578, 1497, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2579, 1498, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2580, 1499, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2581, 1500, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2582, 1501, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2583, 1502, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2584, 1503, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2585, 1504, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2586, 1505, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2587, 1506, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2588, 1507, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2589, 1508, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2590, 1509, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2591, 1510, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2592, 1511, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2593, 1512, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2594, 1513, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2595, 1514, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2596, 1515, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2597, 1516, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2598, 1517, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2599, 1518, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2600, 1519, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2601, 1520, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2602, 1521, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2603, 1522, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2604, 1523, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2605, 1524, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2606, 1525, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2607, 1526, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2608, 1527, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2609, 1528, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2610, 1529, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2611, 1530, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2612, 1531, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2613, 1532, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2614, 1533, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2615, 1534, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2616, 1535, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2617, 1536, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2618, 1537, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2619, 1538, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2620, 1539, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2621, 1540, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2622, 1541, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2623, 1542, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2624, 1543, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2625, 1544, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2626, 1545, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2627, 1546, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2628, 1547, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2629, 1548, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2630, 1549, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2631, 1550, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2632, 1551, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2633, 1552, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2634, 1553, 1, 40.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2635, 1554, 1, 100.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2636, 1555, 1, 50.00, 'Primary Task', 'Desc', 25000.00, NULL, 0.00, 'not_started', NULL, '2025-12-20 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2674, 1466, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2675, 1468, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2676, 1469, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2677, 1471, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2678, 1472, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2679, 1474, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2680, 1475, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2681, 1477, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2682, 1478, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2683, 1480, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2684, 1481, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2685, 1483, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2686, 1484, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2687, 1486, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2688, 1487, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2689, 1489, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2690, 1490, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2691, 1492, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2692, 1493, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2693, 1495, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2694, 1496, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2695, 1498, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2696, 1499, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2697, 1501, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2698, 1502, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2699, 1504, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2700, 1505, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2701, 1507, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2702, 1508, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2703, 1510, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2704, 1511, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2705, 1513, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2706, 1514, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2707, 1516, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2708, 1517, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2709, 1519, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2710, 1520, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2711, 1522, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2712, 1523, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2713, 1525, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2714, 1526, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2715, 1528, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2716, 1529, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2717, 1531, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2718, 1532, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2719, 1534, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2720, 1535, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2721, 1537, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2722, 1538, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2723, 1540, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2724, 1541, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2725, 1543, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2726, 1544, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2727, 1546, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2728, 1547, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2729, 1549, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2730, 1550, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2731, 1552, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2732, 1553, 2, 30.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2733, 1555, 2, 50.00, 'Secondary Task', 'Desc', 15000.00, NULL, 0.00, 'not_started', NULL, '2025-12-25 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2737, 1466, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2738, 1469, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2739, 1472, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2740, 1475, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2741, 1478, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2742, 1481, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2743, 1484, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2744, 1487, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2745, 1490, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2746, 1493, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2747, 1496, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2748, 1499, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2749, 1502, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2750, 1505, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2751, 1508, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2752, 1511, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2753, 1514, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2754, 1517, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2755, 1520, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2756, 1523, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2757, 1526, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2758, 1529, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2759, 1532, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2760, 1535, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2761, 1538, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2762, 1541, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2763, 1544, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2764, 1547, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2765, 1550, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2766, 1553, 3, 30.00, 'Final Task', 'Desc', 10000.00, NULL, 0.00, 'not_started', NULL, '2025-12-30 15:49:09', NULL, 0, 0, NULL, NULL, NULL),
+(2767, 1556, 1, 10.00, 'Phase 1', 'Phase 1 Description', 4750000.00, NULL, 0.00, 'completed', NULL, '2026-01-31 23:59:59', NULL, 0, 0, NULL, NULL, NULL),
+(2768, 1556, 2, 10.00, 'Phase 2', 'Phase 2 Description', 4750000.00, NULL, 0.00, 'completed', NULL, '2026-02-28 23:59:59', NULL, 0, 0, NULL, NULL, NULL),
+(2769, 1556, 3, 30.00, 'Phase 3', 'Phase 3 Description', 14250000.00, NULL, 0.00, 'completed', NULL, '2026-03-28 23:59:59', NULL, 0, 0, NULL, NULL, NULL),
+(2770, 1556, 4, 30.00, 'Phase 4', 'Phase 4 Description', 14250000.00, NULL, 0.00, 'completed', NULL, '2026-04-30 23:59:59', NULL, 0, 0, NULL, NULL, NULL),
+(2771, 1556, 5, 20.00, 'Phase 5', 'Phase 5 Description', 9500000.00, NULL, 0.00, 'completed', NULL, '2026-05-29 23:59:59', NULL, 0, 0, NULL, NULL, NULL),
+(2772, 1557, 1, 80.00, 'item tite', 'jakananaaad', 34000000.00, NULL, 0.00, 'completed', 'completed', '2025-12-31 00:00:00', NULL, 0, 0, NULL, NULL, NULL),
+(2773, 1557, 2, 20.00, 'haianaja', 'vskakaban', 8500000.00, NULL, 0.00, 'not_started', 'in_progress', '2027-12-14 23:59:59', NULL, 0, 0, NULL, NULL, NULL),
+(2774, 1558, 1, 50.00, '1st', 'Hahsshha', 100000000.00, NULL, 0.00, 'completed', NULL, '2026-05-21 23:59:59', NULL, 0, 0, NULL, NULL, NULL),
+(2775, 1558, 2, 50.00, '2nd', 'Bzbabsbs', 100000000.00, NULL, 0.00, 'completed', NULL, '2026-12-19 23:59:59', NULL, 0, 0, NULL, NULL, NULL),
+(2776, 1559, 1, 50.00, 'PHASE 1', 'PHASE 1 DESC', 27495000.00, NULL, 0.00, 'not_started', NULL, '2026-03-31 23:59:59', NULL, 0, 0, NULL, NULL, NULL),
+(2777, 1559, 2, 50.00, 'PHASE 2', 'PHASE 2 DESC', 27495000.00, NULL, 0.00, 'not_started', NULL, '2026-02-26 23:59:59', NULL, 0, 0, NULL, NULL, NULL),
+(2778, 1560, 1, 30.00, 'Foundation and Framework', 'it is what it is', 6000000.00, NULL, 0.00, 'completed', NULL, '2026-04-17 23:59:59', NULL, 0, 0, NULL, NULL, NULL),
+(2779, 1560, 2, 50.00, 'Madami gagawin', 'Basta madami gagawin', 12000000.00, NULL, 0.00, 'completed', NULL, '2027-01-30 23:59:59', NULL, 0, 0, NULL, NULL, NULL),
+(2780, 1560, 3, 10.00, 'Tapos na to by this time', 'yes', 2000000.00, NULL, 0.00, 'completed', NULL, '2027-12-31 23:59:59', NULL, 0, 0, NULL, NULL, NULL),
+(2781, 1560, 4, 10.00, 'eeeeeeeeee', 'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeee', 1.00, NULL, 0.00, 'not_started', NULL, '2028-01-18 22:53:08', NULL, 0, 0, NULL, NULL, NULL),
+(2786, 1563, 1, 50.00, 'giobgy', 'ginvf', 3000.00, NULL, 0.00, 'not_started', NULL, '2026-02-25 23:59:59', NULL, 0, 0, NULL, NULL, NULL),
+(2787, 1563, 2, 50.00, 'dyondsuig', '', 3000.00, NULL, 0.00, 'not_started', NULL, '2026-02-28 23:59:59', NULL, 0, 0, NULL, NULL, NULL),
+(2790, 1564, 1, 33.33, 'Foundations', 'Foundation ngani', 20000000.00, NULL, 0.00, 'completed', NULL, '2026-02-25 23:59:59', '2026-02-18 23:59:59', 1, 1, '2026-02-26', NULL, '2026-02-26 11:26:12'),
+(2791, 1564, 2, 35.00, 'Doners', 'downers', 20000000.00, 21000000.00, 1000000.00, 'not_started', NULL, '2026-03-07 23:59:59', '2026-02-28 23:59:59', 1, 1, NULL, NULL, '2026-02-26 11:26:12'),
+(2792, 1564, 3, 31.67, 'extension', 'hdkdykkydkhdkhd', 19000000.00, NULL, 0.00, 'not_started', NULL, '2026-03-07 23:59:59', '2026-02-28 23:59:59', 1, 1, NULL, NULL, '2026-02-26 11:26:12');
 
 -- --------------------------------------------------------
 
@@ -1331,7 +1381,8 @@ INSERT INTO `milestone_payments` (`payment_id`, `item_id`, `project_id`, `owner_
 (821, 2776, 1049, 1814, 2055, 20000000.00, 'bank_transfer', '10982691001', 'payments/receipts/1766131826_69450872f242e.jpg', '2025-12-19', 'approved', NULL, NULL),
 (822, 2778, 1054, 1814, 2055, 6000000.00, 'bank_transfer', '01927101662', 'payments/receipts/1769329448_6975d328ce6d8.jpg', '2026-01-25', 'approved', NULL, NULL),
 (823, 2779, 1054, 1814, 2055, 12000000.00, 'bank_transfer', '00182629163', 'payments/receipts/1769329737_6975d4499041f.jpg', '2026-01-25', 'approved', NULL, NULL),
-(824, 2780, 1054, 1814, 2055, 2000000.00, 'bank_transfer', '027292773291', 'payments/receipts/1769329763_6975d4639157a.jpg', '2026-01-25', 'approved', NULL, NULL);
+(824, 2780, 1054, 1814, 2055, 2000000.00, 'bank_transfer', '027292773291', 'payments/receipts/1769329763_6975d4639157a.jpg', '2026-01-25', 'approved', NULL, NULL),
+(825, 2790, 1056, 1819, 2059, 19000000.00, 'bank_transfer', '01018273628190383', 'payments/receipts/1771850637_699c4b8d02e1c.jpg', '2026-02-23', 'approved', NULL, '2026-02-23 12:45:54');
 
 -- --------------------------------------------------------
 
@@ -1343,9 +1394,14 @@ CREATE TABLE `notifications` (
   `notification_id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL,
   `message` text NOT NULL,
-  `type` enum('Milestone Update','Bid Status','Payment Reminder','Project Alert') NOT NULL,
+  `title` varchar(255) DEFAULT NULL,
+  `type` enum('Milestone Update','Bid Status','Payment Reminder','Project Alert','Progress Update','Dispute Update','Team Update','Payment Status') NOT NULL,
   `is_read` tinyint(1) DEFAULT 0,
   `delivery_method` enum('App','Email','Both') DEFAULT 'App',
+  `priority` enum('critical','high','normal') NOT NULL DEFAULT 'normal',
+  `reference_type` varchar(50) DEFAULT NULL,
+  `reference_id` int(10) UNSIGNED DEFAULT NULL,
+  `dedup_key` varchar(100) DEFAULT NULL,
   `action_link` varchar(255) DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -1354,277 +1410,317 @@ CREATE TABLE `notifications` (
 -- Dumping data for table `notifications`
 --
 
-INSERT INTO `notifications` (`notification_id`, `user_id`, `message`, `type`, `is_read`, `delivery_method`, `action_link`, `created_at`) VALUES
-(3418, 1, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3419, 10, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3420, 100, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3421, 101, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3422, 102, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3423, 103, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3424, 104, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3425, 105, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3426, 106, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3427, 107, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3428, 108, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3429, 109, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3430, 11, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3431, 110, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3432, 111, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3433, 112, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3434, 113, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3435, 114, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3436, 115, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3437, 116, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3438, 117, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3439, 118, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3440, 119, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3441, 12, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3442, 120, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3443, 121, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3444, 122, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3445, 123, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3446, 124, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3447, 125, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3448, 126, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3449, 127, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3450, 128, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3451, 129, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3452, 13, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3453, 130, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3454, 131, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3455, 132, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3456, 133, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3457, 134, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3458, 135, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3459, 136, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3460, 137, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3461, 138, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3462, 139, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3463, 14, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3464, 140, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3465, 141, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3466, 142, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3467, 143, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3468, 144, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3469, 145, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3470, 146, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3471, 147, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3472, 148, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3473, 149, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3474, 15, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3475, 150, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3476, 151, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3477, 152, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3478, 153, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3479, 154, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3480, 155, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3481, 156, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3482, 157, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3483, 158, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3484, 159, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3485, 16, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3486, 160, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3487, 161, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3488, 162, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3489, 163, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3490, 164, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3491, 165, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3492, 166, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3493, 167, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3494, 168, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3495, 169, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3496, 17, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3497, 170, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3498, 171, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3499, 172, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3500, 173, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3501, 174, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3502, 175, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3503, 176, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3504, 177, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3505, 178, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3506, 179, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3507, 18, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3508, 180, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3509, 181, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3510, 182, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3511, 183, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3512, 184, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3513, 185, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3514, 186, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3515, 187, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3516, 188, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3517, 189, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3518, 19, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3519, 190, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3520, 191, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3521, 192, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3522, 193, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3523, 194, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3524, 195, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3525, 196, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3526, 197, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3527, 198, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3528, 199, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3529, 2, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3530, 20, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3531, 200, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3532, 201, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3533, 202, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3534, 203, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3535, 204, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3536, 205, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3537, 206, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3538, 207, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3539, 208, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3540, 209, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3541, 21, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3542, 210, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3543, 211, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3544, 212, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3545, 213, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3546, 214, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3547, 215, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3548, 216, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3549, 217, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3550, 218, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3551, 219, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3552, 22, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3553, 220, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3554, 23, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3555, 24, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3556, 25, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3557, 26, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3558, 27, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3559, 28, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3560, 29, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3561, 3, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3562, 30, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3563, 31, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3564, 32, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3565, 33, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3566, 34, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3567, 35, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3568, 36, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3569, 37, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3570, 38, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3571, 39, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3572, 4, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3573, 40, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3574, 41, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3575, 42, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3576, 43, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3577, 44, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3578, 45, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3579, 46, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3580, 47, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3581, 48, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3582, 49, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3583, 5, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3584, 50, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3585, 51, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3586, 52, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3587, 53, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3588, 54, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3589, 55, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3590, 56, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3591, 57, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3592, 58, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3593, 59, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3594, 6, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3595, 60, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3596, 61, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3597, 62, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3598, 63, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3599, 64, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3600, 65, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3601, 66, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3602, 67, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3603, 68, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3604, 69, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3605, 7, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3606, 70, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3607, 71, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3608, 72, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3609, 73, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3610, 74, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3611, 75, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3612, 76, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3613, 77, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3614, 78, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3615, 79, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3616, 8, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3617, 80, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3618, 81, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3619, 82, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3620, 83, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3621, 84, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3622, 85, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3623, 86, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3624, 87, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3625, 88, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3626, 89, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3627, 9, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3628, 90, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3629, 91, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3630, 92, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3631, 93, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3632, 94, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3633, 95, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3634, 96, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3635, 97, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3636, 98, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3637, 99, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3638, 221, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3639, 222, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3640, 223, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3641, 224, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3642, 225, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3643, 226, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3644, 227, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3645, 228, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3646, 229, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3647, 230, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3648, 231, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3649, 232, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3650, 233, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3651, 234, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3652, 235, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3653, 236, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3654, 237, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3655, 238, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3656, 239, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3657, 240, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3658, 241, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3659, 242, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3660, 243, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3661, 244, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3662, 245, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3663, 246, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3664, 247, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3665, 248, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3666, 249, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3667, 250, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3668, 251, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3669, 252, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3670, 253, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3671, 254, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3672, 255, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3673, 256, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3674, 257, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3675, 258, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3676, 259, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3677, 260, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3678, 261, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3679, 262, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3680, 263, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3681, 264, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3682, 265, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3683, 266, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3684, 267, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3685, 268, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3686, 269, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09'),
-(3687, 270, 'Welcome!', 'Project Alert', 0, 'App', NULL, '2025-12-15 07:49:09');
+INSERT INTO `notifications` (`notification_id`, `user_id`, `message`, `title`, `type`, `is_read`, `delivery_method`, `priority`, `reference_type`, `reference_id`, `dedup_key`, `action_link`, `created_at`) VALUES
+(3418, 1, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3419, 10, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3420, 100, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3421, 101, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3422, 102, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3423, 103, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3424, 104, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3425, 105, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3426, 106, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3427, 107, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3428, 108, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3429, 109, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3430, 11, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3431, 110, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3432, 111, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3433, 112, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3434, 113, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3435, 114, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3436, 115, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3437, 116, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3438, 117, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3439, 118, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3440, 119, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3441, 12, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3442, 120, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3443, 121, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3444, 122, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3445, 123, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3446, 124, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3447, 125, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3448, 126, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3449, 127, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3450, 128, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3451, 129, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3452, 13, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3453, 130, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3454, 131, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3455, 132, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3456, 133, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3457, 134, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3458, 135, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3459, 136, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3460, 137, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3461, 138, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3462, 139, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3463, 14, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3464, 140, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3465, 141, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3466, 142, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3467, 143, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3468, 144, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3469, 145, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3470, 146, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3471, 147, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3472, 148, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3473, 149, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3474, 15, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3475, 150, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3476, 151, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3477, 152, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3478, 153, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3479, 154, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3480, 155, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3481, 156, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3482, 157, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3483, 158, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3484, 159, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3485, 16, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3486, 160, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3487, 161, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3488, 162, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3489, 163, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3490, 164, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3491, 165, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3492, 166, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3493, 167, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3494, 168, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3495, 169, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3496, 17, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3497, 170, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3498, 171, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3499, 172, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3500, 173, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3501, 174, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3502, 175, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3503, 176, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3504, 177, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3505, 178, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3506, 179, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3507, 18, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3508, 180, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3509, 181, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3510, 182, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3511, 183, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3512, 184, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3513, 185, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3514, 186, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3515, 187, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3516, 188, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3517, 189, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3518, 19, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3519, 190, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3520, 191, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3521, 192, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3522, 193, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3523, 194, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3524, 195, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3525, 196, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3526, 197, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3527, 198, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3528, 199, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3529, 2, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3530, 20, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3531, 200, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3532, 201, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3533, 202, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3534, 203, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3535, 204, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3536, 205, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3537, 206, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3538, 207, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3539, 208, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3540, 209, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3541, 21, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3542, 210, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3543, 211, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3544, 212, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3545, 213, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3546, 214, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3547, 215, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3548, 216, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3549, 217, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3550, 218, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3551, 219, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3552, 22, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3553, 220, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3554, 23, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3555, 24, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3556, 25, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3557, 26, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3558, 27, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3559, 28, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3560, 29, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3561, 3, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3562, 30, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3563, 31, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3564, 32, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3565, 33, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3566, 34, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3567, 35, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3568, 36, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3569, 37, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3570, 38, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3571, 39, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3572, 4, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3573, 40, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3574, 41, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3575, 42, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3576, 43, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3577, 44, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3578, 45, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3579, 46, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3580, 47, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3581, 48, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3582, 49, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3583, 5, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3584, 50, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3585, 51, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3586, 52, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3587, 53, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3588, 54, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3589, 55, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3590, 56, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3591, 57, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3592, 58, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3593, 59, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3594, 6, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3595, 60, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3596, 61, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3597, 62, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3598, 63, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3599, 64, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3600, 65, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3601, 66, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3602, 67, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3603, 68, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3604, 69, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3605, 7, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3606, 70, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3607, 71, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3608, 72, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3609, 73, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3610, 74, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3611, 75, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3612, 76, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3613, 77, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3614, 78, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3615, 79, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3616, 8, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3617, 80, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3618, 81, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3619, 82, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3620, 83, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3621, 84, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3622, 85, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3623, 86, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3624, 87, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3625, 88, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3626, 89, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3627, 9, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3628, 90, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3629, 91, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3630, 92, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3631, 93, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3632, 94, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3633, 95, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3634, 96, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3635, 97, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3636, 98, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3637, 99, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3638, 221, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3639, 222, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3640, 223, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3641, 224, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3642, 225, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3643, 226, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3644, 227, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3645, 228, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3646, 229, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3647, 230, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3648, 231, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3649, 232, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3650, 233, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3651, 234, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3652, 235, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3653, 236, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3654, 237, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3655, 238, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3656, 239, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3657, 240, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3658, 241, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3659, 242, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3660, 243, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3661, 244, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3662, 245, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3663, 246, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3664, 247, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3665, 248, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3666, 249, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3667, 250, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3668, 251, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3669, 252, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3670, 253, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3671, 254, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3672, 255, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3673, 256, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3674, 257, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3675, 258, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3676, 259, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3677, 260, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3678, 261, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3679, 262, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3680, 263, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3681, 264, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3682, 265, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3683, 266, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3684, 267, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3685, 268, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3686, 269, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3687, 270, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
+(3688, 371, 'A contractor has submitted a bid for \"jslaabxxbxsssss\".', 'New Bid Received', 'Bid Status', 1, 'App', 'normal', 'bid', 267, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1055,\"tab\":\"bids\"},\"notification_sub_type\":\"bid_received\"}', '2026-02-14 10:45:22'),
+(3689, 371, 'A contractor has submitted a bid for \"jslaabxxbxsssss\".', 'New Bid Received', 'Bid Status', 0, 'App', 'normal', 'bid', 268, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1055,\"tab\":\"bids\"},\"notification_sub_type\":\"bid_received\"}', '2026-02-15 22:20:11'),
+(3690, 371, 'A contractor has submitted a bid for \"jslaabxxbxsssss\".', 'New Bid Received', 'Bid Status', 0, 'App', 'normal', 'bid', 269, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1055,\"tab\":\"bids\"},\"notification_sub_type\":\"bid_received\"}', '2026-02-15 22:21:27'),
+(3691, 371, 'A contractor has submitted a bid for \"jslaabxxbxsssss\".', 'New Bid Received', 'Bid Status', 0, 'App', 'normal', 'bid', 270, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1055,\"tab\":\"bids\"},\"notification_sub_type\":\"bid_received\"}', '2026-02-15 22:25:42'),
+(3692, 371, 'A contractor has submitted a bid for \"jslaabxxbxsssss\".', 'New Bid Received', 'Bid Status', 0, 'App', 'normal', 'bid', 271, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1055,\"tab\":\"bids\"},\"notification_sub_type\":\"bid_received\"}', '2026-02-15 22:43:13'),
+(3693, 371, 'A contractor has submitted a bid for \"jslaabxxbxsssss\".', 'New Bid Received', 'Bid Status', 1, 'App', 'normal', 'bid', 272, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1055,\"tab\":\"bids\"},\"notification_sub_type\":\"bid_received\"}', '2026-02-15 23:20:55'),
+(3694, 371, 'A contractor has submitted a bid for \"jslaabxxbxsssss\".', 'New Bid Received', 'Bid Status', 1, 'App', 'normal', 'bid', 273, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1055,\"tab\":\"bids\"},\"notification_sub_type\":\"bid_received\"}', '2026-02-16 01:23:58'),
+(3695, 371, 'A contractor has submitted a bid for \"Project Images Testing\".', 'New Bid Received', 'Bid Status', 1, 'App', 'normal', 'bid', 274, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1052,\"tab\":\"bids\"},\"notification_sub_type\":\"bid_received\"}', '2026-02-16 01:37:22'),
+(3696, 371, 'A contractor has submitted a bid for \"Testing again\".', 'New Bid Received', 'Bid Status', 1, 'App', 'normal', 'bid', 275, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1053,\"tab\":\"bids\"},\"notification_sub_type\":\"bid_received\"}', '2026-02-16 01:42:53'),
+(3697, 371, 'A contractor has submitted a bid for \"Testing again\".', 'New Bid Received', 'Bid Status', 1, 'App', 'normal', 'bid', 276, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1053,\"tab\":\"bids\"},\"notification_sub_type\":\"bid_received\"}', '2026-02-16 01:44:41'),
+(3698, 371, 'A contractor has submitted a bid for \"Testing again\".', 'New Bid Received', 'Bid Status', 1, 'App', 'normal', 'bid', 277, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1053,\"tab\":\"bids\"},\"notification_sub_type\":\"bid_received\"}', '2026-02-16 01:53:56'),
+(3699, 371, 'A contractor has submitted a bid for \"Testing again\".', 'New Bid Received', 'Bid Status', 1, 'App', 'normal', 'bid', 278, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1053,\"tab\":\"bids\"},\"notification_sub_type\":\"bid_received\"}', '2026-02-16 01:55:33'),
+(3700, 371, 'A contractor has submitted a bid for \"Project Images Testing\".', 'New Bid Received', 'Bid Status', 1, 'App', 'normal', 'bid', 279, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1052,\"tab\":\"bids\"},\"notification_sub_type\":\"bid_received\"}', '2026-02-16 01:56:03'),
+(3701, 371, 'A contractor has submitted a bid for \"Project Images Testing\".', 'New Bid Received', 'Bid Status', 1, 'App', 'normal', 'bid', 280, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1052,\"tab\":\"bids\"},\"notification_sub_type\":\"bid_received\"}', '2026-02-16 05:05:40'),
+(3702, 371, 'A contractor has submitted a bid for \"Testing again\".', 'New Bid Received', 'Bid Status', 1, 'App', 'normal', 'bid', 281, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1053,\"tab\":\"bids\"},\"notification_sub_type\":\"bid_received\"}', '2026-02-16 05:11:10'),
+(3703, 371, 'A contractor has submitted a bid for \"Project Images Testing\".', 'New Bid Received', 'Bid Status', 1, 'App', 'normal', 'bid', 282, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1052,\"tab\":\"bids\"},\"notification_sub_type\":\"bid_received\"}', '2026-02-16 05:15:24'),
+(3704, 371, 'A contractor has submitted a bid for \"Testing again\".', 'New Bid Received', 'Bid Status', 1, 'App', 'normal', 'bid', 283, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1053,\"tab\":\"bids\"},\"notification_sub_type\":\"bid_received\"}', '2026-02-16 05:19:05'),
+(3705, 371, 'A contractor has submitted a bid for \"Project Images Testing\".', 'New Bid Received', 'Bid Status', 1, 'App', 'normal', 'bid', 284, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1052,\"tab\":\"bids\"},\"notification_sub_type\":\"bid_received\"}', '2026-02-16 05:22:40'),
+(3706, 154, 'A contractor has submitted a bid for \"Project 1027\".', 'New Bid Received', 'Bid Status', 0, 'App', 'normal', 'bid', 285, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1007,\"tab\":\"bids\"},\"notification_sub_type\":\"bid_received\"}', '2026-02-16 05:23:25'),
+(3707, 371, 'A contractor has submitted a bid for \"Testing again\".', 'New Bid Received', 'Bid Status', 1, 'App', 'normal', 'bid', 286, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1053,\"tab\":\"bids\"},\"notification_sub_type\":\"bid_received\"}', '2026-02-16 05:27:11'),
+(3708, 102, 'A contractor has submitted a bid for \"Project 986\".', 'New Bid Received', 'Bid Status', 0, 'App', 'normal', 'bid', 287, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1027,\"tab\":\"bids\"},\"notification_sub_type\":\"bid_received\"}', '2026-02-16 06:07:58'),
+(3709, 371, 'A contractor has submitted a bid for \"jslaabxxbxsssss\".', 'New Bid Received', 'Bid Status', 1, 'App', 'normal', 'bid', 288, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1055,\"tab\":\"bids\"},\"notification_sub_type\":\"bid_received\"}', '2026-02-16 07:28:53'),
+(3710, 123, 'A contractor has submitted a bid for \"Project 1003\".', 'New Bid Received', 'Bid Status', 0, 'App', 'normal', 'bid', 289, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":995,\"tab\":\"bids\"},\"notification_sub_type\":\"bid_received\"}', '2026-02-16 07:47:46'),
+(3711, 371, 'A contractor has submitted a bid for \"Project Images Testing\".', 'New Bid Received', 'Bid Status', 1, 'App', 'normal', 'bid', 290, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1052,\"tab\":\"bids\"},\"notification_sub_type\":\"bid_received\"}', '2026-02-16 07:56:39'),
+(3712, 371, 'Contractor submitted a milestone plan for \"jslaabxxbxsssss\". Please review.', 'Milestone Submitted', 'Milestone Update', 1, 'App', 'normal', 'milestone', 1561, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1055,\"tab\":\"milestones\"},\"notification_sub_type\":\"milestone_submitted\"}', '2026-02-17 01:11:33'),
+(3713, 371, 'Contractor submitted a milestone plan for \"jslaabxxbxsssss\". Please review.', 'Milestone Submitted', 'Milestone Update', 1, 'App', 'normal', 'milestone', 1562, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1055,\"tab\":\"milestones\"},\"notification_sub_type\":\"milestone_submitted\"}', '2026-02-17 01:48:12'),
+(3714, 371, 'A contractor has submitted a bid for \"Testing again\".', 'New Bid Received', 'Bid Status', 1, 'App', 'normal', 'bid', 291, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1053,\"tab\":\"bids\"},\"notification_sub_type\":\"bid_received\"}', '2026-02-19 03:42:10'),
+(3715, 154, 'A contractor has submitted a bid for \"Project 1027\".', 'New Bid Received', 'Bid Status', 0, 'App', 'normal', 'bid', 292, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1007,\"tab\":\"bids\"},\"notification_sub_type\":\"bid_received\"}', '2026-02-20 04:09:01'),
+(3716, 371, 'A contractor has submitted a bid for \"Testing again\".', 'New Bid Received', 'Bid Status', 1, 'App', 'normal', 'bid', 293, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1053,\"tab\":\"bids\"},\"notification_sub_type\":\"bid_received\"}', '2026-02-20 06:11:56'),
+(3717, 379, 'A contractor has submitted a bid for \"Commercial Building\".', 'New Bid Received', 'Bid Status', 1, 'App', 'normal', 'bid', 294, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1056,\"tab\":\"bids\"},\"notification_sub_type\":\"bid_received\"}', '2026-02-21 01:57:19'),
+(3718, 371, 'A contractor has submitted a bid for \"Testz\".', 'New Bid Received', 'Bid Status', 1, 'App', 'normal', 'bid', 295, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1047,\"tab\":\"bids\"},\"notification_sub_type\":\"bid_received\"}', '2026-02-22 02:29:15'),
+(3719, 372, 'The property owner has already chosen a contractor for \"Testz\". Thank you for your bid.', 'Bid Not Selected', 'Bid Status', 0, 'App', 'normal', 'bid', 260, NULL, '{\"screen\":\"MyBids\",\"params\":{\"projectId\":1047},\"notification_sub_type\":\"bid_rejected\"}', '2026-02-22 07:19:27'),
+(3720, 371, 'Contractor submitted a milestone plan for \"Testz\". Please review.', 'Milestone Submitted', 'Milestone Update', 1, 'App', 'normal', 'milestone', 1563, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1047,\"tab\":\"milestones\"},\"notification_sub_type\":\"milestone_submitted\"}', '2026-02-22 07:51:59'),
+(3721, 379, 'Contractor submitted a milestone plan for \"Commercial Building\". Please review.', 'Milestone Submitted', 'Milestone Update', 1, 'App', 'normal', 'milestone', 1564, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1056,\"tab\":\"milestones\"},\"notification_sub_type\":\"milestone_submitted\"}', '2026-02-23 00:12:07'),
+(3722, 379, 'Contractor has modified and resubmitted the milestone setup for \"Commercial Building\". Please review the updated proposal.', 'Milestone Resubmitted', 'Milestone Update', 1, 'App', 'high', 'milestone', 1564, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1056,\"tab\":\"milestones\"},\"notification_sub_type\":\"milestone_resubmitted\"}', '2026-02-23 00:58:25'),
+(3723, 379, 'Contractor uploaded progress for \"Foundations\" on \"Commercial Building\".', 'Progress Uploaded', 'Progress Update', 1, 'App', 'normal', 'progress', 832, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1056,\"tab\":\"progress\"},\"notification_sub_type\":\"progress_submitted\"}', '2026-02-23 04:29:49'),
+(3725, 379, 'Your payment for \"Commercial Building\" has been approved by the contractor.', 'Payment Approved', 'Payment Status', 1, 'App', 'normal', 'payment', 825, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1056,\"tab\":\"payments\"},\"notification_sub_type\":\"payment_approved\"}', '2026-02-23 04:45:54'),
+(3726, 379, 'Contractor uploaded progress for \"Doners\" on \"Commercial Building\".', 'Progress Uploaded', 'Progress Update', 1, 'App', 'normal', 'progress', 833, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1056,\"tab\":\"progress\"},\"notification_sub_type\":\"progress_submitted\"}', '2026-02-23 04:47:56'),
+(3727, 380, 'Owner set a payment deadline of Feb 26, 2026 for \"Foundations\".', 'Payment Due Date Set', 'Payment Reminder', 1, 'App', 'high', 'milestone_item', 2790, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1056,\"tab\":\"payments\"},\"notification_sub_type\":\"payment_due\"}', '2026-02-24 23:54:58'),
+(3730, 380, 'Your project update request has been approved. The project timeline and budget have been updated.', 'Budget Adjustment Approved', 'Project Alert', 1, 'App', 'high', 'project', 1056, NULL, '{\"screen\":\"ProjectTimeline\",\"params\":{\"projectId\":1056},\"notification_sub_type\":\"project_update\"}', '2026-02-25 07:15:26');
 
 -- --------------------------------------------------------
 
@@ -1668,6 +1764,37 @@ INSERT INTO `occupations` (`id`, `occupation_name`) VALUES
 (24, 'Student'),
 (25, 'Unemployed'),
 (26, 'Others');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `payment_adjustment_logs`
+--
+
+CREATE TABLE `payment_adjustment_logs` (
+  `log_id` bigint(20) UNSIGNED NOT NULL,
+  `project_id` int(10) UNSIGNED NOT NULL,
+  `milestone_id` int(10) UNSIGNED NOT NULL,
+  `source_item_id` int(10) UNSIGNED NOT NULL COMMENT 'Item that was over/under-paid',
+  `target_item_id` int(10) UNSIGNED DEFAULT NULL COMMENT 'Next item that received carry-forward (NULL for overpayment)',
+  `payment_id` int(10) UNSIGNED DEFAULT NULL COMMENT 'The payment that triggered this adjustment (NULL for completion-triggered)',
+  `adjustment_type` enum('overpayment','underpayment') NOT NULL COMMENT 'What kind of adjustment',
+  `original_required` decimal(12,2) NOT NULL COMMENT 'Original required amount of source item',
+  `total_paid` decimal(12,2) NOT NULL COMMENT 'Total approved payments on source item after this payment',
+  `adjustment_amount` decimal(12,2) NOT NULL COMMENT 'The excess (overpay) or shortfall (underpay) amount',
+  `target_original_cost` decimal(12,2) DEFAULT NULL COMMENT 'Target item original cost before adjustment',
+  `target_adjusted_cost` decimal(12,2) DEFAULT NULL COMMENT 'Target item cost after adjustment',
+  `notes` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `payment_adjustment_logs`
+--
+
+INSERT INTO `payment_adjustment_logs` (`log_id`, `project_id`, `milestone_id`, `source_item_id`, `target_item_id`, `payment_id`, `adjustment_type`, `original_required`, `total_paid`, `adjustment_amount`, `target_original_cost`, `target_adjusted_cost`, `notes`, `created_at`) VALUES
+(1, 1056, 1564, 2790, 2791, NULL, 'underpayment', 20000000.00, 19000000.00, 1000000.00, 20000000.00, 21000000.00, 'Data repair: carry-forward corrected from 2M to 1M (was doubled due to missing transaction + non-idempotent code). Shortfall of 1,000,000.00 carried from item 2790 to 2791.', '2026-02-23 07:03:48'),
+(2, 1056, 1564, 2790, 2791, NULL, 'underpayment', 20000000.00, 19000000.00, 1000000.00, 20000000.00, 21000000.00, 'Shortfall of 1,000,000.00 carried forward on item completion to item #2 (Doners).', '2026-02-23 07:21:06');
 
 -- --------------------------------------------------------
 
@@ -1726,7 +1853,11 @@ INSERT INTO `payment_plans` (`plan_id`, `project_id`, `contractor_id`, `payment_
 (921, 1047, 1809, 'downpayment', 50000000.00, 7500000.00, 0, '2025-12-18 19:51:47', '2025-12-18 19:51:47'),
 (922, 1048, 1809, 'full_payment', 200000000.00, 0.00, 0, '2025-12-18 21:10:50', '2025-12-18 21:10:50'),
 (923, 1049, 1809, 'downpayment', 55000000.00, 10000.00, 0, '2025-12-18 23:59:41', '2025-12-18 23:59:41'),
-(924, 1054, 1809, 'downpayment', 30000000.00, 10000000.00, 0, '2026-01-25 00:20:09', '2026-01-25 00:20:09');
+(924, 1054, 1809, 'downpayment', 30000000.00, 10000000.00, 0, '2026-01-25 00:20:09', '2026-01-25 00:20:09'),
+(925, 1055, 1809, 'downpayment', 8000000.00, 2000000.00, 0, '2026-02-17 01:11:33', '2026-02-17 01:11:33'),
+(926, 1055, 1809, 'downpayment', 8000000.00, 2000000.00, 0, '2026-02-17 01:48:12', '2026-02-17 01:48:12'),
+(927, 1047, 1810, 'downpayment', 6898.00, 898.00, 0, '2026-02-22 07:51:59', '2026-02-22 07:51:59'),
+(928, 1056, 1810, 'downpayment', 60000000.00, 10000000.00, 0, '2026-02-23 00:12:07', '2026-02-25 07:15:26');
 
 -- --------------------------------------------------------
 
@@ -1825,7 +1956,46 @@ INSERT INTO `personal_access_tokens` (`id`, `tokenable_type`, `tokenable_id`, `n
 (71, 'App\\Models\\User', 371, 'mobile-app', 'be81ba973169b09d662a2efed768f3ae79ad04dc6743e01d58420f4505c59804', '[\"*\"]', NULL, NULL, '2026-01-25 00:30:43', '2026-01-25 00:30:43'),
 (72, 'App\\Models\\User', 371, 'mobile-app', 'a01093d82f77b9b760a35ecbc1894d703dee52d6843fea8afa770f25bf1cb021', '[\"*\"]', NULL, NULL, '2026-01-25 00:42:15', '2026-01-25 00:42:15'),
 (73, 'App\\Models\\User', 372, 'mobile-app', 'c682006e63f10bfcad681181e8f69e0f7cf6fc625b2ddce95a04481562e2a057', '[\"*\"]', NULL, NULL, '2026-01-25 00:43:11', '2026-01-25 00:43:11'),
-(74, 'App\\Models\\User', 371, 'mobile-app', 'b9c77af93d1f4c92ea39c2f1dee12eeb4f3d4caae738b7f92986a16349bfb6bb', '[\"*\"]', NULL, NULL, '2026-01-25 00:49:28', '2026-01-25 00:49:28');
+(74, 'App\\Models\\User', 371, 'mobile-app', 'b9c77af93d1f4c92ea39c2f1dee12eeb4f3d4caae738b7f92986a16349bfb6bb', '[\"*\"]', NULL, NULL, '2026-01-25 00:49:28', '2026-01-25 00:49:28'),
+(75, 'App\\Models\\User', 371, 'mobile-app', '446679f546789c0babb615d4d55fe193f06df100b614471e60a9e7e6d227812e', '[\"*\"]', NULL, NULL, '2026-02-20 23:43:59', '2026-02-20 23:43:59'),
+(76, 'App\\Models\\User', 379, 'mobile-app', 'e523e8f39e3be036ff8ba9949fb2df43105dc6676738209eab9a944bb17cf626', '[\"*\"]', NULL, NULL, '2026-02-21 01:06:47', '2026-02-21 01:06:47'),
+(77, 'App\\Models\\User', 380, 'mobile-app', '7d3bd053a5bcd22e870928f32aa2a18a2c9c5d54a258461cb18e03813911984f', '[\"*\"]', NULL, NULL, '2026-02-21 01:38:50', '2026-02-21 01:38:50'),
+(78, 'App\\Models\\User', 380, 'mobile-app', '146fc72a3614e0b3c68d4a50e073f087b7a069c49948dca87cd83f9f5998b47b', '[\"*\"]', NULL, NULL, '2026-02-21 01:39:23', '2026-02-21 01:39:23'),
+(79, 'App\\Models\\User', 380, 'mobile-app', 'eaa408438e4364ce106594e4ae2c5be8b91c3025d31e255ee5c22bc972540f4b', '[\"*\"]', NULL, NULL, '2026-02-21 01:50:33', '2026-02-21 01:50:33'),
+(80, 'App\\Models\\User', 379, 'mobile-app', 'c2ce0a110f6c0d993b318bb4a0eff8a9b33a886db00b8c1f617fd7465e4fdcb8', '[\"*\"]', NULL, NULL, '2026-02-21 01:51:19', '2026-02-21 01:51:19'),
+(81, 'App\\Models\\User', 379, 'mobile-app', '4319301b534989c1f3f9518ba68711550a3b5b6473c649216731fdba748de35d', '[\"*\"]', NULL, NULL, '2026-02-21 01:54:47', '2026-02-21 01:54:47'),
+(82, 'App\\Models\\User', 380, 'mobile-app', '5d026f396dbfe64e008911466e06bb74c1b6525961a8a22c478d02277e66212a', '[\"*\"]', NULL, NULL, '2026-02-21 01:55:18', '2026-02-21 01:55:18'),
+(83, 'App\\Models\\User', 379, 'mobile-app', 'cb4c115d606ef2bc957fab7a65b0dbd50a909d783a77b2e830306b2c1f51f892', '[\"*\"]', NULL, NULL, '2026-02-21 01:57:42', '2026-02-21 01:57:42'),
+(84, 'App\\Models\\User', 380, 'mobile-app', '189b5fbc2280b644a427d2e389185147b652d0bc3ac8515133756c0a286d0c94', '[\"*\"]', NULL, NULL, '2026-02-21 02:36:18', '2026-02-21 02:36:18'),
+(85, 'App\\Models\\User', 380, 'mobile-app', '9b71c082d0185c04f6d511fe6917f5ff676e6d7293c5395ce68ac87289a2a6bf', '[\"*\"]', NULL, NULL, '2026-02-22 02:00:58', '2026-02-22 02:00:58'),
+(86, 'App\\Models\\User', 371, 'mobile-app', '378b752977e2bf323c68fb0e45045c1890391a0d4ecdccb8d1bf07cf9bb635e2', '[\"*\"]', NULL, NULL, '2026-02-22 07:18:46', '2026-02-22 07:18:46'),
+(87, 'App\\Models\\User', 372, 'mobile-app', 'd9681a96c46c752c5c290b8afd32a8ca4817ea33a2082d900506917a5745c8ca', '[\"*\"]', NULL, NULL, '2026-02-22 07:23:38', '2026-02-22 07:23:38'),
+(88, 'App\\Models\\User', 372, 'mobile-app', '1d363cdc6527d7539c49de2894a2d3e2e546ce94c4e0ec676996c11d5fc153fa', '[\"*\"]', NULL, NULL, '2026-02-22 07:31:06', '2026-02-22 07:31:06'),
+(89, 'App\\Models\\User', 380, 'mobile-app', '4ffaffc1ed76b6c31c2a937ea35e344dc1335e89f42baf3c8b4d5e0ee94d4930', '[\"*\"]', NULL, NULL, '2026-02-22 07:37:16', '2026-02-22 07:37:16'),
+(90, 'App\\Models\\User', 371, 'mobile-app', 'e15d7ca04e4cb3690322323fcd9f3efc5fceaee9a6de109767d320e6f1ddfe91', '[\"*\"]', NULL, NULL, '2026-02-22 07:58:28', '2026-02-22 07:58:28'),
+(91, 'App\\Models\\User', 380, 'mobile-app', '66fea00f980350762ab442fc147529d9e2873cbd8ada06b337b6143ed50fc0b3', '[\"*\"]', NULL, NULL, '2026-02-22 08:17:04', '2026-02-22 08:17:04'),
+(92, 'App\\Models\\User', 371, 'mobile-app', 'b51392ae7c464e54ab7f9de7917ae83a6b8b5e390a6e8cfd5487a086d0cdc551', '[\"*\"]', NULL, NULL, '2026-02-22 08:20:33', '2026-02-22 08:20:33'),
+(93, 'App\\Models\\User', 380, 'mobile-app', 'b5de621c0dd075b120e824961082b48f8fddb4b8abdd1e472c64b7fcd8ed3299', '[\"*\"]', NULL, NULL, '2026-02-22 08:25:00', '2026-02-22 08:25:00'),
+(94, 'App\\Models\\User', 379, 'mobile-app', '6ad0804824affc5555eded38eee32df35a1447702ef1e194097cf81e8e72fb7b', '[\"*\"]', NULL, NULL, '2026-02-23 00:08:26', '2026-02-23 00:08:26'),
+(95, 'App\\Models\\User', 380, 'mobile-app', '0803913ce84cc03d7faad639e5c332f51e9429cc8a01eee9f7a26b3b892fb6e1', '[\"*\"]', NULL, NULL, '2026-02-23 00:10:01', '2026-02-23 00:10:01'),
+(96, 'App\\Models\\User', 379, 'mobile-app', '056961db58ce7e5b62c783600bba7e212c260bbf1bcae8d685bd3bae494473e2', '[\"*\"]', NULL, NULL, '2026-02-23 00:12:51', '2026-02-23 00:12:51'),
+(97, 'App\\Models\\User', 380, 'mobile-app', 'b5ccbda1e9bcd8e67dc38ddc33c53b1c66b2c9a6e13d90b60b58efca1d2cd033', '[\"*\"]', NULL, NULL, '2026-02-23 00:14:19', '2026-02-23 00:14:19'),
+(98, 'App\\Models\\User', 379, 'mobile-app', '2eb958c9a30acf3f9fdba3b90ca9656c06eb657455a98e028ce7105cfff775a0', '[\"*\"]', NULL, NULL, '2026-02-23 00:59:08', '2026-02-23 00:59:08'),
+(99, 'App\\Models\\User', 380, 'mobile-app', '37b6f779102fc6ddcee6a5941554a7440692f3a8650c0e6f67785b7dfed070ba', '[\"*\"]', NULL, NULL, '2026-02-23 01:55:49', '2026-02-23 01:55:49'),
+(100, 'App\\Models\\User', 379, 'mobile-app', '5fc92d935461a21aef7b2fcec64e45dcc5790788410b51b9188b25ed52ccdc02', '[\"*\"]', NULL, NULL, '2026-02-23 04:30:23', '2026-02-23 04:30:23'),
+(101, 'App\\Models\\User', 380, 'mobile-app', '0f6a9e9d7874ef2c0bc87f16cb1040ccabb9314a9856cff249ed69140d614d17', '[\"*\"]', NULL, NULL, '2026-02-23 04:44:33', '2026-02-23 04:44:33'),
+(102, 'App\\Models\\User', 379, 'mobile-app', 'c50ced955988aa705e768f93b718c50e8ef6f92341aeaa1e4e5136cf25a048a4', '[\"*\"]', NULL, NULL, '2026-02-23 04:46:27', '2026-02-23 04:46:27'),
+(103, 'App\\Models\\User', 380, 'mobile-app', 'eebd3d0fa6350719d08cc0fd64c86ba897138ce2abd2d65aa86b5c9a952ea904', '[\"*\"]', NULL, NULL, '2026-02-23 04:47:06', '2026-02-23 04:47:06'),
+(104, 'App\\Models\\User', 379, 'mobile-app', '98f7502efae06db5c046e8354fd1902fb5cab747acab45a478a2c3aec03cd651', '[\"*\"]', NULL, NULL, '2026-02-23 04:48:18', '2026-02-23 04:48:18'),
+(105, 'App\\Models\\User', 380, 'mobile-app', 'cd666b8b96befd93780f4cc904b827e58723f1d27e8d2fa2a40de89376ac8d8c', '[\"*\"]', NULL, NULL, '2026-02-25 02:11:42', '2026-02-25 02:11:42'),
+(106, 'App\\Models\\User', 379, 'mobile-app', 'ba33cc35929201437e6aaea848ce7f44e657931927365cbef144707d934c3d10', '[\"*\"]', NULL, NULL, '2026-02-25 04:17:15', '2026-02-25 04:17:15'),
+(107, 'App\\Models\\User', 380, 'mobile-app', '47930c4117b9fe86cefb1fd0651217b424f98475bbdf88e6cd51c469212f8850', '[\"*\"]', NULL, NULL, '2026-02-25 06:01:49', '2026-02-25 06:01:49'),
+(108, 'App\\Models\\User', 379, 'mobile-app', 'ff3d01e33b360fbe70dcff9552e6f7bdd55270b2abb65e2cd52158a06b6ecf82', '[\"*\"]', NULL, NULL, '2026-02-25 07:01:43', '2026-02-25 07:01:43'),
+(109, 'App\\Models\\User', 380, 'mobile-app', 'd5900dcbc7ff80736749581913c83750291961bb487ffe35841473634cf30603', '[\"*\"]', NULL, NULL, '2026-02-25 23:22:18', '2026-02-25 23:22:18'),
+(110, 'App\\Models\\User', 371, 'mobile-app', 'e7a20e719e96ddc5863ba4617c5bb4e8731174451f92e815e7b48f5d07e868ae', '[\"*\"]', NULL, NULL, '2026-02-26 03:43:53', '2026-02-26 03:43:53'),
+(111, 'App\\Models\\User', 380, 'mobile-app', 'b475cdfc1255b967f1f74d46660a743f812cf6f8d185e180dd7bf392f04a1c75', '[\"*\"]', NULL, NULL, '2026-02-26 07:12:19', '2026-02-26 07:12:19'),
+(112, 'App\\Models\\User', 372, 'mobile-app', '4f55ec7ce11edd1fafabfed25d3a4d2176410990bf85a92de936d3749e27a5f7', '[\"*\"]', NULL, NULL, '2026-02-26 07:17:25', '2026-02-26 07:17:25'),
+(113, 'App\\Models\\User', 379, 'mobile-app', 'c4a91d18349d33031ad568a1d08e9f05c96481877e0116673d1eeb4058da0df4', '[\"*\"]', NULL, NULL, '2026-02-26 07:18:09', '2026-02-26 07:18:09');
 
 -- --------------------------------------------------------
 
@@ -1838,15 +2008,30 @@ CREATE TABLE `platform_payments` (
   `project_id` int(11) DEFAULT NULL,
   `contractor_id` int(11) DEFAULT NULL,
   `owner_id` int(11) DEFAULT NULL,
-  `payment_for` enum('commission','boosted_post') NOT NULL,
-  `percentage` decimal(5,2) DEFAULT 0.02,
+  `payment_for` enum('subscription','boosted_post') NOT NULL,
+  `subscription_tier` varchar(50) DEFAULT NULL,
   `amount` decimal(15,2) NOT NULL,
   `transaction_number` varchar(100) DEFAULT NULL,
-  `receipt_photo` varchar(255) NOT NULL,
   `transaction_date` timestamp NULL DEFAULT current_timestamp(),
   `is_approved` tinyint(1) DEFAULT 0,
-  `approved_by` int(11) DEFAULT NULL
+  `approved_by` int(11) DEFAULT NULL,
+  `expiration_date` timestamp NULL DEFAULT NULL,
+  `payment_type` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `platform_payments`
+--
+
+INSERT INTO `platform_payments` (`platform_payment_id`, `project_id`, `contractor_id`, `owner_id`, `payment_for`, `subscription_tier`, `amount`, `transaction_number`, `transaction_date`, `is_approved`, `approved_by`, `expiration_date`, `payment_type`) VALUES
+(90, 1055, NULL, 1814, 'boosted_post', NULL, 49.00, 'cs_563785e374e74df22bf15ee4', '2026-02-19 00:07:16', 1, NULL, '2026-02-26 00:07:16', 'PayMongo'),
+(91, NULL, 1809, NULL, 'subscription', 'silver', 1499.00, 'cs_88743ff4cc19941b12468aed', '2026-02-19 00:09:36', 0, NULL, '2026-03-19 00:09:36', 'PayMongo'),
+(92, 1053, NULL, 1814, 'boosted_post', NULL, 49.00, 'cs_126348af6114a956204d1202', '2026-02-19 00:14:45', 1, NULL, '2026-02-26 00:14:45', 'PayMongo'),
+(94, NULL, 1809, NULL, 'subscription', 'silver', 1499.00, 'cs_83ccd03dcb453c420f9170d1', '2026-02-19 00:47:48', 0, NULL, '2026-03-19 00:47:48', 'PayMongo'),
+(96, NULL, 1809, NULL, 'subscription', 'gold', 1999.00, 'cs_f8f6f0de7782cf24191133ff', '2026-02-19 01:45:57', 0, NULL, '2026-03-19 01:45:57', 'PayMongo'),
+(97, 1046, NULL, 1814, 'boosted_post', NULL, 49.00, 'cs_f5dab5282bbe15916c650ecf', '2026-02-19 01:48:17', 1, NULL, '2026-02-26 01:48:17', 'PayMongo'),
+(99, NULL, 1809, NULL, 'subscription', 'gold', 1999.00, 'cs_a3296f7cc6cf84f80ad62ed9', '2026-02-20 04:07:32', 1, NULL, '2026-03-20 04:07:32', 'PayMongo'),
+(100, 1055, NULL, 1814, 'boosted_post', NULL, 49.00, 'cs_0fd13e153e20ec8cb6f70f59', '2026-02-26 03:44:59', 0, NULL, '2026-03-05 03:44:59', 'PayMongo');
 
 -- --------------------------------------------------------
 
@@ -1936,7 +2121,9 @@ INSERT INTO `progress` (`progress_id`, `milestone_item_id`, `purpose`, `progress
 (828, 2776, 'Resolcing the Issue Report', 'approved', NULL, '2025-12-19 08:07:06', NULL),
 (829, 2778, 'may nangyayare na', 'approved', NULL, '2026-01-25 08:22:31', NULL),
 (830, 2779, 'para', 'approved', NULL, '2026-01-25 08:27:26', NULL),
-(831, 2780, 'matapos na', 'approved', NULL, '2026-01-25 08:27:37', NULL);
+(831, 2780, 'matapos na', 'approved', NULL, '2026-01-25 08:27:37', NULL),
+(832, 2790, 'nagsisimula na', 'approved', NULL, '2026-02-23 12:29:48', NULL),
+(833, 2791, 'hakding', 'approved', NULL, '2026-02-23 12:47:56', NULL);
 
 -- --------------------------------------------------------
 
@@ -1977,7 +2164,9 @@ INSERT INTO `progress_files` (`file_id`, `progress_id`, `file_path`, `original_n
 (19, 828, 'progress_uploads/1766131626_694507aa9e295.jpg', 'Document%204_2.jpg'),
 (20, 829, 'progress_uploads/1769329352_6975d2c80bf4b.jpg', 'Screenshot_20260125-154318.jpg'),
 (21, 830, 'progress_uploads/1769329646_6975d3ee8ae24.jpg', 'Screenshot_20260125-000540.jpg'),
-(22, 831, 'progress_uploads/1769329657_6975d3f9d6267.jpg', 'Screenshot_20260125-154318.jpg');
+(22, 831, 'progress_uploads/1769329657_6975d3f9d6267.jpg', 'Screenshot_20260125-154318.jpg'),
+(23, 832, 'progress_uploads/1771849789_699c483d7a0e4.jpg', 'Screenshot_20260223-110715.jpg'),
+(24, 833, 'progress_uploads/1771850876_699c4c7c9a358.jpg', 'Screenshot_20260223-110715.jpg');
 
 -- --------------------------------------------------------
 
@@ -2044,44 +2233,45 @@ INSERT INTO `projects` (`project_id`, `relationship_id`, `project_title`, `proje
 (1015, 1017, 'Project 1017', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, '', '', 1690),
 (1016, 1030, 'Project 1030', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, '', '', 1694),
 (1017, 1025, 'Project 1025', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, '', '', 1700),
-(1018, 1014, 'Project 1014', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, '', '', 1702),
+(1018, 1014, 'Project 1014', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', 1702),
 (1019, 1040, 'Project 1040', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, '', '', 1702),
 (1020, 991, 'Project 991', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, '', '', 1707),
-(1021, 1004, 'Project 1004', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, '', '', 1715),
-(1022, 1011, 'Project 1011', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, '', '', 1717),
+(1021, 1004, 'Project 1004', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', 1715),
+(1022, 1011, 'Project 1011', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', 1717),
 (1023, 1026, 'Project 1026', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, '', '', 1717),
-(1024, 1001, 'Project 1001', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, '', '', 1718),
+(1024, 1001, 'Project 1001', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', 1718),
 (1025, 1043, 'Project 1043', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, '', '', 1718),
-(1026, 1002, 'Project 1002', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, '', '', 1725),
-(1027, 986, 'Project 986', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, NULL, '', 1727),
-(1028, 1041, 'Project 1041', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, '', '', 1730),
+(1026, 1002, 'Project 1002', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', 1725),
+(1027, 986, 'Project 986', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, NULL, '', 1727),
+(1028, 1041, 'Project 1041', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', 1730),
 (1029, 1008, 'Project 1008', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, '', '', 1733),
 (1030, 1009, 'Project 1009', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, '', '', 1735),
-(1031, 1039, 'Project 1039', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, '', '', 1739),
-(1032, 1044, 'Project 1044', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, '', '', 1740),
-(1033, 985, 'Project 985', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'terminated', NULL, '', '', 1745),
+(1031, 1039, 'Project 1039', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', 1739),
+(1032, 1044, 'Project 1044', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', 1740),
+(1033, 985, 'Project 985', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', 1745),
 (1034, 1029, 'Project 1029', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, '', '', 1755),
-(1035, 1028, 'Project 1028', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, '', '', 1763),
+(1035, 1028, 'Project 1028', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', 1763),
 (1036, 1007, 'Project 1007', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, '', '', 1764),
-(1037, 1031, 'Project 1031', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, '', '', 1768),
-(1038, 1033, 'Project 1033', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, '', '', 1773),
-(1039, 996, 'Project 996', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, '', '', 1777),
-(1040, 1015, 'Project 1015', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, '', '', 1787),
+(1037, 1031, 'Project 1031', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', 1768),
+(1038, 1033, 'Project 1033', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', 1773),
+(1039, 996, 'Project 996', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', 1777),
+(1040, 1015, 'Project 1015', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', 1787),
 (1041, 993, 'Project 993', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, '', '', 1789),
 (1042, 992, 'Project 992', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, '', '', 1792),
 (1043, 1006, 'Project 1006', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, '', '', 1794),
 (1044, 1016, 'Project 1016', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, NULL, '', 1798),
-(1045, 1045, 'Test Project', 'Test description', 'Anywhere , Ayala, Zamboanga City, Zamboanga del Sur', 50000000.00, 60000000.00, 500, 450, 'Residential', 6, NULL, NULL, 'completed', NULL, NULL, '', 1809),
-(1046, 1046, 'PROJECT FOR BID', 'Project test for bid', 'Anywhere, Arena Blanco, Zamboanga City, Zamboanga del Sur', 77000000.00, 80000000.00, 600, 550, 'Residential', 1, NULL, NULL, 'bidding_closed', NULL, '', '', 1687),
-(1047, 1047, 'Testz', 'twstw', 'City of Zamboanga, Zamboanga Del Sur Sur', 5000.00, 6898.00, 64649, 94649, 'Residential', 8, NULL, NULL, 'in_progress', 'in_progress', 'wwwwwwwwwwwwwwwwwww', 'wwwwwwwwwwwwwwwwwwwww', 1808),
-(1048, 1048, 'noche buena', 'uwi na pls', 'anywhere, Baluno, Zamboanga City, Zamboanga del Sur', 20000000.00, 30000000.00, 5000000, 4444444, 'Residential', 2, NULL, NULL, 'completed', NULL, '', '', 1809),
-(1049, 1049, 'Project', 'Test', 'Porcentro, Tumaga, Zamboanga City, Zamboanga del Sur', 50000000.00, 60000000.00, 500, 250, 'Residential', 6, NULL, NULL, 'bidding_closed', NULL, '', '', 1809),
+(1045, 1045, 'Test Project', 'Test description', 'Anywhere , Ayala, Zamboanga City, Zamboanga del Sur', 50000000.00, 60000000.00, 500, 450, 'Residential', 6, NULL, NULL, 'open', NULL, NULL, '', 1809),
+(1046, 1046, 'PROJECT FOR BID', 'Project test for bid', 'Anywhere, Arena Blanco, Zamboanga City, Zamboanga del Sur', 77000000.00, 80000000.00, 600, 550, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', 1687),
+(1047, 1047, 'Testz', 'twstw', 'City of Zamboanga, Zamboanga Del Sur Sur', 5000.00, 6898.00, 64649, 94649, 'Residential', 8, NULL, NULL, 'bidding_closed', 'in_progress', 'wwwwwwwwwwwwwwwwwww', 'wwwwwwwwwwwwwwwwwwwww', 1810),
+(1048, 1048, 'noche buena', 'uwi na pls', 'anywhere, Baluno, Zamboanga City, Zamboanga del Sur', 20000000.00, 30000000.00, 5000000, 4444444, 'Residential', 2, NULL, NULL, 'open', NULL, '', '', 1809),
+(1049, 1049, 'Project', 'Test', 'Porcentro, Tumaga, Zamboanga City, Zamboanga del Sur', 50000000.00, 60000000.00, 500, 250, 'Residential', 6, NULL, NULL, 'open', NULL, '', '', 1809),
 (1050, NULL, 'Test3', 'Test 3 Description', 'Street There, Arena Blanco, Zamboanga City, Zamboanga del Sur', 2500000.00, 5000000.00, 500, 250, 'Residential', 6, NULL, NULL, 'open', NULL, '', '', NULL),
 (1051, NULL, 'Testing for Form', 'Form Description', 'Somewhere There, Arena Blanco, Zamboanga City, Zamboanga del Sur', 2000000.00, 5000000.00, 500, 250, 'Residential', 6, NULL, NULL, 'open', NULL, '', '', NULL),
 (1052, 1052, 'Project Images Testing', 'Testing Images if it would show', 'Somewhere , Arena Blanco, Zamboanga City, Zamboanga del Sur', 2000000.00, 5000000.00, 500, 250, 'Residential', 6, NULL, NULL, 'open', NULL, '', '', NULL),
 (1053, 1053, 'Testing again', 'tws', 'jakana, Arena Blanco, Zamboanga City, Zamboanga del Sur', 250.00, 500.00, 500, 250, 'Residential', 6, NULL, NULL, 'open', NULL, '', '', NULL),
 (1054, 1054, 'Test Project Posting', 'Test Projects posting pages and flow', 'Anywhere There, Zamboanga Del Sur Sur', 25000000.00, 50000000.00, 500, 250, 'Residential', 5, NULL, NULL, 'halt', NULL, 'status reason ng isang nigger', 'si carl di nagbabayad banned ka na dito boi', 1809),
-(1055, 1055, 'jslaabxxbxsssss', 'abahajaa', 'bzzjsskaaka, Zamboanga Del Sur Sur', 2433867.00, 6434994.00, 1001, 901, 'Residential', 1, NULL, NULL, 'deleted', NULL, NULL, '', NULL);
+(1055, 1055, 'jslaabxxbxsssss', 'abahajaa', 'bzzjsskaaka, Zamboanga Del Sur Sur', 2433867.00, 6434994.00, 1001, 901, 'Residential', 2, NULL, NULL, 'open', NULL, NULL, '', NULL),
+(1056, 1056, 'Commercial Building', 'ffrjookedowkjwwojdpjeonwozkwkspsw', '456 Oak Street Apt , Arena Blanco, Zamboanga City, Zamboanga del Sur', 25000000.00, 50000000.00, 500, 350, 'Commercial', 6, NULL, NULL, 'in_progress', NULL, NULL, NULL, 1810);
 
 -- --------------------------------------------------------
 
@@ -2102,33 +2292,331 @@ CREATE TABLE `project_files` (
 --
 
 INSERT INTO `project_files` (`file_id`, `project_id`, `file_type`, `file_path`, `uploaded_at`) VALUES
-(2, 989, 'blueprint', 'project_file/blueprints/eJPRShZL6wKfBB9KtoOpE74qpXcNwFBQYinPZPeD.jpg', '2025-12-17 16:37:22'),
-(3, 989, 'building permit', 'project_file/building_permit/eJPRShZL6wKfBB9KtoOpE74qpXcNwFBQYinPZPeD.jpg', '2025-12-17 16:37:22'),
-(4, 989, 'others', 'project_files/others/agreement-form-to-client.docx', '2025-12-17 17:29:23'),
-(5, 1050, 'desired design', 'https://picsum.photos/400/300?random=1', '2026-01-18 09:12:36'),
-(6, 1050, 'desired design', 'https://picsum.photos/400/300?random=2', '2026-01-18 09:12:36'),
-(7, 1051, 'building permit', 'project_files/building_permit/6DMSVMKLtvApBbzuOGs3NNnpfpuVifVzAEgzeA9l.jpg', '2026-01-18 23:33:22'),
-(8, 1051, 'title', 'project_files/titles/eyTYw2Wfj9uMMe8qIcUpNztlsZdoY4spcFCdCq1t.jpg', '2026-01-18 23:33:22'),
-(9, 1051, 'desired design', 'https://picsum.photos/600/400?random=1', '2026-01-19 08:02:30'),
-(10, 1051, 'desired design', 'https://picsum.photos/600/400?random=2', '2026-01-19 08:02:30'),
-(11, 1051, 'desired design', 'https://picsum.photos/600/400?random=3', '2026-01-19 08:02:30'),
-(12, 1051, 'desired design', 'https://picsum.photos/600/400?random=4', '2026-01-19 08:02:30'),
-(13, 1051, 'desired design', 'https://picsum.photos/600/400?random=5', '2026-01-19 08:02:30'),
-(14, 1052, 'building permit', 'project_files/building_permit/yQ9ueQfUW46sxLHfrbo0s2tUb1n2aInMwgFgOKYh.jpg', '2026-01-19 01:46:38'),
-(15, 1052, 'title', 'project_files/titles/zjNm3D8iAVL0dQAPAOah2k1ySOdX3g0ZSFLKVLZt.jpg', '2026-01-19 01:46:38'),
-(16, 1053, 'building permit', 'project_files/building_permit/ZhmrgcWSBPp9JbJOY5SLn24HNxTGnPecGBb6rNQf.jpg', '2026-01-19 07:13:03'),
-(17, 1053, 'title', 'project_files/titles/Bv2iVRKJArRHjw7zG1qEURjBrvnEQoOetStcNHb1.jpg', '2026-01-19 07:13:03'),
-(18, 1053, 'blueprint', 'project_files/blueprints/xflaPoXrdPB5g6ZdPDZcqUV94HAyKMuoxfHX8Jrg.jpg', '2026-01-19 07:13:03'),
-(19, 1053, 'desired design', 'project_files/designs/FNFo00XnkQZ0T1cwQcfLP4PfRxq6EDwV2DUHUADz.jpg', '2026-01-19 07:13:03'),
-(20, 1053, 'others', 'project_files/others/wH6H0M72giq7YHDlKFvDWVDWRpLDts6POFkrV89X.jpg', '2026-01-19 07:13:03'),
-(21, 1053, 'others', 'project_files/others/XYWkLyS2MKPkDeXIhOFKNEGIZ3K8FmQYcOfg3Bol.jpg', '2026-01-19 07:13:04'),
-(22, 1054, 'building permit', 'project_files/building_permit/w16nVwiGoZ2JymM34fvVkStgkENPwh9UMXti0CZM.jpg', '2026-01-25 00:13:58'),
-(23, 1054, 'title', 'project_files/titles/MaChzC2O6dVGfGCAtT1kTQITgAlhGFWHVh63BHjd.jpg', '2026-01-25 00:13:58'),
-(24, 1055, 'building permit', 'project_files/building_permit/6e6lUQyp6eS3MGa5mUh5Jlki8suPpC6dTaBy2LVA.jpg', '2026-01-25 00:55:26'),
-(25, 1055, 'title', 'project_files/titles/XjywxXfCYt5V2FnzpI3LBaAooDMRO2IPoFxXkOGd.jpg', '2026-01-25 00:55:26'),
-(26, 1055, 'blueprint', 'project_files/blueprints/7TOvoDj5qqZARpt8ZWcPE3ZSj6QZcKmTc6BcI2be.jpg', '2026-01-25 00:55:26'),
-(27, 1055, 'desired design', 'project_files/designs/dpEX5JLtCcKB3MHtAFtCWQX7vCobsLvKlxxxljoL.jpg', '2026-01-25 00:55:26'),
-(28, 1055, 'others', 'project_files/others/dZtGMRh8Lay0YSNDS4Hb7USGRMtBQJNJHRjKkiK7.jpg', '2026-01-25 00:55:26');
+(30, 986, 'building permit', 'project_files/building_permit/intro_986_0.png', '2026-02-16 01:08:15'),
+(31, 986, 'title', 'project_files/titles/intro_986_1.png', '2026-02-16 01:08:15'),
+(32, 986, 'blueprint', 'project_files/blueprints/intro_986_2.png', '2026-02-16 01:08:15'),
+(33, 986, 'desired design', 'project_files/designs/intro_986_3.png', '2026-02-16 01:08:15'),
+(34, 986, 'others', 'project_files/others/intro_986_4.png', '2026-02-16 01:08:15'),
+(35, 986, 'others', 'project_files/others/intro_986_5.png', '2026-02-16 01:08:15'),
+(36, 987, 'building permit', 'project_files/building_permit/intro_987_0.png', '2026-02-16 01:08:15'),
+(37, 987, 'title', 'project_files/titles/intro_987_1.png', '2026-02-16 01:08:15'),
+(38, 987, 'blueprint', 'project_files/blueprints/intro_987_2.png', '2026-02-16 01:08:16'),
+(39, 987, 'desired design', 'project_files/designs/intro_987_3.png', '2026-02-16 01:08:16'),
+(40, 987, 'others', 'project_files/others/intro_987_4.png', '2026-02-16 01:08:16'),
+(41, 987, 'others', 'project_files/others/intro_987_5.png', '2026-02-16 01:08:16'),
+(42, 988, 'building permit', 'project_files/building_permit/intro_988_0.png', '2026-02-16 01:08:16'),
+(43, 988, 'title', 'project_files/titles/intro_988_1.png', '2026-02-16 01:08:16'),
+(44, 988, 'blueprint', 'project_files/blueprints/intro_988_2.png', '2026-02-16 01:08:16'),
+(45, 988, 'desired design', 'project_files/designs/intro_988_3.png', '2026-02-16 01:08:16'),
+(46, 988, 'others', 'project_files/others/intro_988_4.png', '2026-02-16 01:08:16'),
+(47, 988, 'others', 'project_files/others/intro_988_5.png', '2026-02-16 01:08:16'),
+(48, 989, 'building permit', 'project_files/building_permit/intro_989_0.png', '2026-02-16 01:08:16'),
+(49, 989, 'title', 'project_files/titles/intro_989_1.png', '2026-02-16 01:08:16'),
+(50, 989, 'blueprint', 'project_files/blueprints/intro_989_2.png', '2026-02-16 01:08:16'),
+(51, 989, 'desired design', 'project_files/designs/intro_989_3.png', '2026-02-16 01:08:16'),
+(52, 989, 'others', 'project_files/others/intro_989_4.png', '2026-02-16 01:08:16'),
+(53, 989, 'others', 'project_files/others/intro_989_5.png', '2026-02-16 01:08:16'),
+(54, 990, 'building permit', 'project_files/building_permit/intro_990_0.png', '2026-02-16 01:08:16'),
+(55, 990, 'title', 'project_files/titles/intro_990_1.png', '2026-02-16 01:08:16'),
+(56, 990, 'blueprint', 'project_files/blueprints/intro_990_2.png', '2026-02-16 01:08:16'),
+(57, 990, 'desired design', 'project_files/designs/intro_990_3.png', '2026-02-16 01:08:16'),
+(58, 990, 'others', 'project_files/others/intro_990_4.png', '2026-02-16 01:08:16'),
+(59, 990, 'others', 'project_files/others/intro_990_5.png', '2026-02-16 01:08:16'),
+(60, 991, 'building permit', 'project_files/building_permit/intro_991_0.png', '2026-02-16 01:08:16'),
+(61, 991, 'title', 'project_files/titles/intro_991_1.png', '2026-02-16 01:08:16'),
+(62, 991, 'blueprint', 'project_files/blueprints/intro_991_2.png', '2026-02-16 01:08:16'),
+(63, 991, 'desired design', 'project_files/designs/intro_991_3.png', '2026-02-16 01:08:16'),
+(64, 991, 'others', 'project_files/others/intro_991_4.png', '2026-02-16 01:08:16'),
+(65, 991, 'others', 'project_files/others/intro_991_5.png', '2026-02-16 01:08:16'),
+(66, 992, 'building permit', 'project_files/building_permit/intro_992_0.png', '2026-02-16 01:08:16'),
+(67, 992, 'title', 'project_files/titles/intro_992_1.png', '2026-02-16 01:08:16'),
+(68, 992, 'blueprint', 'project_files/blueprints/intro_992_2.png', '2026-02-16 01:08:16'),
+(69, 992, 'desired design', 'project_files/designs/intro_992_3.png', '2026-02-16 01:08:16'),
+(70, 992, 'others', 'project_files/others/intro_992_4.png', '2026-02-16 01:08:16'),
+(71, 992, 'others', 'project_files/others/intro_992_5.png', '2026-02-16 01:08:16'),
+(72, 993, 'building permit', 'project_files/building_permit/intro_993_0.png', '2026-02-16 01:08:16'),
+(73, 993, 'title', 'project_files/titles/intro_993_1.png', '2026-02-16 01:08:16'),
+(74, 993, 'blueprint', 'project_files/blueprints/intro_993_2.png', '2026-02-16 01:08:16'),
+(75, 993, 'desired design', 'project_files/designs/intro_993_3.png', '2026-02-16 01:08:16'),
+(76, 993, 'others', 'project_files/others/intro_993_4.png', '2026-02-16 01:08:16'),
+(77, 993, 'others', 'project_files/others/intro_993_5.png', '2026-02-16 01:08:16'),
+(78, 994, 'building permit', 'project_files/building_permit/intro_994_0.png', '2026-02-16 01:08:16'),
+(79, 994, 'title', 'project_files/titles/intro_994_1.png', '2026-02-16 01:08:16'),
+(80, 994, 'blueprint', 'project_files/blueprints/intro_994_2.png', '2026-02-16 01:08:16'),
+(81, 994, 'desired design', 'project_files/designs/intro_994_3.png', '2026-02-16 01:08:16'),
+(82, 994, 'others', 'project_files/others/intro_994_4.png', '2026-02-16 01:08:16'),
+(83, 994, 'others', 'project_files/others/intro_994_5.png', '2026-02-16 01:08:16'),
+(84, 995, 'building permit', 'project_files/building_permit/intro_995_0.png', '2026-02-16 01:08:16'),
+(85, 995, 'title', 'project_files/titles/intro_995_1.png', '2026-02-16 01:08:16'),
+(86, 995, 'blueprint', 'project_files/blueprints/intro_995_2.png', '2026-02-16 01:08:16'),
+(87, 995, 'desired design', 'project_files/designs/intro_995_3.png', '2026-02-16 01:08:16'),
+(88, 995, 'others', 'project_files/others/intro_995_4.png', '2026-02-16 01:08:16'),
+(89, 995, 'others', 'project_files/others/intro_995_5.png', '2026-02-16 01:08:16'),
+(90, 996, 'building permit', 'project_files/building_permit/intro_996_0.png', '2026-02-16 01:08:16'),
+(91, 996, 'title', 'project_files/titles/intro_996_1.png', '2026-02-16 01:08:16'),
+(92, 996, 'blueprint', 'project_files/blueprints/intro_996_2.png', '2026-02-16 01:08:16'),
+(93, 996, 'desired design', 'project_files/designs/intro_996_3.png', '2026-02-16 01:08:16'),
+(94, 996, 'others', 'project_files/others/intro_996_4.png', '2026-02-16 01:08:16'),
+(95, 996, 'others', 'project_files/others/intro_996_5.png', '2026-02-16 01:08:16'),
+(96, 997, 'building permit', 'project_files/building_permit/intro_997_0.png', '2026-02-16 01:08:16'),
+(97, 997, 'title', 'project_files/titles/intro_997_1.png', '2026-02-16 01:08:16'),
+(98, 997, 'blueprint', 'project_files/blueprints/intro_997_2.png', '2026-02-16 01:08:16'),
+(99, 997, 'desired design', 'project_files/designs/intro_997_3.png', '2026-02-16 01:08:16'),
+(100, 997, 'others', 'project_files/others/intro_997_4.png', '2026-02-16 01:08:16'),
+(101, 997, 'others', 'project_files/others/intro_997_5.png', '2026-02-16 01:08:16'),
+(102, 998, 'building permit', 'project_files/building_permit/intro_998_0.png', '2026-02-16 01:08:16'),
+(103, 998, 'title', 'project_files/titles/intro_998_1.png', '2026-02-16 01:08:16'),
+(104, 998, 'blueprint', 'project_files/blueprints/intro_998_2.png', '2026-02-16 01:08:16'),
+(105, 998, 'desired design', 'project_files/designs/intro_998_3.png', '2026-02-16 01:08:16'),
+(106, 998, 'others', 'project_files/others/intro_998_4.png', '2026-02-16 01:08:16'),
+(107, 998, 'others', 'project_files/others/intro_998_5.png', '2026-02-16 01:08:16'),
+(108, 999, 'building permit', 'project_files/building_permit/intro_999_0.png', '2026-02-16 01:08:16'),
+(109, 999, 'title', 'project_files/titles/intro_999_1.png', '2026-02-16 01:08:16'),
+(110, 999, 'blueprint', 'project_files/blueprints/intro_999_2.png', '2026-02-16 01:08:16'),
+(111, 999, 'desired design', 'project_files/designs/intro_999_3.png', '2026-02-16 01:08:16'),
+(112, 999, 'others', 'project_files/others/intro_999_4.png', '2026-02-16 01:08:16'),
+(113, 999, 'others', 'project_files/others/intro_999_5.png', '2026-02-16 01:08:16'),
+(114, 1000, 'building permit', 'project_files/building_permit/intro_1000_0.png', '2026-02-16 01:08:16'),
+(115, 1000, 'title', 'project_files/titles/intro_1000_1.png', '2026-02-16 01:08:16'),
+(116, 1000, 'blueprint', 'project_files/blueprints/intro_1000_2.png', '2026-02-16 01:08:16'),
+(117, 1000, 'desired design', 'project_files/designs/intro_1000_3.png', '2026-02-16 01:08:16'),
+(118, 1000, 'others', 'project_files/others/intro_1000_4.png', '2026-02-16 01:08:16'),
+(119, 1000, 'others', 'project_files/others/intro_1000_5.png', '2026-02-16 01:08:16'),
+(120, 1001, 'building permit', 'project_files/building_permit/intro_1001_0.png', '2026-02-16 01:08:16'),
+(121, 1001, 'title', 'project_files/titles/intro_1001_1.png', '2026-02-16 01:08:16'),
+(122, 1001, 'blueprint', 'project_files/blueprints/intro_1001_2.png', '2026-02-16 01:08:16'),
+(123, 1001, 'desired design', 'project_files/designs/intro_1001_3.png', '2026-02-16 01:08:16'),
+(124, 1001, 'others', 'project_files/others/intro_1001_4.png', '2026-02-16 01:08:16'),
+(125, 1001, 'others', 'project_files/others/intro_1001_5.png', '2026-02-16 01:08:16'),
+(126, 1002, 'building permit', 'project_files/building_permit/intro_1002_0.png', '2026-02-16 01:08:16'),
+(127, 1002, 'title', 'project_files/titles/intro_1002_1.png', '2026-02-16 01:08:16'),
+(128, 1002, 'blueprint', 'project_files/blueprints/intro_1002_2.png', '2026-02-16 01:08:16'),
+(129, 1002, 'desired design', 'project_files/designs/intro_1002_3.png', '2026-02-16 01:08:16'),
+(130, 1002, 'others', 'project_files/others/intro_1002_4.png', '2026-02-16 01:08:16'),
+(131, 1002, 'others', 'project_files/others/intro_1002_5.png', '2026-02-16 01:08:16'),
+(132, 1003, 'building permit', 'project_files/building_permit/intro_1003_0.png', '2026-02-16 01:08:16'),
+(133, 1003, 'title', 'project_files/titles/intro_1003_1.png', '2026-02-16 01:08:16'),
+(134, 1003, 'blueprint', 'project_files/blueprints/intro_1003_2.png', '2026-02-16 01:08:16'),
+(135, 1003, 'desired design', 'project_files/designs/intro_1003_3.png', '2026-02-16 01:08:16'),
+(136, 1003, 'others', 'project_files/others/intro_1003_4.png', '2026-02-16 01:08:16'),
+(137, 1003, 'others', 'project_files/others/intro_1003_5.png', '2026-02-16 01:08:16'),
+(138, 1004, 'building permit', 'project_files/building_permit/intro_1004_0.png', '2026-02-16 01:08:16'),
+(139, 1004, 'title', 'project_files/titles/intro_1004_1.png', '2026-02-16 01:08:16'),
+(140, 1004, 'blueprint', 'project_files/blueprints/intro_1004_2.png', '2026-02-16 01:08:16'),
+(141, 1004, 'desired design', 'project_files/designs/intro_1004_3.png', '2026-02-16 01:08:16'),
+(142, 1004, 'others', 'project_files/others/intro_1004_4.png', '2026-02-16 01:08:16'),
+(143, 1004, 'others', 'project_files/others/intro_1004_5.png', '2026-02-16 01:08:16'),
+(144, 1005, 'building permit', 'project_files/building_permit/intro_1005_0.png', '2026-02-16 01:08:16'),
+(145, 1005, 'title', 'project_files/titles/intro_1005_1.png', '2026-02-16 01:08:16'),
+(146, 1005, 'blueprint', 'project_files/blueprints/intro_1005_2.png', '2026-02-16 01:08:16'),
+(147, 1005, 'desired design', 'project_files/designs/intro_1005_3.png', '2026-02-16 01:08:16'),
+(148, 1005, 'others', 'project_files/others/intro_1005_4.png', '2026-02-16 01:08:16'),
+(149, 1005, 'others', 'project_files/others/intro_1005_5.png', '2026-02-16 01:08:16'),
+(150, 1006, 'building permit', 'project_files/building_permit/intro_1006_0.png', '2026-02-16 01:08:16'),
+(151, 1006, 'title', 'project_files/titles/intro_1006_1.png', '2026-02-16 01:08:16'),
+(152, 1006, 'blueprint', 'project_files/blueprints/intro_1006_2.png', '2026-02-16 01:08:16'),
+(153, 1006, 'desired design', 'project_files/designs/intro_1006_3.png', '2026-02-16 01:08:16'),
+(154, 1006, 'others', 'project_files/others/intro_1006_4.png', '2026-02-16 01:08:16'),
+(155, 1006, 'others', 'project_files/others/intro_1006_5.png', '2026-02-16 01:08:16'),
+(156, 1007, 'building permit', 'project_files/building_permit/intro_1007_0.png', '2026-02-16 01:08:16'),
+(157, 1007, 'title', 'project_files/titles/intro_1007_1.png', '2026-02-16 01:08:16'),
+(158, 1007, 'blueprint', 'project_files/blueprints/intro_1007_2.png', '2026-02-16 01:08:16'),
+(159, 1007, 'desired design', 'project_files/designs/intro_1007_3.png', '2026-02-16 01:08:16'),
+(160, 1007, 'others', 'project_files/others/intro_1007_4.png', '2026-02-16 01:08:16'),
+(161, 1007, 'others', 'project_files/others/intro_1007_5.png', '2026-02-16 01:08:16'),
+(162, 1008, 'building permit', 'project_files/building_permit/intro_1008_0.png', '2026-02-16 01:08:16'),
+(163, 1008, 'title', 'project_files/titles/intro_1008_1.png', '2026-02-16 01:08:16'),
+(164, 1008, 'blueprint', 'project_files/blueprints/intro_1008_2.png', '2026-02-16 01:08:16'),
+(165, 1008, 'desired design', 'project_files/designs/intro_1008_3.png', '2026-02-16 01:08:16'),
+(166, 1008, 'others', 'project_files/others/intro_1008_4.png', '2026-02-16 01:08:16'),
+(167, 1008, 'others', 'project_files/others/intro_1008_5.png', '2026-02-16 01:08:16'),
+(168, 1009, 'building permit', 'project_files/building_permit/intro_1009_0.png', '2026-02-16 01:08:16'),
+(169, 1009, 'title', 'project_files/titles/intro_1009_1.png', '2026-02-16 01:08:16'),
+(170, 1009, 'blueprint', 'project_files/blueprints/intro_1009_2.png', '2026-02-16 01:08:16'),
+(171, 1009, 'desired design', 'project_files/designs/intro_1009_3.png', '2026-02-16 01:08:16'),
+(172, 1009, 'others', 'project_files/others/intro_1009_4.png', '2026-02-16 01:08:16'),
+(173, 1009, 'others', 'project_files/others/intro_1009_5.png', '2026-02-16 01:08:16'),
+(174, 1010, 'building permit', 'project_files/building_permit/intro_1010_0.png', '2026-02-16 01:08:16'),
+(175, 1010, 'title', 'project_files/titles/intro_1010_1.png', '2026-02-16 01:08:16'),
+(176, 1010, 'blueprint', 'project_files/blueprints/intro_1010_2.png', '2026-02-16 01:08:16'),
+(177, 1010, 'desired design', 'project_files/designs/intro_1010_3.png', '2026-02-16 01:08:16'),
+(178, 1010, 'others', 'project_files/others/intro_1010_4.png', '2026-02-16 01:08:16'),
+(179, 1010, 'others', 'project_files/others/intro_1010_5.png', '2026-02-16 01:08:16'),
+(180, 1011, 'building permit', 'project_files/building_permit/intro_1011_0.png', '2026-02-16 01:08:16'),
+(181, 1011, 'title', 'project_files/titles/intro_1011_1.png', '2026-02-16 01:08:16'),
+(182, 1011, 'blueprint', 'project_files/blueprints/intro_1011_2.png', '2026-02-16 01:08:17'),
+(183, 1011, 'desired design', 'project_files/designs/intro_1011_3.png', '2026-02-16 01:08:17'),
+(184, 1011, 'others', 'project_files/others/intro_1011_4.png', '2026-02-16 01:08:17'),
+(185, 1011, 'others', 'project_files/others/intro_1011_5.png', '2026-02-16 01:08:17'),
+(186, 1012, 'building permit', 'project_files/building_permit/intro_1012_0.png', '2026-02-16 01:08:17'),
+(187, 1012, 'title', 'project_files/titles/intro_1012_1.png', '2026-02-16 01:08:17'),
+(188, 1012, 'blueprint', 'project_files/blueprints/intro_1012_2.png', '2026-02-16 01:08:17'),
+(189, 1012, 'desired design', 'project_files/designs/intro_1012_3.png', '2026-02-16 01:08:17'),
+(190, 1012, 'others', 'project_files/others/intro_1012_4.png', '2026-02-16 01:08:17'),
+(191, 1012, 'others', 'project_files/others/intro_1012_5.png', '2026-02-16 01:08:17'),
+(192, 1013, 'building permit', 'project_files/building_permit/intro_1013_0.png', '2026-02-16 01:08:17'),
+(193, 1013, 'title', 'project_files/titles/intro_1013_1.png', '2026-02-16 01:08:17'),
+(194, 1013, 'blueprint', 'project_files/blueprints/intro_1013_2.png', '2026-02-16 01:08:17'),
+(195, 1013, 'desired design', 'project_files/designs/intro_1013_3.png', '2026-02-16 01:08:17'),
+(196, 1013, 'others', 'project_files/others/intro_1013_4.png', '2026-02-16 01:08:17'),
+(197, 1013, 'others', 'project_files/others/intro_1013_5.png', '2026-02-16 01:08:17'),
+(198, 1014, 'building permit', 'project_files/building_permit/intro_1014_0.png', '2026-02-16 01:08:17'),
+(199, 1014, 'title', 'project_files/titles/intro_1014_1.png', '2026-02-16 01:08:17'),
+(200, 1014, 'blueprint', 'project_files/blueprints/intro_1014_2.png', '2026-02-16 01:08:17'),
+(201, 1014, 'desired design', 'project_files/designs/intro_1014_3.png', '2026-02-16 01:08:17'),
+(202, 1014, 'others', 'project_files/others/intro_1014_4.png', '2026-02-16 01:08:17'),
+(203, 1014, 'others', 'project_files/others/intro_1014_5.png', '2026-02-16 01:08:17'),
+(204, 1018, 'building permit', 'project_files/building_permit/intro_1018_0.png', '2026-02-16 01:08:17'),
+(205, 1018, 'title', 'project_files/titles/intro_1018_1.png', '2026-02-16 01:08:17'),
+(206, 1018, 'blueprint', 'project_files/blueprints/intro_1018_2.png', '2026-02-16 01:08:17'),
+(207, 1018, 'desired design', 'project_files/designs/intro_1018_3.png', '2026-02-16 01:08:17'),
+(208, 1018, 'others', 'project_files/others/intro_1018_4.png', '2026-02-16 01:08:17'),
+(209, 1018, 'others', 'project_files/others/intro_1018_5.png', '2026-02-16 01:08:17'),
+(210, 1021, 'building permit', 'project_files/building_permit/intro_1021_0.png', '2026-02-16 01:08:17'),
+(211, 1021, 'title', 'project_files/titles/intro_1021_1.png', '2026-02-16 01:08:17'),
+(212, 1021, 'blueprint', 'project_files/blueprints/intro_1021_2.png', '2026-02-16 01:08:17'),
+(213, 1021, 'desired design', 'project_files/designs/intro_1021_3.png', '2026-02-16 01:08:17'),
+(214, 1021, 'others', 'project_files/others/intro_1021_4.png', '2026-02-16 01:08:17'),
+(215, 1021, 'others', 'project_files/others/intro_1021_5.png', '2026-02-16 01:08:17'),
+(216, 1022, 'building permit', 'project_files/building_permit/intro_1022_0.png', '2026-02-16 01:08:17'),
+(217, 1022, 'title', 'project_files/titles/intro_1022_1.png', '2026-02-16 01:08:17'),
+(218, 1022, 'blueprint', 'project_files/blueprints/intro_1022_2.png', '2026-02-16 01:08:17'),
+(219, 1022, 'desired design', 'project_files/designs/intro_1022_3.png', '2026-02-16 01:08:17'),
+(220, 1022, 'others', 'project_files/others/intro_1022_4.png', '2026-02-16 01:08:17'),
+(221, 1022, 'others', 'project_files/others/intro_1022_5.png', '2026-02-16 01:08:17'),
+(222, 1024, 'building permit', 'project_files/building_permit/intro_1024_0.png', '2026-02-16 01:08:17'),
+(223, 1024, 'title', 'project_files/titles/intro_1024_1.png', '2026-02-16 01:08:17'),
+(224, 1024, 'blueprint', 'project_files/blueprints/intro_1024_2.png', '2026-02-16 01:08:17'),
+(225, 1024, 'desired design', 'project_files/designs/intro_1024_3.png', '2026-02-16 01:08:17'),
+(226, 1024, 'others', 'project_files/others/intro_1024_4.png', '2026-02-16 01:08:17'),
+(227, 1024, 'others', 'project_files/others/intro_1024_5.png', '2026-02-16 01:08:17'),
+(228, 1026, 'building permit', 'project_files/building_permit/intro_1026_0.png', '2026-02-16 01:08:17'),
+(229, 1026, 'title', 'project_files/titles/intro_1026_1.png', '2026-02-16 01:08:17'),
+(230, 1026, 'blueprint', 'project_files/blueprints/intro_1026_2.png', '2026-02-16 01:08:17'),
+(231, 1026, 'desired design', 'project_files/designs/intro_1026_3.png', '2026-02-16 01:08:17'),
+(232, 1026, 'others', 'project_files/others/intro_1026_4.png', '2026-02-16 01:08:17'),
+(233, 1026, 'others', 'project_files/others/intro_1026_5.png', '2026-02-16 01:08:17'),
+(234, 1027, 'building permit', 'project_files/building_permit/intro_1027_0.png', '2026-02-16 01:08:17'),
+(235, 1027, 'title', 'project_files/titles/intro_1027_1.png', '2026-02-16 01:08:17'),
+(236, 1027, 'blueprint', 'project_files/blueprints/intro_1027_2.png', '2026-02-16 01:08:17'),
+(237, 1027, 'desired design', 'project_files/designs/intro_1027_3.png', '2026-02-16 01:08:17'),
+(238, 1027, 'others', 'project_files/others/intro_1027_4.png', '2026-02-16 01:08:17'),
+(239, 1027, 'others', 'project_files/others/intro_1027_5.png', '2026-02-16 01:08:17'),
+(240, 1028, 'building permit', 'project_files/building_permit/intro_1028_0.png', '2026-02-16 01:08:17'),
+(241, 1028, 'title', 'project_files/titles/intro_1028_1.png', '2026-02-16 01:08:17'),
+(242, 1028, 'blueprint', 'project_files/blueprints/intro_1028_2.png', '2026-02-16 01:08:17'),
+(243, 1028, 'desired design', 'project_files/designs/intro_1028_3.png', '2026-02-16 01:08:17'),
+(244, 1028, 'others', 'project_files/others/intro_1028_4.png', '2026-02-16 01:08:17'),
+(245, 1028, 'others', 'project_files/others/intro_1028_5.png', '2026-02-16 01:08:17'),
+(246, 1031, 'building permit', 'project_files/building_permit/intro_1031_0.png', '2026-02-16 01:08:17'),
+(247, 1031, 'title', 'project_files/titles/intro_1031_1.png', '2026-02-16 01:08:17'),
+(248, 1031, 'blueprint', 'project_files/blueprints/intro_1031_2.png', '2026-02-16 01:08:17'),
+(249, 1031, 'desired design', 'project_files/designs/intro_1031_3.png', '2026-02-16 01:08:17'),
+(250, 1031, 'others', 'project_files/others/intro_1031_4.png', '2026-02-16 01:08:17'),
+(251, 1031, 'others', 'project_files/others/intro_1031_5.png', '2026-02-16 01:08:17'),
+(252, 1032, 'building permit', 'project_files/building_permit/intro_1032_0.png', '2026-02-16 01:08:17'),
+(253, 1032, 'title', 'project_files/titles/intro_1032_1.png', '2026-02-16 01:08:17'),
+(254, 1032, 'blueprint', 'project_files/blueprints/intro_1032_2.png', '2026-02-16 01:08:17'),
+(255, 1032, 'desired design', 'project_files/designs/intro_1032_3.png', '2026-02-16 01:08:17'),
+(256, 1032, 'others', 'project_files/others/intro_1032_4.png', '2026-02-16 01:08:17'),
+(257, 1032, 'others', 'project_files/others/intro_1032_5.png', '2026-02-16 01:08:17'),
+(258, 1035, 'building permit', 'project_files/building_permit/intro_1035_0.png', '2026-02-16 01:08:17'),
+(259, 1035, 'title', 'project_files/titles/intro_1035_1.png', '2026-02-16 01:08:17'),
+(260, 1035, 'blueprint', 'project_files/blueprints/intro_1035_2.png', '2026-02-16 01:08:17'),
+(261, 1035, 'desired design', 'project_files/designs/intro_1035_3.png', '2026-02-16 01:08:17'),
+(262, 1035, 'others', 'project_files/others/intro_1035_4.png', '2026-02-16 01:08:17'),
+(263, 1035, 'others', 'project_files/others/intro_1035_5.png', '2026-02-16 01:08:17'),
+(264, 1037, 'building permit', 'project_files/building_permit/intro_1037_0.png', '2026-02-16 01:08:17'),
+(265, 1037, 'title', 'project_files/titles/intro_1037_1.png', '2026-02-16 01:08:17'),
+(266, 1037, 'blueprint', 'project_files/blueprints/intro_1037_2.png', '2026-02-16 01:08:17'),
+(267, 1037, 'desired design', 'project_files/designs/intro_1037_3.png', '2026-02-16 01:08:17'),
+(268, 1037, 'others', 'project_files/others/intro_1037_4.png', '2026-02-16 01:08:17'),
+(269, 1037, 'others', 'project_files/others/intro_1037_5.png', '2026-02-16 01:08:17'),
+(270, 1038, 'building permit', 'project_files/building_permit/intro_1038_0.png', '2026-02-16 01:08:17'),
+(271, 1038, 'title', 'project_files/titles/intro_1038_1.png', '2026-02-16 01:08:17'),
+(272, 1038, 'blueprint', 'project_files/blueprints/intro_1038_2.png', '2026-02-16 01:08:17'),
+(273, 1038, 'desired design', 'project_files/designs/intro_1038_3.png', '2026-02-16 01:08:17'),
+(274, 1038, 'others', 'project_files/others/intro_1038_4.png', '2026-02-16 01:08:17'),
+(275, 1038, 'others', 'project_files/others/intro_1038_5.png', '2026-02-16 01:08:17'),
+(276, 1039, 'building permit', 'project_files/building_permit/intro_1039_0.png', '2026-02-16 01:08:17'),
+(277, 1039, 'title', 'project_files/titles/intro_1039_1.png', '2026-02-16 01:08:17'),
+(278, 1039, 'blueprint', 'project_files/blueprints/intro_1039_2.png', '2026-02-16 01:08:17'),
+(279, 1039, 'desired design', 'project_files/designs/intro_1039_3.png', '2026-02-16 01:08:17'),
+(280, 1039, 'others', 'project_files/others/intro_1039_4.png', '2026-02-16 01:08:17'),
+(281, 1039, 'others', 'project_files/others/intro_1039_5.png', '2026-02-16 01:08:17'),
+(282, 1040, 'building permit', 'project_files/building_permit/intro_1040_0.png', '2026-02-16 01:08:17'),
+(283, 1040, 'title', 'project_files/titles/intro_1040_1.png', '2026-02-16 01:08:17'),
+(284, 1040, 'blueprint', 'project_files/blueprints/intro_1040_2.png', '2026-02-16 01:08:17'),
+(285, 1040, 'desired design', 'project_files/designs/intro_1040_3.png', '2026-02-16 01:08:17'),
+(286, 1040, 'others', 'project_files/others/intro_1040_4.png', '2026-02-16 01:08:17'),
+(287, 1040, 'others', 'project_files/others/intro_1040_5.png', '2026-02-16 01:08:17'),
+(288, 1045, 'building permit', 'project_files/building_permit/intro_1045_0.png', '2026-02-16 01:08:17'),
+(289, 1045, 'title', 'project_files/titles/intro_1045_1.png', '2026-02-16 01:08:17'),
+(290, 1045, 'blueprint', 'project_files/blueprints/intro_1045_2.png', '2026-02-16 01:08:17'),
+(291, 1045, 'desired design', 'project_files/designs/intro_1045_3.png', '2026-02-16 01:08:17'),
+(292, 1045, 'others', 'project_files/others/intro_1045_4.png', '2026-02-16 01:08:17'),
+(293, 1045, 'others', 'project_files/others/intro_1045_5.png', '2026-02-16 01:08:17'),
+(294, 1046, 'building permit', 'project_files/building_permit/intro_1046_0.png', '2026-02-16 01:08:17'),
+(295, 1046, 'title', 'project_files/titles/intro_1046_1.png', '2026-02-16 01:08:17'),
+(296, 1046, 'blueprint', 'project_files/blueprints/intro_1046_2.png', '2026-02-16 01:08:17'),
+(297, 1046, 'desired design', 'project_files/designs/intro_1046_3.png', '2026-02-16 01:08:17'),
+(298, 1046, 'others', 'project_files/others/intro_1046_4.png', '2026-02-16 01:08:17'),
+(299, 1046, 'others', 'project_files/others/intro_1046_5.png', '2026-02-16 01:08:17'),
+(300, 1047, 'building permit', 'project_files/building_permit/intro_1047_0.png', '2026-02-16 01:08:17'),
+(301, 1047, 'title', 'project_files/titles/intro_1047_1.png', '2026-02-16 01:08:17'),
+(302, 1047, 'blueprint', 'project_files/blueprints/intro_1047_2.png', '2026-02-16 01:08:17'),
+(303, 1047, 'desired design', 'project_files/designs/intro_1047_3.png', '2026-02-16 01:08:17'),
+(304, 1047, 'others', 'project_files/others/intro_1047_4.png', '2026-02-16 01:08:17'),
+(305, 1047, 'others', 'project_files/others/intro_1047_5.png', '2026-02-16 01:08:17'),
+(306, 1048, 'building permit', 'project_files/building_permit/intro_1048_0.png', '2026-02-16 01:08:17'),
+(307, 1048, 'title', 'project_files/titles/intro_1048_1.png', '2026-02-16 01:08:17'),
+(308, 1048, 'blueprint', 'project_files/blueprints/intro_1048_2.png', '2026-02-16 01:08:17'),
+(309, 1048, 'desired design', 'project_files/designs/intro_1048_3.png', '2026-02-16 01:08:17'),
+(310, 1048, 'others', 'project_files/others/intro_1048_4.png', '2026-02-16 01:08:17'),
+(311, 1048, 'others', 'project_files/others/intro_1048_5.png', '2026-02-16 01:08:17'),
+(312, 1049, 'building permit', 'project_files/building_permit/intro_1049_0.png', '2026-02-16 01:08:17'),
+(313, 1049, 'title', 'project_files/titles/intro_1049_1.png', '2026-02-16 01:08:17'),
+(314, 1049, 'blueprint', 'project_files/blueprints/intro_1049_2.png', '2026-02-16 01:08:17'),
+(315, 1049, 'desired design', 'project_files/designs/intro_1049_3.png', '2026-02-16 01:08:17'),
+(316, 1049, 'others', 'project_files/others/intro_1049_4.png', '2026-02-16 01:08:17'),
+(317, 1049, 'others', 'project_files/others/intro_1049_5.png', '2026-02-16 01:08:17'),
+(318, 1050, 'building permit', 'project_files/building_permit/intro_1050_0.png', '2026-02-16 01:08:17'),
+(319, 1050, 'title', 'project_files/titles/intro_1050_1.png', '2026-02-16 01:08:17'),
+(320, 1050, 'blueprint', 'project_files/blueprints/intro_1050_2.png', '2026-02-16 01:08:17'),
+(321, 1050, 'desired design', 'project_files/designs/intro_1050_3.png', '2026-02-16 01:08:17'),
+(322, 1050, 'others', 'project_files/others/intro_1050_4.png', '2026-02-16 01:08:17'),
+(323, 1050, 'others', 'project_files/others/intro_1050_5.png', '2026-02-16 01:08:18'),
+(324, 1051, 'building permit', 'project_files/building_permit/intro_1051_0.png', '2026-02-16 01:08:18'),
+(325, 1051, 'title', 'project_files/titles/intro_1051_1.png', '2026-02-16 01:08:18'),
+(326, 1051, 'blueprint', 'project_files/blueprints/intro_1051_2.png', '2026-02-16 01:08:18'),
+(327, 1051, 'desired design', 'project_files/designs/intro_1051_3.png', '2026-02-16 01:08:18'),
+(328, 1051, 'others', 'project_files/others/intro_1051_4.png', '2026-02-16 01:08:18'),
+(329, 1051, 'others', 'project_files/others/intro_1051_5.png', '2026-02-16 01:08:18'),
+(330, 1052, 'building permit', 'project_files/building_permit/intro_1052_0.png', '2026-02-16 01:08:18'),
+(331, 1052, 'title', 'project_files/titles/intro_1052_1.png', '2026-02-16 01:08:18'),
+(332, 1052, 'blueprint', 'project_files/blueprints/intro_1052_2.png', '2026-02-16 01:08:18'),
+(333, 1052, 'desired design', 'project_files/designs/intro_1052_3.png', '2026-02-16 01:08:18'),
+(334, 1052, 'others', 'project_files/others/intro_1052_4.png', '2026-02-16 01:08:18'),
+(335, 1052, 'others', 'project_files/others/intro_1052_5.png', '2026-02-16 01:08:18'),
+(336, 1053, 'building permit', 'project_files/building_permit/intro_1053_0.png', '2026-02-16 01:08:18'),
+(337, 1053, 'title', 'project_files/titles/intro_1053_1.png', '2026-02-16 01:08:18'),
+(338, 1053, 'blueprint', 'project_files/blueprints/intro_1053_2.png', '2026-02-16 01:08:18'),
+(339, 1053, 'desired design', 'project_files/designs/intro_1053_3.png', '2026-02-16 01:08:18'),
+(340, 1053, 'others', 'project_files/others/intro_1053_4.png', '2026-02-16 01:08:18'),
+(341, 1053, 'others', 'project_files/others/intro_1053_5.png', '2026-02-16 01:08:18'),
+(342, 1055, 'building permit', 'project_files/building_permit/intro_1055_0.png', '2026-02-16 01:08:18'),
+(343, 1055, 'title', 'project_files/titles/intro_1055_1.png', '2026-02-16 01:08:18'),
+(344, 1055, 'blueprint', 'project_files/blueprints/intro_1055_2.png', '2026-02-16 01:08:18'),
+(345, 1055, 'desired design', 'project_files/designs/intro_1055_3.png', '2026-02-16 01:08:18'),
+(346, 1055, 'others', 'project_files/others/intro_1055_4.png', '2026-02-16 01:08:18'),
+(347, 1055, 'others', 'project_files/others/intro_1055_5.png', '2026-02-16 01:08:18'),
+(348, 1056, 'building permit', 'project_files/building_permit/ejLGkqw7mcCaFTmDH6z7xb2p0YyDdJJT39qBXNDe.jpg', '2026-02-21 01:53:41'),
+(349, 1056, 'title', 'project_files/titles/oRUbNfgsUTI6sRSskXN3F2JQpCKt60E8jgZ5aXeR.jpg', '2026-02-21 01:53:41'),
+(350, 1056, 'blueprint', 'project_files/blueprints/GizZiBzJXWesrXXccEvPIoxIgRr9dgTsCLaNwIqd.jpg', '2026-02-21 01:53:41'),
+(351, 1056, 'desired design', 'project_files/designs/hlKaFFL24cESvQO1O3PEq6Qe27su6XSBiepWh3p1.jpg', '2026-02-21 01:53:41'),
+(352, 1056, 'desired design', 'project_files/designs/Q41t0QkR9jnAHA5q6fipJ85nInUsczMOiXPReYCp.jpg', '2026-02-21 01:53:41'),
+(353, 1056, 'desired design', 'project_files/designs/ufYXn4h3GhBhxT8dH3gjL1nnb8QJGKNPdm7CpSrE.jpg', '2026-02-21 01:53:41'),
+(354, 1056, 'others', 'project_files/others/5yyXtH0K2hmfJLmuugSEJO6XHBO29jMCIqbWVMNX.jpg', '2026-02-21 01:53:41');
 
 -- --------------------------------------------------------
 
@@ -2153,74 +2641,112 @@ CREATE TABLE `project_relationships` (
 
 INSERT INTO `project_relationships` (`rel_id`, `owner_id`, `selected_contractor_id`, `project_post_status`, `admin_reason`, `bidding_due`, `created_at`, `updated_at`) VALUES
 (985, 1687, 1745, 'approved', NULL, NULL, '2025-04-11 07:49:09', '2025-12-15 07:49:09'),
-(986, 1688, 1727, 'rejected', NULL, NULL, '2025-12-11 07:49:09', '2025-12-15 07:49:09'),
+(986, 1688, 1727, 'approved', NULL, '2026-03-16', '2025-12-11 07:49:09', '2026-02-14 19:03:06'),
 (987, 1689, NULL, 'approved', NULL, NULL, '2025-04-26 07:49:09', '2025-12-15 07:49:09'),
-(988, 1690, NULL, 'rejected', NULL, NULL, '2025-03-10 07:49:09', '2025-12-15 07:49:09'),
-(989, 1691, NULL, 'rejected', 'asqwearf r3w4etrfewtfg', NULL, '2025-05-15 07:49:09', '2025-12-17 16:35:13'),
-(990, 1692, NULL, 'rejected', 'AWERTAWERTWERTYEWSRTE', NULL, '2025-05-12 07:49:09', '2025-12-17 16:12:05'),
+(988, 1690, NULL, 'approved', NULL, '2026-03-16', '2025-03-10 07:49:09', '2026-02-14 19:03:06'),
+(989, 1691, NULL, 'approved', 'asqwearf r3w4etrfewtfg', '2026-03-16', '2025-05-15 07:49:09', '2026-02-14 19:03:06'),
+(990, 1692, NULL, 'approved', 'AWERTAWERTWERTYEWSRTE', '2026-03-16', '2025-05-12 07:49:09', '2026-02-14 19:03:06'),
 (991, 1693, 1707, 'approved', 'Violation.', NULL, '2025-05-28 07:49:09', '2025-12-15 07:49:09'),
 (992, 1695, 1792, 'approved', 'Violation.', NULL, '2025-06-14 07:49:09', '2025-12-15 07:49:09'),
 (993, 1697, 1789, 'approved', NULL, NULL, '2024-12-22 07:49:09', '2025-12-15 07:49:09'),
-(994, 1698, NULL, 'under_review', NULL, NULL, '2025-08-24 07:49:09', '2025-12-17 16:40:05'),
+(994, 1698, NULL, 'approved', NULL, '2026-03-16', '2025-08-24 07:49:09', '2026-02-14 19:03:06'),
 (995, 1699, NULL, 'approved', 'Violation.', NULL, '2025-08-02 07:49:09', '2025-12-15 07:49:09'),
-(996, 1700, 1777, 'rejected', NULL, NULL, '2025-07-31 07:49:09', '2025-12-15 07:49:09'),
-(997, 1701, NULL, 'under_review', NULL, NULL, '2025-12-10 07:49:09', '2025-12-15 07:49:09'),
-(998, 1702, NULL, 'rejected', 'dawfwer2w3er', NULL, '2025-04-13 07:49:09', '2025-12-17 17:30:58'),
+(996, 1700, 1777, 'approved', NULL, '2026-03-16', '2025-07-31 07:49:09', '2026-02-14 19:03:06'),
+(997, 1701, NULL, 'approved', NULL, '2026-03-16', '2025-12-10 07:49:09', '2026-02-14 19:03:06'),
+(998, 1702, NULL, 'approved', 'dawfwer2w3er', '2026-03-16', '2025-04-13 07:49:09', '2026-02-14 19:03:06'),
 (999, 1704, NULL, 'approved', NULL, NULL, '2025-04-19 07:49:09', '2025-12-15 07:49:09'),
-(1000, 1705, NULL, 'under_review', NULL, NULL, '2025-06-27 07:49:09', '2025-12-15 07:49:09'),
-(1001, 1707, 1718, 'rejected', NULL, NULL, '2025-01-04 07:49:09', '2025-12-15 07:49:09'),
-(1002, 1708, 1725, 'under_review', 'Violation.', NULL, '2025-08-18 07:49:09', '2025-12-15 07:49:09'),
-(1003, 1709, NULL, 'rejected', NULL, NULL, '2025-12-12 07:49:09', '2025-12-15 07:49:09'),
-(1004, 1710, 1715, 'rejected', 'Violation.', NULL, '2025-12-02 07:49:09', '2025-12-15 07:49:09'),
-(1005, 1711, NULL, 'rejected', NULL, NULL, '2025-11-12 07:49:09', '2025-12-15 07:49:09'),
+(1000, 1705, NULL, 'approved', NULL, '2026-03-16', '2025-06-27 07:49:09', '2026-02-14 19:03:06'),
+(1001, 1707, 1718, 'approved', NULL, '2026-03-16', '2025-01-04 07:49:09', '2026-02-14 19:03:06'),
+(1002, 1708, 1725, 'approved', 'Violation.', '2026-03-16', '2025-08-18 07:49:09', '2026-02-14 19:03:06'),
+(1003, 1709, NULL, 'approved', NULL, '2026-03-16', '2025-12-12 07:49:09', '2026-02-14 19:03:06'),
+(1004, 1710, 1715, 'approved', 'Violation.', '2026-03-16', '2025-12-02 07:49:09', '2026-02-14 19:03:06'),
+(1005, 1711, NULL, 'approved', NULL, '2026-03-16', '2025-11-12 07:49:09', '2026-02-14 19:03:06'),
 (1006, 1713, 1794, 'approved', NULL, NULL, '2025-03-09 07:49:09', '2025-12-17 13:13:19'),
 (1007, 1714, 1764, 'approved', NULL, NULL, '2025-06-04 07:49:09', '2025-12-15 07:49:09'),
 (1008, 1715, 1733, 'approved', 'Violation.', NULL, '2025-03-31 07:49:09', '2025-12-15 07:49:09'),
 (1009, 1717, 1735, 'approved', '', NULL, '2025-05-04 07:49:09', '2025-12-17 16:35:07'),
-(1010, 1718, NULL, 'rejected', NULL, NULL, '2025-12-08 07:49:09', '2025-12-15 07:49:09'),
-(1011, 1719, 1717, 'under_review', NULL, NULL, '2025-09-27 07:49:09', '2025-12-15 07:49:09'),
+(1010, 1718, NULL, 'approved', NULL, '2026-03-16', '2025-12-08 07:49:09', '2026-02-14 19:03:06'),
+(1011, 1719, 1717, 'approved', NULL, '2026-03-16', '2025-09-27 07:49:09', '2026-02-14 19:03:06'),
 (1012, 1720, NULL, 'approved', NULL, NULL, '2025-06-25 07:49:09', '2025-12-15 07:49:09'),
 (1013, 1722, NULL, 'approved', 'Violation.', NULL, '2025-10-04 07:49:09', '2025-12-15 07:49:09'),
-(1014, 1723, 1702, 'rejected', NULL, NULL, '2025-04-29 07:49:09', '2025-12-15 07:49:09'),
-(1015, 1724, 1787, 'rejected', NULL, NULL, '2025-05-12 07:49:09', '2025-12-15 07:49:09'),
+(1014, 1723, 1702, 'approved', NULL, '2026-03-16', '2025-04-29 07:49:09', '2026-02-14 19:03:06'),
+(1015, 1724, 1787, 'approved', NULL, '2026-03-16', '2025-05-12 07:49:09', '2026-02-14 19:03:06'),
 (1016, 1725, 1798, 'approved', NULL, NULL, '2025-02-15 07:49:09', '2025-12-15 07:49:09'),
 (1017, 1727, 1690, 'approved', NULL, NULL, '2025-08-11 07:49:09', '2025-12-17 17:19:54'),
 (1018, 1728, NULL, 'approved', NULL, NULL, '2025-05-22 07:49:09', '2025-12-15 07:49:09'),
 (1019, 1729, NULL, 'approved', 'Violation.', NULL, '2025-10-22 07:49:09', '2025-12-15 07:49:09'),
-(1020, 1731, NULL, 'rejected', NULL, NULL, '2025-03-29 07:49:09', '2025-12-15 07:49:09'),
+(1020, 1731, NULL, 'approved', NULL, '2026-03-16', '2025-03-29 07:49:09', '2026-02-14 19:03:06'),
 (1021, 1732, NULL, 'approved', 'Violation.', NULL, '2025-10-20 07:49:09', '2025-12-15 07:49:09'),
 (1022, 1733, NULL, 'approved', NULL, NULL, '2025-10-08 07:49:09', '2025-12-15 07:49:09'),
-(1023, 1734, NULL, 'rejected', 'sdfsfsfsfsf', NULL, '2025-04-16 07:49:09', '2025-12-17 15:54:58'),
+(1023, 1734, NULL, 'approved', 'sdfsfsfsfsf', '2026-03-16', '2025-04-16 07:49:09', '2026-02-14 19:03:06'),
 (1024, 1735, NULL, 'approved', NULL, NULL, '2025-06-18 07:49:09', '2025-12-15 07:49:09'),
 (1025, 1737, 1700, 'approved', NULL, NULL, '2025-10-30 07:49:09', '2025-12-15 07:49:09'),
 (1026, 1738, 1717, 'approved', NULL, NULL, '2025-03-17 07:49:09', '2025-12-17 13:13:33'),
-(1027, 1740, NULL, 'under_review', NULL, NULL, '2025-12-14 07:49:09', '2025-12-15 07:49:09'),
-(1028, 1741, 1763, 'under_review', 'Violation.', NULL, '2025-06-16 07:49:09', '2025-12-15 07:49:09'),
+(1027, 1740, NULL, 'approved', NULL, '2026-03-16', '2025-12-14 07:49:09', '2026-02-14 19:03:06'),
+(1028, 1741, 1763, 'approved', 'Violation.', '2026-03-16', '2025-06-16 07:49:09', '2026-02-14 19:03:06'),
 (1029, 1742, 1755, 'approved', NULL, NULL, '2025-09-07 07:49:09', '2025-12-15 07:49:09'),
 (1030, 1743, 1694, 'approved', NULL, NULL, '2025-12-10 07:49:09', '2025-12-15 07:49:09'),
-(1031, 1744, 1768, 'rejected', NULL, NULL, '2025-07-16 07:49:09', '2025-12-15 07:49:09'),
-(1032, 1745, NULL, 'rejected', 'Violation.', NULL, '2025-11-28 07:49:09', '2025-12-15 07:49:09'),
-(1033, 1747, 1773, 'under_review', 'Violation.', NULL, '2025-07-03 07:49:09', '2025-12-15 07:49:09'),
-(1034, 1749, NULL, 'rejected', 'fvdfffffggfgg', NULL, '2025-05-17 07:49:09', '2025-12-19 02:52:26'),
-(1035, 1750, NULL, 'rejected', NULL, NULL, '2025-05-26 07:49:09', '2025-12-15 07:49:09'),
-(1036, 1751, NULL, 'rejected', NULL, NULL, '2025-10-15 07:49:09', '2025-12-15 07:49:09'),
-(1037, 1752, NULL, 'rejected', NULL, NULL, '2025-01-13 07:49:09', '2025-12-15 07:49:09'),
+(1031, 1744, 1768, 'approved', NULL, '2026-03-16', '2025-07-16 07:49:09', '2026-02-14 19:03:06'),
+(1032, 1745, NULL, 'approved', 'Violation.', '2026-03-16', '2025-11-28 07:49:09', '2026-02-14 19:03:06'),
+(1033, 1747, 1773, 'approved', 'Violation.', '2026-03-16', '2025-07-03 07:49:09', '2026-02-14 19:03:06'),
+(1034, 1749, NULL, 'approved', 'fvdfffffggfgg', '2026-03-16', '2025-05-17 07:49:09', '2026-02-14 19:03:06'),
+(1035, 1750, NULL, 'approved', NULL, '2026-03-16', '2025-05-26 07:49:09', '2026-02-14 19:03:06'),
+(1036, 1751, NULL, 'approved', NULL, '2026-03-16', '2025-10-15 07:49:09', '2026-02-14 19:03:06'),
+(1037, 1752, NULL, 'approved', NULL, '2026-03-16', '2025-01-13 07:49:09', '2026-02-14 19:03:06'),
 (1038, 1753, NULL, 'approved', 'Violation.', NULL, '2025-04-05 07:49:09', '2025-12-15 07:49:09'),
-(1039, 1754, 1739, 'under_review', NULL, NULL, '2025-11-17 07:49:09', '2025-12-15 07:49:09'),
+(1039, 1754, 1739, 'approved', NULL, '2026-03-16', '2025-11-17 07:49:09', '2026-02-14 19:03:06'),
 (1040, 1755, 1702, 'approved', NULL, NULL, '2025-05-23 07:49:09', '2025-12-15 07:49:09'),
-(1041, 1758, 1730, 'under_review', NULL, NULL, '2025-08-06 07:49:09', '2025-12-15 07:49:09'),
-(1042, 1759, NULL, 'rejected', NULL, NULL, '2025-09-08 07:49:09', '2025-12-15 07:49:09'),
+(1041, 1758, 1730, 'approved', NULL, '2026-03-16', '2025-08-06 07:49:09', '2026-02-14 19:03:06'),
+(1042, 1759, NULL, 'approved', NULL, '2026-03-16', '2025-09-08 07:49:09', '2026-02-14 19:03:06'),
 (1043, 1760, 1718, 'approved', NULL, NULL, '2025-04-17 07:49:09', '2025-12-17 14:02:38'),
-(1044, 1761, 1740, 'rejected', 'aiinoway whattt wahha', NULL, '2025-02-17 07:49:09', '2025-12-17 14:05:06'),
-(1045, 1814, 1809, 'approved', NULL, '2025-12-30', '2025-12-17 12:47:09', '2025-12-17 22:34:09'),
-(1046, 1814, 1809, 'approved', NULL, '2025-12-30', '2025-12-18 10:24:52', '2026-02-05 16:46:01'),
-(1047, 1814, 1809, 'approved', 'resfssdfsdfs', '2025-12-31', '2025-12-18 19:16:43', '2025-12-19 03:20:30'),
-(1048, 1814, 1809, 'approved', NULL, '2025-12-31', '2025-12-18 21:06:43', '2025-12-19 05:09:18'),
-(1049, 1814, 1809, 'approved', NULL, '2025-12-31', '2025-12-18 23:49:18', '2025-12-19 07:56:14'),
-(1052, 1814, NULL, 'approved', NULL, '2026-01-31', '2026-01-19 01:46:38', '2026-01-19 09:48:02'),
-(1053, 1814, NULL, 'approved', NULL, '2026-01-31', '2026-01-19 07:13:02', '2026-01-19 15:13:39'),
-(1054, 1814, 1809, 'approved', NULL, '2026-01-31', '2026-01-25 00:13:57', '2026-01-25 08:17:04'),
-(1055, 1814, NULL, 'approved', NULL, '2026-01-31', '2026-01-25 00:55:26', '2026-01-25 08:55:59');
+(1044, 1761, 1740, 'approved', 'aiinoway whattt wahha', '2026-03-16', '2025-02-17 07:49:09', '2026-02-14 19:03:06'),
+(1045, 1814, NULL, 'approved', NULL, '2026-03-16', '2025-12-17 12:47:09', '2026-02-19 07:27:35'),
+(1046, 1814, 1809, 'approved', NULL, '2026-03-16', '2025-12-18 10:24:52', '2026-02-14 19:03:06'),
+(1047, 1814, 1810, 'approved', 'resfssdfsdfs', '2026-03-16', '2025-12-18 19:16:43', '2026-02-22 15:19:27'),
+(1048, 1814, 1809, 'approved', NULL, '2026-03-16', '2025-12-18 21:06:43', '2026-02-14 19:03:06'),
+(1049, 1814, 1809, 'approved', NULL, '2026-03-16', '2025-12-18 23:49:18', '2026-02-14 19:03:06'),
+(1052, 1814, NULL, 'approved', NULL, '2026-03-16', '2026-01-19 01:46:38', '2026-02-14 19:03:06'),
+(1053, 1814, NULL, 'approved', NULL, '2026-03-16', '2026-01-19 07:13:02', '2026-02-14 19:03:06'),
+(1054, 1814, NULL, 'approved', NULL, '2027-01-01', '2026-01-25 00:13:57', '2026-02-19 07:27:48'),
+(1055, 1814, NULL, 'approved', NULL, '2026-04-30', '2026-01-25 00:55:26', '2026-02-12 10:09:26'),
+(1056, 1819, 1810, 'approved', NULL, '2026-02-28', '2026-02-21 01:53:41', '2026-02-23 08:09:12');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `project_updates`
+--
+
+CREATE TABLE `project_updates` (
+  `extension_id` int(10) UNSIGNED NOT NULL,
+  `project_id` int(10) UNSIGNED NOT NULL,
+  `contractor_user_id` int(10) UNSIGNED NOT NULL COMMENT 'user_id of the submitting contractor',
+  `owner_user_id` int(10) UNSIGNED NOT NULL COMMENT 'user_id of the property owner',
+  `current_end_date` date NOT NULL COMMENT 'Project end date at time of request',
+  `proposed_end_date` date NOT NULL COMMENT 'Requested new project end date',
+  `reason` text NOT NULL,
+  `current_budget` decimal(12,2) DEFAULT NULL COMMENT 'Snapshot of total_project_cost at request time',
+  `proposed_budget` decimal(12,2) DEFAULT NULL COMMENT 'Proposed new total contract value (null = no budget change)',
+  `budget_change_type` enum('none','increase','decrease') NOT NULL DEFAULT 'none' COMMENT 'Auto-computed: none|increase|decrease',
+  `has_additional_cost` tinyint(1) NOT NULL DEFAULT 0,
+  `additional_amount` decimal(12,2) DEFAULT NULL COMMENT 'Only set when has_additional_cost = true',
+  `milestone_changes` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT 'JSON: {new_items:[], edited_items:[], deleted_item_ids:[]}' CHECK (json_valid(`milestone_changes`)),
+  `allocation_mode` enum('percentage','exact') DEFAULT NULL COMMENT 'How item costs were allocated in this request',
+  `status` enum('pending','approved','rejected','withdrawn','revision_requested') NOT NULL DEFAULT 'pending',
+  `owner_response` text DEFAULT NULL COMMENT 'Owner rejection reason or approval note',
+  `revision_notes` text DEFAULT NULL,
+  `applied_at` timestamp NULL DEFAULT NULL COMMENT 'When the extension was actually applied to the project',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `project_updates`
+--
+
+INSERT INTO `project_updates` (`extension_id`, `project_id`, `contractor_user_id`, `owner_user_id`, `current_end_date`, `proposed_end_date`, `reason`, `current_budget`, `proposed_budget`, `budget_change_type`, `has_additional_cost`, `additional_amount`, `milestone_changes`, `allocation_mode`, `status`, `owner_response`, `revision_notes`, `applied_at`, `created_at`, `updated_at`) VALUES
+(1, 1056, 380, 379, '2026-02-28', '2026-03-07', 'just to be safe hludludluxluuuuuhclhclhclhyhckykkkkgxkgxmgggxmgxmggxmgxmgxmgxmyxmyxk', 50000000.00, NULL, 'none', 0, NULL, '{\"new_items\":[],\"edited_items\":[],\"deleted_item_ids\":[]}', 'percentage', 'withdrawn', NULL, NULL, NULL, '2026-02-25 04:16:25', '2026-02-25 06:02:10'),
+(2, 1056, 380, 379, '2026-02-28', '2026-03-07', 'uhvlhlyffulylfylxlhxxlhlhclhclhchclh', 50000000.00, 60000000.00, 'increase', 1, 10000000.00, '{\"new_items\":[{\"title\":\"extension\",\"description\":\"hdkdykkydkhdkhd\",\"cost\":19000000}],\"edited_items\":[],\"deleted_item_ids\":[],\"_deleted_items\":[],\"_snapshot_meta\":{\"current_budget\":50000000,\"proposed_budget\":60000000,\"budget_change\":\"increase\",\"allocation_mode\":\"exact\",\"snapshot_at\":\"2026-02-25T15:01:17+00:00\"}}', 'exact', 'approved', NULL, NULL, '2026-02-25 07:15:26', '2026-02-25 07:01:17', '2026-02-25 07:15:26');
 
 -- --------------------------------------------------------
 
@@ -2386,7 +2912,8 @@ INSERT INTO `property_owners` (`owner_id`, `user_id`, `last_name`, `middle_name`
 (1814, 371, 'Test', NULL, 'Test', '09360211158', 'anywhere, 150706003, 150706000, 150700000, 7000', NULL, 'validID/Gr8y8x2b1bgXXMbvhGQVKamRm5YPbfmOYlX4JbBV.jpg', 'validID/QW2dEJivxK7kFXJtaPqbuurdaGqDEtPqnCdJxtZy.jpg', 'policeClearance/vkrbCkOsrrDCp2pbvi7U4Amd1PhSp91a0KCDI44h.jpg', '2007-12-18', 17, 9, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-12-17 20:17:25', '2025-12-17 12:16:07'),
 (1815, 28, '', NULL, '', '', '', NULL, NULL, '', '', '0000-00-00', 0, NULL, NULL, 'approved', 0, NULL, NULL, NULL, NULL, '2025-12-18 14:45:33', '2025-12-18 14:45:33'),
 (1816, 373, 'Tampus', NULL, 'Jeff', '09756420289', 'Anywhere, 148105004, 148105000, 148100000, 7000', NULL, 'validID/BI2w5cvODwtD48iS09cX8B6uujdADyZzk1ZDZEx9.jpg', 'validID/3g3bIGeuaNaJbDXZfil5uznjZcfZIv4Lcv3yccM0.jpg', 'policeClearance/exF5TQRqOsVdMpiY3soByLTBlRy2Ap9lSyiQKyDI.jpg', '2000-12-19', 24, 21, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2026-01-29 14:51:28', '2025-12-18 12:03:19'),
-(1818, 375, 'Jimenez', NULL, 'Hart', '09360211156', 'Anywhere, 148106025, 148106000, 148100000, 7000', 4, 'validID/YlXxOQqkmL397keDUR2rLzJQVm4r5iheiCGWwOn2.jpg', 'validID/RlHDVSKWPEKxWjRxYBt43GWzyQySLRDJnnAcF71c.jpg', 'policeClearance/pFDmPT5EMupLCPaFUhRuudvwteTp0xYTMeg0ZCej.jpg', '2003-12-19', 22, 10, NULL, 'pending', 0, NULL, NULL, NULL, NULL, '2025-12-19 00:39:57', '2025-12-18 16:39:57');
+(1818, 375, 'Jimenez', NULL, 'Hart', '09360211156', 'Anywhere, 148106025, 148106000, 148100000, 7000', 4, 'validID/YlXxOQqkmL397keDUR2rLzJQVm4r5iheiCGWwOn2.jpg', 'validID/RlHDVSKWPEKxWjRxYBt43GWzyQySLRDJnnAcF71c.jpg', 'policeClearance/pFDmPT5EMupLCPaFUhRuudvwteTp0xYTMeg0ZCej.jpg', '2003-12-19', 22, 10, NULL, 'pending', 0, NULL, NULL, NULL, NULL, '2025-12-19 00:39:57', '2025-12-18 16:39:57'),
+(1819, 379, 'test3', 'test3', 'test3', '09360211158', '456 Oakd, 160202033, 160202000, 160200000, 7000', 4, 'validID/rYbiFg2gfxb6RCVJ3MW2eyVHBRGkrqnqMvquoQc3.jpg', 'validID/7gWklG7yvruN2dB4kBIzkO2ISUV1QulaJiV2rJ4r.jpg', 'policeClearance/XpC3e0OTf6PGURy3HH1TY2vTcawjz8ezGaIL8Aqr.jpg', '1998-02-21', 28, 22, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2026-02-21 09:06:36', '2026-02-21 00:54:11');
 
 -- --------------------------------------------------------
 
@@ -2444,7 +2971,7 @@ CREATE TABLE `users` (
   `username` varchar(50) NOT NULL,
   `email` varchar(100) NOT NULL,
   `password_hash` varchar(255) NOT NULL,
-  `OTP_hash` varchar(255) NOT NULL,
+  `OTP_hash` varchar(255) DEFAULT NULL,
   `user_type` enum('contractor','property_owner','both','staff') NOT NULL,
   `preferred_role` enum('contractor','owner') DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT current_timestamp(),
@@ -2739,7 +3266,9 @@ INSERT INTO `users` (`user_id`, `profile_pic`, `cover_photo`, `username`, `email
 (375, 'profiles/RxtgbX4TuWXc9yiTQLhhTP9rJHIYTnQXtCKhS5Y9.jpg', NULL, 'hartj', 'phantomhiro143@gmail.com', '$2y$12$073h2ma9ombfcYjLtxWILOj8cUfH/TAtyfGB27qxCEjf9gz6lx6r2', '$2y$12$M1pAd.4SVs/r7tx8U7PmPu.YvUBQFSygXXut3/4yuIbNK0Dfdqgti', 'property_owner', NULL, '2025-12-18 16:39:57', '2025-12-18 16:39:57'),
 (376, NULL, NULL, 'staff_7484', 'www@gmail.com', '$2y$12$/xCh4O9aA2eLxxFql7733.cZbLEFu632tnj37l74ldcsal3h8ItFa', 'admin_created', 'staff', NULL, '2026-01-27 06:39:40', '2026-01-27 06:39:40'),
 (377, NULL, NULL, 'staff_3987', 'weqwdas@gmail.com', '$2y$12$ewimmmI7B/wacS/XgaD6w.YBAlgjBhyZbea4tqNWBd0PyFF3TPpUm', 'admin_created', 'staff', NULL, '2026-01-27 06:43:03', '2026-01-27 06:43:03'),
-(378, 'team_members/VBsJKuTxBo5DZN7oA9YBy7TozufMrYlaCPTnX0o8.jpg', NULL, 'staff_2774', 'ditema1752@gamening.com', '$2y$12$Ygpc9NCqA4zYpscBwtT1Ku6sLm9jXSDq0AiZjL/jOmi8aldUB45YO', 'admin_created', 'staff', NULL, '2026-01-29 04:26:35', '2026-01-29 04:26:35');
+(378, 'team_members/VBsJKuTxBo5DZN7oA9YBy7TozufMrYlaCPTnX0o8.jpg', NULL, 'staff_2774', 'ditema1752@gamening.com', '$2y$12$Ygpc9NCqA4zYpscBwtT1Ku6sLm9jXSDq0AiZjL/jOmi8aldUB45YO', 'admin_created', 'staff', NULL, '2026-01-29 04:26:35', '2026-01-29 04:26:35'),
+(379, 'profiles/PhbbqKnsc3fS1Nv7LERONCLhNcqWD331gUXLHNQV.jpg', NULL, 'test3', 'yelib38945@advarm.com', '$2y$12$2Cbv3LvvnvNIZpUIuKGgz.L56xz9OqxDkFLujjp2dl.MvnjQnxTuS', '$2y$12$y9VTPCjj6m4qOfJnD8wUJOS/kg4/FY8BwWdG/X7cmS8lEFGG99eNS', 'property_owner', NULL, '2026-02-21 00:54:11', '2026-02-21 00:54:11'),
+(380, 'profiles/xLaCN2XuTkTXk8xvfyXBErZruRmXqAU5e15zM9U9.jpg', NULL, 'test4', 'joxego4264@advarm.com', '$2y$12$oy0SpEQMnFtlwTulClUVguhsYbZ20auAGsYIjpZ1KdmWxXvk7phqy', '$2y$12$1kC/giaAe0.Zk/XU1Gky7.42RItGVQ8kF/mqvgu1BoNcyc0Tli3QG', 'contractor', NULL, '2026-02-21 01:34:20', '2026-02-21 02:36:37');
 
 -- --------------------------------------------------------
 
@@ -2790,6 +3319,18 @@ ALTER TABLE `bids`
 ALTER TABLE `bid_files`
   ADD PRIMARY KEY (`file_id`),
   ADD KEY `bid_id` (`bid_id`);
+
+--
+-- Indexes for table `cache`
+--
+ALTER TABLE `cache`
+  ADD PRIMARY KEY (`key`);
+
+--
+-- Indexes for table `cache_locks`
+--
+ALTER TABLE `cache_locks`
+  ADD PRIMARY KEY (`key`);
 
 --
 -- Indexes for table `contractors`
@@ -2852,24 +3393,10 @@ ALTER TABLE `dispute_files`
   ADD KEY `dispute_id` (`dispute_id`);
 
 --
--- Indexes for table `failed_jobs`
---
-ALTER TABLE `failed_jobs`
-  ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `failed_jobs_uuid_unique` (`uuid`);
-
---
 -- Indexes for table `item_files`
 --
 ALTER TABLE `item_files`
   ADD KEY `item_id` (`item_id`);
-
---
--- Indexes for table `jobs`
---
-ALTER TABLE `jobs`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `jobs_queue_index` (`queue`);
 
 --
 -- Indexes for table `messages`
@@ -2902,6 +3429,14 @@ ALTER TABLE `milestones`
   ADD KEY `plan_id` (`plan_id`);
 
 --
+-- Indexes for table `milestone_date_histories`
+--
+ALTER TABLE `milestone_date_histories`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `milestone_date_histories_item_id_index` (`item_id`),
+  ADD KEY `milestone_date_histories_extension_id_index` (`extension_id`);
+
+--
 -- Indexes for table `milestone_items`
 --
 ALTER TABLE `milestone_items`
@@ -2923,13 +3458,26 @@ ALTER TABLE `milestone_payments`
 --
 ALTER TABLE `notifications`
   ADD PRIMARY KEY (`notification_id`),
-  ADD KEY `user_id` (`user_id`);
+  ADD UNIQUE KEY `idx_dedup` (`user_id`,`dedup_key`),
+  ADD KEY `user_id` (`user_id`),
+  ADD KEY `idx_user_read` (`user_id`,`is_read`),
+  ADD KEY `idx_user_created` (`user_id`,`created_at`);
 
 --
 -- Indexes for table `occupations`
 --
 ALTER TABLE `occupations`
   ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `payment_adjustment_logs`
+--
+ALTER TABLE `payment_adjustment_logs`
+  ADD PRIMARY KEY (`log_id`),
+  ADD KEY `payment_adjustment_logs_project_id_index` (`project_id`),
+  ADD KEY `payment_adjustment_logs_source_item_id_index` (`source_item_id`),
+  ADD KEY `payment_adjustment_logs_target_item_id_index` (`target_item_id`),
+  ADD KEY `payment_adjustment_logs_payment_id_index` (`payment_id`);
 
 --
 -- Indexes for table `payment_plans`
@@ -2996,6 +3544,14 @@ ALTER TABLE `project_relationships`
   ADD KEY `fk_projectrel_contractor` (`selected_contractor_id`);
 
 --
+-- Indexes for table `project_updates`
+--
+ALTER TABLE `project_updates`
+  ADD PRIMARY KEY (`extension_id`),
+  ADD KEY `project_extensions_project_id_index` (`project_id`),
+  ADD KEY `project_extensions_project_id_status_index` (`project_id`,`status`);
+
+--
 -- Indexes for table `property_owners`
 --
 ALTER TABLE `property_owners`
@@ -3054,19 +3610,19 @@ ALTER TABLE `admin_users`
 -- AUTO_INCREMENT for table `bids`
 --
 ALTER TABLE `bids`
-  MODIFY `bid_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=267;
+  MODIFY `bid_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=296;
 
 --
 -- AUTO_INCREMENT for table `bid_files`
 --
 ALTER TABLE `bid_files`
-  MODIFY `file_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `file_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
 
 --
 -- AUTO_INCREMENT for table `contractors`
 --
 ALTER TABLE `contractors`
-  MODIFY `contractor_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1810;
+  MODIFY `contractor_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1811;
 
 --
 -- AUTO_INCREMENT for table `contractor_types`
@@ -3078,7 +3634,7 @@ ALTER TABLE `contractor_types`
 -- AUTO_INCREMENT for table `contractor_users`
 --
 ALTER TABLE `contractor_users`
-  MODIFY `contractor_user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2059;
+  MODIFY `contractor_user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2060;
 
 --
 -- AUTO_INCREMENT for table `contract_terminations`
@@ -3105,22 +3661,10 @@ ALTER TABLE `dispute_files`
   MODIFY `file_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
--- AUTO_INCREMENT for table `failed_jobs`
---
-ALTER TABLE `failed_jobs`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
-
---
--- AUTO_INCREMENT for table `jobs`
---
-ALTER TABLE `jobs`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=264;
-
---
 -- AUTO_INCREMENT for table `messages`
 --
 ALTER TABLE `messages`
-  MODIFY `message_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=315;
+  MODIFY `message_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=336;
 
 --
 -- AUTO_INCREMENT for table `message_attachments`
@@ -3132,31 +3676,37 @@ ALTER TABLE `message_attachments`
 -- AUTO_INCREMENT for table `migrations`
 --
 ALTER TABLE `migrations`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
 
 --
 -- AUTO_INCREMENT for table `milestones`
 --
 ALTER TABLE `milestones`
-  MODIFY `milestone_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1561;
+  MODIFY `milestone_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1565;
+
+--
+-- AUTO_INCREMENT for table `milestone_date_histories`
+--
+ALTER TABLE `milestone_date_histories`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `milestone_items`
 --
 ALTER TABLE `milestone_items`
-  MODIFY `item_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2782;
+  MODIFY `item_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2793;
 
 --
 -- AUTO_INCREMENT for table `milestone_payments`
 --
 ALTER TABLE `milestone_payments`
-  MODIFY `payment_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=825;
+  MODIFY `payment_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=826;
 
 --
 -- AUTO_INCREMENT for table `notifications`
 --
 ALTER TABLE `notifications`
-  MODIFY `notification_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3688;
+  MODIFY `notification_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3731;
 
 --
 -- AUTO_INCREMENT for table `occupations`
@@ -3165,58 +3715,70 @@ ALTER TABLE `occupations`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=27;
 
 --
+-- AUTO_INCREMENT for table `payment_adjustment_logs`
+--
+ALTER TABLE `payment_adjustment_logs`
+  MODIFY `log_id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
 -- AUTO_INCREMENT for table `payment_plans`
 --
 ALTER TABLE `payment_plans`
-  MODIFY `plan_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=925;
+  MODIFY `plan_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=929;
 
 --
 -- AUTO_INCREMENT for table `personal_access_tokens`
 --
 ALTER TABLE `personal_access_tokens`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=75;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=114;
 
 --
 -- AUTO_INCREMENT for table `platform_payments`
 --
 ALTER TABLE `platform_payments`
-  MODIFY `platform_payment_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=83;
+  MODIFY `platform_payment_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=101;
 
 --
 -- AUTO_INCREMENT for table `progress`
 --
 ALTER TABLE `progress`
-  MODIFY `progress_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=832;
+  MODIFY `progress_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=834;
 
 --
 -- AUTO_INCREMENT for table `progress_files`
 --
 ALTER TABLE `progress_files`
-  MODIFY `file_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=23;
+  MODIFY `file_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
 
 --
 -- AUTO_INCREMENT for table `projects`
 --
 ALTER TABLE `projects`
-  MODIFY `project_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1056;
+  MODIFY `project_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1057;
 
 --
 -- AUTO_INCREMENT for table `project_files`
 --
 ALTER TABLE `project_files`
-  MODIFY `file_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=29;
+  MODIFY `file_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=355;
 
 --
 -- AUTO_INCREMENT for table `project_relationships`
 --
 ALTER TABLE `project_relationships`
-  MODIFY `rel_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1056;
+  MODIFY `rel_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1057;
+
+--
+-- AUTO_INCREMENT for table `project_updates`
+--
+ALTER TABLE `project_updates`
+  MODIFY `extension_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `property_owners`
 --
 ALTER TABLE `property_owners`
-  MODIFY `owner_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1819;
+  MODIFY `owner_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1820;
 
 --
 -- AUTO_INCREMENT for table `qr_codes`
@@ -3240,7 +3802,7 @@ ALTER TABLE `termination_proof`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=379;
+  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=381;
 
 --
 -- AUTO_INCREMENT for table `valid_ids`

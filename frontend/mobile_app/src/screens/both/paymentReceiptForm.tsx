@@ -62,6 +62,9 @@ interface PaymentReceiptFormProps {
   projectId: number;
   milestoneTitle: string;
   expectedAmount?: number;
+  originalCost?: number;
+  adjustedCost?: number | null;
+  carryForwardAmount?: number;
   totalPaid?: number;
   totalSubmitted?: number;
   remainingBalance?: number;
@@ -75,6 +78,9 @@ export default function paymentReceiptForm({
   projectId,
   milestoneTitle,
   expectedAmount = 0,
+  originalCost = 0,
+  adjustedCost = null,
+  carryForwardAmount = 0,
   totalPaid = 0,
   totalSubmitted = 0,
   remainingBalance = 0,
@@ -347,12 +353,36 @@ export default function paymentReceiptForm({
         {expectedAmount > 0 && (
           <View style={styles.paymentSummaryCard}>
             <Text style={styles.paymentSummaryTitle}>Payment Summary</Text>
-            <View style={styles.paymentSummaryRow}>
-              <Text style={styles.paymentSummaryLabel}>Expected Amount</Text>
-              <Text style={styles.paymentSummaryValue}>
-                ₱{expectedAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </Text>
-            </View>
+            {/* Show carry-forward breakdown when cost was adjusted */}
+            {adjustedCost != null && carryForwardAmount > 0 ? (
+              <>
+                <View style={styles.paymentSummaryRow}>
+                  <Text style={styles.paymentSummaryLabel}>Original Cost</Text>
+                  <Text style={[styles.paymentSummaryValue, { color: COLORS.textSecondary }]}>
+                    ₱{originalCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </Text>
+                </View>
+                <View style={styles.paymentSummaryRow}>
+                  <Text style={styles.paymentSummaryLabel}>Carry-forward</Text>
+                  <Text style={[styles.paymentSummaryValue, { color: '#e74c3c' }]}>
+                    +₱{carryForwardAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </Text>
+                </View>
+                <View style={[styles.paymentSummaryRow, styles.paymentSummaryDivider]}>
+                  <Text style={[styles.paymentSummaryLabel, { fontWeight: '600' }]}>Adjusted Total</Text>
+                  <Text style={[styles.paymentSummaryValue, { fontWeight: '600' }]}>
+                    ₱{adjustedCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </Text>
+                </View>
+              </>
+            ) : (
+              <View style={styles.paymentSummaryRow}>
+                <Text style={styles.paymentSummaryLabel}>Expected Amount</Text>
+                <Text style={styles.paymentSummaryValue}>
+                  ₱{expectedAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </Text>
+              </View>
+            )}
             <View style={styles.paymentSummaryRow}>
               <Text style={styles.paymentSummaryLabel}>Total Paid (Approved)</Text>
               <Text style={[styles.paymentSummaryValue, { color: COLORS.success }]}>

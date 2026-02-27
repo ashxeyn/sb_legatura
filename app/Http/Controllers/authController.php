@@ -2585,9 +2585,9 @@ class authController extends Controller
                 return $this->storeContractorStep2($request);
             }
             
-            // Check for Step 3 submission (Business Documents)
+            // Check for Step 3 submission (Business Documents) - always handled (AJAX or regular)
             if ($request->input('step') === '3' || ($request->has('pcab_number') && $request->has('pcab_category'))) {
-                return $this->storeContractorStep3($request);
+                return $this->storeContractorStep3($request, $isAjaxRequest);
             }
             
             // Handle form submission (all steps or Steps 1 & 2)
@@ -2803,7 +2803,7 @@ class authController extends Controller
     }
 
     // Store contractor step 3 (verification/business documents)
-    public function storeContractorStep3(Request $request)
+    public function storeContractorStep3(Request $request, bool $isAjax = false)
     {
         try {
             // Validate Step 3 fields only (matching mobile BusinessDocuments interface)
@@ -2873,14 +2873,40 @@ class authController extends Controller
             // Move to profile picture step
             Session::put('signup_step', 5);
 
-            // Redirect to profile picture page
+            // Detect if request is AJAX (passed from caller or check header)
+            $isAjaxRequest = $isAjax || $request->header('X-Requested-With') === 'XMLHttpRequest' || $request->wantsJson();
+
+            if ($isAjaxRequest) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Business documents submitted successfully.',
+                    'redirect_url' => route('profile.photo')
+                ], 200);
+            }
+
+            // Regular form submission fallback
             return redirect()->route('profile.photo')
                 ->with('success', 'Business documents submitted successfully. Please add your profile photo.');
 
         } catch (\Illuminate\Validation\ValidationException $e) {
+            $isAjaxRequest = $isAjax || $request->header('X-Requested-With') === 'XMLHttpRequest' || $request->wantsJson();
+            if ($isAjaxRequest) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $e->errors()
+                ], 422);
+            }
             return back()->withErrors($e->validator->errors())->withInput();
         } catch (\Exception $e) {
             \Log::error('storeContractorStep3 error: ' . $e->getMessage());
+            $isAjaxRequest = $isAjax || $request->header('X-Requested-With') === 'XMLHttpRequest' || $request->wantsJson();
+            if ($isAjaxRequest) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'An error occurred while processing your documents. Please try again.'
+                ], 500);
+            }
             return back()->withErrors(['error' => 'An error occurred while processing your documents. Please try again.'])->withInput();
         }
     }
@@ -2950,7 +2976,7 @@ class authController extends Controller
 
                 // For contractor users (including staff), include member authorization context
                 if ($isContractorUser) {
-                    $contractorAuthService = app(\App\Services\ContractorAuthorizationService::class);
+                    $contractorAuthService = app(\App\Services\contractorAuthorizationService::class);
                     $userId = $userData->user_id ?? $userData->id;
 
                     $memberContext = $contractorAuthService->getAuthorizationContext($userId);
