@@ -6,7 +6,6 @@
 class PropertyOwnerAllProjects {
     constructor() {
         this.projects = [];
-        this.filteredProjects = [];
         this.currentFilters = {
             status: 'all',
             sort: 'newest',
@@ -18,20 +17,20 @@ class PropertyOwnerAllProjects {
     }
 
     init() {
-        // Load sample projects data
-        this.loadProjects();
-        
+        // Populate project data from server-rendered page data
+        this.loadProjectsFromPage();
+
         // Setup event listeners
         this.setupEventListeners();
-        
+
         // Setup navbar search
         this.setupNavbarSearch();
-        
+
         // Check if in pin mode
         this.checkPinMode();
-        
-        // Render projects
-        this.renderProjects();
+
+        // Wire interactions onto the server-rendered cards
+        this.setupCardListeners();
     }
 
     checkPinMode() {
@@ -86,286 +85,189 @@ class PropertyOwnerAllProjects {
         }
     }
 
-    loadProjects() {
-        // Sample project data - Replace with actual API call
-        this.projects = [
-            {
-                id: 1,
-                title: "Modern Residential House Construction",
-                type: "General Contractor",
-                description: "A beautiful 3-bedroom, 2-bathroom modern house with open floor plan, large windows, and sustainable materials. Includes full kitchen, living room, and attached garage. The design features contemporary architecture with energy-efficient systems and smart home integration.",
-                image: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=400&h=300&fit=crop",
-                status: "in_progress",
-                contractor: {
-                    name: "Dela Cruz Construction Co.",
-                    company: "Dela Cruz Construction Co.",
-                    role: "General Contractor",
-                    rating: 4.8,
-                    initials: "DC"
-                },
-                location: "Tumaga, Zamboanga City",
-                budget: "₱2,500,000 - ₱3,000,000",
-                date: "Started: Jan 15, 2024",
-                progress: 65,
-                deadline: "2024-06-30",
-                lotSize: "250 sqm",
-                floorArea: "180 sqm",
-                bedrooms: 3,
-                bathrooms: 2,
-                floors: 2,
-                materials: "Concrete, Steel, Glass",
-                style: "Modern Contemporary",
-                agreementDate: "Jan 10, 2024",
-                agreementStatus: "Active",
-                milestones: {
-                    total: 1,
-                    pendingApproval: 0,
-                    totalCost: "₱2,750,000"
-                },
-                totalMilestones: 1,
-                pendingApproval: 0,
-                totalCost: "₱2,750,000"
-            },
-            {
-                id: 2,
-                title: "Kitchen Renovation Project",
-                type: "Interior Designer",
-                description: "Complete kitchen makeover with new cabinets, countertops, appliances, and modern fixtures. Includes plumbing and electrical work. Features custom cabinetry, quartz countertops, and energy-efficient appliances.",
-                image: "https://crystelmontenegrohome.com/wp-content/uploads/2024/03/Screenshot-2024-03-07-at-10.42.16%E2%80%AFAM-2.jpg",
-                status: "active",
-                contractor: {
-                    name: "Santos Interior Design Studio",
-                    company: "Santos Interior Design Studio",
-                    role: "Interior Designer",
-                    rating: 4.9,
-                    initials: "SI"
-                },
-                location: "Malagutay, Zamboanga City",
-                budget: "₱800,000 - ₱1,200,000",
-                date: "Started: Feb 1, 2024",
-                progress: 35,
-                deadline: "2024-05-15",
-                lotSize: "N/A",
-                floorArea: "25 sqm",
-                materials: "Quartz, Hardwood, Stainless Steel",
-                style: "Modern Minimalist",
-                agreementDate: "Jan 28, 2024",
-                agreementStatus: "Active",
-                milestones: {
-                    total: 1,
-                    pendingApproval: 0,
-                    totalCost: "₱1,000,000"
-                },
-                totalMilestones: 1,
-                pendingApproval: 0,
-                totalCost: "₱1,000,000"
-            },
-            {
-                id: 3,
-                title: "Commercial Office Space Build-out",
-                type: "Commercial Contractor",
-                description: "Complete office space renovation for a tech company. Includes open workspace, meeting rooms, break area, and modern amenities. Features collaborative spaces, private offices, and state-of-the-art technology integration.",
-                image: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=400&h=300&fit=crop",
-                status: "pending",
-                contractor: {
-                    name: "Garcia Commercial Builders Inc.",
-                    company: "Garcia Commercial Builders Inc.",
-                    role: "Commercial Contractor",
-                    rating: 4.7,
-                    initials: "GC"
-                },
-                location: "Baliwasan Grande, Zamboanga City",
-                budget: "₱5,000,000 - ₱7,000,000",
-                date: "Posted: Mar 10, 2024",
-                progress: 0,
-                deadline: "2024-08-30",
-                lotSize: "500 sqm",
-                floorArea: "450 sqm",
-                floors: 1,
-                materials: "Steel Frame, Glass, Acoustic Panels",
-                style: "Modern Industrial",
-                agreementDate: "Pending",
-                agreementStatus: "Pending",
-                milestones: {
-                    total: 1,
-                    pendingApproval: 1,
-                    totalCost: "₱6,000,000"
-                },
-                totalMilestones: 1,
-                pendingApproval: 1,
-                totalCost: "₱6,000,000"
-            },
-            {
-                id: 4,
-                title: "Bathroom Remodeling",
-                type: "Plumber",
-                description: "Full bathroom renovation including new tiles, fixtures, bathtub, shower, vanity, and lighting. Modern design with premium materials. Features walk-in shower, freestanding bathtub, and double vanity.",
-                image: "https://images.unsplash.com/photo-1620626011761-996317b8d101?w=400&h=300&fit=crop",
-                status: "completed",
-                contractor: {
-                    name: "Mendoza Plumbing Services",
-                    company: "Mendoza Plumbing Services",
-                    role: "Master Plumber",
-                    rating: 4.6,
-                    initials: "MP"
-                },
-                location: "Malagutay, Zamboanga City",
-                budget: "₱350,000 - ₱500,000",
-                date: "Completed: Dec 20, 2023",
-                progress: 100,
-                deadline: "2023-12-20",
-                lotSize: "N/A",
-                floorArea: "12 sqm",
-                materials: "Porcelain Tiles, Chrome Fixtures, Marble",
-                style: "Luxury Modern",
-                agreementDate: "Nov 15, 2023",
-                agreementStatus: "Completed",
-                milestones: {
-                    total: 1,
-                    pendingApproval: 0,
-                    totalCost: "₱425,000"
-                },
-                totalMilestones: 1,
-                pendingApproval: 0,
-                totalCost: "₱425,000"
-            },
-            {
-                id: 5,
-                title: "Garden Landscaping & Hardscaping",
-                type: "Landscape Architect",
-                description: "Complete garden transformation with native plants, stone pathways, water feature, outdoor seating area, and garden lighting. Includes irrigation system and sustainable landscaping practices.",
-                image: "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=400&h=300&fit=crop",
-                status: "in_progress",
-                contractor: {
-                    name: "Rodriguez Landscape Design",
-                    company: "Rodriguez Landscape Design",
-                    role: "Landscape Architect",
-                    rating: 4.9,
-                    initials: "RL"
-                },
-                location: "Malagutay, Zamboanga City",
-                budget: "₱1,200,000 - ₱1,800,000",
-                date: "Started: Feb 20, 2024",
-                progress: 45,
-                deadline: "2024-07-15",
-                lotSize: "300 sqm",
-                floorArea: "N/A",
-                materials: "Natural Stone, Native Plants, LED Lighting",
-                style: "Tropical Modern",
-                agreementDate: "Feb 15, 2024",
-                agreementStatus: "Active",
-                milestones: {
-                    total: 1,
-                    pendingApproval: 0,
-                    totalCost: "₱1,500,000"
-                },
-                totalMilestones: 1,
-                pendingApproval: 0,
-                totalCost: "₱1,500,000"
-            },
-            {
-                id: 6,
-                title: "Modern Residential House Construction",
-                type: "General Contractor",
-                description: "A beautiful 3-bedroom, 2-bathroom modern house with open floor plan, large windows, and sustainable materials. Includes full kitchen, living room, and attached garage. Features solar panels and rainwater harvesting system.",
-                image: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=400&h=300&fit=crop",
-                status: "in_progress",
-                contractor: {
-                    name: "Dela Cruz Construction Co.",
-                    company: "Dela Cruz Construction Co.",
-                    role: "General Contractor",
-                    rating: 4.8,
-                    initials: "DC"
-                },
-                location: "Upper Calarian, Zamboanga City",
-                budget: "₱2,500,000 - ₱3,000,000",
-                date: "Started: Jan 15, 2024",
-                progress: 65,
-                deadline: "2024-06-30",
-                lotSize: "280 sqm",
-                floorArea: "200 sqm",
-                bedrooms: 3,
-                bathrooms: 2,
-                floors: 2,
-                materials: "Concrete, Steel, Glass, Solar Panels",
-                style: "Eco-Modern",
-                agreementDate: "Jan 10, 2024",
-                agreementStatus: "Active",
-                milestones: {
-                    total: 1,
-                    pendingApproval: 0,
-                    totalCost: "₱2,750,000"
-                },
-                totalMilestones: 1,
-                pendingApproval: 0,
-                totalCost: "₱2,750,000"
+    /**
+     * Populate this.projects from the JSON payload injected by the controller.
+     * normalizeProject maps raw DB fields to the shape expected by the modal.
+     */
+    loadProjectsFromPage() {
+        const raw = window.projectsData;
+        if (Array.isArray(raw)) {
+            this.projects = raw.map(p => this.normalizeProject(p));
+        } else {
+            this.projects = [];
+        }
+    }
+
+    /**
+     * Status config matching dashboard.tsx getStatusConfig()
+     * Returns { label, icon (flaticon class), bg, color }
+     */
+    getStatusConfig(projectStatus, postStatus) {
+        if (postStatus === 'under_review') {
+            return { label: 'Under Review', icon: 'fi fi-rr-clock', bg: '#FEF3C7', color: '#D97706' };
+        }
+        if (projectStatus === 'open') {
+            return { label: 'Open for Bidding', icon: 'fi fi-rr-check-circle', bg: '#D1FAE5', color: '#059669' };
+        }
+        if (projectStatus === 'bidding_closed') {
+            return { label: 'Bidding Closed', icon: 'fi fi-rr-lock', bg: '#DBEAFE', color: '#2563EB' };
+        }
+        if (projectStatus === 'in_progress' || projectStatus === 'waiting_milestone_setup') {
+            return { label: 'In Progress', icon: 'fi fi-rr-hammer', bg: '#DBEAFE', color: '#2563EB' };
+        }
+        if (projectStatus === 'completed') {
+            return { label: 'Completed', icon: 'fi fi-rr-badge-check', bg: '#D1FAE5', color: '#059669' };
+        }
+        return { label: projectStatus || 'Pending', icon: 'fi fi-rr-circle', bg: '#F1F5F9', color: '#94A3B8' };
+    }
+
+    /**
+     * Normalise a raw API project object into the shape expected by the details modal.
+     */
+    normalizeProject(p) {
+        // ── Image (kept for modal compatibility) ───────────────────────────────
+        let image = null;
+        if (p.files && p.files.length > 0) {
+            const thumb =
+                p.files.find(f => f.file_type === 'building_permit' || f.file_type === 'title_of_land')
+                || p.files[0];
+            if (thumb && thumb.file_path) {
+                image = `${window.location.origin}/storage/${thumb.file_path}`;
             }
-        ];
-        
-        this.filteredProjects = [...this.projects];
+        }
+
+        // ── Contractor (kept for modal compatibility) ──────────────────────────
+        const ci = p.contractor_info;
+        const contractor = ci
+            ? {
+                name: ci.company_name || ci.username || 'Unknown Contractor',
+                company: ci.company_name || ci.username || 'Unknown',
+                role: p.type_name || 'Contractor',
+                rating: '—',
+                initials: (ci.company_name || ci.username || 'U').slice(0, 2).toUpperCase(),
+              }
+            : {
+                name: 'No contractor yet',
+                company: '—',
+                role: p.type_name || '—',
+                rating: '—',
+                initials: '?',
+              };
+
+        // ── Progress (kept for modal compatibility) ────────────────────────────
+        let progress = 0;
+        if (p.milestones && p.milestones.length > 0) {
+            let totalItems = 0;
+            let completedItems = 0;
+            p.milestones.forEach(m => {
+                if (m.items && m.items.length > 0) {
+                    totalItems += m.items.length;
+                    completedItems += m.items.filter(i => i.item_status === 'completed').length;
+                }
+            });
+            progress = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
+        }
+
+        // ── Budget ─────────────────────────────────────────────────────────────
+        const min = p.budget_range_min
+            ? Number(p.budget_range_min).toLocaleString('en-PH')
+            : '0';
+        const max = p.budget_range_max
+            ? Number(p.budget_range_max).toLocaleString('en-PH')
+            : '0';
+
+        // ── Date label ─────────────────────────────────────────────────────────
+        const statusMap = { completed: 'Completed', in_progress: 'Started' };
+        const datePrefix = statusMap[p.display_status] || statusMap[p.project_status] || 'Posted';
+        const dateFmt = p.created_at
+            ? new Date(p.created_at).toLocaleDateString('en-US', {
+                  month: 'short', day: 'numeric', year: 'numeric',
+              })
+            : '—';
+
+        // ── Lot / floor ────────────────────────────────────────────────────────
+        const lotSize = p.lot_size ? `${p.lot_size} sqm` : 'Not specified';
+        const floorArea = p.floor_area ? `${p.floor_area} sqm` : 'Not specified';
+
+        return {
+            id: p.project_id,
+            project_id: p.project_id,
+            title: p.project_title || 'Untitled Project',
+            type: p.type_name || '—',
+            description: p.project_description || '—',
+            image,
+            // Raw status fields (matching dashboard.tsx Project interface)
+            project_status: p.display_status || p.project_status || 'pending',
+            project_post_status: p.project_post_status || '',
+            bidding_due: p.bidding_due || null,
+            // Kept for legacy filter/sort
+            status: p.display_status || p.project_status || 'pending',
+            contractor,
+            location: p.project_location || '—',
+            budget: `₱${min} - ₱${max}`,
+            date: `${datePrefix}: ${dateFmt}`,
+            rawDate: p.created_at,
+            progress,
+            lotSize,
+            floorArea,
+            bids_count: p.bids_count || 0,
+            milestones: p.milestones || [],
+            _raw: p,
+        };
     }
 
     setupEventListeners() {
-        // Filter button
-        const filterBtn = document.getElementById('filterBtn');
-        const filterDropdown = document.getElementById('filterDropdown');
-        const filterCloseBtn = document.getElementById('filterCloseBtn');
-        const filterApplyBtn = document.getElementById('filterApplyBtn');
-        
-        if (filterBtn && filterDropdown) {
-            filterBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                filterDropdown.classList.toggle('active');
-                filterBtn.classList.toggle('active');
-            });
-        }
-
-        // Close filter button
-        if (filterCloseBtn && filterDropdown) {
-            filterCloseBtn.addEventListener('click', () => {
-                filterDropdown.classList.remove('active');
-                filterBtn.classList.remove('active');
-            });
-        }
-
-        // Apply filter button
-        if (filterApplyBtn) {
-            filterApplyBtn.addEventListener('click', () => {
-                // Read current filter values from dropdowns
-                const statusFilter = document.getElementById('statusFilter');
-                const sortFilter = document.getElementById('sortFilter');
-                
-                if (statusFilter) {
-                    this.currentFilters.status = statusFilter.value;
-                }
-                if (sortFilter) {
-                    this.currentFilters.sort = sortFilter.value;
-                }
-                
+        // Filter chips
+        document.querySelectorAll('.filter-chip').forEach(chip => {
+            chip.addEventListener('click', () => {
+                document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+                chip.classList.add('active');
+                this.currentFilters.status = chip.dataset.filter;
                 this.applyFilters();
-                filterDropdown.classList.remove('active');
-                filterBtn.classList.remove('active');
             });
-        }
-
-        // Clear filters
-        const clearFilters = document.getElementById('clearFilters');
-        if (clearFilters) {
-            clearFilters.addEventListener('click', () => {
-                this.clearFilters();
-            });
-        }
-
-        // Close filter dropdown when clicking outside
-        document.addEventListener('click', (e) => {
-            if (filterDropdown && filterBtn) {
-                if (!filterDropdown.contains(e.target) && 
-                    e.target !== filterBtn && !filterBtn.contains(e.target)) {
-                    filterDropdown.classList.remove('active');
-                    filterBtn.classList.remove('active');
-                }
-            }
         });
+
+        // Custom sort dropdown
+        const sortBtn = document.getElementById('sortBtn');
+        const sortDropdown = document.getElementById('sortDropdown');
+        if (sortBtn && sortDropdown) {
+            sortBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const isOpen = sortDropdown.classList.toggle('open');
+                sortBtn.classList.toggle('open', isOpen);
+                sortBtn.setAttribute('aria-expanded', isOpen);
+            });
+
+            sortDropdown.querySelectorAll('.sort-option').forEach(opt => {
+                opt.addEventListener('click', () => {
+                    const value = opt.dataset.value;
+                    // Update hidden input
+                    const sortFilter = document.getElementById('sortFilter');
+                    if (sortFilter) sortFilter.value = value;
+                    // Update button label
+                    const sortLabel = document.getElementById('sortLabel');
+                    if (sortLabel) sortLabel.textContent = opt.textContent.replace(/^✓\s*/, '').trim();
+                    // Update active state
+                    sortDropdown.querySelectorAll('.sort-option').forEach(o => o.classList.remove('active'));
+                    opt.classList.add('active');
+                    // Close
+                    sortDropdown.classList.remove('open');
+                    sortBtn.classList.remove('open');
+                    sortBtn.setAttribute('aria-expanded', 'false');
+                    // Apply
+                    this.currentFilters.sort = value;
+                    this.applyFilters();
+                });
+            });
+
+            document.addEventListener('click', (e) => {
+                if (!sortBtn.contains(e.target) && !sortDropdown.contains(e.target)) {
+                    sortDropdown.classList.remove('open');
+                    sortBtn.classList.remove('open');
+                    sortBtn.setAttribute('aria-expanded', 'false');
+                }
+            });
+        }
     }
 
     setupNavbarSearch() {
@@ -405,183 +307,168 @@ class PropertyOwnerAllProjects {
     }
 
     applyFilters() {
-        let filtered = [...this.projects];
+        const search = this.currentFilters.search;
+        const status = this.currentFilters.status;
+        const sort   = this.currentFilters.sort;
 
-        // Apply search filter
-        if (this.currentFilters.search) {
-            filtered = filtered.filter(project => 
-                project.title.toLowerCase().includes(this.currentFilters.search) ||
-                project.type.toLowerCase().includes(this.currentFilters.search) ||
-                project.location.toLowerCase().includes(this.currentFilters.search) ||
-                project.contractor.name.toLowerCase().includes(this.currentFilters.search) ||
-                project.description.toLowerCase().includes(this.currentFilters.search)
-            );
-        }
+        const container  = document.getElementById('projectsContainer');
+        const emptyState = document.getElementById('emptyState');
+        if (!container) return;
 
-        // Apply status filter
-        if (this.currentFilters.status !== 'all') {
-            filtered = filtered.filter(project => project.status === this.currentFilters.status);
-        }
+        const allCards = Array.from(container.querySelectorAll('.project-card'));
 
-        // Apply sorting
-        filtered.sort((a, b) => {
-            switch (this.currentFilters.sort) {
-                case 'oldest':
-                    return new Date(a.date) - new Date(b.date);
-                case 'title':
-                    return a.title.localeCompare(b.title);
-                case 'status':
-                    return a.status.localeCompare(b.status);
-                case 'newest':
-                default:
-                    return new Date(b.date) - new Date(a.date);
-            }
+        // Filter
+        let visible = allCards.filter(card => {
+            const title       = (card.dataset.title       || '').toLowerCase();
+            const type        = (card.dataset.type        || '').toLowerCase();
+            const location    = (card.dataset.location    || '').toLowerCase();
+            const description = (card.dataset.description || '').toLowerCase();
+            const ps          = card.dataset.status     || '';
+            const pps         = card.dataset.postStatus || '';
+
+            if (search && !
+                (title.includes(search) || type.includes(search) ||
+                 location.includes(search) || description.includes(search)))
+                return false;
+
+            if (status === 'pending'     && pps !== 'under_review') return false;
+            if (status === 'active'      && !(pps === 'approved' && ps === 'open')) return false;
+            if (status === 'in_progress' && !['bidding_closed','in_progress','waiting_milestone_setup'].includes(ps)) return false;
+            if (status === 'completed'   && ps !== 'completed') return false;
+
+            return true;
         });
 
-        this.filteredProjects = filtered;
-        this.renderProjects();
+        // Sort
+        visible.sort((a, b) => {
+            if (sort === 'title')        return (a.dataset.title || '').localeCompare(b.dataset.title || '');
+            if (sort === 'z_title')      return (b.dataset.title || '').localeCompare(a.dataset.title || '');
+            if (sort === 'budget_high')  return Number(b.dataset.budgetMin || 0) - Number(a.dataset.budgetMin || 0);
+            if (sort === 'budget_low')   return Number(a.dataset.budgetMin || 0) - Number(b.dataset.budgetMin || 0);
+            if (sort === 'oldest')       return new Date(a.dataset.rawdate) - new Date(b.dataset.rawdate);
+            return new Date(b.dataset.rawdate) - new Date(a.dataset.rawdate); // newest
+        });
+
+        // Hide all, then show & re-append in sorted order
+        allCards.forEach(c => c.style.display = 'none');
+
+        if (visible.length === 0) {
+            container.classList.add('hidden');
+            if (emptyState) emptyState.classList.remove('hidden');
+        } else {
+            container.classList.remove('hidden');
+            if (emptyState) emptyState.classList.add('hidden');
+            visible.forEach(c => { c.style.display = ''; container.appendChild(c); });
+        }
+
+        // Update filter badge
+        const filterBadge = document.getElementById('filterBadge');
+        if (filterBadge) {
+            const active = (status !== 'all' ? 1 : 0) + (sort !== 'newest' ? 1 : 0) + (search ? 1 : 0);
+            if (active > 0) {
+                filterBadge.textContent = active;
+                filterBadge.classList.remove('hidden');
+            } else {
+                filterBadge.classList.add('hidden');
+            }
+        }
     }
 
     clearFilters() {
-        this.currentFilters = {
-            status: 'all',
-            sort: 'newest',
-            search: ''
-        };
+        this.currentFilters = { status: 'all', sort: 'newest', search: '' };
 
-        document.getElementById('statusFilter').value = 'all';
-        document.getElementById('sortFilter').value = 'newest';
-        
-        // Clear navbar search
-        const navbarSearchInput = document.querySelector('.navbar-search-input');
-        if (navbarSearchInput) {
-            navbarSearchInput.value = '';
+        // Reset chip active state
+        document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+        const allChip = document.querySelector('.filter-chip[data-filter="all"]');
+        if (allChip) allChip.classList.add('active');
+
+        const sortFilter = document.getElementById('sortFilter');
+        if (sortFilter) sortFilter.value = 'newest';
+
+        // Reset sort dropdown label and active state
+        const sortLabel = document.getElementById('sortLabel');
+        if (sortLabel) sortLabel.textContent = 'Newest';
+        const sortDropdown = document.getElementById('sortDropdown');
+        if (sortDropdown) {
+            sortDropdown.querySelectorAll('.sort-option').forEach(o => o.classList.remove('active'));
+            const newestOpt = sortDropdown.querySelector('.sort-option[data-value="newest"]');
+            if (newestOpt) newestOpt.classList.add('active');
         }
+
+        const navbarSearchInput = document.querySelector('.navbar-search-input');
+        if (navbarSearchInput) navbarSearchInput.value = '';
 
         this.applyFilters();
     }
 
-    renderProjects() {
-        const container = document.getElementById('projectsContainer');
-        const emptyState = document.getElementById('emptyState');
-        const template = document.getElementById('projectCardTemplate');
+    /**
+     * Wire click, ripple, pin button, and deadline countdown onto
+     * every server-rendered .project-card element.
+     */
+    setupCardListeners() {
+        document.querySelectorAll('.project-card').forEach(cardEl => {
+            const projectId = parseInt(cardEl.dataset.projectId);
 
-        if (!container || !template) return;
-
-        // Clear container
-        container.innerHTML = '';
-
-        if (this.filteredProjects.length === 0) {
-            container.classList.add('hidden');
-            if (emptyState) {
-                emptyState.classList.remove('hidden');
+            // ── Read the full server-rendered project from blade (data-project) ──
+            // Falls back to this.projects (JS-normalised) if the attribute is absent.
+            let project = null;
+            try {
+                project = cardEl.dataset.project
+                    ? JSON.parse(cardEl.dataset.project)
+                    : this.projects.find(p => Number(p.id) === projectId) || null;
+            } catch (_) {
+                project = this.projects.find(p => Number(p.id) === projectId) || null;
             }
-            return;
-        }
 
-        container.classList.remove('hidden');
-        if (emptyState) {
-            emptyState.classList.add('hidden');
-        }
-
-        // Render each project
-        this.filteredProjects.forEach(project => {
-            const card = template.content.cloneNode(true);
-            const cardElement = card.querySelector('.project-card');
-
-            // Set project data
-            cardElement.querySelector('.project-title').textContent = project.title;
-            cardElement.querySelector('.project-type').textContent = project.type;
-            cardElement.querySelector('.project-description').textContent = project.description;
-            
-            // Set project image
-            const projectImage = cardElement.querySelector('.project-image');
-            if (projectImage) {
-                if (project.image) {
-                    projectImage.src = project.image;
-                    projectImage.alt = project.title || 'Project image';
-                } else {
-                    // Use placeholder if no image
-                    projectImage.src = 'https://via.placeholder.com/120x120/EEA24B/ffffff?text=Project';
-                    projectImage.alt = project.title || 'Project image';
+            // ── Deadline countdown ───────────────────────────────────────────────
+            const deadlineInfo = cardEl.querySelector('.deadline-info');
+            const biddingDue   = cardEl.dataset.biddingDue;
+            if (deadlineInfo && biddingDue) {
+                const daysLeft = Math.ceil((new Date(biddingDue) - new Date()) / (1000 * 60 * 60 * 24));
+                if (daysLeft > 0) {
+                    const isUrgent    = daysLeft <= 3;
+                    const clockIcon   = cardEl.querySelector('.deadline-clock-icon');
+                    const deadlineTxt = cardEl.querySelector('.deadline-text');
+                    if (clockIcon)   clockIcon.style.color    = isUrgent ? '#EF4444' : '#94A3B8';
+                    if (deadlineTxt) { deadlineTxt.style.color = isUrgent ? '#EF4444' : '#6B7280'; deadlineTxt.textContent = `${daysLeft}d left`; }
+                    deadlineInfo.style.display = 'flex';
                 }
             }
-            
-            cardElement.querySelector('.project-location').textContent = project.location;
-            cardElement.querySelector('.project-budget').textContent = project.budget;
-            cardElement.querySelector('.project-date').textContent = project.date;
-            
-            // Contractor info
-            const companyName = project.contractor.company || project.contractor.name;
-            cardElement.querySelector('.contractor-name').textContent = companyName;
-            cardElement.querySelector('.contractor-role').textContent = project.contractor.role;
-            cardElement.querySelector('.contractor-avatar').textContent = project.contractor.initials;
-            cardElement.querySelector('.rating-value').textContent = project.contractor.rating;
 
-            // Status badge
-            const statusBadge = cardElement.querySelector('.status-badge');
-            const statusText = cardElement.querySelector('.status-text');
-            statusBadge.className = `status-badge status-${project.status} px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 whitespace-nowrap`;
-            statusText.textContent = project.status.replace('_', ' ');
+            if (!project) return;
 
-            // Progress bar
-            const progressBar = cardElement.querySelector('.progress-bar');
-            const progressPercentage = cardElement.querySelector('.progress-percentage');
-            progressBar.style.width = `${project.progress}%`;
-            progressPercentage.textContent = `${project.progress}%`;
+            // ── Card / View Details click ────────────────────────────────────────
+            // Pass the blade-rendered project directly — no JS lookup needed.
+            const openDetails = (e) => {
+                e.stopPropagation();
+                if (window.openProjectDetailsModal) {
+                    window.openProjectDetailsModal(project);
+                } else {
+                    setTimeout(() => window.openProjectDetailsModal?.(project), 150);
+                }
+            };
+            cardEl.addEventListener('click', openDetails);
+            const viewBtn = cardEl.querySelector('.view-details-btn');
+            if (viewBtn) viewBtn.addEventListener('click', openDetails);
 
-            // Add click handlers
-            const viewDetailsBtn = cardElement.querySelector('.view-details-btn');
-            if (viewDetailsBtn) {
-                viewDetailsBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    this.viewProjectDetails(project.id);
-                });
-            }
-
-            // Add pin button handler
-            const pinBtn = cardElement.querySelector('.pin-project-btn');
+            // ── Pin button ───────────────────────────────────────────────────────
+            const pinBtn = cardEl.querySelector('.pin-project-btn');
             if (pinBtn) {
-                // Show pin button if in pin mode
-                if (this.isPinMode) {
-                    pinBtn.classList.remove('hidden');
-                    // Adjust view details button to be smaller
-                    if (viewDetailsBtn) {
-                        viewDetailsBtn.classList.remove('hidden');
-                        viewDetailsBtn.style.flex = '1';
-                    }
-                } else {
-                    // Hide pin button in normal mode
-                    pinBtn.classList.add('hidden');
-                    if (viewDetailsBtn) {
-                        viewDetailsBtn.style.flex = '1';
-                    }
-                }
-                
-                pinBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    this.pinProject(project);
-                });
+                if (this.isPinMode) pinBtn.style.display = 'flex';
+                pinBtn.addEventListener('click', (e) => { e.stopPropagation(); this.pinProject(project); });
             }
 
-            // Add hover effect
-            cardElement.addEventListener('mouseenter', () => {
-                cardElement.style.transform = 'translateY(-4px)';
+            // ── Ripple ───────────────────────────────────────────────────────────
+            cardEl.addEventListener('click', (e) => {
+                const ripple = document.createElement('span');
+                ripple.classList.add('ripple');
+                const rect = cardEl.getBoundingClientRect();
+                const size = Math.max(rect.width, rect.height);
+                ripple.style.cssText = `width:${size}px;height:${size}px;left:${e.clientX - rect.left - size/2}px;top:${e.clientY - rect.top - size/2}px;`;
+                cardEl.appendChild(ripple);
+                ripple.addEventListener('animationend', () => ripple.remove());
             });
-
-            cardElement.addEventListener('mouseleave', () => {
-                cardElement.style.transform = 'translateY(0)';
-            });
-
-            container.appendChild(card);
         });
-
-        // Animate progress bars
-        setTimeout(() => {
-            document.querySelectorAll('.progress-bar').forEach(bar => {
-                bar.style.transition = 'width 1s ease-out';
-            });
-        }, 100);
     }
 
     viewProjectDetails(projectId) {

@@ -556,8 +556,8 @@ Route::post('/projects/{projectId}/update/preview', [projectUpdateController::cl
 Route::post('/projects/{projectId}/update', [projectUpdateController::class, 'store']);
 Route::post('/projects/{projectId}/updates/{extensionId}/withdraw', [projectUpdateController::class, 'withdraw']);
 // Owner
-Route::post('/projects/{projectId}/updates/{extensionId}/approve', [ProjectUpdateController::class, 'approve']);
-Route::post('/projects/{projectId}/updates/{extensionId}/reject', [ProjectUpdateController::class, 'reject']);
-Route::post('/projects/{projectId}/updates/{extensionId}/request-changes', [ProjectUpdateController::class, 'requestChanges']);
+Route::post('/projects/{projectId}/updates/{extensionId}/approve', [projectUpdateController::class, 'approve']);
+Route::post('/projects/{projectId}/updates/{extensionId}/reject', [projectUpdateController::class, 'reject']);
+Route::post('/projects/{projectId}/updates/{extensionId}/request-changes', [projectUpdateController::class, 'requestChanges']);
 
     // NOTE: change-otp endpoints are registered publicly (do not rely on Sanctum middleware)

@@ -61,15 +61,13 @@ class projectsController extends Controller
 
         // If in testing mode and no user, allow access anyway
         if ($isLocalOrTesting && !$user) {
-            // Allow access without authentication for testing
-            return view('owner.propertyOwner_Allprojects');
+            return view('owner.propertyOwner_Allprojects', ['projects' => collect()]);
         }
 
         // Normal authentication flow for logged-in users
         $currentRole = session('current_role', $user->user_type);
         $userType = $user->user_type;
 
-        // Only owners can access this page (skip in testing if no user)
         if ($user) {
             $isOwner = ($userType === 'property_owner' || $userType === 'both') &&
                 ($currentRole === 'owner' || $currentRole === 'property_owner');
@@ -79,7 +77,132 @@ class projectsController extends Controller
             }
         }
 
-        return view('owner.propertyOwner_Allprojects');
+        // Fetch projects server-side to render cards directly in Blade
+        $projects = collect();
+        $owner = DB::table('property_owners')->where('user_id', $user->user_id)->first();
+
+        if ($owner) {
+            $rawProjects = DB::table('projects as p')
+                ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
+                ->join('contractor_types as ct', 'p.type_id', '=', 'ct.type_id')
+                ->select(
+                    'p.project_id',
+                    'p.project_title',
+                    'p.project_description',
+                    'p.project_location',
+                    'p.budget_range_min',
+                    'p.budget_range_max',
+                    'p.lot_size',
+                    'p.floor_area',
+                    'p.property_type',
+                    'p.project_status',
+                    'p.selected_contractor_id',
+                    'ct.type_name',
+                    'pr.project_post_status',
+                    'pr.bidding_due',
+                    DB::raw('DATE(pr.created_at) as created_at')
+                )
+                ->where('pr.owner_id', $owner->owner_id)
+                ->whereNotIn('pr.project_post_status', ['deleted'])
+                ->orderBy('pr.created_at', 'desc')
+                ->get();
+
+            foreach ($rawProjects as $project) {
+                // ── Bids count ──────────────────────────────────────────────────
+                $project->bids_count = DB::table('bids')
+                    ->where('project_id', $project->project_id)
+                    ->whereNotIn('bid_status', ['cancelled'])
+                    ->count();
+
+                // ── Files ───────────────────────────────────────────────────────
+                $project->files = DB::table('project_files')
+                    ->where('project_id', $project->project_id)
+                    ->orderBy('uploaded_at', 'asc')
+                    ->get();
+
+                // ── Defaults ────────────────────────────────────────────────────
+                $project->contractor_info = null;
+                $project->accepted_bid    = null;
+                $project->milestones      = [];
+                $project->milestones_count = 0;
+                $project->display_status  = $project->project_status;
+
+                if ($project->selected_contractor_id) {
+                    // ── Accepted bid + contractor info ──────────────────────────
+                    $acceptedBid = DB::table('bids as b')
+                        ->join('contractors as c', 'b.contractor_id', '=', 'c.contractor_id')
+                        ->join('users as u', 'c.user_id', '=', 'u.user_id')
+                        ->select(
+                            'b.bid_id',
+                            'b.proposed_cost',
+                            'b.estimated_timeline',
+                            'b.contractor_notes',
+                            'b.submitted_at',
+                            'c.company_name',
+                            'c.company_phone',
+                            'c.company_email',
+                            'c.years_of_experience',
+                            'c.completed_projects',
+                            'u.username',
+                            'u.profile_pic'
+                        )
+                        ->where('b.project_id', $project->project_id)
+                        ->where('b.contractor_id', $project->selected_contractor_id)
+                        ->where('b.bid_status', 'accepted')
+                        ->first();
+
+                    if ($acceptedBid) {
+                        $project->accepted_bid    = $acceptedBid;
+                        $project->contractor_info = (object) [
+                            'company_name'       => $acceptedBid->company_name,
+                            'username'           => $acceptedBid->username,
+                            'profile_pic'        => $acceptedBid->profile_pic,
+                            'company_phone'      => $acceptedBid->company_phone,
+                            'company_email'      => $acceptedBid->company_email,
+                            'years_of_experience' => $acceptedBid->years_of_experience,
+                            'completed_projects' => $acceptedBid->completed_projects,
+                        ];
+
+                        // ── Milestones (setup_status / milestone_status) ─────────
+                        $milestones = DB::table('milestones')
+                            ->select(
+                                'milestone_id',
+                                'milestone_name',
+                                'milestone_description',
+                                'milestone_status',
+                                'setup_status',
+                                'setup_rej_reason',
+                                'start_date',
+                                'end_date'
+                            )
+                            ->where('project_id', $project->project_id)
+                            ->where('contractor_id', $project->selected_contractor_id)
+                            ->where(function ($q) {
+                                $q->whereNull('is_deleted')->orWhere('is_deleted', 0);
+                            })
+                            ->orderBy('created_at', 'asc')
+                            ->get();
+
+                        $project->milestones       = $milestones->values()->toArray();
+                        $project->milestones_count = $milestones->count();
+
+                        // ── display_status (matching API logic) ───────────────────
+                        if ($milestones->isEmpty()) {
+                            $project->display_status = 'waiting_milestone_setup';
+                        } else {
+                            $allDone = $milestones->every(
+                                fn($m) => in_array($m->milestone_status, ['completed', 'approved'])
+                            );
+                            $project->display_status = $allDone ? 'completed' : 'in_progress';
+                        }
+                    }
+                }
+            }
+
+            $projects = $rawProjects;
+        }
+
+        return view('owner.propertyOwner_Allprojects', compact('projects'));
     }
 
     public function showProfile(Request $request)
@@ -115,6 +238,170 @@ class projectsController extends Controller
         }
 
         return view('owner.propertyOwner_Profile');
+    }
+
+    /**
+     * GET /owner/projects/{projectId}/bids
+     * Returns JSON list of bids with full contractor info, files, and ranking scores.
+     */
+    public function getProjectBids($projectId)
+    {
+        try {
+            $user = Session::get('user');
+            if (!$user) {
+                return response('<p style="text-align:center;color:#ef4444;padding:32px 16px">Authentication required.</p>', 401)
+                    ->header('Content-Type', 'text/html');
+            }
+
+            // Resolve owner_id from property_owners (same as acceptBid)
+            $owner = DB::table('property_owners')
+                ->where('user_id', $user->user_id)
+                ->first();
+
+            if (!$owner) {
+                return response('<p style="text-align:center;color:#ef4444;padding:32px 16px">Owner record not found.</p>', 404)
+                    ->header('Content-Type', 'text/html');
+            }
+
+            // Verify the project belongs to this owner (owner_id lives in project_relationships)
+            $project = DB::table('projects')
+                ->join('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
+                ->where('projects.project_id', $projectId)
+                ->where('project_relationships.owner_id', $owner->owner_id)
+                ->select('projects.*')
+                ->first();
+
+            if (!$project) {
+                return response('<p style="text-align:center;color:#ef4444;padding:32px 16px">Project not found.</p>', 404)
+                    ->header('Content-Type', 'text/html');
+            }
+
+            $bids = DB::table('bids as b')
+                ->join('contractors as c', 'c.contractor_id', '=', 'b.contractor_id')
+                ->join('users as u', 'u.user_id', '=', 'c.user_id')
+                ->leftJoin('contractor_types as ct', 'c.type_id', '=', 'ct.type_id')
+                ->where('b.project_id', $projectId)
+                ->whereNotIn('b.bid_status', ['cancelled'])
+                ->select(
+                    'b.bid_id',
+                    'b.project_id',
+                    'b.contractor_id',
+                    'b.proposed_cost',
+                    'b.estimated_timeline',
+                    'b.contractor_notes',
+                    'b.bid_status',
+                    'b.reason',
+                    'b.submitted_at',
+                    'b.decision_date',
+                    'c.company_name',
+                    'c.company_phone',
+                    'c.company_email',
+                    'c.company_website',
+                    'c.years_of_experience',
+                    'c.completed_projects',
+                    'c.picab_category',
+                    'u.username',
+                    'u.profile_pic',
+                    'ct.type_name as contractor_type'
+                )
+                ->get();
+
+            // Attach bid files to each bid
+            foreach ($bids as $bid) {
+                $files = DB::table('bid_files')
+                    ->where('bid_id', $bid->bid_id)
+                    ->select('file_id', 'bid_id', 'file_name', 'file_path', 'description', 'uploaded_at')
+                    ->get();
+                $bid->files      = $files->toArray();
+                $bid->file_count = $files->count();
+            }
+
+            // Apply ranking scores
+            try {
+                $ranker = app(\App\Services\bidRankingService::class);
+                $bids   = $ranker->rankBids((int) $projectId, $bids);
+            } catch (\Exception $re) {
+                // Ranking failure is non-fatal — fall back to cost order
+                $bids = $bids->sortByDesc(fn($b) => $b->bid_status === 'accepted' ? 1 : 0)
+                             ->values();
+            }
+
+            return response(
+                view('owner.propertyOwner_Modals.partials.bids_list', ['bids' => $bids->values()])->render()
+            )->header('Content-Type', 'text/html');
+
+        } catch (\Exception $e) {
+            \Log::error('getProjectBids error: ' . $e->getMessage() . ' | ' . $e->getFile() . ':' . $e->getLine());
+            return response('<p style="text-align:center;color:#ef4444;padding:32px 16px">Failed to load bids. Please try again.</p>')
+                ->header('Content-Type', 'text/html')
+                ->setStatusCode(500);
+        }
+    }
+
+    /**
+     * POST /owner/projects/{projectId}/bids/{bidId}/reject
+     * Rejects a single bid (web session-based auth).
+     */
+    public function rejectBid(Request $request, $projectId, $bidId)
+    {
+        try {
+            $user = Session::get('user');
+            if (!$user) {
+                return response()->json(['success' => false, 'message' => 'Authentication required'], 401);
+            }
+
+            $owner = DB::table('property_owners')
+                ->where('user_id', $user->user_id)
+                ->first();
+
+            if (!$owner) {
+                return response()->json(['success' => false, 'message' => 'Owner record not found'], 404);
+            }
+
+            $project = DB::table('projects')
+                ->join('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
+                ->where('projects.project_id', $projectId)
+                ->where('project_relationships.owner_id', $owner->owner_id)
+                ->select('projects.*')
+                ->first();
+
+            if (!$project) {
+                return response()->json(['success' => false, 'message' => 'Project not found'], 404);
+            }
+
+            $reason = $request->input('reason') ?: null;
+
+            DB::table('bids')
+                ->where('bid_id', $bidId)
+                ->where('project_id', $projectId)
+                ->update([
+                    'bid_status'    => 'rejected',
+                    'reason'        => $reason,
+                    'decision_date' => now(),
+                ]);
+
+            // Notify the contractor
+            $rejBid = DB::table('bids')->where('bid_id', $bidId)->first();
+            if ($rejBid) {
+                $cUserId = DB::table('contractors')
+                    ->where('contractor_id', $rejBid->contractor_id)
+                    ->value('user_id');
+                if ($cUserId) {
+                    $projTitle = $project->project_title ?? '';
+                    notificationService::create(
+                        (int) $cUserId, 'bid_rejected', 'Bid Rejected',
+                        "Your bid for \"{$projTitle}\" was not accepted.",
+                        'normal', 'project', (int) $projectId,
+                        ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int) $projectId]]
+                    );
+                }
+            }
+
+            return response()->json(['success' => true, 'message' => 'Bid rejected successfully']);
+
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Failed to reject bid'], 500);
+        }
     }
 
     public function setMilestoneSession(Request $request)

@@ -47,22 +47,22 @@
                 <div class="stats-card">
                     <div class="stat-item">
                         <i class="fi fi-rr-chart-histogram stat-icon"></i>
-                        <div class="stat-number" id="statTotal">6</div>
+                        <div class="stat-number" id="statTotal">{{ $stats['total'] }}</div>
                         <div class="stat-label">Total</div>
                     </div>
                     <div class="stat-item">
                         <i class="fi fi-rr-clock stat-icon"></i>
-                        <div class="stat-number" id="statPending">1</div>
+                        <div class="stat-number" id="statPending">{{ $stats['pending'] }}</div>
                         <div class="stat-label">Pending</div>
                     </div>
                     <div class="stat-item">
                         <i class="fi fi-rr-check-circle stat-icon"></i>
-                        <div class="stat-number" id="statActive">1</div>
+                        <div class="stat-number" id="statActive">{{ $stats['active'] }}</div>
                         <div class="stat-label">Active</div>
                     </div>
                     <div class="stat-item">
                         <i class="fi fi-rr-settings stat-icon"></i>
-                        <div class="stat-number" id="statInProgress">3</div>
+                        <div class="stat-number" id="statInProgress">{{ $stats['inProgress'] }}</div>
                         <div class="stat-label">In Progress</div>
                     </div>
                 </div>
@@ -84,7 +84,7 @@
                                 </div>
                                 <div class="project-info">
                                     <h3 class="project-title">All Projects</h3>
-                                    <p class="project-subtitle"><span id="allProjectsCount">6</span> projects total</p>
+                                    <p class="project-subtitle"><span id="allProjectsCount">{{ $stats['total'] }}</span> projects total</p>
                                 </div>
                             </div>
                             <div class="project-card-right">
@@ -100,7 +100,7 @@
                                 </div>
                                 <div class="project-info">
                                     <h3 class="project-title">Finished Projects</h3>
-                                    <p class="project-subtitle"><span id="finishedProjectsCount">6</span> completed</p>
+                                    <p class="project-subtitle"><span id="finishedProjectsCount">{{ $stats['completed'] }}</span> completed</p>
                                 </div>
                             </div>
                             <div class="project-card-right">

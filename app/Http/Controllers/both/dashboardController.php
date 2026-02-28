@@ -56,7 +56,9 @@ class dashboardController extends Controller
 
         // Allow unauthenticated access in local/testing
         if ($isLocalOrTesting && !$user) {
-            return view('owner.propertyOwner_Dashboard');
+            return view('owner.propertyOwner_Dashboard', [
+                'stats' => ['total' => 0, 'pending' => 0, 'active' => 0, 'inProgress' => 0, 'completed' => 0],
+            ]);
         }
 
         // Role guard
@@ -83,9 +85,37 @@ class dashboardController extends Controller
 
         $isViewOnly = false; // Overriding since we are blocking access anyway
 
+        // Fetch project stats for the dashboard
+        $stats = [
+            'total'      => 0,
+            'pending'    => 0,
+            'active'     => 0,
+            'inProgress' => 0,
+            'completed'  => 0,
+        ];
+
+        if ($user) {
+            $owner = DB::table('property_owners')->where('user_id', $user->user_id)->first();
+            if ($owner) {
+                $projects = DB::table('projects as p')
+                    ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
+                    ->where('pr.owner_id', $owner->owner_id)
+                    ->whereNotIn('pr.project_post_status', ['deleted'])
+                    ->select('p.project_status', 'pr.project_post_status')
+                    ->get();
+
+                $stats['total']      = $projects->count();
+                $stats['pending']    = $projects->where('project_post_status', 'under_review')->count();
+                $stats['active']     = $projects->filter(fn($p) => $p->project_post_status === 'approved' && $p->project_status === 'open')->count();
+                $stats['inProgress'] = $projects->filter(fn($p) => in_array($p->project_status, ['bidding_closed', 'in_progress', 'waiting_milestone_setup']))->count();
+                $stats['completed']  = $projects->where('project_status', 'completed')->count();
+            }
+        }
+
         return view('owner.propertyOwner_Dashboard', [
             'verificationStatus' => $verificationStatus,
-            'isViewOnly' => $isViewOnly
+            'isViewOnly'         => $isViewOnly,
+            'stats'              => $stats,
         ]);
     }
 

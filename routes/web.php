@@ -93,6 +93,9 @@ Route::get('/owner/profile', [\App\Http\Controllers\owner\projectsController::cl
 // Property Owner Finished Projects
 Route::get('/owner/projects/finished', [\App\Http\Controllers\owner\projectsController::class, 'showFinishedProjects'])->name('owner.projects.finished');
 
+// Property Owner — Bids for a project (JSON, web session auth)
+Route::get('/owner/projects/{projectId}/bids', [\App\Http\Controllers\owner\projectsController::class, 'getProjectBids'])->name('owner.projects.bids');
+
 // Property Owner Milestone Session Setter
 Route::post('/owner/projects/set-milestone', [\App\Http\Controllers\owner\projectsController::class, 'setMilestoneSession'])->name('owner.projects.set-milestone');
 Route::post('/owner/projects/set-milestone-item', [\App\Http\Controllers\owner\projectsController::class, 'setMilestoneItemSession'])->name('owner.projects.set-milestone-item');
@@ -286,6 +289,7 @@ Route::get('/owner/projects/{projectId}/edit', [\App\Http\Controllers\owner\proj
 Route::put('/owner/projects/{projectId}', [\App\Http\Controllers\owner\projectsController::class , 'update']);
 Route::delete('/owner/projects/{projectId}', [\App\Http\Controllers\owner\projectsController::class , 'delete']);
 Route::post('/owner/projects/{projectId}/bids/{bidId}/accept', [\App\Http\Controllers\owner\projectsController::class , 'acceptBid']);
+Route::post('/owner/projects/{projectId}/bids/{bidId}/reject', [\App\Http\Controllers\owner\projectsController::class , 'rejectBid'])->name('owner.projects.bids.reject');
 Route::post('/owner/milestones/{milestoneId}/approve', [milestoneController::class , 'webApproveMilestone']);
 Route::post('/owner/milestones/{milestoneId}/reject', [milestoneController::class , 'webRejectMilestone']);
 Route::post('/contractor/payments/{paymentId}/approve', [milestoneController::class , 'apiApprovePayment']);

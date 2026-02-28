@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
-class DocumentViewController extends Controller
+class documentViewController extends Controller
 {
     /**
      * Display a protected document with watermark overlay
