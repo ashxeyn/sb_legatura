@@ -706,6 +706,14 @@ export default function RoleAddScreen(props: RoleAddScreenProps & { route?: any;
             setSubmitting(false);
             return;
           }
+          // Enforce minimum age: user must be at least 18 years old before proceeding
+          const age = formData.date_of_birth ? computeYears(formData.date_of_birth) : undefined;
+          if (typeof age === 'number' && age < 18) {
+            Alert.alert('Invalid age', 'You must be at least 18 years old to apply as a property owner.');
+            setSubmitting(false);
+            return;
+          }
+
           const res = await role_service.add_owner_step1({});
           if (res?.success) {
             setFormStep(2);

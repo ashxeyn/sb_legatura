@@ -5,6 +5,9 @@ namespace App\Services;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
+use App\Services\SmsService;
 
 class authService
 {
@@ -50,7 +53,7 @@ class authService
                 $message->to($email)
                         ->subject('Legatura - Your OTP Code');
             });
-            
+
             \Log::info("OTP sent successfully to {$email}");
             return true;
         } catch (\Exception $e) {
@@ -62,6 +65,75 @@ class authService
             ]);
             return false;
         }
+    }
+
+    /**
+     * Send change OTP to a destination (email or phone) and cache the hashed OTP.
+     * Returns array with success, masked destination and otp_token.
+     */
+    public function sendChangeOtp($user, $purpose, $destination)
+    {
+        $destination = trim((string)$destination);
+        $isEmail = strpos($destination, '@') !== false;
+
+        $otp = $this->generateOtp();
+        $otpHash = $this->hashOtp($otp);
+
+        $sent = false;
+        if ($isEmail) {
+            $sent = $this->sendOtpEmail($destination, $otp);
+        } else {
+            // SMS fallback
+            try {
+                $sms = new SmsService();
+                $sent = $sms->sendSms($destination, "Your OTP code is: {$otp}");
+            } catch (\Throwable $e) {
+                Log::warning('SMS send failed: ' . $e->getMessage());
+                $sent = false;
+            }
+        }
+
+        if (!$sent) {
+            return ['success' => false, 'message' => 'Failed to send OTP'];
+        }
+
+        // Cache metadata for stateless clients
+        $normalized = $isEmail ? strtolower($destination) : preg_replace('/[^0-9]/', '', $destination);
+        $meta = ['hash' => $otpHash, 'issued_at' => now()->timestamp, 'purpose' => $purpose, 'destination' => $normalized, 'user_id' => $user->user_id ?? ($user->id ?? null)];
+        $ttl = (int)config('otp.ttl_seconds', 900);
+
+        try {
+            Cache::put('change_otp_' . $normalized, $meta, now()->addSeconds($ttl));
+            // IP -> destination mapping for fallback
+            // Note: caller may set IP mapping separately if desired
+            // Generate token for stateless clients
+            $otpToken = bin2hex(random_bytes(8));
+            Cache::put('change_otp_token_' . $otpToken, $meta, now()->addSeconds($ttl));
+        } catch (\Throwable $e) {
+            Log::warning('Failed to cache change OTP meta: ' . $e->getMessage());
+            $otpToken = null;
+        }
+
+        return [
+            'success' => true,
+            'masked' => $this->maskDestination($destination),
+            'otp_token' => $otpToken
+        ];
+    }
+
+    public function maskDestination($destination)
+    {
+        if (strpos($destination, '@') !== false) {
+            [$user, $domain] = explode('@', $destination, 2);
+            $len = strlen($user);
+            if ($len <= 2) return substr($user, 0, 1) . '***@' . $domain;
+            return substr($user, 0, 1) . str_repeat('*', max(1, min(3, $len - 1))) . '@' . $domain;
+        }
+        // phone masking: keep last 3 digits
+        $digits = preg_replace('/[^0-9]/', '', $destination);
+        $len = strlen($digits);
+        if ($len <= 4) return str_repeat('*', max(0, $len - 1)) . substr($digits, -1);
+        return str_repeat('*', $len - 4) . substr($digits, -4);
     }
 
     public function attemptUserLogin($username, $password)

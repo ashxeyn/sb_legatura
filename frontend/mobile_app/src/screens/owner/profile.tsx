@@ -13,6 +13,7 @@ import {
 import { View as SafeAreaView, StatusBar, Platform, AppState } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { role_service } from '../../services/role_service';
 
 interface ProfileScreenProps {
@@ -22,6 +23,7 @@ interface ProfileScreenProps {
   onOpenHelp?: () => void;
   onOpenSwitchRole?: () => void; // ✅ Navigate to switch role screen
   onOpenBoosts?: () => void; // Navigate to Boosts screen
+  onOpenChangeOtp?: () => void;
   userData?: {
     username?: string;
     email?: string;
@@ -55,6 +57,13 @@ export default function ProfileScreen({ onLogout, onViewProfile, onEditProfile, 
   const getInitials = (name: string) => {
     return name ? name.substring(0, 2).toUpperCase() : 'PO';
   };
+
+  let navigation: any = null;
+  try {
+    navigation = useNavigation();
+  } catch (e) {
+    navigation = null;
+  }
 
   // Handle logout with confirmation
   const handleLogout = () => {
@@ -129,14 +138,6 @@ export default function ProfileScreen({ onLogout, onViewProfile, onEditProfile, 
 
         },
         {
-          id: 'change_password',
-          icon: 'lock-closed-outline',
-          label: 'Change Password',
-          subtitle: 'Update your password',
-          showArrow: true,
-          onPress: () => Alert.alert('Coming Soon', 'This feature is under development.'),
-        },
-        {
           id: 'switch_role',
           icon: 'swap-horizontal-outline',
           label: 'Switch Role',
@@ -163,7 +164,34 @@ export default function ProfileScreen({ onLogout, onViewProfile, onEditProfile, 
           label: 'Privacy & Security',
           subtitle: 'Manage your privacy settings',
           showArrow: true,
-          onPress: () => Alert.alert('Coming Soon', 'This feature is under development.'),
+          onPress: () => {
+            if (typeof onOpenChangeOtp === 'function') { onOpenChangeOtp(); return; }
+            try { if (navigation && typeof navigation.navigate === 'function') { navigation.navigate('ChangeOtp'); return; } } catch (e) {}
+            try { // @ts-ignore
+              if (typeof global.set_app_state === 'function') { // @ts-ignore
+                global.set_app_state('change_otp'); return; }
+            } catch (e) {}
+            Alert.alert('Privacy & Security', 'Open change OTP screen.');
+          },
+        },
+      ],
+    },
+    {
+      title: 'Promotions',
+      items: [
+        {
+          id: 'boosts',
+          icon: 'rocket-outline',
+          label: 'Boosts',
+          subtitle: 'Promote your project to the top',
+          showArrow: true,
+          onPress: () => {
+            if (typeof onOpenBoosts === 'function') {
+              onOpenBoosts();
+            } else {
+              Alert.alert('Boosts', 'Open Boosts screen (not implemented in parent)');
+            }
+          },
         },
       ],
     },
@@ -194,25 +222,7 @@ export default function ProfileScreen({ onLogout, onViewProfile, onEditProfile, 
         },
       ],
     },
-    {
-      title: 'Promotions',
-      items: [
-        {
-          id: 'boosts',
-          icon: 'rocket-outline',
-          label: 'Boosts',
-          subtitle: 'Promote your project to the top',
-          showArrow: true,
-          onPress: () => {
-            if (typeof onOpenBoosts === 'function') {
-              onOpenBoosts();
-            } else {
-              Alert.alert('Boosts', 'Open Boosts screen (not implemented in parent)');
-            }
-          },
-        },
-      ],
-    },
+
   ];
 
   const renderMenuItem = (item: MenuItem) => (

@@ -6,13 +6,16 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
+  RefreshControl,
   Alert,
   ActivityIndicator,
+  DeviceEventEmitter,
 } from 'react-native';
 import { StatusBar, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { role_service } from '../../services/role_service';
+import { storage_service } from '../../utils/storage';
 
 interface SwitchRoleScreenProps {
   onBack: () => void;
@@ -28,6 +31,7 @@ interface SwitchRoleScreenProps {
 export default function SwitchRoleScreen({ onBack, onRoleChanged, onStartAddRole, userData, navigation }: SwitchRoleScreenProps & { navigation?: any }) {
   const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [switching, setSwitching] = useState(false);
   const [currentRole, setCurrentRole] = useState<'contractor' | 'owner' | null>(null);
   const [canSwitchRoles, setCanSwitchRoles] = useState(false);
@@ -59,9 +63,10 @@ export default function SwitchRoleScreen({ onBack, onRoleChanged, onStartAddRole
     return () => { if (unsub) unsub(); };
   }, [navigation]);
 
-  const loadCurrentRole = async () => {
+  const loadCurrentRole = async (showLoader = true) => {
     try {
-      setLoading(true);
+      if (showLoader) setLoading(true);
+      else setRefreshing(true);
       const response = await role_service.get_current_role();
       console.log('[DEBUG] get_current_role response:', response);
       // Helpful debug: surface nested role objects and top-level pending flag
@@ -119,12 +124,26 @@ export default function SwitchRoleScreen({ onBack, onRoleChanged, onStartAddRole
     } catch (error) {
       console.error('Load role error:', error);
     } finally {
-      setLoading(false);
+      if (showLoader) setLoading(false);
+      else setRefreshing(false);
+    }
+  };
+
+  const onRefresh = async () => {
+    try {
+      await loadCurrentRole(false);
+    } catch (e) {
+      console.warn('Refresh failed', e);
     }
   };
 
   const handleSwitchRole = async (targetRole: 'contractor' | 'owner') => {
-    if (switching || pendingRoleRequest) return;
+    console.log('handleSwitchRole called', { targetRole, switching, pendingRoleRequest, canSwitchRoles });
+    if (switching) return;
+    if (pendingRoleRequest && !canSwitchRoles) {
+      Alert.alert('Pending', 'Your application is under review; you cannot switch roles yet.');
+      return;
+    }
 
     const roleLabel = targetRole === 'contractor' ? 'Contractor' : 'Property Owner';
 
@@ -142,6 +161,30 @@ export default function SwitchRoleScreen({ onBack, onRoleChanged, onStartAddRole
               if (response.success) {
                 setApprovedRole(null); // Clear approved status after switching
                 setLastSwitchedRole(targetRole); // Track last switched
+                try {
+                  // Refresh current role immediately so UI updates without waiting for navigation
+                  await loadCurrentRole();
+                } catch (e) {
+                  console.warn('Failed to refresh role after switch', e);
+                }
+                try {
+                  // Update stored user preferred_role immediately so other screens
+                  // that read cached user synchronously (get_user_data_sync) update
+                  const stored = await storage_service.get_user_data();
+                  if (stored) {
+                    stored.preferred_role = targetRole;
+                    // also set a lightweight current_role/determinedRole to help views
+                    stored.determinedRole = targetRole === 'contractor' ? 'contractor' : 'owner';
+                    await storage_service.save_user_data(stored);
+                    console.log('Updated stored user preferred_role after switch:', targetRole);
+                  }
+                } catch (e) {
+                  console.warn('Failed to update stored user after role switch', e);
+                }
+                // Emit a global event so other screens can react to the change
+                try {
+                  DeviceEventEmitter.emit('roleChanged', { role: targetRole });
+                } catch (e) {}
                 onRoleChanged();
                 onBack();
               } else {
@@ -192,6 +235,14 @@ export default function SwitchRoleScreen({ onBack, onRoleChanged, onStartAddRole
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#EC7E00"
+            colors={["#EC7E00"]}
+          />
+        }
       >
         {/* SECTION: Current Status */}
         <View style={styles.section}>
@@ -264,6 +315,14 @@ export default function SwitchRoleScreen({ onBack, onRoleChanged, onStartAddRole
                       try {
                         // Fetch existing prefill data from server
                         const res = await role_service.get_switch_form_data();
+                        // If API returned validation errors or unsuccessful, show them and abort navigation
+                        if (!res?.success) {
+                          const errs = res?.errors || (res?.data && res.data.errors) || null;
+                          const msg = errs ? (Array.isArray(errs) ? errs.join('\n') : String(errs)) : (res?.message || 'Failed to fetch prefill data');
+                          Alert.alert('Error', msg);
+                          return;
+                        }
+
                         const existing = res?.data?.existing_data || res?.data?.existing_data_raw || res?.data?.existing_data || null;
                         // Navigate specifically to the roleReapplyScreen route
                         if (navigation && typeof navigation.navigate === 'function') {
@@ -276,6 +335,8 @@ export default function SwitchRoleScreen({ onBack, onRoleChanged, onStartAddRole
                         }
                       } catch (err) {
                         console.error('Reapply navigation error:', err);
+                        const msg = err?.message || 'An error occurred while preparing re-application';
+                        Alert.alert('Error', msg);
                       }
                     }}
                   >

@@ -16,6 +16,7 @@ import {
   AppState,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { DeviceEventEmitter } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import Feather from 'react-native-vector-icons/Feather';
@@ -220,7 +221,6 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
   // Refresh current role from API on mount and when app comes to foreground
   useEffect(() => {
     let isMounted = true;
-
     const fetchCurrentRole = async () => {
       try {
         const res = await role_service.get_current_role();
@@ -276,13 +276,19 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
 
     fetchCurrentRole();
 
-    const sub = AppState.addEventListener('change', (state) => {
+    // Listen for global roleChanged events to refresh immediately
+    const roleChangedSub = DeviceEventEmitter.addListener('roleChanged', () => {
+      fetchCurrentRole();
+    });
+
+    const appStateSub = AppState.addEventListener('change', (state) => {
       if (state === 'active') fetchCurrentRole();
     });
 
     return () => {
       isMounted = false;
-      sub.remove();
+      try { roleChangedSub.remove(); } catch (e) {}
+      try { appStateSub.remove(); } catch (e) {}
     };
   }, []);
 
@@ -1310,6 +1316,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
           onOpenHelp={onOpenHelp}
           onOpenSwitchRole={onOpenSwitchRole}
           onOpenSubscription={() => set_app_state('subscription')}
+          onEditProfile={onEditProfile}
           userData={{
             username: userData?.username,
             email: userData?.email,

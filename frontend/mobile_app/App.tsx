@@ -20,6 +20,8 @@ import ContractorBusinessDocumentsScreen from './src/screens/contractor/business
 // Shared Screens
 import EditProfileScreen from './src/screens/both/editProfile';
 import ViewProfileScreen from './src/screens/both/viewProfile';
+import ProfileScreen from './src/screens/owner/profile';
+import ContractorProfileScreen from './src/screens/contractor/profile';
 import HelpCenterScreen from './src/screens/both/helpCenter';
 import SwitchRoleScreen from './src/screens/both/switchRole';
 import RoleAddScreen from './src/screens/both/addRoleRegistration';
@@ -29,6 +31,7 @@ import ProfilePictureScreen from './src/screens/both/profilePic';
 import HomepageScreen from './src/screens/both/homepage';
 import SubscriptionScreen from './src/screens/contractor/subscriptionScreen';
 import ChangePasswordScreen from './src/screens/both/changePassword';
+import ChangeOtpScreen from './src/screens/both/changeOtpScreen';
 import { auth_service } from './src/services/auth_service';
 import { storage_service } from './src/utils/storage';
 
@@ -37,8 +40,8 @@ type AppState = 'loading' | 'onboarding' | 'auth_choice' | 'login' | 'signup' | 
     'contractor_company_info' | 'contractor_account_setup' | 'contractor_email_verification' | 'contractor_business_documents' | 'contractor_profile_picture' |
     // Property Owner Flow
     'po_personal_info' | 'po_account_setup' | 'po_email_verification' | 'po_role_verification' | 'po_profile_picture' |
-    'force_change_password' | 'subscription' |
-    'main' | 'edit_profile' | 'view_profile' | 'help_center' | 'switch_role' | 'add_role_registration';
+    'force_change_password' | 'change_otp' | 'subscription' |
+    'main' | 'edit_profile' | 'owner_profile' | 'contractor_profile' | 'view_profile' | 'help_center' | 'switch_role' | 'add_role_registration';
 
 
 
@@ -504,6 +507,70 @@ export default function App() {
         );
     }
 
+    if (app_state === 'change_otp') {
+        return (
+            <SafeAreaProvider>
+                <ChangeOtpScreen
+                    token={user_data?.token || user_data?.api_token || ''}
+                    purpose={'change_password'}
+                    onSuccess={() => set_app_state('change_otp')}
+                />
+            </SafeAreaProvider>
+        );
+    }
+
+    if (app_state === 'change_otp_verify') {
+        // @ts-ignore
+        const payload = global.change_otp_verify_payload ?? {};
+        return (
+            <SafeAreaProvider>
+                <EmailVerificationScreen
+                    email={payload.email || ''}
+                    onBackPress={() => set_app_state('change_otp')}
+                    onComplete={async (verificationCode: string) => {
+                        try {
+                            const body: any = { purpose: payload.purpose, otp: verificationCode, otp_token: payload.otpToken };
+                            body.new_value = payload.newValue ?? '';
+                            const response = await api_request('/api/change-otp/verify', {
+                                method: 'POST',
+                                body: JSON.stringify(body),
+                            });
+                            if (response.success) {
+                                Alert.alert('Success', `${payload.purpose.replace('_', ' ')} updated successfully`, [{ text: 'OK', onPress: () => set_app_state('change_otp') }]);
+                            } else {
+                                Alert.alert('Verification Failed', response.message || 'Invalid OTP. Please try again.');
+                            }
+                            return response;
+                        } catch (error) {
+                            console.error('OTP verification error:', error);
+                            Alert.alert('Error', 'Network error. Please check your connection and try again.');
+                            return { success: false, message: 'Network error' };
+                        }
+                    }}
+                    onResendOtp={async () => {
+                        try {
+                            const res = await api_request('/api/change-otp/send', {
+                                method: 'POST',
+                                body: JSON.stringify({ purpose: payload.purpose, new_value: payload.newValue ?? payload.email }),
+                            });
+                            if (res.success) {
+                                // Update stored token
+                                // @ts-ignore
+                                global.change_otp_verify_payload = { ...payload, otpToken: res.data?.otp_token ?? payload.otpToken };
+                                Alert.alert('Success', 'A new OTP has been sent.');
+                            } else {
+                                Alert.alert('Error', res.message || 'Failed to resend OTP.');
+                            }
+                        } catch (err) {
+                            console.error('Resend error', err);
+                            Alert.alert('Error', 'Network error. Please try again.');
+                        }
+                    }}
+                />
+            </SafeAreaProvider>
+        );
+    }
+
     if (app_state === 'user_type_selection') {
         return (
             <SafeAreaProvider>
@@ -562,9 +629,11 @@ export default function App() {
                             } else {
                                 Alert.alert('Verification Failed', response.message || 'Invalid OTP. Please try again.');
                             }
+                            return response;
                         } catch (error) {
                             console.error('OTP verification error:', error);
                             Alert.alert('Error', 'Network error. Please check your connection and try again.');
+                            return { success: false, message: 'Network error' };
                         }
                     }}
                     onResendOtp={async () => {
@@ -739,14 +808,35 @@ export default function App() {
             <SafeAreaProvider>
                 <EditProfileScreen
                     userData={user_data}
+                    navigation={{
+                        goBack: () => {
+                            try {
+                                const dashboard = getDashboardType(user_data);
+                                if (dashboard === 'contractor') set_app_state('contractor_profile');
+                                else set_app_state('owner_profile');
+                            } catch (e) {
+                                set_app_state('owner_profile');
+                            }
+                        }
+                    }}
                     onBackPress={() => {
-                        set_initial_home_tab('profile');
-                        set_app_state('main');
+                        try {
+                            const dashboard = getDashboardType(user_data);
+                            if (dashboard === 'contractor') set_app_state('contractor_profile');
+                            else set_app_state('owner_profile');
+                        } catch (e) {
+                            set_app_state('owner_profile');
+                        }
                     }}
                     onSaveSuccess={(updatedUser) => {
                         set_user_data(updatedUser);
-                        set_initial_home_tab('profile');
-                        set_app_state('main');
+                        try {
+                            const dashboard = getDashboardType(updatedUser || user_data);
+                            if (dashboard === 'contractor') set_app_state('contractor_profile');
+                            else set_app_state('owner_profile');
+                        } catch (e) {
+                            set_app_state('owner_profile');
+                        }
                     }}
                 />
             </SafeAreaProvider>
@@ -760,6 +850,48 @@ export default function App() {
             <SafeAreaProvider>
                 <ViewProfileScreen
                     onBack={() => set_app_state('main')}
+                    userData={{
+                        ...user_data,
+                        profile_pic: user_data?.profile_pic ? `${api_config.base_url}/storage/${user_data.profile_pic}` : undefined,
+                        cover_photo: user_data?.cover_photo ? `${api_config.base_url}/storage/${user_data.cover_photo}` : undefined,
+                    }}
+                />
+            </SafeAreaProvider>
+        );
+    }
+
+    if (app_state === 'owner_profile') {
+        return (
+            <SafeAreaProvider>
+                <ProfileScreen
+                    onLogout={handle_logout}
+                    onEditProfile={() => set_app_state('edit_profile')}
+                    onViewProfile={() => set_app_state('view_profile')}
+                    onOpenHelp={() => set_app_state('help_center')}
+                    onOpenSwitchRole={() => set_app_state('switch_role')}
+                    onOpenBoosts={() => set_app_state('subscription')}
+                    onOpenChangeOtp={() => set_app_state('change_otp')}
+                    userData={{
+                        ...user_data,
+                        profile_pic: user_data?.profile_pic ? `${api_config.base_url}/storage/${user_data.profile_pic}` : undefined,
+                        cover_photo: user_data?.cover_photo ? `${api_config.base_url}/storage/${user_data.cover_photo}` : undefined,
+                    }}
+                />
+            </SafeAreaProvider>
+        );
+    }
+
+    if (app_state === 'contractor_profile') {
+        return (
+            <SafeAreaProvider>
+                <ContractorProfileScreen
+                    onLogout={handle_logout}
+                    onEditProfile={() => set_app_state('edit_profile')}
+                    onViewProfile={() => set_app_state('view_profile')}
+                    onOpenHelp={() => set_app_state('help_center')}
+                    onOpenSwitchRole={() => set_app_state('switch_role')}
+                    onOpenSubscription={() => set_app_state('subscription')}
+                    onOpenChangeOtp={() => set_app_state('change_otp')}
                     userData={{
                         ...user_data,
                         profile_pic: user_data?.profile_pic ? `${api_config.base_url}/storage/${user_data.profile_pic}` : undefined,

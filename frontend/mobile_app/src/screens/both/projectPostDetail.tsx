@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -17,7 +17,8 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import ImageFallback from '../../components/ImageFallbackFixed';
-import { api_config } from '../../config/api';
+import { api_config, api_request } from '../../config/api';
+import { storage_service } from '../../utils/storage';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -61,6 +62,8 @@ const classifyImportant = (fileType: string, rawPath: string): boolean => {
   const path = (rawPath || '').toLowerCase();
   if (/building.?permit|title_of_land|title-of-land|land.?title/i.test(type)) return true;
   if (type === 'building permit' || type === 'title') return true;
+  // paths like project_files/titles/... or project_files/title/... should be treated as title
+  if (/(\/(titles?)\/)|\btitle(s?)\b/.test(path)) return true;
   const normalized = path.replace(/[^a-z0-9]+/g, ' ');
   const tokens = normalized.split(/\s+/).filter(Boolean);
   const has = (w: string) => tokens.includes(w);
@@ -100,12 +103,141 @@ export default function ProjectPostDetail({ project, onClose, onPlaceBid, userRo
     return diffDays;
   };
 
-  // Build owner profile image URL
-  const ownerProfileUrl = project.owner_profile_pic
-    ? `${api_config.base_url}/storage/${project.owner_profile_pic}`
-    : null;
+  // Local owner details fetched if project lacks owner/user info
+  const [ownerDetails, setOwnerDetails] = useState<any>(null);
+  const [loadingOwnerDetails, setLoadingOwnerDetails] = useState(false);
+
+  // Build owner profile image URL with robust fallbacks (include fetched ownerDetails)
+  let ownerProfilePath: any = null;
+  ownerProfilePath = project?.owner_profile_pic || project?.profile_pic || project?.user?.profile_pic || project?.user_profile_pic || project?.user?.profilePic || project?.profilePic || project?.avatar || project?.user?.avatar || project?.owner?.profile_pic || project?.owner_profile || project?.ownerProfile || project?.owner?.user?.profile_pic || null;
+  if (!ownerProfilePath && ownerDetails) {
+    ownerProfilePath = ownerDetails.profile_pic || ownerDetails.owner_profile_pic || ownerDetails.avatar || ownerDetails.profilePic || ownerDetails.user?.profile_pic || ownerDetails.user?.profilePic || ownerDetails.profile || null;
+  }
+  if (!ownerProfilePath && project?.owner && typeof project.owner === 'object') {
+    ownerProfilePath = project.owner.profile_pic || project.owner.avatar || project.owner.profilePic || project.owner.profile || null;
+  }
+  const ownerProfileUrl = ownerProfilePath ? (String(ownerProfilePath).startsWith('http') ? String(ownerProfilePath) : `${api_config.base_url}/storage/${String(ownerProfilePath)}`) : null;
 
   const daysRemaining = getDaysRemaining(project.bidding_deadline);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchProjectDetails = async () => {
+      if (!project || !project.project_id) return;
+      // If meaningful owner info is already present, skip fetching
+      const hasOwnerInfo = !!(
+        project.owner_full_name ||
+        project.owner_name ||
+        project.owner_profile_pic ||
+        project.profile_pic ||
+        project.user?.profile_pic ||
+        project.user?.username ||
+        project.user?.first_name ||
+        (project.owner && (project.owner.first_name || project.owner.profile_pic || project.owner.name))
+      );
+      if (hasOwnerInfo) return;
+      try {
+        setLoadingOwnerDetails(true);
+        // Try to read stored user id and pass as query param because
+        // the owner project details endpoint requires `user_id` query param.
+        let userId = null;
+        try {
+          const saved = await storage_service.get_user_data();
+          userId = saved ? (saved.user_id || saved.id || saved.user?.id || null) : null;
+        } catch (e) {
+          console.warn('Could not read stored user data for owner fetch', e);
+        }
+
+        const endpoint = userId
+          ? `/api/owner/projects/${project.project_id}?user_id=${userId}`
+          : `/api/owner/projects/${project.project_id}`;
+
+        const resp = await api_request(endpoint);
+        let handled = false;
+        if (resp && resp.success && resp.data) {
+          const data = resp.data.data || resp.data;
+          console.log('[ProjectPostDetail] fetched project details:', data);
+          // Preferred shape: { owner: {...} } or { user: {...} }
+          if (isMounted) {
+            if (data.owner || data.user) {
+              const mergedOwner = {
+                ...(data.owner || data.user),
+                type_name: data.type_name || null,
+                type_id: data.type_id || null,
+                owner_profile_pic: data.owner_profile_pic || null,
+              };
+              setOwnerDetails(mergedOwner);
+              handled = true;
+            } else {
+              // Some endpoints return flat owner fields (first_name, last_name, owner_id)
+              const maybeFirst = data.first_name || data.owner_first_name || null;
+              const maybeLast = data.last_name || data.owner_last_name || null;
+              if (maybeFirst || maybeLast) {
+                const constructed: any = {
+                  first_name: maybeFirst,
+                  last_name: maybeLast,
+                  owner_id: data.owner_id || data.ownerId || null,
+                  user_id: data.owner_user_id || data.user_id || null,
+                  profile_pic: data.owner_profile_pic || data.profile_pic || null,
+                };
+                constructed.owner_full_name = [constructed.first_name, constructed.last_name].filter(Boolean).join(' ').trim();
+                constructed.type_name = data.type_name || null;
+                constructed.type_id = data.type_id || null;
+                setOwnerDetails(constructed);
+                handled = true;
+              } else {
+                setOwnerDetails(null);
+              }
+            }
+          }
+        }
+
+        // If owner details were not provided or request was unauthorized, try public endpoint
+        if (!handled) {
+          try {
+            const publicResp = await api_request(`/api/projects/${project.project_id}/public`);
+            if (publicResp && publicResp.success && publicResp.data) {
+              const pdata = publicResp.data.data || publicResp.data;
+              console.log('[ProjectPostDetail] fetched public project details:', pdata);
+              // public endpoint returns owner_full_name and owner_profile_pic
+              const constructed: any = {
+                owner_full_name: pdata.owner_full_name || pdata.owner_name || null,
+                profile_pic: pdata.owner_profile_pic || null,
+                owner_profile_pic: pdata.owner_profile_pic || null,
+              };
+              // also attach type_name if present
+              if (pdata.type_name) constructed.type_name = pdata.type_name;
+              if (isMounted) setOwnerDetails(constructed);
+            } else {
+              // if publicResp returns failure, log message
+              console.warn('Public project details not available', publicResp?.message || publicResp);
+            }
+          } catch (err) {
+            console.warn('Failed to fetch public project details', err?.message || err);
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to fetch project owner details', e);
+      } finally {
+        if (isMounted) setLoadingOwnerDetails(false);
+      }
+    };
+
+    fetchProjectDetails();
+    return () => { isMounted = false; };
+  }, [project]);
+
+  // Debug: log project owner/user keys to diagnose missing avatar/name/type
+  console.log('[ProjectPostDetail] project summary:', {
+    project_id: project.project_id,
+    owner_name: project.owner_name,
+    owner_full_name: project.owner_full_name,
+    owner_profile_pic: project.owner_profile_pic,
+    profile_pic: project.profile_pic,
+    user: project.user,
+    owner: project.owner,
+    keys: Object.keys(project || {}),
+  });
 
   // Check if file is an image by extension OR by known project file_type
   const isImageFile = (path: string, fileType?: string) => {
@@ -122,15 +254,31 @@ export default function ProjectPostDetail({ project, onClose, onPlaceBid, userRo
   // Process files for display — classify into optional (design) and important (protected)
   const processFiles = () => {
     if (!project.files || project.files.length === 0) return [];
-    
+
     console.log('[ProjectPostDetail] Raw project.files:', JSON.stringify(project.files).substring(0, 500));
-    
+
     return project.files.map((file: any) => {
       const raw = typeof file === 'string' ? file : (file.file_path || '');
-      const fileType = typeof file === 'object' ? (file.file_type || '') : '';
+      let fileType = typeof file === 'object' ? (file.file_type || '') : '';
 
-      const url = raw.startsWith('http') 
-        ? raw 
+      // Infer file type from path when backend returns only a string path
+      const pathLower = (raw || '').toLowerCase();
+      if (!fileType) {
+        if (/(\/(titles?)\/)|\btitle(s?)\b/.test(pathLower) || pathLower.includes('title_of_land') || pathLower.includes('title-of-land')) {
+          fileType = 'title';
+        } else if (pathLower.includes('building_permit') || pathLower.includes('building-permit') || pathLower.includes('building permit')) {
+          fileType = 'building permit';
+        } else if (pathLower.includes('blueprint') || pathLower.includes('blueprints')) {
+          fileType = 'blueprint';
+        } else if (pathLower.includes('design') || pathLower.includes('desired_design') || pathLower.includes('designs')) {
+          fileType = 'desired design';
+        } else {
+          fileType = '';
+        }
+      }
+
+      const url = raw.startsWith('http')
+        ? raw
         : `${api_config.base_url}/storage/${raw}`;
 
       const isProtected = classifyImportant(fileType, raw);
@@ -196,7 +344,7 @@ export default function ProjectPostDetail({ project, onClose, onPlaceBid, userRo
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-      
+
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={onClose} style={styles.backButton}>
@@ -216,17 +364,28 @@ export default function ProjectPostDetail({ project, onClose, onPlaceBid, userRo
               style={styles.ownerAvatar}
               resizeMode="cover"
             />
-            <View>
-              <Text style={styles.ownerName}>{project.owner_name || 'Property Owner'}</Text>
-              <Text style={styles.postDate}>{formatDate(project.created_at)}</Text>
-            </View>
+              <View>
+                {/* Owner display name - prefer explicit owner_full_name or assembled name from owner/user payloads */}
+                {(() => {
+                  const first = project.owner_first_name || project.first_name || project.owner?.first_name || project.user?.first_name || ownerDetails?.first_name || '';
+                  const middle = project.owner_middle_name || project.middle_name || project.owner?.middle_name || project.user?.middle_name || ownerDetails?.middle_name || '';
+                  const last = project.owner_last_name || project.last_name || project.owner?.last_name || project.user?.last_name || ownerDetails?.last_name || '';
+                  const assembled = [first, middle, last].filter(Boolean).join(' ').trim();
+                  const displayName = project.owner_full_name || project.owner_name || assembled || ownerDetails?.owner_full_name || ownerDetails?.name || project.user?.username || 'Property Owner';
+                  return <Text style={styles.ownerName}>{displayName}</Text>;
+                })()}
+
+                <Text style={styles.postDate}>{formatDate(project.post_created_at || project.posted_at || project.created_at)}</Text>
+
+                {/* contractor/type removed from header (shown in Project Details badge) */}
+              </View>
           </View>
         </View>
 
         {/* Project Title */}
         <View style={styles.titleSection}>
           <Text style={styles.projectTitle}>{project.project_title}</Text>
-        
+
         </View>
 
         {/* Project Description */}
@@ -234,7 +393,7 @@ export default function ProjectPostDetail({ project, onClose, onPlaceBid, userRo
           <Text style={styles.descriptionText}>{project.project_description}</Text>
         </View>
 
-        
+
 
         {/* Project Details */}
         <View style={styles.detailsSection}>
@@ -242,10 +401,10 @@ export default function ProjectPostDetail({ project, onClose, onPlaceBid, userRo
           <View style={{ marginBottom: 8 }}>
             <View style={styles.typeBadge}>
               <MaterialIcons name="business" size={14} color="#EC7E00" />
-              <Text style={styles.typeText}>{project.type_name}</Text>
+              <Text style={styles.typeText}>{ownerDetails?.type_name || project.type_name || 'General'}</Text>
             </View>
           </View>
-          
+
           <View style={styles.detailRow}>
             <MaterialIcons name="location-on" size={20} color="#EC7E00" />
             <View style={styles.detailContent}>
@@ -315,7 +474,7 @@ export default function ProjectPostDetail({ project, onClose, onPlaceBid, userRo
 
         {/* Design Images (Blueprint, Desired Design, Others) - Facebook-style collage */}
         {designImages.length > 0 && (
-          <View style={[styles.imagesSection, { paddingHorizontal: H_PADDING }]}> 
+          <View style={[styles.imagesSection, { paddingHorizontal: H_PADDING }]}>
             {designImages.length === 1 && (
               <TouchableOpacity onPress={() => openImageViewer(0, 'design')} activeOpacity={0.9}>
                 <Image source={{ uri: designImages[0].url }} style={{ width: usableWidth, height: singleHeight, borderRadius: 8 }} resizeMode="cover" />

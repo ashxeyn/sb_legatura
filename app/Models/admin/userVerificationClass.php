@@ -113,12 +113,23 @@ class userVerificationClass
                 DB::table('users')->where('user_id', $userId)->update(['user_type' => 'contractor']);
             }
         } elseif ($targetRole === 'property_owner') {
+            $updatePayload = [
+                'verification_status' => 'approved',
+                'verification_date' => now()
+            ];
+            if (Schema::hasColumn('property_owners', 'is_active')) {
+                $updatePayload['is_active'] = 1;
+            } else {
+                \Log::warning("ApproveVerification: 'is_active' column missing on property_owners table for user_id {$userId}");
+            }
+
             DB::table('property_owners')
                 ->where('user_id', $userId)
-                ->update([
-                    'verification_status' => 'approved',
-                    'verification_date' => now()
-                ]);
+                ->update($updatePayload);
+
+            if ($user->user_type !== 'both' && $user->user_type !== 'property_owner') {
+                DB::table('users')->where('user_id', $userId)->update(['user_type' => 'property_owner']);
+            }
 
             if ($user->user_type !== 'both' && $user->user_type !== 'property_owner') {
                 DB::table('users')->where('user_id', $userId)->update(['user_type' => 'property_owner']);
@@ -156,12 +167,16 @@ class userVerificationClass
             }
 
             if ($hasOwner) {
+                $ownerPayload = [
+                    'verification_status' => 'approved',
+                    'verification_date' => now()
+                ];
+                if (Schema::hasColumn('property_owners', 'is_active')) {
+                    $ownerPayload['is_active'] = 1;
+                }
                 DB::table('property_owners')
                     ->where('user_id', $userId)
-                    ->update([
-                        'verification_status' => 'approved',
-                        'verification_date' => now()
-                    ]);
+                    ->update($ownerPayload);
             }
 
             // Update users.user_type to reflect available profiles
@@ -221,17 +236,15 @@ class userVerificationClass
         }
         // If target is owner, ONLY update property_owners table
         elseif ($targetRole === 'property_owner') {
-            DB::table('property_owners')
-                ->where('user_id', $userId)
-                ->update([
-                    'verification_status' => 'rejected',
-                    'rejection_reason' => $reason,
-                    'verification_date' => now()
-                ]);
-            $affectedOwners = DB::table('property_owners')->where('user_id', $userId)->update([
+            $rejectPayload = [
                 'verification_status' => 'rejected',
-                'rejection_reason' => $reason
-            ]);
+                'rejection_reason' => $reason,
+                'verification_date' => now()
+            ];
+            if (Schema::hasColumn('property_owners', 'is_active')) {
+                $rejectPayload['is_active'] = 0;
+            }
+            $affectedOwners = DB::table('property_owners')->where('user_id', $userId)->update($rejectPayload);
             \Log::info('RejectVerification: property_owners update', [
                 'user_id' => $userId,
                 'affected_rows' => $affectedOwners

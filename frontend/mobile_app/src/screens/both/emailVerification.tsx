@@ -15,6 +15,8 @@ import {
   Vibration
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
+import { useRoute, useNavigation } from '@react-navigation/native';
+import { api_request } from '../../config/api';
 
 interface EmailVerificationScreenProps {
   onBackPress: () => void;
@@ -32,11 +34,31 @@ export default function EmailVerificationScreen({
   email,
   onResendOtp
 }: EmailVerificationScreenProps) {
+  let route: any = null;
+  let navigation: any = null;
+  let params: any = {};
+  try {
+    route = useRoute();
+    navigation = useNavigation();
+    params = route?.params ?? {};
+  } catch (e) {
+    // Not mounted inside a NavigationContainer — fall back to prop-based usage
+    route = null;
+    navigation = null;
+    params = {};
+  }
+  // If used via navigation, route.params will supply these values
+  const navEmail = params.email ?? email;
+  const navOtpToken = params.otpToken ?? null;
+  const navPurpose = params.purpose ?? null;
+  const navNewValue = params.newValue ?? null;
+  const navTtl = params.ttl_seconds ?? null;
   const [verificationCode, setVerificationCode] = useState<string[]>(new Array(OTP_LENGTH).fill(''));
   const [isComplete, setIsComplete] = useState(false);
   const [resendTimer, setResendTimer] = useState(60);
   const [canResend, setCanResend] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Animation refs
   const scaleAnim = useRef(new Animated.Value(0)).current;
@@ -136,6 +158,27 @@ export default function EmailVerificationScreen({
     }
   }, [canResend, onResendOtp, email]);
 
+  // If used as a full-page screen via navigation and no onResendOtp prop provided,
+  // implement an internal resend handler that calls the send endpoint.
+  const handleResendInternal = useCallback(async () => {
+    if (!canResend) return;
+    try {
+      setResendTimer(60);
+      setCanResend(false);
+      const res = await api_request('/api/change-otp/send', {
+        method: 'POST',
+        body: JSON.stringify({ purpose: navPurpose, new_value: navNewValue ?? navEmail }),
+      });
+      if (!res.success) throw new Error(res.message || 'Failed to resend');
+      setVerificationCode(new Array(OTP_LENGTH).fill(''));
+      setIsComplete(false);
+      inputRefs.current[0]?.focus();
+      Alert.alert('Code Sent!', `A new verification code has been sent to ${navEmail}`);
+    } catch (err) {
+      Alert.alert('Error', 'Failed to resend code. Please try again.');
+    }
+  }, [canResend, navPurpose, navNewValue, navEmail]);
+
   const showErrorAnimation = useCallback(() => {
     Vibration.vibrate(100);
     Animated.sequence([
@@ -186,9 +229,54 @@ export default function EmailVerificationScreen({
         }),
       ]).start();
 
-      // Let the parent component handle the actual verification via onComplete
-      // The parent knows which user type (contractor or property_owner) to verify
-      onComplete(code);
+      // If parent provided onComplete prop, use it. Otherwise if navigated-to,
+      // perform verification here using the route params and api_request.
+      if (typeof onComplete === 'function') {
+        try {
+          setIsVerifying(true);
+          const res: any = await onComplete(code);
+          // If parent returned a failure response, treat as invalid OTP
+          if (res && res.success === false) {
+            const msg = res.message || 'Invalid OTP';
+            setErrorMessage(msg);
+            showErrorAnimation();
+            Vibration.vibrate(100);
+            setVerificationCode(new Array(OTP_LENGTH).fill(''));
+            setIsComplete(false);
+            setIsVerifying(false);
+            inputRefs.current[0]?.focus();
+            return;
+          }
+        } catch (e) {
+          // If parent handler threw, show generic error and reset
+          setErrorMessage('Verification failed. Please try again.');
+          showErrorAnimation();
+          Vibration.vibrate(100);
+          setVerificationCode(new Array(OTP_LENGTH).fill(''));
+          setIsComplete(false);
+          setIsVerifying(false);
+          inputRefs.current[0]?.focus();
+          return;
+        }
+      } else if (navPurpose) {
+        // perform verification directly
+        try {
+          setIsVerifying(true);
+          const body: any = { purpose: navPurpose, otp: code, otp_token: navOtpToken };
+          body.new_value = navPurpose === 'change_password' ? navNewValue : navNewValue;
+          const res = await api_request('/api/change-otp/verify', {
+            method: 'POST',
+            body: JSON.stringify(body),
+          });
+          if (!res.success) throw new Error(res.message || 'Verification failed');
+          Alert.alert('Success', 'Verified successfully', [{ text: 'OK', onPress: () => { if (navigation && typeof navigation.goBack === 'function') navigation.goBack(); } }]);
+        } catch (err: any) {
+          showErrorAnimation();
+          setIsComplete(false);
+          setIsVerifying(false);
+          Alert.alert('Verification Failed', err.message || 'Please try again');
+        }
+      }
     } catch (error) {
       // unexpected error handler
       showErrorAnimation();
@@ -213,6 +301,7 @@ export default function EmailVerificationScreen({
 
   const codeLength = verificationCode.filter(digit => digit !== '').length;
   const isCodeComplete = codeLength === OTP_LENGTH;
+  const displayEmail = navEmail ?? email;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -236,10 +325,10 @@ export default function EmailVerificationScreen({
         <View style={styles.content}>
           <View style={styles.titleContainer}>
             <Text style={styles.title}>Email Verification</Text>
-            <Text style={styles.subtitle}>
-              We've sent a 6-digit code to{' '}
-              <Text style={styles.emailText}>{formatEmail(email)}</Text>
-            </Text>
+              <Text style={styles.subtitle}>
+                We've sent a 6-digit code to{' '}
+                <Text style={styles.emailText}>{formatEmail(displayEmail)}</Text>
+              </Text>
           </View>
 
           {/* OTP Input Container */}
@@ -256,7 +345,8 @@ export default function EmailVerificationScreen({
                   style={[
                     styles.otpInput,
                     digit !== '' && styles.otpInputFilled,
-                    isComplete && styles.otpInputSuccess
+                    isComplete && styles.otpInputSuccess,
+                    errorMessage && styles.otpInputError
                   ]}
                   value={digit}
                   onChangeText={(text) => handleInputChange(text, index)}
@@ -290,6 +380,10 @@ export default function EmailVerificationScreen({
             </Text>
           </View>
 
+          {errorMessage && (
+            <Text style={styles.errorTextCentered}>{errorMessage}</Text>
+          )}
+
           {/* Resend Section */}
           <View style={styles.resendContainer}>
             {!canResend ? (
@@ -300,7 +394,7 @@ export default function EmailVerificationScreen({
               <View style={styles.resendRow}>
                 <Text style={styles.resendText}>Didn't receive the code? </Text>
                 <TouchableOpacity
-                  onPress={handleResendOtp}
+                  onPress={onResendOtp ? handleResendOtp : handleResendInternal}
                   style={styles.resendButton}
                   activeOpacity={0.7}
                 >
@@ -445,6 +539,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#ECFDF5',
     borderColor: '#10B981',
   },
+  otpInputError: {
+    borderColor: '#EF4444',
+    backgroundColor: '#FFF1F2',
+  },
   inputDot: {
     position: 'absolute',
     bottom: -8,
@@ -489,6 +587,12 @@ const styles = StyleSheet.create({
   resendRow: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  errorTextCentered: {
+    color: '#EF4444',
+    textAlign: 'center',
+    marginBottom: 12,
+    fontSize: 14,
   },
   resendText: {
     fontSize: 14,

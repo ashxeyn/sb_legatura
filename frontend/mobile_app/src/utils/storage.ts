@@ -8,11 +8,15 @@ const STORAGE_KEYS = {
 };
 
 export class storage_service {
+  // cached user to allow synchronous reads during render
+  static _cachedUser: any = null;
   // Save user data and auth state
   static async save_user_data(user_data: any): Promise<boolean> {
     try {
       await AsyncStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(user_data));
       await AsyncStorage.setItem(STORAGE_KEYS.IS_AUTHENTICATED, 'true');
+      // update cached copy
+      storage_service._cachedUser = user_data;
       console.log('User data saved to storage');
       return true;
     } catch (error) {
@@ -27,6 +31,8 @@ export class storage_service {
       const user_data_string = await AsyncStorage.getItem(STORAGE_KEYS.USER_DATA);
       if (user_data_string) {
         const user_data = JSON.parse(user_data_string);
+        // cache for synchronous access
+        storage_service._cachedUser = user_data;
         console.log('User data retrieved from storage:', user_data.username);
         return user_data;
       }
@@ -35,6 +41,11 @@ export class storage_service {
       console.error('Error retrieving user data:', error);
       return null;
     }
+  }
+
+  // Synchronous read of the last-cached user data (may be null)
+  static get_user_data_sync(): any | null {
+    return storage_service._cachedUser || null;
   }
 
   // Check if user is authenticated
