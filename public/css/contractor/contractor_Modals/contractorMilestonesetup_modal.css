@@ -8,7 +8,7 @@
     right: 0;
     bottom: 0;
     background-color: rgba(0, 0, 0, 0.5);
-    z-index: 9999;
+    z-index: 9001;
     animation: fadeIn 0.3s ease;
 }
 
@@ -642,6 +642,7 @@
     from {
         opacity: 0;
     }
+
     to {
         opacity: 1;
     }
@@ -652,6 +653,7 @@
         opacity: 0;
         transform: translateY(20px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -667,7 +669,7 @@
     right: 0;
     bottom: 0;
     background-color: rgba(0, 0, 0, 0.6);
-    z-index: 10000;
+    z-index: 9002;
     align-items: center;
     justify-content: center;
     padding: 1rem;

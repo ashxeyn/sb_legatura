@@ -1,4 +1,5 @@
     import { api_request } from '../config/api';
+    import { storage_service } from '../utils/storage';
 
     export interface SwitchRoleResponse {
     success: boolean;
@@ -70,6 +71,31 @@
      */
     static async get_switch_form_data(): Promise<any> {
       try {
+        // If the current user already has both roles, skip fetching switch-form (not needed)
+        try {
+          const savedUser = await storage_service.get_user_data();
+          const uType = (savedUser?.user_type || savedUser?.userType || '').toString().toLowerCase();
+          if (uType === 'both') {
+            console.log('Skipping /api/role/switch-form — user already has both roles');
+            return {
+              success: true,
+              data: {
+                form_data: {
+                  contractor_types: [],
+                  occupations: [],
+                  valid_ids: [],
+                  provinces: [],
+                  picab_categories: []
+                },
+                form_data_raw: {},
+                existing_data: {},
+                existing_data_raw: {}
+              }
+            };
+          }
+        } catch (err) {
+          console.warn('Could not read saved user for switch-form guard:', err);
+        }
         // Prefer authenticated switch-form for both form data and prefill
         let raw: any = {};
         let existing: any = {};
@@ -117,8 +143,7 @@
 
           const normalizedForm = {
             contractor_types: normList(raw.contractor_types || [], 'type_id', ['type_name', 'name']),
-            occupations: normList(raw.occupations || [], 'id', ['occupation_name', 'name', 'title']),
-            valid_ids: normList(raw.valid_ids || [], 'id', ['valid_id_name', 'name']),
+            occupations: normList(raw.occupations || [], 'occupation_id', ['occupation_name', 'name', 'title']),            valid_ids: normList(raw.valid_ids || [], 'id', ['valid_id_name', 'name']),
             provinces: Array.isArray(raw.provinces) ? raw.provinces : [],
             picab_categories: Array.isArray(raw.picab_categories) ? raw.picab_categories : [],
           };

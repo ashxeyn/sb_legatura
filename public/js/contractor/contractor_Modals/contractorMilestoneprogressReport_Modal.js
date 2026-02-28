@@ -351,13 +351,38 @@ class ContractorViewProgressReportModal {
         window.handleSendReport = (event) => {
             event.preventDefault();
             event.stopPropagation();
-            // Close the current dropdown
             const dropdown = event.target.closest('.report-dropdown');
             if (dropdown) dropdown.classList.remove('active');
 
-            // Show dispute prompt matching TSX
-            if (window.confirm('File a Dispute\n\nWould you like to file a dispute or report an issue?')) {
-                window.alert('Info: Please go to milestone detail to file a specific dispute');
+            const itemId = this.currentItemId;
+            const itemsData = window.milestoneItemsData || {};
+            const item = itemsData[itemId];
+
+            if (window.contractorDisputesInstance) {
+                const projectId = item ? (item.project_id || window.currentProjectId) : window.currentProjectId;
+                window.contractorDisputesInstance.openDisputeModal(itemId, item ? item.title : 'Milestone Item', item ? item.milestone_id : null, projectId);
+            }
+            else {
+                alert('Dispute system not initialized.');
+            }
+        };
+
+        window.handleHalt = (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            const dropdown = event.target.closest('.report-dropdown');
+            if (dropdown) dropdown.classList.remove('active');
+
+            const itemId = this.currentItemId;
+            const itemsData = window.milestoneItemsData || {};
+            const item = itemsData[itemId];
+
+            if (window.contractorDisputesInstance) {
+                const projectId = item ? (item.project_id || window.currentProjectId) : window.currentProjectId;
+                window.contractorDisputesInstance.openDisputeModal(itemId, item ? item.title : 'Milestone Item', item ? item.milestone_id : null, projectId, 'Halt');
+            }
+            else {
+                alert('Dispute system not initialized.');
             }
         };
 
@@ -367,8 +392,12 @@ class ContractorViewProgressReportModal {
             const dropdown = event.target.closest('.report-dropdown');
             if (dropdown) dropdown.classList.remove('active');
 
-            // For now, just show an alert as report history modal is not implemented yet
-            window.alert('Report history feature coming soon');
+            const itemId = this.currentItemId;
+            if (window.contractorDisputesInstance) {
+                window.contractorDisputesInstance.openHistoryModal(itemId);
+            } else {
+                alert('History system not initialized.');
+            }
         };
 
         // Close dropdowns when clicking outside

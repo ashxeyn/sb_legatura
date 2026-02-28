@@ -56,6 +56,10 @@ Route::post('/user/update-profile', [authController::class , 'updateProfile']);
 // Keep both `/profile` and `/user/profile` aliases for backward compatibility
 Route::post('/profile', [profileController::class , 'update']);
 Route::post('/user/profile', [profileController::class , 'update']);
+// Fetch profile data (owner profile + stats) for mobile About tab
+Route::get('/profile/fetch', [profileController::class, 'apiGetProfile']);
+// Fetch reviews for a user (mobile Reviews tab)
+Route::get('/profile/reviews', [profileController::class, 'apiGetReviews']);
 
 // Test endpoint for mobile app
 Route::get('/test', [authController::class , 'apiTest']);
@@ -112,6 +116,10 @@ Route::post('/login', [authController::class , 'apiLogin']);
 Route::post('/register', [authController::class , 'apiRegister']);
 Route::post('/force-change-password', [passwordController::class , 'apiForceChangePassword']);
 
+// Change OTP endpoints (public; controller will resolve user via bearer token if provided)
+Route::post('/change-otp/send', [\App\Http\Controllers\OTPChangeController::class, 'sendOtp']);
+Route::post('/change-otp/verify', [\App\Http\Controllers\OTPChangeController::class, 'verifyOtp']);
+
 // Mobile API signup routes (mirror web signup but stateless API paths for mobile clients)
 Route::post('/signup/contractor/step1', [authController::class , 'contractorStep1']);
 Route::post('/signup/contractor/step2', [authController::class , 'contractorStep2']);
@@ -147,6 +155,10 @@ Route::get('/search/filter-options', [\App\Http\Controllers\both\homepageControl
 // Owner endpoints - for owner dashboard/project management
 Route::get('/owner/projects', [projectsController::class , 'apiGetOwnerProjects']);
 Route::post('/owner/projects', [projectsController::class , 'apiCreateProject']);
+
+// Public project details (non-owner) - returns limited public info
+Route::get('/projects/{projectId}/public', [profileController::class, 'apiGetProjectPublic']);
+
 Route::get('/owner/projects/{projectId}', [projectsController::class , 'apiGetProjectDetails']);
 Route::get('/owner/projects/{projectId}/bids', [biddingController::class , 'getProjectBids']);
 Route::post('/owner/projects/{projectId}/bids/{bidId}/accept', [projectsController::class , 'apiAcceptBid']);
@@ -405,6 +417,7 @@ Route::middleware('auth:sanctum')->group(function () {
         }
         );
 
+
         // Messages & Chat (Real-time with Pusher)
         Route::prefix('messages')->group(function () {
             Route::get('/', [\App\Http\Controllers\message\messageController::class , 'index']); // Get inbox
@@ -543,6 +556,8 @@ Route::post('/projects/{projectId}/update/preview', [projectUpdateController::cl
 Route::post('/projects/{projectId}/update', [projectUpdateController::class, 'store']);
 Route::post('/projects/{projectId}/updates/{extensionId}/withdraw', [projectUpdateController::class, 'withdraw']);
 // Owner
-Route::post('/projects/{projectId}/updates/{extensionId}/approve', [projectUpdateController::class, 'approve']);
-Route::post('/projects/{projectId}/updates/{extensionId}/reject', [projectUpdateController::class, 'reject']);
-Route::post('/projects/{projectId}/updates/{extensionId}/request-changes', [projectUpdateController::class, 'requestChanges']);
+Route::post('/projects/{projectId}/updates/{extensionId}/approve', [ProjectUpdateController::class, 'approve']);
+Route::post('/projects/{projectId}/updates/{extensionId}/reject', [ProjectUpdateController::class, 'reject']);
+Route::post('/projects/{projectId}/updates/{extensionId}/request-changes', [ProjectUpdateController::class, 'requestChanges']);
+
+    // NOTE: change-otp endpoints are registered publicly (do not rely on Sanctum middleware)

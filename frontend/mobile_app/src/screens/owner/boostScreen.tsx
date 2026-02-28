@@ -15,8 +15,29 @@ import {
 	TextInput,
 	StatusBar,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, Feather } from '@expo/vector-icons';
+
+// Color palette (local copy)
+const COLORS = {
+	primary: '#EC7E00',
+	primaryLight: '#FFF3E6',
+	primaryDark: '#C96A00',
+	success: '#10B981',
+	successLight: '#D1FAE5',
+	warning: '#F59E0B',
+	warningLight: '#FEF3C7',
+	error: '#EF4444',
+	info: '#3B82F6',
+	infoLight: '#DBEAFE',
+	background: '#F8FAFC',
+	surface: '#FFFFFF',
+	text: '#0F172A',
+	textSecondary: '#64748B',
+	textMuted: '#94A3B8',
+	border: '#E2E8F0',
+	borderLight: '#F1F5F9',
+	star: '#FFC107',
+};
 import { api_request, api_config } from '../../config/api';
 
 export default function BoostScreen({ navigation }: any) {
@@ -297,39 +318,19 @@ export default function BoostScreen({ navigation }: any) {
 
 	return (
 		<SafeAreaView style={styles.container}>
-			<StatusBar barStyle="light-content" backgroundColor="#EC7E00" />
+			<StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-			{/* Redesigned Header with Gradient */}
-			<LinearGradient
-				colors={['#EC7E00', '#F9A826']}
-				start={{ x: 0, y: 0 }}
-				end={{ x: 1, y: 1 }}
-				style={styles.headerGradient}
-			>
+					{/* Header (white) */}
+					<View style={styles.headerGradient}>
 				<View style={styles.headerContent}>
-					<TouchableOpacity
-						style={styles.backButton}
-						onPress={() => {
-							try {
-								navigation.navigate('Profile');
-							} catch (e) {
-								navigation.goBack();
-							}
-						}}
-					>
-						<Ionicons name="arrow-back" size={24} color="#FFF" />
+					<TouchableOpacity onPress={() => {
+						try { navigation.navigate('Profile'); } catch (e) { navigation.goBack(); }
+					}} style={styles.backButton}>
+						<Feather name="chevron-left" size={24} color={COLORS.text} />
+						<Text style={styles.backText}>Back</Text>
 					</TouchableOpacity>
 
-					<View style={styles.headerTextContainer}>
-						<Text style={styles.headerTitle}>Boost Your Posts</Text>
-						<Text style={styles.headerSubtitle}>Get more visibility & bids</Text>
-					</View>
-
-					<View style={styles.headerRight}>
-						<View style={styles.priceBadge}>
-							<Text style={styles.priceBadgeText}>₱49</Text>
-						</View>
-					</View>
+			
 				</View>
 
 				{/* Stats Preview Card */}
@@ -349,7 +350,7 @@ export default function BoostScreen({ navigation }: any) {
 						<Text style={styles.statLabel}>Price (₱)</Text>
 					</View>
 				</View>
-			</LinearGradient>
+			</View>
 
 			{/* Tab Bar */}
 			<View style={styles.tabBar}>
@@ -481,10 +482,11 @@ const styles = StyleSheet.create({
 		borderBottomLeftRadius: 30,
 		borderBottomRightRadius: 30,
 		elevation: 8,
-		shadowColor: '#EC7E00',
+		backgroundColor: '#FFFFFF',
+		shadowColor: '#000',
 		shadowOffset: { width: 0, height: 4 },
-		shadowOpacity: 0.3,
-		shadowRadius: 12,
+		shadowOpacity: 0.08,
+		shadowRadius: 8,
 	},
 	headerContent: {
 		flexDirection: 'row',
@@ -494,12 +496,13 @@ const styles = StyleSheet.create({
 		paddingBottom: 20,
 	},
 	backButton: {
-		width: 40,
-		height: 40,
-		borderRadius: 20,
-		backgroundColor: 'rgba(255,255,255,0.2)',
-		justifyContent: 'center',
+		flexDirection: 'row',
 		alignItems: 'center',
+	},
+	backText: {
+		fontSize: 16,
+		color: COLORS.text,
+		marginLeft: 4,
 	},
 	headerTextContainer: {
 		flex: 1,
@@ -508,11 +511,11 @@ const styles = StyleSheet.create({
 	headerTitle: {
 		fontSize: 20,
 		fontWeight: '800',
-		color: '#FFF',
+		color: COLORS.text,
 	},
 	headerSubtitle: {
 		fontSize: 13,
-		color: 'rgba(255,255,255,0.9)',
+		color: COLORS.textMuted,
 		marginTop: 2,
 	},
 	headerRight: {

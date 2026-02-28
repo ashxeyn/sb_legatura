@@ -82,7 +82,9 @@ export class auth_service {
    */
   static async updateProfile(formData: FormData): Promise<api_response> {
     try {
-      const response = await api_request('/api/user/update-profile', {
+      // Use profile endpoint (handled by profileController.update)
+      const endpoint = api_config.endpoints.profile?.update || '/api/user/profile';
+      const response = await api_request(endpoint, {
         method: 'POST',
         body: formData,
       });

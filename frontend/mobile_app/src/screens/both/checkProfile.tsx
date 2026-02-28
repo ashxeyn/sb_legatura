@@ -482,7 +482,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   backText: {
-    fontSize: 16,
+    fontSize: 1,
     color: COLORS.text,
     marginLeft: 4,
   },

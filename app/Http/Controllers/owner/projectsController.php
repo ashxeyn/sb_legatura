@@ -950,6 +950,13 @@ class projectsController extends Controller
                     ->count();
                 $project->bids_count = $bidCount;
 
+                // Attach project files (from project_files table) so mobile clients
+                // can use these as thumbnails/gallery images.
+                $project->files = DB::table('project_files')
+                    ->where('project_id', $project->project_id)
+                    ->orderBy('uploaded_at', 'asc')
+                    ->get();
+
                 // If contractor is selected, get accepted bid details
                 $project->accepted_bid = null;
                 $project->display_status = $project->project_status;
@@ -1327,29 +1334,28 @@ class projectsController extends Controller
                 ], 400);
             }
 
+
             // Get project with full details
             $project = DB::table('projects as p')
                 ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
                 ->join('contractor_types as ct', 'p.type_id', '=', 'ct.type_id')
                 ->join('property_owners as po', 'pr.owner_id', '=', 'po.owner_id')
+                ->leftJoin('users as u', 'po.user_id', '=', 'u.user_id')
                 ->select(
-                    'p.*',
-                    'ct.type_name',
-                    'pr.project_post_status',
-                    'pr.bidding_due',
-                    'pr.owner_id',
-                    'po.first_name',
-                    'po.last_name'
-                )
+                'p.*',
+                'ct.type_name',
+                'pr.project_post_status',
+                'pr.bidding_due',
+                'pr.owner_id',
+                'po.first_name',
+                'po.last_name',
+                'po.owner_id as owner_id',
+                'u.user_id as owner_user_id',
+                'u.profile_pic as owner_profile_pic',
+                'u.username as owner_username'
+            )
                 ->where('p.project_id', $projectId)
                 ->first();
-
-            if (!$project) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Project not found'
-                ], 404);
-            }
 
             // Verify ownership
             $owner = DB::table('property_owners')->where('user_id', $userId)->first();
@@ -1381,6 +1387,8 @@ class projectsController extends Controller
             ], 500);
         }
     }
+
+
 
     /**
      * @deprecated Moved to \App\Http\Controllers\both\HomepageController::apiGetApprovedProjects()

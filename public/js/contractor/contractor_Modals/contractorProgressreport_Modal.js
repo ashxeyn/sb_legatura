@@ -844,7 +844,7 @@ class ContractorProgressreportModal {
             info: 'background: linear-gradient(135deg, #EEA24B, #F57C00); color: white;',
         };
         toast.style.cssText = `
-            position: fixed; bottom: 2rem; right: 2rem;
+            position: fixed; top: 2rem; right: 2rem;
             padding: 0.875rem 1.5rem; border-radius: 0.75rem;
             font-size: 0.875rem; font-weight: 600; z-index: 9999;
             box-shadow: 0 8px 24px rgba(0,0,0,0.2);

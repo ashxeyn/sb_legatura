@@ -66,9 +66,9 @@ class disputeClass
             ->leftJoin('milestone_items as mi', 'd.milestone_item_id', '=', 'mi.item_id')
             ->leftJoin('users as raised_user', 'd.raised_by_user_id', '=', 'raised_user.user_id')
             ->leftJoin('users as against_user', 'd.against_user_id', '=', 'against_user.user_id')
-            ->where(function($query) use ($userId) {
+            ->where(function ($query) use ($userId) {
                 $query->where('d.raised_by_user_id', $userId)
-                      ->orWhere('d.against_user_id', $userId);
+                    ->orWhere('d.against_user_id', $userId);
             })
             ->select(
                 'd.dispute_id',
@@ -143,7 +143,7 @@ class disputeClass
         } else if ($currentRole === 'contractor') {
             $query->where('c.user_id', $userId);
         } else {
-            $query->where(function($q) use ($userId, $ownerId) {
+            $query->where(function ($q) use ($userId, $ownerId) {
                 $q->where('c.user_id', $userId);
                 if ($ownerId) {
                     $q->orWhere('pr.owner_id', $ownerId);
@@ -152,16 +152,16 @@ class disputeClass
         }
 
         return $query->select(
-                'p.project_id',
-                'p.project_title',
-                'p.project_description',
-                'c.user_id as contractor_user_id',
-                'p.selected_contractor_id',
+            'p.project_id',
+            'p.project_title',
+            'p.project_description',
+            'c.user_id as contractor_user_id',
+            'p.selected_contractor_id',
             'pr.owner_id',
-                'p.project_status',
+            'p.project_status',
             'pr.created_at'
-            )
-        ->orderBy('pr.created_at', 'desc')
+        )
+            ->orderBy('pr.created_at', 'desc')
             ->get();
     }
 
@@ -238,9 +238,9 @@ class disputeClass
         return DB::table('milestones as m')
             ->leftJoin('milestone_items as mi', 'm.milestone_id', '=', 'mi.milestone_id')
             ->where('m.project_id', $projectId)
-            ->where(function($query) {
+            ->where(function ($query) {
                 $query->where('m.is_deleted', 0)
-                      ->orWhereNull('m.is_deleted'); // Exclude deleted milestones
+                    ->orWhereNull('m.is_deleted'); // Exclude deleted milestones
             })
             ->select(
                 'm.milestone_id',
@@ -349,9 +349,9 @@ class disputeClass
             ->leftJoin('milestone_items as mi', 'd.milestone_item_id', '=', 'mi.item_id')
             ->leftJoin('users as raised_user', 'd.raised_by_user_id', '=', 'raised_user.user_id')
             ->leftJoin('users as against_user', 'd.against_user_id', '=', 'against_user.user_id')
-            ->where(function($query) use ($userId) {
+            ->where(function ($query) use ($userId) {
                 $query->where('d.raised_by_user_id', $userId)
-                      ->orWhere('d.against_user_id', $userId);
+                    ->orWhere('d.against_user_id', $userId);
             })
             ->select(
                 'd.dispute_id',
@@ -388,22 +388,41 @@ class disputeClass
     {
         $project = DB::table('projects as p')
             ->leftJoin('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
-            ->leftJoin('contractors as c', 'p.selected_contractor_id', '=', 'c.contractor_id')
             ->leftJoin('property_owners as po', 'pr.owner_id', '=', 'po.owner_id')
+            // Join contractor based on projects table first
+            ->leftJoin('contractors as c1', 'p.selected_contractor_id', '=', 'c1.contractor_id')
+            // Join contractor based on project_relationships table as fallback
+            ->leftJoin('contractors as c2', 'pr.selected_contractor_id', '=', 'c2.contractor_id')
             ->where('p.project_id', $projectId)
             ->select(
                 'p.project_id',
                 'pr.owner_id',
                 'po.user_id as owner_user_id',
                 'p.project_title',
-                'c.user_id as contractor_user_id',
-                'p.selected_contractor_id'
+                DB::raw('COALESCE(c1.user_id, c2.user_id) as contractor_user_id'),
+                DB::raw('COALESCE(p.selected_contractor_id, pr.selected_contractor_id) as selected_contractor_id')
             )
             ->first();
 
         if (!$project || !$project->owner_id) {
             return ['valid' => false, 'message' => 'Project not found'];
         }
+
+        // If still no contractor, try to find via accepted bid
+        if (empty($project->contractor_user_id)) {
+            $acceptedBid = DB::table('bids as b')
+                ->join('contractors as c', 'b.contractor_id', '=', 'c.contractor_id')
+                ->where('b.project_id', $projectId)
+                ->where('b.bid_status', 'accepted')
+                ->select('c.user_id', 'b.contractor_id')
+                ->first();
+
+            if ($acceptedBid) {
+                $project->contractor_user_id = $acceptedBid->user_id;
+                $project->selected_contractor_id = $acceptedBid->contractor_id;
+            }
+        }
+
 
         // Ensure we can determine the owner user id (property_owners.user_id)
         if (empty($project->owner_user_id)) {

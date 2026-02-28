@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\DB;
 
 class ProjectResource extends JsonResource
 {
@@ -31,6 +32,7 @@ class ProjectResource extends JsonResource
             'bidding_deadline' => $this->bidding_deadline,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
+            'files' => DB::table('project_files')->where('project_id', $this->project_id)->get(),
         ];
     }
 }

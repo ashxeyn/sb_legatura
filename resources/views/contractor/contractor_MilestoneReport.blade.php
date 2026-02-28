@@ -94,6 +94,7 @@
 
                                 $milestoneItemsData[$item->item_id] = [
                                     'id' => $item->item_id,
+                                    'milestone_id' => $item->milestone_id,
                                     'sequenceNumber' => $seqIndex,
                                     'title' => $item->milestone_item_title ?? 'Untitled',
                                     'description' => $item->milestone_item_description ?? '',
@@ -484,6 +485,12 @@
     <!-- View Progress Report Modal (Detail modal for milestone item) -->
     @include('contractor.contractor_Modals.contractorMilestoneprogressReport_Modal')
 
+    <!-- Contractor Dispute Modal -->
+    @include('contractor.contractor_Modals.contractorDisputesSendreport_Modal')
+
+    <!-- Contractor Report History Modal -->
+    @include('contractor.contractor_Modals.contractorDisputesReporthistory_Modal')
+
     <!-- Progress Report Modal (for submitting) -->
     @include('contractor.contractor_Modals.contractorProgressreport_Modal')
 
@@ -503,6 +510,8 @@
     <link rel="stylesheet"
         href="{{ asset('css/contractor/contractor_Modals/contractorMilestoneprogressReport_Modal.css') }}?v={{ time() }}">
     <link rel="stylesheet" href="{{ asset('css/contractor/contractor_Modals/contractorProgressreport_Modal.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/contractor/contractor_Modals/contractorDisputes.css') }}?v={{ time() }}">
+    <link rel="stylesheet" href="{{ asset('css/contractor/contractor_Modals/contractorDisputesHistory.css') }}?v={{ time() }}">
 @endsection
 
 @section('extra_js')
@@ -510,6 +519,7 @@
     <script src="{{ asset('js/contractor/contractor_Modals/contractorMilestonesetup_modal.js') }}?v={{ time() }}"></script>
     <script src="{{ asset('js/contractor/contractor_Modals/contractorMilestoneprogressReport_Modal.js') }}?v={{ time() }}"></script>
     <script src="{{ asset('js/contractor/contractor_Modals/contractorProgressreport_Modal.js') }}"></script>
+    <script src="{{ asset('js/contractor/contractor_Modals/contractorDisputes.js') }}?v={{ time() }}"></script>
     <script src="{{ asset('js/contractor/contractor_Modals/contractorPaymenthistory_Modal.js') }}"></script>
     <script src="{{ asset('js/contractor/contractor_Modals/contractorPaymentvalidation_Modal.js') }}"></script>
     <script>
