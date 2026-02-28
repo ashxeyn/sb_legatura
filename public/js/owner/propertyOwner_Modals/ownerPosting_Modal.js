@@ -1,6 +1,7 @@
 /**
  * Post Project Modal JavaScript
  * Handles modal opening/closing and form submission
+ * Barangays and contractor types are pre-populated by the Blade template
  */
 
 class PostProjectModal {
@@ -12,6 +13,8 @@ class PostProjectModal {
         this.cancelBtn = document.getElementById('cancelModalBtn');
         this.form = document.getElementById('postProjectForm');
         this.submitBtn = document.getElementById('submitProjectBtn');
+        this.blueprintFileCount = 1;
+        this.desiredDesignFileCount = 1;
         this.othersFileCount = 1;
         
         this.init();
@@ -19,10 +22,8 @@ class PostProjectModal {
 
     init() {
         this.setupEventListeners();
-        this.loadBarangays();
         this.setupContractorTypeHandler();
         this.setupFileUploadHandlers();
-        this.setMinDate();
     }
 
     setupEventListeners() {
@@ -82,12 +83,40 @@ class PostProjectModal {
             this.form.reset();
             this.hideAllErrors();
             this.hideAlerts();
+            this.blueprintFileCount = 1;
+            this.desiredDesignFileCount = 1;
             this.othersFileCount = 1;
             // Reset file displays
             document.querySelectorAll('.file-name-display').forEach(display => {
                 display.classList.remove('has-file');
                 display.textContent = '';
             });
+            // Reset blueprint container
+            const blueprintContainer = document.getElementById('modal_blueprint_upload_container');
+            if (blueprintContainer) {
+                blueprintContainer.innerHTML = `
+                    <div class="file-upload-wrapper">
+                        <input type="file" id="modal_blueprint_0" name="blueprint[]" accept=".jpg,.jpeg,.png" class="file-input">
+                        <label for="modal_blueprint_0" class="file-upload-label">
+                            <i class="fi fi-rr-upload"></i>
+                            <span>Choose Blueprint Image</span>
+                        </label>
+                    </div>
+                `;
+            }
+            // Reset desired design container
+            const designContainer = document.getElementById('modal_desired_design_upload_container');
+            if (designContainer) {
+                designContainer.innerHTML = `
+                    <div class="file-upload-wrapper">
+                        <input type="file" id="modal_desired_design_0" name="desired_design[]" accept=".jpg,.jpeg,.png" class="file-input">
+                        <label for="modal_desired_design_0" class="file-upload-label">
+                            <i class="fi fi-rr-upload"></i>
+                            <span>Choose Design Image</span>
+                        </label>
+                    </div>
+                `;
+            }
             // Reset others container
             const othersContainer = document.getElementById('modal_others_upload_container');
             if (othersContainer) {
@@ -100,34 +129,8 @@ class PostProjectModal {
                         </label>
                     </div>
                 `;
-                this.setupFileUploadHandlers();
             }
-        }
-    }
-
-    async loadBarangays() {
-        const barangaySelect = document.getElementById('modal_project_barangay');
-        if (!barangaySelect) return;
-
-        try {
-            // Get Zamboanga City code (you may need to adjust this)
-            const cityCode = '097322'; // Zamboanga City code
-            const response = await fetch(`/api/psgc/cities/${cityCode}/barangays`);
-            const data = await response.json();
-
-            if (data && Array.isArray(data)) {
-                barangaySelect.innerHTML = '<option value="">Select Barangay</option>';
-                data.forEach(barangay => {
-                    const option = document.createElement('option');
-                    option.value = barangay.code;
-                    option.textContent = barangay.name;
-                    barangaySelect.appendChild(option);
-                });
-                barangaySelect.disabled = false;
-            }
-        } catch (error) {
-            console.error('Error loading barangays:', error);
-            barangaySelect.innerHTML = '<option value="">Error loading barangays</option>';
+            this.setupFileUploadHandlers();
         }
     }
 
@@ -137,23 +140,36 @@ class PostProjectModal {
         const otherInput = document.getElementById('modal_if_others_ctype');
 
         if (contractorTypeSelect && otherContainer) {
+            // Initial check on page load
+            this.toggleOthersField();
+            
             contractorTypeSelect.addEventListener('change', () => {
-                const selectedOption = contractorTypeSelect.options[contractorTypeSelect.selectedIndex];
-                const typeName = selectedOption.getAttribute('data-name') || selectedOption.textContent;
-
-                if (typeName && typeName.toLowerCase().trim() === 'others') {
-                    otherContainer.classList.remove('hidden');
-                    if (otherInput) {
-                        otherInput.required = true;
-                    }
-                } else {
-                    otherContainer.classList.add('hidden');
-                    if (otherInput) {
-                        otherInput.required = false;
-                        otherInput.value = '';
-                    }
-                }
+                this.toggleOthersField();
             });
+        }
+    }
+
+    toggleOthersField() {
+        const contractorTypeSelect = document.getElementById('modal_project_type_id');
+        const otherContainer = document.getElementById('modal_other_contractor_type_container');
+        const otherInput = document.getElementById('modal_if_others_ctype');
+
+        if (!contractorTypeSelect || !otherContainer) return;
+
+        const selectedOption = contractorTypeSelect.options[contractorTypeSelect.selectedIndex];
+        const typeName = selectedOption.getAttribute('data-name') || selectedOption.textContent;
+
+        if (typeName && typeName.toLowerCase().trim() === 'others') {
+            otherContainer.classList.remove('hidden');
+            if (otherInput) {
+                otherInput.required = true;
+            }
+        } else {
+            otherContainer.classList.add('hidden');
+            if (otherInput) {
+                otherInput.required = false;
+                otherInput.value = '';
+            }
         }
     }
 
@@ -173,8 +189,8 @@ class PostProjectModal {
         }
 
         // Land title
-        const landTitleInput = document.getElementById('modal_land_title');
-        const landTitleName = document.getElementById('land_title_name');
+        const landTitleInput = document.getElementById('modal_title_of_land');
+        const landTitleName = document.getElementById('title_of_land_name');
         if (landTitleInput && landTitleName) {
             landTitleInput.addEventListener('change', (e) => {
                 if (e.target.files.length > 0) {
@@ -186,14 +202,86 @@ class PostProjectModal {
             });
         }
 
-        // Add more files button
+        // Add more blueprint files button
+        const addBlueprintBtn = document.getElementById('modal_add_blueprint_file');
+        if (addBlueprintBtn) {
+            addBlueprintBtn.removeEventListener('click', () => this.addMoreBlueprintFiles());
+            addBlueprintBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.addMoreBlueprintFiles();
+            });
+        }
+
+        // Add more desired design files button
+        const addDesignBtn = document.getElementById('modal_add_desired_design_file');
+        if (addDesignBtn) {
+            addDesignBtn.removeEventListener('click', () => this.addMoreDesignFiles());
+            addDesignBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.addMoreDesignFiles();
+            });
+        }
+
+        // Add more others files button
         const addOthersBtn = document.getElementById('modal_add_others_file');
         if (addOthersBtn) {
-            addOthersBtn.addEventListener('click', () => this.addMoreFiles());
+            addOthersBtn.removeEventListener('click', () => this.addMoreOtherFiles());
+            addOthersBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.addMoreOtherFiles();
+            });
         }
     }
 
-    addMoreFiles() {
+    addMoreBlueprintFiles() {
+        const container = document.getElementById('modal_blueprint_upload_container');
+        if (!container) return;
+
+        if (this.blueprintFileCount >= 10) {
+            alert('Maximum 10 blueprints allowed');
+            return;
+        }
+
+        const fileId = `modal_blueprint_${this.blueprintFileCount}`;
+        const fileWrapper = document.createElement('div');
+        fileWrapper.className = 'file-upload-wrapper';
+        fileWrapper.style.marginTop = '0.5rem';
+        fileWrapper.innerHTML = `
+            <input type="file" id="${fileId}" name="blueprint[]" accept=".jpg,.jpeg,.png" class="file-input">
+            <label for="${fileId}" class="file-upload-label">
+                <i class="fi fi-rr-upload"></i>
+                <span>Choose Blueprint Image</span>
+            </label>
+        `;
+        container.appendChild(fileWrapper);
+        this.blueprintFileCount++;
+    }
+
+    addMoreDesignFiles() {
+        const container = document.getElementById('modal_desired_design_upload_container');
+        if (!container) return;
+
+        if (this.desiredDesignFileCount >= 10) {
+            alert('Maximum 10 design images allowed');
+            return;
+        }
+
+        const fileId = `modal_desired_design_${this.desiredDesignFileCount}`;
+        const fileWrapper = document.createElement('div');
+        fileWrapper.className = 'file-upload-wrapper';
+        fileWrapper.style.marginTop = '0.5rem';
+        fileWrapper.innerHTML = `
+            <input type="file" id="${fileId}" name="desired_design[]" accept=".jpg,.jpeg,.png" class="file-input">
+            <label for="${fileId}" class="file-upload-label">
+                <i class="fi fi-rr-upload"></i>
+                <span>Choose Design Image</span>
+            </label>
+        `;
+        container.appendChild(fileWrapper);
+        this.desiredDesignFileCount++;
+    }
+
+    addMoreOtherFiles() {
         const container = document.getElementById('modal_others_upload_container');
         if (!container) return;
 
@@ -215,15 +303,6 @@ class PostProjectModal {
         `;
         container.appendChild(fileWrapper);
         this.othersFileCount++;
-    }
-
-    setMinDate() {
-        const deadlineInput = document.getElementById('modal_bidding_deadline');
-        if (deadlineInput) {
-            const today = new Date();
-            today.setDate(today.getDate() + 1); // Minimum tomorrow
-            deadlineInput.min = today.toISOString().split('T')[0];
-        }
     }
 
     async handleSubmit(e) {
@@ -294,23 +373,27 @@ class PostProjectModal {
         const locationHidden = document.getElementById('modal_project_location_hidden');
         const cityCodeHidden = document.getElementById('modal_project_city_code_hidden');
         const provinceCodeHidden = document.getElementById('modal_project_province_code_hidden');
+        const userCityNameInput = document.getElementById('modal_user_city_name');
 
         if (barangaySelect && streetInput) {
             const barangayName = barangaySelect.options[barangaySelect.selectedIndex]?.textContent || '';
             const street = streetInput.value || '';
+            const userCityName = userCityNameInput?.value || 'Zamboanga City';
             
             // Compose location string
-            const location = `${street}, ${barangayName}, Zamboanga City, Zamboanga del Sur`;
+            const location = `${street}, ${barangayName}, ${userCityName}`;
             if (locationHidden) {
                 locationHidden.value = location;
             }
 
-            // Set PSGC codes (Zamboanga City and Zamboanga del Sur)
-            if (cityCodeHidden) {
-                cityCodeHidden.value = '097322'; // Zamboanga City code
+            // City code should already be set from Blade template, but ensure it's there
+            if (cityCodeHidden && !cityCodeHidden.value) {
+                cityCodeHidden.value = '097332000'; // Fallback to Zamboanga City
             }
-            if (provinceCodeHidden) {
-                provinceCodeHidden.value = '097300000'; // Zamboanga del Sur code
+            
+            // Set province code (this could be enhanced if province code varies by city)
+            if (provinceCodeHidden && !provinceCodeHidden.value) {
+                provinceCodeHidden.value = '097300000'; // Fallback to Zamboanga del Sur
             }
         }
     }
