@@ -269,6 +269,27 @@ class contractorClass
 				$progressClass = new \App\Models\contractor\progressUploadClass();
 				$item->progress_reports = $progressClass->getProgressFilesByItem($item->item_id);
 
+				// Disputes for this item
+				$disputeClass = new \App\Models\both\disputeClass();
+				$item->disputes = DB::table('disputes')
+					->where('milestone_item_id', $item->item_id)
+					->orderBy('created_at', 'desc')
+					->get();
+
+				// Attach files to each dispute
+				foreach ($item->disputes as $dispute) {
+					$dispute->files = DB::table('dispute_files')
+						->where('dispute_id', $dispute->dispute_id)
+						->get();
+				}
+
+				// Calculate dispute summary counts for this item
+				$item->dispute_summary = [
+					'total' => count($item->disputes),
+					'open' => collect($item->disputes)->filter(fn($d) => in_array($d->dispute_status, ['open', 'under_review']))->count(),
+					'resolved' => collect($item->disputes)->filter(fn($d) => in_array($d->dispute_status, ['resolved', 'closed']))->count(),
+				];
+
 				// Payments for this item
 				$item->payments = DB::table('milestone_payments')
 					->where('item_id', $item->item_id)

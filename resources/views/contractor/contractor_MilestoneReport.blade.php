@@ -36,7 +36,11 @@
 
         <!-- Content Section -->
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div id="milestoneReportContainer" class="bg-white rounded-xl shadow-md p-6">
+                @php
+                    $milestoneItemsData = [];
+                    $paymentHistoryData = null;
+                @endphp
+
                 @if(isset($project) && isset($milestones) && count($milestones) > 0)
                     @php
                         $milestonePlan = $milestones[0];
@@ -58,8 +62,8 @@
                             : $totalCost;
 
                         // Build detail data for modals
-                        $milestoneItemsData = [];
-                        $paymentHistoryData = null;
+                        // $milestoneItemsData = []; // Removed: initialized above
+                        // $paymentHistoryData = null; // Removed: initialized above
 
                         if (isset($milestonePlan->items)) {
                             $seqIndex = 0;
@@ -150,6 +154,7 @@
                                         'remainingFormatted' => '₱' . number_format($itemRemaining, 2),
                                         'progressPercent' => $itemCostVal > 0 ? min(100, (($itemTotalPaid + $itemTotalSubmitted) / $itemCostVal) * 100) : 0,
                                     ],
+                                    'disputeSummary' => $item->dispute_summary ?? ['total' => 0, 'open' => 0, 'resolved' => 0],
 
                                     // --- Condition flags (matching TSX milestoneDetail logic) ---
                                     'isCompleted' => $isCompleted,
@@ -466,6 +471,64 @@
                                 </div>
                             </div>
                         @endforeach
+                    </div>
+
+                    <div id="dispute_history_html_{{ $item->item_id }}">
+                        @php $disputes = $item->disputes ?? []; @endphp
+                        @if(count($disputes) === 0)
+                            <div class="empty-history" style="text-align: center; padding: 3rem 1rem; color: #6b7280;">
+                                <i class="fi fi-rr-folder-open" style="font-size: 3rem; margin-bottom: 1rem; display: block; opacity: 0.3;"></i>
+                                <p>No dispute history found for this item.</p>
+                            </div>
+                        @else
+                            @foreach($disputes as $d)
+                                @php
+                                    $date = isset($d->created_at) ? \Carbon\Carbon::parse($d->created_at)->format('M d, Y h:i A') : '-';
+                                    $status = $d->dispute_status ?? 'open';
+                                    $statusLabel = ucfirst(str_replace('_', ' ', $status));
+                                    $statusClass = 'status-' . $status;
+                                @endphp
+                                <div class="report-item" data-status="{{ $status }}" style="padding: 1.25rem; border-bottom: 1px solid #f3f4f6;">
+                                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">
+                                        <div>
+                                            <span class="report-type-badge" style="background: #f3f4f6; color: #4b5563; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase;">
+                                                {{ $d->dispute_type ?? 'Dispute' }}
+                                            </span>
+                                            <div style="margin-top: 0.25rem; font-size: 0.75rem; color: #9ca3af;">{{ $date }}</div>
+                                        </div>
+                                        <span class="dispute-status-pill {{ $statusClass }}" style="font-size: 0.7rem; font-weight: 600; padding: 0.25rem 0.6rem; border-radius: 100px;">
+                                            {{ $statusLabel }}
+                                        </span>
+                                    </div>
+                                    
+                                    <p style="font-size: 0.875rem; color: #374151; margin: 0 0 0.75rem 0; line-height: 1.5;">
+                                        {{ $d->dispute_desc ?? 'No description provided.' }}
+                                    </p>
+
+                                    @if(!empty($d->if_others_distype))
+                                        <div style="font-size: 0.8125rem; color: #6b7280; margin-bottom: 0.75rem;"><strong>Specified Issue:</strong> {{ $d->if_others_distype }}</div>
+                                    @endif
+
+                                    @if(!empty($d->admin_response))
+                                        <div class="admin-response" style="background: #fdf2f8; border-left: 3px solid #db2777; padding: 0.75rem; margin-top: 0.75rem; border-radius: 0 0.375rem 0.375rem 0;">
+                                            <div style="font-size: 0.7rem; font-weight: 700; color: #db2777; margin-bottom: 0.25rem; text-transform: uppercase;">Admin Response</div>
+                                            <div style="font-size: 0.8125rem; color: #be185d;">{{ $d->admin_response }}</div>
+                                        </div>
+                                    @endif
+
+                                    @if(isset($d->files) && count($d->files) > 0)
+                                        <div class="dispute-files-list" style="margin-top: 0.75rem; display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                                            @foreach($d->files as $file)
+                                                <a href="{{ asset('storage/' . ltrim($file->storage_path, '/')) }}" target="_blank" class="dispute-file-link" style="display: flex; align-items: center; gap: 0.4rem; font-size: 0.75rem; color: #3b82f6; background: #eff6ff; border: 1px solid #dbeafe; padding: 0.25rem 0.5rem; border-radius: 0.375rem; text-decoration: none;">
+                                                    <i class="fi fi-rr-clip" style="font-size: 0.7rem;"></i>
+                                                    <span>{{ $file->original_name ?? basename($file->storage_path) }}</span>
+                                                </a>
+                                            @endforeach
+                                        </div>
+                                    @endif
+                                </div>
+                            @endforeach
+                        @endif
                     </div>
                 @endforeach
             @endif

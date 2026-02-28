@@ -10,6 +10,8 @@ class ContractorDisputes {
         this.currentItemId = null;
         this.projectId = null;
         this.selectedFiles = []; // Track files for removal UI
+        this.allDisputes = []; // Store fetched disputes for client-side filtering
+        this.currentFilter = 'all';
 
         this.init();
     }
@@ -31,6 +33,20 @@ class ContractorDisputes {
         // History Modal Close
         const historyCloseBtn = document.getElementById('reportHistoryCloseBtn');
         if (historyCloseBtn) historyCloseBtn.addEventListener('click', () => this.closeHistoryModal());
+
+        const historyRefreshBtn = document.getElementById('reportHistoryRefreshBtn');
+        if (historyRefreshBtn) historyRefreshBtn.addEventListener('click', () => this.loadHistory(this.currentItemId));
+
+        // Filter Pills
+        const filterPills = document.querySelectorAll('#reportHistoryModal .filter-pill');
+        filterPills.forEach(pill => {
+            pill.addEventListener('click', () => {
+                filterPills.forEach(p => p.classList.remove('active'));
+                pill.classList.add('active');
+                this.currentFilter = pill.getAttribute('data-status');
+                this.filterHistory();
+            });
+        });
 
         // Dispute Type Selection
         const disputeOptions = document.querySelectorAll('.dispute-option');
@@ -402,6 +418,15 @@ class ContractorDisputes {
 
     async openHistoryModal(itemId) {
         this.currentItemId = itemId;
+
+        // Reset filters when opening
+        this.currentFilter = 'all';
+        const filterPills = document.querySelectorAll('#reportHistoryModal .filter-pill');
+        filterPills.forEach(p => {
+            p.classList.remove('active');
+            if (p.getAttribute('data-status') === 'all') p.classList.add('active');
+        });
+
         if (this.historyModal) {
             this.historyModal.classList.remove('hidden');
             document.body.style.overflow = 'hidden';
@@ -414,6 +439,8 @@ class ContractorDisputes {
         if (this.historyModal) {
             this.historyModal.classList.add('hidden');
             document.body.style.overflow = '';
+            this.allDisputes = [];
+            this.currentFilter = 'all';
         }
     }
 
@@ -421,73 +448,93 @@ class ContractorDisputes {
         const listContainer = document.getElementById('reportHistoryList');
         if (!listContainer) return;
 
-        listContainer.innerHTML = '<div style="text-align: center; padding: 2rem;"><i class="fi fi-rr-spinner fi-spin" style="font-size: 2rem;"></i></div>';
+        // Get pre-rendered HTML from the hidden template
+        const templateDiv = document.getElementById('dispute_history_html_' + itemId);
+        if (templateDiv) {
+            this.allDisputesHtml = templateDiv.innerHTML;
+            listContainer.innerHTML = this.allDisputesHtml;
 
-        try {
-            // Reusing the date-history endpoint as it's part of the ushc requirement
-            const response = await fetch(`/api/milestone-items/${itemId}/date-history`);
-            const data = await response.json();
-
-            if (data.success) {
-                this.renderHistory(data.histories);
-                this.updateSummary(data);
-            } else {
-                listContainer.innerHTML = '<p style="text-align: center; padding: 2rem;">Failed to load history.</p>';
+            // Get summary counts from window.milestoneItemsData
+            const itemsData = window.milestoneItemsData || {};
+            const item = itemsData[itemId];
+            if (item && item.disputeSummary) {
+                this.updateSummary(item.disputeSummary);
             }
-        } catch (error) {
-            console.error('Error loading history:', error);
-            listContainer.innerHTML = '<p style="text-align: center; padding: 2rem;">An error occurred.</p>';
-        }
-    }
 
-    renderHistory(histories) {
-        const listContainer = document.getElementById('reportHistoryList');
-        if (!listContainer) return;
-
-        if (!histories || histories.length === 0) {
+            this.filterHistory();
+        } else {
             listContainer.innerHTML = `
                 <div class="empty-history" style="text-align: center; padding: 3rem 1rem; color: #6b7280;">
                     <i class="fi fi-rr-folder-open" style="font-size: 3rem; margin-bottom: 1rem; display: block; opacity: 0.3;"></i>
-                    <p>No date history found for this item.</p>
+                    <p>No dispute history found for this item.</p>
                 </div>
             `;
-            return;
+            this.updateSummary({ total: 0, open: 0, resolved: 0 });
         }
-
-        let html = '';
-        histories.forEach(h => {
-            const date = h.changed_at ? new Date(h.changed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-';
-            html += `
-                <div class="report-item" style="padding: 1rem; border-bottom: 1px solid #f3f4f6;">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
-                        <span style="font-weight: 600; color: #374151;">Date Changed</span>
-                        <span style="font-size: 0.75rem; color: #9ca3af;">${date}</span>
-                    </div>
-                    <div style="display: flex; gap: 0.5rem; align-items: center; font-size: 0.875rem; color: #6b7280; margin-bottom: 0.5rem;">
-                        <span style="text-decoration: line-through;">${h.previous_date || '-'}</span>
-                        <i class="fi fi-rr-arrow-right" style="font-size: 0.75rem;"></i>
-                        <span style="color: #10b981; font-weight: 600;">${h.new_date || '-'}</span>
-                    </div>
-                    <p style="font-size: 0.8125rem; color: #4b5563; margin: 0; background: #f9fafb; padding: 0.5rem; border-radius: 0.375rem;">
-                        <strong>Reason:</strong> ${h.change_reason || h.extension_reason || 'No reason provided.'}
-                    </p>
-                    <div style="font-size: 0.75rem; color: #9ca3af; margin-top: 0.5rem;">
-                        Changed by: ${h.changed_by_name || 'System'}
-                    </div>
-                </div>
-            `;
-        });
-        listContainer.innerHTML = html;
-        document.getElementById('reportCount').textContent = `(${histories.length})`;
     }
 
-    updateSummary(data) {
-        const total = data.histories ? data.histories.length : 0;
-        document.getElementById('summaryTotal').textContent = total;
-        // For date history, we'll just show the count for now. 
-        // If we had dispute states, we'd count open/resolved.
-        document.getElementById('summaryOpen').textContent = '-';
-        document.getElementById('summaryResolved').textContent = '-';
+    filterHistory() {
+        const listContainer = document.getElementById('reportHistoryList');
+        if (!listContainer) return;
+
+        const items = listContainer.querySelectorAll('.report-item');
+        let visibleCount = 0;
+        let title = 'All Reports';
+
+        items.forEach(item => {
+            const status = item.getAttribute('data-status');
+            let isVisible = false;
+
+            if (this.currentFilter === 'all') {
+                isVisible = true;
+            } else if (this.currentFilter === 'open') {
+                isVisible = ['open', 'under_review'].includes(status);
+            } else if (this.currentFilter === 'resolved') {
+                isVisible = ['resolved', 'closed', 'cancelled'].includes(status);
+            }
+
+            item.style.display = isVisible ? 'block' : 'none';
+            if (isVisible) visibleCount++;
+        });
+
+        // Update title based on filter
+        if (this.currentFilter === 'open') title = 'Open Reports';
+        else if (this.currentFilter === 'resolved') title = 'Resolved Reports';
+
+        const titleEl = document.querySelector('#reportHistoryModal .section-title');
+        if (titleEl) {
+            titleEl.innerHTML = `${title} <span id="reportCount">(${visibleCount})</span>`;
+        }
+
+        // Handle empty filtered state
+        let emptyEl = listContainer.querySelector('.empty-history-filtered');
+        if (visibleCount === 0 && items.length > 0) {
+            if (!emptyEl) {
+                emptyEl = document.createElement('div');
+                emptyEl.className = 'empty-history-filtered';
+                emptyEl.style.cssText = 'text-align: center; padding: 3rem 1rem; color: #6b7280;';
+                emptyEl.innerHTML = `
+                    <i class="fi fi-rr-folder-open" style="font-size: 3rem; margin-bottom: 1rem; display: block; opacity: 0.3;"></i>
+                    <p>No ${this.currentFilter === 'all' ? '' : this.currentFilter} reports found for this item.</p>
+                `;
+                listContainer.appendChild(emptyEl);
+            } else {
+                emptyEl.style.display = 'block';
+                emptyEl.querySelector('p').textContent = `No ${this.currentFilter === 'all' ? '' : this.currentFilter} reports found for this item.`;
+            }
+        } else if (emptyEl) {
+            emptyEl.style.display = 'none';
+        }
+    }
+
+    updateSummary(summary) {
+        const totalEl = document.getElementById('summaryTotal');
+        const openEl = document.getElementById('summaryOpen');
+        const resolvedEl = document.getElementById('summaryResolved');
+
+        if (totalEl) totalEl.textContent = summary.total || 0;
+        if (openEl) openEl.textContent = summary.open || 0;
+        if (resolvedEl) resolvedEl.textContent = summary.resolved || 0;
     }
 
     showErrorModal(message) {
@@ -536,7 +583,6 @@ class ContractorDisputes {
         }, 3000);
     }
 }
-
 
 window.contractorDisputesInstance = null;
 document.addEventListener('DOMContentLoaded', () => {
