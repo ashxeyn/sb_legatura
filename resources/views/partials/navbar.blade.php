@@ -37,9 +37,9 @@
                                 ->where('user_id', $userId)
                                 ->first();
                         }
-                        $firstName  = $ownerRecord->first_name  ?? '';
-                        $lastName   = $ownerRecord->last_name   ?? '';
-                        $fullName   = trim($firstName . ' ' . $lastName);
+                        $firstName = $ownerRecord->first_name ?? '';
+                        $lastName = $ownerRecord->last_name ?? '';
+                        $fullName = trim($firstName . ' ' . $lastName);
                         $displayName = $fullName ?: ($sessionUser->username ?? 'User');
                         $usernameHandle = '@' . ($sessionUser->username ?? 'user');
                         // Prefer the freshly-fetched profile_pic over the (possibly stale) session value
@@ -53,7 +53,8 @@
                     <div class="navbar-user">
                         @if($profilePic)
                             <div class="navbar-avatar">
-                                <img src="{{ asset('storage/' . $profilePic) }}" alt="{{ $displayName }}" class="navbar-avatar-img"
+                                <img src="{{ asset('storage/' . $profilePic) }}" alt="{{ $displayName }}"
+                                    class="navbar-avatar-img"
                                     onerror="var p=this.parentElement; p.innerHTML='{{ $initials }}'; p.classList.add('navbar-avatar-initials');">
                             </div>
                         @else
@@ -73,7 +74,8 @@
                             <div class="notification-dropdown-content">
                                 <div class="notification-dropdown-header">
                                     <h3 class="notification-dropdown-title">Notifications</h3>
-                                    <button type="button" class="notification-close-btn" id="notificationCloseBtn" aria-label="Close notifications">
+                                    <button type="button" class="notification-close-btn" id="notificationCloseBtn"
+                                        aria-label="Close notifications">
                                         <i class="fi fi-rr-cross-small"></i>
                                     </button>
                                 </div>
@@ -130,201 +132,201 @@
         <a href="#" class="navbar-menu-item" id="logoutLink">Logout</a>
     </div>
 
-    <!-- Account Settings Modal -->
-    <div id="accountSettingsModal" class="account-settings-modal">
-        <div class="modal-overlay" id="accountSettingsModalOverlay"></div>
-        <div class="account-settings-modal-container">
-            <!-- Modal Header -->
-            <div class="account-settings-modal-header">
-                <h2 class="account-settings-modal-title">
-                    <i class="fi fi-rr-user"></i>
-                    Account Settings
-                </h2>
-                <button class="account-settings-close-btn" id="closeAccountSettingsModalBtn" aria-label="Close modal">
-                    <i class="fi fi-rr-cross"></i>
-                </button>
-            </div>
-
-            <!-- Modal Body -->
-            <div class="account-settings-modal-body">
-                <div class="account-settings-menu">
-                    <a href="{{ route('owner.profile') }}" class="account-settings-item">
-                        <div class="account-settings-item-left">
-                            <div class="account-settings-icon profile-icon">
-                                <i class="fi fi-rr-user"></i>
-                            </div>
-                            <div class="account-settings-item-content">
-                                <span class="account-settings-item-title">View Profile</span>
-                                <span class="account-settings-item-subtitle">View your public profile</span>
-                            </div>
-                        </div>
-                        <i class="fi fi-rr-angle-right account-settings-arrow"></i>
-                    </a>
-
-                    <a href="#" class="account-settings-item" id="editProfileLink">
-                        <div class="account-settings-item-left">
-                            <div class="account-settings-icon edit-icon">
-                                <i class="fi fi-rr-edit"></i>
-                            </div>
-                            <div class="account-settings-item-content">
-                                <span class="account-settings-item-title">Edit profile information</span>
-                                <span class="account-settings-item-subtitle">Update your personal details</span>
-                            </div>
-                        </div>
-                        <i class="fi fi-rr-angle-right account-settings-arrow"></i>
-                    </a>
-
-                    <div class="account-settings-item account-settings-item-toggle">
-                        <div class="account-settings-item-left">
-                            <div class="account-settings-icon notification-icon">
-                                <i class="fi fi-rr-bell"></i>
-                            </div>
-                            <div class="account-settings-item-content">
-                                <span class="account-settings-item-title">Notifications</span>
-                                <span class="account-settings-item-subtitle">Enable or disable notifications</span>
-                            </div>
-                        </div>
-                        <label class="toggle-switch">
-                            <input type="checkbox" id="notificationsToggle" checked>
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </div>
-
-                    <a href="#" class="account-settings-item" id="switchAccountLink">
-                        <div class="account-settings-item-left">
-                            <div class="account-settings-icon switch-icon">
-                                <i class="fi fi-rr-refresh"></i>
-                            </div>
-                            <div class="account-settings-item-content">
-                                <span class="account-settings-item-title">Switch to Contractor Account</span>
-                                <span class="account-settings-item-subtitle">Change your account type</span>
-                            </div>
-                        </div>
-                        <i class="fi fi-rr-angle-right account-settings-arrow"></i>
-                    </a>
-
-                    <a href="#" class="account-settings-item" id="boostLink">
-                        <div class="account-settings-item-left">
-                            <div class="account-settings-icon boost-icon">
-                                <i class="fi fi-rr-rocket"></i>
-                            </div>
-                            <div class="account-settings-item-content">
-                                <span class="account-settings-item-title">Boost</span>
-                                <span class="account-settings-item-subtitle">Boost your project visibility</span>
-                            </div>
-                        </div>
-                        <i class="fi fi-rr-angle-right account-settings-arrow"></i>
-                    </a>
-
-                    <a href="#" class="account-settings-item" id="securityLink">
-                        <div class="account-settings-item-left">
-                            <div class="account-settings-icon security-icon">
-                                <i class="fi fi-rr-shield-check"></i>
-                            </div>
-                            <div class="account-settings-item-content">
-                                <span class="account-settings-item-title">Security</span>
-                                <span class="account-settings-item-subtitle">Manage your account security</span>
-                            </div>
-                        </div>
-                        <i class="fi fi-rr-angle-right account-settings-arrow"></i>
-                    </a>
-
-                    <a href="#" class="account-settings-item" id="settingsLink">
-                        <div class="account-settings-item-left">
-                            <div class="account-settings-icon settings-icon">
-                                <i class="fi fi-rr-settings"></i>
-                            </div>
-                            <div class="account-settings-item-content">
-                                <span class="account-settings-item-title">Settings</span>
-                                <span class="account-settings-item-subtitle">Configure your preferences</span>
-                            </div>
-                        </div>
-                        <i class="fi fi-rr-angle-right account-settings-arrow"></i>
-                    </a>
-
-                    <a href="#" class="account-settings-item" id="helpSupportLink">
-                        <div class="account-settings-item-left">
-                            <div class="account-settings-icon help-icon">
-                                <i class="fi fi-rr-interrogation"></i>
-                            </div>
-                            <div class="account-settings-item-content">
-                                <span class="account-settings-item-title">Help & Support</span>
-                                <span class="account-settings-item-subtitle">Get help and support</span>
-                            </div>
-                        </div>
-                        <i class="fi fi-rr-angle-right account-settings-arrow"></i>
-                    </a>
-
-                    <a href="#" class="account-settings-item" id="contactUsLink">
-                        <div class="account-settings-item-left">
-                            <div class="account-settings-icon contact-icon">
-                                <i class="fi fi-rr-envelope"></i>
-                            </div>
-                            <div class="account-settings-item-content">
-                                <span class="account-settings-item-title">Contact us</span>
-                                <span class="account-settings-item-subtitle">Get in touch with us</span>
-                            </div>
-                        </div>
-                        <i class="fi fi-rr-angle-right account-settings-arrow"></i>
-                    </a>
-
-                    <a href="#" class="account-settings-item" id="privacyPolicyLink">
-                        <div class="account-settings-item-left">
-                            <div class="account-settings-icon privacy-icon">
-                                <i class="fi fi-rr-lock"></i>
-                            </div>
-                            <div class="account-settings-item-content">
-                                <span class="account-settings-item-title">Privacy policy</span>
-                                <span class="account-settings-item-subtitle">Read our privacy policy</span>
-                            </div>
-                        </div>
-                        <i class="fi fi-rr-angle-right account-settings-arrow"></i>
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Logout Confirmation Modal -->
-    <div id="logoutConfirmationModal" class="confirmation-modal hidden">
-        <div class="modal-overlay" id="logoutConfirmationModalOverlay"></div>
-        <div class="confirmation-modal-container">
-            <!-- Modal Header -->
-            <div class="confirmation-modal-header">
-                <div class="confirmation-icon-wrapper">
-                    <div class="confirmation-icon">
-                        <i class="fi fi-rr-sign-out-alt"></i>
-                    </div>
-                </div>
-                <h2 class="confirmation-modal-title">Confirm Logout</h2>
-                <button class="confirmation-close-btn" id="closeLogoutConfirmationModalBtn" aria-label="Close modal">
-                    <i class="fi fi-rr-cross"></i>
-                </button>
-            </div>
-
-            <!-- Modal Body -->
-            <div class="confirmation-modal-body">
-                <p class="confirmation-message" id="logoutConfirmationMessage">
-                    Are you sure you want to logout?
-                </p>
-                <p class="confirmation-submessage" id="logoutConfirmationSubmessage">
-                    You will need to login again to access your account.
-                </p>
-            </div>
-
-            <!-- Modal Footer -->
-            <div class="confirmation-modal-footer">
-                <button class="confirmation-btn cancel-btn" id="cancelLogoutBtn">
-                    Cancel
-                </button>
-                <button class="confirmation-btn confirm-btn" id="confirmLogoutBtn">
-                    <i class="fi fi-rr-sign-out-alt"></i>
-                    Logout
-                </button>
-            </div>
-        </div>
-    </div>
 </nav>
+<!-- Account Settings Modal -->
+<div id="accountSettingsModal" class="account-settings-modal">
+    <div class="modal-overlay" id="accountSettingsModalOverlay"></div>
+    <div class="account-settings-modal-container">
+        <!-- Modal Header -->
+        <div class="account-settings-modal-header">
+            <h2 class="account-settings-modal-title">
+                <i class="fi fi-rr-user"></i>
+                Account Settings
+            </h2>
+            <button class="account-settings-close-btn" id="closeAccountSettingsModalBtn" aria-label="Close modal">
+                <i class="fi fi-rr-cross"></i>
+            </button>
+        </div>
+
+        <!-- Modal Body -->
+        <div class="account-settings-modal-body">
+            <div class="account-settings-menu">
+                <a href="{{ route('owner.profile') }}" class="account-settings-item">
+                    <div class="account-settings-item-left">
+                        <div class="account-settings-icon profile-icon">
+                            <i class="fi fi-rr-user"></i>
+                        </div>
+                        <div class="account-settings-item-content">
+                            <span class="account-settings-item-title">View Profile</span>
+                            <span class="account-settings-item-subtitle">View your public profile</span>
+                        </div>
+                    </div>
+                    <i class="fi fi-rr-angle-right account-settings-arrow"></i>
+                </a>
+
+                <a href="#" class="account-settings-item" id="editProfileLink">
+                    <div class="account-settings-item-left">
+                        <div class="account-settings-icon edit-icon">
+                            <i class="fi fi-rr-edit"></i>
+                        </div>
+                        <div class="account-settings-item-content">
+                            <span class="account-settings-item-title">Edit profile information</span>
+                            <span class="account-settings-item-subtitle">Update your personal details</span>
+                        </div>
+                    </div>
+                    <i class="fi fi-rr-angle-right account-settings-arrow"></i>
+                </a>
+
+                <div class="account-settings-item account-settings-item-toggle">
+                    <div class="account-settings-item-left">
+                        <div class="account-settings-icon notification-icon">
+                            <i class="fi fi-rr-bell"></i>
+                        </div>
+                        <div class="account-settings-item-content">
+                            <span class="account-settings-item-title">Notifications</span>
+                            <span class="account-settings-item-subtitle">Enable or disable notifications</span>
+                        </div>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="notificationsToggle" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+
+                <a href="#" class="account-settings-item" id="switchAccountLink">
+                    <div class="account-settings-item-left">
+                        <div class="account-settings-icon switch-icon">
+                            <i class="fi fi-rr-refresh"></i>
+                        </div>
+                        <div class="account-settings-item-content">
+                            <span class="account-settings-item-title">Switch to Contractor Account</span>
+                            <span class="account-settings-item-subtitle">Change your account type</span>
+                        </div>
+                    </div>
+                    <i class="fi fi-rr-angle-right account-settings-arrow"></i>
+                </a>
+
+                <a href="#" class="account-settings-item" id="boostLink">
+                    <div class="account-settings-item-left">
+                        <div class="account-settings-icon boost-icon">
+                            <i class="fi fi-rr-rocket"></i>
+                        </div>
+                        <div class="account-settings-item-content">
+                            <span class="account-settings-item-title">Boost</span>
+                            <span class="account-settings-item-subtitle">Boost your project visibility</span>
+                        </div>
+                    </div>
+                    <i class="fi fi-rr-angle-right account-settings-arrow"></i>
+                </a>
+
+                <a href="#" class="account-settings-item" id="securityLink">
+                    <div class="account-settings-item-left">
+                        <div class="account-settings-icon security-icon">
+                            <i class="fi fi-rr-shield-check"></i>
+                        </div>
+                        <div class="account-settings-item-content">
+                            <span class="account-settings-item-title">Security</span>
+                            <span class="account-settings-item-subtitle">Manage your account security</span>
+                        </div>
+                    </div>
+                    <i class="fi fi-rr-angle-right account-settings-arrow"></i>
+                </a>
+
+                <a href="#" class="account-settings-item" id="settingsLink">
+                    <div class="account-settings-item-left">
+                        <div class="account-settings-icon settings-icon">
+                            <i class="fi fi-rr-settings"></i>
+                        </div>
+                        <div class="account-settings-item-content">
+                            <span class="account-settings-item-title">Settings</span>
+                            <span class="account-settings-item-subtitle">Configure your preferences</span>
+                        </div>
+                    </div>
+                    <i class="fi fi-rr-angle-right account-settings-arrow"></i>
+                </a>
+
+                <a href="#" class="account-settings-item" id="helpSupportLink">
+                    <div class="account-settings-item-left">
+                        <div class="account-settings-icon help-icon">
+                            <i class="fi fi-rr-interrogation"></i>
+                        </div>
+                        <div class="account-settings-item-content">
+                            <span class="account-settings-item-title">Help & Support</span>
+                            <span class="account-settings-item-subtitle">Get help and support</span>
+                        </div>
+                    </div>
+                    <i class="fi fi-rr-angle-right account-settings-arrow"></i>
+                </a>
+
+                <a href="#" class="account-settings-item" id="contactUsLink">
+                    <div class="account-settings-item-left">
+                        <div class="account-settings-icon contact-icon">
+                            <i class="fi fi-rr-envelope"></i>
+                        </div>
+                        <div class="account-settings-item-content">
+                            <span class="account-settings-item-title">Contact us</span>
+                            <span class="account-settings-item-subtitle">Get in touch with us</span>
+                        </div>
+                    </div>
+                    <i class="fi fi-rr-angle-right account-settings-arrow"></i>
+                </a>
+
+                <a href="#" class="account-settings-item" id="privacyPolicyLink">
+                    <div class="account-settings-item-left">
+                        <div class="account-settings-icon privacy-icon">
+                            <i class="fi fi-rr-lock"></i>
+                        </div>
+                        <div class="account-settings-item-content">
+                            <span class="account-settings-item-title">Privacy policy</span>
+                            <span class="account-settings-item-subtitle">Read our privacy policy</span>
+                        </div>
+                    </div>
+                    <i class="fi fi-rr-angle-right account-settings-arrow"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Logout Confirmation Modal -->
+<div id="logoutConfirmationModal" class="confirmation-modal hidden">
+    <div class="modal-overlay" id="logoutConfirmationModalOverlay"></div>
+    <div class="confirmation-modal-container">
+        <!-- Modal Header -->
+        <div class="confirmation-modal-header">
+            <div class="confirmation-icon-wrapper">
+                <div class="confirmation-icon">
+                    <i class="fi fi-rr-sign-out-alt"></i>
+                </div>
+            </div>
+            <h2 class="confirmation-modal-title">Confirm Logout</h2>
+            <button class="confirmation-close-btn" id="closeLogoutConfirmationModalBtn" aria-label="Close modal">
+                <i class="fi fi-rr-cross"></i>
+            </button>
+        </div>
+
+        <!-- Modal Body -->
+        <div class="confirmation-modal-body">
+            <p class="confirmation-message" id="logoutConfirmationMessage">
+                Are you sure you want to logout?
+            </p>
+            <p class="confirmation-submessage" id="logoutConfirmationSubmessage">
+                You will need to login again to access your account.
+            </p>
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="confirmation-modal-footer">
+            <button class="confirmation-btn cancel-btn" id="cancelLogoutBtn">
+                Cancel
+            </button>
+            <button class="confirmation-btn confirm-btn" id="confirmLogoutBtn">
+                <i class="fi fi-rr-sign-out-alt"></i>
+                Logout
+            </button>
+        </div>
+    </div>
+</div>
 
 <form id="logoutForm" action="/accounts/logout" method="POST" class="hidden">
     @csrf

@@ -14,10 +14,13 @@
                     </button>
                     <div class="report-dropdown">
                         <button class="report-dropdown-item" onclick="handleSendReport(event)">
-                            <i class="fi fi-rr-file-edit"></i> Send Report
+                            <i class="fi fi-rr-info"></i> Report
+                        </button>
+                        <button class="report-dropdown-item" onclick="handleHalt(event)">
+                            <i class="fi fi-rr-pause-circle"></i> Halt
                         </button>
                         <button class="report-dropdown-item" onclick="handleReportHistory(event)">
-                            <i class="fi fi-rr-clock-three"></i> Report History
+                            <i class="fi fi-rr-clock-three"></i> View Date History
                         </button>
                     </div>
                 </div>

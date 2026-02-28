@@ -5,7 +5,7 @@
     left: 0;
     width: 100%;
     height: 100%;
-    z-index: 10000;
+    z-index: 9002;
     display: none;
     align-items: center;
     justify-content: center;
@@ -23,7 +23,7 @@
     height: 100%;
     background: rgba(0, 0, 0, 0.6);
     backdrop-filter: blur(4px);
-    z-index: 10000;
+    z-index: 9001;
 }
 
 .boost-modal-container {
@@ -38,7 +38,7 @@
     display: flex;
     flex-direction: column;
     animation: modalSlideUp 0.3s ease-out;
-    z-index: 10001;
+    z-index: 9003;
 }
 
 @keyframes modalSlideUp {
@@ -884,7 +884,7 @@
     left: 0;
     width: 100%;
     height: 100%;
-    z-index: 10002;
+    z-index: 9004;
     display: none;
     align-items: center;
     justify-content: center;
@@ -902,7 +902,7 @@
     height: 100%;
     background: rgba(0, 0, 0, 0.6);
     backdrop-filter: blur(4px);
-    z-index: 10002;
+    z-index: 9004;
 }
 
 .boost-success-container {
@@ -915,7 +915,7 @@
     text-align: center;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
     animation: modalSlideUp 0.3s ease-out;
-    z-index: 10003;
+    z-index: 9005;
 }
 
 .boost-success-icon {

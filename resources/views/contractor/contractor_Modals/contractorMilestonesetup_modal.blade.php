@@ -351,7 +351,7 @@
         left: 0;
         width: 100%;
         height: 100%;
-        z-index: 10000;
+        z-index: 9002;
         display: none;
     }
 
@@ -373,7 +373,7 @@
 
     .budget-warning-modal .modal-container {
         position: relative;
-        z-index: 10001;
+        z-index: 9001;
         max-width: 480px;
         width: 90%;
         margin: 0 auto;
