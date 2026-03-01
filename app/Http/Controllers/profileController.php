@@ -161,7 +161,8 @@ class profileController extends Controller
             // If contractor-specific fields present and contractor exists, update contractor row
             $contractor = DB::table('contractors')->where('user_id', $userId)->first();
             $contractorKeys = [
-                'company_name','company_phone','years_of_experience','type_id','contractor_type_other',
+                'company_name','company_phone','company_email','years_of_experience','type_id','contractor_type_other',
+                'bio','company_description','company_start_date',
                 'services_offered','business_address','company_website','company_social_media',
                 'picab_number','picab_category','picab_expiration_date','business_permit_number',
                 'business_permit_city','business_permit_expiration','tin_business_reg_number'
@@ -274,8 +275,8 @@ class profileController extends Controller
         ];
 
         $contractorKeys = [
-            'contractor_id','company_name','company_description','company_website','company_email','company_phone',
-            'services_offered','business_address','picab_number','dti_sec_registration_photo','tin_business_reg_number',
+            'contractor_id','company_name','company_description','bio','company_website','company_email','company_phone',
+            'company_social_media','services_offered','business_address','picab_number','dti_sec_registration_photo','tin_business_reg_number',
             'company_start_date','years_of_experience','type_id','contractor_type_other','completed_projects',
             'verification_status','verification_date','rejection_reason','picab_category','business_permit_number',
             // include media fields so frontend receives company logo/banner
@@ -572,6 +573,8 @@ class profileController extends Controller
                     ->where('cu.is_active', 1)
                     ->select(
                         'u.profile_pic',
+                        'u.email',
+                        'cu.phone_number',
                         DB::raw("CONCAT(cu.authorized_rep_fname, ' ', IFNULL(cu.authorized_rep_mname, ''), ' ', cu.authorized_rep_lname) as full_name"),
                         'cu.role'
                     )

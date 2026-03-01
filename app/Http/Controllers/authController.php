@@ -2765,6 +2765,12 @@ class authController extends Controller
         return response()->json(['success' => true, 'data' => $provinces]);
     }
 
+    public function getAllCities()
+    {
+        $cities = $this->psgcService->getAllCities();
+        return response()->json(['success' => true, 'data' => $cities]);
+    }
+
     public function getCitiesByProvince($provinceCode)
     {
         $cities = $this->psgcService->getCitiesByProvince($provinceCode);

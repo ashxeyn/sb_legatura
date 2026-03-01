@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use App\Services\authService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Session;
 use Laravel\Sanctum\PersonalAccessToken;
 
 class OTPChangeController extends Controller
@@ -21,6 +22,15 @@ class OTPChangeController extends Controller
     public function sendOtp(Request $request)
     {
         $user = $request->user();
+
+        // Fallback: resolve from web session (session-based auth)
+        if (!$user) {
+            $sessionUser = Session::get('user');
+            if ($sessionUser) {
+                $user = is_object($sessionUser) ? $sessionUser : (object) $sessionUser;
+            }
+        }
+
         // If Sanctum/session user not present, try resolving via Bearer token in personal_access_tokens
         if (!$user) {
             $bearer = $request->bearerToken();
@@ -112,6 +122,15 @@ class OTPChangeController extends Controller
     public function verifyOtp(Request $request)
     {
         $user = $request->user();
+
+        // Fallback: resolve from web session (session-based auth)
+        if (!$user) {
+            $sessionUser = Session::get('user');
+            if ($sessionUser) {
+                $user = is_object($sessionUser) ? $sessionUser : (object) $sessionUser;
+            }
+        }
+
         if (!$user) {
             $bearer = $request->bearerToken();
             if ($bearer) {

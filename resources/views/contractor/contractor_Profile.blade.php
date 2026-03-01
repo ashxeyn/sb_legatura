@@ -3,12 +3,24 @@
 @section('title', 'Profile - Legatura')
 
 @section('content')
-    <div class="contractor-profile min-h-screen bg-gray-50">
+    @php
+        $sessionUser = session('user');
+        $userId = is_object($sessionUser) ? ($sessionUser->user_id ?? $sessionUser->id ?? null) : ($sessionUser['user_id'] ?? null);
+    @endphp
+    <div class="contractor-profile min-h-screen bg-gray-50"
+         id="contractorProfileRoot"
+         data-user-id="{{ $userId }}"
+         data-role="contractor"
+         data-fetch-url="{{ route('contractor.profile.fetch') }}"
+         data-reviews-url="{{ route('contractor.profile.reviews') }}"
+         data-update-url="{{ route('contractor.profile.update') }}"
+         data-storage-base="{{ asset('storage') }}"
+         data-psgc-cities-url="{{ url('/api/psgc/cities') }}">
         <!-- Profile Header with Cover Image -->
         <div class="profile-header-section">
             <div class="profile-cover-container">
                 <div class="profile-cover-image" id="profileCoverImage">
-                    <img src="https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=1600&h=400&fit=crop" alt="Cover" class="cover-img" id="coverPhotoImg" onerror="this.src='https://via.placeholder.com/1600x400/667eea/ffffff?text=Cover+Photo'">
+                    <img src="" alt="Cover" class="cover-img" id="coverPhotoImg" onerror="this.src='https://via.placeholder.com/1600x400/667eea/ffffff?text=Cover+Photo'">
                 </div>
                 <button class="profile-back-btn" onclick="window.history.back()">
                     <i class="fi fi-rr-arrow-left"></i>
@@ -16,7 +28,6 @@
                 </button>
                 <button class="profile-cover-edit-btn" id="editCoverPhotoBtn" aria-label="Edit cover photo">
                     <i class="fi fi-rr-camera"></i>
-                    <span>Edit Cover Photo</span>
                 </button>
                 <input type="file" id="coverPhotoInput" accept="image/*" style="display: none;">
             </div>
@@ -27,31 +38,35 @@
                     <!-- Profile Picture -->
                     <div class="profile-picture-container">
                         <div class="profile-picture" id="profilePicture">
-                            <span class="profile-picture-initials">BC</span>
+                            <img src="" alt="Profile" class="profile-picture-img" id="profilePictureImg" style="display:none; width:100%; height:100%; object-fit:cover; border-radius:50%;">
+                            <span class="profile-picture-initials"></span>
                         </div>
+                        <button class="profile-picture-edit-btn" id="editProfilePictureBtn" aria-label="Edit profile picture">
+                            <i class="fi fi-rr-camera"></i>
+                        </button>
                     </div>
 
                     <!-- Profile Details -->
                     <div class="profile-details">
-                        <h1 class="profile-name" id="profileName">BuildRight Construction</h1>
+                        <h1 class="profile-name" id="profileName">Loading...</h1>
                         <div class="profile-meta">
                             <div class="profile-rating">
                                 <i class="fi fi-rr-star"></i>
-                                <span id="profileRating">4.8</span>
+                                <span id="profileRating">—</span>
                                 <span class="profile-rating-label">Rating</span>
                             </div>
                             <div class="profile-location">
                                 <i class="fi fi-rr-marker"></i>
-                                <span id="profileLocation">Manila, Philippines</span>
+                                <span id="profileLocation">—</span>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Action Button -->
+                    <!-- Edit Profile Button -->
                     <div class="profile-actions">
-                        <button class="send-message-btn" id="sendMessageBtn">
-                            <i class="fi fi-rr-paper-plane"></i>
-                            <span>Send Message</span>
+                        <button class="edit-profile-btn-action" id="editProfileInfoBtn" onclick="window.openEditContractorProfileModal && window.openEditContractorProfileModal()">
+                            <i class="fi fi-rr-edit"></i>
+                            <span>Edit Profile</span>
                         </button>
                     </div>
                 </div>
@@ -81,66 +96,66 @@
                 <div class="profile-left-column">
                     <div class="profile-info-card">
                         <div class="info-card-header">
-                            <h3 class="info-card-name" id="infoCardName">BuildRight Construction</h3>
+                            <h3 class="info-card-name" id="infoCardName">Loading...</h3>
                             <div class="info-card-meta">
                                 <div class="info-card-rating">
                                     <i class="fi fi-rr-star"></i>
-                                    <span id="infoCardRating">4.8</span>
+                                    <span id="infoCardRating">—</span>
                                     <span>Rating</span>
                                 </div>
                                 <div class="info-card-location">
                                     <i class="fi fi-rr-marker"></i>
-                                    <span id="infoCardLocation">Manila, Philippines</span>
+                                    <span id="infoCardLocation">—</span>
                                 </div>
                             </div>
                         </div>
 
                         <div class="info-card-bio">
-                            <p id="infoCardBio">BuildRight Construction is a leading construction company specializing in residential and commercial projects. With over 15 years of experience, we deliver quality craftsmanship and exceptional service to our clients.</p>
+                            <p id="infoCardBio"></p>
                         </div>
 
                         <div class="info-card-occupation">
                             <span class="occupation-label">Specialization:</span>
-                            <span class="occupation-value" id="occupationValue">General Contractor</span>
+                            <span class="occupation-value" id="occupationValue">—</span>
                         </div>
 
                         <div class="info-card-stats">
                             <div class="stat-item">
                                 <span class="stat-label">Projects completed:</span>
-                                <span class="stat-value" id="projectsDone">128</span>
+                                <span class="stat-value" id="projectsDone">0</span>
                             </div>
                             <div class="stat-item">
                                 <span class="stat-label">Active projects:</span>
-                                <span class="stat-value" id="ongoingProjects">5</span>
+                                <span class="stat-value" id="ongoingProjects">0</span>
                             </div>
                         </div>
 
                         <div class="info-card-contact">
                             <div class="contact-item">
                                 <i class="fi fi-rr-phone-call"></i>
-                                <span>Contact No.: <span id="contactNumber">+63 912 345 6789</span></span>
+                                <span>Contact No.: <span id="contactNumber">—</span></span>
                             </div>
                             <div class="contact-item">
                                 <i class="fi fi-rr-envelope"></i>
-                                <span>Email: <span id="contactEmail">info@buildrightconstruction.com</span></span>
+                                <span>Email: <span id="contactEmail">—</span></span>
                             </div>
                             <div class="contact-item">
                                 <i class="fi fi-rr-phone"></i>
-                                <span>Telephone: <span id="telephone">02 1234 5678</span></span>
+                                <span>Telephone: <span id="telephone">—</span></span>
                             </div>
                         </div>
                     </div>
 
                     <!-- Contact Person Card -->
-                    <div class="profile-contact-card">
+                    <div class="profile-contact-card" id="contactPersonCard">
                         <div class="contact-card-header">
                             <div class="contact-card-avatar">
-                                <img src="https://via.placeholder.com/60x60/EEA24B/FFFFFF?text=OFP" alt="Olive Faith Padios" id="contactPersonAvatar" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                <div class="contact-card-avatar-initials" style="display: none;">OFP</div>
+                                <img src="" alt="" id="contactPersonAvatar" style="display:none;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                <div class="contact-card-avatar-initials" id="contactPersonInitials" style="display: flex;"></div>
                             </div>
                             <div class="contact-card-name-section">
-                                <h3 class="contact-card-name" id="contactPersonName">Olive Faith Padios</h3>
-                                <p class="contact-card-role" id="contactPersonRole">Secretary/Contact person</p>
+                                <h3 class="contact-card-name" id="contactPersonName">—</h3>
+                                <p class="contact-card-role" id="contactPersonRole">Representative</p>
                             </div>
                         </div>
 
@@ -149,15 +164,15 @@
                         <div class="contact-card-info">
                             <div class="contact-card-contact-item">
                                 <i class="fi fi-rr-phone-call"></i>
-                                <span>Contact No.: <span class="contact-card-value" id="contactPersonPhone">+63 912 345 6789</span></span>
+                                <span>Contact No.: <span class="contact-card-value" id="contactPersonPhone">—</span></span>
                             </div>
                             <div class="contact-card-contact-item">
                                 <i class="fi fi-rr-envelope"></i>
-                                <span>Email: <span class="contact-card-value" id="contactPersonEmail">pcc_official@gmail.com</span></span>
+                                <span>Email: <span class="contact-card-value" id="contactPersonEmail">—</span></span>
                             </div>
                             <div class="contact-card-contact-item">
                                 <i class="fi fi-rr-phone"></i>
-                                <span>Telephone: <span class="contact-card-value" id="contactPersonTelephone">061 234 5678</span></span>
+                                <span>Telephone: <span class="contact-card-value" id="contactPersonTelephone">—</span></span>
                             </div>
                         </div>
 
@@ -165,10 +180,8 @@
 
                         <div class="contact-card-section">
                             <h4 class="contact-card-section-title">Services Offered:</h4>
-                            <ul class="contact-card-services-list">
-                                <li>Residential and commercial building projects</li>
-                                <li>Renovations and site development</li>
-                                <li>Project planning, supervision, and documentation</li>
+                            <ul class="contact-card-services-list" id="servicesOfferedList">
+                                <li>—</li>
                             </ul>
                         </div>
 
@@ -176,12 +189,8 @@
 
                         <div class="contact-card-section">
                             <h4 class="contact-card-section-title">Specialization:</h4>
-                            <div class="contact-card-specialization-tags">
-                                <span class="specialization-tag">Warehouse</span>
-                                <span class="specialization-tag">Factories</span>
-                                <span class="specialization-tag">Large-scale</span>
-                                <span class="specialization-tag">Modern</span>
-                                <span class="specialization-tag">Building</span>
+                            <div class="contact-card-specialization-tags" id="specializationTags">
+                                <span class="specialization-tag">—</span>
                             </div>
                         </div>
 
@@ -190,15 +199,15 @@
                         <div class="contact-card-stats">
                             <div class="contact-card-stat-item">
                                 <span class="contact-card-stat-label">Experience:</span>
-                                <span class="contact-card-stat-value" id="contactPersonExperience">50 Years</span>
+                                <span class="contact-card-stat-value" id="contactPersonExperience">—</span>
                             </div>
                             <div class="contact-card-stat-item">
                                 <span class="contact-card-stat-label">Projects done:</span>
-                                <span class="contact-card-stat-value" id="contactPersonProjectsDone">102</span>
+                                <span class="contact-card-stat-value" id="contactPersonProjectsDone">0</span>
                             </div>
                             <div class="contact-card-stat-item">
                                 <span class="contact-card-stat-label">Ongoing projects:</span>
-                                <span class="contact-card-stat-value" id="contactPersonOngoingProjects">3</span>
+                                <span class="contact-card-stat-value" id="contactPersonOngoingProjects">0</span>
                             </div>
                         </div>
                     </div>
@@ -206,70 +215,6 @@
 
                 <!-- Right Column - Content Feed (Scrollable) -->
                 <div class="profile-right-column">
-                    <!-- Filter Section (Highlights Tab Only) -->
-                    <div class="projects-filter-section hidden" id="highlightsFilterSection">
-                        <div class="section-header">
-                            <h2 class="section-title">Highlights</h2>
-                            <div class="filter-container">
-                                <button type="button" class="filter-icon-btn" id="highlightsFilterIconBtn" aria-label="Filter highlights">
-                                    <i class="fi fi-rr-filter"></i>
-                                    <span class="filter-badge hidden" id="highlightsFilterBadge"></span>
-                                </button>
-                                <div class="filter-dropdown" id="highlightsFilterDropdown">
-                                    <div class="filter-dropdown-content">
-                                        <div class="filter-dropdown-header">
-                                            <h3 class="filter-dropdown-title">
-                                                <i class="fi fi-rr-filter"></i>
-                                                Filter Highlights
-                                            </h3>
-                                            <button type="button" class="filter-close-btn" id="highlightsFilterCloseBtn" aria-label="Close filter">
-                                                <i class="fi fi-rr-cross-small"></i>
-                                            </button>
-                                        </div>
-                                        <div class="filter-dropdown-body">
-                                            <div class="filter-group">
-                                                <label class="filter-label">
-                                                    <i class="fi fi-rr-flag"></i>
-                                                    Status
-                                                </label>
-                                                <select class="filter-select" id="highlightsStatusFilter">
-                                                    <option value="all">All Status</option>
-                                                    <option value="pending">Pending</option>
-                                                    <option value="active">Active</option>
-                                                    <option value="in_progress">In Progress</option>
-                                                    <option value="completed">Completed</option>
-                                                    <option value="cancelled">Cancelled</option>
-                                                </select>
-                                            </div>
-                                            <div class="filter-group">
-                                                <label class="filter-label">
-                                                    <i class="fi fi-rr-sort"></i>
-                                                    Sort By
-                                                </label>
-                                                <select class="filter-select" id="highlightsSortFilter">
-                                                    <option value="newest">Newest First</option>
-                                                    <option value="oldest">Oldest First</option>
-                                                    <option value="title">Title A-Z</option>
-                                                    <option value="status">Status</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                        <div class="filter-dropdown-footer">
-                                            <button type="button" class="btn-filter-clear" id="clearHighlightsFiltersBtn">
-                                                <i class="fi fi-rr-cross-small"></i>
-                                                Clear
-                                            </button>
-                                            <button type="button" class="btn-filter-apply" id="applyHighlightsFiltersBtn">
-                                                <i class="fi fi-rr-check"></i>
-                                                Apply
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
                     <!-- Portfolio Section (Portfolio Tab) -->
                     <div class="portfolio-section" id="portfolioSection">
                         <div class="section-action-bar">
@@ -284,11 +229,58 @@
                         </div>
                     </div>
 
-                    <!-- Highlights List (Highlights Tab) -->
-                    <div class="projects-list-container hidden" id="highlightsListContainer">
-                        <!-- Highlights Grid -->
-                        <div class="projects-grid" id="highlightsGrid">
-                            <!-- Highlights will be dynamically inserted here -->
+                    <!-- Highlights Tab (Stat Cards + Services) -->
+                    <div class="highlights-section hidden" id="highlightsSection">
+                        <div class="highlights-stats-grid" id="highlightsStatsGrid">
+                            <!-- Years Experience -->
+                            <div class="highlights-stat-card">
+                                <div class="highlights-stat-icon highlights-stat-icon--primary">
+                                    <i class="fi fi-rr-trophy"></i>
+                                </div>
+                                <span class="highlights-stat-value" id="hlYearsExperience">0</span>
+                                <span class="highlights-stat-label">Years Experience</span>
+                            </div>
+                            <!-- Projects Completed -->
+                            <div class="highlights-stat-card">
+                                <div class="highlights-stat-icon highlights-stat-icon--success">
+                                    <i class="fi fi-rr-check-circle"></i>
+                                </div>
+                                <span class="highlights-stat-value" id="hlProjectsCompleted">0</span>
+                                <span class="highlights-stat-label">Projects Completed</span>
+                            </div>
+                            <!-- Average Rating -->
+                            <div class="highlights-stat-card">
+                                <div class="highlights-stat-icon highlights-stat-icon--warning">
+                                    <i class="fi fi-rr-star"></i>
+                                </div>
+                                <span class="highlights-stat-value" id="hlAvgRating">0</span>
+                                <span class="highlights-stat-label">Average Rating</span>
+                            </div>
+                            <!-- Client Reviews -->
+                            <div class="highlights-stat-card">
+                                <div class="highlights-stat-icon highlights-stat-icon--info">
+                                    <i class="fi fi-rr-comment-alt"></i>
+                                </div>
+                                <span class="highlights-stat-value" id="hlClientReviews">0</span>
+                                <span class="highlights-stat-label">Client Reviews</span>
+                            </div>
+                        </div>
+
+                        <!-- Services Offered -->
+                        <div class="highlights-services-card" id="hlServicesCard" style="display:none;">
+                            <h3 class="highlights-services-title">Services Offered</h3>
+                            <p class="highlights-services-text" id="hlServicesText"></p>
+                        </div>
+
+                        <!-- Verification Status -->
+                        <div class="highlights-verification-card" id="hlVerificationCard" style="display:none;">
+                            <div class="highlights-verification-icon" id="hlVerificationIcon">
+                                <i class="fi fi-rr-badge-check"></i>
+                            </div>
+                            <div class="highlights-verification-info">
+                                <span class="highlights-verification-label" id="hlVerificationLabel">Verification Status</span>
+                                <span class="highlights-verification-value" id="hlVerificationValue">—</span>
+                            </div>
                         </div>
                     </div>
 
@@ -320,17 +312,13 @@
                     <div class="about-section hidden" id="aboutSection" data-profile-id="" data-profile-type="contractor">
                         <div class="about-block">
                             <h3 class="about-block-title">Bio</h3>
-                            <p class="about-bio-text" id="aboutBioText">BuildRight Construction is a leading construction company specializing in residential and commercial projects. With over 15 years of experience, we deliver quality craftsmanship and exceptional service.</p>
+                            <p class="about-bio-text" id="aboutBioText">—</p>
                         </div>
                         <div class="about-divider"></div>
                         <div class="about-block">
                             <h3 class="about-block-title">Skills &amp; Specializations</h3>
                             <div class="about-skills-grid" id="aboutSkillsGrid">
-                                <span class="about-skill-tag">Warehouse</span>
-                                <span class="about-skill-tag">Factories</span>
-                                <span class="about-skill-tag">Large-scale</span>
-                                <span class="about-skill-tag">Modern Building</span>
-                                <span class="about-skill-tag">Renovation</span>
+                                {{-- Populated from backend --}}
                             </div>
                         </div>
                         <div class="about-divider"></div>
@@ -339,34 +327,36 @@
                             <div class="about-details-list">
                                 <div class="about-detail-row">
                                     <span class="about-detail-label"><i class="fi fi-rr-briefcase"></i> Specialization</span>
-                                    <span class="about-detail-value" id="aboutSpecialization">General Contractor</span>
+                                    <span class="about-detail-value" id="aboutSpecialization">—</span>
                                 </div>
                                 <div class="about-detail-row">
                                     <span class="about-detail-label"><i class="fi fi-rr-time-past"></i> Experience</span>
-                                    <span class="about-detail-value" id="aboutExperience">50 Years</span>
+                                    <span class="about-detail-value" id="aboutExperience">—</span>
                                 </div>
                                 <div class="about-detail-row">
                                     <span class="about-detail-label"><i class="fi fi-rr-marker"></i> Location</span>
-                                    <span class="about-detail-value" id="aboutLocation">Manila, Philippines</span>
+                                    <span class="about-detail-value" id="aboutLocation">—</span>
                                 </div>
                                 <div class="about-detail-row">
                                     <span class="about-detail-label"><i class="fi fi-rr-check-circle"></i> Projects Done</span>
-                                    <span class="about-detail-value" id="aboutProjectsDone">128</span>
+                                    <span class="about-detail-value" id="aboutProjectsDone">0</span>
+                                </div>
+                                <div class="about-detail-row">
+                                    <span class="about-detail-label"><i class="fi fi-rr-calendar"></i> Company Started</span>
+                                    <span class="about-detail-value" id="aboutCompanyStartDate">—</span>
                                 </div>
                             </div>
                         </div>
                         <div class="about-divider"></div>
                         <div class="about-block">
+                            <h3 class="about-block-title">Company Description</h3>
+                            <p class="about-bio-text" id="aboutCompanyDescription">—</p>
+                        </div>
+                        <div class="about-divider"></div>
+                        <div class="about-block">
                             <h3 class="about-block-title">Certifications</h3>
                             <div class="about-certifications-list" id="aboutCertificationsList">
-                                <div class="about-cert-item">
-                                    <i class="fi fi-rr-badge-check"></i>
-                                    <span>Licensed General Contractor — PCAB</span>
-                                </div>
-                                <div class="about-cert-item">
-                                    <i class="fi fi-rr-badge-check"></i>
-                                    <span>ISO 9001 Certified</span>
-                                </div>
+                                {{-- Populated from backend --}}
                             </div>
                         </div>
                         <div class="about-divider"></div>
@@ -375,15 +365,23 @@
                             <div class="about-details-list">
                                 <div class="about-detail-row">
                                     <span class="about-detail-label"><i class="fi fi-rr-phone-call"></i> Mobile</span>
-                                    <span class="about-detail-value" id="aboutPhone">+63 912 345 6789</span>
+                                    <span class="about-detail-value" id="aboutPhone">—</span>
                                 </div>
                                 <div class="about-detail-row">
                                     <span class="about-detail-label"><i class="fi fi-rr-envelope"></i> Email</span>
-                                    <span class="about-detail-value" id="aboutEmail">info@buildrightconstruction.com</span>
+                                    <span class="about-detail-value" id="aboutEmail">—</span>
                                 </div>
                                 <div class="about-detail-row">
                                     <span class="about-detail-label"><i class="fi fi-rr-phone"></i> Telephone</span>
-                                    <span class="about-detail-value" id="aboutTelephone">02 1234 5678</span>
+                                    <span class="about-detail-value" id="aboutTelephone">—</span>
+                                </div>
+                                <div class="about-detail-row">
+                                    <span class="about-detail-label"><i class="fi fi-rr-globe"></i> Website</span>
+                                    <span class="about-detail-value" id="aboutWebsite">—</span>
+                                </div>
+                                <div class="about-detail-row">
+                                    <span class="about-detail-label"><i class="fi fi-rr-share"></i> Social Media</span>
+                                    <span class="about-detail-value" id="aboutSocialMedia">—</span>
                                 </div>
                             </div>
                         </div>
@@ -395,16 +393,20 @@
 
     <!-- Portfolio Post Modal -->
     @include('contractor.contractor_Modals.contractorPortfolioPost_Modal')
+    <!-- Edit Profile Modal -->
+    @include('contractor.contractor_Modals.contractorEditProfile_Modal')
 @endsection
 
 @section('extra_css')
     <link rel="stylesheet" href="{{ asset('css/contractor/contractor_Profile.css') }}">
     <link rel="stylesheet" href="{{ asset('css/contractor/contractor_Modals/contractorPortfolioPost_Modal.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/contractor/contractor_Modals/contractorEditProfile_Modal.css') }}">
 @endsection
 
 @section('extra_js')
     <script src="{{ asset('js/contractor/contractor_Profile.js') }}"></script>
     <script src="{{ asset('js/contractor/contractor_Modals/contractorPortfolioPost_Modal.js') }}"></script>
+    <script src="{{ asset('js/contractor/contractor_Modals/contractorEditProfile_Modal.js') }}"></script>
     <script>
         // Set Profile link as active when on profile page
         document.addEventListener('DOMContentLoaded', () => {
@@ -415,7 +417,7 @@
                     link.classList.add('active');
                 }
             });
-            
+
             // Update navbar search placeholder
             const navbarSearchInput = document.querySelector('.navbar-search-input');
             if (navbarSearchInput) {

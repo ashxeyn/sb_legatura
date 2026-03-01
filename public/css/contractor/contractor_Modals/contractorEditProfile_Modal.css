@@ -1,0 +1,381 @@
+/* ============================================================
+   Edit Contractor Profile Modal (ecp-)
+   ============================================================ */
+
+.ecp-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 9000;
+    overflow-y: auto;
+}
+
+.ecp-modal.active {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1rem;
+}
+
+.ecp-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: 9001;
+    animation: ecpFadeIn 0.25s ease;
+}
+
+@keyframes ecpFadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+/* Container */
+.ecp-modal-container {
+    position: relative;
+    background: linear-gradient(to bottom, #ffffff 0%, #f9fafb 100%);
+    border-radius: 1.25rem;
+    width: 100%;
+    max-width: 720px;
+    max-height: 90vh;
+    margin: auto;
+    z-index: 9002;
+    box-shadow: 0 25px 70px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.1);
+    animation: ecpSlideUp 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+@keyframes ecpSlideUp {
+    from { opacity: 0; transform: translateY(30px) scale(0.96); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Header */
+.ecp-modal-header {
+    padding: 1.25rem 1.75rem;
+    border-bottom: 2px solid #f3f4f6;
+    background: linear-gradient(135deg, #ffffff 0%, #fef3e7 100%);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+}
+
+.ecp-modal-header::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #EEA24B 0%, #F57C00 100%);
+}
+
+.ecp-modal-title {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    font-size: 1.3rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #1f2937 0%, #EEA24B 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin: 0;
+}
+
+.ecp-modal-title i {
+    font-size: 1.1rem;
+    -webkit-text-fill-color: #EEA24B;
+}
+
+.ecp-close-btn {
+    background: none;
+    border: 2px solid #e5e7eb;
+    border-radius: 10px;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #6b7280;
+    transition: all 0.2s ease;
+}
+
+.ecp-close-btn:hover {
+    background: #fee2e2;
+    border-color: #fecaca;
+    color: #ef4444;
+}
+
+/* Body */
+.ecp-modal-body {
+    padding: 1.5rem 1.75rem;
+    overflow-y: auto;
+    flex: 1;
+}
+
+/* Sections */
+.ecp-section {
+    margin-bottom: 1.75rem;
+}
+
+.ecp-section:last-child {
+    margin-bottom: 0;
+}
+
+.ecp-section-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin: 0 0 1rem 0;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #f3f4f6;
+}
+
+.ecp-section-title i {
+    color: #EEA24B;
+    font-size: 0.95rem;
+}
+
+/* Fields */
+.ecp-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 0.875rem;
+}
+
+.ecp-field {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 0.875rem;
+}
+
+.ecp-field.full {
+    grid-column: 1 / -1;
+}
+
+.ecp-label {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 0.35rem;
+}
+
+.ecp-req {
+    color: #ef4444;
+    font-weight: 700;
+}
+
+.ecp-input,
+.ecp-textarea,
+.ecp-select {
+    width: 100%;
+    padding: 0.6rem 0.85rem;
+    border: 1.5px solid #d1d5db;
+    border-radius: 10px;
+    font-size: 0.875rem;
+    color: #1f2937;
+    background: #fff;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    outline: none;
+    font-family: inherit;
+    box-sizing: border-box;
+}
+
+.ecp-input:focus,
+.ecp-textarea:focus,
+.ecp-select:focus {
+    border-color: #EEA24B;
+    box-shadow: 0 0 0 3px rgba(238, 162, 75, 0.15);
+}
+
+.ecp-input::placeholder,
+.ecp-textarea::placeholder {
+    color: #9ca3af;
+}
+
+.ecp-textarea {
+    resize: vertical;
+    min-height: 60px;
+}
+
+.ecp-hint {
+    font-size: 0.75rem;
+    color: #9ca3af;
+    margin-top: 0.25rem;
+}
+
+/* Invalid state */
+.ecp-input.invalid,
+.ecp-textarea.invalid {
+    border-color: #ef4444;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+/* Footer */
+.ecp-modal-footer {
+    padding: 1rem 1.75rem;
+    border-top: 2px solid #f3f4f6;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    background: #fafafa;
+}
+
+.ecp-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.6rem 1.5rem;
+    border-radius: 10px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s ease;
+}
+
+.ecp-btn--cancel {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.ecp-btn--cancel:hover {
+    background: #e5e7eb;
+}
+
+.ecp-btn--save {
+    background: linear-gradient(135deg, #EEA24B 0%, #F57C00 100%);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(238, 162, 75, 0.35);
+}
+
+.ecp-btn--save:hover {
+    box-shadow: 0 4px 16px rgba(238, 162, 75, 0.5);
+    transform: translateY(-1px);
+}
+
+.ecp-btn--save:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.ecp-btn--save .ecp-spinner {
+    display: none;
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: ecpSpin 0.6s linear infinite;
+}
+
+.ecp-btn--save.loading .ecp-spinner {
+    display: inline-block;
+}
+
+.ecp-btn--save.loading span {
+    display: none;
+}
+
+.ecp-btn--save.loading i {
+    display: none;
+}
+
+@keyframes ecpSpin {
+    to { transform: rotate(360deg); }
+}
+
+/* ============================================================
+   Searchable City Combobox
+   ============================================================ */
+.ecp-combobox {
+    position: relative;
+}
+
+.ecp-combobox .ecp-input {
+    padding-right: 2rem;
+}
+
+.ecp-combobox-dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    max-height: 220px;
+    overflow-y: auto;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-top: none;
+    border-radius: 0 0 0.5rem 0.5rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.ecp-combobox-dropdown.open {
+    display: block;
+}
+
+.ecp-combobox-item {
+    padding: 0.55rem 0.85rem;
+    font-size: 0.875rem;
+    color: #334155;
+    cursor: pointer;
+    transition: background 0.12s;
+}
+
+.ecp-combobox-item:hover,
+.ecp-combobox-item.highlighted {
+    background: #fff7ed;
+    color: #c2410c;
+}
+
+.ecp-combobox-empty {
+    padding: 0.75rem 0.85rem;
+    font-size: 0.8rem;
+    color: #94a3b8;
+    text-align: center;
+    font-style: italic;
+}
+
+/* ============================================================
+   Responsive
+   ============================================================ */
+@media (max-width: 640px) {
+    .ecp-modal.active {
+        padding: 1rem 0.5rem;
+    }
+
+    .ecp-modal-container {
+        max-height: 95vh;
+        border-radius: 1rem;
+    }
+
+    .ecp-modal-header,
+    .ecp-modal-body,
+    .ecp-modal-footer {
+        padding-left: 1.25rem;
+        padding-right: 1.25rem;
+    }
+
+    .ecp-row {
+        grid-template-columns: 1fr;
+    }
+
+    .ecp-modal-title {
+        font-size: 1.1rem;
+    }
+}
