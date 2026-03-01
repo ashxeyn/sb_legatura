@@ -917,15 +917,15 @@
     </div>
     {{-- ═══ Project Summary Modal ═══ --}}
     @php
-        $ps = $projectSummary ?? null;
-        $psHeader = $ps['header'] ?? [];
-        $psOverview = $ps['overview'] ?? [];
-        $psMilestones = $ps['milestones'] ?? [];
-        $psBudgetHistory = $ps['budget_history'] ?? [];
-        $psChangeHistory = $ps['change_history'] ?? [];
-        $psPayments = $ps['payments'] ?? ['records' => [], 'total_approved' => 0, 'total_pending' => 0, 'total_rejected' => 0];
-        $psReports = $ps['progress_reports'] ?? [];
-        $psGeneratedAt = $ps['generated_at'] ?? null;
+        $psSummary = $projectSummary ?? null;
+        $psHeader = $psSummary['header'] ?? [];
+        $psOverview = $psSummary['overview'] ?? [];
+        $psMilestones = $psSummary['milestones'] ?? [];
+        $psBudgetHistory = $psSummary['budget_history'] ?? [];
+        $psChangeHistory = $psSummary['change_history'] ?? [];
+        $psPayments = $psSummary['payments'] ?? ['records' => [], 'total_approved' => 0, 'total_pending' => 0, 'total_rejected' => 0];
+        $psReports = $psSummary['progress_reports'] ?? [];
+        $psGeneratedAt = $psSummary['generated_at'] ?? null;
 
         $psProgressPct = ($psOverview['total_milestones'] ?? 0) > 0
             ? round(($psOverview['completed_milestones'] ?? 0) / $psOverview['total_milestones'] * 100)
@@ -970,7 +970,7 @@
 
             {{-- Modal Body --}}
             <div class="mdp-modal-body" id="projectSummaryModalBody">
-                @if(!$ps)
+                @if(!$psSummary)
                     <div class="fdm-empty-block" style="padding:48px 16px;">
                         <i class="fi fi-rr-chart-pie-alt text-gray-300" style="font-size:2rem;"></i>
                         <p>Summary data not available</p>
@@ -1346,7 +1346,6 @@
 @section('extra_js')
     <script>
         window.__milestoneProgressConfig = {
-            itemId: @json($itemId ?? null),
             itemId: @json($itemId ?? null),
             projectId: @json($projectId ?? null),
             milestoneId: @json($milestoneItem->milestone_id ?? null),
