@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Services\notificationService;
+use App\Services\bidRankingService;
 
 class biddingController extends Controller
 {
@@ -421,6 +422,18 @@ class biddingController extends Controller
                     ->get();
                 $bid->files = $files->toArray();
                 $bid->file_count = count($bid->files);
+            }
+
+            // Apply ranking scores
+            try {
+                $ranker = app(bidRankingService::class);
+                $bids   = $ranker->rankBids((int) $projectId, $bids);
+            } catch (\Exception $re) {
+                Log::warning('Bid ranking failed, falling back to submission order', [
+                    'project_id' => $projectId,
+                    'error'      => $re->getMessage(),
+                ]);
+                // Non-fatal — keep original order
             }
 
             return response()->json([

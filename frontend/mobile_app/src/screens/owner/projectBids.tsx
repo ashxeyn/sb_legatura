@@ -439,28 +439,6 @@ export default function ProjectBids({ project, userId, onClose, onBidAccepted }:
           </View>
         </View>
 
-        {/* Match Score Progress Bar */}
-        {bid.ranking_score !== undefined && (
-          <View style={styles.matchScoreContainer}>
-            <View style={styles.matchScoreHeader}>
-              <Text style={styles.matchScoreLabel}>Match Score</Text>
-              <Text style={styles.matchScoreValue}>{Math.round(bid.ranking_score)}/100</Text>
-            </View>
-            <View style={styles.matchScoreBar}>
-              <View 
-                style={[
-                  styles.matchScoreBarFill, 
-                  { 
-                    width: `${bid.ranking_score}%`,
-                    backgroundColor: bid.ranking_score >= 80 ? COLORS.success : 
-                                   bid.ranking_score >= 60 ? COLORS.warning : COLORS.textMuted
-                  }
-                ]} 
-              />
-            </View>
-          </View>
-        )}
-
         {/* Bid Details */}
         <View style={styles.bidDetails}>
           <View style={styles.bidDetailItem}>
@@ -1002,36 +980,7 @@ const styles = StyleSheet.create({
     marginLeft: 4,
     letterSpacing: 0.5,
   },
-  matchScoreContainer: {
-    marginTop: 12,
-    marginBottom: 12,
-  },
-  matchScoreHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  matchScoreLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: COLORS.textSecondary,
-  },
-  matchScoreValue: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: COLORS.text,
-  },
-  matchScoreBar: {
-    height: 8,
-    backgroundColor: COLORS.borderLight,
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  matchScoreBarFill: {
-    height: '100%',
-    borderRadius: 4,
-  },
+
   contractorRow: {
     flexDirection: 'row',
     alignItems: 'center',

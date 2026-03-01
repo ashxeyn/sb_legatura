@@ -3,368 +3,544 @@
 namespace App\Services;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Collection;
 
 /**
- * Centralized Bid Ranking Service
- * 
- * This service provides a single location for all bid ranking logic.
- * Modify weights and scoring rules here - all controllers will use these rules automatically.
+ * Bid Ranking Service — Weighted Scoring System
+ *
+ * Ranks bids using a quality-first approach:
+ *   BID_SCORE = Σ (component_score × weight)
+ *
+ * Components:
+ *   1. Cost Score          (20%) — relative to lowest bid in the project
+ *   2. Experience Score    (10%) — years of experience, capped at 20
+ *   3. Review Score        (15%) — avg rating × log-scaled review count
+ *   4. Completed Projects  (10%) — logarithmic scaling
+ *   5. Verification Score  (15%) — approved / pending / rejected
+ *   6. License Score       (10%) — PCAB category + expiration check
+ *   7. Timeline Score      ( 5%) — relative to shortest reasonable timeline
+ *   8. Subscription Boost  (10%) — capped additive (silver/gold from platform_payments)
+ *   9. Early Bird Score    ( 5%) — rewards earlier bid submissions
+ *
+ * All component scores are normalised to 0.0 – 1.0 before weighting.
+ * Final bid_score range: 0.0 – 1.0 (displayed as 0 – 100 when needed).
+ *
+ * Design principles:
+ *   - Quality-first: subscription boosts visibility, not credibility
+ *   - No pay-to-win: a poor Gold contractor cannot outrank a strong Free one
+ *   - Modular: each scorer is a standalone method, easy to extend
+ *   - Efficient: batch-loads review aggregates and subscription data per project
  */
 class bidRankingService
 {
-    /**
-     * CONFIGURATION - Adjust these weights to change ranking priorities
-     * All weights should add up to 100 for percentage-based scoring
-     */
+    // ─── Configurable weights (must sum to 1.0) ────────────────────────
+
     private const WEIGHTS = [
-        'price' => 35,           // How much does price matter? (35%)
-        'experience' => 30,      // How much does experience matter? (30%)
-        'reputation' => 25,      // How much do reviews matter? (25%)
-        'subscription' => 10,    // Premium subscription boost (10%)
+        'cost'               => 0.20,
+        'experience'         => 0.10,
+        'review'             => 0.15,
+        'completed_projects' => 0.10,
+        'verification'       => 0.15,
+        'license'            => 0.10,
+        'timeline'           => 0.05,
+        'subscription'       => 0.10,
+        'early_bird'         => 0.05,
     ];
 
-    /**
-     * SUBSCRIPTION TIERS - Based on platform_payments
-     * Define scoring boost for each subscription level
-     */
-    private const SUBSCRIPTION_SCORES = [
-        'premium' => 100,        // Full boost for premium subscribers
-        'professional' => 60,    // Medium boost for professional
-        'free' => 0,             // No boost for free users
+    // ─── Verification status scores ────────────────────────────────────
+
+    private const VERIFICATION_SCORES = [
+        'approved' => 1.0,
+        'pending'  => 0.3,
+        'rejected' => 0.0,
+        'deleted'  => 0.0,
     ];
 
-    /**
-     * EXPERIENCE SCORING - Define points for experience metrics
-     */
-    private const EXPERIENCE_CONFIG = [
-        'completed_projects_multiplier' => 2,  // Each completed project = 2 points
-        'years_experience_multiplier' => 3,    // Each year of experience = 3 points
-        'max_score' => 100,                    // Cap at 100 to prevent over-scoring
+    // ─── PCAB licence category scores ──────────────────────────────────
+
+    private const LICENSE_SCORES = [
+        'AAAA'    => 1.0,
+        'AAA'     => 0.9,
+        'AA'      => 0.8,
+        'A'       => 0.7,
+        'B'       => 0.6,
+        'C'       => 0.5,
+        'D'       => 0.4,
+        'Trade/E' => 0.3,
     ];
 
-    /**
-     * PRICE SCORING - How to evaluate bid prices
-     */
-    private const PRICE_CONFIG = [
-        'within_budget_score' => 100,          // Perfect score if within budget
-        'below_budget_penalty' => 20,          // Deduct if too cheap (suspicious)
-        'above_budget_penalty_rate' => 100,    // Penalty rate for over budget bids
+    // ─── Subscription tier additive bonus ──────────────────────────────
+
+    private const SUBSCRIPTION_BONUS = [
+        'gold'   => 0.10,
+        'silver' => 0.05,
+        'free'   => 0.00,
     ];
 
+    // ─── Tunable caps / thresholds ─────────────────────────────────────
+
+    /** Max years of experience that earn full score */
+    private const MAX_EXPERIENCE_YEARS = 20;
+
+    /** Minimum review count for full review confidence */
+    private const MIN_REVIEW_COUNT_FULL = 10;
+
+    /** Max log-scaled completed projects (log10(100) ≈ 2.0) */
+    private const MAX_COMPLETED_LOG = 2.0;
+
+    /** Cost ratio floor – prevents extremely cheap bids from scoring > 1.0 */
+    private const COST_RATIO_CAP = 1.0;
+
+    // ═══════════════════════════════════════════════════════════════════
+    // PUBLIC API
+    // ═══════════════════════════════════════════════════════════════════
+
     /**
-     * Rank all bids for a project
-     * 
-     * @param int $projectId The project to rank bids for
-     * @param Collection $bids Collection of bid objects (optional - will fetch if not provided)
-     * @return Collection Bids sorted by ranking score (highest first)
+     * Rank all bids for a project.
+     *
+     * @param  int              $projectId
+     * @param  Collection|null  $bids  Pre-fetched bids (optional — will fetch if null)
+     * @return Collection       Bids sorted by bid_score DESC, each decorated with
+     *                          `ranking_score`, `bid_rank`, and `score_breakdown`.
      */
     public function rankBids(int $projectId, ?Collection $bids = null): Collection
     {
-        // Get project budget for price scoring
-        $project = DB::table('projects')
-            ->select('budget_range_min', 'budget_range_max')
-            ->where('project_id', $projectId)
-            ->first();
-
-        if (!$project) {
-            throw new \Exception("Project not found: {$projectId}");
-        }
-
-        // Fetch bids if not provided
         if ($bids === null) {
             $bids = $this->fetchProjectBids($projectId);
         }
 
-        // Calculate ranking score for each bid
+        if ($bids->isEmpty()) {
+            return $bids;
+        }
+
+        // ── Pre-compute project-wide aggregates ────────────────────────
+        $lowestCost       = $bids->min('proposed_cost');
+        $shortestTimeline = $bids->min('estimated_timeline');
+
+        // Earliest and latest submission timestamps for early-bird scoring
+        $earliestSubmitted = $bids->min('submitted_at');
+        $latestSubmitted   = $bids->max('submitted_at');
+
+        // Batch-load contractor IDs for review + subscription look-ups
+        $contractorIds = $bids->pluck('contractor_id')->unique()->values()->all();
+
+        $reviewAggregates  = $this->batchLoadReviewAggregates($contractorIds);
+        $subscriptionTiers = $this->batchLoadSubscriptionTiers($contractorIds);
+        $contractorDetails = $this->batchLoadContractorDetails($contractorIds);
+
+        // ── Score each bid ─────────────────────────────────────────────
         foreach ($bids as $bid) {
-            $bid->ranking_score = $this->calculateBidScore($bid, $project);
-            
-            // Add breakdown for debugging (optional - remove in production if not needed)
+            $cid = $bid->contractor_id;
+
+            $contractor = $contractorDetails[$cid] ?? null;
+            $reviewData = $reviewAggregates[$cid]  ?? ['avg_rating' => 0, 'review_count' => 0];
+            $subTier    = $subscriptionTiers[$cid]  ?? 'free';
+
+            // Individual component scores (each 0.0 – 1.0)
+            $costScore       = $this->scoreCost($bid->proposed_cost, $lowestCost);
+            $experienceScore = $this->scoreExperience(
+                $contractor->years_of_experience ?? ($bid->years_of_experience ?? 0)
+            );
+            $reviewScore     = $this->scoreReviews($reviewData['avg_rating'], $reviewData['review_count']);
+            $completedScore  = $this->scoreCompletedProjects(
+                $contractor->completed_projects ?? ($bid->completed_projects ?? 0)
+            );
+            $verifyScore     = $this->scoreVerification(
+                $contractor->verification_status ?? 'pending'
+            );
+            $licenseScore    = $this->scoreLicense(
+                $contractor->picab_category ?? ($bid->picab_category ?? null),
+                $contractor->picab_expiration_date ?? null
+            );
+            $timelineScore   = $this->scoreTimeline($bid->estimated_timeline, $shortestTimeline);
+            $subScore        = self::SUBSCRIPTION_BONUS[$subTier] ?? 0.0;
+            $earlyBirdScore  = $this->scoreEarlyBird(
+                $bid->submitted_at ?? null, $earliestSubmitted, $latestSubmitted
+            );
+
+            // Weighted total
+            $totalScore =
+                ($costScore       * self::WEIGHTS['cost']) +
+                ($experienceScore * self::WEIGHTS['experience']) +
+                ($reviewScore     * self::WEIGHTS['review']) +
+                ($completedScore  * self::WEIGHTS['completed_projects']) +
+                ($verifyScore     * self::WEIGHTS['verification']) +
+                ($licenseScore    * self::WEIGHTS['license']) +
+                ($timelineScore   * self::WEIGHTS['timeline']) +
+                ($subScore        * self::WEIGHTS['subscription']) +
+                ($earlyBirdScore  * self::WEIGHTS['early_bird']);
+
+            $bid->ranking_score = round($totalScore * 100, 2); // 0–100 scale
+
             $bid->score_breakdown = [
-                'price_score' => $this->calculatePriceScore($bid->proposed_cost, $project->budget_range_min, $project->budget_range_max),
-                'experience_score' => $this->calculateExperienceScore($bid->completed_projects ?? 0, $bid->years_of_experience ?? 0),
-                'reputation_score' => $this->calculateReputationScore($bid->contractor_id),
-                'subscription_score' => $this->calculateSubscriptionScore($bid->contractor_id),
+                'cost'               => round($costScore * 100, 2),
+                'experience'         => round($experienceScore * 100, 2),
+                'review'             => round($reviewScore * 100, 2),
+                'completed_projects' => round($completedScore * 100, 2),
+                'verification'       => round($verifyScore * 100, 2),
+                'license'            => round($licenseScore * 100, 2),
+                'timeline'           => round($timelineScore * 100, 2),
+                'early_bird'         => round($earlyBirdScore * 100, 2),
+                'subscription'       => round($subScore * 100, 2),
+                'subscription_tier'  => $subTier,
             ];
         }
 
-        // Sort by ranking score (highest first)
-        return $bids->sortByDesc('ranking_score')->values();
+        // Sort highest score first, then assign 1-based rank
+        $ranked = $bids->sortByDesc('ranking_score')->values();
+        $ranked->each(function ($bid, $index) {
+            $bid->bid_rank = $index + 1;
+        });
+
+        return $ranked;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // INDIVIDUAL SCORING METHODS  (all return 0.0 – 1.0)
+    // ═══════════════════════════════════════════════════════════════════
+
+    /**
+     * 1. Cost Score (20%)
+     * Relative to the lowest bid in the project.
+     * cost_score = lowest_bid / this_bid, capped at 1.0
+     */
+    private function scoreCost(float $proposedCost, float $lowestCost): float
+    {
+        if ($proposedCost <= 0) {
+            return 0.0;
+        }
+        return min(self::COST_RATIO_CAP, $lowestCost / $proposedCost);
     }
 
     /**
-     * Calculate total score for a single bid
-     * 
-     * @param object $bid The bid object
-     * @param object $project The project object
-     * @return float Total weighted score (0-100)
+     * 2. Experience Score (10%)
+     * experience_score = min(years / MAX_YEARS, 1.0)
      */
-    private function calculateBidScore($bid, $project): float
+    private function scoreExperience(int $years): float
     {
-        $priceScore = $this->calculatePriceScore(
-            $bid->proposed_cost,
-            $project->budget_range_min,
-            $project->budget_range_max
+        if ($years <= 0) {
+            return 0.0;
+        }
+        return min(1.0, $years / self::MAX_EXPERIENCE_YEARS);
+    }
+
+    /**
+     * 3. Review Score (15%)
+     * Combines average rating with review-count confidence.
+     *
+     * raw = (avg_rating / 5) × confidence_factor
+     * confidence_factor = log2(count + 1) / log2(MIN_COUNT + 1)  capped at 1.0
+     *
+     * A single 5-star review  → ~0.29  (not dominant)
+     * 10+ reviews at 5 stars  → 1.0
+     * No reviews              → 0.40 (neutral baseline so newcomers aren't buried)
+     */
+    private function scoreReviews(float $avgRating, int $reviewCount): float
+    {
+        if ($reviewCount === 0) {
+            return 0.40; // neutral baseline for new contractors
+        }
+
+        $ratingNorm = $avgRating / 5.0;
+        $confidence = min(
+            1.0,
+            log($reviewCount + 1, 2) / log(self::MIN_REVIEW_COUNT_FULL + 1, 2)
         );
 
-        $experienceScore = $this->calculateExperienceScore(
-            $bid->completed_projects ?? 0,
-            $bid->years_of_experience ?? 0
-        );
-
-        $reputationScore = $this->calculateReputationScore($bid->contractor_id);
-        
-        $subscriptionScore = $this->calculateSubscriptionScore($bid->contractor_id);
-
-        // Apply weights and return total score
-        $totalScore = 
-            ($priceScore * self::WEIGHTS['price'] / 100) +
-            ($experienceScore * self::WEIGHTS['experience'] / 100) +
-            ($reputationScore * self::WEIGHTS['reputation'] / 100) +
-            ($subscriptionScore * self::WEIGHTS['subscription'] / 100);
-
-        return round($totalScore, 2);
+        return $ratingNorm * $confidence;
     }
 
     /**
-     * PRICE SCORING
-     * Bids within budget score highest
-     * Too cheap bids are penalized (might be suspicious)
-     * Over budget bids are heavily penalized
-     * 
-     * @param float $proposedCost The bid amount
-     * @param float $budgetMin Minimum budget
-     * @param float $budgetMax Maximum budget
-     * @return float Score (0-100)
+     * 4. Completed Projects Score (10%)
+     * Logarithmic scaling: log10(n + 1) / MAX_COMPLETED_LOG, capped at 1.0
      */
-    private function calculatePriceScore(float $proposedCost, float $budgetMin, float $budgetMax): float
+    private function scoreCompletedProjects(int $count): float
     {
-        // Case 1: Bid is below minimum budget (too cheap - suspicious)
-        if ($proposedCost < $budgetMin) {
-            $percentBelow = (($budgetMin - $proposedCost) / $budgetMin) * 100;
-            return max(0, self::PRICE_CONFIG['within_budget_score'] - ($percentBelow * 0.5));
+        if ($count <= 0) {
+            return 0.0;
         }
-        
-        // Case 2: Bid is within budget range (ideal)
-        if ($proposedCost >= $budgetMin && $proposedCost <= $budgetMax) {
-            // Give slightly higher score to bids closer to budget_min
-            $rangePosition = ($proposedCost - $budgetMin) / ($budgetMax - $budgetMin);
-            return self::PRICE_CONFIG['within_budget_score'] - ($rangePosition * self::PRICE_CONFIG['below_budget_penalty']);
-        }
-        
-        // Case 3: Bid is over budget (penalize heavily)
-        $percentOver = (($proposedCost - $budgetMax) / $budgetMax) * 100;
-        $penalty = $percentOver * self::PRICE_CONFIG['above_budget_penalty_rate'] / 100;
-        return max(0, 80 - $penalty);
+        return min(1.0, log10($count + 1) / self::MAX_COMPLETED_LOG);
     }
 
     /**
-     * EXPERIENCE SCORING
-     * Based on completed projects and years of experience
-     * 
-     * @param int $completedProjects Number of completed projects
-     * @param int $yearsExperience Years of experience
-     * @return float Score (0-100)
+     * 5. Verification Score (15%)
+     * Direct mapping from verification_status.
      */
-    private function calculateExperienceScore(int $completedProjects, int $yearsExperience): float
+    private function scoreVerification(string $status): float
     {
-        $score = 
-            ($completedProjects * self::EXPERIENCE_CONFIG['completed_projects_multiplier']) +
-            ($yearsExperience * self::EXPERIENCE_CONFIG['years_experience_multiplier']);
-
-        // Cap at maximum score
-        return min(self::EXPERIENCE_CONFIG['max_score'], $score);
+        return self::VERIFICATION_SCORES[strtolower($status)] ?? 0.0;
     }
 
     /**
-     * REPUTATION SCORING
-     * Based on reviews from completed projects
-     * Uses existing reviews table
-     * 
-     * @param int $contractorId The contractor ID
-     * @return float Score (0-100)
+     * 6. License / PCAB Score (10%)
+     * Returns 0 if licence is expired.
+     * Otherwise maps category to tier score.
      */
-    private function calculateReputationScore(int $contractorId): float
+    private function scoreLicense(?string $category, ?string $expirationDate): float
     {
-        // Get contractor's user_id
-        $contractor = DB::table('contractors')
-            ->where('contractor_id', $contractorId)
-            ->first();
-
-        if (!$contractor) {
-            return 0;
+        if (!$category) {
+            return 0.0;
         }
 
-        // Get all reviews where this contractor was reviewed
+        // Expired licence → zero
+        if ($expirationDate && strtotime($expirationDate) < time()) {
+            return 0.0;
+        }
+
+        return self::LICENSE_SCORES[$category] ?? 0.3;
+    }
+
+    /**
+     * 7. Timeline Score (5%)
+     * Relative to the shortest timeline among bids.
+     * timeline_score = shortest / this_timeline, capped at 1.0
+     */
+    private function scoreTimeline(int $days, int $shortestDays): float
+    {
+        if ($days <= 0) {
+            return 0.0;
+        }
+        if ($shortestDays <= 0) {
+            return 1.0;
+        }
+        return min(1.0, $shortestDays / $days);
+    }
+
+    /**
+     * 8. Early Bird Score (5%)
+     * Rewards contractors who submitted their bid earlier.
+     * The first bid gets 1.0, the last gets 0.0.
+     * If all bids were submitted at the same time, everyone gets 1.0.
+     */
+    private function scoreEarlyBird(?string $submittedAt, ?string $earliest, ?string $latest): float
+    {
+        if (!$submittedAt || !$earliest || !$latest) {
+            return 0.5; // neutral if timestamps are missing
+        }
+
+        $earliestTs = strtotime($earliest);
+        $latestTs   = strtotime($latest);
+        $thisTs     = strtotime($submittedAt);
+
+        // All bids submitted at the same time → everyone gets full score
+        if ($latestTs <= $earliestTs) {
+            return 1.0;
+        }
+
+        // Linear interpolation: earliest = 1.0, latest = 0.0
+        return 1.0 - (($thisTs - $earliestTs) / ($latestTs - $earliestTs));
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // BATCH DATA LOADERS  (minimise N+1 queries)
+    // ═══════════════════════════════════════════════════════════════════
+
+    /**
+     * Load average rating + review count for a set of contractors in one query.
+     *
+     * @return array<int, array{avg_rating: float, review_count: int}>
+     */
+    private function batchLoadReviewAggregates(array $contractorIds): array
+    {
+        if (empty($contractorIds)) {
+            return [];
+        }
+
+        // Map contractor_id → user_id
+        $contractors = DB::table('contractors')
+            ->whereIn('contractor_id', $contractorIds)
+            ->select('contractor_id', 'user_id')
+            ->get()
+            ->keyBy('contractor_id');
+
+        $userIds = $contractors->pluck('user_id')->unique()->values()->all();
+        if (empty($userIds)) {
+            return [];
+        }
+
         $reviews = DB::table('reviews')
-            ->where('reviewee_user_id', $contractor->user_id)
-            ->select('rating')
+            ->whereIn('reviewee_user_id', $userIds)
+            ->select('reviewee_user_id')
+            ->selectRaw('AVG(rating) as avg_rating')
+            ->selectRaw('COUNT(*) as review_count')
+            ->groupBy('reviewee_user_id')
+            ->get()
+            ->keyBy('reviewee_user_id');
+
+        $result = [];
+        foreach ($contractors as $cid => $c) {
+            $r = $reviews[$c->user_id] ?? null;
+            $result[$cid] = [
+                'avg_rating'   => $r ? round((float) $r->avg_rating, 2) : 0,
+                'review_count' => $r ? (int) $r->review_count : 0,
+            ];
+        }
+
+        return $result;
+    }
+
+    /**
+     * Load active subscription tiers for a set of contractors.
+     * Checks platform_payments for active subscription or boosted_post entries.
+     *
+     * @return array<int, string>  contractor_id → 'gold' | 'silver' | 'free'
+     */
+    private function batchLoadSubscriptionTiers(array $contractorIds): array
+    {
+        if (empty($contractorIds)) {
+            return [];
+        }
+
+        $payments = DB::table('platform_payments')
+            ->whereIn('contractor_id', $contractorIds)
+            ->where('is_approved', 1)
+            ->where(function ($q) {
+                $q->where('payment_for', 'subscription')
+                  ->orWhere('payment_for', 'boosted_post');
+            })
+            ->where(function ($q) {
+                // Active: future expiration_date, or paid in last 30 days if no expiration
+                $q->where('expiration_date', '>=', now())
+                  ->orWhere(function ($q2) {
+                      $q2->whereNull('expiration_date')
+                         ->whereRaw('DATE_ADD(transaction_date, INTERVAL 30 DAY) >= NOW()');
+                  });
+            })
+            ->select('contractor_id', 'subscription_tier', 'amount', 'payment_for')
+            ->orderByDesc('transaction_date')
             ->get();
 
-        if ($reviews->isEmpty()) {
-            // No reviews yet - return neutral score (50)
-            return 50;
+        $result = [];
+        foreach ($contractorIds as $cid) {
+            $result[$cid] = 'free';
         }
 
-        // Calculate average rating
-        $averageRating = $reviews->avg('rating');
-        
-        // Convert 1-5 star rating to 0-100 score
-        $baseScore = ($averageRating / 5) * 100;
-
-        // Bonus for having many reviews (trust factor)
-        $reviewCount = $reviews->count();
-        $trustBonus = 0;
-        
-        if ($reviewCount >= 20) {
-            $trustBonus = 10;
-        } elseif ($reviewCount >= 10) {
-            $trustBonus = 5;
-        } elseif ($reviewCount >= 5) {
-            $trustBonus = 2;
-        }
-
-        return min(100, $baseScore + $trustBonus);
-    }
-
-    /**
-     * SUBSCRIPTION SCORING
-     * Premium contractors get ranking boost
-     * Based on platform_payments table
-     * 
-     * @param int $contractorId The contractor ID
-     * @return float Score (0-100)
-     */
-    private function calculateSubscriptionScore(int $contractorId): float
-    {
-        // Check for active subscription in platform_payments
-        // Looking for boosted_post payments that indicate premium subscription
-        $activeSubscription = DB::table('platform_payments')
-            ->where('contractor_id', $contractorId)
-            ->where('payment_for', 'boosted_post')
-            ->where('is_approved', 1)
-            ->whereRaw('DATE_ADD(transaction_date, INTERVAL 30 DAY) >= NOW()') // Active within last 30 days
-            ->orderBy('transaction_date', 'desc')
-            ->first();
-
-        if ($activeSubscription) {
-            // Determine tier based on payment amount
-            // Adjust these thresholds based on your actual subscription pricing
-            if ($activeSubscription->amount >= 5000) {
-                return self::SUBSCRIPTION_SCORES['premium'];
-            } elseif ($activeSubscription->amount >= 2000) {
-                return self::SUBSCRIPTION_SCORES['professional'];
+        // Take the best active tier per contractor
+        foreach ($payments->groupBy('contractor_id') as $cid => $rows) {
+            foreach ($rows as $row) {
+                $tier = strtolower(trim($row->subscription_tier ?? ''));
+                if ($tier === 'gold') {
+                    $result[$cid] = 'gold';
+                    break;
+                }
+                if ($tier === 'silver' && $result[$cid] !== 'gold') {
+                    $result[$cid] = 'silver';
+                }
+                // Fallback: infer from amount when subscription_tier is empty
+                if (!$tier && $row->payment_for === 'boosted_post') {
+                    if ($row->amount >= 5000 && $result[$cid] !== 'gold') {
+                        $result[$cid] = 'gold';
+                    } elseif ($row->amount >= 2000 && $result[$cid] === 'free') {
+                        $result[$cid] = 'silver';
+                    }
+                }
             }
         }
 
-        // No active subscription
-        return self::SUBSCRIPTION_SCORES['free'];
+        return $result;
     }
 
     /**
-     * Fetch all bids for a project with contractor details
-     * 
-     * @param int $projectId The project ID
-     * @return Collection Collection of bid objects
+     * Load full contractor records for verification_status, PCAB, experience, etc.
+     *
+     * @return array<int, object>  contractor_id → contractor row
+     */
+    private function batchLoadContractorDetails(array $contractorIds): array
+    {
+        if (empty($contractorIds)) {
+            return [];
+        }
+
+        return DB::table('contractors')
+            ->whereIn('contractor_id', $contractorIds)
+            ->select(
+                'contractor_id',
+                'years_of_experience',
+                'completed_projects',
+                'verification_status',
+                'picab_category',
+                'picab_expiration_date',
+                'is_active'
+            )
+            ->get()
+            ->keyBy('contractor_id')
+            ->all();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // DEFAULT BID FETCHER
+    // ═══════════════════════════════════════════════════════════════════
+
+    /**
+     * Fetch all non-cancelled bids for a project with contractor + user info.
      */
     private function fetchProjectBids(int $projectId): Collection
     {
         return DB::table('bids as b')
             ->join('contractors as c', 'b.contractor_id', '=', 'c.contractor_id')
             ->join('users as u', 'c.user_id', '=', 'u.user_id')
+            ->leftJoin('contractor_types as ct', 'c.type_id', '=', 'ct.type_id')
             ->where('b.project_id', $projectId)
             ->whereNotIn('b.bid_status', ['cancelled'])
+            ->where('c.is_active', 1)
             ->select(
                 'b.*',
                 'c.contractor_id',
                 'c.company_name',
                 'c.years_of_experience',
                 'c.completed_projects',
+                'c.picab_category',
+                'c.picab_expiration_date',
+                'c.verification_status',
                 'c.company_email',
                 'c.company_phone',
                 'c.company_website',
                 'u.username',
-                'u.profile_pic'
+                'u.profile_pic',
+                'ct.type_name as contractor_type'
             )
             ->get();
     }
 
+    // ═══════════════════════════════════════════════════════════════════
+    // PUBLIC UTILITY METHODS
+    // ═══════════════════════════════════════════════════════════════════
+
     /**
-     * Get contractor's current subscription tier
-     * Useful for displaying badges in UI
-     * 
-     * @param int $contractorId The contractor ID
-     * @return string 'premium', 'professional', or 'free'
+     * Get the active subscription tier for a single contractor.
+     *
+     * @return string 'gold' | 'silver' | 'free'
      */
     public function getContractorSubscriptionTier(int $contractorId): string
     {
-        $activeSubscription = DB::table('platform_payments')
-            ->where('contractor_id', $contractorId)
-            ->where('payment_for', 'boosted_post')
-            ->where('is_approved', 1)
-            ->whereRaw('DATE_ADD(transaction_date, INTERVAL 30 DAY) >= NOW()')
-            ->orderBy('transaction_date', 'desc')
-            ->first();
-
-        if ($activeSubscription) {
-            if ($activeSubscription->amount >= 5000) {
-                return 'premium';
-            } elseif ($activeSubscription->amount >= 2000) {
-                return 'professional';
-            }
-        }
-
-        return 'free';
+        $result = $this->batchLoadSubscriptionTiers([$contractorId]);
+        return $result[$contractorId] ?? 'free';
     }
 
     /**
-     * Get contractor's average rating
-     * 
-     * @param int $contractorId The contractor ID
-     * @return float Average rating (0-5)
+     * Get average rating for a single contractor.
      */
     public function getContractorAverageRating(int $contractorId): float
     {
-        $contractor = DB::table('contractors')
-            ->where('contractor_id', $contractorId)
-            ->first();
-
-        if (!$contractor) {
-            return 0;
-        }
-
-        $reviews = DB::table('reviews')
-            ->where('reviewee_user_id', $contractor->user_id)
-            ->select('rating')
-            ->get();
-
-        if ($reviews->isEmpty()) {
-            return 0;
-        }
-
-        return round($reviews->avg('rating'), 2);
+        $result = $this->batchLoadReviewAggregates([$contractorId]);
+        return $result[$contractorId]['avg_rating'] ?? 0.0;
     }
 
     /**
-     * Get contractor's total review count
-     * 
-     * @param int $contractorId The contractor ID
-     * @return int Number of reviews
+     * Get review count for a single contractor.
      */
     public function getContractorReviewCount(int $contractorId): int
     {
-        $contractor = DB::table('contractors')
-            ->where('contractor_id', $contractorId)
-            ->first();
+        $result = $this->batchLoadReviewAggregates([$contractorId]);
+        return $result[$contractorId]['review_count'] ?? 0;
+    }
 
-        if (!$contractor) {
-            return 0;
-        }
-
-        return DB::table('reviews')
-            ->where('reviewee_user_id', $contractor->user_id)
-            ->count();
+    /**
+     * Return the current weight configuration (for API transparency / debugging).
+     */
+    public static function getWeights(): array
+    {
+        return self::WEIGHTS;
     }
 }
-
