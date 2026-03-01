@@ -13,7 +13,7 @@ import {
   Dimensions,
   Alert,
 } from 'react-native';
-import { View as SafeAreaView, StatusBar, Platform } from 'react-native';
+import { View as SafeAreaView, StatusBar, Platform, DeviceEventEmitter } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons, Ionicons, Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -92,6 +92,10 @@ export default function PropertyOwnerDashboard({ userData, onNavigateToMessages 
   // pinned project feature removed
   const [avatarError, setAvatarError] = useState(false);
   const [contractorTypes, setContractorTypes] = useState<any[]>([]);
+  const [projectInitialSection, setProjectInitialSection] = useState<'bids' | 'milestones' | null>(null);
+  const [projectInitialItemId, setProjectInitialItemId] = useState<number | null>(null);
+  const [projectInitialItemTab, setProjectInitialItemTab] = useState<'payments' | null>(null);
+  const [pendingNavigate, setPendingNavigate] = useState<Record<string, any> | null>(null);
   const scrollY = useRef(new Animated.Value(0)).current;
 
   // Get status bar height (top inset)
@@ -106,6 +110,49 @@ export default function PropertyOwnerDashboard({ userData, onNavigateToMessages 
     fetchContractorTypes();
     // pinned project loading removed
   }, [userData?.user_id]);
+
+  // Listen for navigation events from notifications — just store the intent, don't look up projects here
+  // because projects may not be loaded yet when the event fires (fresh tab mount race condition).
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener('dashboardNavigate', (params: Record<string, any>) => {
+      setPendingNavigate(params);
+    });
+    return () => sub.remove();
+  }, []);
+
+  // Process pending navigation once projects have finished loading
+  useEffect(() => {
+    if (!pendingNavigate || isLoading) return;
+
+    const params = pendingNavigate;
+    const subScreen = params.sub_screen;
+
+    if (subScreen === 'project_detail' || subScreen === 'projects') {
+      const section = params.initial_section === 'bids' ? 'bids'
+        : params.initial_section === 'milestones' ? 'milestones'
+        : null;
+
+      if (params.project_id) {
+        const target = projects.find((p: any) => p.project_id === params.project_id);
+        if (target) {
+          setPendingNavigate(null);
+          setProjectInitialSection(section);
+          setProjectInitialItemId(params.initial_item_id ?? null);
+          setProjectInitialItemTab(params.initial_item_tab ?? null);
+          setSelectedProject(target);
+          return;
+        }
+      }
+      // project_id not found (or not provided) — fall back to project list
+      setPendingNavigate(null);
+      setProjectInitialSection(null);
+      setProjectInitialItemId(null);
+      setProjectInitialItemTab(null);
+      setShowProjectList(true);
+    } else {
+      setPendingNavigate(null);
+    }
+  }, [pendingNavigate, projects, isLoading]);
 
   const fetchContractorTypes = async () => {
     try {
@@ -393,13 +440,21 @@ export default function PropertyOwnerDashboard({ userData, onNavigateToMessages 
     );
   }
 
-  // Show project details if a project is selected
+  // Project card tap or deep-link: open ProjectDetails (with optional initialSection)
   if (selectedProject) {
     return (
       <ProjectDetails
         project={selectedProject}
         userId={userData?.user_id}
-        onClose={() => setSelectedProject(null)}
+        onClose={() => {
+          setSelectedProject(null);
+          setProjectInitialSection(null);
+          setProjectInitialItemId(null);
+          setProjectInitialItemTab(null);
+        }}
+        initialSection={projectInitialSection}
+        initialItemId={projectInitialItemId}
+        initialItemTab={projectInitialItemTab}
       />
     );
   }

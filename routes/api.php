@@ -10,7 +10,7 @@ use App\Http\Controllers\contractor\progressUploadController;
 use App\Http\Controllers\owner\paymentUploadController;
 use App\Http\Controllers\projectPosting\projectPostingController;
 use App\Http\Controllers\both\disputeController;
-use App\Http\Controllers\both\notificationController;
+use App\Http\Controllers\both\NotificationController;
 use App\Http\Controllers\passwordController;
 use App\Http\Controllers\profileController;
 use App\Http\Controllers\both\milestoneController;
@@ -207,10 +207,11 @@ Route::put('/contractor/projects/{projectId}/milestones/{milestoneId}', [milesto
 Route::post('/contractor/milestone-items/{itemId}/settlement-due-date', [milestoneController::class , 'setSettlementDueDate']);
 
 // Notification endpoints - controller handles both session and token auth
-Route::get('/notifications', [notificationController::class , 'index']);
-Route::get('/notifications/unread-count', [notificationController::class , 'unreadCount']);
-Route::post('/notifications/{id}/read', [notificationController::class , 'markAsRead']);
-Route::post('/notifications/read-all', [notificationController::class , 'markAllAsRead']);
+Route::get('/notifications', [NotificationController::class , 'index']);
+Route::get('/notifications/unread-count', [NotificationController::class , 'unreadCount']);
+Route::post('/notifications/{id}/read', [NotificationController::class , 'markAsRead']);
+Route::post('/notifications/read-all', [NotificationController::class , 'markAllAsRead']);
+Route::get('/notifications/{id}/redirect', [NotificationController::class , 'apiResolveRedirect']);
 
 // Note: profile update registered below inside sanctum-protected group
 

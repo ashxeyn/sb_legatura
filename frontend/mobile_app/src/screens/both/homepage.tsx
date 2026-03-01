@@ -539,6 +539,49 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
   }, [refreshProjects]);
 
   /**
+   * Handle navigation from notification press.
+   * The backend returns { screen, params } indicating where to go.
+   *
+   * Supported screens: 'dashboard', 'messages', 'profile', 'home'
+   * Supported params.sub_screen: 'project_detail', 'project_bids', 'my_bids', 'projects', 'disputes'
+   */
+  const handleNotificationNavigate = useCallback((screen: string, params: Record<string, any>) => {
+    setShowNotifications(false);
+
+    switch (screen) {
+      case 'messages':
+        setActiveTab('messages');
+        // If a specific conversation was targeted, emit event for MessagesScreen to pick up
+        if (params.conversation_id) {
+          setTimeout(() => {
+            DeviceEventEmitter.emit('openConversation', { conversation_id: params.conversation_id });
+          }, 300);
+        }
+        break;
+
+      case 'profile':
+        setActiveTab('profile');
+        break;
+
+      case 'dashboard':
+        setActiveTab('dashboard');
+        // Emit after a short delay so the dashboard component has time to mount
+        // and attach its DeviceEventEmitter listener before the event fires.
+        if (params.sub_screen) {
+          setTimeout(() => {
+            DeviceEventEmitter.emit('dashboardNavigate', params);
+          }, 500);
+        }
+        break;
+
+      case 'home':
+      default:
+        setActiveTab('home');
+        break;
+    }
+  }, []);
+
+  /**
    * Load more contractors (infinite scroll)
    */
   const loadMoreContractors = useCallback(async () => {
@@ -1650,6 +1693,7 @@ const renderProfileContent = () => {
         userId={userData?.user_id || 0}
         userType={userData?.user_type || userType}
         onClose={() => setShowNotifications(false)}
+        onNavigate={handleNotificationNavigate}
       />
     );
   }

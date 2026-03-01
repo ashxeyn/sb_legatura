@@ -191,6 +191,7 @@ class notificationService
             'reference_type' => $row->reference_type,
             'reference_id'   => $row->reference_id,
             'action_url'     => $row->action_link,
+            'redirect_url'   => "/api/notifications/{$row->notification_id}/redirect",
             'created_at'     => $row->created_at,
         ];
     }

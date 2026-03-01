@@ -15,7 +15,6 @@ import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import EditProject from './editProject';
 import ProjectBids from './projectBids';
-import ProjectView from '../both/projectView';
 import MilestoneApproval from '../both/milestoneApproval';
 import { api_config } from '../../config/api';
 import { projects_service } from '../../services/projects_service';
@@ -107,18 +106,20 @@ interface ProjectDetailsProps {
   userId?: number;
   onClose: () => void;
   onProjectUpdated?: (updatedProject: Project) => void;
+  initialSection?: 'bids' | 'milestones' | null;
+  initialItemId?: number | null;
+  initialItemTab?: 'payments' | null;
 }
 
-export default function ProjectDetails({ project, userId, onClose, onProjectUpdated }: ProjectDetailsProps) {
+export default function ProjectDetails({ project, userId, onClose, onProjectUpdated, initialSection, initialItemId, initialItemTab }: ProjectDetailsProps) {
   const insets = useSafeAreaInsets();
   const [currentProject, setCurrentProject] = useState(project);
   const [expandedSummary, setExpandedSummary] = useState(false);
   const [showEditProject, setShowEditProject] = useState(false);
-  const [showBids, setShowBids] = useState(false);
-  const [showMilestones, setShowMilestones] = useState(false);
-  const [showMilestoneApproval, setShowMilestoneApproval] = useState(false);
+  const [showBids, setShowBids] = useState(initialSection === 'bids');
+  const [showMilestoneApproval, setShowMilestoneApproval] = useState(initialSection === 'milestones');
 
-  const hasContractor = !!currentProject.selected_contractor_id;
+  const hasContractor = !!currentProject.selected_contractor_id || !!currentProject.accepted_bid;
   const milestones: Milestone[] = currentProject.milestones || [];
 
   // â”€â”€ Formatters â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -229,17 +230,6 @@ export default function ProjectDetails({ project, userId, onClose, onProjectUpda
         userId={userId || 0}
         onClose={() => setShowBids(false)}
         onBidAccepted={() => { setShowBids(false); refreshProjectData(); }}
-      />
-    );
-  }
-
-  if (showMilestones) {
-    return (
-      <ProjectView
-        project={currentProject as any}
-        userId={userId}
-        userRole="owner"
-        onClose={() => { setShowMilestones(false); refreshProjectData(); }}
       />
     );
   }
@@ -479,6 +469,8 @@ export default function ProjectDetails({ project, userId, onClose, onProjectUpda
               userId: userId || 0,
               userRole: 'owner',
               projectStatus: currentProject.project_status,
+              initialItemId: initialItemId ?? undefined,
+              initialItemTab: initialItemTab ?? undefined,
               onApprovalComplete: async () => {
                 await refreshProjectData();
                 setShowMilestoneApproval(false);

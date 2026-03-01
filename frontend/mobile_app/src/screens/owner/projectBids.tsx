@@ -488,7 +488,7 @@ export default function ProjectBids({ project, userId, onClose, onBidAccepted }:
             <Feather name="clock" size={12} color={COLORS.textMuted} />
             <Text style={[styles.submittedDate, { marginLeft: 4 }]}>{formatDate(bid.submitted_at)}</Text>
           </View>
-          {bid.file_count && bid.file_count > 0 && (
+          {bid.file_count != null && bid.file_count > 0 && (
             <View style={styles.filesIndicator}>
               <Feather name="paperclip" size={12} color={COLORS.textSecondary} />
               <Text style={styles.filesText}>{bid.file_count} files</Text>

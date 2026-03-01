@@ -127,7 +127,19 @@ class projectsController extends Controller
                 $project->milestones_count = 0;
                 $project->display_status  = $project->project_status;
 
-                if ($project->selected_contractor_id) {
+                // Determine the contractor: prefer selected_contractor_id,
+                // fall back to any accepted bid's contractor.
+                $effectiveContractorId = $project->selected_contractor_id;
+                if (!$effectiveContractorId) {
+                    $effectiveContractorId = DB::table('bids')
+                        ->where('project_id', $project->project_id)
+                        ->where('bid_status', 'accepted')
+                        ->value('contractor_id');
+                }
+
+                if ($effectiveContractorId) {
+                    $project->selected_contractor_id = $effectiveContractorId;
+
                     // ── Accepted bid + contractor info ──────────────────────────
                     $acceptedBid = DB::table('bids as b')
                         ->join('contractors as c', 'b.contractor_id', '=', 'c.contractor_id')
@@ -147,7 +159,7 @@ class projectsController extends Controller
                             'u.profile_pic'
                         )
                         ->where('b.project_id', $project->project_id)
-                        ->where('b.contractor_id', $project->selected_contractor_id)
+                        ->where('b.contractor_id', $effectiveContractorId)
                         ->where('b.bid_status', 'accepted')
                         ->first();
 
@@ -1249,7 +1261,22 @@ class projectsController extends Controller
                 $project->display_status = $project->project_status;
                 $project->contractor_info = null;
 
-                if ($project->selected_contractor_id) {
+                // Determine the contractor: prefer selected_contractor_id,
+                // fall back to any accepted bid's contractor (handles data inconsistency
+                // where bid was accepted but selected_contractor_id was not set).
+                $effectiveContractorId = $project->selected_contractor_id;
+                if (!$effectiveContractorId) {
+                    $effectiveContractorId = DB::table('bids')
+                        ->where('project_id', $project->project_id)
+                        ->where('bid_status', 'accepted')
+                        ->value('contractor_id');
+                }
+
+                if ($effectiveContractorId) {
+                    // Back-fill selected_contractor_id on the response object so the
+                    // mobile client can rely on it for guards (e.g. hasContractor).
+                    $project->selected_contractor_id = $effectiveContractorId;
+
                     // Get the accepted bid
                     $acceptedBid = DB::table('bids as b')
                         ->join('contractors as c', 'b.contractor_id', '=', 'c.contractor_id')
@@ -1272,7 +1299,7 @@ class projectsController extends Controller
                             'u.profile_pic'
                         )
                         ->where('b.project_id', $project->project_id)
-                        ->where('b.contractor_id', $project->selected_contractor_id)
+                        ->where('b.contractor_id', $effectiveContractorId)
                         ->where('b.bid_status', 'accepted')
                         ->first();
 

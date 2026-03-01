@@ -67,6 +67,7 @@ interface MilestoneDetailProps {
       userId: number;
       isPreviousItemComplete?: boolean;
       projectStatus?: string;
+      initialTab?: 'payments';
     };
   };
   navigation: any;
@@ -87,6 +88,7 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
     userId,
     isPreviousItemComplete = true,
     projectStatus,
+    initialTab,
   } = route.params;
 
   const isProjectHalted = projectStatus === 'halt' || projectStatus === 'on_hold' || projectStatus === 'halted';
@@ -96,7 +98,7 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
   console.log('MilestoneDetail - userId:', userId, 'userRole:', userRole, 'projectId:', projectId);
 
   const [expandedReports, setExpandedReports] = useState<{ [key: number]: boolean }>({});
-  const [showFullDetail, setShowFullDetail] = useState(false);
+  const [showFullDetail, setShowFullDetail] = useState(initialTab === 'payments');
   const [showProgressForm, setShowProgressForm] = useState(false);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [selectedProgressReport, setSelectedProgressReport] = useState<any | null>(null);
@@ -175,7 +177,7 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
   };
 
   // Full Detail tab navigation
-  const [fdActiveTab, setFdActiveTab] = useState<'info' | 'payments'>('info');
+  const [fdActiveTab, setFdActiveTab] = useState<'info' | 'payments'>(initialTab === 'payments' ? 'payments' : 'info');
 
   useEffect(() => {
     let isMounted = true;

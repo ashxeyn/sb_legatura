@@ -104,14 +104,17 @@ interface ContractorProjectDetailsProps {
   userId?: number;
   onClose: () => void;
   onProjectUpdated?: (updatedProject: Project) => void;
+  initialView?: 'milestones' | null;
+  initialItemId?: number | null;
+  initialItemTab?: 'payments' | null;
 }
 
-export default function ContractorProjectDetails({ project, userId, onClose, onProjectUpdated }: ContractorProjectDetailsProps) {
+export default function ContractorProjectDetails({ project, userId, onClose, onProjectUpdated, initialView, initialItemId, initialItemTab }: ContractorProjectDetailsProps) {
   const insets = useSafeAreaInsets();
   const [currentProject, setCurrentProject] = useState(project);
   const [expandedSummary, setExpandedSummary] = useState(false);
   const [showMilestones, setShowMilestones] = useState(false);
-  const [showMilestoneApproval, setShowMilestoneApproval] = useState(false);
+  const [showMilestoneApproval, setShowMilestoneApproval] = useState(initialView === 'milestones');
   const [showMilestoneSetup, setShowMilestoneSetup] = useState(false);
 
   const milestones: Milestone[] = currentProject.milestones || [];
@@ -432,6 +435,8 @@ export default function ContractorProjectDetails({ project, userId, onClose, onP
               userId: userId || 0,
               userRole: 'contractor',
               projectStatus: currentProject.project_status,
+              initialItemId: initialItemId ?? undefined,
+              initialItemTab: initialItemTab ?? undefined,
               onApprovalComplete: async () => {
                 await refreshProjectData();
                 setShowMilestoneApproval(false);

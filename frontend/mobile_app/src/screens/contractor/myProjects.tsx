@@ -128,9 +128,15 @@ interface MyProjectsProps {
     username?: string;
   };
   onClose: () => void;
+  initialAction?: {
+    type: 'milestone_setup' | 'project_timeline' | 'project_detail';
+    project_id: number;
+    initial_item_id?: number;
+    initial_item_tab?: 'payments';
+  } | null;
 }
 
-export default function MyProjects({ userData, onClose }: MyProjectsProps) {
+export default function MyProjects({ userData, onClose, initialAction }: MyProjectsProps) {
   const insets = useSafeAreaInsets();
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -138,11 +144,15 @@ export default function MyProjects({ userData, onClose }: MyProjectsProps) {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [showMilestoneSetup, setShowMilestoneSetup] = useState(false);
   const [showProjectDetails, setShowProjectDetails] = useState(false);
+  const [projectDetailsInitialView, setProjectDetailsInitialView] = useState<'milestones' | null>(null);
+  const [projectDetailsInitialItemId, setProjectDetailsInitialItemId] = useState<number | null>(null);
+  const [projectDetailsInitialItemTab, setProjectDetailsInitialItemTab] = useState<'payments' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeFilters, setActiveFilters] = useState<string[]>(['all']);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'latest' | 'oldest' | 'a_z' | 'z_a' | 'budget_high' | 'budget_low'>('latest');
   const [showSortModal, setShowSortModal] = useState(false);
+  const [initialActionProcessed, setInitialActionProcessed] = useState(false);
 
   const toggleFilter = (key: string) => {
     if (key === 'all') {
@@ -180,6 +190,28 @@ export default function MyProjects({ userData, onClose }: MyProjectsProps) {
   useEffect(() => {
     fetchProjects();
   }, [userData?.user_id]);
+
+  // Process initialAction once projects are loaded
+  useEffect(() => {
+    if (!initialAction || initialActionProcessed || isLoading || projects.length === 0) return;
+
+    const target = projects.find((p: Project) => p.project_id === initialAction.project_id);
+    if (!target) return;
+
+    setInitialActionProcessed(true);
+    setSelectedProject(target);
+
+    if (initialAction.type === 'milestone_setup') {
+      setShowMilestoneSetup(true);
+    } else if (initialAction.type === 'project_timeline') {
+      setProjectDetailsInitialView('milestones');
+      setProjectDetailsInitialItemId(initialAction.initial_item_id ?? null);
+      setProjectDetailsInitialItemTab(initialAction.initial_item_tab ?? null);
+      setShowProjectDetails(true);
+    } else if (initialAction.type === 'project_detail') {
+      setShowProjectDetails(true);
+    }
+  }, [initialAction, initialActionProcessed, isLoading, projects]);
 
   const fetchProjects = async () => {
     if (!userData?.user_id) {
@@ -554,11 +586,17 @@ export default function MyProjects({ userData, onClose }: MyProjectsProps) {
         onClose={() => {
           setShowProjectDetails(false);
           setSelectedProject(null);
+          setProjectDetailsInitialView(null);
+          setProjectDetailsInitialItemId(null);
+          setProjectDetailsInitialItemTab(null);
           fetchProjects(); // Refresh projects after viewing
         }}
         onProjectUpdated={(updated) => {
           setSelectedProject(updated);
         }}
+        initialView={projectDetailsInitialView}
+        initialItemId={projectDetailsInitialItemId}
+        initialItemTab={projectDetailsInitialItemTab}
       />
     );
   }

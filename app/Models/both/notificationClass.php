@@ -15,6 +15,16 @@ class notificationClass
     }
 
     /**
+     * Fetch a single notification by its primary key.
+     */
+    public function getById(int $notificationId): ?object
+    {
+        return DB::table('notifications')
+            ->where('notification_id', $notificationId)
+            ->first();
+    }
+
+    /**
      * Paginated notifications for a user (newest first).
      */
     public function getByUserId(int $userId, int $page = 1, int $perPage = 20): array

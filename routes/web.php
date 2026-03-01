@@ -430,6 +430,9 @@ Route::delete('/admin/project-management/{id}', [projectManagementController::cl
 Route::post('/admin/project-management/{id}/restore', [projectManagementController::class, 'restoreProject'])->name('admin.projectManagement.restoreProject');
 Route::put('/admin/project-management/milestone-item/{itemId}', [projectManagementController::class, 'updateMilestoneItem'])->name('admin.projectManagement.updateMilestoneItem');
 
+// Notification redirect — marks as read and 302s to the contextual page
+Route::get('/notifications/{id}/redirect', [\App\Http\Controllers\both\NotificationController::class, 'redirect'])->name('notifications.redirect');
+
 // Settings Routes
 Route::get('/admin/settings/notifications', function () {
     return view('admin.settings.notifications');
