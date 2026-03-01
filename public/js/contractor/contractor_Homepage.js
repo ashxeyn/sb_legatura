@@ -297,16 +297,17 @@ class ContractorHomepage {
                 // Skip important documents — they should never appear on the card
                 if (this.isImportantDocument(f.file_type, f.file_path)) return;
 
-                const isImage = f.file_type === 'image' || f.file_type === 'photo'
-                    || f.file_type === 'desired_design' || f.file_type === 'blueprint'
-                    || (f.file_path && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.file_path));
+                const ft = (f.file_type || '').toLowerCase().trim();
+                const isImage = ft === 'image' || ft === 'photo'
+                    || ft === 'desired_design' || ft === 'desired design'
+                    || ft === 'blueprint' || ft === 'others'
+                    || (f.file_path && /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(f.file_path));
                 if (isImage) {
                     const path = f.file_path.replace(/^\//, '');
                     projectImages.push(`/storage/${path}`);
                 }
             });
         }
-
 
         // Limit to 4 images for the grid (FB style usually shows 4 max with +N overlay)
         const displayImages = projectImages.slice(0, 4);

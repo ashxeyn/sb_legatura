@@ -14,6 +14,9 @@ import {
   ActivityIndicator,
   Image,
   Platform,
+  Dimensions,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
 } from 'react-native';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -91,6 +94,21 @@ export default function CreateProjectScreen({ onBackPress, onSubmit, contractorT
   const [loadingBarangays, setLoadingBarangays] = useState(true);
   const [localContractorTypes, setLocalContractorTypes] = useState<ContractorType[]>([]);
   const [loadingContractorTypes, setLoadingContractorTypes] = useState(false);
+
+  // Image viewer state
+  const [imageViewerVisible, setImageViewerVisible] = useState(false);
+  const [imageViewerIndex, setImageViewerIndex] = useState(0);
+  const [imageViewerGallery, setImageViewerGallery] = useState<any[]>([]);
+
+  // Layout constants for FB-style collage
+  const SCREEN_WIDTH = Dimensions.get('window').width;
+  const COLLAGE_PADDING = 16;
+  const COLLAGE_GAP = 2;
+  const collageWidth = SCREEN_WIDTH - COLLAGE_PADDING * 2 - 32; // account for form padding
+  const collageHalf = Math.floor((collageWidth - COLLAGE_GAP) / 2);
+  const collageLargeW = Math.floor(collageWidth * 0.66);
+  const collageSmallW = collageWidth - collageLargeW - COLLAGE_GAP;
+  const collageSingleH = Math.floor(collageWidth * 0.56);
 
   // Ensure contractorTypes is always an array
   const safeContractorTypes = (Array.isArray(contractorTypes) && contractorTypes.length > 0)
@@ -217,7 +235,7 @@ export default function CreateProjectScreen({ onBackPress, onSubmit, contractorT
     }
   };
 
-  // Image picker for optional files (multiple)
+  // Image picker for optional files (multiple selection)
   const pickOptionalImage = async (currentFiles: any[], setter: (files: any[]) => void) => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
@@ -230,18 +248,22 @@ export default function CreateProjectScreen({ onBackPress, onSubmit, contractorT
       return;
     }
 
+    const remaining = 10 - currentFiles.length;
+
     const MEDIA_IMAGES = (ImagePicker.MediaType && ImagePicker.MediaType.Images)
       || (ImagePicker.MediaTypeOptions && ImagePicker.MediaTypeOptions.Images)
       || 'Images';
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: MEDIA_IMAGES,
-      allowsEditing: false,
+      allowsMultipleSelection: true,
+      selectionLimit: remaining,
       quality: 0.8,
     });
 
-    if (!result.canceled && result.assets[0]) {
-      setter([...currentFiles, result.assets[0]]);
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      const newFiles = [...currentFiles, ...result.assets].slice(0, 10);
+      setter(newFiles);
     }
   };
 
@@ -250,6 +272,126 @@ export default function CreateProjectScreen({ onBackPress, onSubmit, contractorT
     const newFiles = [...files];
     newFiles.splice(index, 1);
     setter(newFiles);
+  };
+
+  // Open fullscreen image viewer
+  const openImageViewer = (gallery: any[], index: number) => {
+    setImageViewerGallery(gallery);
+    setImageViewerIndex(index);
+    setImageViewerVisible(true);
+  };
+
+  const onViewerScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+    if (idx !== imageViewerIndex && idx >= 0 && idx < imageViewerGallery.length) {
+      setImageViewerIndex(idx);
+    }
+  };
+
+  // Facebook-style image collage for optional images
+  const renderImageCollage = (files: any[], allFiles: any[], setter: (f: any[]) => void) => {
+    if (files.length === 0) return null;
+
+    const removeBtn = (index: number) => (
+      <TouchableOpacity
+        style={collageStyles.removeBtn}
+        onPress={() => removeFile(index, allFiles, setter)}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      >
+        <Ionicons name="close-circle" size={22} color="#fff" />
+      </TouchableOpacity>
+    );
+
+    if (files.length === 1) {
+      return (
+        <View style={[collageStyles.grid, { height: collageSingleH }]}>
+          <TouchableOpacity
+            style={collageStyles.singleItem}
+            activeOpacity={0.9}
+            onPress={() => openImageViewer(allFiles, 0)}
+          >
+            <Image source={{ uri: files[0].uri }} style={collageStyles.img} resizeMode="cover" />
+            {removeBtn(0)}
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    if (files.length === 2) {
+      return (
+        <View style={[collageStyles.grid, { flexDirection: 'row', height: collageHalf }]}>
+          {files.map((f, i) => (
+            <TouchableOpacity
+              key={i}
+              style={[collageStyles.item, { flex: 1, marginLeft: i === 1 ? COLLAGE_GAP : 0 }]}
+              activeOpacity={0.9}
+              onPress={() => openImageViewer(allFiles, i)}
+            >
+              <Image source={{ uri: f.uri }} style={collageStyles.img} resizeMode="cover" />
+              {removeBtn(i)}
+            </TouchableOpacity>
+          ))}
+        </View>
+      );
+    }
+
+    if (files.length === 3) {
+      return (
+        <View style={[collageStyles.grid, { flexDirection: 'row', height: collageHalf * 2 + COLLAGE_GAP }]}>
+          <TouchableOpacity
+            style={[collageStyles.item, { width: collageLargeW, height: '100%' }]}
+            activeOpacity={0.9}
+            onPress={() => openImageViewer(allFiles, 0)}
+          >
+            <Image source={{ uri: files[0].uri }} style={collageStyles.img} resizeMode="cover" />
+            {removeBtn(0)}
+          </TouchableOpacity>
+          <View style={{ width: collageSmallW, marginLeft: COLLAGE_GAP }}>
+            {files.slice(1, 3).map((f, i) => (
+              <TouchableOpacity
+                key={i}
+                style={[collageStyles.item, { height: collageHalf, marginTop: i === 1 ? COLLAGE_GAP : 0 }]}
+                activeOpacity={0.9}
+                onPress={() => openImageViewer(allFiles, i + 1)}
+              >
+                <Image source={{ uri: f.uri }} style={collageStyles.img} resizeMode="cover" />
+                {removeBtn(i + 1)}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      );
+    }
+
+    // 4+ images — 2x2 grid with +N overlay
+    return (
+      <View style={[collageStyles.grid, { flexDirection: 'row', flexWrap: 'wrap' }]}>
+        {files.slice(0, 4).map((f, i) => (
+          <TouchableOpacity
+            key={i}
+            style={[
+              collageStyles.item,
+              {
+                width: collageHalf,
+                height: collageHalf,
+                marginLeft: i % 2 === 1 ? COLLAGE_GAP : 0,
+                marginTop: i >= 2 ? COLLAGE_GAP : 0,
+              },
+            ]}
+            activeOpacity={0.9}
+            onPress={() => openImageViewer(allFiles, i)}
+          >
+            <Image source={{ uri: f.uri }} style={collageStyles.img} resizeMode="cover" />
+            {removeBtn(i)}
+            {i === 3 && files.length > 4 && (
+              <View style={collageStyles.moreOverlay}>
+                <Text style={collageStyles.moreText}>+{files.length - 4}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        ))}
+      </View>
+    );
   };
 
   // Validate form
@@ -635,17 +777,9 @@ export default function CreateProjectScreen({ onBackPress, onSubmit, contractorT
               onPress={() => pickOptionalImage(blueprints, setBlueprints)}
             >
               <Ionicons name="add-circle" size={24} color="#EC7E00" />
-              <Text style={styles.addFileText}>Add Blueprint Images</Text>
+              <Text style={styles.addFileText}>Add Blueprint Images ({blueprints.length}/10)</Text>
             </TouchableOpacity>
-            {blueprints.map((file, index) => (
-              <View key={index} style={styles.fileItem}>
-                <Image source={{ uri: file.uri }} style={styles.thumbnailSmall} />
-                <Text style={styles.fileItemName} numberOfLines={1}>{file.fileName || 'Image'}</Text>
-                <TouchableOpacity onPress={() => removeFile(index, blueprints, setBlueprints)}>
-                  <Ionicons name="close-circle" size={22} color="#E74C3C" />
-                </TouchableOpacity>
-              </View>
-            ))}
+            {renderImageCollage(blueprints, blueprints, setBlueprints)}
             <Text style={styles.uploadHint}>JPG, JPEG, PNG (Max 10 images)</Text>
           </View>
 
@@ -657,17 +791,9 @@ export default function CreateProjectScreen({ onBackPress, onSubmit, contractorT
               onPress={() => pickOptionalImage(desiredDesigns, setDesiredDesigns)}
             >
               <Ionicons name="add-circle" size={24} color="#EC7E00" />
-              <Text style={styles.addFileText}>Add Design Images</Text>
+              <Text style={styles.addFileText}>Add Design Images ({desiredDesigns.length}/10)</Text>
             </TouchableOpacity>
-            {desiredDesigns.map((file, index) => (
-              <View key={index} style={styles.fileItem}>
-                <Image source={{ uri: file.uri }} style={styles.thumbnailSmall} />
-                <Text style={styles.fileItemName} numberOfLines={1}>{file.fileName || 'Image'}</Text>
-                <TouchableOpacity onPress={() => removeFile(index, desiredDesigns, setDesiredDesigns)}>
-                  <Ionicons name="close-circle" size={22} color="#E74C3C" />
-                </TouchableOpacity>
-              </View>
-            ))}
+            {renderImageCollage(desiredDesigns, desiredDesigns, setDesiredDesigns)}
             <Text style={styles.uploadHint}>JPG, JPEG, PNG (Max 10 images)</Text>
           </View>
 
@@ -679,17 +805,9 @@ export default function CreateProjectScreen({ onBackPress, onSubmit, contractorT
               onPress={() => pickOptionalImage(otherFiles, setOtherFiles)}
             >
               <Ionicons name="add-circle" size={24} color="#EC7E00" />
-              <Text style={styles.addFileText}>Add Other Images</Text>
+              <Text style={styles.addFileText}>Add Other Images ({otherFiles.length}/10)</Text>
             </TouchableOpacity>
-            {otherFiles.map((file, index) => (
-              <View key={index} style={styles.fileItem}>
-                <Image source={{ uri: file.uri }} style={styles.thumbnailSmall} />
-                <Text style={styles.fileItemName} numberOfLines={1}>{file.fileName || 'Image'}</Text>
-                <TouchableOpacity onPress={() => removeFile(index, otherFiles, setOtherFiles)}>
-                  <Ionicons name="close-circle" size={22} color="#E74C3C" />
-                </TouchableOpacity>
-              </View>
-            ))}
+            {renderImageCollage(otherFiles, otherFiles, setOtherFiles)}
             <Text style={styles.uploadHint}>JPG, JPEG, PNG (Max 10 images)</Text>
           </View>
 
@@ -827,6 +945,55 @@ export default function CreateProjectScreen({ onBackPress, onSubmit, contractorT
               }
             />
           </View>
+        </View>
+      </Modal>
+
+      {/* Fullscreen Image Viewer */}
+      <Modal visible={imageViewerVisible} transparent animationType="fade">
+        <View style={collageStyles.viewerContainer}>
+          <TouchableOpacity
+            style={collageStyles.viewerClose}
+            onPress={() => setImageViewerVisible(false)}
+          >
+            <Ionicons name="close" size={32} color="#FFFFFF" />
+          </TouchableOpacity>
+          <ScrollView
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onMomentumScrollEnd={onViewerScroll}
+            contentOffset={{ x: imageViewerIndex * SCREEN_WIDTH, y: 0 }}
+          >
+            {imageViewerGallery.map((file, i) => (
+              <View key={i} style={{ width: SCREEN_WIDTH, justifyContent: 'center', alignItems: 'center' }}>
+                <Image
+                  source={{ uri: file.uri }}
+                  style={{ width: SCREEN_WIDTH, height: SCREEN_WIDTH }}
+                  resizeMode="contain"
+                />
+              </View>
+            ))}
+          </ScrollView>
+          {imageViewerGallery.length > 1 && imageViewerGallery.length <= 12 && (
+            <View style={collageStyles.dotsContainer}>
+              {imageViewerGallery.map((_, i) => (
+                <View
+                  key={i}
+                  style={[
+                    collageStyles.dot,
+                    i === imageViewerIndex && collageStyles.dotActive,
+                  ]}
+                />
+              ))}
+            </View>
+          )}
+          {imageViewerGallery.length > 12 && (
+            <View style={collageStyles.dotsContainer}>
+              <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>
+                {imageViewerIndex + 1} / {imageViewerGallery.length}
+              </Text>
+            </View>
+          )}
         </View>
       </Modal>
     </SafeAreaView>
@@ -1066,5 +1233,85 @@ const styles = StyleSheet.create({
   emptyListText: {
     fontSize: 14,
     color: '#999999',
+  },
+});
+
+// Collage / image viewer styles
+const collageStyles = StyleSheet.create({
+  grid: {
+    borderRadius: 8,
+    overflow: 'hidden',
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  singleItem: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  item: {
+    borderRadius: 0,
+    overflow: 'hidden',
+  },
+  img: {
+    width: '100%',
+    height: '100%',
+  },
+  removeBtn: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    borderRadius: 12,
+    zIndex: 10,
+  },
+  moreOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  moreText: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  viewerContainer: {
+    flex: 1,
+    backgroundColor: '#000',
+    justifyContent: 'center',
+  },
+  viewerClose: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    zIndex: 20,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 20,
+    padding: 6,
+  },
+  dotsContainer: {
+    position: 'absolute',
+    bottom: 40,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    gap: 6,
+    zIndex: 10,
+  },
+  dot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+  },
+  dotActive: {
+    backgroundColor: '#EC7E00',
+    width: 20,
+    borderRadius: 4,
   },
 });

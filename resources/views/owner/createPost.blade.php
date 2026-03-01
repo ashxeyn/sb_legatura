@@ -219,6 +219,158 @@
             color: #721c24;
             border: 1px solid #f5c6cb;
         }
+
+        /* ========== Image Preview Grid (Facebook-style) ========== */
+        .image-preview-grid {
+            display: grid;
+            gap: 2px;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-top: 10px;
+            margin-bottom: 6px;
+        }
+        .image-preview-grid.grid-1 { grid-template-columns: 1fr; aspect-ratio: 16/9; }
+        .image-preview-grid.grid-2 { grid-template-columns: 1fr 1fr; aspect-ratio: 2/1; }
+        .image-preview-grid.grid-3 { grid-template-columns: 66fr 34fr; grid-template-rows: 1fr 1fr; aspect-ratio: 3/2; }
+        .image-preview-grid.grid-3 .preview-tile:first-child { grid-row: 1 / span 2; }
+        .image-preview-grid.grid-4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; aspect-ratio: 1/1; }
+
+        .preview-tile {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            background: #e5e5e5;
+            cursor: pointer;
+            overflow: hidden;
+        }
+        .preview-tile img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        .preview-tile .tile-remove {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.55);
+            color: #fff;
+            border: none;
+            font-size: 16px;
+            line-height: 24px;
+            text-align: center;
+            cursor: pointer;
+            z-index: 5;
+            padding: 0;
+        }
+        .preview-tile .tile-remove:hover { background: rgba(220,53,69,0.85); }
+        .preview-tile .more-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 24px;
+            font-weight: bold;
+            pointer-events: none;
+        }
+        .file-count-badge {
+            display: inline-block;
+            background: #eee;
+            color: #555;
+            border-radius: 12px;
+            padding: 2px 10px;
+            font-size: 12px;
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+
+        /* ========== Lightbox Viewer ========== */
+        .lb-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.92);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+        .lb-overlay.active { display: flex; }
+        .lb-close {
+            position: absolute;
+            top: 16px;
+            right: 20px;
+            color: #fff;
+            font-size: 32px;
+            background: rgba(0,0,0,0.4);
+            border: none;
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            cursor: pointer;
+            z-index: 10;
+            line-height: 44px;
+            text-align: center;
+        }
+        .lb-close:hover { background: rgba(255,255,255,0.15); }
+        .lb-img-wrap {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            padding: 60px 20px 20px;
+        }
+        .lb-img-wrap img {
+            max-width: 90%;
+            max-height: 80vh;
+            object-fit: contain;
+            border-radius: 6px;
+        }
+        .lb-nav {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255,255,255,0.12);
+            color: #fff;
+            border: none;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            font-size: 22px;
+            cursor: pointer;
+            z-index: 10;
+        }
+        .lb-nav:hover { background: rgba(255,255,255,0.25); }
+        .lb-prev { left: 12px; }
+        .lb-next { right: 12px; }
+        .lb-dots {
+            display: flex;
+            justify-content: center;
+            gap: 6px;
+            padding: 12px 0 24px;
+        }
+        .lb-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.3);
+            cursor: pointer;
+            transition: all 0.25s;
+            border: none;
+            padding: 0;
+        }
+        .lb-dot.active {
+            background: #ec7e00;
+            width: 20px;
+            border-radius: 4px;
+        }
     </style>
 </head>
 <body>
@@ -380,6 +532,7 @@
                         <button type="button" class="remove-file-btn" style="display:none;" onclick="removeFileInput(this, 'building-permit-upload-container')">Remove</button>
                     </div>
                 </div>
+                <div class="image-preview-grid" id="building-permit-preview-grid"></div>
                 <small>Accepted formats: JPG, JPEG, PNG (Max 10MB). Photo only.</small>
                 @error('building_permit')
                     <div class="error-message">{{ $message }}</div>
@@ -394,6 +547,7 @@
                         <button type="button" class="remove-file-btn" style="display:none;" onclick="removeFileInput(this, 'title-of-land-upload-container')">Remove</button>
                     </div>
                 </div>
+                <div class="image-preview-grid" id="title-of-land-preview-grid"></div>
                 <small>Accepted formats: JPG, JPEG, PNG (Max 10MB). Photo only.</small>
                 @error('title_of_land')
                     <div class="error-message">{{ $message }}</div>
@@ -404,13 +558,14 @@
                 <label>Blueprint (Optional)</label>
                 <div id="blueprint-upload-container">
                     <div class="file-input-group">
-                        <input type="file" id="blueprint" name="blueprint[]" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" class="evidence-file-input">
+                        <input type="file" id="blueprint" name="blueprint[]" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" class="evidence-file-input" multiple>
                         <button type="button" class="remove-file-btn" style="display:none;" onclick="removeFileInput(this, 'blueprint-upload-container')">Remove</button>
                     </div>
                 </div>
                 <button type="button" class="add-more-files-btn" id="blueprint-add-more" onclick="addMoreFiles('blueprint-upload-container', 'blueprint')">Add More Files</button>
+                <div class="image-preview-grid" id="blueprint-preview-grid"></div>
                 <small>Accepted formats: JPG, JPEG, PNG, PDF, DOC, DOCX (Max 10MB each, up to 10 files)<br>
-                <em>Click "Add More Files" to select additional files one by one.</em></small>
+                <em>You can select multiple files at once.</em></small>
                 @error('blueprint')
                     <div class="error-message">{{ $message }}</div>
                 @enderror
@@ -420,13 +575,14 @@
                 <label>Desired Design (Optional)</label>
                 <div id="desired-design-upload-container">
                     <div class="file-input-group">
-                        <input type="file" id="desired_design" name="desired_design[]" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" class="evidence-file-input">
+                        <input type="file" id="desired_design" name="desired_design[]" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" class="evidence-file-input" multiple>
                         <button type="button" class="remove-file-btn" style="display:none;" onclick="removeFileInput(this, 'desired-design-upload-container')">Remove</button>
                     </div>
                 </div>
                 <button type="button" class="add-more-files-btn" id="desired-design-add-more" onclick="addMoreFiles('desired-design-upload-container', 'desired_design')">Add More Files</button>
+                <div class="image-preview-grid" id="desired-design-preview-grid"></div>
                 <small>Accepted formats: JPG, JPEG, PNG, PDF, DOC, DOCX (Max 10MB each, up to 10 files)<br>
-                <em>Click "Add More Files" to select additional files one by one.</em></small>
+                <em>You can select multiple files at once.</em></small>
                 @error('desired_design')
                     <div class="error-message">{{ $message }}</div>
                 @enderror
@@ -436,13 +592,14 @@
                 <label>Others (Optional - Multiple Files)</label>
                 <div id="others-upload-container">
                     <div class="file-input-group">
-                        <input type="file" id="others" name="others[]" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" class="evidence-file-input">
+                        <input type="file" id="others" name="others[]" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" class="evidence-file-input" multiple>
                         <button type="button" class="remove-file-btn" style="display:none;" onclick="removeFileInput(this, 'others-upload-container')">Remove</button>
                     </div>
                 </div>
                 <button type="button" class="add-more-files-btn" id="others-add-more" onclick="addMoreFiles('others-upload-container', 'others')">Add More Files</button>
+                <div class="image-preview-grid" id="others-preview-grid"></div>
                 <small>Accepted formats: JPG, JPEG, PNG, PDF, DOC, DOCX (Max 10MB each, up to 10 files)<br>
-                <em>Click "Add More Files" to select additional files one by one.</em></small>
+                <em>You can select multiple files at once.</em></small>
                 @error('others')
                     <div class="error-message">{{ $message }}</div>
                 @enderror
@@ -462,6 +619,15 @@
             }
         });
     </script>
+    <!-- Lightbox Viewer -->
+    <div class="lb-overlay" id="cpLightbox">
+        <button class="lb-close" onclick="closeLightbox()">&times;</button>
+        <button class="lb-nav lb-prev" onclick="navLightbox(-1)">&#8249;</button>
+        <button class="lb-nav lb-next" onclick="navLightbox(1)">&#8250;</button>
+        <div class="lb-img-wrap"><img id="cpLbImg" src="" alt="Preview"></div>
+        <div class="lb-dots" id="cpLbDots"></div>
+    </div>
+
     <script src="{{ asset('js/owner.js') }}"></script>
 </body>
 </html>

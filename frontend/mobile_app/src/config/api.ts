@@ -1,5 +1,5 @@
 // API configuration for connecting to Laravel backend
-const API_BASE_URL = 'http://192.168.1.10:8085'; //'https://legaturaph.com'
+const API_BASE_URL = 'http://192.168.254.109:8086'; //'https://legaturaph.com'
 
 import { storage_service } from '../utils/storage';
 

@@ -142,10 +142,24 @@
                                         } elseif (!empty($project->image_path)) {
                                             $cardImages[] = asset('storage/' . ltrim($project->image_path, '/'));
                                         }
-                                        $imageSrc = count($cardImages) > 0 ? $cardImages[0] : '';
+                                        $cardCount = count($cardImages);
+                                        $displayImages = array_slice($cardImages, 0, 4);
+                                        $extraImages = $cardCount - 4;
+                                        $gridClass = 'grid-' . min($cardCount, 4);
                                     @endphp
-                                    @if($imageSrc)
-                                        <img src="{{ $imageSrc }}" alt="" class="project-image" onerror="this.style.display='none';">
+                                    @if($cardCount > 0)
+                                        <div class="project-media-grid {{ $gridClass }}">
+                                            @foreach($displayImages as $idx => $imgUrl)
+                                                @if($idx === 3 && $extraImages > 0)
+                                                    <div class="image-overlay-wrapper">
+                                                        <img src="{{ $imgUrl }}" alt="Project Image" class="project-grid-image" onerror="this.style.display='none';">
+                                                        <div class="more-images-overlay">+{{ $extraImages }}</div>
+                                                    </div>
+                                                @else
+                                                    <img src="{{ $imgUrl }}" alt="Project Image" class="project-grid-image" onerror="this.style.display='none';">
+                                                @endif
+                                            @endforeach
+                                        </div>
                                     @endif
                                 </div>
 

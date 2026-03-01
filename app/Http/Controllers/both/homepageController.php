@@ -122,7 +122,7 @@ class homepageController extends Controller
         try {
             $user = Session::get('user');
             $userId = $user ? (int) ($user->user_id ?? $user->id ?? null) : null;
-            $data = $this->feedService->contractorHomepageData($userId);
+            $data = $this->FeedService->contractorHomepageData($userId);
         } catch (\Throwable $e) {
             Log::error('HomepageController::contractorHomepage failed: ' . $e->getMessage());
             $data = [

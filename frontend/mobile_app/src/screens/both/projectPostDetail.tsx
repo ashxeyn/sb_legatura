@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  Image,
   Dimensions,
   StatusBar,
   Modal,
@@ -16,6 +15,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import ImageFallback from '../../components/ImageFallbackFixed';
 import { api_config, api_request } from '../../config/api';
 import { storage_service } from '../../utils/storage';
@@ -332,7 +332,7 @@ export default function ProjectPostDetail({ project, onClose, onPlaceBid, userRo
     return 'Important Document';
   };
 
-  // Collage sizing (Facebook-like rules)
+  // Collage sizing
   const H_PADDING = 16; // matches surrounding padding
   const GAP = 2; // small gap between images
   const usableWidth = SCREEN_WIDTH - H_PADDING * 2;
@@ -340,6 +340,10 @@ export default function ProjectPostDetail({ project, onClose, onPlaceBid, userRo
   const largeWidth = Math.floor(usableWidth * 0.66);
   const smallColumnWidth = usableWidth - largeWidth - GAP;
   const singleHeight = Math.floor(usableWidth * 0.56);
+
+  // Document card sizing (explicit pixels so Image + watermark render reliably)
+  const DOC_GAP = 10;
+  const docCardSize = Math.floor((usableWidth - DOC_GAP) / 2);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -472,25 +476,32 @@ export default function ProjectPostDetail({ project, onClose, onPlaceBid, userRo
           </View>
         </View>
 
-        {/* Design Images (Blueprint, Desired Design, Others) - Facebook-style collage */}
+        {/* Design Images — Facebook-style collage using expo-image */}
         {designImages.length > 0 && (
           <View style={[styles.imagesSection, { paddingHorizontal: H_PADDING }]}>
             {designImages.length === 1 && (
               <TouchableOpacity onPress={() => openImageViewer(0, 'design')} activeOpacity={0.9}>
-                <Image source={{ uri: designImages[0].url }} style={{ width: usableWidth, height: singleHeight, borderRadius: 8 }} resizeMode="cover" />
+                <Image
+                  source={{ uri: designImages[0].url }}
+                  style={{ width: usableWidth, height: singleHeight, borderRadius: 8 }}
+                  contentFit="cover"
+                  transition={200}
+                  cachePolicy="memory-disk"
+                />
               </TouchableOpacity>
             )}
 
             {designImages.length === 2 && (
               <View style={{ flexDirection: 'row' }}>
                 {designImages.map((file, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    onPress={() => openImageViewer(index, 'design')}
-                    activeOpacity={0.9}
-                    style={{ width: halfSize, height: halfSize, marginRight: index === 0 ? GAP : 0, borderRadius: 8, overflow: 'hidden' }}
-                  >
-                    <Image source={{ uri: file.url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                  <TouchableOpacity key={index} onPress={() => openImageViewer(index, 'design')} activeOpacity={0.9}>
+                    <Image
+                      source={{ uri: file.url }}
+                      style={{ width: halfSize, height: halfSize, borderRadius: 8, marginLeft: index === 1 ? GAP : 0 }}
+                      contentFit="cover"
+                      transition={200}
+                      cachePolicy="memory-disk"
+                    />
                   </TouchableOpacity>
                 ))}
               </View>
@@ -498,18 +509,25 @@ export default function ProjectPostDetail({ project, onClose, onPlaceBid, userRo
 
             {designImages.length === 3 && (
               <View style={{ flexDirection: 'row' }}>
-                <TouchableOpacity onPress={() => openImageViewer(0, 'design')} activeOpacity={0.9} style={{ width: largeWidth, height: largeWidth, marginRight: GAP, borderRadius: 8, overflow: 'hidden' }}>
-                  <Image source={{ uri: designImages[0].url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                <TouchableOpacity onPress={() => openImageViewer(0, 'design')} activeOpacity={0.9}>
+                  <Image
+                    source={{ uri: designImages[0].url }}
+                    style={{ width: largeWidth, height: halfSize * 2 + GAP, borderRadius: 8, marginRight: GAP }}
+                    contentFit="cover"
+                    transition={200}
+                    cachePolicy="memory-disk"
+                  />
                 </TouchableOpacity>
-                <View style={{ width: smallColumnWidth, height: largeWidth }}>
+                <View>
                   {designImages.slice(1).map((file, idx) => (
-                    <TouchableOpacity
-                      key={idx + 1}
-                      onPress={() => openImageViewer(idx + 1, 'design')}
-                      activeOpacity={0.9}
-                      style={{ width: '100%', height: (largeWidth - GAP) / 2, marginBottom: idx === 0 ? GAP : 0, borderRadius: 8, overflow: 'hidden' }}
-                    >
-                      <Image source={{ uri: file.url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                    <TouchableOpacity key={idx + 1} onPress={() => openImageViewer(idx + 1, 'design')} activeOpacity={0.9}>
+                      <Image
+                        source={{ uri: file.url }}
+                        style={{ width: smallColumnWidth, height: halfSize, borderRadius: 8, marginTop: idx === 1 ? GAP : 0 }}
+                        contentFit="cover"
+                        transition={200}
+                        cachePolicy="memory-disk"
+                      />
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -517,22 +535,28 @@ export default function ProjectPostDetail({ project, onClose, onPlaceBid, userRo
             )}
 
             {designImages.length >= 4 && (
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', width: usableWidth }}>
                 {designImages.slice(0, 4).map((file, index) => (
                   <TouchableOpacity
                     key={index}
-                    onPress={() => openImageViewer(index)}
+                    onPress={() => openImageViewer(index, 'design')}
                     activeOpacity={0.9}
                     style={{
                       width: halfSize,
                       height: halfSize,
-                      marginRight: index % 2 === 0 ? GAP : 0,
+                      marginLeft: index % 2 === 1 ? GAP : 0,
                       marginTop: index >= 2 ? GAP : 0,
                       borderRadius: 8,
-                      overflow: 'hidden'
+                      overflow: 'hidden',
                     }}
                   >
-                    <Image source={{ uri: file.url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                    <Image
+                      source={{ uri: file.url }}
+                      style={{ width: halfSize, height: halfSize }}
+                      contentFit="cover"
+                      transition={200}
+                      cachePolicy="memory-disk"
+                    />
                     {index === 3 && designImages.length > 4 && (
                       <View style={styles.moreOverlay}>
                         <Text style={styles.moreText}>+{designImages.length - 4}</Text>
@@ -557,15 +581,15 @@ export default function ProjectPostDetail({ project, onClose, onPlaceBid, userRo
               {requiredDocuments.slice(0, 22).map((doc, index) => (
                 <TouchableOpacity
                   key={index}
-                  style={styles.documentCard}
+                  style={[styles.documentCard, { width: docCardSize }]}
                   onPress={() => openImageViewer(index, 'docs')}
                   activeOpacity={0.9}
                 >
-                  <View style={styles.documentImageContainer}>
-                    <Image source={{ uri: doc.url }} style={styles.documentImage} resizeMode="cover" />
-                    {/* Watermark always rendered on top — scales responsively */}
+                  <View style={[styles.documentImageContainer, { width: docCardSize, height: docCardSize }]}>
+                    <Image source={{ uri: doc.url }} style={{ width: docCardSize, height: docCardSize }} contentFit="cover" transition={200} cachePolicy="memory-disk" />
+                    {/* Watermark always rendered on top */}
                     <View style={styles.thumbnailWatermarkWrapper} pointerEvents="none">
-                      <Image source={watermarkImage} style={styles.thumbnailWatermark} resizeMode="cover" />
+                      <Image source={watermarkImage} style={{ width: docCardSize, height: docCardSize, opacity: 0.45 }} contentFit="cover" />
                     </View>
                     {/* Label overlay */}
                     <View style={styles.documentLabelOverlay}>
@@ -619,20 +643,43 @@ export default function ProjectPostDetail({ project, onClose, onPlaceBid, userRo
             pagingEnabled
             showsHorizontalScrollIndicator={false}
             contentOffset={{ x: selectedImageIndex * SCREEN_WIDTH, y: 0 }}
+            onMomentumScrollEnd={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
+              const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+              const gallery = currentGallery.length > 0 ? currentGallery : designImages;
+              if (idx >= 0 && idx < gallery.length) {
+                setSelectedImageIndex(idx);
+              }
+            }}
           >
             {(currentGallery.length > 0 ? currentGallery : designImages).map((file, index) => (
               <View key={index} style={styles.imageViewerPage}>
                 <View style={{ width: SCREEN_WIDTH, alignItems: 'center', justifyContent: 'center' }}>
-                  <Image source={{ uri: file.url }} style={styles.fullScreenImage} resizeMode="contain" />
+                  <Image source={{ uri: file.url }} style={styles.fullScreenImage} contentFit="contain" transition={200} cachePolicy="memory-disk" />
                 </View>
               </View>
             ))}
           </ScrollView>
-          <View style={styles.imageCounter}>
-            <Text style={styles.imageCounterText}>
-              {selectedImageIndex + 1} / {(currentGallery.length > 0 ? currentGallery.length : designImages.length)}
-            </Text>
-          </View>
+          {(() => {
+            const gallery = currentGallery.length > 0 ? currentGallery : designImages;
+            if (gallery.length > 1 && gallery.length <= 12) {
+              return (
+                <View style={styles.imageViewerDots}>
+                  {gallery.map((_, i) => (
+                    <View key={i} style={[styles.imageViewerDot, i === selectedImageIndex && styles.imageViewerDotActive]} />
+                  ))}
+                </View>
+              );
+            } else if (gallery.length > 12) {
+              return (
+                <View style={styles.imageCounter}>
+                  <Text style={styles.imageCounterText}>
+                    {selectedImageIndex + 1} / {gallery.length}
+                  </Text>
+                </View>
+              );
+            }
+            return null;
+          })()}
         </View>
       </Modal>
 
@@ -696,14 +743,15 @@ export default function ProjectPostDetail({ project, onClose, onPlaceBid, userRo
                 <Image
                   source={{ uri: doc.url }}
                   style={styles.docViewerImage}
-                  resizeMode="contain"
+                  contentFit="contain"
+                  transition={200}
+                  cachePolicy="memory-disk"
                 />
                 {/* Watermark — always fixed on top, scales responsively */}
                 <Image
                   source={watermarkImage}
                   style={styles.docViewerWatermark}
-                  resizeMode="cover"
-                  pointerEvents="none"
+                  contentFit="cover"
                 />
               </View>
             )}
@@ -965,7 +1013,6 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   documentCard: {
-    width: '48%',
     backgroundColor: '#F8F9FA',
     borderRadius: 8,
     overflow: 'hidden',
@@ -973,11 +1020,7 @@ const styles = StyleSheet.create({
   },
   documentImageContainer: {
     position: 'relative',
-    aspectRatio: 1,
-  },
-  documentImage: {
-    width: '100%',
-    height: '100%',
+    overflow: 'hidden',
   },
   documentLabel: {
     padding: 8,
@@ -1098,6 +1141,25 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '600',
+  },
+  imageViewerDots: {
+    position: 'absolute',
+    bottom: 40,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    gap: 6,
+    zIndex: 10,
+  },
+  imageViewerDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+  },
+  imageViewerDotActive: {
+    backgroundColor: '#EC7E00',
+    width: 20,
+    borderRadius: 4,
   },
   // ── Important Document Viewer (overlay modal) ──
   docViewerContainer: {

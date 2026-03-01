@@ -3,7 +3,6 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
-  Image,
   TouchableOpacity,
   Dimensions,
   StyleSheet,
@@ -20,6 +19,7 @@ import { DeviceEventEmitter } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import Feather from 'react-native-vector-icons/Feather';
+import { Image } from 'expo-image';
 import ImageFallback from '../../components/ImageFallbackFixed';
 import { projects_service, ContractorType as ContractorTypeOption } from '../../services/projects_service';
 import { api_config } from '../../config/api';
@@ -861,7 +861,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
    *  - Only optional documents (blueprints, desired design, reference/others) are shown
    *    in the collapsed/default card view.
    *  - Important documents (building permit, land title) are NEVER shown here.
-   *  - Layout: 1 → full-width, 2-3 → grid, 4+ → 2×2 grid with +N overlay.
+   *  - Layout: 1 → full-width, 2 → side-by-side, 3 → big+2, 4+ → 2×2 with +N overlay (Facebook-style).
    */
   const renderProjectImages = (files: Array<string | { file_id?: number; file_type?: string; file_path?: string }>) => {
     if (!files || files.length === 0) return null;
@@ -869,7 +869,6 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
     // Check if file is an image by extension or by being from project_files
     const isImage = (filePath: string, fileType?: string) => {
       if (!filePath) return false;
-      // Files from project_files table are always images (form only accepts images)
       if (fileType && ['building permit', 'title', 'blueprint', 'desired design', 'others'].includes(fileType.toLowerCase())) {
         return true;
       }
@@ -897,18 +896,11 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
       };
     });
 
-    // Debug: log what files we received and how they are classified
-    console.log('[renderProjectImages] Total files received:', files.length);
-    console.log('[renderProjectImages] Parsed displayFiles:', displayFiles.map(d => ({ raw: d.raw, fileType: d.fileType, isImage: d.isImage, isImportant: isImportantDocument(d.fileType, d.raw) })));
-
     // ── Strict filtering: EXCLUDE important/protected documents ──
     const optionalFiles = displayFiles.filter(
       (d) => !isImportantDocument(d.fileType, d.raw) && d.isImage
     );
 
-    console.log('[renderProjectImages] Optional files after filter:', optionalFiles.length, optionalFiles.map(d => d.fileType || d.raw));
-
-    // If there are no optional images to show, render nothing in the card
     if (optionalFiles.length === 0) return null;
 
     // Collage sizing
@@ -916,28 +908,42 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
     const GAP = 2;
     const usableWidth = width - H_PADDING * 2;
     const halfSize = Math.floor((usableWidth - GAP) / 2);
-    const largeWidth = Math.floor(usableWidth * 0.66);
     const singleHeight = Math.floor(usableWidth * 0.56);
 
     // 1 image → full-width
     if (optionalFiles.length === 1) {
-      const f = optionalFiles[0];
       return (
         <View style={[styles.imageCollageContainer, { paddingHorizontal: H_PADDING }]}>
-          <Image source={{ uri: f.url }} style={{ width: usableWidth, height: singleHeight, borderRadius: 8 }} resizeMode="cover" />
+          <Image
+            source={{ uri: optionalFiles[0].url }}
+            style={{ width: usableWidth, height: singleHeight, borderRadius: 8 }}
+            contentFit="cover"
+            transition={200}
+            cachePolicy="memory-disk"
+          />
         </View>
       );
     }
 
-    // 2 images → side-by-side row
+    // 2 images → side-by-side
     if (optionalFiles.length === 2) {
       return (
         <View style={[styles.imageCollageContainer, { paddingHorizontal: H_PADDING }]}>
           <View style={{ flexDirection: 'row' }}>
             {optionalFiles.map((f, i) => (
-              <View key={i} style={{ flex: 1, height: halfSize, borderRadius: 8, overflow: 'hidden', marginRight: i === 0 ? GAP : 0 }}>
-                <Image source={{ uri: f.url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-              </View>
+              <Image
+                key={i}
+                source={{ uri: f.url }}
+                style={{
+                  width: halfSize,
+                  height: halfSize,
+                  borderRadius: 8,
+                  marginLeft: i === 1 ? GAP : 0,
+                }}
+                contentFit="cover"
+                transition={200}
+                cachePolicy="memory-disk"
+              />
             ))}
           </View>
         </View>
@@ -946,17 +952,28 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
 
     // 3 images → large left, two stacked right
     if (optionalFiles.length === 3) {
+      const largeW = Math.floor(usableWidth * 0.66);
+      const smallW = usableWidth - largeW - GAP;
       return (
         <View style={[styles.imageCollageContainer, { paddingHorizontal: H_PADDING }]}>
           <View style={{ flexDirection: 'row' }}>
-            <View style={{ flex: 2, height: largeWidth, marginRight: GAP, borderRadius: 8, overflow: 'hidden' }}>
-              <Image source={{ uri: optionalFiles[0].url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-            </View>
-            <View style={{ flex: 1, height: largeWidth }}>
+            <Image
+              source={{ uri: optionalFiles[0].url }}
+              style={{ width: largeW, height: halfSize * 2 + GAP, borderRadius: 8, marginRight: GAP }}
+              contentFit="cover"
+              transition={200}
+              cachePolicy="memory-disk"
+            />
+            <View>
               {optionalFiles.slice(1).map((f, i) => (
-                <View key={i} style={{ width: '100%', height: (largeWidth - GAP) / 2, marginBottom: i === 0 ? GAP : 0, borderRadius: 8, overflow: 'hidden' }}>
-                  <Image source={{ uri: f.url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-                </View>
+                <Image
+                  key={i}
+                  source={{ uri: f.url }}
+                  style={{ width: smallW, height: halfSize, borderRadius: 8, marginTop: i === 1 ? GAP : 0 }}
+                  contentFit="cover"
+                  transition={200}
+                  cachePolicy="memory-disk"
+                />
               ))}
             </View>
           </View>
@@ -964,22 +981,33 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
       );
     }
 
-    // 4+ images → 2×2 grid with +N overlay on the 4th tile
+    // 4+ images → 2×2 grid, +N overlay on 4th tile
     const grid = optionalFiles.slice(0, 4);
     const extra = optionalFiles.length - 4;
     return (
       <View style={[styles.imageCollageContainer, { paddingHorizontal: H_PADDING }]}>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', width: usableWidth }}>
           {grid.map((f, i) => (
-            <View key={i} style={{ width: '50%', paddingRight: i % 2 === 0 ? GAP : 0, paddingTop: i >= 2 ? GAP : 0 }}>
-              <View style={{ width: '100%', height: halfSize, borderRadius: 8, overflow: 'hidden' }}>
-                <Image source={{ uri: f.url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-                {i === 3 && extra > 0 && (
-                  <View style={styles.imageOverlay}>
-                    <Text style={styles.imageOverlayText}>+{extra}</Text>
-                  </View>
-                )}
-              </View>
+            <View key={i} style={{
+              width: halfSize,
+              height: halfSize,
+              marginLeft: i % 2 === 1 ? GAP : 0,
+              marginTop: i >= 2 ? GAP : 0,
+              borderRadius: 8,
+              overflow: 'hidden',
+            }}>
+              <Image
+                source={{ uri: f.url }}
+                style={{ width: halfSize, height: halfSize }}
+                contentFit="cover"
+                transition={200}
+                cachePolicy="memory-disk"
+              />
+              {i === 3 && extra > 0 && (
+                <View style={styles.imageOverlay}>
+                  <Text style={styles.imageOverlayText}>+{extra}</Text>
+                </View>
+              )}
             </View>
           ))}
         </View>

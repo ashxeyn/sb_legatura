@@ -571,13 +571,11 @@
 /* Project Image */
 .project-image-wrapper {
     width: 100%;
-    height: 180px;
     margin-bottom: 1.25rem;
     border-radius: 0.5rem;
     overflow: hidden;
     position: relative;
     z-index: 2;
-    background-color: #f3f4f6;
 }
 
 .project-image {
@@ -755,7 +753,6 @@
     }
 
     .project-image-wrapper {
-        height: 150px;
         margin-bottom: 1rem;
     }
 
@@ -794,12 +791,11 @@
     }
 }
 
-/* Facebook-style Grid Layout */
+/* ─── Facebook-style Image Grid ─── */
 .project-media-grid {
     display: grid;
-    gap: 2px;
-    margin-top: 15px;
-    margin-bottom: 15px;
+    gap: 3px;
+    margin-bottom: 16px;
     border-radius: 8px;
     overflow: hidden;
     width: 100%;
@@ -812,76 +808,77 @@
     display: block;
     cursor: pointer;
     background-color: #f0f2f5;
+    min-height: 0; /* prevent grid blowout */
 }
 
-/* Grid Variants */
-
-/* 1 Image: Full Width, maintaining some aspect ratio but max heigth */
+/* ── 1 Image: full-width 16:9 ── */
 .project-media-grid.grid-1 {
     grid-template-columns: 1fr;
-    height: 350px;
+    grid-template-rows: 1fr;
+    aspect-ratio: 16 / 9;
+    max-height: 360px;
 }
 
-/* 2 Images: Split Vertically */
+/* ── 2 Images: side-by-side squares ── */
 .project-media-grid.grid-2 {
     grid-template-columns: 1fr 1fr;
-    height: 300px;
+    grid-template-rows: 1fr;
+    aspect-ratio: 2 / 1;
+    max-height: 300px;
 }
 
-/* 3 Images: Left Big, Top Right/Bottom Right Small */
+/* ── 3 Images: big left (2/3) + two stacked right (1/3) ── */
 .project-media-grid.grid-3 {
     grid-template-columns: 2fr 1fr;
     grid-template-rows: 1fr 1fr;
-    height: 350px;
+    aspect-ratio: 5 / 3;
+    max-height: 380px;
+}
+/* First image spans both rows on the left */
+.project-media-grid.grid-3 > :first-child {
+    grid-row: 1 / -1;
 }
 
-/* First image in grid-3 spans 2 rows */
-.project-media-grid.grid-3 .project-grid-image:first-child {
-    grid-row: span 2;
-    height: 100%;
-}
-
-/* 4 Images: 2x2 Grid (or 1 Big, 3 Small) - Lets do 2x2 for simplicity or 1 big 3 small */
-/* Facebook style for 4 is usually 1 big (top) and 3 small (bottom) OR 1 big (left) and 3 small (right column) */
-/* Let's do 1 Big Left, 3 Small Right Column */
+/* ── 4+ Images: 2×2 grid ── */
 .project-media-grid.grid-4 {
-    grid-template-columns: 2fr 1fr; /* Left col wider */
-    grid-template-rows: repeat(3, 1fr); /* 3 rows on right */
-    height: 360px;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    aspect-ratio: 1 / 1;
+    max-height: 420px;
 }
 
-.project-media-grid.grid-4 .project-grid-image:first-child {
-    grid-row: span 3; /* Spans all 3 rows on left */
-    height: 100%;
-}
-
-/* Overlay for +N images */
+/* ── +N Overlay Wrapper (used for the 4th tile when >4 images) ── */
 .image-overlay-wrapper {
     position: relative;
     width: 100%;
     height: 100%;
     overflow: hidden;
+    min-height: 0;
+    background-color: #e5e5e5;
 }
 
 .image-overlay-wrapper img {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    display: block;
 }
 
 .more-images-overlay {
     position: absolute;
     top: 0;
     left: 0;
-    width: 100%;
-    height: 100%;
+    right: 0;
+    bottom: 0;
     background-color: rgba(0, 0, 0, 0.5);
-    color: white;
+    color: #ffffff;
     display: flex;
     justify-content: center;
     align-items: center;
-    font-size: 24px;
-    font-weight: bold;
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    z-index: 2;
     pointer-events: none;
 }
 
