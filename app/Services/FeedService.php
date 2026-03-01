@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Log;
  * Keeps controllers thin. Both the web (Blade) and API (mobile) homepage
  * actions funnel through this service so feed rules are in one place.
  */
-class feedService
+class FeedService
 {
     protected feedClass $feed;
 

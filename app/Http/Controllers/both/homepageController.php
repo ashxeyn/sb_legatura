@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\both;
 
 use App\Http\Controllers\Controller;
-use App\Services\feedService;
+use App\Services\FeedService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -23,11 +23,11 @@ use Laravel\Sanctum\PersonalAccessToken;
  */
 class homepageController extends Controller
 {
-    protected feedService $feedService;
+    protected FeedService $FeedService;
 
-    public function __construct(feedService $feedService)
+    public function __construct(FeedService $FeedService)
     {
-        $this->feedService = $feedService;
+        $this->FeedService = $FeedService;
     }
 
     /* =====================================================================
@@ -76,7 +76,7 @@ class homepageController extends Controller
         $perPage = 10;
 
         // Use the API-style feed to get paginated data
-        $result = $this->feedService->ownerFeedApi($excludeUserId, $page, $perPage, []);
+        $result = $this->FeedService->ownerFeedApi($excludeUserId, $page, $perPage, []);
 
         // Normalize contractors collection for Blade
         $contractors = collect($result['data']);
@@ -93,13 +93,13 @@ class homepageController extends Controller
         }
 
         // Also prepare the jsContractors payload (first page) for client-side use
-        $jsContractors = $this->feedService->ownerHomepageData($excludeUserId)['jsContractors'] ?? [];
+        $jsContractors = $this->FeedService->ownerHomepageData($excludeUserId)['jsContractors'] ?? [];
 
         return view('owner.propertyOwner_Homepage', [
             'contractors' => $contractors,
             'pagination' => $pagination,
             'jsContractors' => $jsContractors,
-            'contractorTypes' => $this->feedService->getContractorTypes(),
+            'contractorTypes' => $this->FeedService->getContractorTypes(),
         ]);
     }
 
@@ -120,7 +120,7 @@ class homepageController extends Controller
         }
 
         try {
-            $data = $this->feedService->contractorHomepageData();
+            $data = $this->FeedService->contractorHomepageData();
         } catch (\Throwable $e) {
             Log::error('HomepageController::contractorHomepage failed: ' . $e->getMessage());
             $data = [
@@ -163,7 +163,7 @@ class homepageController extends Controller
                 'min_completed' => $request->query('min_completed'),
             ], fn($v) => $v !== null && $v !== '');
 
-            $result = $this->feedService->ownerFeedApi(
+            $result = $this->FeedService->ownerFeedApi(
                 $excludeUser ? (int) $excludeUser : null,
                 $page,
                 $perPage,
@@ -201,7 +201,7 @@ class homepageController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Contractor types retrieved successfully',
-                'data' => $this->feedService->getContractorTypes(),
+                'data' => $this->FeedService->getContractorTypes(),
             ], 200);
         } catch (\Exception $e) {
             Log::error('apiGetContractorTypes error: ' . $e->getMessage());
@@ -247,7 +247,7 @@ class homepageController extends Controller
                 'max_floor_area' => $request->query('max_floor_area'),
             ], fn($v) => $v !== null && $v !== '');
 
-            $result = $this->feedService->contractorFeedApi($userId, $page, $perPage, $filters);
+            $result = $this->FeedService->contractorFeedApi($userId, $page, $perPage, $filters);
 
             return response()->json([
                 'success' => true,
@@ -281,7 +281,7 @@ class homepageController extends Controller
     public function apiGetFilterOptions(Request $request)
     {
         try {
-            $contractorTypes = $this->feedService->getContractorTypes();
+            $contractorTypes = $this->FeedService->getContractorTypes();
             $propertyTypes = (new \App\Models\both\feedClass)->getEnumValues('projects', 'property_type');
 
             $picabCategories = ['AAAA', 'AAA', 'AA', 'A', 'B', 'C', 'D', 'Trade/E'];
