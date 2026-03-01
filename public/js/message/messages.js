@@ -9,6 +9,12 @@ let currentConversationData = null; // Store conversation metadata
 let currentReceiverId = null;
 let selectedRecipients = [];
 
+// Typing indicator state
+let typingTimeout = null;
+let typingDebounceTimer = null;
+const TYPING_DEBOUNCE_MS = 500;  // Send typing event at most every 500ms
+const TYPING_HIDE_MS = 2500;     // Hide indicator 2.5s after last event
+
 /**
  * Detect current user role and return appropriate API prefix
  * Based on current URL path
@@ -150,6 +156,14 @@ function initializePusher() {
             .listen('.conversation.suspended', (event) => {
                 // console.log('Pusher: Conversation suspended/unsuspended!', event);
                 handleConversationSuspension(event);
+            })
+            .listen('client-typing', (event) => {
+                console.log('Pusher: Received client-typing event (without dot)', event);
+                handleTypingEvent(event);
+            })
+            .listen('.client-typing', (event) => {
+                console.log('Pusher: Received .client-typing event (with dot)', event);
+                handleTypingEvent(event);
             })
             .subscribed(() => {
                 // console.log('Pusher: Successfully subscribed to channel chat.' + userId);
@@ -570,91 +584,91 @@ function checkSuspensionState(conversation) {
 
     // Check if suspended
     if (conversation.status === 'suspended' || conversation.is_suspended) {
-            // Disable input
-            if (messageInput) {
-                messageInput.disabled = true;
-                messageInput.placeholder = 'This conversation is suspended';
-                messageInput.classList.add('bg-gray-100', 'cursor-not-allowed');
+        // Disable input
+        if (messageInput) {
+            messageInput.disabled = true;
+            messageInput.placeholder = 'This conversation is suspended';
+            messageInput.classList.add('bg-gray-100', 'cursor-not-allowed');
+        }
+        if (sendBtn) {
+            sendBtn.disabled = true;
+            sendBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        }
+        if (attachmentBtn) {
+            attachmentBtn.disabled = true;
+            attachmentBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        }
+
+        // Show suspension notice
+        const notice = document.createElement('div');
+        notice.id = 'suspensionNotice';
+        notice.className = 'px-4 py-3 bg-red-50 border-l-4 border-red-500 text-sm text-red-800';
+
+        let suspensionMessage = 'This conversation has been suspended.';
+
+        // Check if there's a suspended_until date
+        if (conversation.suspended_until) {
+            const suspendedUntil = new Date(conversation.suspended_until);
+            const now = new Date();
+
+            if (suspendedUntil > now) {
+                const options = {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                };
+                suspensionMessage = `This conversation is suspended until ${suspendedUntil.toLocaleDateString('en-US', options)}. No messages can be sent during this period.`;
             }
-            if (sendBtn) {
-                sendBtn.disabled = true;
-                sendBtn.classList.add('opacity-50', 'cursor-not-allowed');
-            }
-            if (attachmentBtn) {
-                attachmentBtn.disabled = true;
-                attachmentBtn.classList.add('opacity-50', 'cursor-not-allowed');
-            }
-
-            // Show suspension notice
-            const notice = document.createElement('div');
-            notice.id = 'suspensionNotice';
-            notice.className = 'px-4 py-3 bg-red-50 border-l-4 border-red-500 text-sm text-red-800';
-
-            let suspensionMessage = 'This conversation has been suspended.';
-
-            // Check if there's a suspended_until date
-            if (conversation.suspended_until) {
-                const suspendedUntil = new Date(conversation.suspended_until);
-                const now = new Date();
-
-                if (suspendedUntil > now) {
-                    const options = {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                    };
-                    suspensionMessage = `This conversation is suspended until ${suspendedUntil.toLocaleDateString('en-US', options)}. No messages can be sent during this period.`;
-                }
-            } else {
-                suspensionMessage = 'This conversation has been permanently suspended. No messages can be sent.';
-            }
-
-            if (conversation.reason) {
-                suspensionMessage += `<br><strong>Reason:</strong> ${conversation.reason}`;
-            }
-
-            notice.innerHTML = suspensionMessage;
-            const messagesDisplay = document.getElementById('messagesDisplay');
-            if (messagesDisplay && inputContainer) {
-                messagesDisplay.parentElement?.insertBefore(notice, inputContainer);
-            }
-
-            // Show unsuspend button only in flagged or suspended filter, hide suspend button
-            // console.log('Conversation is suspended - showing unsuspend button');
-            document.getElementById('suspendConversationBtn')?.classList.add('hidden');
-            if (currentFilter === 'flagged' || currentFilter === 'suspended') {
-                document.getElementById('restoreConversationBtn')?.classList.remove('hidden');
-            } else {
-                document.getElementById('restoreConversationBtn')?.classList.add('hidden');
-            }
-
         } else {
-            // Enable input (conversation not suspended)
-            if (messageInput) {
-                messageInput.disabled = false;
-                messageInput.placeholder = 'Type your message...';
-                messageInput.classList.remove('bg-gray-100', 'cursor-not-allowed');
-            }
-            if (sendBtn) {
-                sendBtn.disabled = false;
-                sendBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-            }
-            if (attachmentBtn) {
-                attachmentBtn.disabled = false;
-                attachmentBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-            }
+            suspensionMessage = 'This conversation has been permanently suspended. No messages can be sent.';
+        }
 
-            // Show suspend button only in flagged filter, hide restore button
-            // console.log('Conversation is NOT suspended - showing suspend button');
-            if (currentFilter === 'flagged') {
-                document.getElementById('suspendConversationBtn')?.classList.remove('hidden');
-            } else {
-                document.getElementById('suspendConversationBtn')?.classList.add('hidden');
-            }
+        if (conversation.reason) {
+            suspensionMessage += `<br><strong>Reason:</strong> ${conversation.reason}`;
+        }
+
+        notice.innerHTML = suspensionMessage;
+        const messagesDisplay = document.getElementById('messagesDisplay');
+        if (messagesDisplay && inputContainer) {
+            messagesDisplay.parentElement?.insertBefore(notice, inputContainer);
+        }
+
+        // Show unsuspend button only in flagged or suspended filter, hide suspend button
+        // console.log('Conversation is suspended - showing unsuspend button');
+        document.getElementById('suspendConversationBtn')?.classList.add('hidden');
+        if (currentFilter === 'flagged' || currentFilter === 'suspended') {
+            document.getElementById('restoreConversationBtn')?.classList.remove('hidden');
+        } else {
             document.getElementById('restoreConversationBtn')?.classList.add('hidden');
         }
+
+    } else {
+        // Enable input (conversation not suspended)
+        if (messageInput) {
+            messageInput.disabled = false;
+            messageInput.placeholder = 'Type your message...';
+            messageInput.classList.remove('bg-gray-100', 'cursor-not-allowed');
+        }
+        if (sendBtn) {
+            sendBtn.disabled = false;
+            sendBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+        if (attachmentBtn) {
+            attachmentBtn.disabled = false;
+            attachmentBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+
+        // Show suspend button only in flagged filter, hide restore button
+        // console.log('Conversation is NOT suspended - showing suspend button');
+        if (currentFilter === 'flagged') {
+            document.getElementById('suspendConversationBtn')?.classList.remove('hidden');
+        } else {
+            document.getElementById('suspendConversationBtn')?.classList.add('hidden');
+        }
+        document.getElementById('restoreConversationBtn')?.classList.add('hidden');
+    }
 }
 
 /**
@@ -747,24 +761,24 @@ function renderAttachments(attachments) {
     return `
         <div class="mt-2 space-y-2">
             ${attachments.map(att => {
-                const isImage = att.is_image || /\.(jpg|jpeg|png|gif|webp)$/i.test(att.file_name);
+        const isImage = att.is_image || /\.(jpg|jpeg|png|gif|webp)$/i.test(att.file_name);
 
-                if (isImage) {
-                    return `
+        if (isImage) {
+            return `
                         <a href="${att.file_url}" target="_blank">
                             <img src="${att.file_url}" class="max-w-full rounded border" alt="${att.file_name}">
                         </a>
                     `;
-                } else {
-                    return `
+        } else {
+            return `
                         <a href="${att.file_url}" target="_blank"
                            class="flex items-center gap-2 p-2 bg-gray-100 rounded hover:bg-gray-200">
                             <i class="fi fi-rr-document text-indigo-600"></i>
                             <span class="text-sm truncate">${att.file_name}</span>
                         </a>
                     `;
-                }
-            }).join('')}
+        }
+    }).join('')}
         </div>
     `;
 }
@@ -1061,6 +1075,104 @@ function handleConversationSuspension(event) {
 }
 
 /**
+ * Send typing indicator to receiver via backend API
+ */
+async function sendTypingEvent() {
+    if (!currentReceiverId || !currentConversationId) return;
+    try {
+        await fetch(`${getApiPrefix()}/typing`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                ...(getAuthToken() && { 'Authorization': `Bearer ${getAuthToken()}` })
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+                receiver_id: currentReceiverId,
+                conversation_id: currentConversationId
+            })
+        });
+    } catch (e) {
+        // Silently fail — typing indicator is non-critical
+    }
+}
+
+/**
+ * Handle incoming typing event from Pusher
+ */
+function handleTypingEvent(event) {
+    console.log('handleTypingEvent called with event:', event);
+    const myId = getUserId();
+    console.log(`myId=${myId}, event.user_id=${event?.user_id}, currentConversationId=${currentConversationId}, event.conversation_id=${event?.conversation_id}`);
+
+    if (!event || event.user_id === myId) {
+        console.log('Skipping: event missing or user_id matches myId');
+        return;
+    }
+    if (String(event.conversation_id) !== String(currentConversationId)) {
+        console.log('Skipping: conversation_id mismatch');
+        return;
+    }
+
+    console.log('Showing typing indicator!');
+    showTypingIndicator();
+    clearTimeout(typingTimeout);
+    typingTimeout = setTimeout(hideTypingIndicator, TYPING_HIDE_MS);
+}
+
+/**
+ * Show animated typing indicator below messages (Messenger-style dots)
+ */
+function showTypingIndicator() {
+    const container = document.getElementById('messagesDisplay');
+    if (!container) return;
+    if (container.querySelector('.typing-indicator-row')) return;
+
+    // Inject animation styles once
+    if (!document.getElementById('typing-indicator-styles')) {
+        const style = document.createElement('style');
+        style.id = 'typing-indicator-styles';
+        style.textContent = `
+            @keyframes typingBounce {
+                0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+                30% { transform: translateY(-5px); opacity: 1; }
+            }
+            @keyframes fadeInUp {
+                from { opacity: 0; transform: translateY(8px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    const typingHtml = `
+        <div class="typing-indicator-row flex justify-start mb-4" style="animation: fadeInUp 0.2s ease-out">
+            <div class="bg-gray-100 rounded-2xl px-4 py-3 flex items-center gap-1.5">
+                <span style="width:7px;height:7px;border-radius:50%;background:#9CA3AF;display:inline-block;animation:typingBounce 1.2s ease-in-out infinite"></span>
+                <span style="width:7px;height:7px;border-radius:50%;background:#9CA3AF;display:inline-block;animation:typingBounce 1.2s ease-in-out infinite 0.2s"></span>
+                <span style="width:7px;height:7px;border-radius:50%;background:#9CA3AF;display:inline-block;animation:typingBounce 1.2s ease-in-out infinite 0.4s"></span>
+            </div>
+        </div>
+    `;
+    container.insertAdjacentHTML('beforeend', typingHtml);
+    scrollToBottom();
+}
+
+/**
+ * Hide typing indicator with fade-out
+ */
+function hideTypingIndicator() {
+    const indicator = document.querySelector('.typing-indicator-row');
+    if (indicator) {
+        indicator.style.opacity = '0';
+        indicator.style.transition = 'opacity 0.2s ease-out';
+        setTimeout(() => indicator.remove(), 200);
+    }
+}
+
+/**
  * Update read receipts for messages in current conversation
  */
 function updateReadReceipts(conversationId) {
@@ -1169,6 +1281,15 @@ function setupEventListeners() {
             e.preventDefault();
             sendMessage();
         }
+    });
+
+    // Typing indicator: send event on input (debounced)
+    document.getElementById('messageInput')?.addEventListener('input', () => {
+        if (!currentReceiverId || !currentConversationId) return;
+        clearTimeout(typingDebounceTimer);
+        typingDebounceTimer = setTimeout(() => {
+            sendTypingEvent();
+        }, TYPING_DEBOUNCE_MS);
     });
 
     // Attachment button
@@ -1343,7 +1464,7 @@ function setupEventListeners() {
     document.getElementById('confirmRestoreBtn')?.addEventListener('click', restoreCurrentConversation);
 
     // Show/hide "Other reason" input based on dropdown selection
-    document.getElementById('flagReason')?.addEventListener('change', function(e) {
+    document.getElementById('flagReason')?.addEventListener('change', function (e) {
         const otherContainer = document.getElementById('otherReasonContainer');
         const otherInput = document.getElementById('otherReasonText');
 
@@ -1357,7 +1478,7 @@ function setupEventListeners() {
     });
 
     // Show/hide "Other reason" input for suspend modal
-    document.getElementById('suspendReason')?.addEventListener('change', function(e) {
+    document.getElementById('suspendReason')?.addEventListener('change', function (e) {
         const otherContainer = document.getElementById('otherSuspendReasonContainer');
         const otherInput = document.getElementById('otherSuspendReasonText');
 
@@ -1372,7 +1493,7 @@ function setupEventListeners() {
 
     // Modal close handlers
     document.querySelectorAll('.modal-close').forEach(btn => {
-        btn.addEventListener('click', function() {
+        btn.addEventListener('click', function () {
             const modal = this.closest('.modal-overlay');
             if (modal) modal.classList.add('hidden');
         });

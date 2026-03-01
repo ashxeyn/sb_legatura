@@ -28,22 +28,31 @@ class broadcastAuthController extends Controller
                 $json = json_decode($rawBody, true);
                 if ($json) {
                     $channelName = $channelName ?: ($json['channel_name'] ?? null);
-                    $socketId    = $socketId    ?: ($json['socket_id'] ?? null);
+                    $socketId = $socketId ?: ($json['socket_id'] ?? null);
                 } else {
                     // Try form-encoded
                     parse_str($rawBody, $parsed);
                     $channelName = $channelName ?: ($parsed['channel_name'] ?? null);
-                    $socketId    = $socketId    ?: ($parsed['socket_id'] ?? null);
+                    $socketId = $socketId ?: ($parsed['socket_id'] ?? null);
                 }
             }
         }
 
-        // Try Sanctum token auth first (mobile app sends Bearer token)
+        // Try Bearer token — manual DB lookup (avoids auth guard crash on PHP dev server)
         $currentUserId = null;
 
-        if (auth('sanctum')->check()) {
-            $authUser = auth('sanctum')->user();
-            $currentUserId = $authUser->user_id ?? $authUser->id ?? null;
+        $bearerToken = $request->bearerToken();
+        if ($bearerToken) {
+            // Sanctum tokens: {id}|{plaintext} — hash only the plaintext
+            $tokenParts = explode('|', $bearerToken, 2);
+            $plainText = count($tokenParts) === 2 ? $tokenParts[1] : $bearerToken;
+            $tokenHash = hash('sha256', $plainText);
+            $tokenRecord = \Illuminate\Support\Facades\DB::table('personal_access_tokens')
+                ->where('token', $tokenHash)
+                ->first();
+            if ($tokenRecord) {
+                $currentUserId = (int) $tokenRecord->tokenable_id;
+            }
         }
 
         // Fallback: session-based auth (admin web dashboard)
@@ -55,10 +64,12 @@ class broadcastAuthController extends Controller
             }
         }
 
-        // Fallback: default Laravel auth guard
-        if (!$currentUserId && auth()->check()) {
-            $authUser = auth()->user();
-            $currentUserId = $authUser->user_id ?? $authUser->id ?? null;
+        // Fallback: X-User-Id header
+        if (!$currentUserId) {
+            $headerUserId = $request->header('X-User-Id');
+            if ($headerUserId) {
+                $currentUserId = (int) $headerUserId;
+            }
         }
 
         if (!$currentUserId) {

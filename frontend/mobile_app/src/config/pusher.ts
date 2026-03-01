@@ -33,7 +33,7 @@ export const initPusher = async (authToken: string) => {
 
     const authEndpoint = pusher_config.authEndpoint;
     console.log('Pusher: Initializing with auth endpoint:', authEndpoint);
-    
+
     const pusher = new Pusher(pusher_config.app_key, {
       cluster: pusher_config.cluster,
       encrypted: pusher_config.encrypted,
@@ -83,6 +83,7 @@ export const subscribeToChatChannel = (
   userId: number,
   onMessage: (message: any) => void,
   onMessagesRead?: (data: any) => void,
+  onTyping?: (data: any) => void,
 ) => {
   try {
     const channelName = `private-chat.${userId}`;
@@ -107,6 +108,13 @@ export const subscribeToChatChannel = (
       channel.bind('messages.read', (data: any) => {
         console.log('Pusher: Messages read event', data);
         onMessagesRead(data);
+      });
+    }
+
+    // Listen for typing indicators
+    if (onTyping) {
+      channel.bind('client-typing', (data: any) => {
+        onTyping(data);
       });
     }
 

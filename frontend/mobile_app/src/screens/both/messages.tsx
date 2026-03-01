@@ -16,6 +16,7 @@ import {
   Keyboard,
   Linking,
   Dimensions,
+  Animated,
 } from 'react-native';
 import { StatusBar } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -28,7 +29,7 @@ import {
   UserInfo,
   Attachment,
 } from '../../services/messages_service';
-import { api_config } from '../../config/api';
+import { api_config, api_request } from '../../config/api';
 import {
   initPusher,
   subscribeToChatChannel,
@@ -84,17 +85,46 @@ interface MessagesScreenProps {
 }
 
 /* =====================================================================
- * Helper functions
+ * Helper Components & Functions
  * ===================================================================== */
+
+const TypingDots = () => {
+  const dot1 = useRef(new Animated.Value(0)).current;
+  const dot2 = useRef(new Animated.Value(0)).current;
+  const dot3 = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const animateDot = (dot: Animated.Value, delay: number) => {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(dot, { toValue: -5, duration: 300, delay, useNativeDriver: true }),
+          Animated.timing(dot, { toValue: 0, duration: 300, useNativeDriver: true }),
+          Animated.timing(dot, { toValue: 0, duration: 600, useNativeDriver: true })
+        ])
+      ).start();
+    };
+    animateDot(dot1, 0);
+    animateDot(dot2, 200);
+    animateDot(dot3, 400);
+  }, []);
+
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+      <Animated.View style={[styles.typingDot, { transform: [{ translateY: dot1 }] }]} />
+      <Animated.View style={[styles.typingDot, { transform: [{ translateY: dot2 }] }]} />
+      <Animated.View style={[styles.typingDot, { transform: [{ translateY: dot3 }] }]} />
+    </View>
+  );
+};
 
 const getInitials = (name: string): string =>
   name
     ? name
-        .split(' ')
-        .map((w: string) => w[0])
-        .join('')
-        .substring(0, 2)
-        .toUpperCase()
+      .split(' ')
+      .map((w: string) => w[0])
+      .join('')
+      .substring(0, 2)
+      .toUpperCase()
     : 'U';
 
 const getAvatarColor = (id: number): string => AVATAR_COLORS[id % AVATAR_COLORS.length];
@@ -198,6 +228,11 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
   const [pendingAttachments, setPendingAttachments] = useState<any[]>([]);
   const chatListRef = useRef<FlatList>(null);
 
+  /* ─── Typing Indicator State ─────────────────────────────────── */
+  const [isTyping, setIsTyping] = useState(false);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const typingDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   /* ─── Compose modal ──────────────────────────────────────────── */
   const [composeVisible, setComposeVisible] = useState(false);
   const [availableUsers, setAvailableUsers] = useState<UserInfo[]>([]);
@@ -254,8 +289,17 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
    * ================================================================= */
 
   useEffect(() => {
-    loadInbox();
-    initializePusherConnection();
+    // IMPORTANT: Load inbox FIRST, then init Pusher AFTER inbox completes.
+    // php artisan serve is single-threaded — concurrent requests deadlock it.
+    const initSequentially = async () => {
+      await loadInbox();
+      // Small delay to ensure the inbox response is fully processed before
+      // opening a new connection for Pusher auth
+      setTimeout(() => {
+        initializePusherConnection();
+      }, 500);
+    };
+    initSequentially();
 
     return () => {
       clearPoll();
@@ -300,6 +344,7 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
         userId,
         handlePusherMessage,
         handlePusherReadReceipt,
+        handlePusherTyping,
       );
       channelRef.current = channel;
     } catch (err) {
@@ -333,7 +378,7 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
             return [...msgs, incoming];
           });
           setTimeout(() => chatListRef.current?.scrollToEnd({ animated: true }), 200);
-          messages_service.get_conversation(event.conversation_id).catch(() => {});
+          messages_service.get_conversation(event.conversation_id).catch(() => { });
         }
         return prev;
       });
@@ -344,14 +389,14 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
           return prev.map((c: InboxItem) =>
             c.conversation_id === event.conversation_id
               ? {
-                  ...c,
-                  last_message: {
-                    content: event.content || 'Attachment',
-                    sent_at: 'Just now',
-                    sent_at_timestamp: event.sent_at,
-                  },
-                  unread_count: c.unread_count + 1,
-                }
+                ...c,
+                last_message: {
+                  content: event.content || 'Attachment',
+                  sent_at: 'Just now',
+                  sent_at_timestamp: event.sent_at,
+                },
+                unread_count: c.unread_count + 1,
+              }
               : c,
           );
         }
@@ -378,6 +423,18 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
     },
     [userId],
   );
+
+  const handlePusherTyping = useCallback((event: any) => {
+    // Check if the typing is for the active conversation
+    if (activeConvRef.current && String(event.conversation_id) === String(activeConvRef.current.conversation_id)) {
+      setIsTyping(true);
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = setTimeout(() => setIsTyping(false), 2500);
+
+      // Auto scroll to bottom to show indicator
+      setTimeout(() => chatListRef.current?.scrollToEnd({ animated: true }), 100);
+    }
+  }, []);
 
   /* =================================================================
    * Data loading
@@ -437,7 +494,7 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
           return prev;
         });
       }
-    } catch {}
+    } catch { }
   };
 
   const clearPoll = () => {
@@ -495,13 +552,13 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
           prev.map((c: InboxItem) =>
             c.conversation_id === activeConversation.conversation_id
               ? {
-                  ...c,
-                  last_message: {
-                    content: sent.content || 'Attachment',
-                    sent_at: 'Just now',
-                    sent_at_timestamp: sent.sent_at,
-                  },
-                }
+                ...c,
+                last_message: {
+                  content: sent.content || 'Attachment',
+                  sent_at: 'Just now',
+                  sent_at_timestamp: sent.sent_at,
+                },
+              }
               : c,
           ),
         );
@@ -561,7 +618,7 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
     try {
       const res = await messages_service.get_available_users();
       if (res.success && res.data) setAvailableUsers(res.data);
-    } catch {} finally {
+    } catch { } finally {
       setUsersLoading(false);
     }
   };
@@ -793,7 +850,7 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
                     <TouchableOpacity
                       key={att.attachment_id}
                       style={styles.attachFile}
-                      onPress={() => Linking.openURL(fileUrl).catch(() => {})}
+                      onPress={() => Linking.openURL(fileUrl).catch(() => { })}
                     >
                       <Ionicons
                         name="document-outline"
@@ -944,6 +1001,15 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
                 </Text>
               </View>
             }
+            ListFooterComponent={
+              isTyping ? (
+                <View style={styles.typingIndicatorWrapper}>
+                  <View style={styles.typingBubble}>
+                    <TypingDots />
+                  </View>
+                </View>
+              ) : null
+            }
           />
         )}
 
@@ -990,7 +1056,23 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
               placeholder="Message..."
               placeholderTextColor={COLORS.textMuted}
               value={messageText}
-              onChangeText={setMessageText}
+              onChangeText={(text) => {
+                setMessageText(text);
+                // Debounced typing event
+                if (activeConversation) {
+                  if (typingDebounceRef.current) clearTimeout(typingDebounceRef.current);
+                  typingDebounceRef.current = setTimeout(() => {
+                    api_request('/api/messages/typing', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        receiver_id: activeConversation.other_user.id,
+                        conversation_id: activeConversation.conversation_id
+                      })
+                    }).catch(() => { });
+                  }, 500);
+                }
+              }}
               multiline
               maxLength={5000}
             />
@@ -1717,6 +1799,28 @@ const styles = StyleSheet.create({
   chatListContent: {
     padding: 12,
     paddingBottom: 8,
+  },
+
+  /* ─── Typing Indicator ─── */
+  typingIndicatorWrapper: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    alignItems: 'flex-start',
+  },
+  typingBubble: {
+    backgroundColor: '#E5E7EB',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderBottomLeftRadius: 4,
+    minHeight: 36,
+    justifyContent: 'center',
+  },
+  typingDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#9CA3AF',
   },
 
   /* Message bubble */

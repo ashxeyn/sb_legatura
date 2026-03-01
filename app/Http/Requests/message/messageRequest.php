@@ -3,6 +3,7 @@
 namespace App\Http\Requests\message;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\DB;
 
 class MessageRequest extends FormRequest
 {
@@ -11,8 +12,22 @@ class MessageRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        // Check both Laravel auth (Sanctum) and session (admin web dashboard)
-        return auth()->check() || session()->has('user');
+        // Check Bearer token (mobile), session (web), or X-User-Id header
+        $bearerToken = $this->bearerToken();
+        if ($bearerToken) {
+            // Sanctum tokens: {id}|{plaintext} — hash only the plaintext
+            $tokenParts = explode('|', $bearerToken, 2);
+            $plainText = count($tokenParts) === 2 ? $tokenParts[1] : $bearerToken;
+            $tokenHash = hash('sha256', $plainText);
+            $exists = DB::table('personal_access_tokens')->where('token', $tokenHash)->exists();
+            if ($exists)
+                return true;
+        }
+        if (session()->has('user'))
+            return true;
+        if ($this->header('X-User-Id'))
+            return true;
+        return false;
     }
 
     /**
@@ -72,11 +87,30 @@ class MessageRequest extends FormRequest
      */
     protected function prepareForValidation(): void
     {
-        // Ensure sender_id is set from authenticated user (Sanctum or session)
-        $userId = auth()->id();
+        // Resolve sender_id from Bearer token (manual DB lookup) or session
+        $userId = null;
+
+        $bearerToken = $this->bearerToken();
+        if ($bearerToken) {
+            // Sanctum tokens: {id}|{plaintext} — hash only the plaintext
+            $tokenParts = explode('|', $bearerToken, 2);
+            $plainText = count($tokenParts) === 2 ? $tokenParts[1] : $bearerToken;
+            $tokenHash = hash('sha256', $plainText);
+            $tokenRecord = DB::table('personal_access_tokens')->where('token', $tokenHash)->first();
+            if ($tokenRecord) {
+                $userId = (int) $tokenRecord->tokenable_id;
+            }
+        }
+
         if (!$userId) {
             $sessionUser = session('user');
-            $userId = $sessionUser->admin_id ?? $sessionUser->user_id ?? $sessionUser->id ?? null;
+            if ($sessionUser) {
+                $userId = $sessionUser->admin_id ?? $sessionUser->user_id ?? $sessionUser->id ?? null;
+            }
+        }
+
+        if (!$userId) {
+            $userId = $this->header('X-User-Id') ? (int) $this->header('X-User-Id') : null;
         }
 
         $this->merge([
