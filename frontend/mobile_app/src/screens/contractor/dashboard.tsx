@@ -26,6 +26,7 @@ import MyProjects from './myProjects';
 import MyBids from './myBids';
 import Members from './members';
 import MilestoneSetup from './milestoneSetup';
+import AiAnalytics from './aiAnalytics';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -121,6 +122,7 @@ export default function ContractorDashboard({
   const [showMyProjects, setShowMyProjects] = useState(false);
   const [showMyBids, setShowMyBids] = useState(false);
   const [showMembers, setShowMembers] = useState(false);
+  const [showAiAnalytics, setShowAiAnalytics] = useState(false);
   const [myProjectsInitialAction, setMyProjectsInitialAction] = useState<{
     type: 'milestone_setup' | 'project_timeline' | 'project_detail';
     project_id: number;
@@ -137,9 +139,9 @@ export default function ContractorDashboard({
 
   // Notify parent when entering/exiting full-screen mode
   useEffect(() => {
-    const isFullScreen = showMyProjects || showMyBids || showMilestoneSetup;
+    const isFullScreen = showMyProjects || showMyBids || showMilestoneSetup || showAiAnalytics;
     onFullScreenChange?.(isFullScreen);
-  }, [showMyProjects, showMyBids, showMilestoneSetup, onFullScreenChange]);
+  }, [showMyProjects, showMyBids, showMilestoneSetup, showAiAnalytics, onFullScreenChange]);
 
   useEffect(() => {
     setAvatarError(false);
@@ -406,6 +408,16 @@ export default function ContractorDashboard({
     );
   }
 
+  // Show AI Analytics screen if selected
+  if (showAiAnalytics) {
+    return (
+      <AiAnalytics
+        userData={userData}
+        onClose={() => setShowAiAnalytics(false)}
+      />
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar hidden={true} />
@@ -529,6 +541,22 @@ export default function ContractorDashboard({
                 <Feather name="chevron-right" size={22} color={COLORS.textMuted} />
               </TouchableOpacity>
             )}
+
+            {/* AI Analytics */}
+            <TouchableOpacity
+              style={styles.navButton}
+              activeOpacity={0.7}
+              onPress={() => setShowAiAnalytics(true)}
+            >
+              <View style={[styles.navButtonIcon, { backgroundColor: '#FEF3C7' }]}>
+                <MaterialIcons name="psychology" size={24} color="#D97706" />
+              </View>
+              <View style={styles.navButtonContent}>
+                <Text style={styles.navButtonTitle}>AI Analytics</Text>
+                <Text style={styles.navButtonSubtitle}>Predict project delays</Text>
+              </View>
+              <Feather name="chevron-right" size={22} color={COLORS.textMuted} />
+            </TouchableOpacity>
           </View>
         </View>
 

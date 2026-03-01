@@ -199,6 +199,11 @@ Route::put('/contractor/projects/{projectId}/milestones/{milestoneId}', [milesto
 // Contractor — settlement due date management
 Route::post('/contractor/milestone-items/{itemId}/settlement-due-date', [milestoneController::class, 'setSettlementDueDate']);
 
+// Contractor AI Analytics endpoints (mobile) — controller handles auth via X-User-Id / Bearer token
+Route::get('/contractor/ai-analytics', [\App\Http\Controllers\contractor\AiController::class, 'apiGetAnalytics']);
+Route::post('/contractor/ai-analytics/analyze/{id}', [\App\Http\Controllers\contractor\AiController::class, 'apiAnalyzeProject']);
+Route::get('/contractor/ai-analytics/stats', [\App\Http\Controllers\contractor\AiController::class, 'apiGetStats']);
+
 // Notification endpoints - controller handles both session and token auth
 Route::get('/notifications', [NotificationController::class , 'index']);
 Route::get('/notifications/unread-count', [NotificationController::class , 'unreadCount']);

@@ -167,6 +167,154 @@ class AiController extends Controller
         ]);
     }
 
+    /* =====================================================================
+     * MOBILE API ENDPOINTS (token / X-User-Id auth)
+     * ===================================================================== */
+
+    /**
+     * Resolve user from Sanctum token OR X-User-Id header (mobile pattern).
+     *
+     * @param Request $request
+     * @return object|null  user row from DB
+     */
+    protected function resolveApiUser(Request $request)
+    {
+        // Try Sanctum token first
+        if ($request->user()) {
+            return $request->user();
+        }
+
+        // Fallback: X-User-Id header (used by mobile api_request)
+        $userId = $request->header('X-User-Id');
+        if ($userId) {
+            return \Illuminate\Support\Facades\DB::table('users')
+                ->where('user_id', $userId)
+                ->first();
+        }
+
+        // Fallback: session
+        if (Session::has('user')) {
+            return Session::get('user');
+        }
+
+        return null;
+    }
+
+    /**
+     * API: Get AI analytics dashboard data (stats, projects, history, subscription).
+     *
+     * GET /api/contractor/ai-analytics
+     */
+    public function apiGetAnalytics(Request $request)
+    {
+        $user = $this->resolveApiUser($request);
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => 'Authentication required'], 401);
+        }
+
+        $userType = $user->user_type ?? null;
+        if (!in_array($userType, ['contractor', 'both', 'staff'])) {
+            return response()->json(['success' => false, 'message' => 'Contractor access required'], 403);
+        }
+
+        $contractor = $this->aiService->getContractorByUserId($user->user_id);
+        if (!$contractor) {
+            return response()->json(['success' => false, 'message' => 'Contractor profile not found'], 403);
+        }
+
+        // Check Gold tier subscription
+        $subscription = \App\Models\subs\platformPaymentClass::getSubscriptionForUser($user->user_id);
+        $isGold = $subscription && strtolower($subscription['plan_key'] ?? '') === 'gold';
+
+        if (!$isGold) {
+            return response()->json([
+                'success' => true,
+                'is_gold' => false,
+                'subscription' => $subscription,
+                'message' => 'Upgrade to Gold tier to unlock AI Analytics',
+            ]);
+        }
+
+        // Get data
+        $aiUsage = $this->aiService->getSystemStatus();
+        $projects = $this->aiService->getContractorProjects($contractor->contractor_id);
+        $predictionLogs = $this->aiService->getContractorPredictionLogs($contractor->contractor_id, 20);
+        $stats = $this->aiService->getContractorAiStats($contractor->contractor_id);
+
+        return response()->json([
+            'success'        => true,
+            'is_gold'        => true,
+            'ai_status'      => $aiUsage['status'] ?? 'Offline',
+            'ai_features'    => $aiUsage['features'] ?? [],
+            'projects'       => $projects,
+            'prediction_logs' => $predictionLogs->items(),
+            'stats'          => $stats,
+        ]);
+    }
+
+    /**
+     * API: Run AI prediction for a project (mobile).
+     *
+     * POST /api/contractor/ai-analytics/analyze/{id}
+     */
+    public function apiAnalyzeProject(Request $request, int $projectId)
+    {
+        $user = $this->resolveApiUser($request);
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => 'Authentication required'], 401);
+        }
+
+        $contractor = $this->aiService->getContractorByUserId($user->user_id);
+        if (!$contractor) {
+            return response()->json(['success' => false, 'message' => 'Contractor profile not found'], 403);
+        }
+
+        // Check Gold tier
+        $subscription = \App\Models\subs\platformPaymentClass::getSubscriptionForUser($user->user_id);
+        $isGold = $subscription && strtolower($subscription['plan_key'] ?? '') === 'gold';
+        if (!$isGold) {
+            return response()->json(['success' => false, 'message' => 'Gold tier subscription required'], 403);
+        }
+
+        // Verify ownership
+        if (!$this->aiService->contractorOwnsProject($contractor->contractor_id, $projectId)) {
+            Log::warning('Unauthorized API AI analysis attempt', [
+                'contractor_id' => $contractor->contractor_id,
+                'project_id'    => $projectId,
+                'user_id'       => $user->user_id,
+            ]);
+            return response()->json(['success' => false, 'message' => 'You do not have permission to analyze this project.'], 403);
+        }
+
+        $result = $this->aiService->runPrediction($projectId);
+        return response()->json($result, $result['success'] ? 200 : 500);
+    }
+
+    /**
+     * API: Get contractor AI stats (mobile).
+     *
+     * GET /api/contractor/ai-analytics/stats
+     */
+    public function apiGetStats(Request $request)
+    {
+        $user = $this->resolveApiUser($request);
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => 'Authentication required'], 401);
+        }
+
+        $contractor = $this->aiService->getContractorByUserId($user->user_id);
+        if (!$contractor) {
+            return response()->json(['success' => false, 'message' => 'Contractor profile not found'], 403);
+        }
+
+        $stats = $this->aiService->getContractorAiStats($contractor->contractor_id);
+
+        return response()->json([
+            'success' => true,
+            'data'    => $stats,
+        ]);
+    }
+
     /**
      * Check if the user has contractor access.
      *
