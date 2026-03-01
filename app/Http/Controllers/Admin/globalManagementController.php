@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use App\Http\Requests\admin\rejectPostRequest;
 use App\Models\admin\postingManagementClass;
+use Illuminate\Support\Facades\Http;
 
 class globalManagementController extends Controller
 {
@@ -33,15 +34,75 @@ class globalManagementController extends Controller
         ]);
     }
 
-    /**
+     /**
      * Display the AI management page
      */
     public function aiManagement()
     {
+        // 1. Get System Health (Python connection)
         $aiUsage = $this->getAIUsageStats();
+
+        // 2. Get Prediction History (Joined with Projects to get names)
+        $predictionLogs = DB::table('ai_prediction_logs')
+            ->join('projects', 'ai_prediction_logs.project_id', '=', 'projects.project_id')
+            ->select(
+                'ai_prediction_logs.*',
+                'projects.project_title',
+                'projects.project_location'
+            )
+            ->orderBy('ai_prediction_logs.created_at', 'desc')
+            ->paginate(10);
+
+        // 3. Get All Projects (For the "Run Analysis" dropdown/list)
+        $projects = DB::table('projects')
+            ->select('project_id', 'project_title', 'project_status')
+            ->orderBy('project_title', 'asc')
+            ->get();
+
         return view('admin.globalManagement.aiManagement', [
-            'aiUsage' => $aiUsage
+            'aiUsage'        => $aiUsage,
+            'predictionLogs' => $predictionLogs,
+            'projects'       => $projects,
         ]);
+    }
+
+    /**
+     * ACTION: Run AI Prediction for a specific project
+     * Route: POST /admin/global-management/ai-management/analyze/{id}
+     */
+    public function analyzeProject($id)
+    {
+        try {
+            // 1. Call Python API (Port 5001)
+            $response = Http::timeout(10)->get("http://127.0.0.1:5001/predict/{$id}");
+
+            if ($response->failed()) {
+                return response()->json(['success' => false, 'message' => 'AI Service Unavailable'], 500);
+            }
+
+            $data = $response->json();
+
+            // Check if Python returned an error (e.g., project not found)
+            if (isset($data['error'])) {
+                return response()->json(['success' => false, 'message' => $data['error']], 400);
+            }
+
+            // 2. Save to Database (Create History Log)
+            DB::table('ai_prediction_logs')->insert([
+                'project_id'           => $id,
+                'prediction'           => $data['prediction']['prediction'],
+                'delay_probability'    => $data['prediction']['delay_probability'],
+                'weather_severity'     => $data['weather_severity'],
+                'ai_response_snapshot' => json_encode($data),
+                'created_at'           => now(),
+                'updated_at'           => now(),
+            ]);
+
+            return response()->json(['success' => true, 'message' => 'Analysis Complete', 'data' => $data]);
+
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
     }
 
     /**
@@ -149,18 +210,32 @@ class globalManagementController extends Controller
         return $query->paginate(15, ['*'], 'page', $page);
     }
 
-    /**
-     * Get AI usage statistics
+     /**
+     * Get AI usage statistics by connecting to Python Service
+     * (single, authoritative definition — no duplicate)
      */
     private function getAIUsageStats()
     {
-        // ai_logs table does not exist in schema; return stub data
-        return [
-            'total_requests' => 0,
-            'daily_usage' => 0,
-            'monthly_usage' => 0,
-            'top_features' => collect()
+        // Safe defaults
+        $aiData = [
+            'status'   => 'Offline',
+            'features' => [],
         ];
+
+        try {
+            $response = Http::timeout(5)->get('http://127.0.0.1:5001/system-status');
+
+            if ($response->successful()) {
+                $data = $response->json();
+                // Only read keys that Python actually returns
+                $aiData['status']   = $data['service_status']  ?? 'Offline';
+                $aiData['features'] = $data['active_features'] ?? [];
+            }
+        } catch (\Exception $e) {
+            // Keep offline defaults on failure
+        }
+
+        return $aiData;
     }
 
     /**
@@ -374,9 +449,7 @@ class globalManagementController extends Controller
      */
     public function getAiStatsApi()
     {
-        $stats = $this->getAIUsageStats();
-        
-        return response()->json($stats);
+        return response()->json($this->getAIUsageStats());
     }
 }
                
