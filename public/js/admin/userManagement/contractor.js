@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', function() {
- 
+
   const dateFromInput = document.getElementById('dateFrom');
   const dateToInput = document.getElementById('dateTo');
   const searchInput = document.getElementById('searchInput');
@@ -352,7 +352,8 @@ document.addEventListener('DOMContentLoaded', function() {
           if (provinceCode) {
               fetch(`/api/psgc/provinces/${provinceCode}/cities`)
                   .then(response => response.json())
-                  .then(data => {
+                  .then(json => {
+                      const data = Array.isArray(json) ? json : (json.data || []);
                       data.forEach(city => {
                           const option = document.createElement('option');
                           option.value = city.code;
@@ -375,7 +376,8 @@ document.addEventListener('DOMContentLoaded', function() {
           if (cityCode) {
               fetch(`/api/psgc/cities/${cityCode}/barangays`)
                   .then(response => response.json())
-                  .then(data => {
+                  .then(json => {
+                      const data = Array.isArray(json) ? json : (json.data || []);
                       data.forEach(barangay => {
                           const option = document.createElement('option');
                           option.value = barangay.code;
@@ -672,7 +674,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (provinceCode && citySelect) {
             try {
                 const citiesResponse = await fetch(`/api/psgc/provinces/${provinceCode}/cities`);
-                const cities = await citiesResponse.json();
+                const citiesJson = await citiesResponse.json();
+                const cities = Array.isArray(citiesJson) ? citiesJson : (citiesJson.data || []);
 
                 citySelect.innerHTML = '<option value="">Select City/Municipality</option>';
                 let cityCode = '';
@@ -695,7 +698,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 if (cityCode && barangaySelect) {
                     const barangaysResponse = await fetch(`/api/psgc/cities/${cityCode}/barangays`);
-                    const barangays = await barangaysResponse.json();
+                    const barangaysJson = await barangaysResponse.json();
+                    const barangays = Array.isArray(barangaysJson) ? barangaysJson : (barangaysJson.data || []);
 
                     barangaySelect.innerHTML = '<option value="">Select Barangay</option>';
                     barangays.forEach(barangay => {

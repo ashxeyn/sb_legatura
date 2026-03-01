@@ -1,4 +1,4 @@
-//not yet used, but will be for OTP change flow
+//not yet use
 <?php
 
 namespace App\Services;

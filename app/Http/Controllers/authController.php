@@ -313,6 +313,20 @@ class authController extends Controller
             'company_social_media' => $request->company_social_media
         ];
 
+        // Accept optional company logo/banner uploads and store paths in session
+        try {
+            if ($request->hasFile('company_logo')) {
+                // Store company logo in the same folder as other profile images so
+                // saved DB paths match the `profile_pics/...` format expected elsewhere.
+                $step1Data['company_logo'] = $request->file('company_logo')->store('profile_pics', 'public');
+            }
+            if ($request->hasFile('company_banner')) {
+                $step1Data['company_banner'] = $request->file('company_banner')->store('profile_pic', 'public');
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('Failed to store company logo/banner in contractorStep1: ' . $e->getMessage());
+        }
+
         // Para istore lang to yung sa step 1 inputs
         // Only treat as switch mode if user is logged in na and verified signup na
         $user = Session::get('user');
@@ -633,6 +647,8 @@ class authController extends Controller
         // Provide other default values to avoid undefined array key notices
         $step1['company_name'] = $step1['company_name'] ?? '';
         $step1['company_phone'] = $step1['company_phone'] ?? '';
+        $step1['company_logo'] = $step1['company_logo'] ?? null;
+        $step1['company_banner'] = $step1['company_banner'] ?? null;
         $step1['type_id'] = $step1['type_id'] ?? null;
         $step1['contractor_type_other'] = $step1['contractor_type_other'] ?? null;
         $step1['services_offered'] = $step1['services_offered'] ?? '';
@@ -765,6 +781,7 @@ class authController extends Controller
         }
 
         $profilePicPath = null;
+        // Only set profilePicPath if a separate profile picture is uploaded
         if ($request->hasFile('profile_pic')) {
             $profilePicPath = $request->file('profile_pic')->store('profiles', 'public');
         }
@@ -779,6 +796,22 @@ class authController extends Controller
             } catch (\Throwable $e) {
                 \Log::warning('Failed to store dti_sec_registration_photo from final request: ' . $e->getMessage());
             }
+        }
+
+        // Accept company logo/banner uploads in final step (web upload fallback)
+        try {
+            if ($request->hasFile('company_logo')) {
+                $path = $request->file('company_logo')->store('profile_pics', 'public');
+                $step1['company_logo'] = $path;
+                // Always set company_logo for contractors table
+                $companyLogoPath = $path;
+            }
+            if ($request->hasFile('company_banner')) {
+                $path = $request->file('company_banner')->store('profile_pic', 'public');
+                $step1['company_banner'] = $path;
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('Failed to store company logo/banner in final step: ' . $e->getMessage());
         }
 
         // Validate valid_id_id to avoid FK constraint errors
@@ -864,6 +897,8 @@ class authController extends Controller
         $contractorId = $this->accountClass->createContractor([
             'user_id' => $userId,
             'company_name' => $step1['company_name'],
+            'company_logo' => isset($companyLogoPath) ? $companyLogoPath : ($step1['company_logo'] ?? null),
+            'company_banner' => $step1['company_banner'] ?? null,
             'years_of_experience' => $step1['years_of_experience'],
             'type_id' => $step1['type_id'],
             'contractor_type_other' => $step1['contractor_type_other'] ?? null,
@@ -2136,6 +2171,17 @@ class authController extends Controller
                 'company_website' => $companyData['company_website'] ?? null,
                 'company_social_media' => $companyData['company_social_media'] ?? null
             ]);
+            // Accept optional company logo/banner uploads in switch mode
+            try {
+                if ($request->hasFile('company_logo')) {
+                    $step1Data['company_logo'] = $request->file('company_logo')->store('profile_pics', 'public');
+                }
+                if ($request->hasFile('company_banner')) {
+                    $step1Data['company_banner'] = $request->file('company_banner')->store('profile_pic', 'public');
+                }
+            } catch (\Throwable $e) {
+                \Log::warning('Failed to store company logo/banner in switchContractorStep1: ' . $e->getMessage());
+            }
         } else {
             // This is account information step (step 2)
             $step1Data = array_merge($step1Data, $request->only(['first_name', 'middle_name', 'last_name', 'username', 'company_email']));
@@ -2300,6 +2346,8 @@ class authController extends Controller
             if ($existingContractor) {
                 DB::table('contractors')->where('user_id', $userId)->update([
                     'company_name' => $step1['company_name'] ?? '',
+                    'company_logo' => $step1['company_logo'] ?? null,
+                    'company_banner' => $step1['company_banner'] ?? null,
                     'years_of_experience' => $step1['years_of_experience'] ?? 0,
                     'type_id' => $step1['type_id'] ?? null,
                     'contractor_type_other' => $step1['contractor_type_other'] ?? null,
@@ -2327,6 +2375,8 @@ class authController extends Controller
                 $contractorId = DB::table('contractors')->insertGetId([
                     'user_id' => $userId,
                     'company_name' => $step1['company_name'] ?? '',
+                    'company_logo' => $step1['company_logo'] ?? null,
+                    'company_banner' => $step1['company_banner'] ?? null,
                     'years_of_experience' => $step1['years_of_experience'] ?? 0,
                     'type_id' => $step1['type_id'] ?? null,
                     'contractor_type_other' => $step1['contractor_type_other'] ?? null,
@@ -2939,6 +2989,18 @@ class authController extends Controller
             'company_website' => $validated['company_website'] ?? '',
             'company_social_media' => $validated['company_social_media'] ?? ''
         ];
+        // Handle optional company logo/banner uploads and store paths
+        try {
+            if ($request->hasFile('company_logo')) {
+                $step1Data['company_logo'] = $request->file('company_logo')->store('profile_pics', 'public');
+            }
+            if ($request->hasFile('company_banner')) {
+                $step1Data['company_banner'] = $request->file('company_banner')->store('profile_pic', 'public');
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('Failed to store company logo/banner in storeContractorStep1: ' . $e->getMessage());
+        }
+
         Session::put('contractor_step1', $step1Data);
 
         // Store Step 2 data in session (matching mobile ContractorAccountInfo structure)

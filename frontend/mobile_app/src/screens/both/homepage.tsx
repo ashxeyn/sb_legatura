@@ -31,18 +31,20 @@ import { storage_service } from '../../utils/storage';
 // Helper to build full storage URL for profile/cover images
 const getStorageUrl = (filePath?: string, defaultSubfolder = 'profiles') => {
   if (!filePath) return undefined;
+  const p = String(filePath).trim();
   // If it's already a full URL, return as-is
-  if (filePath.startsWith('http://') || filePath.startsWith('https://')) return filePath;
-  // If it already contains /storage, prepend base_url if missing
-  if (filePath.includes('/storage/')) {
-    return filePath.startsWith('/') ? `${api_config.base_url}${filePath}` : `${api_config.base_url}/${filePath}`;
+  if (p.startsWith('http://') || p.startsWith('https://')) return p;
+  // If it already contains /storage, ensure base_url is prepended
+  if (p.includes('/storage/')) {
+    return p.startsWith('/') ? `${api_config.base_url}${p}` : `${api_config.base_url}/${p}`;
   }
-  // If path already contains the subfolder, use it directly
-  if (filePath.startsWith(`${defaultSubfolder}/`) || filePath.includes(`/${defaultSubfolder}/`)) {
-    return `${api_config.base_url}/storage/${filePath}`;
+  // If the path already contains a folder segment (e.g., 'profile_pics/..', 'cover_photos/..', 'profiles/...'),
+  // treat it as a complete storage path and prefix with /storage/
+  if (p.includes('/')) {
+    return `${api_config.base_url}/storage/${p}`;
   }
   // Otherwise assume file lives under storage/<defaultSubfolder>/
-  return `${api_config.base_url}/storage/${defaultSubfolder}/${filePath}`;
+  return `${api_config.base_url}/storage/${defaultSubfolder}/${p}`;
 };
 
 // Import profile screens
@@ -160,6 +162,8 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
 
   // View contractor profile state
   const [selectedContractor, setSelectedContractor] = useState<ContractorType | null>(null);
+  // Authenticated contractor profile (company_logo/company_banner)
+  const [myContractorProfile, setMyContractorProfile] = useState<any>(null);
 
   // View project state (for contractors viewing projects)
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
@@ -268,7 +272,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
           } catch (err) {
             // ignore storage errors
           }
-        }
+ rr       }
       } catch (e) {
         // Silent failure; keep existing role
       }
@@ -325,6 +329,24 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
     };
     fetchContractorTypes();
   }, []);
+
+  // Fetch authenticated contractor profile when in contractor context (to obtain company_logo/company_banner)
+  useEffect(() => {
+    let isMounted = true;
+    const fetchMyContractor = async () => {
+      if (effectiveUserType !== 'contractor') return;
+      try {
+        const res = await contractors_service.get_my_contractor_profile();
+        console.log('[homepage] get_my_contractor_profile response:', res);
+        const payload = res?.data?.data || res?.data || res?.contractor || null;
+        if (isMounted) setMyContractorProfile(payload);
+      } catch (e) {
+        console.warn('[homepage] failed to fetch contractor profile', e);
+      }
+    };
+    fetchMyContractor();
+    return () => { isMounted = false; };
+  }, [effectiveUserType]);
 
   // Handle project submission
   const handleCreateProject = async (projectData: any) => {
@@ -629,14 +651,37 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
    * Render a single contractor card (matching project card style)
    */
   const renderContractorCard = ({ item }: { item: ContractorType }) => {
-    const hasCoverPhoto = item.cover_photo && !item.cover_photo.includes('placeholder');
-    const coverPhotoUri = hasCoverPhoto
-      ? `${api_config.base_url}/storage/${item.cover_photo}`
-      : null;
+      // Determine which source to use for images depending on the viewer's role.
+      // If the current viewer role is 'contractor', prefer `company_logo`/`company_banner` from `contractors` table.
+      // If the viewer is an owner (or default), prefer `profile_pic`/`cover_photo` from `users` table.
+      // Determine viewer role: prefer explicit `currentRole`; for users with `both` type
+      // respect their `preferred_role` when available, otherwise fall back to `effectiveUserType`.
+      const viewerRole = (currentRole
+        || (userData?.user_type === 'both'
+        ? ((userData?.preferred_role || '').toString().toLowerCase() === 'contractor' ? 'contractor' : 'owner')
+        : (effectiveUserType === 'contractor' ? 'contractor' : 'owner'))
+      ) as string;
 
-    const logoUri = item.logo_url
-      ? (item.logo_url.startsWith('http') ? item.logo_url : `${api_config.base_url}/storage/${item.logo_url}`)
-      : null;
+      // Resolve logo/profile image path according to viewer role with sensible fallbacks
+      let logoPath: string | null = null;
+      if (viewerRole === 'contractor') {
+        logoPath = (item as any).company_logo || item.logo_url || item.profile_pic || null;
+      } else {
+        logoPath = item.profile_pic || item.logo_url || (item as any).company_logo || null;
+      }
+
+      const logoUri = logoPath ? getStorageUrl(logoPath, 'profiles') : undefined;
+
+      // Resolve cover/banner similarly
+      let coverPath: string | null = null;
+      if (viewerRole === 'contractor') {
+        coverPath = (item as any).company_banner || item.cover_photo || null;
+      } else {
+        coverPath = item.cover_photo || (item as any).company_banner || null;
+      }
+
+      const hasCoverPhoto = !!coverPath && !String(coverPath).includes('placeholder');
+      const coverPhotoUri = hasCoverPhoto ? getStorageUrl(coverPath, 'cover_photos') : undefined;
 
     // Generate initials for avatar fallback
     const initials = item.company_name
@@ -645,6 +690,10 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
       .map(word => word[0])
       .join('')
       .toUpperCase() || 'CO';
+
+    const getProfileImageUrl = () => logoUri;
+
+    console.log('[Profile] Final image URI:', getProfileImageUrl());
 
     return (
       <TouchableOpacity
@@ -1083,10 +1132,20 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
 
   // Render the home content (contractors feed for property owners)
   const renderHomeContent = () => {
-    // Build profile image URL
-    const profileImageUrl = userData?.profile_pic
-      ? `${api_config.base_url}/storage/${userData.profile_pic}`
-      : null;
+    // Build profile image URL using getStorageUrl and respect preferred_role for 'both' users
+    const profileImageUrl = (() => {
+      if (!userData) return undefined;
+      // Prefer explicit company_logo on userData, otherwise use authenticated contractor profile
+      const companyLogo = userData.company_logo || myContractorProfile?.company_logo || null;
+      if (userData.user_type === 'contractor') return getStorageUrl(companyLogo);
+      if (userData.user_type === 'property_owner') return getStorageUrl(userData.profile_pic);
+      if (userData.user_type === 'both') {
+        return (userData.preferred_role || '').toString().toLowerCase() === 'contractor'
+          ? getStorageUrl(companyLogo)
+          : getStorageUrl(userData.profile_pic);
+      }
+      return getStorageUrl(userData.profile_pic);
+    })();
 
     console.log('Profile image URL:', profileImageUrl);
 
@@ -1203,9 +1262,21 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
 
   // Render home content for contractors (projects feed)
   const renderContractorHomeContent = () => {
-    const profileImageUrl = userData?.profile_pic
-      ? `${api_config.base_url}/storage/${userData.profile_pic}`
-      : null;
+    // Build profile image URL for contractor view; respect preferred_role when user is 'both'
+    const profileImageUrl = (() => {
+      if (!userData) return undefined;
+      // Prefer company_logo from authenticated contractor profile when available
+      const companyLogo = userData.company_logo || myContractorProfile?.company_logo || null;
+
+      if (userData.user_type === 'contractor') return getStorageUrl(companyLogo);
+      if (userData.user_type === 'property_owner') return getStorageUrl(userData.profile_pic);
+      if (userData.user_type === 'both') {
+        return (userData.preferred_role || '').toString().toLowerCase() === 'contractor'
+          ? getStorageUrl(companyLogo)
+          : getStorageUrl(userData.profile_pic);
+      }
+      return getStorageUrl(userData.profile_pic);
+    })();
 
     return (
       <ScrollView
@@ -1305,32 +1376,77 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
     );
   };
 
-  // Render profile based on user type
-  const renderProfileContent = () => {
-    // For contractors, show the contractor profile
-    if (effectiveUserType === 'contractor') {
-      return (
-        <ContractorProfile
-          onLogout={handleLogout}
-          onViewProfile={onViewProfile}
-          onOpenHelp={onOpenHelp}
-          onOpenSwitchRole={onOpenSwitchRole}
-          onOpenSubscription={() => set_app_state('subscription')}
-          onEditProfile={onEditProfile}
-          userData={{
-            username: userData?.username,
-            email: userData?.email,
-            user_type: userData?.user_type,
-            profile_pic: userData?.profile_pic ? getStorageUrl(userData.profile_pic) : undefined,
-            cover_photo: userData?.cover_photo ? getStorageUrl(userData.cover_photo) : undefined,
-            user_type: userData?.user_type,
-            company_name: userData?.company_name,
-            contractor_type: userData?.contractor_type,
-            years_of_experience: userData?.years_of_experience,
-          }}
-        />
-      );
+ // Render profile based on user type
+const renderProfileContent = () => {
+  // Helper to resolve image fields dynamically
+  const getProfileAndCover = () => {
+    if (!userData) return { profile_pic: null, cover_photo: null };
+
+    // Contractor
+    if (userData.user_type === 'contractor') {
+      return {
+        profile_pic: userData?.company_logo ? getStorageUrl(userData.company_logo) : undefined,
+        cover_photo: userData?.company_banner ? getStorageUrl(userData.company_banner) : undefined,
+      };
     }
+
+    // Property Owner
+    if (userData.user_type === 'property_owner') {
+      return {
+        profile_pic: userData?.profile_pic ? getStorageUrl(userData.profile_pic) : undefined,
+        cover_photo: userData?.cover_photo ? getStorageUrl(userData.cover_photo) : undefined,
+      };
+    }
+
+    // Both user types
+    if (userData.user_type === 'both') {
+      if (userData.preferred_role === 'contractor') {
+        return {
+          profile_pic: userData?.company_logo ? getStorageUrl(userData.company_logo) : undefined,
+          cover_photo: userData?.company_banner ? getStorageUrl(userData.company_banner) : undefined,
+        };
+      } else {
+        return {
+          profile_pic: userData?.profile_pic ? getStorageUrl(userData.profile_pic) : undefined,
+          cover_photo: userData?.cover_photo ? getStorageUrl(userData.cover_photo) : undefined,
+        };
+      }
+    }
+
+    // Default fallback
+    return {
+      profile_pic: userData?.profile_pic ? getStorageUrl(userData.profile_pic) : undefined,
+      cover_photo: userData?.cover_photo ? getStorageUrl(userData.cover_photo) : undefined,
+    };
+  };
+
+  const { profile_pic, cover_photo } = getProfileAndCover();
+
+  // Contractor Profile
+  if (effectiveUserType === 'contractor') {
+    return (
+      <ContractorProfile
+        onLogout={handleLogout}
+        onViewProfile={onViewProfile}
+        onOpenHelp={onOpenHelp}
+        onOpenSwitchRole={onOpenSwitchRole}
+        onOpenSubscription={() => set_app_state('subscription')}
+        onEditProfile={onEditProfile}
+        userData={{
+          username: userData?.username,
+          email: userData?.email,
+          user_type: userData?.user_type,
+          profile_pic,
+          cover_photo,
+          company_name: userData?.company_name,
+          contractor_type: userData?.contractor_type,
+          years_of_experience: userData?.years_of_experience,
+        }}
+      />
+    );
+  }
+
+
 
     // For property owners (and default), show property owner profile
     return (

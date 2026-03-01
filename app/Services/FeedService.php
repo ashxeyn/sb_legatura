@@ -49,7 +49,12 @@ class feedService
                 'total_reviews'        => 0,
                 'completed_projects'   => $c->completed_projects ?? 0,
                 'specialization'       => $c->services_offered ?? $c->type_name ?? '',
-                'cover_photo'          => $c->cover_photo ?? null,
+                // prefer contractor-level company banner/logo when present
+                'cover_photo'          => $c->company_banner ?? $c->cover_photo ?? null,
+                'company_logo'         => $c->company_logo ?? null,
+                'company_banner'       => $c->company_banner ?? null,
+                // Client JS expects `logo_url` field for avatar; provide it here
+                'logo_url'             => $c->company_logo ?? $c->profile_pic ?? null,
             ];
         })->toArray();
 

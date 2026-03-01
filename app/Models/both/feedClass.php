@@ -69,7 +69,9 @@ class feedClass
                 'u.user_id',
                 'u.username',
                 'u.profile_pic',
-                'u.cover_photo'
+                'u.cover_photo',
+                'c.company_logo',
+                'c.company_banner'
             );
 
         if ($excludeUserId) {

@@ -456,8 +456,15 @@ class cprocessController extends Controller
         // - switching to 'owner' and an approved owner profile exists for this user
         $userType = is_object($user) ? ($user->user_type ?? null) : ($user['user_type'] ?? null);
         $userId = is_object($user) ? ($user->user_id ?? null) : ($user['user_id'] ?? null);
-        // Determine desired role early and validate it before access checks
-        $targetRole = $request->input('role');
+        // Determine desired role early, normalize and validate it before access checks
+        $rawRole = (string)($request->input('role') ?? '');
+        $targetRole = strtolower(trim($rawRole));
+        if (strpos($targetRole, 'owner') !== false || strpos($targetRole, 'property_owner') !== false) {
+            $targetRole = 'owner';
+        } elseif (strpos($targetRole, 'contractor') !== false) {
+            $targetRole = 'contractor';
+        }
+
         if (!in_array($targetRole, ['contractor', 'owner'])) {
             if ($request->expectsJson()) {
                 return response()->json([
@@ -501,7 +508,7 @@ class cprocessController extends Controller
             }
         }
 
-        $targetRole = $request->input('role');
+        // targetRole is already normalized above; reuse it
 
         if (!in_array($targetRole, ['contractor', 'owner'])) {
             if ($request->expectsJson()) {
@@ -535,13 +542,14 @@ class cprocessController extends Controller
             }
         }
 
+        // Persist normalized active role to session
         Session::put('current_role', $targetRole);
         Session::put('active_role', $targetRole);
 
         // Persist active role for stateless clients using Sanctum
         try {
             if (is_object($user) && method_exists($user, 'save')) {
-                // Eloquent model
+                // Eloquent model - store normalized preferred role
                 $user->preferred_role = $targetRole;
                 $user->save();
             } else {
@@ -758,6 +766,8 @@ class cprocessController extends Controller
                     'years_of_experience' => $contractor->years_of_experience ?? null,
                     'business_address' => $contractor->business_address ?? null,
                     'cover_photo' => $contractor->cover_photo ?? null,
+                    'company_logo' => $contractor->company_logo ?? null,
+                    'company_banner' => $contractor->company_banner ?? null,
                 ],
             ], 200);
         } catch (\Throwable $e) {

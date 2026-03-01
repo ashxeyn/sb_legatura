@@ -39,6 +39,12 @@ class profileController extends Controller
             return response()->json(['success' => false, 'message' => 'Invalid user context'], 400);
         }
 
+        \Log::info('profileController.update called', [
+            'user_id' => $userId,
+            'has_profile_pic' => $request->hasFile('profile_pic'),
+            'has_cover_photo' => $request->hasFile('cover_photo')
+        ]);
+
         try {
             DB::beginTransaction();
 
@@ -46,8 +52,53 @@ class profileController extends Controller
             if ($request->hasFile('profile_pic')) {
                 $file = $request->file('profile_pic');
                 $filename = time() . '_profile_' . $file->getClientOriginalName();
-                $path = $file->storeAs('profile_pictures', $filename, 'public');
+                $path = $file->storeAs('profiles', $filename, 'public');
                 DB::table('users')->where('user_id', $userId)->update(['profile_pic' => $path]);
+                \Log::info('profileController.update stored profile_pic', ['user_id' => $userId, 'path' => $path]);
+            }
+            // Handle cover photo upload if present
+            if ($request->hasFile('cover_photo')) {
+                $file = $request->file('cover_photo');
+                $filename = time() . '_cover_' . $file->getClientOriginalName();
+                $path = $file->storeAs('cover_photos', $filename, 'public');
+                DB::table('users')->where('user_id', $userId)->update(['cover_photo' => $path]);
+                \Log::info('profileController.update stored cover_photo', ['user_id' => $userId, 'path' => $path]);
+            }
+
+            // Ensure contractor row exists when company media is uploaded; create minimal row if missing
+            $contractorRowForMedia = DB::table('contractors')->where('user_id', $userId)->first();
+            $needsContractor = !$contractorRowForMedia && ($request->hasFile('company_logo') || $request->hasFile('company_banner'));
+            if ($needsContractor) {
+                try {
+                    $newId = DB::table('contractors')->insertGetId([
+                        'user_id' => $userId,
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]);
+                    $contractorRowForMedia = DB::table('contractors')->where('contractor_id', $newId)->first();
+                    \Log::info('profileController.update created contractor row for media', ['user_id' => $userId, 'contractor_id' => $newId]);
+                } catch (\Exception $e) {
+                    \Log::warning('profileController.update failed to create contractor row: ' . $e->getMessage());
+                    $contractorRowForMedia = DB::table('contractors')->where('user_id', $userId)->first();
+                }
+            }
+
+            if ($contractorRowForMedia) {
+                if ($request->hasFile('company_logo')) {
+                    $file = $request->file('company_logo');
+                    $filename = time() . '_company_logo_' . $file->getClientOriginalName();
+                    $path = $file->storeAs('profiles', $filename, 'public');
+                    DB::table('contractors')->where('user_id', $userId)->update(['company_logo' => $path, 'updated_at' => now()]);
+                    \Log::info('profileController.update stored contractors.company_logo', ['user_id' => $userId, 'path' => $path]);
+                }
+
+                if ($request->hasFile('company_banner')) {
+                    $file = $request->file('company_banner');
+                    $filename = time() . '_company_banner_' . $file->getClientOriginalName();
+                    $path = $file->storeAs('cover_photos', $filename, 'public');
+                    DB::table('contractors')->where('user_id', $userId)->update(['company_banner' => $path, 'updated_at' => now()]);
+                    \Log::info('profileController.update stored contractors.company_banner', ['user_id' => $userId, 'path' => $path]);
+                }
             }
 
             // Build users payload from allowed keys in request (only fields that exist on `users` table)
@@ -133,9 +184,14 @@ class profileController extends Controller
 
             DB::commit();
 
-            // Return refreshed user row
+            \Log::info('profileController.update committed', ['user_id' => $userId]);
+
+            // Return refreshed user row and contractor row if any
             $updatedUser = DB::table('users')->where('user_id', $userId)->first();
-            return response()->json(['success' => true, 'data' => $updatedUser], 200);
+            $updatedContractor = DB::table('contractors')->where('user_id', $userId)->first();
+            $responsePayload = ['user' => $updatedUser];
+            if ($updatedContractor) $responsePayload['contractor'] = $updatedContractor;
+            return response()->json(['success' => true, 'data' => $responsePayload], 200);
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -191,6 +247,27 @@ class profileController extends Controller
         $ownerRow = DB::table('property_owners')->where('user_id', $userId)->first();
         $contractorRow = DB::table('contractors')->where('user_id', $userId)->first();
 
+        // If the users.profile_pic is empty but property_owners has a profile_pic, prefer that
+        if (($user->profile_pic === null || $user->profile_pic === '') && $ownerRow && !empty($ownerRow->profile_pic)) {
+            $user->profile_pic = $ownerRow->profile_pic;
+            \Log::debug('profileController.apiGetProfile: populated user.profile_pic from property_owners', ['user_id' => $userId, 'profile_pic' => $user->profile_pic]);
+        }
+        // Similarly populate cover_photo from owner row if missing on users
+        if ((empty($user->cover_photo) || $user->cover_photo === null) && $ownerRow && !empty($ownerRow->cover_photo)) {
+            $user->cover_photo = $ownerRow->cover_photo;
+            \Log::debug('profileController.apiGetProfile: populated user.cover_photo from property_owners', ['user_id' => $userId, 'cover_photo' => $user->cover_photo]);
+        }
+
+        // If user images are still missing and contractor row exists, prefer contractor media
+        if (($user->profile_pic === null || $user->profile_pic === '') && $contractorRow && !empty($contractorRow->company_logo)) {
+            $user->profile_pic = $contractorRow->company_logo;
+            \Log::debug('profileController.apiGetProfile: populated user.profile_pic from contractors.company_logo', ['user_id' => $userId, 'company_logo' => $user->profile_pic]);
+        }
+        if ((empty($user->cover_photo) || $user->cover_photo === null) && $contractorRow && !empty($contractorRow->company_banner)) {
+            $user->cover_photo = $contractorRow->company_banner;
+            \Log::debug('profileController.apiGetProfile: populated user.cover_photo from contractors.company_banner', ['user_id' => $userId, 'company_banner' => $user->cover_photo]);
+        }
+
         $ownerKeys = [
             'first_name','middle_name','last_name','phone_number','date_of_birth','occupation_id','occupation_other',
             'address','address_verification_pending','bio','profile_pic','cover_photo','email','owner_id'
@@ -201,6 +278,8 @@ class profileController extends Controller
             'services_offered','business_address','picab_number','dti_sec_registration_photo','tin_business_reg_number',
             'company_start_date','years_of_experience','type_id','contractor_type_other','completed_projects',
             'verification_status','verification_date','rejection_reason','picab_category','business_permit_number',
+            // include media fields so frontend receives company logo/banner
+            'company_logo','company_banner',
             'business_permit_city','business_permit_expiration'
         ];
 

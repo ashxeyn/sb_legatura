@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   Dimensions,
+  Platform,
   Alert,
   ActivityIndicator,
   FlatList,
@@ -605,6 +606,16 @@ export default function ViewProfileScreen({ onBack, userData, userToken }) {
     return `${api_config.base_url}/storage/${filePath}`;
   }, []);
 
+  // Debug: log profile/cover sources and resolved URLs
+  useEffect(() => {
+    try {
+      console.log('[viewProfile] profilePic:', profilePic, 'coverPhoto:', coverPhoto);
+      console.log('[viewProfile] resolved profileUrl:', getStorageUrl(profilePic), 'resolved coverUrl:', getStorageUrl(coverPhoto));
+      console.log('[viewProfile] userState.user_type:', userState?.user_type, 'activeRoleState:', activeRoleState);
+      console.log('[viewProfile] ownerInfo.profile_pic:', ownerInfo?.profile_pic, 'contractorInfo.company_logo:', contractorInfo?.company_logo);
+    } catch (e) { /* no-op */ }
+  }, [profilePic, coverPhoto, userState?.user_type, activeRoleState, ownerInfo, contractorInfo]);
+
   const handleError = useCallback((error: any, defaultMessage: string): string => {
     console.error(error);
     return error?.message || defaultMessage;
@@ -661,6 +672,63 @@ export default function ViewProfileScreen({ onBack, userData, userToken }) {
           const roleArg = data.role ? String(data.role) : undefined;
           fetchReviews(roleArg);
         } catch (e) {}
+        // Ensure profile and cover images are populated from available fields.
+        // If the response includes a role (preferred_role/current role), respect it:
+        // - when role === 'contractor' prefer `contractor.company_logo`/`company_banner`
+        // - when role === 'owner' prefer `data.user`/owner images from `users`/`property_owners`
+        try {
+          const contractorLogo = data.contractor && (data.contractor.company_logo || data.contractor.profile_pic);
+          const contractorBanner = data.contractor && (data.contractor.company_banner || data.contractor.cover_photo);
+
+          const roleFromResponse = (data.role || '').toString().toLowerCase();
+
+          let candidateProfile;
+          let candidateCover;
+
+          if (roleFromResponse === 'owner') {
+            // Strict: prefer user/owner images when preferred role is owner
+            candidateProfile =
+              (data.user && (data.user.profile_pic || data.user.profilePic)) ||
+              (data.owner && (data.owner.profile_pic || data.owner.profilePic)) ||
+              data.owner_profile_pic || data.owner_profile || undefined;
+
+            candidateCover =
+              (data.user && (data.user.cover_photo || data.user.coverPhoto)) ||
+              (data.owner && (data.owner.cover_photo || data.owner.coverPhoto)) ||
+              data.cover_photo || undefined;
+          } else if (roleFromResponse === 'contractor') {
+            // Prefer contractor media when preferred role is contractor
+            candidateProfile =
+              contractorLogo ||
+              (data.user && (data.user.profile_pic || data.user.profilePic)) ||
+              (data.owner && (data.owner.profile_pic || data.owner.profilePic)) ||
+              data.owner_profile_pic || data.owner_profile || undefined;
+
+            candidateCover =
+              contractorBanner ||
+              (data.user && (data.user.cover_photo || data.user.coverPhoto)) ||
+              (data.owner && (data.owner.cover_photo || data.owner.coverPhoto)) ||
+              data.cover_photo || undefined;
+          } else {
+            // No explicit preferred role: fall back to previous behavior (prefer contractor if present)
+            candidateProfile =
+              contractorLogo ||
+              (data.user && (data.user.profile_pic || data.user.profilePic)) ||
+              (data.owner && (data.owner.profile_pic || data.owner.profilePic)) ||
+              data.owner_profile_pic || data.owner_profile || undefined;
+
+            candidateCover =
+              contractorBanner ||
+              (data.user && (data.user.cover_photo || data.user.coverPhoto)) ||
+              (data.owner && (data.owner.cover_photo || data.owner.coverPhoto)) ||
+              data.cover_photo || undefined;
+          }
+
+          if (candidateProfile) setProfilePic(candidateProfile);
+          if (candidateCover) setCoverPhoto(candidateCover);
+        } catch (e) {
+          // non-fatal
+        }
       }
     } catch (e) {
       setErrors(prev => ({ ...prev, profile: handleError(e, 'Failed to load profile') }));
@@ -845,37 +913,73 @@ export default function ViewProfileScreen({ onBack, userData, userToken }) {
     const match = /\.(\w+)$/.exec(filename);
     const fileType = match ? `image/${match[1]}` : 'image/jpeg';
 
-    formData.append('image', {
+    // Determine the effective role for deciding which DB columns to update.
+    // Mapping:
+    // - Contractor => `company_logo` / `company_banner` (contractors table)
+    // - Property Owner => `profile_pic` / `cover_photo` (users table)
+    // - Both => depends on `activeRoleState` (preferred/current role)
+    const rawUserType = String(userState?.user_type || '').toLowerCase();
+    let effectiveRole = (activeRoleState || '').toString().toLowerCase();
+    if (!effectiveRole) {
+      if (rawUserType === 'both') {
+        effectiveRole = (userState?.preferred_role || 'owner').toString().toLowerCase();
+      } else {
+        effectiveRole = rawUserType.includes('contractor') ? 'contractor' : 'owner';
+      }
+    }
+
+    let fieldName: string;
+    if (effectiveRole === 'contractor') {
+      fieldName = type === 'profile' ? 'company_logo' : 'company_banner';
+    } else {
+      fieldName = type === 'profile' ? 'profile_pic' : 'cover_photo';
+    }
+
+    // Append role for backend awareness (optional) and the file under the chosen field
+    formData.append('role', effectiveRole);
+    formData.append(fieldName, {
       uri: Platform.OS === 'ios' ? uri.replace('file://', '') : uri,
       name: filename,
       type: fileType,
     } as any);
-    formData.append('type', type);
+
+    console.log('[uploadImage] preparing upload', { effectiveRole, fieldName, filename, fileType, uri });
 
     try {
-      const response = await fetch(`${api_config.base_url}/api/user/update-profile`, {
+      // If a token wasn't passed in props, warn — api_request will still try to read stored token.
+      if (!userToken) console.warn('[uploadImage] no userToken prop provided — api_request will use stored token if available');
+
+      // Use the shared api_request helper so stored auth token is applied consistently.
+      const resp = await api_request('/api/user/profile', {
         method: 'POST',
         body: formData,
-        headers: {
-          'Accept': 'application/json',
-          'Authorization': `Bearer ${userToken}`,
-          'Content-Type': 'multipart/form-data',
-        },
       });
 
-      const data = await response.json();
+      console.log('[uploadImage] api_request response', resp);
 
-      if (data.success) {
-        if (type === 'profile') {
-          setProfilePic(data.path);
-        } else {
-          setCoverPhoto(data.path);
+      if (resp?.success) {
+        const wrapper = resp.data || resp;
+        const inner = wrapper.data ?? wrapper.user ?? wrapper;
+        const userObj = inner.user ?? inner;
+        const contractorObj = inner.contractor ?? null;
+
+        // Update local cached states
+        if (userObj && typeof userObj === 'object') setUserData(prev => ({ ...(prev || {}), ...(userObj || {}) }));
+        if (contractorObj && typeof contractorObj === 'object') setContractorInfo(contractorObj);
+
+        // Prefer user profile/cover, then contractor media, then top-level fields
+        const returnedPath = userObj?.profile_pic || userObj?.cover_photo || contractorObj?.company_logo || contractorObj?.company_banner || inner?.profile_pic || inner?.cover_photo || inner?.company_logo || inner?.company_banner || (wrapper.path ?? null);
+        if (returnedPath) {
+          if (type === 'profile') setProfilePic(returnedPath);
+          else setCoverPhoto(returnedPath);
         }
         Alert.alert('Success', 'Photo updated successfully');
       } else {
-        Alert.alert('Error', data.message || 'Failed to update photo');
+        console.error('[uploadImage] upload failed', resp);
+        Alert.alert('Error', resp?.message || 'Failed to update photo');
       }
     } catch (error) {
+      console.error('[uploadImage] network/error', error);
       Alert.alert('Error', 'Network error. Please try again.');
     } finally {
       setIsUploading(false);

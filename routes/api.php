@@ -52,7 +52,9 @@ Route::post('/role/add/owner/final', [authController::class , 'switchOwnerFinal'
 
 
 // Update profile (profile picture / cover photo and general profile FormData)
-Route::post('/user/update-profile', [authController::class , 'updateProfile']);
+// Route requests to profileController->update so file uploads and owner fields
+// are handled consistently by the dedicated controller.
+Route::post('/user/update-profile', [profileController::class , 'update']);
 // Keep both `/profile` and `/user/profile` aliases for backward compatibility
 Route::post('/profile', [profileController::class , 'update']);
 Route::post('/user/profile', [profileController::class , 'update']);
