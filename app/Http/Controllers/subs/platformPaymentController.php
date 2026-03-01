@@ -5,6 +5,7 @@ namespace App\Http\Controllers\subs;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\DB;
 use App\Models\subs\platformPaymentClass;
 
 class platformPaymentController extends Controller
@@ -26,8 +27,7 @@ class platformPaymentController extends Controller
                 if ($token && $token->tokenable) {
                     $user = $token->tokenable;
                 }
-            }
-            catch (\Throwable $e) {
+            } catch (\Throwable $e) {
                 $user = null;
             }
         }
@@ -37,8 +37,7 @@ class platformPaymentController extends Controller
         if ($user) {
             if (is_object($user)) {
                 $userId = $user->user_id ?? $user->id ?? null;
-            }
-            elseif (is_array($user)) {
+            } elseif (is_array($user)) {
                 $userId = $user['user_id'] ?? $user['id'] ?? null;
             }
         }
@@ -48,11 +47,63 @@ class platformPaymentController extends Controller
         $boostedPosts = platformPaymentClass::getBoostedPosts($userId);
         $boostableProjects = platformPaymentClass::getBoostableProjects($userId);
 
+        // Get user role to filter plans
+        $role = Session::get('role');
+        if (!$role && $user) {
+            if (is_object($user)) {
+                $role = $user->role ?? $user->user_type ?? null;
+            } elseif (is_array($user)) {
+                $role = $user['role'] ?? $user['user_type'] ?? null;
+            }
+        }
+
+        // Default to owner if role not found, though ideally it should be explicitly set
+        $isContractor = ($role === 'contractor') ? 1 : 0;
+
+        $plansQuery = DB::table('subscription_plans')
+            ->where('plan_key', '!=', 'boost')
+            ->where('is_active', 1)
+            ->where('is_deleted', 0);
+
+        if ($isContractor) {
+            $plansQuery->where('for_contractor', 1);
+        }
+
+        $plans = $plansQuery->get()
+            ->map(function ($plan) {
+                if (!empty($plan->benefits)) {
+                    $plan->benefits = is_string($plan->benefits) ? json_decode($plan->benefits, true) : $plan->benefits;
+                }
+                return $plan;
+            });
+
+        $ownerPlans = DB::table('subscription_plans')
+            ->where('for_contractor', 0)
+            ->where('is_active', 1)
+            ->where('is_deleted', 0)
+            ->get()
+            ->map(function ($plan) {
+                if (!empty($plan->benefits)) {
+                    $plan->benefits = is_string($plan->benefits) ? json_decode($plan->benefits, true) : $plan->benefits;
+                }
+                return $plan;
+            });
+
+        $boostPlan = DB::table('subscription_plans')
+            ->where('plan_key', 'boost')
+            ->first();
+        if ($boostPlan && !empty($boostPlan->benefits)) {
+            $boostPlan->benefits = is_string($boostPlan->benefits) ? json_decode($boostPlan->benefits, true) : $boostPlan->benefits;
+        }
+
         return [
             'subscription' => $subscription,
             'boostAnalytics' => $boostAnalytics,
             'boostedPosts' => $boostedPosts,
             'boostableProjects' => $boostableProjects,
+            'plans' => $plans,
+            'ownerPlans' => $ownerPlans,
+            'boostPlan' => $boostPlan,
         ];
     }
 

@@ -294,16 +294,16 @@ Route::post('/contractor/progress/approve/{progressId}', [\App\Http\Controllers\
 Route::post('/contractor/progress/reject/{progressId}', [\App\Http\Controllers\contractor\progressUploadController::class, 'rejectProgress']);
 
 // Owner Project Posting Routes
-Route::get('/owner/projects/create', [\App\Http\Controllers\owner\projectsController::class , 'showCreatePostPage']);
-Route::post('/owner/projects', [\App\Http\Controllers\owner\projectsController::class , 'store']);
-Route::get('/owner/projects/{projectId}/edit', [\App\Http\Controllers\owner\projectsController::class , 'showEditPostPage']);
-Route::put('/owner/projects/{projectId}', [\App\Http\Controllers\owner\projectsController::class , 'update']);
-Route::delete('/owner/projects/{projectId}', [\App\Http\Controllers\owner\projectsController::class , 'delete']);
-Route::post('/owner/projects/{projectId}/bids/{bidId}/accept', [\App\Http\Controllers\owner\projectsController::class , 'acceptBid']);
+Route::get('/owner/projects/create', [\App\Http\Controllers\owner\projectsController::class, 'showCreatePostPage']);
+Route::post('/owner/projects', [\App\Http\Controllers\owner\projectsController::class, 'store']);
+Route::get('/owner/projects/{projectId}/edit', [\App\Http\Controllers\owner\projectsController::class, 'showEditPostPage']);
+Route::put('/owner/projects/{projectId}', [\App\Http\Controllers\owner\projectsController::class, 'update']);
+Route::delete('/owner/projects/{projectId}', [\App\Http\Controllers\owner\projectsController::class, 'delete']);
+Route::post('/owner/projects/{projectId}/bids/{bidId}/accept', [\App\Http\Controllers\owner\projectsController::class, 'acceptBid']);
 Route::post('/owner/projects/{projectId}/bids/{bidId}/reject', [\App\Http\Controllers\owner\projectsController::class , 'rejectBid'])->name('owner.projects.bids.reject');
-Route::post('/owner/milestones/{milestoneId}/approve', [milestoneController::class , 'webApproveMilestone']);
-Route::post('/owner/milestones/{milestoneId}/reject', [milestoneController::class , 'webRejectMilestone']);
-Route::post('/contractor/payments/{paymentId}/approve', [milestoneController::class , 'apiApprovePayment']);
+Route::post('/owner/milestones/{milestoneId}/approve', [milestoneController::class, 'webApproveMilestone']);
+Route::post('/owner/milestones/{milestoneId}/reject', [milestoneController::class, 'webRejectMilestone']);
+Route::post('/contractor/payments/{paymentId}/approve', [milestoneController::class, 'apiApprovePayment']);
 
 // Protected Document Viewer (for important documents with watermark)
 Route::get('/contractor/document/view', [\App\Http\Controllers\contractor\documentViewController::class, 'viewProtectedDocument'])
@@ -363,7 +363,12 @@ Route::get('/admin/global-management/posting-management', [globalManagementContr
 // Project Management Routes
 // Specific routes first (to avoid conflict with {id} parameter)
 Route::get('/admin/project-management/list-of-projects', [projectManagementController::class, 'listOfProjects'])->name('admin.projectManagement.listOfProjects');
-Route::get('/admin/project-management/subscriptions', [ProjectAdminController::class, 'subscriptions'])->name('admin.projectManagement.subscriptions');
+Route::get('/admin/project-management/subscriptions', [projectManagementController::class, 'subscriptions'])->name('admin.projectManagement.subscriptions');
+Route::post('/admin/project-management/subscriptions/plans', [projectManagementController::class, 'addSubscriptionPlan'])->name('admin.projectManagement.addSubscriptionPlan');
+Route::put('/admin/project-management/subscriptions/plans/{id}', [projectManagementController::class, 'updateSubscriptionPlan'])->name('admin.projectManagement.updateSubscriptionPlan');
+Route::delete('/admin/project-management/subscriptions/plans/{id}', [projectManagementController::class, 'deleteSubscriptionPlan'])->name('admin.projectManagement.deleteSubscriptionPlan');
+Route::post('/admin/project-management/subscriptions/{id}/deactivate', [projectManagementController::class, 'deactivateSubscription'])->name('admin.projectManagement.deactivateSubscription');
+Route::post('/admin/project-management/subscriptions/{id}/reactivate', [projectManagementController::class, 'reactivateSubscription'])->name('admin.projectManagement.reactivateSubscription');
 Route::get('/admin/project-management/disputes-reports', [projectManagementController::class, 'disputesReports'])->name('admin.projectManagement.disputesReports');
 Route::get('/admin/project-management/messages', [ProjectAdminController::class, 'messages'])->name('admin.projectManagement.messages');
 

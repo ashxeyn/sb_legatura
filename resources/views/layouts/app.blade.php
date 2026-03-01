@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -29,13 +30,19 @@
     <link rel="stylesheet" href="{{ asset('css/partials/settings_Modal.css') }}?v={{ time() }}">
     <!-- Boost Modal CSS -->
     <link rel="stylesheet" href="{{ asset('css/partials/boost_Modal.css') }}?v={{ time() }}">
+    <!-- Subscription Modal CSS -->
+    <link rel="stylesheet" href="{{ asset('css/partials/subscription_Modal.css') }}?v={{ time() }}">
     <!-- Flaticon Icons -->
-    <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-solid-straight/css/uicons-solid-straight.css'>
-    <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-solid-rounded/css/uicons-solid-rounded.css'>
+    <link rel='stylesheet'
+        href='https://cdn-uicons.flaticon.com/3.0.0/uicons-solid-straight/css/uicons-solid-straight.css'>
+    <link rel='stylesheet'
+        href='https://cdn-uicons.flaticon.com/3.0.0/uicons-solid-rounded/css/uicons-solid-rounded.css'>
     <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-bold-rounded/css/uicons-bold-rounded.css'>
-    <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-regular-rounded/css/uicons-regular-rounded.css'>
+    <link rel='stylesheet'
+        href='https://cdn-uicons.flaticon.com/3.0.0/uicons-regular-rounded/css/uicons-regular-rounded.css'>
     @yield('extra_css')
 </head>
+
 <body class="min-h-screen flex flex-col">
 
     @include('partials.navbar')
@@ -75,6 +82,9 @@
     <!-- Boost Modal (Available on all pages) -->
     @include('partials.boost_Modal')
 
+    <!-- Subscription Modal (Available on all pages) -->
+    @include('partials.subscription_Modal')
+
     <!-- Navbar JS -->
     <script src="{{ asset('js/partials/navbar.js') }}"></script>
     <!-- Edit Profile Modal JS -->
@@ -95,6 +105,9 @@
     <script src="{{ asset('js/partials/settings_Modal.js') }}?v={{ time() }}"></script>
     <!-- Boost Modal JS -->
     <script src="{{ asset('js/partials/boost_Modal.js') }}?v={{ time() }}"></script>
+    <!-- Subscription Modal JS -->
+    <script src="{{ asset('js/partials/subscription_Modal.js') }}?v={{ time() }}"></script>
     @yield('extra_js')
 </body>
+
 </html>

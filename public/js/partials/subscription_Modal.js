@@ -1,35 +1,11 @@
 // Subscription Modal JavaScript
 document.addEventListener('DOMContentLoaded', function () {
-    // Subscription Plan Data
-    const subscriptionPlans = {
-        gold: {
-            name: 'Gold Tier',
-            price: '₱ 1,999',
-            benefits: [
-                'Unlock AI driven analytics',
-                'Unlimited Bids',
-                'Boosted Bids (Stay at the top)'
-            ]
-        },
-        silver: {
-            name: 'Silver Tier',
-            price: '₱ 1,499',
-            benefits: [
-                '25 Bids per month',
-                'Boosted Bids (Stay at the top)'
-            ]
-        },
-        bronze: {
-            name: 'Bronze Tier',
-            price: '₱ 999',
-            benefits: [
-                '10 Bids per month'
-            ]
-        }
-    };
+    // Subscription Plan Data (will be populated from server)
+    let subscriptionPlans = {};
 
     // Current subscription state (will be loaded from server)
     let currentSubscription = null;
+    let selectedPlan = 'gold';
 
     // Modal elements
     const subscriptionModal = document.getElementById('subscriptionModal');
@@ -43,54 +19,72 @@ document.addEventListener('DOMContentLoaded', function () {
     const overviewContent = document.getElementById('overviewContent');
     const plansContent = document.getElementById('plansContent');
 
-    // Plans tab elements
-    const planCards = document.querySelectorAll('.plan-card');
-    const mainSubscribeBtn = document.getElementById('mainSubscribeBtn');
-    const selectedPlanBenefits = document.getElementById('selectedPlanBenefits');
-    const alreadySubscribedMsg = document.getElementById('alreadySubscribedMsg');
-
-    // Overview tab elements
+    // Overview Tab elements
     const currentPlanName = document.getElementById('currentPlanName');
     const currentPlanExpiry = document.getElementById('currentPlanExpiry');
     const currentBenefitsList = document.getElementById('currentBenefitsList');
     const cancelSubscriptionBtn = document.getElementById('cancelSubscriptionBtn');
 
-    // Confirmation modals
+    // Plans list elements
+    const planCards = document.querySelectorAll('.plan-card');
+    const selectedPlanBenefits = document.getElementById('selectedPlanBenefits');
+    const mainSubscribeBtn = document.getElementById('mainSubscribeBtn');
+    const alreadySubscribedMsg = document.getElementById('alreadySubscribedMsg');
+
+    // Confirmation modal elements
     const subscriptionConfirmModal = document.getElementById('subscriptionConfirmModal');
     const subscriptionConfirmOverlay = document.getElementById('subscriptionConfirmOverlay');
-    const closeSubscriptionConfirmBtn = document.getElementById('closeSubscriptionConfirmBtn');
     const confirmedPlanName = document.getElementById('confirmedPlanName');
+    const closeSubscriptionConfirmBtn = document.getElementById('closeSubscriptionConfirmBtn');
 
-    // Cancel subscription modal
+    // Cancel confirmation elements
     const cancelSubscriptionConfirmModal = document.getElementById('cancelSubscriptionConfirmModal');
     const cancelSubscriptionConfirmOverlay = document.getElementById('cancelSubscriptionConfirmOverlay');
     const cancelSubscriptionNoBtn = document.getElementById('cancelSubscriptionNoBtn');
     const cancelSubscriptionYesBtn = document.getElementById('cancelSubscriptionYesBtn');
 
-    // Account settings modal
-    const accountSettingsModal = document.getElementById('accountSettingsModal');
+    // Open/Close logic
+    function openSubscriptionModal() {
+        console.log('Attempting to open subscription modal...');
+        if (subscriptionModal) {
+            subscriptionModal.classList.add('active');
 
-    let selectedPlan = 'gold';
+            // Load state when opening
+            loadSubscriptionState().then(() => {
+                updateOverviewTab();
+                updatePlansTab();
+                attachOtherPlanListeners();
+            });
 
-    // Open subscription modal
-    if (subscriptionLink) {
-        subscriptionLink.addEventListener('click', function (e) {
-            e.preventDefault();
-            openSubscriptionModal();
-
-            // Close account settings modal if open
-            if (accountSettingsModal) {
-                accountSettingsModal.classList.remove('active');
+            // Default to overview if subscribed, otherwise plans
+            if (currentSubscription && currentSubscription.isActive) {
+                switchTab('overview');
+            } else {
+                switchTab('plans');
             }
-        });
+        } else {
+            console.error('subscriptionModal element not found!');
+        }
     }
 
-    // Close subscription modal
     function closeSubscriptionModal() {
         if (subscriptionModal) {
             subscriptionModal.classList.remove('active');
         }
     }
+
+    // Use event delegation for the opening link since it might be in another modal
+    document.addEventListener('click', (e) => {
+        const target = e.target.closest('#subscriptionLink');
+        if (target) {
+            console.log('Subscription link clicked');
+            e.preventDefault();
+            openSubscriptionModal();
+            // Close sidebar menu if on mobile/sidebar logic exists elsewhere
+            const userMenuDropdown = document.getElementById('userMenuDropdown');
+            if (userMenuDropdown) userMenuDropdown.classList.add('hidden');
+        }
+    });
 
     if (closeSubscriptionModalBtn) {
         closeSubscriptionModalBtn.addEventListener('click', closeSubscriptionModal);
@@ -100,28 +94,21 @@ document.addEventListener('DOMContentLoaded', function () {
         subscriptionModalOverlay.addEventListener('click', closeSubscriptionModal);
     }
 
-    // Escape key to close
-    document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape' && subscriptionModal && subscriptionModal.classList.contains('active')) {
-            closeSubscriptionModal();
-        }
-    });
-
-    // Open subscription modal
-    function openSubscriptionModal() {
-        if (subscriptionModal) {
-            subscriptionModal.classList.add('active');
-            // Load current subscription state then update UI
-            loadSubscriptionState().then(() => {
-                updateOverviewTab();
-                updatePlansTab();
-            });
-        }
-    }
-
     // Fetch subscription state (best-effort)
     function loadSubscriptionState() {
         return fetch('/subs/modal-data').then(r => r.ok ? r.json() : Promise.reject()).then(data => {
+            // Populate plans
+            if (data.plans && data.plans.length > 0) {
+                subscriptionPlans = {};
+                data.plans.forEach(plan => {
+                    subscriptionPlans[plan.plan_key.toLowerCase()] = {
+                        name: plan.name,
+                        price: `₱ ${parseFloat(plan.amount / 100).toLocaleString(undefined, { minimumFractionDigits: 0 })}`,
+                        benefits: Array.isArray(plan.benefits) ? plan.benefits : (plan.benefits ? JSON.parse(plan.benefits) : [])
+                    };
+                });
+            }
+
             const sub = data.subscription || null;
             if (!sub) {
                 currentSubscription = null;
@@ -136,7 +123,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 benefits: sub.benefits || (sub.meta && sub.meta.benefits) || []
             };
             return;
-        }).catch(() => {
+        }).catch((error) => {
+            console.error('Error loading subscription state:', error);
             currentSubscription = null;
         });
     }
@@ -184,9 +172,8 @@ document.addEventListener('DOMContentLoaded', function () {
             // Show other plans by default
             const otherPlansHtml = Object.keys(subscriptionPlans).map(key => {
                 const plan = subscriptionPlans[key];
-                const className = key === 'silver' ? 'silver-plan' : (key === 'gold' ? 'gold-plan' : 'bronze-plan');
                 return `
-                    <div class="other-plan-card ${className}">
+                    <div class="other-plan-card ${key}-plan" data-plan="${key}">
                         <div class="other-plan-info">
                             <span class="other-plan-name">${plan.name.toUpperCase()}</span>
                         </div>
@@ -196,7 +183,10 @@ document.addEventListener('DOMContentLoaded', function () {
             }).join('');
 
             const otherPlansList = document.querySelector('.other-plans-list');
-            if (otherPlansList) otherPlansList.innerHTML = otherPlansHtml;
+            if (otherPlansList) {
+                otherPlansList.innerHTML = otherPlansHtml;
+                attachOtherPlanListeners();
+            }
 
             return;
         }
@@ -237,9 +227,8 @@ document.addEventListener('DOMContentLoaded', function () {
             .filter(key => key !== planKey)
             .map(key => {
                 const plan = subscriptionPlans[key];
-                const className = key === 'silver' ? 'silver-plan' : 'bronze-plan';
                 return `
-                    <div class="other-plan-card ${className}">
+                    <div class="other-plan-card ${key}-plan" data-plan="${key}">
                         <div class="other-plan-info">
                             <span class="other-plan-name">${plan.name.toUpperCase()}</span>
                         </div>
@@ -251,7 +240,27 @@ document.addEventListener('DOMContentLoaded', function () {
         const otherPlansList = document.querySelector('.other-plans-list');
         if (otherPlansList) {
             otherPlansList.innerHTML = otherPlansHtml;
+            attachOtherPlanListeners();
         }
+    }
+
+    // Attach listeners to "Other Plans" cards
+    function attachOtherPlanListeners() {
+        document.querySelectorAll('.other-plan-card').forEach(card => {
+            card.addEventListener('click', function () {
+                const planType = this.dataset.plan;
+                switchTab('plans');
+                // Select this plan in the plans tab
+                selectedPlan = planType;
+                const targetCard = document.querySelector(`.plan-card[data-plan="${planType}"]`);
+                if (targetCard) {
+                    planCards.forEach(c => c.classList.remove('selected'));
+                    targetCard.classList.add('selected');
+                    updatePlanBenefits(planType);
+                    updateSubscribeButton();
+                }
+            });
+        });
     }
 
     // Update Plans Tab
@@ -302,7 +311,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Main subscribe button
     if (mainSubscribeBtn) {
         mainSubscribeBtn.addEventListener('click', function () {
-            if (currentSubscription && currentSubscription.isActive) {
+            if (currentSubscription && currentSubscription.isActive && selectedPlan === currentSubscription.plan) {
                 // Trigger cancellation confirmation
                 if (cancelSubscriptionConfirmModal) {
                     cancelSubscriptionConfirmModal.classList.add('active');
@@ -334,7 +343,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function updateSubscribeButton() {
         if (mainSubscribeBtn) {
             mainSubscribeBtn.style.display = 'block';
-            if (currentSubscription && currentSubscription.isActive) {
+            if (currentSubscription && currentSubscription.isActive && selectedPlan === currentSubscription.plan) {
                 mainSubscribeBtn.innerHTML = 'Cancel Subscription';
                 mainSubscribeBtn.classList.add('cancel-mode'); // Optional: for styling
             } else {

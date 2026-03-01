@@ -141,6 +141,14 @@ class Navbar {
             });
         }
 
+        const subscriptionLink = document.getElementById('subscriptionLink');
+        if (subscriptionLink) {
+            subscriptionLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.handleSubscription();
+            });
+        }
+
         if (securityLink) {
             securityLink.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -279,8 +287,16 @@ class Navbar {
     handleBoost() {
         this.closeAccountSettingsModal();
         // In a real implementation, open boost modal or navigate to boost page
-        this.showNotification('Opening boost options...', 'info');
+        // this.showNotification('Opening boost options...', 'info');
         // window.location.href = '/owner/boost';
+        const boostModal = document.getElementById('boostModal');
+        if (boostModal) boostModal.classList.add('active');
+    }
+
+    handleSubscription() {
+        this.closeAccountSettingsModal();
+        const subscriptionModal = document.getElementById('subscriptionModal');
+        if (subscriptionModal) subscriptionModal.classList.add('active');
     }
 
     handleSecurity() {
@@ -511,7 +527,7 @@ class Navbar {
         if (projectsList) projectsList.classList.add('hidden');
         if (bidsList) bidsList.classList.add('hidden');
 
-        switch(tabName) {
+        switch (tabName) {
             case 'all':
                 if (allList) allList.classList.remove('hidden');
                 break;
@@ -529,7 +545,7 @@ class Navbar {
     renderNotifications() {
         let filteredNotifications = [];
 
-        switch(this.currentTab) {
+        switch (this.currentTab) {
             case 'all':
                 filteredNotifications = [...this.notifications];
                 break;
@@ -543,7 +559,7 @@ class Navbar {
 
         // Render for current tab
         let list;
-        switch(this.currentTab) {
+        switch (this.currentTab) {
             case 'all':
                 list = document.getElementById('notificationListAll');
                 break;
@@ -593,9 +609,9 @@ class Navbar {
         item.setAttribute('data-notification-id', notification.id);
 
         const iconClass = notification.type === 'project' ? 'project' :
-                         notification.type === 'bid' ? 'bid' : 'general';
+            notification.type === 'bid' ? 'bid' : 'general';
         const icon = notification.type === 'project' ? 'fi-rr-briefcase' :
-                    notification.type === 'bid' ? 'fi-rr-handshake' : 'fi-rr-bell';
+            notification.type === 'bid' ? 'fi-rr-handshake' : 'fi-rr-bell';
 
         item.innerHTML = `
             <div class="notification-icon ${iconClass}">

@@ -11,6 +11,9 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
 use App\Mail\disputeVerifiedReporterRequest;
 use App\Mail\disputeFiledRespondentRequest;
+use App\Http\Requests\admin\editSubRequest;
+use App\Http\Requests\admin\addSubRequest;
+use App\Models\admin\subscriptionClass;
 
 class projectManagementController extends Controller
 {
@@ -44,12 +47,13 @@ class projectManagementController extends Controller
     public function show($id)
     {
         $dispute = disputeClass::getById($id);
-        if (!$dispute) return redirect()->route('admin.projectManagement.disputesReports')->with('error','Dispute not found');
+        if (!$dispute)
+            return redirect()->route('admin.projectManagement.disputesReports')->with('error', 'Dispute not found');
 
         $evidence = disputeClass::getEvidence($id);
         $messages = disputeClass::getMessages($id);
 
-        return view('admin.disputes.show', compact('dispute','evidence','messages'));
+        return view('admin.disputes.show', compact('dispute', 'evidence', 'messages'));
     }
 
     public function resolve($id, Request $request)
@@ -110,7 +114,8 @@ class projectManagementController extends Controller
     public function getDisputeDetails($id)
     {
         $details = disputeClass::getDisputeDetails($id);
-        if (!$details) return response()->json(['success' => false, 'message' => 'Not found'], 404);
+        if (!$details)
+            return response()->json(['success' => false, 'message' => 'Not found'], 404);
 
         // Normalize/flatten resubmissions: convert progress entries + files into a flat files array
         $flat = [];
@@ -251,6 +256,116 @@ class projectManagementController extends Controller
         }
 
         return response()->json(['success' => true]);
+    }
+
+    /**
+     * Show subscription management
+     */
+    public function subscriptions(Request $request)
+    {
+        $plans = subscriptionClass::getPlans();
+        $stats = subscriptionClass::getStats();
+        $activeSubscriptions = subscriptionClass::getSubscriptions('active');
+        $expiredSubscriptions = subscriptionClass::getSubscriptions('expired');
+        $cancelledSubscriptions = subscriptionClass::getSubscriptions('cancelled');
+
+        return view('admin.projectManagement.subscriptions', compact(
+            'plans',
+            'stats',
+            'activeSubscriptions',
+            'expiredSubscriptions',
+            'cancelledSubscriptions'
+        ));
+    }
+
+    /**
+     * Add a subscription plan.
+     */
+    public function addSubscriptionPlan(addSubRequest $request)
+    {
+        try {
+            $data = [
+                'name' => $request->subscription_name,
+                'price' => $request->subscription_price,
+                'billing_cycle' => $request->billing_cycle,
+                'duration_days' => $request->duration_days,
+                'plan_key' => $request->plan_key,
+                'for_contractor' => $request->for_contractor,
+                'benefits' => $request->benefits,
+            ];
+
+            subscriptionClass::addPlan($data);
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Subscription plan created successfully.',
+                'data' => $data
+            ], 201);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to create subscription plan: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Update a subscription plan.
+     */
+    public function updateSubscriptionPlan(editSubRequest $request, $id)
+    {
+        try {
+            $data = [
+                'name' => $request->edit_subscription_name,
+                'price' => $request->edit_subscription_price,
+                'billing_cycle' => $request->edit_billing_cycle,
+                'duration_days' => $request->edit_duration_days,
+                'benefits' => $request->benefits,
+            ];
+
+            subscriptionClass::updatePlan($id, $data);
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Subscription plan updated successfully.',
+                'data' => $data
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to update subscription plan: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Delete a subscription plan.
+     */
+    public function deleteSubscriptionPlan(Request $request, $id)
+    {
+        try {
+            $request->validate([
+                'reason' => 'required|string|max:255',
+            ]);
+
+            subscriptionClass::deletePlan($id, $request->reason);
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Subscription plan deleted successfully.'
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Validation failed',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to delete subscription plan: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -966,6 +1081,58 @@ class projectManagementController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to update project: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Deactivate a subscription (platform payment).
+     */
+    public function deactivateSubscription(Request $request, $id)
+    {
+        try {
+            $reason = $request->input('reason');
+            if (empty($reason)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Reason for deactivation is required'
+                ], 422);
+            }
+
+            subscriptionClass::deactivate($id, $reason);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Subscription deactivated successfully'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error deactivating subscription: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Server error: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Reactivate a subscription (platform payment).
+     */
+    public function reactivateSubscription($id)
+    {
+        try {
+            subscriptionClass::reactivate($id);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Subscription reactivated successfully'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error reactivating subscription: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Server error: ' . $e->getMessage()
             ], 500);
         }
     }
