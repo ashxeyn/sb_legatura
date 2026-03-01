@@ -1,13 +1,23 @@
 import mysql.connector
+import os
 from datetime import datetime, timedelta
 from holidays import compute_holiday_impact
 
+# Load environment variables (for production deployment)
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass  # dotenv not required in development
+
 def get_db_connection():
+    """Get database connection using environment variables or defaults."""
     return mysql.connector.connect(
-        host="localhost",
-        user="root",
-        password="",
-        database="legatura",
+        host=os.getenv("DB_HOST", "localhost"),
+        user=os.getenv("DB_USER", "root"),
+        password=os.getenv("DB_PASSWORD", ""),
+        database=os.getenv("DB_NAME", "legatura"),
+        port=int(os.getenv("DB_PORT", 3306)),
     )
 
 # --------- NEW: Detailed Pacing Logic ---------
@@ -18,10 +28,10 @@ def get_detailed_pacing_stats(conn, project_id):
     2. Quality (progress_status: approved vs rejected)
     """
     cursor = conn.cursor(dictionary=True)
-    
+
     # Fetch all items, their deadlines, and the LATEST progress submission
     query = """
-        SELECT 
+        SELECT
             mi.item_id,
             mi.milestone_item_title,
             mi.date_to_finish,
@@ -39,7 +49,7 @@ def get_detailed_pacing_stats(conn, project_id):
     """
     cursor.execute(query, (project_id,))
     items = cursor.fetchall()
-    
+
     if not items:
         return {"pacing_index": 1.0, "avg_delay_days": 0, "rejected_count": 0, "details": []}
 
@@ -47,7 +57,7 @@ def get_detailed_pacing_stats(conn, project_id):
     total_days_variance = 0
     rejected_count = 0
     today = datetime.now().date()
-    
+
     item_details = []
 
     for item in items:
@@ -61,7 +71,7 @@ def get_detailed_pacing_stats(conn, project_id):
 
         if isinstance(submitted, datetime):
             submitted = submitted.date()
-            
+
         variance = 0
         pacing_status = "Pending"
 
@@ -77,19 +87,19 @@ def get_detailed_pacing_stats(conn, project_id):
                 # Negative = Early, Positive = Late
                 if isinstance(submitted, datetime): submitted = submitted.date()
                 if isinstance(deadline, datetime): deadline = deadline.date()
-                
+
                 delta = (submitted - deadline).days
                 variance = delta
                 pacing_status = "LATE" if delta > 0 else "ON-TIME/EARLY"
-        
+
         # Logic: If NOT submitted but deadline passed
         elif deadline is not None and deadline < today:
              delta = (today - deadline).days
              variance = delta # Days overdue
              pacing_status = "OVERDUE (Missing)"
-        
+
         total_days_variance += variance
-        
+
         item_details.append({
             "title": item["milestone_item_title"],
             "status": status if status else "No Submission",
@@ -101,7 +111,7 @@ def get_detailed_pacing_stats(conn, project_id):
     # Formula: Start at 1.0. Subtract 0.05 for every day late on average.
     avg_variance = total_days_variance / max(1, total_items)
     pacing_index = 1.0 - (avg_variance * 0.05)
-    
+
     # Penalize for rejections explicitly (Reduce index further)
     if rejected_count > 0:
         pacing_index -= (rejected_count * 0.1)
@@ -133,12 +143,12 @@ def get_contractor_history(conn, contractor_id):
     2. Owner Ratings/Reviews (Bayesian smoothed) - 30% weight
     """
     cursor = conn.cursor(dictionary=True)
-    
+
     # ---------------------------------------------------------
     # PART A: Technical Success (Projects Completed vs Total)
     # ---------------------------------------------------------
     cursor.execute("""
-        SELECT 
+        SELECT
             COUNT(project_id) as total_projects,
             SUM(CASE WHEN project_status = 'completed' THEN 1 ELSE 0 END) as successful_projects
         FROM projects
@@ -147,9 +157,9 @@ def get_contractor_history(conn, contractor_id):
     proj_stats = cursor.fetchone()
 
     # Bayesian Math for Projects (Default to 75% success if new)
-    C_PROJ = 2 
+    C_PROJ = 2
     AVG_PROJ_SUCCESS = 0.75
-    
+
     real_success_count = float(proj_stats['successful_projects'] or 0)
     real_total_proj = float(proj_stats['total_projects'] or 0)
 
@@ -161,7 +171,7 @@ def get_contractor_history(conn, contractor_id):
     # We join reviews to projects to ensure we get reviews for this contractor's specific jobs
     # Assuming 'rating' column is 1-5
     cursor.execute("""
-        SELECT 
+        SELECT
             COUNT(r.review_id) as total_reviews,
             AVG(r.rating) as avg_stars
         FROM reviews r
@@ -172,7 +182,7 @@ def get_contractor_history(conn, contractor_id):
 
     # Bayesian Math for Ratings (Default to 4.0 stars if new)
     C_REV = 3 # We need 3 reviews to start shifting the score significantly
-    AVG_STARS = 4.0 
+    AVG_STARS = 4.0
 
     real_review_count = float(review_stats['total_reviews'] or 0)
     real_avg_stars = float(review_stats['avg_stars'] or AVG_STARS) # Use default if NULL
@@ -180,7 +190,7 @@ def get_contractor_history(conn, contractor_id):
     # Calculate Bayesian Average Rating
     # Formula: ( (TotalReviews * RealAvg) + (C * GlobalAvg) ) / (TotalReviews + C)
     smoothed_rating = ( (real_review_count * real_avg_stars) + (C_REV * AVG_STARS) ) / (real_review_count + C_REV)
-    
+
     # Normalize to 0.0 - 1.0 scale (e.g., 4.0 stars becomes 0.8)
     social_score = smoothed_rating / 5.0
 
@@ -219,19 +229,19 @@ def get_project_and_contractor(project_id: int):
     # 2. Get Contractor Stats
     contractor_exp = 0
     contractor_history = {"success_rate": 1.0, "total": 0}
-    
+
     if project["selected_contractor_id"]:
         cursor.execute("SELECT years_of_experience FROM contractors WHERE contractor_id = %s", (project["selected_contractor_id"],))
         res = cursor.fetchone()
         if res:
             contractor_exp = res["years_of_experience"]
-        
+
         # Fetch Success/Fail History
         contractor_history = get_contractor_history(conn, project["selected_contractor_id"])
 
     # 3. Get Real-Time Pacing
     pacing_data = get_detailed_pacing_stats(conn, project_id)
-    
+
     # 4. Get Disputes
     cursor.execute("SELECT COUNT(*) as cnt FROM disputes WHERE project_id = %s AND dispute_status IN ('open', 'under_review')", (project_id,))
     dispute_count = cursor.fetchone()['cnt']
@@ -240,7 +250,7 @@ def get_project_and_contractor(project_id: int):
     today = datetime.now().date()
     holiday_impact_pct = compute_holiday_impact(
         start_date=today,
-        remaining_days=project["to_finish"] or 30 
+        remaining_days=project["to_finish"] or 30
     )
 
     cursor.close()
@@ -251,9 +261,9 @@ def get_project_and_contractor(project_id: int):
         "project_location": project["project_location"],
         "to_finish": project["to_finish"],
         "contractor_experience_years": contractor_exp,
-        "contractor_history": contractor_history, 
-        "pacing_data": pacing_data, 
-        "pacing_index": pacing_data["pacing_index"], 
+        "contractor_history": contractor_history,
+        "pacing_data": pacing_data,
+        "pacing_index": pacing_data["pacing_index"],
         "dispute_count": dispute_count,
         "holiday_impact_pct": holiday_impact_pct,
         "climate_stress": 0,

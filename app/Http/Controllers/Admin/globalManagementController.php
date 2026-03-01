@@ -73,8 +73,10 @@ class globalManagementController extends Controller
     public function analyzeProject($id)
     {
         try {
-            // 1. Call Python API (Port 5001)
-            $response = Http::timeout(10)->get("http://127.0.0.1:5001/predict/{$id}");
+            // 1. Call Python API using configured URL
+            $aiUrl = config('services.ai.url', 'http://127.0.0.1:5001');
+            $timeout = config('services.ai.timeout', 10);
+            $response = Http::timeout($timeout)->get("{$aiUrl}/predict/{$id}");
 
             if ($response->failed()) {
                 return response()->json(['success' => false, 'message' => 'AI Service Unavailable'], 500);
@@ -223,7 +225,8 @@ class globalManagementController extends Controller
         ];
 
         try {
-            $response = Http::timeout(5)->get('http://127.0.0.1:5001/system-status');
+            $aiUrl = config('services.ai.url', 'http://127.0.0.1:5001');
+            $response = Http::timeout(5)->get("{$aiUrl}/system-status");
 
             if ($response->successful()) {
                 $data = $response->json();
@@ -289,7 +292,7 @@ class globalManagementController extends Controller
         $page = $request->input('page', 1);
 
         $bids = $this->getAllBids($search, $status, $page);
-        
+
         return response()->json($bids);
     }
 
@@ -340,7 +343,7 @@ class globalManagementController extends Controller
         $page = $request->input('page', 1);
 
         $payments = $this->getAllPaymentProofs($search, $status, $page);
-        
+
         return response()->json($payments);
     }
 
@@ -391,7 +394,7 @@ class globalManagementController extends Controller
         $page = $request->input('page', 1);
 
         $postings = $this->getAllPostings($search, $status, $page);
-        
+
         return response()->json($postings);
     }
 
@@ -452,4 +455,3 @@ class globalManagementController extends Controller
         return response()->json($this->getAIUsageStats());
     }
 }
-               

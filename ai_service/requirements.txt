@@ -7,4 +7,5 @@ scikit-learn
 joblib
 requests
 mysql-connector-python
+python-dotenv
 

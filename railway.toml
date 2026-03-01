@@ -1,0 +1,12 @@
+[build]
+builder = "nixpacks"
+
+[nixpacks]
+# Tell Nixpacks to build from the ai_service directory
+pkgs = ["python310"]
+
+[nixpacks.phases.install]
+cmds = ["cd ai_service && pip install -r requirements.txt"]
+
+[nixpacks.phases.start]
+cmd = "cd ai_service && python run_server.py"

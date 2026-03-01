@@ -27,6 +27,13 @@ Thumbs.db
 /migrations
 /.venv/
 
+# Documentation and temporary files
+AI_DEPLOYMENT_SUMMARY.md
+QUICK_REFERENCE.txt
+START_HERE_AI_OFFLINE.txt
+RAILWAY_FIX_NOW.txt
+AI_OFFLINE_FIX.md
+docs/AI_SERVICE_DEPLOYMENT.md
 
 # Python virtual environments
 **/venv/

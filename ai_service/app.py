@@ -3,6 +3,23 @@ import logging
 import traceback
 import os
 
+app = FastAPI()
+
+# Logging setup
+os.makedirs("logs", exist_ok=True)
+_logger = logging.getLogger("ai_service")
+if not _logger.handlers:
+    file_handler = logging.FileHandler("logs/ai_service.log")
+    file_handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+    _logger.addHandler(file_handler)
+
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+    _logger.addHandler(console_handler)
+
+    _logger.setLevel(logging.INFO)
+
+# Import model-dependent modules AFTER logging setup
 from database import get_project_and_contractor
 from weather import get_weather
 from weather_severity import compute_weather_severity
@@ -10,16 +27,15 @@ from predictor import predict_delay, model_is_trained, scaler_is_trained
 from recommender import generate_dds_recommendation
 from enso import fetch_latest_enso_state
 
-app = FastAPI()
+# Startup event
+@app.on_event("startup")
+async def startup_event():
+    _logger.info(f"AI Service started - Model loaded: {model_is_trained}")
 
-# Logging
-os.makedirs("logs", exist_ok=True)
-_logger = logging.getLogger("ai_service")
-if not _logger.handlers:
-    handler = logging.FileHandler("logs/ai_service.log")
-    handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
-    _logger.addHandler(handler)
-    _logger.setLevel(logging.INFO)
+# Health check endpoint
+@app.get("/")
+def root():
+    return {"status": "ok", "service": "Legatura AI Service", "version": "1.0"}
 
 @app.get("/predict/{project_id}")
 def predict(project_id: int):
@@ -71,7 +87,7 @@ def predict(project_id: int):
         # -----------------------------------------------------------
         # 6. LOGIC OVERRIDE: The "Experience Trap" & "Rework" Logic
         # -----------------------------------------------------------
-        
+
         c_exp = data["contractor_experience_years"]
         c_success = data["contractor_history"]["success_rate"]
         rejected = data["pacing_data"]["rejected_count"]
@@ -127,7 +143,7 @@ def predict(project_id: int):
         # 8. Construct Report Conclusion
         avg_delay = data["pacing_data"]["avg_delay_days"]
         pacing_text = "ahead of schedule" if avg_delay <= 0 else f"{avg_delay} days behind schedule"
-        
+
         conclusion = (
             f"The project '{data['project_title']}' is currently {pacing_text}. "
             f"AI predicts a {final_prob*100:.1f}% probability of delay. "
