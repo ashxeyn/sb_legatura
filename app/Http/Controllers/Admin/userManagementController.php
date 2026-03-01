@@ -156,7 +156,7 @@ class userManagementController extends authController
             // Prepare Data for Model
             $data = [
                 // Company Info
-                'profile_pic' => $profilePicPath,
+                'company_logo' => $profilePicPath,
                 'company_name' => $validated['company_name'],
                 'company_phone' => $validated['company_phone'],
                 'company_start_date' => $validated['company_start_date'],
@@ -285,6 +285,7 @@ class userManagementController extends authController
             // Add optional fields if present
             if (isset($validated['profile_pic'])) {
                 $data['profile_pic'] = $validated['profile_pic'];
+                $data['company_logo'] = $validated['profile_pic'];
             }
             if (isset($validated['dti_sec_registration_photo'])) {
                 $data['dti_sec_registration_photo'] = $validated['dti_sec_registration_photo'];

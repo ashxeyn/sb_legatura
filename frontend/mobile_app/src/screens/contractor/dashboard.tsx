@@ -15,7 +15,7 @@ import {
   FlatList,
   Alert,
 } from 'react-native';
-import { View as SafeAreaView, StatusBar, Platform } from 'react-native';
+import { View as SafeAreaView, StatusBar, Platform, DeviceEventEmitter } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons, Ionicons, Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -121,6 +121,12 @@ export default function ContractorDashboard({
   const [showMyProjects, setShowMyProjects] = useState(false);
   const [showMyBids, setShowMyBids] = useState(false);
   const [showMembers, setShowMembers] = useState(false);
+  const [myProjectsInitialAction, setMyProjectsInitialAction] = useState<{
+    type: 'milestone_setup' | 'project_timeline' | 'project_detail';
+    project_id: number;
+    initial_item_id?: number;
+    initial_item_tab?: 'payments';
+  } | null>(null);
   const scrollY = useRef(new Animated.Value(0)).current;
 
   // Contractor member authorization - controls access to Members feature and milestones
@@ -139,6 +145,40 @@ export default function ContractorDashboard({
     setAvatarError(false);
     fetchData();
   }, [userData?.user_id]);
+
+  // Listen for navigation events from notifications
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener('dashboardNavigate', (params: Record<string, any>) => {
+      const subScreen = params.sub_screen;
+      if (subScreen === 'my_bids') {
+        setShowMyBids(true);
+      } else if (subScreen === 'project_detail') {
+        // Map initial_action from backend to MyProjects initialAction types
+        const actionType = params.initial_action === 'project_timeline'
+          ? 'project_timeline'
+          : params.initial_action === 'milestone_setup'
+            ? 'milestone_setup'
+            : 'project_detail';
+        if (params.project_id) {
+          setMyProjectsInitialAction({
+            type: actionType,
+            project_id: params.project_id,
+            initial_item_id: params.initial_item_id,
+            initial_item_tab: params.initial_item_tab,
+          });
+        } else {
+          setMyProjectsInitialAction(null);
+        }
+        setShowMyProjects(true);
+      } else if (subScreen === 'members') {
+        setShowMembers(true);
+      } else if (subScreen === 'projects') {
+        setMyProjectsInitialAction(null);
+        setShowMyProjects(true);
+      }
+    });
+    return () => sub.remove();
+  }, []);
 
   const fetchData = async () => {
     if (!userData?.user_id) {
@@ -337,7 +377,11 @@ export default function ContractorDashboard({
     return (
       <MyProjects
         userData={userData}
-        onClose={() => setShowMyProjects(false)}
+        onClose={() => {
+          setShowMyProjects(false);
+          setMyProjectsInitialAction(null);
+        }}
+        initialAction={myProjectsInitialAction}
       />
     );
   }

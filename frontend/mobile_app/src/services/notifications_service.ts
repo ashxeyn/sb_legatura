@@ -17,6 +17,7 @@ export interface Notification {
   reference_type: string | null;
   reference_id: number | null;
   action_url: string | null;
+  redirect_url: string | null;
   created_at: string;
 }
 
@@ -137,6 +138,47 @@ export const notifications_service = {
       return {
         success: false,
         message: error.message || 'Failed to mark all as read',
+      };
+    }
+  },
+
+  /**
+   * Resolve the redirect URL for a notification.
+   * Marks the notification as read and returns the computed destination.
+   */
+  resolve_redirect: async (notification_id: number): Promise<ApiResponse<{
+    redirect_url: string;
+    flash_message: string | null;
+    reference_type: string | null;
+    reference_id: number | null;
+    mobile: {
+      screen: string;
+      params: Record<string, any>;
+    };
+  }>> => {
+    try {
+      const response = await api_request(`/api/notifications/${notification_id}/redirect`, {
+        method: 'GET',
+      });
+
+      const payload = response.data?.data || response.data;
+      if (response.success && payload) {
+        return {
+          success: true,
+          message: 'Redirect resolved',
+          data: payload,
+        };
+      }
+
+      return {
+        success: false,
+        message: response.message || 'Failed to resolve redirect',
+      };
+    } catch (error: any) {
+      console.error('Error resolving notification redirect:', error);
+      return {
+        success: false,
+        message: error.message || 'Failed to resolve redirect',
       };
     }
   },

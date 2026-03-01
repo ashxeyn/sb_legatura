@@ -11,7 +11,7 @@ class PropertyOwnerHomepage {
         this.contractorsGrid = document.getElementById('contractorsGrid');
         this.emptyState = document.getElementById('emptyState');
         this.cardTemplate = document.getElementById('contractorCardTemplate');
-        
+
         // Filter elements
         this.filterIconBtn = document.getElementById('filterIconBtn');
         this.filterDropdown = document.getElementById('filterDropdown');
@@ -19,14 +19,14 @@ class PropertyOwnerHomepage {
         this.filterApplyBtn = document.getElementById('filterApplyBtn');
         this.filterClearBtn = document.getElementById('filterClearBtn');
         this.filterBadge = document.getElementById('filterBadge');
-        
+
         // Filter select elements
         this.filterContractorType = document.getElementById('filterContractorType');
         this.filterProvince = document.getElementById('filterProvince');
         this.filterCity = document.getElementById('filterCity');
         this.filterRating = document.getElementById('filterRating');
         this.filterExperience = document.getElementById('filterExperience');
-        
+
         // Filter state
         this.activeFilters = {
             contractorType: '',
@@ -51,7 +51,7 @@ class PropertyOwnerHomepage {
 
         // Debounce timer
         this._searchTimeout = null;
-        
+
         this.init();
     }
 
@@ -365,7 +365,7 @@ class PropertyOwnerHomepage {
     createContractorCard(contractor) {
         // Clone the template
         const card = this.cardTemplate.content.cloneNode(true).querySelector('.contractor-card');
-        
+
         // Extract contractor data
         const companyName = contractor.company_name || contractor.name || 'Unknown Company';
         const initials = this.getInitials(companyName);
@@ -380,7 +380,7 @@ class PropertyOwnerHomepage {
         // Populate card data (mobile-style structure)
         // Badge overlay
         card.querySelector('.contractor-badge-overlay .badge-text').textContent = contractorType;
-        
+
         // Avatar
         const avatar = card.querySelector('.contractor-avatar');
         card.querySelector('.contractor-initials').textContent = initials;
@@ -399,11 +399,34 @@ class PropertyOwnerHomepage {
         } else {
             avatar.innerHTML = `<img src="${webDefaultAvatar}" alt="Default contractor avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
         }
-        
+
+        // Cover photo: prefer contractor.company_banner / contractor.cover_photo
+        const coverPath = contractor.cover_photo || contractor.company_banner || (contractor.__raw && (contractor.__raw.company_banner || contractor.__raw.cover_photo)) || null;
+        const webDefaultCover = '/img/defaults/cp_default.jpg';
+        const coverEl = card.querySelector('.contractor-cover');
+        if (coverEl) {
+            // Ensure default background is present initially (template default)
+            coverEl.style.backgroundImage = `url('${webDefaultCover}')`;
+            if (coverPath) {
+                const coverUri = (typeof coverPath === 'string' && (coverPath.startsWith('http://') || coverPath.startsWith('https://')))
+                    ? coverPath
+                    : `${window.location.origin}/storage/${coverPath}`;
+                // Load via Image to avoid flashing broken images; set background only on successful load
+                const img = new Image();
+                img.onload = function() {
+                    coverEl.style.backgroundImage = `url('${coverUri}')`;
+                };
+                img.onerror = function() {
+                    coverEl.style.backgroundImage = `url('${webDefaultCover}')`;
+                };
+                img.src = coverUri;
+            }
+        }
+
         // Company info block
         card.querySelector('.contractor-info-block .contractor-name').textContent = companyName;
         card.querySelector('.contractor-info-block .contractor-experience').textContent = `${experience} years experience`;
-        
+
         // Details container
         const detailItems = card.querySelectorAll('.contractor-details-container .detail-item');
         if (detailItems.length >= 1) {
@@ -415,7 +438,7 @@ class PropertyOwnerHomepage {
         if (detailItems.length >= 3) {
             detailItems[2].querySelector('.detail-text').textContent = `${projectsCompleted} projects completed`;
         }
-        
+
         // contact button removed; no attribute to set
 
         // Assign different color to each contractor avatar (keeps gradient behind image)
@@ -453,7 +476,7 @@ class PropertyOwnerHomepage {
 
     formatLocation(contractor) {
         const parts = [];
-        
+
         if (contractor.street_address || contractor.address) {
             parts.push(contractor.street_address || contractor.address);
         }
@@ -526,7 +549,7 @@ class PropertyOwnerHomepage {
         const size = Math.max(rect.width, rect.height);
         const x = event.clientX - rect.left - size / 2;
         const y = event.clientY - rect.top - size / 2;
-        
+
         ripple.style.width = ripple.style.height = size + 'px';
         ripple.style.left = x + 'px';
         ripple.style.top = y + 'px';
@@ -536,11 +559,11 @@ class PropertyOwnerHomepage {
         ripple.style.transform = 'scale(0)';
         ripple.style.animation = 'ripple 0.6s ease-out';
         ripple.style.pointerEvents = 'none';
-        
+
         element.style.position = 'relative';
         element.style.overflow = 'hidden';
         element.appendChild(ripple);
-        
+
         setTimeout(() => {
             ripple.remove();
         }, 600);
@@ -630,8 +653,8 @@ class PropertyOwnerHomepage {
 
         // Close dropdown when clicking outside
         document.addEventListener('click', (e) => {
-            if (this.filterDropdown && 
-                !this.filterDropdown.contains(e.target) && 
+            if (this.filterDropdown &&
+                !this.filterDropdown.contains(e.target) &&
                 !this.filterIconBtn.contains(e.target)) {
                 this.closeFilterDropdown();
             }
@@ -707,7 +730,7 @@ class PropertyOwnerHomepage {
 
     toggleFilterDropdown() {
         if (!this.filterDropdown) return;
-        
+
         const isActive = this.filterDropdown.classList.contains('active');
         if (isActive) {
             this.closeFilterDropdown();

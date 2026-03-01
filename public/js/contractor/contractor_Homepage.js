@@ -566,15 +566,16 @@ class ContractorHomepage {
             return;
         }
 
-        // Open the apply bid modal
-        if (window.applyBidModal) {
-            window.applyBidModal.openModal(project);
+        // Open the apply bid modal using the global function
+        const projectIdValue = project.project_id || project.id;
+        if (typeof window.openBidModal === 'function') {
+            window.openBidModal(projectIdValue);
         } else {
             console.error('Apply Bid Modal not initialized');
             // Wait a bit and try again (in case modal is still loading)
             setTimeout(() => {
-                if (window.applyBidModal) {
-                    window.applyBidModal.openModal(project);
+                if (typeof window.openBidModal === 'function') {
+                    window.openBidModal(projectIdValue);
                 }
             }, 100);
         }

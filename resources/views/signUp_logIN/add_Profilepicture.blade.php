@@ -63,13 +63,13 @@
 						'step2_keys' => !empty($step2Data) ? array_keys($step2Data) : [],
 					]);
 				@endphp
-				
+
 				<!-- Always include hidden fields, even if empty, for fallback mechanism -->
 				<input type="hidden" name="step1_data" value="{{ json_encode(is_array($step1Data) ? $step1Data : [], JSON_FORCE_OBJECT) }}">
 				<input type="hidden" name="step2_data" value="{{ json_encode(is_array($step2Data) ? $step2Data : [], JSON_FORCE_OBJECT) }}">
 				<input type="hidden" name="step4_data" value="{{ json_encode(is_array($step4Data) ? $step4Data : [], JSON_FORCE_OBJECT) }}">
 
-				
+
 				<div class="setup-logo" aria-label="Legatura logo">
 					<img src="{{ asset('img/logo2.0.svg') }}" alt="Legatura" class="setup-logo-img" loading="eager">
 				</div>
@@ -87,7 +87,7 @@
 					<button type="button" class="avatar-edit" id="editBtn" aria-label="Select profile photo">
 						<i class="fi fi-rr-pencil"></i>
 					</button>
-					<input type="file" name="profile_pic" id="avatarInput" accept="image/*" class="avatar-input" aria-hidden="true">
+					<input type="file" name="{{ $signupType === 'contractor' ? 'company_logo' : 'profile_pic' }}" id="avatarInput" accept="image/*" class="avatar-input" aria-hidden="true">
 				</div>
 
 				<p class="profile-subtitle">Set your profile picture to make your account recognizable.</p>

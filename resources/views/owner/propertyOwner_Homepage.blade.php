@@ -137,14 +137,15 @@
                             <div class="contractor-card">
                                 <!-- Cover Photo (uses coverPhotoUri with fallback) -->
                                 @php
-                                    $coverPhoto = $contractor->cover_photo ?? null;
+                                    // Prefer contractor company banner when available, otherwise fall back to user's cover_photo
+                                    $coverPhoto = $contractor->company_banner ?? $contractor->cover_photo ?? null;
                                     $defaultCover = asset('img/defaults/cp_default.jpg');
-                                    $coverPhotoUri = $coverPhoto ? asset('storage/' . $coverPhoto) : $defaultCover;
+                                    $coverPhotoUri = $coverPhoto ? asset('storage/' . $coverPhoto) : null;
                                 @endphp
-                                <div class="contractor-cover" style="background-color: #F0F0F0; background-image: url('{{ $coverPhotoUri }}'); background-size: cover; background-position: center; position: relative;">
-                                    {{-- keep a hidden img to trigger onerror fallback for broken storage URLs --}}
-                                    @if($coverPhoto)
-                                        <img src="{{ $coverPhotoUri }}" alt="{{ $contractor->company_name }}" class="cover-photo visually-hidden" onerror="this.closest('.contractor-cover').style.backgroundImage = 'url({{ $defaultCover }})'; this.remove();">
+                                <div class="contractor-cover" style="background-color: #F0F0F0; background-image: url('{{ $defaultCover }}'); background-size: cover; background-position: center; position: relative;">
+                                    {{-- Hidden img loads the real cover and sets the background on success; onerror falls back to default. --}}
+                                    @if($coverPhotoUri)
+                                        <img src="{{ $coverPhotoUri }}" alt="{{ $contractor->company_name }}" class="cover-photo visually-hidden" onerror="this.closest('.contractor-cover').style.backgroundImage = 'url({{ $defaultCover }})'; this.style.display='none';" onload="this.closest('.contractor-cover').style.backgroundImage = 'url('+this.src+')'; this.style.display='none';">
                                     @endif
 
                                     {{-- Avatar placed inside cover so its position is stable across renders --}}
@@ -152,19 +153,25 @@
                                         @php
                                             $contractorName = trim($contractor->company_name ?? '');
                                             $initials = collect(explode(' ', $contractorName))->filter()->map(function($w){ return strtoupper(substr($w,0,1)); })->take(2)->join('');
-                                            $logoUrl = $contractor->logo_url ?? null;
+                                            // Prefer contractor company logo; fall back to user's profile_pic
+                                            $logoPath = $contractor->company_logo ?? $contractor->profile_pic ?? null;
                                             $defaultAvatar = asset('img/defaults/contractor_default.png');
-                                            $avatarUri = $logoUrl ? asset('storage/' . $logoUrl) : $defaultAvatar;
+                                            $avatarUri = $logoPath ? asset('storage/' . $logoPath) : $defaultAvatar;
                                         @endphp
                                         <div class="contractor-avatar" style="background: none; padding: 0;">
-                                            @if($logoUrl)
-                                                <img src="{{ $avatarUri }}" alt="{{ $contractor->company_name }} logo" style="width:100%;height:100%;object-fit:cover;border-radius:50%;background:#f97316;" onerror="this.src='{{ $defaultAvatar }}'">
-                                            @else
-                                                <img src="{{ $defaultAvatar }}" alt="Default contractor avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;background:#f97316;">
-                                            @endif
+                                            @if($logoPath)
+                                                    <img src="{{ $avatarUri }}" alt="{{ $contractor->company_name }} logo" style="width:100%;height:100%;object-fit:cover;border-radius:50%;background:#f97316;" onerror="this.src='{{ $defaultAvatar }}'">
+                                                @else
+                                                    <img src="{{ $defaultAvatar }}" alt="Default contractor avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;background:#f97316;">
+                                                @endif
                                             <span class="contractor-initials" style="display:none;">{{ $initials ?: '—' }}</span>
                                         </div>
                                     </div>
+                                        {{-- DEBUG: show resolved URIs for troubleshooting (remove in production) --}}
+                                        <div style="position: absolute; left: 8px; bottom: 8px; background: rgba(255,255,255,0.85); padding:4px 6px; border-radius:4px; font-size:11px; color:#111;">
+                                            <div>cover: {{ $coverPhotoUri }}</div>
+                                            <div>avatar: {{ $avatarUri }}</div>
+                                        </div>
                                 </div>
 
                                 <!-- Badge Overlay (top right) -->
@@ -289,7 +296,7 @@
             if (navbarSearchInput) {
                 navbarSearchInput.placeholder = 'Search contractors...';
             }
-            
+
             // Set Home link as active
             const navbarLinks = document.querySelectorAll('.navbar-link');
             navbarLinks.forEach(link => {

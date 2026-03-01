@@ -6,6 +6,7 @@ use App\Http\Controllers\subs\platformPaymentController;
 use App\Http\Controllers\subs\payMongoController;
 use App\Http\Controllers\contractor\cprocessController;
 use App\Http\Controllers\contractor\membersController;
+use App\Http\Controllers\contractor\AiController;
 use App\Http\Controllers\both\disputeController;
 use App\Http\Controllers\both\milestoneController;
 use App\Http\Controllers\both\homepageController;
@@ -20,6 +21,7 @@ use App\Http\Controllers\Admin\ProjectAdminController;
 use App\Http\Controllers\Admin\projectManagementController;
 use App\Http\Controllers\message\broadcastAuthController;
 
+Route::post('/admin/global-management/ai-management/analyze/{id}', [globalManagementController::class, 'analyzeProject']);
 
 Route::get('/', function () {
     return view('signUp_logIN.landingPage');
@@ -160,8 +162,19 @@ Route::prefix('contractor/messages')->group(function () {
 // Contractor Profile
 Route::get('/contractor/profile', [\App\Http\Controllers\contractor\cprocessController::class, 'showProfile'])->name('contractor.profile');
 
+// Contractor Profile API (web session-based routes)
+Route::get('/contractor/profile/fetch', [\App\Http\Controllers\profileController::class, 'apiGetProfile'])->name('contractor.profile.fetch');
+Route::get('/contractor/profile/reviews', [\App\Http\Controllers\profileController::class, 'apiGetReviews'])->name('contractor.profile.reviews');
+Route::post('/contractor/profile/update', [\App\Http\Controllers\profileController::class, 'update'])->name('contractor.profile.update');
+
+// Security Settings – OTP change endpoints (web session-based)
+Route::post('/security/change-otp/send', [\App\Http\Controllers\OTPChangeController::class, 'sendOtp'])->name('security.otp.send');
+Route::post('/security/change-otp/verify', [\App\Http\Controllers\OTPChangeController::class, 'verifyOtp'])->name('security.otp.verify');
+
 // Contractor AI Analytics
-Route::get('/contractor/ai-analytics', [\App\Http\Controllers\contractor\cprocessController::class, 'showAIAnalytics'])->name('contractor.ai-analytics');
+Route::get('/contractor/ai-analytics', [AiController::class, 'showAnalytics'])->name('contractor.ai-analytics');
+Route::post('/contractor/ai-analytics/analyze/{id}', [AiController::class, 'analyzeProject'])->name('contractor.ai-analytics.analyze');
+Route::get('/contractor/ai-analytics/stats', [AiController::class, 'getStats'])->name('contractor.ai-analytics.stats');
 
 // PayMongo checkout endpoints (web, requires session auth)
 Route::post('/subscribe/checkout', [payMongoController::class, 'createSubscriptionCheckout']);
@@ -226,6 +239,7 @@ Route::post('/accounts/switch-role', [cprocessController::class, 'switchRole'])-
 // PSGC API Routes
 Route::get('/api/psgc/provinces', [authController::class, 'getProvinces']);
 Route::get('/api/psgc/provinces/{provinceCode}/cities', [authController::class, 'getCitiesByProvince']);
+Route::get('/api/psgc/cities', [authController::class, 'getAllCities']);
 Route::get('/api/psgc/cities/{cityCode}/barangays', [authController::class, 'getBarangaysByCity']);
 
 // Contractor Setup Form Data
@@ -287,16 +301,16 @@ Route::post('/contractor/progress/approve/{progressId}', [\App\Http\Controllers\
 Route::post('/contractor/progress/reject/{progressId}', [\App\Http\Controllers\contractor\progressUploadController::class, 'rejectProgress']);
 
 // Owner Project Posting Routes
-Route::get('/owner/projects/create', [\App\Http\Controllers\owner\projectsController::class , 'showCreatePostPage']);
-Route::post('/owner/projects', [\App\Http\Controllers\owner\projectsController::class , 'store']);
-Route::get('/owner/projects/{projectId}/edit', [\App\Http\Controllers\owner\projectsController::class , 'showEditPostPage']);
-Route::put('/owner/projects/{projectId}', [\App\Http\Controllers\owner\projectsController::class , 'update']);
-Route::delete('/owner/projects/{projectId}', [\App\Http\Controllers\owner\projectsController::class , 'delete']);
-Route::post('/owner/projects/{projectId}/bids/{bidId}/accept', [\App\Http\Controllers\owner\projectsController::class , 'acceptBid']);
+Route::get('/owner/projects/create', [\App\Http\Controllers\owner\projectsController::class, 'showCreatePostPage']);
+Route::post('/owner/projects', [\App\Http\Controllers\owner\projectsController::class, 'store']);
+Route::get('/owner/projects/{projectId}/edit', [\App\Http\Controllers\owner\projectsController::class, 'showEditPostPage']);
+Route::put('/owner/projects/{projectId}', [\App\Http\Controllers\owner\projectsController::class, 'update']);
+Route::delete('/owner/projects/{projectId}', [\App\Http\Controllers\owner\projectsController::class, 'delete']);
+Route::post('/owner/projects/{projectId}/bids/{bidId}/accept', [\App\Http\Controllers\owner\projectsController::class, 'acceptBid']);
 Route::post('/owner/projects/{projectId}/bids/{bidId}/reject', [\App\Http\Controllers\owner\projectsController::class , 'rejectBid'])->name('owner.projects.bids.reject');
-Route::post('/owner/milestones/{milestoneId}/approve', [milestoneController::class , 'webApproveMilestone']);
-Route::post('/owner/milestones/{milestoneId}/reject', [milestoneController::class , 'webRejectMilestone']);
-Route::post('/contractor/payments/{paymentId}/approve', [milestoneController::class , 'apiApprovePayment']);
+Route::post('/owner/milestones/{milestoneId}/approve', [milestoneController::class, 'webApproveMilestone']);
+Route::post('/owner/milestones/{milestoneId}/reject', [milestoneController::class, 'webRejectMilestone']);
+Route::post('/contractor/payments/{paymentId}/approve', [milestoneController::class, 'apiApprovePayment']);
 
 // Protected Document Viewer (for important documents with watermark)
 Route::get('/contractor/document/view', [\App\Http\Controllers\contractor\documentViewController::class, 'viewProtectedDocument'])
@@ -356,7 +370,12 @@ Route::get('/admin/global-management/posting-management', [globalManagementContr
 // Project Management Routes
 // Specific routes first (to avoid conflict with {id} parameter)
 Route::get('/admin/project-management/list-of-projects', [projectManagementController::class, 'listOfProjects'])->name('admin.projectManagement.listOfProjects');
-Route::get('/admin/project-management/subscriptions', [ProjectAdminController::class, 'subscriptions'])->name('admin.projectManagement.subscriptions');
+Route::get('/admin/project-management/subscriptions', [projectManagementController::class, 'subscriptions'])->name('admin.projectManagement.subscriptions');
+Route::post('/admin/project-management/subscriptions/plans', [projectManagementController::class, 'addSubscriptionPlan'])->name('admin.projectManagement.addSubscriptionPlan');
+Route::put('/admin/project-management/subscriptions/plans/{id}', [projectManagementController::class, 'updateSubscriptionPlan'])->name('admin.projectManagement.updateSubscriptionPlan');
+Route::delete('/admin/project-management/subscriptions/plans/{id}', [projectManagementController::class, 'deleteSubscriptionPlan'])->name('admin.projectManagement.deleteSubscriptionPlan');
+Route::post('/admin/project-management/subscriptions/{id}/deactivate', [projectManagementController::class, 'deactivateSubscription'])->name('admin.projectManagement.deactivateSubscription');
+Route::post('/admin/project-management/subscriptions/{id}/reactivate', [projectManagementController::class, 'reactivateSubscription'])->name('admin.projectManagement.reactivateSubscription');
 Route::get('/admin/project-management/disputes-reports', [projectManagementController::class, 'disputesReports'])->name('admin.projectManagement.disputesReports');
 Route::get('/admin/project-management/messages', [ProjectAdminController::class, 'messages'])->name('admin.projectManagement.messages');
 
@@ -414,6 +433,9 @@ Route::put('/admin/project-management/{id}', [projectManagementController::class
 Route::delete('/admin/project-management/{id}', [projectManagementController::class, 'deleteProject'])->name('admin.projectManagement.deleteProject');
 Route::post('/admin/project-management/{id}/restore', [projectManagementController::class, 'restoreProject'])->name('admin.projectManagement.restoreProject');
 Route::put('/admin/project-management/milestone-item/{itemId}', [projectManagementController::class, 'updateMilestoneItem'])->name('admin.projectManagement.updateMilestoneItem');
+
+// Notification redirect — marks as read and 302s to the contextual page
+Route::get('/notifications/{id}/redirect', [\App\Http\Controllers\both\NotificationController::class, 'redirect'])->name('notifications.redirect');
 
 // Settings Routes
 Route::get('/admin/settings/notifications', function () {

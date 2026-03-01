@@ -128,9 +128,15 @@ interface MyProjectsProps {
     username?: string;
   };
   onClose: () => void;
+  initialAction?: {
+    type: 'milestone_setup' | 'project_timeline' | 'project_detail';
+    project_id: number;
+    initial_item_id?: number;
+    initial_item_tab?: 'payments';
+  } | null;
 }
 
-export default function MyProjects({ userData, onClose }: MyProjectsProps) {
+export default function MyProjects({ userData, onClose, initialAction }: MyProjectsProps) {
   const insets = useSafeAreaInsets();
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -138,11 +144,15 @@ export default function MyProjects({ userData, onClose }: MyProjectsProps) {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [showMilestoneSetup, setShowMilestoneSetup] = useState(false);
   const [showProjectDetails, setShowProjectDetails] = useState(false);
+  const [projectDetailsInitialView, setProjectDetailsInitialView] = useState<'milestones' | null>(null);
+  const [projectDetailsInitialItemId, setProjectDetailsInitialItemId] = useState<number | null>(null);
+  const [projectDetailsInitialItemTab, setProjectDetailsInitialItemTab] = useState<'payments' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeFilters, setActiveFilters] = useState<string[]>(['all']);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'latest' | 'oldest' | 'a_z' | 'z_a' | 'budget_high' | 'budget_low'>('latest');
   const [showSortModal, setShowSortModal] = useState(false);
+  const [initialActionProcessed, setInitialActionProcessed] = useState(false);
 
   const toggleFilter = (key: string) => {
     if (key === 'all') {
@@ -180,6 +190,28 @@ export default function MyProjects({ userData, onClose }: MyProjectsProps) {
   useEffect(() => {
     fetchProjects();
   }, [userData?.user_id]);
+
+  // Process initialAction once projects are loaded
+  useEffect(() => {
+    if (!initialAction || initialActionProcessed || isLoading || projects.length === 0) return;
+
+    const target = projects.find((p: Project) => p.project_id === initialAction.project_id);
+    if (!target) return;
+
+    setInitialActionProcessed(true);
+    setSelectedProject(target);
+
+    if (initialAction.type === 'milestone_setup') {
+      setShowMilestoneSetup(true);
+    } else if (initialAction.type === 'project_timeline') {
+      setProjectDetailsInitialView('milestones');
+      setProjectDetailsInitialItemId(initialAction.initial_item_id ?? null);
+      setProjectDetailsInitialItemTab(initialAction.initial_item_tab ?? null);
+      setShowProjectDetails(true);
+    } else if (initialAction.type === 'project_detail') {
+      setShowProjectDetails(true);
+    }
+  }, [initialAction, initialActionProcessed, isLoading, projects]);
 
   const fetchProjects = async () => {
     if (!userData?.user_id) {
@@ -326,7 +358,7 @@ export default function MyProjects({ userData, onClose }: MyProjectsProps) {
   const getStatusConfig = (status: string) => {
     const s = (status || '').toLowerCase();
     if (s === 'waiting_milestone_setup' || s === 'not_started' || s === 'pending_setup') {
-      return { color: COLORS.warning, bg: COLORS.warningLight, label: 'Needs Setup', icon: 'alert-circle' };
+      return { color: COLORS.warning, bg: COLORS.warningLight, label: 'Project Setup', icon: 'settings' };
     }
     if (s === 'waiting_for_approval') {
       return { color: COLORS.info, bg: COLORS.infoLight, label: 'Pending Approval', icon: 'clock' };
@@ -410,7 +442,7 @@ export default function MyProjects({ userData, onClose }: MyProjectsProps) {
         {isNotStarted && !isHalted && (
           <View style={styles.setupBanner}>
             <Feather name="alert-triangle" size={14} color={COLORS.warning} />
-            <Text style={styles.setupBannerText}>Milestone setup required</Text>
+            <Text style={styles.setupBannerText}>Project setup required</Text>
           </View>
         )}
 
@@ -489,7 +521,7 @@ export default function MyProjects({ userData, onClose }: MyProjectsProps) {
             {isNotStarted && (
               <View style={styles.newProjectInfo}>
                 <Feather name="clock" size={14} color={COLORS.warning} />
-                <Text style={styles.newProjectText}>Awaiting Setup</Text>
+                <Text style={styles.newProjectText}>Awaiting Project Setup</Text>
               </View>
             )}
             {daysRemaining !== null && isInProgress(project.project_status) && (
@@ -513,8 +545,8 @@ export default function MyProjects({ userData, onClose }: MyProjectsProps) {
           </View>
           {isNotStarted ? (
             <View style={styles.setupBtn}>
-              <Feather name="settings" size={16} color="#FFFFFF" />
-              <Text style={styles.setupBtnText}>Setup</Text>
+              <Feather name="settings" size={14} color="#FFFFFF" />
+              <Text style={styles.setupBtnText}>Project Setup</Text>
             </View>
           ) : (
             <View style={styles.viewDetailsBtn}>
@@ -554,11 +586,17 @@ export default function MyProjects({ userData, onClose }: MyProjectsProps) {
         onClose={() => {
           setShowProjectDetails(false);
           setSelectedProject(null);
+          setProjectDetailsInitialView(null);
+          setProjectDetailsInitialItemId(null);
+          setProjectDetailsInitialItemTab(null);
           fetchProjects(); // Refresh projects after viewing
         }}
         onProjectUpdated={(updated) => {
           setSelectedProject(updated);
         }}
+        initialView={projectDetailsInitialView}
+        initialItemId={projectDetailsInitialItemId}
+        initialItemTab={projectDetailsInitialItemTab}
       />
     );
   }
@@ -650,7 +688,7 @@ export default function MyProjects({ userData, onClose }: MyProjectsProps) {
               <Text style={styles.sectionLabel}>By Phase</Text>
               <View style={styles.phaseChipsContainer}>
                 {renderFilterChip('all', 'All', stats.total)}
-                {renderFilterChip('not_started', 'Needs Setup', stats.notStarted)}
+                {renderFilterChip('not_started', 'Project Setup', stats.notStarted)}
                 {renderFilterChip('in_progress', 'In Progress', stats.inProgress)}
                 {renderFilterChip('completed', 'Completed', stats.completed)}
                 {renderFilterChip('on_hold', 'On Hold', stats.onHold)}

@@ -5,6 +5,8 @@
  * real-time message delivery via WebSockets.
  */
 
+import { api_config } from './api';
+
 // Pusher credentials from Laravel backend
 export const pusher_config = {
   app_id: '2112120',
@@ -12,7 +14,10 @@ export const pusher_config = {
   cluster: 'ap1',
   encrypted: true,
   forceTLS: true,
-  authEndpoint: 'http://192.168.254.112:8086/broadcasting/auth',
+  // Use the dynamic API base URL so it always matches the backend
+  get authEndpoint() {
+    return `${api_config.base_url}/api/broadcasting/auth`;
+  },
 };
 
 /**
@@ -25,12 +30,15 @@ export const initPusher = async (authToken: string) => {
   try {
     // Dynamic import to avoid loading Pusher before it's installed
     const Pusher = require('pusher-js/react-native');
-    
+
+    const authEndpoint = pusher_config.authEndpoint;
+    console.log('Pusher: Initializing with auth endpoint:', authEndpoint);
+
     const pusher = new Pusher(pusher_config.app_key, {
       cluster: pusher_config.cluster,
       encrypted: pusher_config.encrypted,
       forceTLS: pusher_config.forceTLS,
-      authEndpoint: pusher_config.authEndpoint,
+      authEndpoint: authEndpoint,
       auth: {
         headers: {
           'Authorization': `Bearer ${authToken}`,
@@ -67,12 +75,15 @@ export const initPusher = async (authToken: string) => {
  * @param pusher - Pusher instance
  * @param userId - Current user's ID
  * @param onMessage - Callback when new message arrives
+ * @param onMessagesRead - Optional callback when messages are marked as read
  * @returns Channel instance or null
  */
 export const subscribeToChatChannel = (
   pusher: any,
   userId: number,
-  onMessage: (message: any) => void
+  onMessage: (message: any) => void,
+  onMessagesRead?: (data: any) => void,
+  onTyping?: (data: any) => void,
 ) => {
   try {
     const channelName = `private-chat.${userId}`;
@@ -90,6 +101,26 @@ export const subscribeToChatChannel = (
     channel.bind('message.sent', (data: any) => {
       console.log('Pusher: New message received', data);
       onMessage(data);
+    });
+
+    // Listen for read receipts
+    if (onMessagesRead) {
+      channel.bind('messages.read', (data: any) => {
+        console.log('Pusher: Messages read event', data);
+        onMessagesRead(data);
+      });
+    }
+
+    // Listen for typing indicators
+    if (onTyping) {
+      channel.bind('client-typing', (data: any) => {
+        onTyping(data);
+      });
+    }
+
+    // Listen for conversation suspension/restore events
+    channel.bind('conversation.suspended', (data: any) => {
+      console.log('Pusher: Conversation status changed', data);
     });
 
     return channel;

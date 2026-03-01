@@ -1,5 +1,23 @@
+@php
+    $secUser = Session::get('user');
+    $secEmail = $secUser->email ?? '';
+    $secContact = '';
+    if ($secUser) {
+        $cRow = \Illuminate\Support\Facades\DB::table('contractors')->where('user_id', $secUser->user_id ?? null)->value('company_phone');
+        if ($cRow) { $secContact = $cRow; }
+        else {
+            $oRow = \Illuminate\Support\Facades\DB::table('property_owners')->where('user_id', $secUser->user_id ?? null)->value('phone_number');
+            if ($oRow) { $secContact = $oRow; }
+        }
+    }
+@endphp
 <!-- Security Modal -->
-<div id="securityModal" class="security-modal">
+<div id="securityModal" class="security-modal"
+     data-send-otp-url="{{ url('/security/change-otp/send') }}"
+     data-verify-otp-url="{{ url('/security/change-otp/verify') }}"
+     data-user-email="{{ $secEmail }}"
+     data-user-contact="{{ $secContact }}"
+     data-csrf-token="{{ csrf_token() }}">
     <div class="modal-overlay" id="securityModalOverlay"></div>
     <div class="security-modal-container">
         <!-- Modal Header -->

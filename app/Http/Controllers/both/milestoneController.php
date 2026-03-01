@@ -4,7 +4,7 @@ namespace App\Http\Controllers\both;
 
 use App\Http\Controllers\Controller;
 use App\Services\milestoneService;
-use App\Services\contractorAuthorizationService;
+use App\Services\ContractorAuthorizationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Session;
@@ -35,7 +35,7 @@ class milestoneController extends Controller
 {
     public function __construct(
         protected milestoneService $milestoneService,
-        protected contractorAuthorizationService $authService,
+        protected ContractorAuthorizationService $authService,
     ) {}
 
     // ───────────────────────────────────────────────────────────────────────
@@ -187,8 +187,22 @@ class milestoneController extends Controller
             'items.*.title'          => 'required|string|max:255',
             'items.*.description'    => 'nullable|string',
             'items.*.percentage'     => 'required|numeric|min:0.01|max:100',
+            'items.*.start_date'     => 'nullable|date',
             'items.*.date_to_finish' => 'required|date',
         ]);
+
+        // Process uploaded files per milestone item (item_files_{index}[])
+        foreach ($validated['items'] as $index => &$item) {
+            $itemFiles = $request->file("item_files_{$index}") ?? [];
+            $paths = [];
+            foreach ((array)$itemFiles as $file) {
+                if ($file && $file->isValid()) {
+                    $paths[] = $file->store('milestone_items', 'public');
+                }
+            }
+            $item['file_paths'] = $paths;
+        }
+        unset($item);
 
         $result = $this->milestoneService->submit($validated, $contractor, $projectId);
         $status = $result['status'] ?? 200;
@@ -229,8 +243,22 @@ class milestoneController extends Controller
             'items.*.title'          => 'required|string|max:255',
             'items.*.description'    => 'nullable|string',
             'items.*.percentage'     => 'required|numeric|min:0.01|max:100',
+            'items.*.start_date'     => 'nullable|date',
             'items.*.date_to_finish' => 'required|date',
         ]);
+
+        // Process uploaded files per milestone item (item_files_{index}[])
+        foreach ($validated['items'] as $index => &$item) {
+            $itemFiles = $request->file("item_files_{$index}") ?? [];
+            $paths = [];
+            foreach ((array)$itemFiles as $file) {
+                if ($file && $file->isValid()) {
+                    $paths[] = $file->store('milestone_items', 'public');
+                }
+            }
+            $item['file_paths'] = $paths;
+        }
+        unset($item);
 
         $result = $this->milestoneService->update($milestoneId, $projectId, $validated, $contractor);
         $status = $result['status'] ?? 200;
@@ -323,7 +351,7 @@ class milestoneController extends Controller
 
         if ($ownerUserId) {
             $dueFormatted = date('M d, Y', strtotime($validated['settlement_due_date']));
-            \App\Services\notificationService::create(
+            \App\Services\NotificationService::create(
                 (int) $ownerUserId,
                 'payment_due',
                 'Payment Due Date Set',
@@ -416,7 +444,7 @@ class milestoneController extends Controller
 
             if ($contractorUserId) {
                 $dueFormatted = date('M d, Y', strtotime($validated['settlement_due_date']));
-                \App\Services\notificationService::create(
+                \App\Services\NotificationService::create(
                     (int) $contractorUserId,
                     'payment_due',
                     'Payment Due Date Set',

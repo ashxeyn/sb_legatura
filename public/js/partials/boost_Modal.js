@@ -359,7 +359,8 @@ document.addEventListener('DOMContentLoaded', function () {
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
                     },
                     body: JSON.stringify({
-                        project_id: selectedPost.id
+                        project_id: selectedPost.id,
+                        plan_key: selectedPlan.type
                     })
                 });
 

@@ -1,4 +1,4 @@
-// @ts-nocheck
+﻿// @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -16,6 +16,7 @@ import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import ImageFallback from '../../components/ImageFallbackFixed';
 import { contractors_service } from '../../services/contractors_service';
+import { api_config } from '../../config/api';
 import { role_service } from '../../services/role_service';
 
 // Default images
@@ -57,6 +58,8 @@ export default function ContractorProfileScreen({ onLogout, onViewProfile, onOpe
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [roleLabel, setRoleLabel] = useState<string>('Contractor');
   const [companyName, setCompanyName] = useState<string | undefined>(userData?.company_name);
+  const [companyLogo, setCompanyLogo] = useState<string | undefined>(userData?.profile_pic);
+  const [companyBanner, setCompanyBanner] = useState<string | undefined>(userData?.cover_photo);
 
   const statusBarHeight = insets.top || (Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 44);
 
@@ -119,14 +122,28 @@ export default function ContractorProfileScreen({ onLogout, onViewProfile, onOpe
         const res = await contractors_service.get_my_contractor_profile();
         if (res?.success && res.data) {
           const payload = res.data as any;
-          const name = payload?.data?.company_name ?? payload?.company_name;
-          if (isMounted) setCompanyName(name || userData?.company_name);
+          const dataRoot = payload?.data ?? payload?.contractor ?? payload;
+          const name = dataRoot?.company_name ?? payload?.company_name;
+          const logo = dataRoot?.company_logo ?? dataRoot?.profile_pic ?? payload?.company_logo ?? payload?.profile_pic ?? null;
+          const banner = dataRoot?.company_banner ?? dataRoot?.cover_photo ?? payload?.company_banner ?? payload?.cover_photo ?? null;
+          if (isMounted) {
+            setCompanyName(name || userData?.company_name);
+            if (logo) setCompanyLogo(logo);
+            if (banner) setCompanyBanner(banner);
+          }
         }
       } catch (e) {}
     };
     loadProfile();
     return () => { isMounted = false; };
   }, []);
+
+  const getStorageUrl = (path?: string | null) => {
+    if (!path) return undefined;
+    const p = String(path);
+    if (p.startsWith('http://') || p.startsWith('https://')) return p;
+    return `${api_config.base_url}/storage/${p}`;
+  };
 
   const menuSections: { title: string; items: MenuItem[] }[] = [
     {
@@ -234,8 +251,8 @@ export default function ContractorProfileScreen({ onLogout, onViewProfile, onOpe
 
         <View style={styles.profileCard}>
           <View style={styles.coverPhotoContainer}>
-            {userData?.cover_photo ? (
-              <Image source={{ uri: userData.cover_photo }} style={styles.coverPhoto} resizeMode="cover" />
+            {companyBanner || userData?.cover_photo ? (
+              <Image source={{ uri: getStorageUrl(companyBanner || userData?.cover_photo) }} style={styles.coverPhoto} resizeMode="cover" />
             ) : (
               <Image source={defaultCoverPhoto} style={styles.coverPhoto} resizeMode="cover" />
             )}
@@ -243,9 +260,8 @@ export default function ContractorProfileScreen({ onLogout, onViewProfile, onOpe
 
           <View style={styles.profileInfoContainer}>
             <View style={styles.avatarContainer}>
-              <ImageFallback uri={userData?.profile_pic || undefined} defaultImage={defaultContractorAvatar} style={styles.avatar} resizeMode="cover" />
-              <TouchableOpacity style={styles.editAvatarButton}><MaterialIcons name="camera-alt" size={16} color="#FFFFFF" /></TouchableOpacity>
-            </View>
+              <ImageFallback uri={getStorageUrl(companyLogo || userData?.profile_pic || undefined)} defaultImage={defaultContractorAvatar} style={styles.avatar} resizeMode="cover" />
+             </View>
 
             <Text style={styles.companyName}>{companyName || userData?.company_name || 'Company Name'}</Text>
             <Text style={styles.userName}>@{userData?.username || 'contractor'}</Text>

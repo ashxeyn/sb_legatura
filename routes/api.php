@@ -10,20 +10,13 @@ use App\Http\Controllers\contractor\progressUploadController;
 use App\Http\Controllers\owner\paymentUploadController;
 use App\Http\Controllers\projectPosting\projectPostingController;
 use App\Http\Controllers\both\disputeController;
-use App\Http\Controllers\both\notificationController;
+use App\Http\Controllers\both\NotificationController;
 use App\Http\Controllers\passwordController;
 use App\Http\Controllers\profileController;
 use App\Http\Controllers\both\milestoneController;
 use App\Http\Controllers\both\projectUpdateController;
 use App\Http\Controllers\subs\payMongoController;
 
-// At the very top of api.php
-Log::info('=== INCOMING API REQUEST ===', [
-    'url' => request()->fullUrl(),
-    'method' => request()->method(),
-    'has_auth_header' => request()->hasHeader('Authorization'),
-    'auth_header' => request()->header('Authorization') ? 'Bearer ***' : 'missing'
-]);
 
 //role switch test endpoint moved outside middleware group
 // Test endpoint first
@@ -32,37 +25,39 @@ Route::get('/role/switch-form', function () {
     return response()->json(['success' => true, 'message' => 'This is a test']);
 });
 // Role management
-Route::post('/role/switch', [cprocessController::class , 'switchRole']);
-Route::get('/role/current', [cprocessController::class , 'getCurrentRole']);
+Route::post('/role/switch', [cprocessController::class, 'switchRole']);
+Route::get('/role/current', [cprocessController::class, 'getCurrentRole']);
 // Switch form data (prefill + dropdowns)
-Route::get('/role/switch-form', [authController::class , 'showSwitchForm']);
+Route::get('/role/switch-form', [authController::class, 'showSwitchForm']);
 // Current contractor profile (for mobile profile screen)
-Route::get('/contractor/me', [cprocessController::class , 'apiGetMyContractorProfile']);
+Route::get('/contractor/me', [cprocessController::class, 'apiGetMyContractorProfile']);
 
 
-Route::get('/role/switch-form', [authController::class , 'showSwitchForm']); // Get form data for adding role
+Route::get('/role/switch-form', [authController::class, 'showSwitchForm']); // Get form data for adding role
 
 // Add role endpoints (for users with single role to add another role)
-Route::post('/role/add/contractor/step1', [authController::class , 'switchContractorStep1']);
-Route::post('/role/add/contractor/step2', [authController::class , 'switchContractorStep2']);
-Route::post('/role/add/contractor/final', [authController::class , 'switchContractorFinal']);
-Route::post('/role/add/owner/step1', [authController::class , 'switchOwnerStep1']);
-Route::post('/role/add/owner/step2', [authController::class , 'switchOwnerStep2']);
-Route::post('/role/add/owner/final', [authController::class , 'switchOwnerFinal']);
+Route::post('/role/add/contractor/step1', [authController::class, 'switchContractorStep1']);
+Route::post('/role/add/contractor/step2', [authController::class, 'switchContractorStep2']);
+Route::post('/role/add/contractor/final', [authController::class, 'switchContractorFinal']);
+Route::post('/role/add/owner/step1', [authController::class, 'switchOwnerStep1']);
+Route::post('/role/add/owner/step2', [authController::class, 'switchOwnerStep2']);
+Route::post('/role/add/owner/final', [authController::class, 'switchOwnerFinal']);
 
 
 // Update profile (profile picture / cover photo and general profile FormData)
-Route::post('/user/update-profile', [authController::class , 'updateProfile']);
+// Route requests to profileController->update so file uploads and owner fields
+// are handled consistently by the dedicated controller.
+Route::post('/user/update-profile', [profileController::class, 'update']);
 // Keep both `/profile` and `/user/profile` aliases for backward compatibility
-Route::post('/profile', [profileController::class , 'update']);
-Route::post('/user/profile', [profileController::class , 'update']);
+Route::post('/profile', [profileController::class, 'update']);
+Route::post('/user/profile', [profileController::class, 'update']);
 // Fetch profile data (owner profile + stats) for mobile About tab
 Route::get('/profile/fetch', [profileController::class, 'apiGetProfile']);
 // Fetch reviews for a user (mobile Reviews tab)
 Route::get('/profile/reviews', [profileController::class, 'apiGetReviews']);
 
 // Test endpoint for mobile app
-Route::get('/test', [authController::class , 'apiTest']);
+Route::get('/test', [authController::class, 'apiTest']);
 
 // File serving endpoint for mobile app (bypasses Apache symlink issues)
 // For viewing files inline (images, PDFs in browser)
@@ -83,11 +78,11 @@ Route::get('/files/{path}', function ($path) {
     }
 
     return response()->file($fullPath, [
-    'Content-Type' => $mimeType,
-    'Content-Disposition' => $disposition . '; filename="' . $fileName . '"',
-    'Access-Control-Allow-Origin' => '*',
-    'Access-Control-Allow-Methods' => 'GET',
-    'Access-Control-Allow-Headers' => '*',
+        'Content-Type' => $mimeType,
+        'Content-Disposition' => $disposition . '; filename="' . $fileName . '"',
+        'Access-Control-Allow-Origin' => '*',
+        'Access-Control-Allow-Methods' => 'GET',
+        'Access-Control-Allow-Headers' => '*',
     ]);
 })->where('path', '.*');
 
@@ -102,123 +97,124 @@ Route::get('/download/{path}', function ($path) {
     $fileName = basename($path);
 
     return response()->download($fullPath, $fileName, [
-    'Access-Control-Allow-Origin' => '*',
-    'Access-Control-Allow-Methods' => 'GET',
-    'Access-Control-Allow-Headers' => '*',
+        'Access-Control-Allow-Origin' => '*',
+        'Access-Control-Allow-Methods' => 'GET',
+        'Access-Control-Allow-Headers' => '*',
     ]);
 })->where('path', '.*');
 
 // Signup form data endpoint for mobile app
-Route::get('/signup-form', [authController::class , 'showSignupForm']);
+Route::get('/signup-form', [authController::class, 'showSignupForm']);
 
 // Public routes (no authentication required)
-Route::post('/login', [authController::class , 'apiLogin']);
-Route::post('/register', [authController::class , 'apiRegister']);
-Route::post('/force-change-password', [passwordController::class , 'apiForceChangePassword']);
+Route::post('/login', [authController::class, 'apiLogin']);
+Route::post('/register', [authController::class, 'apiRegister']);
+Route::post('/force-change-password', [passwordController::class, 'apiForceChangePassword']);
 
 // Change OTP endpoints (public; controller will resolve user via bearer token if provided)
 Route::post('/change-otp/send', [\App\Http\Controllers\OTPChangeController::class, 'sendOtp']);
 Route::post('/change-otp/verify', [\App\Http\Controllers\OTPChangeController::class, 'verifyOtp']);
 
 // Mobile API signup routes (mirror web signup but stateless API paths for mobile clients)
-Route::post('/signup/contractor/step1', [authController::class , 'contractorStep1']);
-Route::post('/signup/contractor/step2', [authController::class , 'contractorStep2']);
-Route::post('/signup/contractor/step3/verify-otp', [authController::class , 'contractorVerifyOtp']);
-Route::post('/signup/contractor/step4', [authController::class , 'contractorStep4']);
-Route::post('/signup/contractor/final', [authController::class , 'contractorFinalStep']);
+Route::post('/signup/contractor/step1', [authController::class, 'contractorStep1']);
+Route::post('/signup/contractor/step2', [authController::class, 'contractorStep2']);
+Route::post('/signup/contractor/step3/verify-otp', [authController::class, 'contractorVerifyOtp']);
+Route::post('/signup/contractor/step4', [authController::class, 'contractorStep4']);
+Route::post('/signup/contractor/final', [authController::class, 'contractorFinalStep']);
 
 // Temporary debug route to lookup users by email (do not expose in production)
-Route::get('/debug/user', [authController::class , 'debugGetUserByEmail']);
+Route::get('/debug/user', [authController::class, 'debugGetUserByEmail']);
 
-Route::post('/signup/owner/step1', [authController::class , 'propertyOwnerStep1']);
-Route::post('/signup/owner/step2', [authController::class , 'propertyOwnerStep2']);
-Route::post('/signup/owner/step3/verify-otp', [authController::class , 'propertyOwnerVerifyOtp']);
+Route::post('/signup/owner/step1', [authController::class, 'propertyOwnerStep1']);
+Route::post('/signup/owner/step2', [authController::class, 'propertyOwnerStep2']);
+Route::post('/signup/owner/step3/verify-otp', [authController::class, 'propertyOwnerVerifyOtp']);
 // New route alias for property-owner (explicit naming for mobile frontend)
-Route::post('/signup/property-owner/step3/verify-otp', [authController::class , 'propertyOwnerVerifyOtp']);
-Route::post('/signup/owner/step4', [authController::class , 'propertyOwnerStep4']);
-Route::post('/signup/owner/final', [authController::class , 'propertyOwnerFinalStep']);
+Route::post('/signup/property-owner/step3/verify-otp', [authController::class, 'propertyOwnerVerifyOtp']);
+Route::post('/signup/owner/step4', [authController::class, 'propertyOwnerStep4']);
+Route::post('/signup/owner/final', [authController::class, 'propertyOwnerFinalStep']);
 
 // PSGC API Routes (public)
-Route::get('/psgc/provinces', [authController::class , 'getProvinces']);
-Route::get('/psgc/provinces/{provinceCode}/cities', [authController::class , 'getCitiesByProvince']);
-Route::get('/psgc/cities/{cityCode}/barangays', [authController::class , 'getBarangaysByCity']);
+Route::get('/psgc/provinces', [authController::class, 'getProvinces']);
+Route::get('/psgc/provinces/{provinceCode}/cities', [authController::class, 'getCitiesByProvince']);
+Route::get('/psgc/cities/{cityCode}/barangays', [authController::class, 'getBarangaysByCity']);
 
 // Contractors endpoint for property owner feed
-Route::get('/contractors', [\App\Http\Controllers\both\homepageController::class , 'apiGetContractors']);
+Route::get('/contractors', [\App\Http\Controllers\both\homepageController::class, 'apiGetContractors']);
 
 // Contractor types endpoint for project creation form / filter chips
-Route::get('/contractor-types', [\App\Http\Controllers\both\homepageController::class , 'apiGetContractorTypes']);
+Route::get('/contractor-types', [\App\Http\Controllers\both\homepageController::class, 'apiGetContractorTypes']);
 
 // Search & filter options for mobile search/filter UI
-Route::get('/search/filter-options', [\App\Http\Controllers\both\homepageController::class , 'apiGetFilterOptions']);
+Route::get('/search/filter-options', [\App\Http\Controllers\both\homepageController::class, 'apiGetFilterOptions']);
 
 // Owner endpoints - for owner dashboard/project management
-Route::get('/owner/projects', [projectsController::class , 'apiGetOwnerProjects']);
-Route::post('/owner/projects', [projectsController::class , 'apiCreateProject']);
+Route::get('/owner/projects', [projectsController::class, 'apiGetOwnerProjects']);
+Route::post('/owner/projects', [projectsController::class, 'apiCreateProject']);
 
 // Public project details (non-owner) - returns limited public info
 Route::get('/projects/{projectId}/public', [profileController::class, 'apiGetProjectPublic']);
 
-Route::get('/owner/projects/{projectId}', [projectsController::class , 'apiGetProjectDetails']);
-Route::get('/owner/projects/{projectId}/bids', [biddingController::class , 'getProjectBids']);
-Route::post('/owner/projects/{projectId}/bids/{bidId}/accept', [projectsController::class , 'apiAcceptBid']);
-Route::post('/owner/projects/{projectId}/bids/{bidId}/reject', [projectsController::class , 'apiRejectBid']);
-Route::post('/owner/milestones/{milestoneId}/approve', [milestoneController::class , 'apiApproveMilestone']);
-Route::post('/owner/milestones/{milestoneId}/reject', [milestoneController::class , 'apiRejectMilestone']);
-Route::post('/owner/milestones/{milestoneId}/complete', [milestoneController::class , 'apiSetMilestoneComplete']);
-Route::post('/owner/milestone-items/{itemId}/complete', [milestoneController::class , 'apiSetMilestoneItemComplete']);
-Route::post('/owner/milestone-items/{itemId}/settlement-due-date', [milestoneController::class , 'setSettlementDueDateOwner']);
-Route::post('/owner/projects/{projectId}/complete', [projectsController::class , 'completeProject']);
+Route::get('/owner/projects/{projectId}', [projectsController::class, 'apiGetProjectDetails']);
+Route::get('/owner/projects/{projectId}/bids', [biddingController::class, 'getProjectBids']);
+Route::post('/owner/projects/{projectId}/bids/{bidId}/accept', [projectsController::class, 'apiAcceptBid']);
+Route::post('/owner/projects/{projectId}/bids/{bidId}/reject', [projectsController::class, 'apiRejectBid']);
+Route::post('/owner/milestones/{milestoneId}/approve', [milestoneController::class, 'apiApproveMilestone']);
+Route::post('/owner/milestones/{milestoneId}/reject', [milestoneController::class, 'apiRejectMilestone']);
+Route::post('/owner/milestones/{milestoneId}/complete', [milestoneController::class, 'apiSetMilestoneComplete']);
+Route::post('/owner/milestone-items/{itemId}/complete', [milestoneController::class, 'apiSetMilestoneItemComplete']);
+Route::post('/owner/milestone-items/{itemId}/settlement-due-date', [milestoneController::class, 'setSettlementDueDateOwner']);
+Route::post('/owner/projects/{projectId}/complete', [projectsController::class, 'completeProject']);
 
 // Owner payment upload routes for mobile app - controller handles auth manually
-Route::post('/owner/payment/upload', [paymentUploadController::class , 'uploadPayment']);
-Route::put('/owner/payment/{paymentId}', [paymentUploadController::class , 'updatePayment']);
-Route::delete('/owner/payment/{paymentId}', [paymentUploadController::class , 'deletePayment']);
+Route::post('/owner/payment/upload', [paymentUploadController::class, 'uploadPayment']);
+Route::put('/owner/payment/{paymentId}', [paymentUploadController::class, 'updatePayment']);
+Route::delete('/owner/payment/{paymentId}', [paymentUploadController::class, 'deletePayment']);
 // Payment routes - controllers handle both session and token auth
-Route::get('/projects/{projectId}/payments', [paymentUploadController::class , 'getPaymentsByProject']);
-Route::get('/projects/{projectId}/downpayment-receipts', [paymentUploadController::class , 'getDownpaymentReceipts']);
-Route::get('/milestone-items/{itemId}/payments', [paymentUploadController::class , 'getPaymentsByItem']);
+Route::get('/projects/{projectId}/payments', [paymentUploadController::class, 'getPaymentsByProject']);
+Route::get('/projects/{projectId}/downpayment-receipts', [paymentUploadController::class, 'getDownpaymentReceipts']);
+Route::get('/milestone-items/{itemId}/payments', [paymentUploadController::class, 'getPaymentsByItem']);
 
 // Progress files retrieval for mobile app (owners and contractors)
 // These routes use optional Sanctum auth - controller handles both session and token auth
-Route::get('/both/progress/files/{itemId}', [progressUploadController::class , 'getProgressFilesForBoth']);
-Route::get('/contractor/progress/files/{itemId}', [progressUploadController::class , 'getProgressFiles']);
-Route::post('/contractor/progress/upload', [progressUploadController::class , 'uploadProgress']);
+Route::get('/both/progress/files/{itemId}', [progressUploadController::class, 'getProgressFilesForBoth']);
+Route::get('/contractor/progress/files/{itemId}', [progressUploadController::class, 'getProgressFiles']);
+Route::post('/contractor/progress/upload', [progressUploadController::class, 'uploadProgress']);
 
 // Contractor endpoints - for contractor feed
-Route::get('/contractor/projects', [\App\Http\Controllers\both\homepageController::class , 'apiGetApprovedProjects']);
+Route::get('/contractor/projects', [\App\Http\Controllers\both\homepageController::class, 'apiGetApprovedProjects']);
 
 // Contractor bidding endpoints
-Route::post('/contractor/projects/{projectId}/bid', [\App\Http\Controllers\contractor\biddingController::class , 'apiSubmitBid']);
-Route::get('/contractor/projects/{projectId}/my-bid', [\App\Http\Controllers\contractor\biddingController::class , 'apiGetMyBid']);
-Route::get('/contractor/my-bids', [\App\Http\Controllers\contractor\biddingController::class , 'apiGetMyBids']);
-Route::put('/contractor/bids/{id}', [\App\Http\Controllers\contractor\biddingController::class , 'update']);
-Route::post('/contractor/bids/{id}', [\App\Http\Controllers\contractor\biddingController::class , 'update']); // POST with _method=PUT for FormData
+Route::post('/contractor/projects/{projectId}/bid', [\App\Http\Controllers\contractor\biddingController::class, 'apiSubmitBid']);
+Route::get('/contractor/projects/{projectId}/my-bid', [\App\Http\Controllers\contractor\biddingController::class, 'apiGetMyBid']);
+Route::get('/contractor/my-bids', [\App\Http\Controllers\contractor\biddingController::class, 'apiGetMyBids']);
+Route::put('/contractor/bids/{id}', [\App\Http\Controllers\contractor\biddingController::class, 'update']);
+Route::post('/contractor/bids/{id}', [\App\Http\Controllers\contractor\biddingController::class, 'update']); // POST with _method=PUT for FormData
 
 // Contractor milestone setup endpoints
-Route::get('/contractor/my-projects', [\App\Http\Controllers\contractor\cprocessController::class , 'apiGetContractorProjects']);
-Route::get('/contractor/projects/{projectId}/milestone-form', [\App\Http\Controllers\contractor\cprocessController::class , 'apiGetMilestoneFormData']);
-Route::post('/contractor/projects/{projectId}/milestones', [milestoneController::class , 'apiSubmitMilestones']);
-Route::put('/contractor/projects/{projectId}/milestones/{milestoneId}', [milestoneController::class , 'apiUpdateMilestone']);
+Route::get('/contractor/my-projects', [\App\Http\Controllers\contractor\cprocessController::class, 'apiGetContractorProjects']);
+Route::get('/contractor/projects/{projectId}/milestone-form', [\App\Http\Controllers\contractor\cprocessController::class, 'apiGetMilestoneFormData']);
+Route::post('/contractor/projects/{projectId}/milestones', [milestoneController::class, 'apiSubmitMilestones']);
+Route::put('/contractor/projects/{projectId}/milestones/{milestoneId}', [milestoneController::class, 'apiUpdateMilestone']);
 
 // Contractor — settlement due date management
-Route::post('/contractor/milestone-items/{itemId}/settlement-due-date', [milestoneController::class , 'setSettlementDueDate']);
+Route::post('/contractor/milestone-items/{itemId}/settlement-due-date', [milestoneController::class, 'setSettlementDueDate']);
 
 // Notification endpoints - controller handles both session and token auth
-Route::get('/notifications', [notificationController::class , 'index']);
-Route::get('/notifications/unread-count', [notificationController::class , 'unreadCount']);
-Route::post('/notifications/{id}/read', [notificationController::class , 'markAsRead']);
-Route::post('/notifications/read-all', [notificationController::class , 'markAllAsRead']);
+Route::get('/notifications', [NotificationController::class , 'index']);
+Route::get('/notifications/unread-count', [NotificationController::class , 'unreadCount']);
+Route::post('/notifications/{id}/read', [NotificationController::class , 'markAsRead']);
+Route::post('/notifications/read-all', [NotificationController::class , 'markAllAsRead']);
+Route::get('/notifications/{id}/redirect', [NotificationController::class , 'apiResolveRedirect']);
 
 // Note: profile update registered below inside sanctum-protected group
 
 // DEBUG TEST ENDPOINT - Remove after testing
 Route::get('/test-auth', function (Request $request) {
     return response()->json([
-    'request_user' => $request->user() ? 'EXISTS (ID: ' . $request->user()->user_id . ')' : 'NULL',
-    'auth_check' => auth('sanctum')->check() ? 'TRUE' : 'FALSE',
-    'auth_user' => auth('sanctum')->user() ? 'EXISTS (ID: ' . auth('sanctum')->user()->user_id . ')' : 'NULL',
-    'has_bearer' => $request->bearerToken() ? 'YES (' . substr($request->bearerToken(), 0, 10) . '...)' : 'NO',
+        'request_user' => $request->user() ? 'EXISTS (ID: ' . $request->user()->user_id . ')' : 'NULL',
+        'auth_check' => auth('sanctum')->check() ? 'TRUE' : 'FALSE',
+        'auth_user' => auth('sanctum')->user() ? 'EXISTS (ID: ' . auth('sanctum')->user()->user_id . ')' : 'NULL',
+        'has_bearer' => $request->bearerToken() ? 'YES (' . substr($request->bearerToken(), 0, 10) . '...)' : 'NO',
     ]);
 })->middleware('auth:sanctum');
 
@@ -229,7 +225,7 @@ Route::get('/debug/ping', function (Request $request) {
 });
 
 // PayMongo webhook endpoint (API routes bypass CSRF)
-Route::post('/paymongo/webhook', [payMongoController::class , 'handleWebhook']);
+Route::post('/paymongo/webhook', [payMongoController::class, 'handleWebhook']);
 
 // Subscription checkout for mobile clients (supports X-User-Id and return_url)
 Route::post('/subscribe/checkout', [payMongoController::class, 'createSubscriptionCheckout']);
@@ -260,15 +256,15 @@ Route::get('/debug/token-check', function (Request $request) {
     $user = DB::table('users')->where('user_id', $tokenRecord->tokenable_id)->first();
 
     return response()->json([
-    'token_found' => true,
-    'tokenable_type' => $tokenRecord->tokenable_type,
-    'tokenable_id' => $tokenRecord->tokenable_id,
-    'user_found' => $user ? true : false,
-    'user_id' => $user ? $user->user_id : null,
-    'username' => $user ? $user->username : null,
-    'user_type' => $user ? $user->user_type : null,
-    'token_name' => $tokenRecord->name,
-    'token_last_used' => $tokenRecord->last_used_at,
+        'token_found' => true,
+        'tokenable_type' => $tokenRecord->tokenable_type,
+        'tokenable_id' => $tokenRecord->tokenable_id,
+        'user_found' => $user ? true : false,
+        'user_id' => $user ? $user->user_id : null,
+        'username' => $user ? $user->username : null,
+        'user_type' => $user ? $user->user_type : null,
+        'token_name' => $tokenRecord->name,
+        'token_last_used' => $tokenRecord->last_used_at,
     ]);
 });
 
@@ -281,24 +277,24 @@ Route::get('/debug/contractor-status', function (Request $request) {
 
     $contractor = DB::table('contractors')->where('user_id', $userId)->first();
     $contractorUsers = DB::table('contractor_users')->where('user_id', $userId)->get();
-    $allMembers = $contractor ?DB::table('contractor_users')
+    $allMembers = $contractor ? DB::table('contractor_users')
         ->where('contractor_id', $contractor->contractor_id)
         ->where('is_deleted', 0)
         ->get() : [];
 
     return response()->json([
-    'contractor' => $contractor,
-    'contractor_users_for_this_user' => $contractorUsers,
-    'all_members' => $allMembers
+        'contractor' => $contractor,
+        'contractor_users_for_this_user' => $contractorUsers,
+        'all_members' => $allMembers
     ]);
 });
 
 // Contractor members (staff) management - uses user_id from query/header
-Route::get('/contractor/members', [\App\Http\Controllers\contractor\membersController::class , 'index']);
-Route::post('/contractor/members', [\App\Http\Controllers\contractor\membersController::class , 'store']);
-Route::put('/contractor/members/{id}', [\App\Http\Controllers\contractor\membersController::class , 'update']);
-Route::delete('/contractor/members/{id}', [\App\Http\Controllers\contractor\membersController::class , 'delete']);
-Route::patch('/contractor/members/{id}/toggle-active', [\App\Http\Controllers\contractor\membersController::class , 'toggleActive']);
+Route::get('/contractor/members', [\App\Http\Controllers\contractor\membersController::class, 'index']);
+Route::post('/contractor/members', [\App\Http\Controllers\contractor\membersController::class, 'store']);
+Route::put('/contractor/members/{id}', [\App\Http\Controllers\contractor\membersController::class, 'update']);
+Route::delete('/contractor/members/{id}', [\App\Http\Controllers\contractor\membersController::class, 'delete']);
+Route::patch('/contractor/members/{id}/toggle-active', [\App\Http\Controllers\contractor\membersController::class, 'toggleActive']);
 
 // Debug: Check all member statuses for a contractor
 Route::get('/debug/member-statuses', function (\Illuminate\Http\Request $request) {
@@ -316,27 +312,27 @@ Route::get('/debug/member-statuses', function (\Illuminate\Http\Request $request
         ->join('users', 'contractor_users.user_id', '=', 'users.user_id')
         ->where('contractor_users.contractor_id', $contractor->contractor_id)
         ->select(
-        'contractor_users.contractor_user_id',
-        'contractor_users.user_id',
-        'contractor_users.authorized_rep_fname as first_name',
-        'contractor_users.authorized_rep_lname as last_name',
-        'contractor_users.role',
-        'contractor_users.is_active',
-        'contractor_users.is_deleted',
-        'contractor_users.deletion_reason',
-        'users.email',
-        'users.username'
-    )
+            'contractor_users.contractor_user_id',
+            'contractor_users.user_id',
+            'contractor_users.authorized_rep_fname as first_name',
+            'contractor_users.authorized_rep_lname as last_name',
+            'contractor_users.role',
+            'contractor_users.is_active',
+            'contractor_users.is_deleted',
+            'contractor_users.deletion_reason',
+            'users.email',
+            'users.username'
+        )
         ->get();
 
     return response()->json([
-    'contractor_id' => $contractor->contractor_id,
-    'contractor_name' => $contractor->company_name ?? 'N/A',
-    'total_members' => count($members),
-    'active_count' => $members->where('is_active', 1)->where('is_deleted', 0)->count(),
-    'inactive_count' => $members->where('is_active', 0)->where('is_deleted', 0)->count(),
-    'deleted_count' => $members->where('is_deleted', 1)->count(),
-    'members' => $members
+        'contractor_id' => $contractor->contractor_id,
+        'contractor_name' => $contractor->company_name ?? 'N/A',
+        'total_members' => count($members),
+        'active_count' => $members->where('is_active', 1)->where('is_deleted', 0)->count(),
+        'inactive_count' => $members->where('is_active', 0)->where('is_deleted', 0)->count(),
+        'deleted_count' => $members->where('is_deleted', 1)->count(),
+        'members' => $members
     ]);
 });
 
@@ -365,159 +361,172 @@ Route::get('/debug/check-user-login', function (\Illuminate\Http\Request $reques
     $propertyOwner = DB::table('property_owners')->where('user_id', $user->user_id)->first();
 
     return response()->json([
-    'user' => [
-    'user_id' => $user->user_id,
-    'username' => $user->username,
-    'email' => $user->email,
-    'user_type' => $user->user_type,
-    ],
-    'contractor_user' => $contractorUser ? [
-    'contractor_user_id' => $contractorUser->contractor_user_id,
-    'contractor_id' => $contractorUser->contractor_id,
-    'role' => $contractorUser->role,
-    'is_active' => $contractorUser->is_active,
-    ] : null,
-    'parent_contractor' => $contractor ? [
-    'contractor_id' => $contractor->contractor_id,
-    'company_name' => $contractor->company_name ?? null,
-    'verification_status' => $contractor->verification_status,
-    ] : null,
-    'property_owner' => $propertyOwner ? [
-    'owner_id' => $propertyOwner->owner_id ?? $propertyOwner->id ?? null,
-    'verification_status' => $propertyOwner->verification_status,
-    'is_active' => $propertyOwner->is_active,
-    ] : null,
-    'expected_login_behavior' => $user->user_type === 'staff'
-    ? 'Should login as contractor (determinedRole=contractor)'
-    : 'Login as ' . $user->user_type,
+        'user' => [
+            'user_id' => $user->user_id,
+            'username' => $user->username,
+            'email' => $user->email,
+            'user_type' => $user->user_type,
+        ],
+        'contractor_user' => $contractorUser ? [
+            'contractor_user_id' => $contractorUser->contractor_user_id,
+            'contractor_id' => $contractorUser->contractor_id,
+            'role' => $contractorUser->role,
+            'is_active' => $contractorUser->is_active,
+        ] : null,
+        'parent_contractor' => $contractor ? [
+            'contractor_id' => $contractor->contractor_id,
+            'company_name' => $contractor->company_name ?? null,
+            'verification_status' => $contractor->verification_status,
+        ] : null,
+        'property_owner' => $propertyOwner ? [
+            'owner_id' => $propertyOwner->owner_id ?? $propertyOwner->id ?? null,
+            'verification_status' => $propertyOwner->verification_status,
+            'is_active' => $propertyOwner->is_active,
+        ] : null,
+        'expected_login_behavior' => $user->user_type === 'staff'
+            ? 'Should login as contractor (determinedRole=contractor)'
+            : 'Login as ' . $user->user_type,
     ]);
 });
+
+// Messages & Chat - controller handles auth manually via getAuthUserId()
+// Placed outside auth:sanctum to avoid PHP dev server crash on Windows
+Route::prefix('messages')->group(function () {
+    Route::get('/', [\App\Http\Controllers\message\messageController::class, 'index']); // Get inbox
+    Route::get('/stats', [\App\Http\Controllers\message\messageController::class, 'getStats']); // Dashboard stats
+    Route::get('/users', [\App\Http\Controllers\message\messageController::class, 'getAvailableUsers']); // Users list
+    Route::get('/search', [\App\Http\Controllers\message\messageController::class, 'search']); // Search messages
+    Route::get('/{conversationId}', [\App\Http\Controllers\message\messageController::class, 'show']); // Conversation history
+    Route::post('/', [\App\Http\Controllers\message\messageController::class, 'store']); // Send message
+    Route::post('/report', [\App\Http\Controllers\message\messageController::class, 'report']); // Report message
+    Route::post('/{messageId}/flag', [\App\Http\Controllers\message\messageController::class, 'flag']); // Flag message
+    Route::post('/{messageId}/unflag', [\App\Http\Controllers\message\messageController::class, 'unflag']); // Unflag message
+    Route::post('/conversation/{conversationId}/suspend', [\App\Http\Controllers\message\messageController::class, 'suspend']); // Suspend
+    Route::post('/conversation/{conversationId}/restore', [\App\Http\Controllers\message\messageController::class, 'restore']); // Restore
+    Route::post('/typing', [\App\Http\Controllers\message\messageController::class, 'typing']); // Typing indicator
+});
+
+// Pusher Broadcasting Auth - controller handles auth manually (Sanctum + session fallback)
+Route::post('/broadcasting/auth', [\App\Http\Controllers\message\broadcastAuthController::class, 'authorize']);
 
 // Protected routes (require authentication via Sanctum)
 Route::middleware('auth:sanctum')->group(function () {
 
     // User information
-    Route::get('/user', function (Request $request) {
+    Route::get(
+        '/user',
+        function (Request $request) {
             return response()->json([
-            'success' => true,
-            'data' => [
-            'user' => $request->user(),
-            'userType' => $request->user()->user_type ?? null
-            ]
+                'success' => true,
+                'data' => [
+                    'user' => $request->user(),
+                    'userType' => $request->user()->user_type ?? null
+                ]
             ]);
         }
-        );
+    );
 
-        Route::post('/logout', function (Request $request) {
+    Route::post(
+        '/logout',
+        function (Request $request) {
             $request->user()->currentAccessToken()->delete();
             return response()->json([
-            'success' => true,
-            'message' => 'Logged out successfully'
+                'success' => true,
+                'message' => 'Logged out successfully'
             ]);
         }
-        );
+    );
 
+    // Dashboard
+    Route::get('/dashboard', [\App\Http\Controllers\both\dashboardController::class, 'apiDashboard']);
+    Route::get('/dashboard/owner-stats', [\App\Http\Controllers\both\dashboardController::class, 'apiOwnerStats']);
+    Route::get('/dashboard/contractor-stats', [\App\Http\Controllers\both\dashboardController::class, 'apiContractorStats']);
 
-        // Messages & Chat (Real-time with Pusher)
-        Route::prefix('messages')->group(function () {
-            Route::get('/', [\App\Http\Controllers\message\messageController::class , 'index']); // Get inbox
-            Route::get('/stats', [\App\Http\Controllers\message\messageController::class , 'getStats']); // Dashboard stats
-            Route::get('/users', [\App\Http\Controllers\message\messageController::class , 'getAvailableUsers']); // Users list
-            Route::get('/search', [\App\Http\Controllers\message\messageController::class , 'search']); // Search messages
-            Route::get('/{conversationId}', [\App\Http\Controllers\message\messageController::class , 'show']); // Conversation history
-            Route::post('/', [\App\Http\Controllers\message\messageController::class , 'store']); // Send message
-            Route::post('/{messageId}/flag', [\App\Http\Controllers\message\messageController::class , 'flag']); // Flag message
-            Route::post('/{messageId}/unflag', [\App\Http\Controllers\message\messageController::class , 'unflag']); // Unflag message
-            Route::post('/conversation/{conversationId}/suspend', [\App\Http\Controllers\message\messageController::class , 'suspend']); // Suspend
-            Route::post('/conversation/{conversationId}/restore', [\App\Http\Controllers\message\messageController::class , 'restore']); // Restore
-        }
-        );
-
-        // Dashboard
-        Route::get('/dashboard', [\App\Http\Controllers\both\dashboardController::class , 'apiDashboard']);
-        Route::get('/dashboard/owner-stats', [\App\Http\Controllers\both\dashboardController::class , 'apiOwnerStats']);
-        Route::get('/dashboard/contractor-stats', [\App\Http\Controllers\both\dashboardController::class , 'apiContractorStats']);
-
-        // Projects (Owner)
-        Route::prefix('projects')->group(function () {
-            Route::get('/', [projectsController::class , 'index']);
-            Route::get('/{id}', [disputeController::class , 'showProjectDetails']);
-            Route::post('/', [projectsController::class , 'store']);
-            Route::put('/{id}', [projectsController::class , 'update']);
-            Route::delete('/{id}', [projectsController::class , 'destroy']);
+    // Projects (Owner)
+    Route::prefix('projects')->group(
+        function () {
+            Route::get('/', [projectsController::class, 'index']);
+            Route::get('/{id}', [disputeController::class, 'showProjectDetails']);
+            Route::post('/', [projectsController::class, 'store']);
+            Route::put('/{id}', [projectsController::class, 'update']);
+            Route::delete('/{id}', [projectsController::class, 'destroy']);
 
             // Project bids
-            Route::get('/{id}/bids', [biddingController::class , 'getProjectBids']);
-            Route::post('/{id}/bids', [biddingController::class , 'store']);
-            Route::post('/{id}/bids/{bidId}/accept', [biddingController::class , 'acceptBid']);
+            Route::get('/{id}/bids', [biddingController::class, 'getProjectBids']);
+            Route::post('/{id}/bids', [biddingController::class, 'store']);
+            Route::post('/{id}/bids/{bidId}/accept', [biddingController::class, 'acceptBid']);
         }
-        );
+    );
 
-        // NOTE: pinned project endpoints removed
+    // NOTE: pinned project endpoints removed
 
-        // Milestones (Contractor)
-        Route::prefix('milestones')->group(function () {
-            Route::get('/', [cprocessController::class , 'getMilestones']);
-            Route::get('/{id}', [cprocessController::class , 'getMilestoneDetails']);
-            Route::post('/', [cprocessController::class , 'submitMilestone']);
-            Route::put('/{id}', [cprocessController::class , 'updateMilestone']);
-            Route::delete('/{id}', [milestoneController::class , 'deleteMilestone']);
+    // Milestones (Contractor)
+    Route::prefix('milestones')->group(
+        function () {
+            Route::get('/', [cprocessController::class, 'getMilestones']);
+            Route::get('/{id}', [cprocessController::class, 'getMilestoneDetails']);
+            Route::post('/', [cprocessController::class, 'submitMilestone']);
+            Route::put('/{id}', [cprocessController::class, 'updateMilestone']);
+            Route::delete('/{id}', [milestoneController::class, 'deleteMilestone']);
 
             // Milestone approval (Owner) — now handled by milestoneController
-            Route::post('/{id}/approve', [milestoneController::class , 'apiApproveMilestone']);
-            Route::post('/{id}/reject', [milestoneController::class , 'apiRejectMilestone']);
+            Route::post('/{id}/approve', [milestoneController::class, 'apiApproveMilestone']);
+            Route::post('/{id}/reject', [milestoneController::class, 'apiRejectMilestone']);
         }
-        );
+    );
 
-        // Bids (Contractor)
-        Route::prefix('bids')->group(function () {
-            Route::get('/', [biddingController::class , 'index']);
-            Route::get('/{id}', [biddingController::class , 'show']);
-            Route::post('/', [biddingController::class , 'store']);
-            Route::put('/{id}', [biddingController::class , 'update']);
-            Route::post('/{id}/cancel', [biddingController::class , 'cancelBid']);
+    // Bids (Contractor)
+    Route::prefix('bids')->group(
+        function () {
+            Route::get('/', [biddingController::class, 'index']);
+            Route::get('/{id}', [biddingController::class, 'show']);
+            Route::post('/', [biddingController::class, 'store']);
+            Route::put('/{id}', [biddingController::class, 'update']);
+            Route::post('/{id}/cancel', [biddingController::class, 'cancelBid']);
         }
-        );
+    );
 
-        // Progress Reports (Contractor)
-        Route::prefix('progress')->group(function () {
-            Route::get('/', [progressUploadController::class , 'index']);
-            Route::get('/{id}', [progressUploadController::class , 'show']);
-            Route::post('/', [progressUploadController::class , 'store']);
-            Route::put('/{id}', [progressUploadController::class , 'update']);
-            Route::delete('/{id}', [progressUploadController::class , 'destroy']);
+    // Progress Reports (Contractor)
+    Route::prefix('progress')->group(
+        function () {
+            Route::get('/', [progressUploadController::class, 'index']);
+            Route::get('/{id}', [progressUploadController::class, 'show']);
+            Route::post('/', [progressUploadController::class, 'store']);
+            Route::put('/{id}', [progressUploadController::class, 'update']);
+            Route::delete('/{id}', [progressUploadController::class, 'destroy']);
             // Progress files
-            Route::post('/files', [progressUploadController::class , 'uploadFiles']);
-            Route::delete('/files/{id}', [progressUploadController::class , 'deleteFile']);
+            Route::post('/files', [progressUploadController::class, 'uploadFiles']);
+            Route::delete('/files/{id}', [progressUploadController::class, 'deleteFile']);
         }
-        );
+    );
 
-        // Payment Validations (Owner)
-        Route::prefix('payments')->group(function () {
-            Route::get('/', [paymentUploadController::class , 'index']);
-            Route::get('/{id}', [paymentUploadController::class , 'show']);
-            Route::post('/', [paymentUploadController::class , 'store']);
-            Route::put('/{id}', [paymentUploadController::class , 'update']);
-            Route::delete('/{id}', [paymentUploadController::class , 'destroy']);
+    // Payment Validations (Owner)
+    Route::prefix('payments')->group(
+        function () {
+            Route::get('/', [paymentUploadController::class, 'index']);
+            Route::get('/{id}', [paymentUploadController::class, 'show']);
+            Route::post('/', [paymentUploadController::class, 'store']);
+            Route::put('/{id}', [paymentUploadController::class, 'update']);
+            Route::delete('/{id}', [paymentUploadController::class, 'destroy']);
         }
-        );
+    );
 
-        // Disputes (Both)
-        // Projects list (Both)
-        Route::get('/projects', [disputeController::class , 'showProjectsPage']);
-    });
+    // Disputes (Both)
+    // Projects list (Both)
+    Route::get('/projects', [disputeController::class, 'showProjectsPage']);
+});
 
 // Payment approve/reject routes - controller handles auth manually
 Route::prefix('payments')->group(function () {
-    Route::post('/{id}/approve', [milestoneController::class , 'apiApprovePayment']);
-    Route::post('/{id}/reject', [milestoneController::class , 'apiRejectPayment']);
+    Route::post('/{id}/approve', [milestoneController::class, 'apiApprovePayment']);
+    Route::post('/{id}/reject', [milestoneController::class, 'apiRejectPayment']);
 });
 
 // Payment summary per milestone item - controller handles auth manually
-Route::get('/milestone-items/{itemId}/payment-summary', [milestoneController::class , 'apiGetItemPaymentSummary']);
+Route::get('/milestone-items/{itemId}/payment-summary', [milestoneController::class, 'apiGetItemPaymentSummary']);
 
 // Milestone item date extension history
-Route::get('/milestone-items/{itemId}/date-history', [milestoneController::class , 'getDateHistory']);
+Route::get('/milestone-items/{itemId}/date-history', [milestoneController::class, 'getDateHistory']);
 
 // Summary reports - controller handles auth manually
 Route::get('/projects/{projectId}/summary', [\App\Http\Controllers\both\summaryController::class, 'projectSummary']);
@@ -525,16 +534,16 @@ Route::get('/projects/{projectId}/milestones/{itemId}/summary', [\App\Http\Contr
 
 // Disputes routes - controller handles auth manually
 Route::prefix('disputes')->group(function () {
-    Route::get('/', [disputeController::class , 'getDisputes']);
-    Route::get('/{id}', [disputeController::class , 'getDisputeDetails']);
-    Route::post('/', [disputeController::class , 'fileDispute']);
-    Route::put('/{id}', [disputeController::class , 'updateDispute']);
-    Route::delete('/{id}', [disputeController::class , 'cancelDispute']);
+    Route::get('/', [disputeController::class, 'getDisputes']);
+    Route::get('/{id}', [disputeController::class, 'getDisputeDetails']);
+    Route::post('/', [disputeController::class, 'fileDispute']);
+    Route::put('/{id}', [disputeController::class, 'updateDispute']);
+    Route::delete('/{id}', [disputeController::class, 'cancelDispute']);
 });
 
 // Progress approve/reject routes - outside middleware group so controller can handle auth manually
-Route::post('/progress/{id}/approve', [progressUploadController::class , 'approveProgress']);
-Route::post('/progress/{id}/reject', [progressUploadController::class , 'rejectProgress']);
+Route::post('/progress/{id}/approve', [progressUploadController::class, 'approveProgress']);
+Route::post('/progress/{id}/reject', [progressUploadController::class, 'rejectProgress']);
 
 // Accessible at http://192.168.100.27:8000/api/boost/checkout
 // No CSRF required (because it's in api.php)
@@ -560,4 +569,4 @@ Route::post('/projects/{projectId}/updates/{extensionId}/approve', [projectUpdat
 Route::post('/projects/{projectId}/updates/{extensionId}/reject', [projectUpdateController::class, 'reject']);
 Route::post('/projects/{projectId}/updates/{extensionId}/request-changes', [projectUpdateController::class, 'requestChanges']);
 
-    // NOTE: change-otp endpoints are registered publicly (do not rely on Sanctum middleware)
+// NOTE: change-otp endpoints are registered publicly (do not rely on Sanctum middleware)

@@ -609,9 +609,9 @@ export class auth_service {
         }
       }
 
-      // Profile picture (optional)
+      // Profile picture (optional) - for contractors this should be saved as company_logo
       if (profileInfo && profileInfo.profileImageUri) {
-        formData.append('profile_pic', {
+        formData.append('company_logo', {
           uri: profileInfo.profileImageUri,
           type: 'image/jpeg',
           name: 'profile.jpg',

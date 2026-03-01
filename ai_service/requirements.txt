@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+tensorflow
+numpy
+pandas
+scikit-learn
+joblib
+requests
+mysql-connector-python
+python-dotenv
+

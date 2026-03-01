@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -203,6 +203,14 @@ export default function ProjectView({ project, userId, userRole, onClose }: Proj
       setRefreshing(false);
     }
   };
+
+  // Auto-refresh on mount to ensure fresh milestone/payment data is shown,
+  // especially when navigating here from a notification where the project
+  // object may be a shallow dashboard list item without milestones populated.
+  useEffect(() => {
+    refreshProjectData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleApproveMilestone = async (milestoneId: number) => {
     if (!userId) {

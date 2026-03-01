@@ -10,6 +10,7 @@ import {
   Animated,
   Dimensions,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, MaterialIcons, Ionicons } from '@expo/vector-icons';
@@ -95,6 +96,9 @@ interface Notification {
   timestamp: string;
   is_read: boolean;
   action_url?: string;
+  redirect_url?: string;
+  reference_type?: string | null;
+  reference_id?: number | null;
   priority?: string;
 }
 
@@ -102,6 +106,8 @@ interface NotificationsProps {
   userId: number;
   userType: 'property_owner' | 'contractor' | 'both';
   onClose: () => void;
+  /** Called when a notification tap resolves a navigation target. */
+  onNavigate?: (screen: string, params: Record<string, any>) => void;
 }
 
 // Get notification icon and colors based on type
@@ -377,7 +383,7 @@ const getNotificationCategory = (type: NotificationType): NotificationCategory =
   return 'all';
 };
 
-export default function Notifications({ userId, userType, onClose }: NotificationsProps) {
+export default function Notifications({ userId, userType, onClose, onNavigate }: NotificationsProps) {
   const insets = useSafeAreaInsets();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [filteredNotifications, setFilteredNotifications] = useState<Notification[]>([]);
@@ -419,6 +425,9 @@ export default function Notifications({ userId, userType, onClose }: Notificatio
           timestamp: n.created_at || '',
           is_read: n.is_read,
           action_url: n.action_url || undefined,
+          redirect_url: n.redirect_url || undefined,
+          reference_type: n.reference_type,
+          reference_id: n.reference_id,
           priority: n.priority || 'normal',
         }));
         if (append) {
@@ -488,9 +497,40 @@ export default function Notifications({ userId, userType, onClose }: Notificatio
     }
   };
 
-  const handleNotificationPress = (notification: Notification) => {
-    markAsRead(notification.id);
-    // TODO: Navigate to relevant screen based on notification type
+  const handleNotificationPress = async (notification: Notification) => {
+    // Optimistic UI update: mark as read immediately
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === notification.id ? { ...n, is_read: true } : n))
+    );
+
+    try {
+      // Call backend redirect endpoint — marks as read + resolves navigation target
+      const response = await notifications_service.resolve_redirect(notification.id);
+
+      if (response.success && response.data) {
+        // Show flash message if the referenced item was deleted/archived
+        if (response.data.flash_message) {
+          Alert.alert('Notice', response.data.flash_message);
+          return;
+        }
+
+        // Use the mobile-specific screen/params if provided
+        const mobile = response.data.mobile;
+        if (mobile && onNavigate) {
+          onClose(); // dismiss notifications screen first
+          onNavigate(mobile.screen, mobile.params || {});
+          return;
+        }
+      }
+    } catch (error) {
+      console.error('Error resolving notification redirect:', error);
+      // Fallback: just mark as read via the original endpoint
+      try {
+        await notifications_service.mark_as_read(notification.id);
+      } catch (e) {
+        // silent
+      }
+    }
   };
 
   const getUnreadCount = (category: NotificationCategory): number => {

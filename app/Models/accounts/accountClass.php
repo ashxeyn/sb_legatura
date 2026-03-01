@@ -139,6 +139,8 @@ class accountClass
     {
         $contractorId = DB::table('contractors')->insertGetId([
             'user_id' => $data['user_id'],
+            'company_logo' => $data['company_logo'] ?? null,
+            'company_banner' => $data['company_banner'] ?? null,
             'company_name' => $data['company_name'],
             'years_of_experience' => $data['years_of_experience'],
             'type_id' => $data['type_id'],

@@ -17,6 +17,9 @@ class contractorClass extends Model
 
     protected $fillable = [
         'user_id',
+        'company_logo',
+        'company_banner',
+        'bio',
         'company_name',
         'company_start_date',
         'years_of_experience',
@@ -90,7 +93,10 @@ class contractorClass extends Model
                 'contractors.company_phone',
                 'contractors.company_website',
                 'contractors.company_social_media',
-                'contractors.company_description',
+                    'contractors.company_description',
+                    'contractors.company_logo',
+                    'contractors.company_banner',
+                    'contractors.bio',
                 'contractors.picab_number',
                 'contractors.picab_category',
                 'contractors.picab_expiration_date',
@@ -109,6 +115,9 @@ class contractorClass extends Model
                 'contractors.completed_projects',
                 'contractors.created_at',
                 'contractors.updated_at',
+                'contractors.company_logo',
+                'contractors.company_banner',
+                'contractors.bio',
                 'users.email',
                 'users.username',
                 'users.profile_pic',
@@ -187,8 +196,9 @@ class contractorClass extends Model
             } while (DB::table('users')->where('username', $username)->exists());
 
             // Create User (use DB insert to align with propertyOwner flow and DB schema)
+            // NOTE: contractors should not store their company logo/profile image in the users table.
+            // Save company logo only in the contractors table (`company_logo`).
             $userId = DB::table('users')->insertGetId(array(
-                'profile_pic' => $data['profile_pic'] ?? null,
                 'username' => $username,
                 'email' => $data['company_email'],
                 'password_hash' => bcrypt('contractor123@!'),
@@ -201,6 +211,9 @@ class contractorClass extends Model
             // Create Contractor (align fields with legatura.sql)
             $contractorId = DB::table('contractors')->insertGetId(array(
                 'user_id' => $userId,
+                'company_logo' => $data['company_logo'] ?? null,
+                'company_banner' => $data['company_banner'] ?? null,
+                'bio' => $data['bio'] ?? null,
                 'company_name' => $data['company_name'],
                 'company_start_date' => $data['company_start_date'],
                 'years_of_experience' => $data['years_of_experience'] ?? 0,
@@ -259,9 +272,7 @@ class contractorClass extends Model
                 'email' => $data['company_email'],
                 'updated_at' => $data['updated_at']
             ];
-            if (isset($data['profile_pic'])) {
-                $userUpdateData['profile_pic'] = $data['profile_pic'];
-            }
+            // For contractor edits, do not write profile_pic into users table; company logo belongs to contractors table.
             if (isset($data['password_hash'])) {
                 $userUpdateData['password_hash'] = $data['password_hash'];
             }
@@ -272,6 +283,10 @@ class contractorClass extends Model
 
             // Update Contractor
             $contractorUpdateData = [
+                // allow updating company media and bio when provided
+                'company_logo' => $data['company_logo'] ?? null,
+                'company_banner' => $data['company_banner'] ?? null,
+                'bio' => $data['bio'] ?? null,
                 'company_name' => $data['company_name'],
                 'company_start_date' => $data['company_start_date'],
                 'years_of_experience' => $data['years_of_experience'],
@@ -295,6 +310,11 @@ class contractorClass extends Model
 
             if (isset($data['dti_sec_registration_photo'])) {
                 $contractorUpdateData['dti_sec_registration_photo'] = $data['dti_sec_registration_photo'];
+            }
+
+            // If a profile_pic was uploaded via the admin UI, ensure it's stored only as the contractor's company logo
+            if (isset($data['profile_pic'])) {
+                $contractorUpdateData['company_logo'] = $data['profile_pic'];
             }
 
             DB::table('contractors')

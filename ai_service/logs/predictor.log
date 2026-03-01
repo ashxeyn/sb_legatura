@@ -1,0 +1,179 @@
+2026-01-30 10:22:13,720 INFO {'predict_input': {'avg_temp': 31.2, 'avg_humidity': 59, 'avg_wind': 3.6, 'total_rain': 0.0, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 3}}
+2026-01-30 10:22:13,741 ERROR scaler.transform failed
+Traceback (most recent call last):
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\predictor.py", line 67, in _safe_transform
+    return scaler.transform(df)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\AppData\Roaming\Python\Python311\site-packages\sklearn\utils\_set_output.py", line 140, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\AppData\Roaming\Python\Python311\site-packages\sklearn\preprocessing\_data.py", line 1001, in transform
+    check_is_fitted(self)
+  File "C:\Users\user\AppData\Roaming\Python\Python311\site-packages\sklearn\utils\validation.py", line 1462, in check_is_fitted
+    raise NotFittedError(msg % {"name": type(estimator).__name__})
+sklearn.exceptions.NotFittedError: This StandardScaler instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2026-01-30 10:22:14,495 WARNING model/scaler not loaded, prediction may be invalid
+2026-01-30 10:22:14,495 INFO {'predict_input': {'avg_temp': 31.2, 'avg_humidity': 59, 'avg_wind': 3.6, 'total_rain': 0.0, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}
+2026-01-30 10:22:14,498 ERROR scaler.transform failed
+Traceback (most recent call last):
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\predictor.py", line 67, in _safe_transform
+    return scaler.transform(df)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\AppData\Roaming\Python\Python311\site-packages\sklearn\utils\_set_output.py", line 140, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\AppData\Roaming\Python\Python311\site-packages\sklearn\preprocessing\_data.py", line 1001, in transform
+    check_is_fitted(self)
+  File "C:\Users\user\AppData\Roaming\Python\Python311\site-packages\sklearn\utils\validation.py", line 1462, in check_is_fitted
+    raise NotFittedError(msg % {"name": type(estimator).__name__})
+sklearn.exceptions.NotFittedError: This StandardScaler instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2026-01-30 10:22:14,590 WARNING model/scaler not loaded, prediction may be invalid
+2026-01-30 10:22:14,778 INFO {'predict_input': {'avg_temp': 31.2, 'avg_humidity': 59, 'avg_wind': 3.6, 'total_rain': 0.0, 'duration_days': 30, 'contractor_experience_years': 1, 'weather_severity': 3}}
+2026-01-30 10:22:14,781 ERROR scaler.transform failed
+Traceback (most recent call last):
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\predictor.py", line 67, in _safe_transform
+    return scaler.transform(df)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\AppData\Roaming\Python\Python311\site-packages\sklearn\utils\_set_output.py", line 140, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\AppData\Roaming\Python\Python311\site-packages\sklearn\preprocessing\_data.py", line 1001, in transform
+    check_is_fitted(self)
+  File "C:\Users\user\AppData\Roaming\Python\Python311\site-packages\sklearn\utils\validation.py", line 1462, in check_is_fitted
+    raise NotFittedError(msg % {"name": type(estimator).__name__})
+sklearn.exceptions.NotFittedError: This StandardScaler instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2026-01-30 10:22:14,910 WARNING model/scaler not loaded, prediction may be invalid
+2026-01-30 10:22:14,911 INFO {'predict_input': {'avg_temp': 31.2, 'avg_humidity': 59, 'avg_wind': 3.6, 'total_rain': 0.0, 'duration_days': 30, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-30 10:22:14,913 ERROR scaler.transform failed
+Traceback (most recent call last):
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\predictor.py", line 67, in _safe_transform
+    return scaler.transform(df)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\AppData\Roaming\Python\Python311\site-packages\sklearn\utils\_set_output.py", line 140, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\AppData\Roaming\Python\Python311\site-packages\sklearn\preprocessing\_data.py", line 1001, in transform
+    check_is_fitted(self)
+  File "C:\Users\user\AppData\Roaming\Python\Python311\site-packages\sklearn\utils\validation.py", line 1462, in check_is_fitted
+    raise NotFittedError(msg % {"name": type(estimator).__name__})
+sklearn.exceptions.NotFittedError: This StandardScaler instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2026-01-30 10:22:15,034 WARNING model/scaler not loaded, prediction may be invalid
+2026-01-30 10:22:15,385 INFO {'predict_input': {'avg_temp': 26.3, 'avg_humidity': 68, 'avg_wind': 13.3, 'total_rain': 0.01, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 3}}
+2026-01-30 10:22:15,388 ERROR scaler.transform failed
+Traceback (most recent call last):
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\predictor.py", line 67, in _safe_transform
+    return scaler.transform(df)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\AppData\Roaming\Python\Python311\site-packages\sklearn\utils\_set_output.py", line 140, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\AppData\Roaming\Python\Python311\site-packages\sklearn\preprocessing\_data.py", line 1001, in transform
+    check_is_fitted(self)
+  File "C:\Users\user\AppData\Roaming\Python\Python311\site-packages\sklearn\utils\validation.py", line 1462, in check_is_fitted
+    raise NotFittedError(msg % {"name": type(estimator).__name__})
+sklearn.exceptions.NotFittedError: This StandardScaler instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2026-01-30 10:22:15,486 WARNING model/scaler not loaded, prediction may be invalid
+2026-01-30 10:22:15,486 INFO {'predict_input': {'avg_temp': 26.3, 'avg_humidity': 68, 'avg_wind': 13.3, 'total_rain': 0.01, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-30 10:22:15,487 ERROR scaler.transform failed
+Traceback (most recent call last):
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\predictor.py", line 67, in _safe_transform
+    return scaler.transform(df)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\AppData\Roaming\Python\Python311\site-packages\sklearn\utils\_set_output.py", line 140, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\AppData\Roaming\Python\Python311\site-packages\sklearn\preprocessing\_data.py", line 1001, in transform
+    check_is_fitted(self)
+  File "C:\Users\user\AppData\Roaming\Python\Python311\site-packages\sklearn\utils\validation.py", line 1462, in check_is_fitted
+    raise NotFittedError(msg % {"name": type(estimator).__name__})
+sklearn.exceptions.NotFittedError: This StandardScaler instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2026-01-30 10:22:15,587 WARNING model/scaler not loaded, prediction may be invalid
+2026-01-30 10:27:11,498 INFO {'predict_input': {'avg_temp': 31.2, 'avg_humidity': 59, 'avg_wind': 3.6, 'total_rain': 0.0, 'duration_days': 30, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-30 10:27:11,521 INFO {'predict_input': {'avg_temp': 31.2, 'avg_humidity': 59, 'avg_wind': 3.6, 'total_rain': 0.0, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}
+2026-01-30 10:27:26,017 INFO {'predict_input': {'avg_temp': 31.2, 'avg_humidity': 59, 'avg_wind': 3.6, 'total_rain': 0.0, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 3}}
+2026-01-30 10:27:26,017 ERROR model or scaler not loaded (model_loaded=False, scaler_loaded=False)
+2026-01-30 10:27:26,018 INFO {'predict_input': {'avg_temp': 31.2, 'avg_humidity': 59, 'avg_wind': 3.6, 'total_rain': 0.0, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}
+2026-01-30 10:27:26,018 ERROR model or scaler not loaded (model_loaded=False, scaler_loaded=False)
+2026-01-30 10:27:26,209 INFO {'predict_input': {'avg_temp': 31.2, 'avg_humidity': 59, 'avg_wind': 3.6, 'total_rain': 0.0, 'duration_days': 30, 'contractor_experience_years': 1, 'weather_severity': 3}}
+2026-01-30 10:27:26,209 ERROR model or scaler not loaded (model_loaded=False, scaler_loaded=False)
+2026-01-30 10:27:26,209 INFO {'predict_input': {'avg_temp': 31.2, 'avg_humidity': 59, 'avg_wind': 3.6, 'total_rain': 0.0, 'duration_days': 30, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-30 10:27:26,209 ERROR model or scaler not loaded (model_loaded=False, scaler_loaded=False)
+2026-01-30 10:27:26,594 INFO {'predict_input': {'avg_temp': 26.3, 'avg_humidity': 68, 'avg_wind': 13.3, 'total_rain': 0.01, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 3}}
+2026-01-30 10:27:26,595 ERROR model or scaler not loaded (model_loaded=False, scaler_loaded=False)
+2026-01-30 10:27:26,595 INFO {'predict_input': {'avg_temp': 26.3, 'avg_humidity': 68, 'avg_wind': 13.3, 'total_rain': 0.01, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-30 10:27:26,595 ERROR model or scaler not loaded (model_loaded=False, scaler_loaded=False)
+2026-01-30 10:32:05,704 INFO {'predict_input': {'avg_temp': 31.2, 'avg_humidity': 59, 'avg_wind': 3.6, 'total_rain': 0.0, 'duration_days': 30, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-30 10:32:11,856 INFO {'predict_input': {'avg_temp': 31.2, 'avg_humidity': 59, 'avg_wind': 3.6, 'total_rain': 0.0, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}
+2026-01-30 10:32:18,069 INFO {'predict_input': {'avg_temp': 26.3, 'avg_humidity': 68, 'avg_wind': 13.3, 'total_rain': 0.01, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-30 10:35:32,612 INFO {'predict_input': {'avg_temp': 31.2, 'avg_humidity': 59, 'avg_wind': 3.6, 'total_rain': 0.0, 'duration_days': 30, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-30 10:36:54,836 INFO {'predict_input': {'avg_temp': 31.2, 'avg_humidity': 59, 'avg_wind': 3.6, 'total_rain': 0.0, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}
+2026-01-30 10:37:07,432 INFO {'predict_input': {'avg_temp': 31.2, 'avg_humidity': 59, 'avg_wind': 3.6, 'total_rain': 0.0, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}
+2026-01-30 10:37:17,275 INFO {'predict_input': {'avg_temp': 31.2, 'avg_humidity': 59, 'avg_wind': 3.6, 'total_rain': 0.0, 'duration_days': 30, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-30 10:37:26,137 INFO {'predict_input': {'avg_temp': 26.4, 'avg_humidity': 69, 'avg_wind': 14.0, 'total_rain': 0.02, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-30 10:39:05,534 INFO {'predict_input': {'avg_temp': 31.2, 'avg_humidity': 59, 'avg_wind': 3.6, 'total_rain': 0.0, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}
+2026-01-30 10:39:13,306 INFO {'predict_input': {'avg_temp': 31.2, 'avg_humidity': 59, 'avg_wind': 3.6, 'total_rain': 0.0, 'duration_days': None, 'contractor_experience_years': 0, 'weather_severity': 0}}
+2026-01-30 10:39:44,592 INFO {'predict_input': {'avg_temp': 31.2, 'avg_humidity': 59, 'avg_wind': 3.6, 'total_rain': 0.0, 'duration_days': None, 'contractor_experience_years': 0, 'weather_severity': 0}}
+2026-01-30 11:47:59,702 INFO {'predict_input': {'avg_temp': 27.0, 'avg_humidity': 66, 'avg_wind': 13.3, 'total_rain': 0.02, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-30 12:04:17,973 INFO {'predict_input': {'avg_temp': 27.4, 'avg_humidity': 64, 'avg_wind': 13.3, 'total_rain': 0.04, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-30 12:04:29,353 INFO {'predict_input': {'avg_temp': 31.0, 'avg_humidity': 63, 'avg_wind': 3.6, 'total_rain': 0.05, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}
+2026-01-30 12:05:10,412 INFO {'predict_input': {'avg_temp': 31.0, 'avg_humidity': 63, 'avg_wind': 3.6, 'total_rain': 0.05, 'duration_days': 30, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-30 12:05:19,567 INFO {'predict_input': {'avg_temp': 31.0, 'avg_humidity': 63, 'avg_wind': 3.6, 'total_rain': 0.05, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}
+2026-01-30 12:07:43,951 INFO {'predict_input': {'avg_temp': 31.1, 'avg_humidity': 63, 'avg_wind': 3.6, 'total_rain': 0.05, 'duration_days': 30, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-30 12:08:20,542 INFO {'predict_input': {'avg_temp': 27.4, 'avg_humidity': 64, 'avg_wind': 13.3, 'total_rain': 0.04, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-30 12:09:18,776 INFO {'predict_input': {'avg_temp': 31.1, 'avg_humidity': 63, 'avg_wind': 3.6, 'total_rain': 0.05, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}
+2026-01-30 12:09:29,753 INFO {'predict_input': {'avg_temp': 31.1, 'avg_humidity': 63, 'avg_wind': 3.6, 'total_rain': 0.05, 'duration_days': 30, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-30 12:09:40,837 INFO {'predict_input': {'avg_temp': 27.4, 'avg_humidity': 64, 'avg_wind': 13.3, 'total_rain': 0.04, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-30 12:10:23,314 INFO {'predict_input': {'avg_temp': 31.1, 'avg_humidity': 63, 'avg_wind': 3.6, 'total_rain': 0.05, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}
+2026-01-30 13:04:49,238 INFO {'predict_input': {'avg_temp': 30.1, 'avg_humidity': 70, 'avg_wind': 3.6, 'total_rain': 0.31, 'duration_days': 30, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-30 13:05:56,935 INFO {'predict_input': {'avg_temp': 27.5, 'avg_humidity': 65, 'avg_wind': 13.3, 'total_rain': 0.06, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-30 13:11:05,811 INFO {'predict_input': {'avg_temp': 29.3, 'avg_humidity': 66, 'avg_wind': 15.1, 'total_rain': 0.0, 'duration_days': 360, 'contractor_experience_years': 6, 'weather_severity': 0}}
+2026-01-30 13:12:24,829 INFO {'predict_input': {'avg_temp': 30.0, 'avg_humidity': 70, 'avg_wind': 3.6, 'total_rain': 0.31, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}
+2026-01-30 13:12:51,445 INFO {'predict_input': {'avg_temp': 29.3, 'avg_humidity': 66, 'avg_wind': 15.1, 'total_rain': 0.0, 'duration_days': 360, 'contractor_experience_years': 6, 'weather_severity': 0}}
+2026-01-30 13:14:09,786 INFO {'predict_input': {'avg_temp': 27.5, 'avg_humidity': 65, 'avg_wind': 13.3, 'total_rain': 0.06, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-30 13:15:11,044 INFO {'predict_input': {'avg_temp': 27.3, 'avg_humidity': 66, 'avg_wind': 15.1, 'total_rain': 0.0, 'duration_days': 360, 'contractor_experience_years': 3, 'weather_severity': 0}}
+2026-01-30 13:16:04,237 INFO {'predict_input': {'avg_temp': 27.3, 'avg_humidity': 66, 'avg_wind': 15.1, 'total_rain': 0.0, 'duration_days': 360, 'contractor_experience_years': 4, 'weather_severity': 0}}
+2026-01-30 13:16:30,444 INFO {'predict_input': {'avg_temp': 27.3, 'avg_humidity': 66, 'avg_wind': 15.1, 'total_rain': 0.0, 'duration_days': 360, 'contractor_experience_years': 5, 'weather_severity': 0}}
+2026-01-30 13:17:29,882 INFO {'predict_input': {'avg_temp': 27.3, 'avg_humidity': 66, 'avg_wind': 15.1, 'total_rain': 0.0, 'duration_days': 360, 'contractor_experience_years': 6, 'weather_severity': 0}}
+2026-01-30 13:17:39,284 INFO {'predict_input': {'avg_temp': 27.3, 'avg_humidity': 66, 'avg_wind': 15.1, 'total_rain': 0.0, 'duration_days': 360, 'contractor_experience_years': 6, 'weather_severity': 0}}
+2026-01-30 13:18:20,158 INFO {'predict_input': {'avg_temp': 29.1, 'avg_humidity': 66, 'avg_wind': 15.1, 'total_rain': 0.0, 'duration_days': 360, 'contractor_experience_years': 20, 'weather_severity': 0}}
+2026-01-30 13:19:45,716 INFO {'predict_input': {'avg_temp': 29.1, 'avg_humidity': 66, 'avg_wind': 15.1, 'total_rain': 0.0, 'duration_days': 360, 'contractor_experience_years': 3, 'weather_severity': 0}}
+2026-01-30 13:20:03,372 INFO {'predict_input': {'avg_temp': 30.2, 'avg_humidity': 66, 'avg_wind': 3.6, 'total_rain': 0.31, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}
+2026-01-30 13:20:47,411 INFO {'predict_input': {'avg_temp': 30.2, 'avg_humidity': 66, 'avg_wind': 3.6, 'total_rain': 0.31, 'duration_days': 30, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-30 13:21:12,424 INFO {'predict_input': {'avg_temp': 29.1, 'avg_humidity': 66, 'avg_wind': 15.1, 'total_rain': 0.0, 'duration_days': 360, 'contractor_experience_years': 3, 'weather_severity': 0}}
+2026-01-30 13:21:33,404 INFO {'predict_input': {'avg_temp': 30.2, 'avg_humidity': 66, 'avg_wind': 3.6, 'total_rain': 0.31, 'duration_days': 30, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-30 13:21:38,065 INFO {'predict_input': {'avg_temp': 27.5, 'avg_humidity': 65, 'avg_wind': 13.3, 'total_rain': 0.06, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-30 13:22:28,785 INFO {'predict_input': {'avg_temp': 29.1, 'avg_humidity': 66, 'avg_wind': 15.1, 'total_rain': 0.0, 'duration_days': 360, 'contractor_experience_years': 3, 'weather_severity': 0}}
+2026-01-30 13:22:44,519 INFO {'predict_input': {'avg_temp': 30.2, 'avg_humidity': 66, 'avg_wind': 3.6, 'total_rain': 0.31, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}
+2026-01-30 13:23:50,101 INFO {'predict_input': {'avg_temp': 30.2, 'avg_humidity': 66, 'avg_wind': 3.6, 'total_rain': 0.31, 'duration_days': 30, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-30 13:24:10,125 INFO {'predict_input': {'avg_temp': 27.5, 'avg_humidity': 65, 'avg_wind': 13.3, 'total_rain': 0.06, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-30 13:24:39,052 INFO {'predict_input': {'avg_temp': 29.1, 'avg_humidity': 66, 'avg_wind': 15.1, 'total_rain': 0.0, 'duration_days': 360, 'contractor_experience_years': 3, 'weather_severity': 0}}
+2026-01-30 13:26:32,295 INFO {'predict_input': {'avg_temp': 30.2, 'avg_humidity': 66, 'avg_wind': 3.6, 'total_rain': 0.31, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}
+2026-01-30 13:26:39,950 INFO {'predict_input': {'avg_temp': 27.5, 'avg_humidity': 65, 'avg_wind': 13.3, 'total_rain': 0.06, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-30 13:30:05,300 INFO {'predict_input': {'avg_temp': 30.2, 'avg_humidity': 66, 'avg_wind': 3.6, 'total_rain': 0.31, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}
+2026-01-30 13:30:19,985 INFO {'predict_input': {'avg_temp': 30.2, 'avg_humidity': 66, 'avg_wind': 3.6, 'total_rain': 0.31, 'duration_days': 30, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-30 13:30:29,767 INFO {'predict_input': {'avg_temp': 27.5, 'avg_humidity': 65, 'avg_wind': 13.3, 'total_rain': 0.06, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-30 13:30:36,935 INFO {'predict_input': {'avg_temp': 29.1, 'avg_humidity': 66, 'avg_wind': 15.1, 'total_rain': 0.0, 'duration_days': 360, 'contractor_experience_years': 3, 'weather_severity': 0}}
+2026-01-30 13:37:13,240 INFO {'predict_input': {'avg_temp': 30.3, 'avg_humidity': 66, 'avg_wind': 3.6, 'total_rain': 0.31, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}
+2026-01-30 13:42:41,054 INFO {'predict_input': {'avg_temp': 30.3, 'avg_humidity': 66, 'avg_wind': 3.6, 'total_rain': 0.31, 'duration_days': None, 'contractor_experience_years': 0, 'weather_severity': 0}}
+2026-01-30 13:43:20,518 INFO {'predict_input': {'avg_temp': 30.3, 'avg_humidity': 66, 'avg_wind': 3.6, 'total_rain': 0.31, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}
+2026-01-30 14:03:45,553 INFO {'predict_input': {'avg_temp': 30.2, 'avg_humidity': 66, 'avg_wind': 5.8, 'total_rain': 0.44, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}
+2026-01-30 14:05:30,484 INFO {'predict_input': {'avg_temp': 30.2, 'avg_humidity': 66, 'avg_wind': 5.8, 'total_rain': 0.44, 'duration_days': 30, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-30 14:05:36,098 INFO {'predict_input': {'avg_temp': 27.2, 'avg_humidity': 67, 'avg_wind': 14.4, 'total_rain': 0.04, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-31 09:15:20,074 INFO {'predict_input': {'avg_temp': 28.5, 'avg_humidity': 64, 'avg_wind': 3.6, 'total_rain': 0.0, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}
+2026-01-31 09:15:27,580 INFO {'predict_input': {'avg_temp': 28.5, 'avg_humidity': 64, 'avg_wind': 3.6, 'total_rain': 0.0, 'duration_days': 30, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-31 09:15:32,839 INFO {'predict_input': {'avg_temp': 23.5, 'avg_humidity': 89, 'avg_wind': 14.0, 'total_rain': 0.04, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-31 09:15:38,699 INFO {'predict_input': {'avg_temp': 25.3, 'avg_humidity': 85, 'avg_wind': 15.8, 'total_rain': 0.07, 'duration_days': 360, 'contractor_experience_years': 3, 'weather_severity': 0}}
+2026-01-31 09:17:05,960 INFO {'predict_input': {'avg_temp': 28.5, 'avg_humidity': 64, 'avg_wind': 3.6, 'total_rain': 0.0, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}
+2026-01-31 09:19:07,512 INFO {'predict_input': {'avg_temp': 23.5, 'avg_humidity': 89, 'avg_wind': 14.0, 'total_rain': 0.04, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-31 09:53:16,606 INFO {'predict_input': {'avg_temp': 29.3, 'avg_humidity': 55, 'avg_wind': 3.6, 'total_rain': 0.0, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}
+2026-01-31 10:33:11,581 INFO {'predict_input': {'avg_temp': 30.3, 'avg_humidity': 55, 'avg_wind': 3.6, 'total_rain': 0.0, 'duration_days': 30, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-31 10:33:18,232 INFO {'predict_input': {'avg_temp': 24.0, 'avg_humidity': 87, 'avg_wind': 14.4, 'total_rain': 0.43, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-31 10:33:22,257 INFO {'predict_input': {'avg_temp': 28.2, 'avg_humidity': 74, 'avg_wind': 16.6, 'total_rain': 0.24, 'duration_days': 360, 'contractor_experience_years': 3, 'weather_severity': 0}}
+2026-01-31 10:33:31,573 INFO {'predict_input': {'avg_temp': 30.3, 'avg_humidity': 55, 'avg_wind': 3.6, 'total_rain': 0.0, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}
+2026-01-31 16:26:34,126 INFO {'predict_input': {'avg_temp': 23.1, 'avg_humidity': 93, 'avg_wind': 13.3, 'total_rain': 0.05, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-02-04 06:17:13,371 INFO {'predict_input': {'avg_temp': 27.3, 'avg_humidity': 74, 'avg_wind': 5.4, 'total_rain': 0.0, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}
+2026-02-04 06:17:26,129 INFO {'predict_input': {'avg_temp': 27.3, 'avg_humidity': 74, 'avg_wind': 5.4, 'total_rain': 0.0, 'duration_days': 30, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-02-04 06:17:36,117 INFO {'predict_input': {'avg_temp': 21.5, 'avg_humidity': 88, 'avg_wind': 10.4, 'total_rain': 0.07, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-02-04 06:17:42,777 INFO {'predict_input': {'avg_temp': 24.2, 'avg_humidity': 89, 'avg_wind': 24.5, 'total_rain': 0.0, 'duration_days': 360, 'contractor_experience_years': 3, 'weather_severity': 0}}
+2026-02-04 06:17:46,183 INFO {'predict_input': {'avg_temp': 27.3, 'avg_humidity': 74, 'avg_wind': 5.4, 'total_rain': 0.0, 'duration_days': None, 'contractor_experience_years': 0, 'weather_severity': 0}}
+2026-02-06 17:58:34,569 INFO {'predict_input': {'avg_temp': 29.1, 'avg_humidity': 70, 'avg_wind': 18.4, 'total_rain': 0.06, 'duration_days': None, 'contractor_experience_years': 0, 'weather_severity': 0}}

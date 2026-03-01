@@ -24,6 +24,8 @@ export interface BackendContractor {
   username: string;
   profile_pic: string | null;
   cover_photo: string | null;
+  company_logo?: string | null;
+  company_banner?: string | null;
 }
 
 /**
@@ -96,7 +98,7 @@ export class contractors_service {
       if (excludeUserId) params.append('exclude_user_id', excludeUserId.toString());
       params.append('page', page.toString());
       params.append('per_page', perPage.toString());
-      
+
       const endpoint = `${api_config.endpoints.contractors.list}?${params.toString()}`;
 
       const response = await api_request(endpoint, {
@@ -145,17 +147,20 @@ export class contractors_service {
     let logoUrl: string | undefined;
     let imageUrl: string | undefined;
 
-    if (backendContractor.profile_pic) {
-      // Profile pic is stored in storage, construct full URL matching Laravel's asset() helper
-      // Backend: asset('storage/' . $profilePic) becomes: baseUrl/storage/profile_pic_path
-      const profilePicPath = backendContractor.profile_pic.startsWith('http')
-        ? backendContractor.profile_pic
-        : `${baseUrl}/storage/${backendContractor.profile_pic}`;
-      logoUrl = profilePicPath;
-      imageUrl = profilePicPath; // Use same image for both logo and card image
+    // Prefer contractor-level `company_logo` when present, otherwise fall back to user's `profile_pic`.
+    const resolvedLogoPath = backendContractor.company_logo || backendContractor.profile_pic || null;
+    if (resolvedLogoPath) {
+      logoUrl = resolvedLogoPath.startsWith('http') ? resolvedLogoPath : `${baseUrl}/storage/${resolvedLogoPath}`;
+      imageUrl = logoUrl;
     } else {
-      // Use placeholder if no profile pic (matching backend fallback behavior)
       imageUrl = 'https://via.placeholder.com/400x200';
+    }
+
+    // Prefer contractor-level `company_banner` when present, otherwise fall back to `cover_photo`.
+    let coverUrl: string | undefined;
+    const resolvedCoverPath = backendContractor.company_banner || backendContractor.cover_photo || null;
+    if (resolvedCoverPath) {
+      coverUrl = resolvedCoverPath.startsWith('http') ? resolvedCoverPath : `${baseUrl}/storage/${resolvedCoverPath}`;
     }
 
     return {
@@ -169,7 +174,7 @@ export class contractors_service {
       contractor_type: backendContractor.type_name,
       logo_url: logoUrl,
       image_url: imageUrl,
-      cover_photo: backendContractor.cover_photo || undefined, // Cover photo for feed display
+      cover_photo: coverUrl || (backendContractor.cover_photo ? (backendContractor.cover_photo.startsWith('http') ? backendContractor.cover_photo : `${baseUrl}/storage/${backendContractor.cover_photo}`) : undefined),
       years_of_experience: backendContractor.years_of_experience,
       services_offered: backendContractor.services_offered || undefined,
       completed_projects: backendContractor.completed_projects,

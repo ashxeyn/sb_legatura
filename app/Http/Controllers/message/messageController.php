@@ -15,28 +15,83 @@ use Illuminate\Support\Facades\Log;
 class messageController extends Controller
 {
     /**
-     * Get authenticated user ID from either Sanctum (mobile) or session (web)
+     * Get authenticated user ID from either Bearer token (mobile), session (web), or X-User-Id header
+     * NOTE: Uses manual token lookup instead of auth('sanctum') to avoid PHP dev server crash on Windows
      */
     private function getAuthUserId(): ?int
     {
-        // Try Laravel auth first (Sanctum for API)
-        $userId = auth()->id();
-
-        // Fallback to session (admin web dashboard)
-        if (!$userId) {
-            $sessionUser = session('user');
-            // Admin users: admin_id, Regular users: user_id or id
-            $userId = $sessionUser->admin_id ?? $sessionUser->user_id ?? $sessionUser->id ?? null;
-
-            // Log::info('getAuthUserId - Using session auth', [
-            //     'session_user_exists' => !!$sessionUser,
-            //     'resolved_user_id' => $userId
-            // ]);
-        } else {
-            // Log::info('getAuthUserId - Using Sanctum auth', ['user_id' => $userId]);
+        // 1. Try Bearer token — manual DB lookup (same pattern as payMongoController)
+        $bearerToken = request()->bearerToken();
+        if ($bearerToken) {
+            try {
+                // Sanctum tokens are formatted as {id}|{plaintext}
+                // We need to hash only the plaintext part (after the pipe)
+                $tokenParts = explode('|', $bearerToken, 2);
+                $plainText = count($tokenParts) === 2 ? $tokenParts[1] : $bearerToken;
+                $tokenHash = hash('sha256', $plainText);
+                $tokenRecord = DB::table('personal_access_tokens')
+                    ->where('token', $tokenHash)
+                    ->first();
+                if ($tokenRecord) {
+                    return (int) $tokenRecord->tokenable_id;
+                }
+            } catch (\Exception $e) {
+                Log::warning('getAuthUserId: Bearer token lookup failed', ['error' => $e->getMessage()]);
+            }
         }
 
-        return $userId;
+        // 2. Fallback to session (admin web dashboard)
+        $sessionUser = session('user');
+        if ($sessionUser) {
+            return $sessionUser->admin_id ?? $sessionUser->user_id ?? $sessionUser->id ?? null;
+        }
+
+        // 3. Fallback: X-User-Id header (mobile clients)
+        $headerUserId = request()->header('X-User-Id');
+        if ($headerUserId) {
+            return (int) $headerUserId;
+        }
+
+        return null;
+    }
+
+    /**
+     * Broadcast typing indicator to the receiver's channel
+     * Ultra-lightweight: no DB queries, just auth + Pusher trigger
+     */
+    public function typing(Request $request): JsonResponse
+    {
+        $userId = $this->getAuthUserId();
+        if (!$userId) {
+            return response()->json(['success' => false], 401);
+        }
+
+        $receiverId = $request->input('receiver_id');
+        $conversationId = $request->input('conversation_id');
+        if (!$receiverId) {
+            return response()->json(['success' => false], 422);
+        }
+
+        try {
+            $pusher = new \Pusher\Pusher(
+                config('broadcasting.connections.pusher.key'),
+                config('broadcasting.connections.pusher.secret'),
+                config('broadcasting.connections.pusher.app_id'),
+                [
+                    'cluster' => config('broadcasting.connections.pusher.options.cluster'),
+                    'useTLS' => true,
+                ]
+            );
+
+            $pusher->trigger("private-chat.{$receiverId}", 'client-typing', [
+                'user_id' => $userId,
+                'conversation_id' => $conversationId,
+            ]);
+
+            return response()->json(['success' => true]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false], 500);
+        }
     }
 
     /**
@@ -46,7 +101,8 @@ class messageController extends Controller
     {
         // Check admin_users table
         $isAdminUser = DB::table('admin_users')->where('admin_id', $userId)->exists();
-        if ($isAdminUser) return true;
+        if ($isAdminUser)
+            return true;
 
         // Check users table for user_type='admin'
         $user = DB::table('users')->where('user_id', $userId)->first();
@@ -114,7 +170,7 @@ class messageController extends Controller
                     ->where('conversation_id', $conversationId)
                     ->where(function ($query) use ($userId) {
                         $query->where('sender_id', $userId)
-                              ->orWhere('receiver_id', $userId);
+                            ->orWhere('receiver_id', $userId);
                     })
                     ->exists();
 
@@ -508,7 +564,7 @@ class messageController extends Controller
                 ->join('conversations as c', 'm.conversation_id', '=', 'c.conversation_id')
                 ->where(function ($q) use ($userId) {
                     $q->where('c.sender_id', $userId)
-                      ->orWhere('c.receiver_id', $userId);
+                        ->orWhere('c.receiver_id', $userId);
                 })
                 ->where('m.content', 'LIKE', "%{$query}%")
                 ->select('m.*', 'c.sender_id', 'c.receiver_id')
@@ -615,7 +671,7 @@ class messageController extends Controller
                 ->where('conversation_id', $message->conversation_id)
                 ->where(function ($query) use ($userId) {
                     $query->where('sender_id', $userId)
-                          ->orWhere('receiver_id', $userId);
+                        ->orWhere('receiver_id', $userId);
                 })
                 ->first();
 

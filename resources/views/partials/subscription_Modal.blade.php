@@ -77,18 +77,19 @@
                     <div class="other-plans-section">
                         <h4 class="other-plans-title">Other plans:</h4>
                         <div class="other-plans-list">
-                            <div class="other-plan-card silver-plan">
-                                <div class="other-plan-info">
-                                    <span class="other-plan-name">SILVER TIER</span>
+                            @foreach($plans ?? [] as $plan)
+                                @if(!empty($sub) && strtolower($sub->plan_key) == strtolower($plan->plan_key)) @continue @endif
+                                <div class="other-plan-card {{ strtolower($plan->plan_key) }}-plan" 
+                                     data-plan="{{ strtolower($plan->plan_key) }}"
+                                     data-price="₱ {{ number_format($plan->amount / 100, 0) }}"
+                                     data-name="{{ $plan->name }}"
+                                     data-benefits='@json($plan->benefits)'>
+                                    <div class="other-plan-info">
+                                        <span class="other-plan-name">{{ strtoupper($plan->name) }}</span>
+                                    </div>
+                                    <span class="other-plan-price">₱ {{ number_format($plan->amount / 100, 0) }}</span>
                                 </div>
-                                <span class="other-plan-price">₱ 1,499</span>
-                            </div>
-                            <div class="other-plan-card bronze-plan">
-                                <div class="other-plan-info">
-                                    <span class="other-plan-name">BRONZE TIER</span>
-                                </div>
-                                <span class="other-plan-price">₱ 999</span>
-                            </div>
+                            @endforeach
                         </div>
                     </div>
 
@@ -110,32 +111,21 @@
                     </div>
 
                     <div class="plans-list">
-                        <!-- Gold Tier -->
-                        <div class="plan-card gold-tier" data-plan="gold">
-                            <div class="plan-badge">
-                                <i class="fi fi-rr-crown"></i>
+                        @foreach($plans ?? [] as $plan)
+                            <div class="plan-card {{ strtolower($plan->plan_key) }}-tier {{ (!empty($sub) && strtolower($sub->plan_key) == strtolower($plan->plan_key)) ? 'already-subscribed' : '' }}" 
+                                 data-plan="{{ strtolower($plan->plan_key) }}"
+                                 data-name="{{ $plan->name }}"
+                                 data-price="₱ {{ number_format($plan->amount / 100, 0) }}"
+                                 data-benefits='@json($plan->benefits)'>
+                                <div class="plan-badge">
+                                    <i class="fi fi-rr-crown"></i>
+                                </div>
+                                <div class="plan-header">
+                                    <span class="plan-name">{{ strtoupper($plan->name) }}</span>
+                                    <span class="plan-price">₱ {{ number_format($plan->amount / 100, 0) }}</span>
+                                </div>
                             </div>
-                            <div class="plan-header">
-                                <span class="plan-name">GOLD TIER</span>
-                                <span class="plan-price">₱ 1,999</span>
-                            </div>
-                        </div>
-
-                        <!-- Silver Tier -->
-                        <div class="plan-card silver-tier" data-plan="silver">
-                            <div class="plan-header">
-                                <span class="plan-name">SILVER TIER</span>
-                                <span class="plan-price">₱ 1,499</span>
-                            </div>
-                        </div>
-
-                        <!-- Bronze Tier -->
-                        <div class="plan-card bronze-tier" data-plan="bronze">
-                            <div class="plan-header">
-                                <span class="plan-name">BRONZE TIER</span>
-                                <span class="plan-price">₱ 999</span>
-                            </div>
-                        </div>
+                        @endforeach
                     </div>
 
                     <!-- Benefits Section -->

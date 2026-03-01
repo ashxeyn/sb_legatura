@@ -1,4 +1,4 @@
-// @ts-nocheck
+﻿// @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -15,6 +15,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { role_service } from '../../services/role_service';
+import { api_config, api_request } from '../../config/api';
+import { storage_service } from '../../utils/storage';
 
 interface ProfileScreenProps {
   onLogout: () => void;
@@ -57,6 +59,102 @@ export default function ProfileScreen({ onLogout, onViewProfile, onEditProfile, 
   const getInitials = (name: string) => {
     return name ? name.substring(0, 2).toUpperCase() : 'PO';
   };
+
+  // Resolve storage paths returned from the backend (e.g. "profiles/..." )
+  const getStorageUrl = (path: string | null | undefined) => {
+    if (!path) return null;
+    try {
+      const raw = String(path).trim();
+      // If an absolute URL is provided, attempt to extract the storage-relative path
+      if (raw.startsWith('http')) {
+        try {
+          const parsed = new URL(raw);
+          const storageIndex = parsed.pathname.indexOf('/storage/');
+          if (storageIndex !== -1) {
+            let p = parsed.pathname.substring(storageIndex + '/storage/'.length);
+            // remove leading slashes
+            p = p.replace(/^\/+/, '');
+            // normalize nested profiles/cover_photos -> cover_photos
+            if (p.startsWith('profiles/cover_photos/')) p = p.replace(/^profiles\/cover_photos\//, 'cover_photos/');
+            if (p.startsWith('storage/')) p = p.replace(/^storage\//, '');
+            const base = (api_config && api_config.base_url) || (global && (global.api_base || global.api_base_url)) || 'http://localhost:8000';
+            const url = `${String(base).replace(/\/+$/,'')}/storage/${p}`;
+            try { console.log('[getStorageUrl] normalized absolute url ->', url); } catch (e) {}
+            return url;
+          }
+          // If it doesn't include /storage/, return the absolute URL as-is
+          return raw;
+        } catch (e) {
+          // parsing failed, fallthrough to treat as relative path
+        }
+      }
+    } catch (e) {
+      return null;
+    }
+    // Normalize path to avoid double '/storage/storage/...' or leading slashes
+    let p = raw.replace(/^\/+/, '');
+    if (p.startsWith('storage/')) p = p.replace(/^storage\//, '');
+    // Some DB values include nested 'profiles/cover_photos' which maps to 'cover_photos' on disk
+    p = p.replace(/^profiles\/cover_photos\//, 'cover_photos/');
+    const base = (api_config && api_config.base_url) || (global && (global.api_base || global.api_base_url)) || 'http://localhost:8000';
+    const url = `${String(base).replace(/\/+$/,'')}/storage/${p}`;
+    try { console.log('[getStorageUrl] resolved', url); } catch (e) {}
+    return url;
+  };
+
+  const [ownerCoverUrl, setOwnerCoverUrl] = useState<string | null>(null);
+  const [ownerProfileUrl, setOwnerProfileUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    const resolveOwnerImages = async () => {
+      try {
+        // If we already have a cover/profile from props, prefer that
+        if (ownerCoverPhotoPath) {
+          setOwnerCoverUrl(getStorageUrl(ownerCoverPhotoPath));
+        }
+        if (ownerProfilePicPath) {
+          setOwnerProfileUrl(getStorageUrl(ownerProfilePicPath));
+        }
+
+        // If cover missing, try fetching latest profile from API using stored user id
+        if (!ownerCoverPhotoPath) {
+          const stored = await storage_service.get_user_data();
+          const userId = stored?.user_id || stored?.id || null;
+          if (userId) {
+            const resp = await api_request(`/api/profile/fetch?user_id=${encodeURIComponent(userId)}`);
+            if (resp?.success && resp.data) {
+              const payload = resp.data.data || resp.data;
+              const u = payload.user || payload;
+              const cover = u?.cover_photo || null;
+              if (cover && mounted) setOwnerCoverUrl(getStorageUrl(cover));
+              const pic = u?.profile_pic || null;
+              if (pic && mounted) setOwnerProfileUrl(getStorageUrl(pic));
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Could not resolve owner images:', e);
+      }
+    };
+    resolveOwnerImages();
+    return () => { mounted = false; };
+  }, [ownerCoverPhotoPath, ownerProfilePicPath]);
+
+  // Debug: log resolved URLs and source paths when they change
+  useEffect(() => {
+    try {
+      console.log('[owner/profile] ownerCoverUrl:', ownerCoverUrl, 'ownerProfileUrl:', ownerProfileUrl);
+      console.log('[owner/profile] ownerCoverPhotoPath:', ownerCoverPhotoPath, 'ownerProfilePicPath:', ownerProfilePicPath);
+    } catch (e) {
+      // no-op
+    }
+  }, [ownerCoverUrl, ownerProfileUrl, ownerCoverPhotoPath, ownerProfilePicPath]);
+
+  // Prefer images from the users table for owner screen.
+  // Use the `users` fields directly so owner cover/profile show correctly.
+  const ownerProfilePicPath = userData?.profile_pic || null;
+  const ownerCoverPhotoPath = userData?.cover_photo || null;
 
   let navigation: any = null;
   try {
@@ -270,9 +368,9 @@ export default function ProfileScreen({ onLogout, onViewProfile, onEditProfile, 
         <View style={styles.profileCard}>
           {/* Cover Photo */}
           <View style={styles.coverPhotoContainer}>
-            {userData?.cover_photo ? (
+            {getStorageUrl(ownerCoverPhotoPath) ? (
               <Image
-                source={{ uri: userData.cover_photo }}
+                source={{ uri: getStorageUrl(ownerCoverPhotoPath) as string }}
                 style={styles.coverPhoto}
                 resizeMode="cover"
               />
@@ -286,9 +384,9 @@ export default function ProfileScreen({ onLogout, onViewProfile, onEditProfile, 
           {/* Profile Info */}
           <View style={styles.profileInfoContainer}>
             <View style={styles.avatarContainer}>
-              {userData?.profile_pic ? (
+              {getStorageUrl(ownerProfilePicPath) ? (
                 <Image
-                  source={{ uri: userData.profile_pic }}
+                  source={{ uri: getStorageUrl(ownerProfilePicPath) as string }}
                   style={styles.avatar}
                   resizeMode="cover"
                 />

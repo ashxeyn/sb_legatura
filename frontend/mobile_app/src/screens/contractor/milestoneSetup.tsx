@@ -12,8 +12,9 @@ import {
   Platform,
   StatusBar,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import * as DocumentPicker from 'expo-document-picker';
 import { projects_service } from '../../services/projects_service';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
@@ -21,12 +22,20 @@ const PRIMARY = '#EC7E00';
 const PRIMARY_DARK = '#C96A00';
 const PRIMARY_DEEP = '#B35E00';
 
+interface FileItem {
+  uri: string;
+  name: string;
+  type: string;
+}
+
 interface MilestoneItem {
   id: number;
   percentage: string;
   title: string;
   description: string;
+  start_date: string;
   date_to_finish: string;
+  files: FileItem[];
 }
 
 interface Project {
@@ -60,6 +69,7 @@ interface MilestoneSetupProps {
 }
 
 const MilestoneSetup: React.FC<MilestoneSetupProps> = ({ project, userId, onClose, onSave, editMode = false, existingMilestone }) => {
+  const insets = useSafeAreaInsets();
   const projectId = project.project_id;
   const projectTitle = project.project_title;
 
@@ -80,10 +90,12 @@ const MilestoneSetup: React.FC<MilestoneSetupProps> = ({ project, userId, onClos
 
   // Step 3 data
   const [milestoneItems, setMilestoneItems] = useState<MilestoneItem[]>([
-    { id: 1, percentage: '', title: '', description: '', date_to_finish: '' },
+    { id: 1, percentage: '', title: '', description: '', start_date: '', date_to_finish: '', files: [] },
   ]);
   const [showDatePicker, setShowDatePicker] = useState<{ [key: number]: boolean }>({});
+  const [showStartDatePicker, setShowStartDatePicker] = useState<{ [key: number]: boolean }>({});
   const [milestoneItemDates, setMilestoneItemDates] = useState<{ [key: number]: Date }>({});
+  const [milestoneItemStartDates, setMilestoneItemStartDates] = useState<{ [key: number]: Date }>({});
 
   // Loading states
   const [loading, setLoading] = useState(false);
@@ -97,6 +109,10 @@ const MilestoneSetup: React.FC<MilestoneSetupProps> = ({ project, userId, onClos
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+  };
+
+  const displayDate = (date: Date): string => {
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
   // Format number with commas as user types
@@ -138,7 +154,9 @@ const MilestoneSetup: React.FC<MilestoneSetupProps> = ({ project, userId, onClos
           percentage: item.percentage_progress?.toString() || '',
           title: item.milestone_item_title || '',
           description: item.milestone_item_description || '',
+          start_date: item.start_date || '',
           date_to_finish: item.date_to_finish || '',
+          files: [],
         }));
         setMilestoneItems(loadedItems);
       }
@@ -194,26 +212,19 @@ const MilestoneSetup: React.FC<MilestoneSetupProps> = ({ project, userId, onClos
     const newId = milestoneItems.length > 0 ? Math.max(...milestoneItems.map(i => i.id)) + 1 : 1;
     setMilestoneItems([
       ...milestoneItems,
-      { id: newId, percentage: '', title: '', description: '', date_to_finish: '' },
+      { id: newId, percentage: '', title: '', description: '', start_date: '', date_to_finish: '', files: [] },
     ]);
-    // Initialize date for new item to start date
     setMilestoneItemDates(prev => ({ ...prev, [newId]: startDate }));
+    setMilestoneItemStartDates(prev => ({ ...prev, [newId]: startDate }));
   };
 
   const removeMilestoneItem = (id: number) => {
     if (milestoneItems.length > 1) {
       setMilestoneItems(milestoneItems.filter(item => item.id !== id));
-      // Clean up date state for removed item
-      setMilestoneItemDates(prev => {
-        const newDates = { ...prev };
-        delete newDates[id];
-        return newDates;
-      });
-      setShowDatePicker(prev => {
-        const newPickers = { ...prev };
-        delete newPickers[id];
-        return newPickers;
-      });
+      setMilestoneItemDates(prev => { const n = { ...prev }; delete n[id]; return n; });
+      setMilestoneItemStartDates(prev => { const n = { ...prev }; delete n[id]; return n; });
+      setShowDatePicker(prev => { const n = { ...prev }; delete n[id]; return n; });
+      setShowStartDatePicker(prev => { const n = { ...prev }; delete n[id]; return n; });
     }
   };
 
@@ -225,9 +236,46 @@ const MilestoneSetup: React.FC<MilestoneSetupProps> = ({ project, userId, onClos
     );
   };
 
+  const MAX_ITEM_FILES = 5;
+
+  const pickFile = async (id: number) => {
+    const item = milestoneItems.find(i => i.id === id);
+    if (!item) return;
+    if (item.files.length >= MAX_ITEM_FILES) {
+      Alert.alert('Limit Reached', `You can attach up to ${MAX_ITEM_FILES} files per milestone.`);
+      return;
+    }
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['image/*', 'application/pdf', 'application/msword',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain'],
+        multiple: true,
+      });
+      if (!result.canceled && result.assets) {
+        const slotsLeft = MAX_ITEM_FILES - item.files.length;
+        const newFiles: FileItem[] = result.assets.slice(0, slotsLeft).map(a => ({
+          uri: a.uri,
+          name: a.name || a.uri.split('/').pop() || 'file',
+          type: a.mimeType || 'application/octet-stream',
+        }));
+        setMilestoneItems(prev =>
+          prev.map(i => i.id === id ? { ...i, files: [...i.files, ...newFiles] } : i)
+        );
+      }
+    } catch (err) {
+      console.error('File pick error:', err);
+    }
+  };
+
+  const removeFile = (id: number, fileIndex: number) => {
+    setMilestoneItems(prev =>
+      prev.map(i => i.id === id ? { ...i, files: i.files.filter((_, fi) => fi !== fileIndex) } : i)
+    );
+  };
+
   const validateStep1 = (): boolean => {
     if (!milestoneName.trim()) {
-      Alert.alert('Validation Error', 'Please enter a milestone name.');
+      Alert.alert('Validation Error', 'Please enter a project name.');
       return false;
     }
     return true;
@@ -256,24 +304,42 @@ const MilestoneSetup: React.FC<MilestoneSetupProps> = ({ project, userId, onClos
   };
 
   const validateStep3 = (): boolean => {
-    for (const item of milestoneItems) {
+    for (let i = 0; i < milestoneItems.length; i++) {
+      const item = milestoneItems[i];
+      const label = `Milestone ${i + 1}`;
+
       if (!item.percentage || parseFloat(item.percentage) <= 0) {
-        Alert.alert('Validation Error', 'Please enter a valid percentage for all milestone items.');
+        Alert.alert('Validation Error', `${label}: Please enter a valid percentage.`);
         return false;
       }
       if (!item.title.trim()) {
-        Alert.alert('Validation Error', 'Please enter a title for all milestone items.');
+        Alert.alert('Validation Error', `${label}: Please enter a title.`);
+        return false;
+      }
+      if (!item.start_date) {
+        Alert.alert('Validation Error', `${label}: Please select a start date.`);
         return false;
       }
       if (!item.date_to_finish) {
-        Alert.alert('Validation Error', 'Please enter a completion date for all milestone items.');
+        Alert.alert('Validation Error', `${label}: Please select an end date.`);
         return false;
       }
-      // Validate date is within project timeline
-      const itemDate = new Date(item.date_to_finish);
-      if (itemDate < startDate || itemDate > endDate) {
-        Alert.alert('Validation Error', `Milestone completion date must be between ${formatDate(startDate)} and ${formatDate(endDate)}.`);
+
+      const itemStart = new Date(item.start_date);
+      const itemEnd = new Date(item.date_to_finish);
+
+      if (itemEnd <= itemStart) {
+        Alert.alert('Validation Error', `${label}: End date must be after the start date.`);
         return false;
+      }
+
+      // Sequential check: must start after the previous milestone's end date
+      if (i > 0) {
+        const prev = milestoneItems[i - 1];
+        if (prev.date_to_finish && itemStart <= new Date(prev.date_to_finish)) {
+          Alert.alert('Validation Error', `${label}: Start date must be after Milestone ${i}'s end date (${displayDate(new Date(prev.date_to_finish))}).`);
+          return false;
+        }
       }
     }
     if (Math.abs(totalPercentage - 100) > 0.01) {
@@ -313,7 +379,9 @@ const MilestoneSetup: React.FC<MilestoneSetupProps> = ({ project, userId, onClos
           percentage: parseFloat(item.percentage),
           title: item.title,
           description: item.description || '',
+          start_date: item.start_date,
           date_to_finish: item.date_to_finish,
+          files: item.files,
         })),
       };
 
@@ -386,11 +454,11 @@ const MilestoneSetup: React.FC<MilestoneSetupProps> = ({ project, userId, onClos
     <View style={styles.stepContent}>
       <Text style={styles.sectionTitle}>Basic Information</Text>
       <Text style={styles.sectionDescription}>
-        Enter the milestone plan name and select the payment mode for this project.
+        Enter the project name and select the payment mode.
       </Text>
 
       <View style={styles.inputGroup}>
-        <Text style={styles.label}>Milestone Name *</Text>
+        <Text style={styles.label}>Project Name *</Text>
         <TextInput
           style={styles.input}
           value={milestoneName}
@@ -476,7 +544,7 @@ const MilestoneSetup: React.FC<MilestoneSetupProps> = ({ project, userId, onClos
             onPress={() => setShowStartPicker(true)}
           >
             <Ionicons name="calendar-outline" size={20} color={PRIMARY} />
-            <Text style={styles.dateText}>{formatDate(startDate)}</Text>
+            <Text style={styles.dateText} numberOfLines={1}>{displayDate(startDate)}</Text>
           </TouchableOpacity>
         </View>
 
@@ -487,7 +555,7 @@ const MilestoneSetup: React.FC<MilestoneSetupProps> = ({ project, userId, onClos
             onPress={() => setShowEndPicker(true)}
           >
             <Ionicons name="calendar-outline" size={20} color={PRIMARY} />
-            <Text style={styles.dateText}>{formatDate(endDate)}</Text>
+            <Text style={styles.dateText} numberOfLines={1}>{displayDate(endDate)}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -508,7 +576,7 @@ const MilestoneSetup: React.FC<MilestoneSetupProps> = ({ project, userId, onClos
           mode="date"
           display={Platform.OS === 'ios' ? 'spinner' : 'default'}
           onChange={handleEndDateChange}
-          minimumDate={startDate}
+          minimumDate={new Date(Math.max(startDate.getTime(), new Date().setHours(0,0,0,0)))}
         />
       )}
 
@@ -574,6 +642,30 @@ const MilestoneSetup: React.FC<MilestoneSetupProps> = ({ project, userId, onClos
     </View>
   );
 
+  // ── Date range helpers for sequential non-overlapping milestones ──
+  const addDays = (date: Date, days: number): Date => {
+    const d = new Date(date);
+    d.setDate(d.getDate() + days);
+    return d;
+  };
+
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+
+  // Minimum start date for milestone at `index`: day after previous milestone's end date, floored to today
+  const getMinStartDate = (index: number): Date => {
+    const base = index === 0
+      ? startDate
+      : (milestoneItems[index - 1].date_to_finish ? addDays(new Date(milestoneItems[index - 1].date_to_finish), 1) : startDate);
+    return new Date(Math.max(base.getTime(), today.getTime()));
+  };
+
+  // Maximum end date for milestone at `index`: day before next milestone's start date
+  const getMaxEndDate = (index: number): Date => {
+    if (index === milestoneItems.length - 1) return endDate;
+    const next = milestoneItems[index + 1];
+    return next.start_date ? addDays(new Date(next.start_date), -1) : endDate;
+  };
+
   const renderStep3 = () => (
     <View style={styles.stepContent}>
       <Text style={styles.sectionTitle}>Milestone Items</Text>
@@ -604,7 +696,10 @@ const MilestoneSetup: React.FC<MilestoneSetupProps> = ({ project, userId, onClos
         </Text>
       </View>
 
-      {milestoneItems.map((item, index) => (
+      {milestoneItems.map((item, index) => {
+        const minStart = getMinStartDate(index);
+        const maxEnd   = getMaxEndDate(index);
+        return (
         <View key={item.id} style={styles.milestoneItemCard}>
           <View style={styles.milestoneItemHeader}>
             <Text style={styles.milestoneItemTitle}>Milestone {index + 1}</Text>
@@ -659,29 +754,98 @@ const MilestoneSetup: React.FC<MilestoneSetupProps> = ({ project, userId, onClos
             />
           </View>
 
+          {/* Attachments */}
+          <View style={styles.inputGroup}>
+            <View style={styles.attachmentHeader}>
+              <Text style={styles.smallLabel}>Attachments</Text>
+              <Text style={styles.attachmentCount}>{item.files.length}/{MAX_ITEM_FILES}</Text>
+            </View>
+            {item.files.map((file, fi) => (
+              <View key={fi} style={styles.attachmentRow}>
+                <Ionicons name="document-outline" size={16} color={PRIMARY} style={{ marginRight: 6 }} />
+                <Text style={styles.attachmentName} numberOfLines={1}>{file.name}</Text>
+                <TouchableOpacity onPress={() => removeFile(item.id, fi)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Ionicons name="close-circle" size={18} color="#FF4444" />
+                </TouchableOpacity>
+              </View>
+            ))}
+            <TouchableOpacity style={styles.attachButton} onPress={() => pickFile(item.id)}>
+              <Ionicons name="attach" size={18} color={PRIMARY} />
+              <Text style={styles.attachButtonText}>Add File</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.smallLabel}>Start Date *</Text>
+            <TouchableOpacity
+              style={styles.datePickerButton}
+              onPress={() => {
+                if (!milestoneItemStartDates[item.id]) {
+                  setMilestoneItemStartDates(prev => ({ ...prev, [item.id]: minStart }));
+                }
+                setShowStartDatePicker(prev => ({ ...prev, [item.id]: true }));
+              }}
+            >
+              <Ionicons name="calendar-outline" size={20} color={PRIMARY} />
+              <Text style={styles.datePickerText} numberOfLines={1}>
+                {item.start_date ? displayDate(new Date(item.start_date)) : 'Select Start Date'}
+              </Text>
+            </TouchableOpacity>
+            {index > 0 && (
+              <Text style={styles.dateHint}>From {displayDate(minStart)} onwards</Text>
+            )}
+            {showStartDatePicker[item.id] && (
+              <DateTimePicker
+                value={milestoneItemStartDates[item.id] || minStart}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                minimumDate={new Date(Math.max(minStart.getTime(), today.getTime()))}
+                maximumDate={maxEnd}
+                onChange={(event, selectedDate) => {
+                  setShowStartDatePicker(prev => ({ ...prev, [item.id]: false }));
+                  if (selectedDate) {
+                    setMilestoneItemStartDates(prev => ({ ...prev, [item.id]: selectedDate }));
+                    updateMilestoneItem(item.id, 'start_date', formatDate(selectedDate));
+                    // Clear end date if it's now before the new start
+                    if (item.date_to_finish && new Date(item.date_to_finish) <= selectedDate) {
+                      updateMilestoneItem(item.id, 'date_to_finish', '');
+                    }
+                  }
+                }}
+              />
+            )}
+          </View>
+
           <View style={styles.inputGroup}>
             <Text style={styles.smallLabel}>Target Completion Date *</Text>
             <TouchableOpacity
               style={styles.datePickerButton}
               onPress={() => {
+                const itemMinStart = item.start_date ? new Date(item.start_date) : minStart;
                 if (!milestoneItemDates[item.id]) {
-                  setMilestoneItemDates(prev => ({ ...prev, [item.id]: startDate }));
+                  setMilestoneItemDates(prev => ({ ...prev, [item.id]: itemMinStart }));
                 }
                 setShowDatePicker(prev => ({ ...prev, [item.id]: true }));
               }}
             >
               <Ionicons name="calendar-outline" size={20} color={PRIMARY} />
-              <Text style={styles.datePickerText}>
-                {item.date_to_finish || 'Select Date'}
+              <Text style={styles.datePickerText} numberOfLines={1}>
+                {item.date_to_finish ? displayDate(new Date(item.date_to_finish)) : 'Select End Date'}
               </Text>
             </TouchableOpacity>
+            {index < milestoneItems.length - 1 && maxEnd >= today && (
+              <Text style={styles.dateHint}>Up to {displayDate(maxEnd)}</Text>
+            )}
             {showDatePicker[item.id] && (
               <DateTimePicker
-                value={milestoneItemDates[item.id] || startDate}
+                value={milestoneItemDates[item.id] || (item.start_date ? new Date(item.start_date) : minStart)}
                 mode="date"
                 display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                minimumDate={startDate}
-                maximumDate={endDate}
+                minimumDate={new Date(Math.max(
+                  (item.start_date ? addDays(new Date(item.start_date), 1) : minStart).getTime(),
+                  today.getTime()
+                ))}
+                maximumDate={maxEnd}
                 onChange={(event, selectedDate) => {
                   setShowDatePicker(prev => ({ ...prev, [item.id]: false }));
                   if (selectedDate) {
@@ -693,7 +857,8 @@ const MilestoneSetup: React.FC<MilestoneSetupProps> = ({ project, userId, onClos
             )}
           </View>
         </View>
-      ))}
+        );
+      })}
 
       <TouchableOpacity style={styles.addButton} onPress={addMilestoneItem}>
         <Ionicons name="add-circle-outline" size={24} color={PRIMARY} />
@@ -703,15 +868,15 @@ const MilestoneSetup: React.FC<MilestoneSetupProps> = ({ project, userId, onClos
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
       <StatusBar barStyle="light-content" backgroundColor={PRIMARY} />
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <TouchableOpacity style={styles.backButton} onPress={onClose}>
           <Ionicons name="arrow-back" size={24} color="#FFF" />
         </TouchableOpacity>
         <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>{editMode ? 'Edit' : 'Setup'} Milestones</Text>
+          <Text style={styles.headerTitle}>{editMode ? 'Edit' : 'Setup'} Project</Text>
           <Text style={styles.headerSubtitle} numberOfLines={1}>
             {projectTitle}
           </Text>
@@ -756,7 +921,7 @@ const MilestoneSetup: React.FC<MilestoneSetupProps> = ({ project, userId, onClos
             ) : (
               <>
                 <Ionicons name="checkmark-circle" size={20} color="#FFF" />
-                <Text style={styles.submitButtonText}>{editMode ? 'Update' : 'Submit'} Milestones</Text>
+                <Text style={styles.submitButtonText}>{editMode ? 'Update' : 'Submit'} Project Setup</Text>
               </>
             )}
           </TouchableOpacity>
@@ -773,7 +938,6 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: PRIMARY,
-    paddingTop: 12,
     paddingBottom: 20,
     paddingHorizontal: 20,
     flexDirection: 'row',
@@ -799,7 +963,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 20,
+    paddingTop: 12,
+    paddingBottom: 12,
     paddingHorizontal: 30,
     backgroundColor: '#FFF',
     borderBottomWidth: 1,
@@ -850,7 +1015,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    padding: 20,
+    padding: 16,
+    paddingTop: 14,
     paddingBottom: 30,
   },
   stepContent: {
@@ -981,9 +1147,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#FAFAFA',
   },
   dateText: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#333',
-    marginLeft: 10,
+    marginLeft: 8,
+    flex: 1,
   },
   currencyInput: {
     flexDirection: 'row',
@@ -1150,6 +1317,12 @@ const styles = StyleSheet.create({
     color: '#333',
     flex: 1,
   },
+  dateHint: {
+    fontSize: 11,
+    color: '#999',
+    marginTop: 4,
+    marginLeft: 2,
+  },
   footer: {
     flexDirection: 'row',
     padding: 20,
@@ -1210,6 +1383,50 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#FFF',
+  },
+  attachmentHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  attachmentCount: {
+    fontSize: 12,
+    color: '#999',
+  },
+  attachmentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    marginBottom: 6,
+  },
+  attachmentName: {
+    flex: 1,
+    fontSize: 13,
+    color: '#333',
+  },
+  attachButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: PRIMARY,
+    borderStyle: 'dashed',
+    borderRadius: 8,
+    gap: 6,
+    marginTop: 2,
+  },
+  attachButtonText: {
+    fontSize: 14,
+    color: PRIMARY,
+    fontWeight: '500',
   },
 });
 

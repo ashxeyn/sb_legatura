@@ -3,7 +3,7 @@
 namespace App\Models\owner;
 
 use Illuminate\Support\Facades\DB;
-use App\Services\bidRankingService;
+use App\Services\BidRankingService;
 
 class projectsClass
 {
@@ -323,9 +323,9 @@ class projectsClass
             $bid->files = $files->toArray();
         }
 
-        // ✨ Apply intelligent ranking using bidRankingService
+        // ✨ Apply intelligent ranking using BidRankingService
         // This will sort bids by score (price, experience, reviews, subscription)
-        $rankingService = new bidRankingService();
+        $rankingService = new BidRankingService();
         $rankedBids = $rankingService->rankBids($projectId, collect($bids));
 
         return $rankedBids;

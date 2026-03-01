@@ -1,5 +1,4 @@
-// @ts-nocheck
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -16,24 +15,34 @@ import {
   Modal,
   Keyboard,
   Linking,
+  Dimensions,
+  Animated,
 } from 'react-native';
 import { StatusBar } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { MaterialIcons, Ionicons, Feather } from '@expo/vector-icons';
+import { Ionicons, Feather } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import {
   messages_service,
   InboxItem,
   ChatMessage,
-  ConversationDetail,
   UserInfo,
   Attachment,
 } from '../../services/messages_service';
-import { api_config } from '../../config/api';
+import { api_config, api_request } from '../../config/api';
+import {
+  initPusher,
+  subscribeToChatChannel,
+  unsubscribeFromChannel,
+  disconnectPusher,
+} from '../../config/pusher';
+import { storage_service } from '../../utils/storage';
 
 /* =====================================================================
- * Constants
+ * Constants & Types
  * ===================================================================== */
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const COLORS = {
   primary: '#EC7E00',
@@ -43,29 +52,27 @@ const COLORS = {
   success: '#10B981',
   error: '#EF4444',
   warning: '#F59E0B',
-  background: '#F5F5F5',
+  bg: '#F8F9FA',
   surface: '#FFFFFF',
-  text: '#333333',
-  textSecondary: '#666666',
-  textMuted: '#999999',
-  border: '#E5E5E5',
-  borderLight: '#F0F0F0',
-  unreadBg: '#FFF9E6',
+  text: '#1A1A2E',
+  textSecondary: '#6B7280',
+  textMuted: '#9CA3AF',
+  border: '#E5E7EB',
+  borderLight: '#F3F4F6',
+  unreadBg: '#FFFBEB',
   ownBubble: '#EC7E00',
   otherBubble: '#FFFFFF',
-  suspended: '#FEE2E2',
+  suspended: '#FEF2F2',
+  chatBg: '#F0F2F5',
 };
 
 const AVATAR_COLORS = [
-  '#1877f2', '#42b883', '#e74c3c', '#f39c12',
-  '#9b59b6', '#1abc9c', '#e67e22', '#3498db',
+  '#3B82F6', '#10B981', '#EF4444', '#F59E0B',
+  '#8B5CF6', '#14B8A6', '#F97316', '#6366F1',
 ];
 
-const POLL_INTERVAL = 8000; // 8 seconds
-
-/* =====================================================================
- * Props
- * ===================================================================== */
+const POLL_INTERVAL_MS = 15_000;
+const MAX_ATTACHMENTS = 5;
 
 interface MessagesScreenProps {
   userData?: {
@@ -78,23 +85,142 @@ interface MessagesScreenProps {
 }
 
 /* =====================================================================
- * Component
+ * Helper Components & Functions
+ * ===================================================================== */
+
+const TypingDots = () => {
+  const dot1 = useRef(new Animated.Value(0)).current;
+  const dot2 = useRef(new Animated.Value(0)).current;
+  const dot3 = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const animateDot = (dot: Animated.Value, delay: number) => {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(dot, { toValue: -5, duration: 300, delay, useNativeDriver: true }),
+          Animated.timing(dot, { toValue: 0, duration: 300, useNativeDriver: true }),
+          Animated.timing(dot, { toValue: 0, duration: 600, useNativeDriver: true })
+        ])
+      ).start();
+    };
+    animateDot(dot1, 0);
+    animateDot(dot2, 200);
+    animateDot(dot3, 400);
+  }, []);
+
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+      <Animated.View style={[styles.typingDot, { transform: [{ translateY: dot1 }] }]} />
+      <Animated.View style={[styles.typingDot, { transform: [{ translateY: dot2 }] }]} />
+      <Animated.View style={[styles.typingDot, { transform: [{ translateY: dot3 }] }]} />
+    </View>
+  );
+};
+
+const getInitials = (name: string): string =>
+  name
+    ? name
+      .split(' ')
+      .map((w: string) => w[0])
+      .join('')
+      .substring(0, 2)
+      .toUpperCase()
+    : 'U';
+
+const getAvatarColor = (id: number): string => AVATAR_COLORS[id % AVATAR_COLORS.length];
+
+const getAvatarUri = (avatar: string | null): string | null => {
+  if (!avatar) return null;
+  if (avatar.startsWith('http')) return avatar;
+  return `${api_config.base_url}/storage/${avatar}`;
+};
+
+const resolveFileUrl = (url: string): string => {
+  if (!url) return '';
+  if (url.startsWith('http')) return url;
+  return `${api_config.base_url}${url.startsWith('/') ? '' : '/'}${url}`;
+};
+
+const getRoleLabel = (type: string): string => {
+  switch (type) {
+    case 'contractor':
+      return 'Contractor';
+    case 'property_owner':
+      return 'Property Owner';
+    case 'admin':
+      return 'Admin';
+    default:
+      return type || 'User';
+  }
+};
+
+/* =====================================================================
+ * Sub-components
+ * ===================================================================== */
+
+const Avatar = React.memo(({
+  uri,
+  name,
+  id,
+  size = 48,
+}: {
+  uri: string | null;
+  name: string;
+  id: number;
+  size?: number;
+}) => {
+  const avatarUrl = getAvatarUri(uri);
+  const color = getAvatarColor(id);
+  const radius = size / 2;
+  const fontSize = size * 0.36;
+
+  if (avatarUrl) {
+    return (
+      <Image
+        source={{ uri: avatarUrl }}
+        style={{ width: size, height: size, borderRadius: radius }}
+      />
+    );
+  }
+
+  return (
+    <View
+      style={{
+        width: size,
+        height: size,
+        borderRadius: radius,
+        backgroundColor: color,
+        justifyContent: 'center',
+        alignItems: 'center',
+      }}
+    >
+      <Text style={{ fontSize, fontWeight: '600', color: '#FFF' }}>
+        {getInitials(name)}
+      </Text>
+    </View>
+  );
+});
+
+/* =====================================================================
+ * Main Component
  * ===================================================================== */
 
 export default function MessagesScreen({ userData }: MessagesScreenProps) {
   const insets = useSafeAreaInsets();
+  const userId = userData?.user_id;
 
-  // ─── Inbox state ───────────────────────────────────────────────
+  /* ─── View state ─────────────────────────────────────────────── */
+  const [activeConversation, setActiveConversation] = useState<InboxItem | null>(null);
+
+  /* ─── Inbox state ────────────────────────────────────────────── */
   const [inbox, setInbox] = useState<InboxItem[]>([]);
-  const [filteredInbox, setFilteredInbox] = useState<InboxItem[]>([]);
-  const [inboxFilter, setInboxFilter] = useState<'all' | 'unread'>('all');
   const [inboxLoading, setInboxLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isSearching, setIsSearching] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [inboxFilter, setInboxFilter] = useState<'all' | 'unread'>('all');
 
-  // ─── Chat state ────────────────────────────────────────────────
-  const [activeConversation, setActiveConversation] = useState<InboxItem | null>(null);
+  /* ─── Chat state ─────────────────────────────────────────────── */
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [chatLoading, setChatLoading] = useState(false);
   const [messageText, setMessageText] = useState('');
@@ -102,7 +228,12 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
   const [pendingAttachments, setPendingAttachments] = useState<any[]>([]);
   const chatListRef = useRef<FlatList>(null);
 
-  // ─── Compose modal state ──────────────────────────────────────
+  /* ─── Typing Indicator State ─────────────────────────────────── */
+  const [isTyping, setIsTyping] = useState(false);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const typingDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /* ─── Compose modal ──────────────────────────────────────────── */
   const [composeVisible, setComposeVisible] = useState(false);
   const [availableUsers, setAvailableUsers] = useState<UserInfo[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
@@ -111,71 +242,210 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
   const [composeText, setComposeText] = useState('');
   const [composeSending, setComposeSending] = useState(false);
 
-  // ─── Report modal state ───────────────────────────────────────
+  /* ─── Report modal ───────────────────────────────────────────── */
   const [reportModalVisible, setReportModalVisible] = useState(false);
   const [reportMessageId, setReportMessageId] = useState<number | null>(null);
   const [reportReason, setReportReason] = useState('');
 
-  // ─── Polling ref ──────────────────────────────────────────────
-  const pollRef = useRef<NodeJS.Timer | null>(null);
+  /* ─── Image preview modal ────────────────────────────────────── */
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
-  const userId = userData?.user_id;
+  /* ─── Pusher ─────────────────────────────────────────────────── */
+  const pusherRef = useRef<any>(null);
+  const channelRef = useRef<any>(null);
+  const [pusherConnected, setPusherConnected] = useState(false);
 
-  /* =====================================================================
-   * Effects
-   * ===================================================================== */
+  /* ─── Polling ────────────────────────────────────────────────── */
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const activeConvRef = useRef<InboxItem | null>(null);
 
-  // Load inbox on mount
+  // Keep ref in sync so polling callbacks read current value
   useEffect(() => {
-    loadInbox();
+    activeConvRef.current = activeConversation;
+  }, [activeConversation]);
+
+  /* ─── Derived data ───────────────────────────────────────────── */
+  const totalUnread = useMemo(
+    () => inbox.reduce((s: number, c: InboxItem) => s + c.unread_count, 0),
+    [inbox],
+  );
+
+  const filteredInbox = useMemo(() => {
+    let items = [...inbox];
+    if (inboxFilter === 'unread') items = items.filter((c: InboxItem) => c.unread_count > 0);
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      items = items.filter(
+        (c: InboxItem) =>
+          c.other_user.name.toLowerCase().includes(q) ||
+          (c.last_message?.content || '').toLowerCase().includes(q),
+      );
+    }
+    return items;
+  }, [inbox, inboxFilter, searchQuery]);
+
+  /* =================================================================
+   * Effects
+   * ================================================================= */
+
+  useEffect(() => {
+    // IMPORTANT: Load inbox FIRST, then init Pusher AFTER inbox completes.
+    // php artisan serve is single-threaded — concurrent requests deadlock it.
+    const initSequentially = async () => {
+      await loadInbox();
+      // Small delay to ensure the inbox response is fully processed before
+      // opening a new connection for Pusher auth
+      setTimeout(() => {
+        initializePusherConnection();
+      }, 500);
+    };
+    initSequentially();
+
     return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
+      clearPoll();
+      if (channelRef.current && pusherRef.current) {
+        unsubscribeFromChannel(pusherRef.current, `private-chat.${userId}`);
+      }
+      if (pusherRef.current) disconnectPusher(pusherRef.current);
     };
   }, []);
 
-  // Poll for new messages when in chat view
   useEffect(() => {
+    clearPoll();
     if (activeConversation) {
       pollRef.current = setInterval(() => {
         silentRefreshChat(activeConversation.conversation_id);
-      }, POLL_INTERVAL);
-    } else {
-      if (pollRef.current) clearInterval(pollRef.current);
+      }, POLL_INTERVAL_MS);
     }
-    return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
-    };
-  }, [activeConversation]);
+    return clearPoll;
+  }, [activeConversation?.conversation_id]);
 
-  // Filter inbox when filter or search changes
-  useEffect(() => {
-    let filtered = [...inbox];
-    if (inboxFilter === 'unread') {
-      filtered = filtered.filter(c => c.unread_count > 0);
-    }
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      filtered = filtered.filter(c =>
-        c.other_user.name.toLowerCase().includes(q) ||
-        (c.last_message?.content || '').toLowerCase().includes(q)
+  /* =================================================================
+   * Pusher initialization
+   * ================================================================= */
+
+  const initializePusherConnection = async () => {
+    if (!userId) return;
+    try {
+      const authToken = await storage_service.get_auth_token();
+      if (!authToken) return;
+
+      const pusher = await initPusher(authToken);
+      if (!pusher) return;
+
+      pusherRef.current = pusher;
+
+      pusher.connection.bind('connected', () => setPusherConnected(true));
+      pusher.connection.bind('disconnected', () => setPusherConnected(false));
+      pusher.connection.bind('error', () => setPusherConnected(false));
+
+      const channel = subscribeToChatChannel(
+        pusher,
+        userId,
+        handlePusherMessage,
+        handlePusherReadReceipt,
+        handlePusherTyping,
       );
+      channelRef.current = channel;
+    } catch (err) {
+      console.error('Pusher init error:', err);
     }
-    setFilteredInbox(filtered);
-  }, [inbox, inboxFilter, searchQuery]);
+  };
 
-  /* =====================================================================
-   * Data fetching
-   * ===================================================================== */
+  /* =================================================================
+   * Pusher event handlers
+   * ================================================================= */
+
+  const handlePusherMessage = useCallback(
+    (event: any) => {
+      const incoming: ChatMessage = {
+        message_id: event.message_id,
+        conversation_id: event.conversation_id,
+        content: event.content,
+        sender: event.sender,
+        is_read: event.is_read ?? false,
+        is_flagged: event.is_flagged ?? false,
+        flag_reason: event.flag_reason ?? null,
+        sent_at_human: 'Just now',
+        sent_at: event.sent_at,
+        attachments: event.attachments || [],
+      };
+
+      setActiveConversation((prev: InboxItem | null) => {
+        if (prev && prev.conversation_id === event.conversation_id) {
+          setMessages((msgs: ChatMessage[]) => {
+            if (msgs.some((m: ChatMessage) => m.message_id === incoming.message_id)) return msgs;
+            return [...msgs, incoming];
+          });
+          setTimeout(() => chatListRef.current?.scrollToEnd({ animated: true }), 200);
+          messages_service.get_conversation(event.conversation_id).catch(() => { });
+        }
+        return prev;
+      });
+
+      setInbox((prev: InboxItem[]) => {
+        const exists = prev.find((c: InboxItem) => c.conversation_id === event.conversation_id);
+        if (exists) {
+          return prev.map((c: InboxItem) =>
+            c.conversation_id === event.conversation_id
+              ? {
+                ...c,
+                last_message: {
+                  content: event.content || 'Attachment',
+                  sent_at: 'Just now',
+                  sent_at_timestamp: event.sent_at,
+                },
+                unread_count: c.unread_count + 1,
+              }
+              : c,
+          );
+        }
+        loadInbox();
+        return prev;
+      });
+    },
+    [],
+  );
+
+  const handlePusherReadReceipt = useCallback(
+    (event: any) => {
+      const { conversation_id } = event;
+      setActiveConversation((prev: InboxItem | null) => {
+        if (prev && prev.conversation_id === conversation_id) {
+          setMessages((msgs: ChatMessage[]) =>
+            msgs.map((m: ChatMessage) =>
+              m.sender.id === userId && !m.is_read ? { ...m, is_read: true } : m,
+            ),
+          );
+        }
+        return prev;
+      });
+    },
+    [userId],
+  );
+
+  const handlePusherTyping = useCallback((event: any) => {
+    // Check if the typing is for the active conversation
+    if (activeConvRef.current && String(event.conversation_id) === String(activeConvRef.current.conversation_id)) {
+      setIsTyping(true);
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = setTimeout(() => setIsTyping(false), 2500);
+
+      // Auto scroll to bottom to show indicator
+      setTimeout(() => chatListRef.current?.scrollToEnd({ animated: true }), 100);
+    }
+  }, []);
+
+  /* =================================================================
+   * Data loading
+   * ================================================================= */
 
   const loadInbox = async () => {
     try {
       setInboxLoading(true);
       const res = await messages_service.get_inbox();
-      if (res.success && res.data) {
-        setInbox(res.data);
-      } else {
-        setInbox([]);
-      }
+      if (res.success && res.data) setInbox(res.data);
+      else setInbox([]);
     } catch (err) {
       console.error('loadInbox error:', err);
     } finally {
@@ -183,7 +453,7 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
     }
   };
 
-  const onRefresh = async () => {
+  const refreshInbox = async () => {
     setRefreshing(true);
     await loadInbox();
     setRefreshing(false);
@@ -192,13 +462,13 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
   const openConversation = async (item: InboxItem) => {
     setActiveConversation(item);
     setChatLoading(true);
+    setMessages([]);
     try {
       const res = await messages_service.get_conversation(item.conversation_id);
       if (res.success && res.data) {
         setMessages(res.data.messages || []);
-        // Update unread count in inbox
-        setInbox(prev =>
-          prev.map(c =>
+        setInbox((prev: InboxItem[]) =>
+          prev.map((c: InboxItem) =>
             c.conversation_id === item.conversation_id ? { ...c, unread_count: 0 } : c,
           ),
         );
@@ -207,7 +477,7 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
       console.error('openConversation error:', err);
     } finally {
       setChatLoading(false);
-      setTimeout(() => chatListRef.current?.scrollToEnd({ animated: false }), 200);
+      setTimeout(() => chatListRef.current?.scrollToEnd({ animated: false }), 300);
     }
   };
 
@@ -215,34 +485,50 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
     try {
       const res = await messages_service.get_conversation(conversationId);
       if (res.success && res.data) {
-        setMessages(res.data.messages || []);
+        setMessages((prev: ChatMessage[]) => {
+          const newMsgs = res.data!.messages || [];
+          if (newMsgs.length !== prev.length) return newMsgs;
+          const lastNew = newMsgs[newMsgs.length - 1];
+          const lastOld = prev[prev.length - 1];
+          if (lastNew?.message_id !== lastOld?.message_id) return newMsgs;
+          return prev;
+        });
       }
-    } catch {}
+    } catch { }
   };
 
-  /* =====================================================================
+  const clearPoll = () => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  };
+
+  /* =================================================================
    * Actions
-   * ===================================================================== */
+   * ================================================================= */
 
   const handleSendMessage = async () => {
     if ((!messageText.trim() && pendingAttachments.length === 0) || !activeConversation) return;
 
-    const receiverId =
-      activeConversation.other_user.id;
+    const text = messageText.trim();
+    const attachments = [...pendingAttachments];
+    const receiverId = activeConversation.other_user.id;
 
+    setMessageText('');
+    setPendingAttachments([]);
     setSending(true);
     Keyboard.dismiss();
 
     try {
       const res = await messages_service.send_message(
         receiverId,
-        messageText.trim(),
+        text,
         activeConversation.conversation_id,
-        pendingAttachments.length > 0 ? pendingAttachments : undefined,
+        attachments.length > 0 ? attachments : undefined,
       );
 
       if (res.success && res.data) {
-        // Append sent message to chat, converting StoredMessage → ChatMessage shape
         const sent = res.data;
         const newMsg: ChatMessage = {
           message_id: sent.message_id,
@@ -256,31 +542,36 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
           sent_at: sent.sent_at,
           attachments: sent.attachments || [],
         };
-        setMessages(prev => [...prev, newMsg]);
-        setMessageText('');
-        setPendingAttachments([]);
 
-        // Update inbox preview
-        setInbox(prev =>
-          prev.map(c =>
+        setMessages((prev: ChatMessage[]) => {
+          if (prev.some((m: ChatMessage) => m.message_id === newMsg.message_id)) return prev;
+          return [...prev, newMsg];
+        });
+
+        setInbox((prev: InboxItem[]) =>
+          prev.map((c: InboxItem) =>
             c.conversation_id === activeConversation.conversation_id
               ? {
-                  ...c,
-                  last_message: {
-                    content: sent.content || 'Attachment',
-                    sent_at: 'Just now',
-                    sent_at_timestamp: sent.sent_at,
-                  },
-                }
+                ...c,
+                last_message: {
+                  content: sent.content || 'Attachment',
+                  sent_at: 'Just now',
+                  sent_at_timestamp: sent.sent_at,
+                },
+              }
               : c,
           ),
         );
 
-        setTimeout(() => chatListRef.current?.scrollToEnd({ animated: true }), 100);
+        setTimeout(() => chatListRef.current?.scrollToEnd({ animated: true }), 150);
       } else {
-        Alert.alert('Error', res.message || 'Failed to send message');
+        setMessageText(text);
+        setPendingAttachments(attachments);
+        Alert.alert('Send Failed', res.message || 'Could not send message. Please try again.');
       }
     } catch (err: any) {
+      setMessageText(text);
+      setPendingAttachments(attachments);
       Alert.alert('Error', err.message || 'Failed to send message');
     } finally {
       setSending(false);
@@ -288,62 +579,74 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
   };
 
   const handlePickAttachment = async () => {
+    if (pendingAttachments.length >= MAX_ATTACHMENTS) {
+      Alert.alert('Limit Reached', `You can attach up to ${MAX_ATTACHMENTS} files.`);
+      return;
+    }
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: ['image/*', 'application/pdf', 'application/msword',
-               'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-               'text/plain'],
+        type: [
+          'image/*',
+          'application/pdf',
+          'application/msword',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          'text/plain',
+        ],
         multiple: true,
       });
 
       if (!result.canceled && result.assets) {
-        const newFiles = result.assets.slice(0, 5 - pendingAttachments.length);
-        setPendingAttachments(prev => [...prev, ...newFiles].slice(0, 5));
+        const slotsLeft = MAX_ATTACHMENTS - pendingAttachments.length;
+        const newFiles = result.assets.slice(0, slotsLeft);
+        setPendingAttachments((prev: any[]) => [...prev, ...newFiles]);
       }
     } catch (err) {
       console.error('Attachment pick error:', err);
     }
   };
 
-  const removeAttachment = (index: number) => {
-    setPendingAttachments(prev => prev.filter((_, i) => i !== index));
-  };
+  const removeAttachment = (index: number) =>
+    setPendingAttachments((prev: any[]) => prev.filter((_: any, i: number) => i !== index));
 
-  /* =====================================================================
-   * Compose New Message
-   * ===================================================================== */
+  /* =================================================================
+   * Compose new message
+   * ================================================================= */
 
   const openCompose = async () => {
     setComposeVisible(true);
     setUsersLoading(true);
     try {
       const res = await messages_service.get_available_users();
-      if (res.success && res.data) {
-        setAvailableUsers(res.data);
-      }
-    } catch {} finally {
+      if (res.success && res.data) setAvailableUsers(res.data);
+    } catch { } finally {
       setUsersLoading(false);
     }
   };
 
+  const closeCompose = () => {
+    setComposeVisible(false);
+    setSelectedRecipient(null);
+    setComposeText('');
+    setComposeSearch('');
+  };
+
   const handleComposeSend = async () => {
     if (!selectedRecipient || !composeText.trim()) return;
-
     setComposeSending(true);
     try {
       const res = await messages_service.send_message(selectedRecipient.id, composeText.trim());
       if (res.success && res.data) {
-        setComposeVisible(false);
-        setSelectedRecipient(null);
-        setComposeText('');
-        setComposeSearch('');
-        // Refresh inbox and open the conversation
+        closeCompose();
         await loadInbox();
         const convId = res.data.conversation_id;
-        const inboxItem: InboxItem = {
+        const newItem: InboxItem = {
           conversation_id: convId,
           other_user: res.data.receiver,
-          last_message: { content: res.data.content, sent_at: 'Just now', sent_at_timestamp: res.data.sent_at },
+          last_message: {
+            content: res.data.content,
+            sent_at: 'Just now',
+            sent_at_timestamp: res.data.sent_at,
+          },
           unread_count: 0,
           is_flagged: false,
           status: 'active',
@@ -351,7 +654,7 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
           suspended_until: null,
           reason: null,
         };
-        openConversation(inboxItem);
+        openConversation(newItem);
       } else {
         Alert.alert('Error', res.message || 'Failed to send message');
       }
@@ -362,343 +665,424 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
     }
   };
 
-  /* =====================================================================
+  /* =================================================================
    * Report
-   * ===================================================================== */
+   * ================================================================= */
+
+  const openReport = (messageId: number) => {
+    setReportMessageId(messageId);
+    setReportReason('');
+    setReportModalVisible(true);
+  };
 
   const handleReport = async () => {
     if (!reportMessageId || !reportReason.trim()) return;
-    const res = await messages_service.report_message(reportMessageId, reportReason.trim());
-    Alert.alert(res.success ? 'Reported' : 'Error', res.message);
+    try {
+      const res = await messages_service.report_message(reportMessageId, reportReason.trim());
+      Alert.alert(res.success ? 'Reported' : 'Error', res.message);
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Failed to report');
+    }
     setReportModalVisible(false);
     setReportMessageId(null);
     setReportReason('');
   };
 
-  /* =====================================================================
-   * Helpers
-   * ===================================================================== */
+  /* =================================================================
+   * Back from chat to inbox
+   * ================================================================= */
 
-  const getInitials = (name: string) => (name ? name.substring(0, 2).toUpperCase() : 'U');
-  const getAvatarColor = (id: number) => AVATAR_COLORS[id % AVATAR_COLORS.length];
-  const getAvatarUri = (avatar: string | null) => {
-    if (!avatar) return null;
-    if (avatar.startsWith('http')) return avatar;
-    return `${api_config.base_url}/storage/${avatar}`;
+  const goBackToInbox = () => {
+    setActiveConversation(null);
+    setMessages([]);
+    setPendingAttachments([]);
+    setMessageText('');
+    loadInbox();
   };
 
-  const totalUnread = inbox.reduce((sum, c) => sum + c.unread_count, 0);
+  /* =================================================================
+   * Render: Conversation list item
+   * ================================================================= */
 
-  /* =====================================================================
-   * Render: Conversation List Item
-   * ===================================================================== */
+  const renderConversationItem = useCallback(
+    ({ item }: { item: InboxItem }) => {
+      const hasUnread = item.unread_count > 0;
+      const isSuspended = item.is_suspended;
 
-  const renderConversationItem = ({ item }: { item: InboxItem }) => {
-    const hasUnread = item.unread_count > 0;
-    const isSuspended = item.is_suspended;
-    const avatarUri = getAvatarUri(item.other_user.avatar);
-    const color = getAvatarColor(item.other_user.id);
-
-    return (
-      <TouchableOpacity
-        style={[
-          styles.conversationItem,
-          hasUnread && styles.conversationItemUnread,
-          isSuspended && styles.conversationItemSuspended,
-        ]}
-        onPress={() => openConversation(item)}
-        activeOpacity={0.7}
-      >
-        {/* Avatar */}
-        <View style={styles.conversationAvatar}>
-          {avatarUri ? (
-            <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
-          ) : (
-            <View style={[styles.avatarPlaceholder, { backgroundColor: color }]}>
-              <Text style={styles.avatarText}>{getInitials(item.other_user.name)}</Text>
-            </View>
-          )}
-          {hasUnread && <View style={styles.onlineDot} />}
-        </View>
-
-        {/* Content */}
-        <View style={styles.conversationContent}>
-          <View style={styles.conversationHeader}>
-            <Text
-              style={[styles.conversationName, hasUnread && styles.conversationNameBold]}
-              numberOfLines={1}
-            >
-              {item.other_user.name}
-            </Text>
-            <Text style={styles.conversationTime}>{item.last_message?.sent_at || ''}</Text>
+      return (
+        <TouchableOpacity
+          style={[
+            styles.convItem,
+            hasUnread && styles.convItemUnread,
+            isSuspended && styles.convItemSuspended,
+          ]}
+          onPress={() => openConversation(item)}
+          activeOpacity={0.65}
+        >
+          <View style={styles.convAvatarWrap}>
+            <Avatar
+              uri={item.other_user.avatar}
+              name={item.other_user.name}
+              id={item.other_user.id}
+              size={52}
+            />
+            {hasUnread && <View style={styles.unreadDot} />}
           </View>
 
-          {/* Role badge */}
-          <View style={styles.roleBadgeRow}>
-            <View style={[styles.roleBadge, item.other_user.type === 'contractor' ? styles.roleBadgeContractor : styles.roleBadgeOwner]}>
-              <Text style={styles.roleBadgeText}>
-                {item.other_user.type === 'contractor' ? 'Contractor' : item.other_user.type === 'property_owner' ? 'Owner' : item.other_user.type}
+          <View style={styles.convBody}>
+            <View style={styles.convTopRow}>
+              <Text style={[styles.convName, hasUnread && styles.convNameBold]} numberOfLines={1}>
+                {item.other_user.name}
+              </Text>
+              <Text style={[styles.convTime, hasUnread && { color: COLORS.primary }]}>
+                {item.last_message?.sent_at || ''}
               </Text>
             </View>
-            {isSuspended && (
-              <View style={styles.suspendedBadge}>
-                <Ionicons name="ban" size={10} color={COLORS.error} />
-                <Text style={styles.suspendedBadgeText}>Suspended</Text>
+
+            <View style={styles.convBadgeRow}>
+              <View
+                style={[
+                  styles.roleBadge,
+                  item.other_user.type === 'contractor'
+                    ? styles.roleBadgeContractor
+                    : styles.roleBadgeOwner,
+                ]}
+              >
+                <Text style={styles.roleBadgeText}>{getRoleLabel(item.other_user.type)}</Text>
               </View>
-            )}
-          </View>
+              {isSuspended && (
+                <View style={styles.suspBadge}>
+                  <Ionicons name="ban" size={10} color={COLORS.error} />
+                  <Text style={styles.suspBadgeText}>Suspended</Text>
+                </View>
+              )}
+            </View>
 
-          <Text
-            style={[styles.lastMessage, hasUnread && styles.lastMessageBold]}
-            numberOfLines={1}
-          >
-            {item.last_message?.content || 'No messages yet'}
-          </Text>
-        </View>
-
-        {/* Unread badge */}
-        {hasUnread && (
-          <View style={styles.unreadCountBadge}>
-            <Text style={styles.unreadCountText}>
-              {item.unread_count > 99 ? '99+' : item.unread_count}
+            <Text
+              style={[styles.convPreview, hasUnread && styles.convPreviewBold]}
+              numberOfLines={1}
+            >
+              {item.last_message?.content || 'No messages yet'}
             </Text>
           </View>
-        )}
-      </TouchableOpacity>
-    );
-  };
 
-  /* =====================================================================
-   * Render: Chat Message Bubble
-   * ===================================================================== */
+          {hasUnread && (
+            <View style={styles.unreadBadge}>
+              <Text style={styles.unreadBadgeText}>
+                {item.unread_count > 99 ? '99+' : item.unread_count}
+              </Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      );
+    },
+    [],
+  );
 
-  const renderMessageBubble = ({ item }: { item: ChatMessage }) => {
-    const isOwn = item.sender.id === userId;
-    const avatarUri = getAvatarUri(item.sender.avatar);
-    const color = getAvatarColor(item.sender.id);
+  /* =================================================================
+   * Render: Chat message bubble
+   * ================================================================= */
 
-    return (
-      <View style={[styles.messageBubble, isOwn ? styles.messageBubbleOwn : styles.messageBubbleOther]}>
-        {/* Other user avatar */}
-        {!isOwn && (
-          <View style={styles.messageAvatarWrap}>
-            {avatarUri ? (
-              <Image source={{ uri: avatarUri }} style={styles.messageAvatarImage} />
-            ) : (
-              <View style={[styles.messageAvatarPlaceholder, { backgroundColor: color }]}>
-                <Text style={styles.messageAvatarText}>{getInitials(item.sender.name)}</Text>
-              </View>
-            )}
-          </View>
-        )}
+  const renderMessageBubble = useCallback(
+    ({ item }: { item: ChatMessage }) => {
+      const isOwn = item.sender?.id === userId;
+      const hasAttachments = item.attachments && item.attachments.length > 0;
 
-        <TouchableOpacity
-          activeOpacity={0.85}
-          onLongPress={() => {
-            if (!isOwn) {
-              setReportMessageId(item.message_id);
-              setReportModalVisible(true);
-            }
-          }}
-          style={[
-            styles.messageContent,
-            isOwn ? styles.messageContentOwn : styles.messageContentOther,
-            item.is_flagged && styles.messageContentFlagged,
-          ]}
-        >
+      return (
+        <View style={[styles.bubbleRow, isOwn ? styles.bubbleRowOwn : styles.bubbleRowOther]}>
           {!isOwn && (
-            <Text style={styles.messageSenderName}>{item.sender.name}</Text>
+            <View style={styles.bubbleAvatarWrap}>
+              <Avatar
+                uri={item.sender?.avatar}
+                name={item.sender?.name || 'U'}
+                id={item.sender?.id || 0}
+                size={30}
+              />
+            </View>
           )}
 
-          {item.content ? (
-            <Text style={[styles.messageText, isOwn ? styles.messageTextOwn : styles.messageTextOther]}>
-              {item.content}
-            </Text>
-          ) : null}
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onLongPress={() => {
+              if (!isOwn) openReport(item.message_id);
+            }}
+            style={[
+              styles.bubble,
+              isOwn ? styles.bubbleOwn : styles.bubbleOther,
+              item.is_flagged && styles.bubbleFlagged,
+            ]}
+          >
+            {!isOwn && (
+              <Text style={styles.bubbleSender}>{item.sender?.name || 'Unknown'}</Text>
+            )}
 
-          {/* Attachments */}
-          {item.attachments && item.attachments.length > 0 && (
-            <View style={styles.attachmentsContainer}>
-              {item.attachments.map(att => (
-                <TouchableOpacity
-                  key={att.attachment_id}
-                  style={styles.attachmentItem}
-                  onPress={() => {
-                    const url = att.file_url?.startsWith('http')
-                      ? att.file_url
-                      : `${api_config.base_url}${att.file_url}`;
-                    Linking.openURL(url).catch(() => {});
-                  }}
-                >
-                  {att.is_image ? (
-                    <Image
-                      source={{
-                        uri: att.file_url?.startsWith('http')
-                          ? att.file_url
-                          : `${api_config.base_url}${att.file_url}`,
-                      }}
-                      style={styles.attachmentImage}
-                      resizeMode="cover"
-                    />
-                  ) : (
-                    <View style={styles.attachmentFile}>
-                      <Ionicons name="document-outline" size={18} color={isOwn ? '#FFF' : COLORS.primary} />
+            {item.content ? (
+              <Text
+                style={[
+                  styles.bubbleText,
+                  isOwn ? styles.bubbleTextOwn : styles.bubbleTextOther,
+                ]}
+              >
+                {item.content}
+              </Text>
+            ) : null}
+
+            {hasAttachments && (
+              <View style={styles.bubbleAttachments}>
+                {item.attachments.map((att: Attachment) => {
+                  const fileUrl = resolveFileUrl(att.file_url);
+                  if (att.is_image) {
+                    return (
+                      <TouchableOpacity
+                        key={att.attachment_id}
+                        onPress={() => setPreviewImage(fileUrl)}
+                        activeOpacity={0.8}
+                      >
+                        <Image
+                          source={{ uri: fileUrl }}
+                          style={styles.attachImage}
+                          resizeMode="cover"
+                        />
+                      </TouchableOpacity>
+                    );
+                  }
+                  return (
+                    <TouchableOpacity
+                      key={att.attachment_id}
+                      style={styles.attachFile}
+                      onPress={() => Linking.openURL(fileUrl).catch(() => { })}
+                    >
+                      <Ionicons
+                        name="document-outline"
+                        size={16}
+                        color={isOwn ? 'rgba(255,255,255,0.85)' : COLORS.primary}
+                      />
                       <Text
-                        style={[styles.attachmentFileName, isOwn && { color: '#FFF' }]}
+                        style={[
+                          styles.attachFileName,
+                          isOwn && { color: 'rgba(255,255,255,0.9)' },
+                        ]}
                         numberOfLines={1}
                       >
                         {att.file_name}
                       </Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-
-          {/* Flagged indicator */}
-          {item.is_flagged && (
-            <View style={styles.flaggedRow}>
-              <Ionicons name="flag" size={10} color={COLORS.error} />
-              <Text style={styles.flaggedText}>Flagged</Text>
-            </View>
-          )}
-
-          <Text style={[styles.messageTime, isOwn ? styles.messageTimeOwn : styles.messageTimeOther]}>
-            {item.sent_at_human || item.sent_at}
-            {isOwn && (
-              <Text> {item.is_read ? '✓✓' : '✓'}</Text>
+                      <Ionicons
+                        name="download-outline"
+                        size={14}
+                        color={isOwn ? 'rgba(255,255,255,0.7)' : COLORS.textMuted}
+                      />
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
             )}
-          </Text>
-        </TouchableOpacity>
-      </View>
-    );
-  };
 
-  /* =====================================================================
-   * Render: Chat View
-   * ===================================================================== */
+            {item.is_flagged && (
+              <View style={styles.flaggedRow}>
+                <Ionicons name="flag" size={10} color={COLORS.error} />
+                <Text style={styles.flaggedLabel}>Flagged</Text>
+              </View>
+            )}
+
+            <View style={styles.bubbleFooter}>
+              <Text
+                style={[
+                  styles.bubbleTime,
+                  isOwn ? styles.bubbleTimeOwn : styles.bubbleTimeOther,
+                ]}
+              >
+                {item.sent_at_human ||
+                  new Date(item.sent_at).toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+              </Text>
+              {isOwn && (
+                <Ionicons
+                  name={item.is_read ? 'checkmark-done' : 'checkmark'}
+                  size={14}
+                  color={isOwn ? 'rgba(255,255,255,0.7)' : COLORS.textMuted}
+                  style={{ marginLeft: 4 }}
+                />
+              )}
+            </View>
+          </TouchableOpacity>
+        </View>
+      );
+    },
+    [userId],
+  );
+
+  /* =================================================================
+   * CHAT VIEW
+   * ================================================================= */
 
   if (activeConversation) {
-    const otherUser = activeConversation.other_user;
-    const avatarUri = getAvatarUri(otherUser.avatar);
-    const color = getAvatarColor(otherUser.id);
+    const other = activeConversation.other_user;
     const isSuspended = activeConversation.is_suspended;
 
     return (
       <KeyboardAvoidingView
-        style={styles.container}
+        style={styles.flex1}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
         <StatusBar hidden={true} />
 
-        {/* Chat Header */}
-        <View style={styles.chatHeader}>
+        {/* Chat top bar */}
+        <View style={styles.chatTopBar}>
           <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => {
-              setActiveConversation(null);
-              setMessages([]);
-              setPendingAttachments([]);
-              loadInbox(); // refresh inbox unread counts
-            }}
+            style={styles.chatBackBtn}
+            onPress={goBackToInbox}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+            <Ionicons name="chevron-back" size={26} color={COLORS.text} />
           </TouchableOpacity>
 
-          <View style={styles.chatHeaderInfo}>
-            {avatarUri ? (
-              <Image source={{ uri: avatarUri }} style={styles.chatHeaderAvatar} />
-            ) : (
-              <View style={[styles.chatHeaderAvatarPlaceholder, { backgroundColor: color }]}>
-                <Text style={styles.chatHeaderAvatarText}>{getInitials(otherUser.name)}</Text>
-              </View>
-            )}
-            <View style={{ flex: 1 }}>
-              <Text style={styles.chatHeaderName} numberOfLines={1}>{otherUser.name}</Text>
-              <Text style={styles.chatHeaderRole}>
-                {otherUser.type === 'contractor' ? 'Contractor' : otherUser.type === 'property_owner' ? 'Property Owner' : otherUser.type}
+          <TouchableOpacity style={styles.chatTopUser} activeOpacity={0.7}>
+            <Avatar uri={other.avatar} name={other.name} id={other.id} size={38} />
+            <View style={styles.chatTopTextWrap}>
+              <Text style={styles.chatTopName} numberOfLines={1}>
+                {other.name}
               </Text>
+              <Text style={styles.chatTopRole}>{getRoleLabel(other.type)}</Text>
             </View>
-          </View>
-
-          {/* More options placeholder */}
-          <TouchableOpacity style={styles.moreButton}>
-            <Ionicons name="ellipsis-vertical" size={22} color={COLORS.text} />
           </TouchableOpacity>
+
+          <View style={{ width: 38 }} />
         </View>
 
         {/* Suspended banner */}
         {isSuspended && (
-          <View style={styles.suspendedBanner}>
-            <Ionicons name="ban" size={16} color={COLORS.error} />
-            <Text style={styles.suspendedBannerText}>
-              This conversation is suspended{activeConversation.suspended_until ? ` until ${activeConversation.suspended_until}` : ''}.
-              {activeConversation.reason ? ` Reason: ${activeConversation.reason}` : ''}
+          <View style={styles.suspBanner}>
+            <Ionicons name="alert-circle" size={16} color={COLORS.error} />
+            <Text style={styles.suspBannerText}>
+              Conversation suspended
+              {activeConversation.suspended_until
+                ? ` until ${activeConversation.suspended_until}`
+                : ''}
+              {activeConversation.reason ? `. ${activeConversation.reason}` : ''}
             </Text>
           </View>
         )}
 
-        {/* Messages List */}
+        {/* Messages list */}
         {chatLoading ? (
-          <View style={styles.chatLoadingContainer}>
+          <View style={styles.chatLoadingWrap}>
             <ActivityIndicator size="large" color={COLORS.primary} />
+            <Text style={styles.chatLoadingText}>Loading messages...</Text>
           </View>
         ) : (
           <FlatList
             ref={chatListRef}
             data={messages}
-            keyExtractor={item => String(item.message_id)}
+            keyExtractor={(item: ChatMessage) => String(item.message_id)}
             renderItem={renderMessageBubble}
-            contentContainerStyle={styles.messagesListContent}
+            contentContainerStyle={[
+              styles.chatListContent,
+              messages.length === 0 && { flex: 1 },
+            ]}
             showsVerticalScrollIndicator={false}
-            onContentSizeChange={() => chatListRef.current?.scrollToEnd({ animated: false })}
+            onContentSizeChange={() =>
+              chatListRef.current?.scrollToEnd({ animated: false })
+            }
             ListEmptyComponent={
-              <View style={styles.emptyChatContainer}>
-                <Ionicons name="chatbubble-outline" size={48} color="#CCC" />
-                <Text style={styles.emptyChatText}>No messages yet. Say hello!</Text>
+              <View style={styles.chatEmptyWrap}>
+                <View style={styles.chatEmptyCircle}>
+                  <Ionicons
+                    name="chatbubble-ellipses-outline"
+                    size={40}
+                    color={COLORS.textMuted}
+                  />
+                </View>
+                <Text style={styles.chatEmptyTitle}>Start the conversation</Text>
+                <Text style={styles.chatEmptySubtitle}>
+                  Send a message to {other.name}
+                </Text>
               </View>
+            }
+            ListFooterComponent={
+              isTyping ? (
+                <View style={styles.typingIndicatorWrapper}>
+                  <View style={styles.typingBubble}>
+                    <TypingDots />
+                  </View>
+                </View>
+              ) : null
             }
           />
         )}
 
-        {/* Pending attachments preview */}
+        {/* Pending attachments */}
         {pendingAttachments.length > 0 && (
-          <View style={styles.pendingAttachments}>
-            {pendingAttachments.map((file, index) => (
-              <View key={index} style={styles.pendingFile}>
-                <Ionicons name="document" size={14} color={COLORS.primary} />
-                <Text style={styles.pendingFileName} numberOfLines={1}>{file.name || 'File'}</Text>
-                <TouchableOpacity onPress={() => removeAttachment(index)}>
-                  <Ionicons name="close-circle" size={16} color={COLORS.error} />
-                </TouchableOpacity>
-              </View>
-            ))}
+          <View style={styles.pendingBar}>
+            <FlatList
+              data={pendingAttachments}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              keyExtractor={(_: any, i: number) => String(i)}
+              renderItem={({ item: file, index }: { item: any; index: number }) => (
+                <View style={styles.pendingChip}>
+                  <Ionicons name="document" size={14} color={COLORS.primary} />
+                  <Text style={styles.pendingChipName} numberOfLines={1}>
+                    {file.name || 'File'}
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => removeAttachment(index)}
+                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                  >
+                    <Ionicons name="close-circle" size={16} color={COLORS.error} />
+                  </TouchableOpacity>
+                </View>
+              )}
+              contentContainerStyle={{ paddingHorizontal: 12, gap: 8 }}
+            />
           </View>
         )}
 
-        {/* Message Input */}
+        {/* Input bar */}
         {!isSuspended ? (
-          <View style={styles.messageInputContainer}>
-            <TouchableOpacity style={styles.attachButton} onPress={handlePickAttachment}>
-              <Ionicons name="attach" size={24} color={COLORS.textSecondary} />
+          <View style={[styles.inputBar, { paddingBottom: Math.max(insets.bottom, 8) }]}>
+            <TouchableOpacity
+              style={styles.inputAttachBtn}
+              onPress={handlePickAttachment}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons name="add-circle-outline" size={26} color={COLORS.textSecondary} />
             </TouchableOpacity>
 
             <TextInput
-              style={styles.messageInput}
-              placeholder="Type a message..."
+              style={styles.inputField}
+              placeholder="Message..."
               placeholderTextColor={COLORS.textMuted}
               value={messageText}
-              onChangeText={setMessageText}
+              onChangeText={(text) => {
+                setMessageText(text);
+                // Debounced typing event
+                if (activeConversation) {
+                  if (typingDebounceRef.current) clearTimeout(typingDebounceRef.current);
+                  typingDebounceRef.current = setTimeout(() => {
+                    api_request('/api/messages/typing', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        receiver_id: activeConversation.other_user.id,
+                        conversation_id: activeConversation.conversation_id
+                      })
+                    }).catch(() => { });
+                  }, 500);
+                }
+              }}
               multiline
               maxLength={5000}
             />
 
             <TouchableOpacity
               style={[
-                styles.sendButton,
-                (!messageText.trim() && pendingAttachments.length === 0 || sending) && styles.sendButtonDisabled,
+                styles.sendBtn,
+                ((!messageText.trim() && pendingAttachments.length === 0) || sending)
+                  ? styles.sendBtnDisabled
+                  : null,
               ]}
               onPress={handleSendMessage}
               disabled={(!messageText.trim() && pendingAttachments.length === 0) || sending}
@@ -706,36 +1090,43 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
               {sending ? (
                 <ActivityIndicator size="small" color="#FFF" />
               ) : (
-                <Ionicons name="send" size={20} color="#FFF" />
+                <Ionicons name="send" size={18} color="#FFF" />
               )}
             </TouchableOpacity>
           </View>
         ) : (
-          <View style={styles.suspendedInputBar}>
-            <Ionicons name="lock-closed" size={18} color={COLORS.textMuted} />
-            <Text style={styles.suspendedInputText}>Messaging is suspended</Text>
+          <View
+            style={[styles.suspInputBar, { paddingBottom: Math.max(insets.bottom, 8) }]}
+          >
+            <Ionicons name="lock-closed" size={16} color={COLORS.textMuted} />
+            <Text style={styles.suspInputText}>Messaging is suspended</Text>
           </View>
         )}
 
-        {/* Report Modal */}
+        {/* Report modal */}
         <Modal visible={reportModalVisible} transparent animationType="fade">
           <View style={styles.modalOverlay}>
-            <View style={styles.modalBox}>
+            <View style={styles.modalCard}>
               <Text style={styles.modalTitle}>Report Message</Text>
-              <Text style={styles.modalDesc}>Why are you reporting this message?</Text>
+              <Text style={styles.modalDesc}>
+                Tell us why you're reporting this message.
+              </Text>
               <TextInput
                 style={styles.modalInput}
-                placeholder="Enter reason..."
+                placeholder="Describe the issue..."
                 placeholderTextColor={COLORS.textMuted}
                 value={reportReason}
                 onChangeText={setReportReason}
                 multiline
                 maxLength={500}
               />
-              <View style={styles.modalButtons}>
+              <View style={styles.modalActions}>
                 <TouchableOpacity
                   style={styles.modalCancelBtn}
-                  onPress={() => { setReportModalVisible(false); setReportReason(''); }}
+                  onPress={() => {
+                    setReportModalVisible(false);
+                    setReportReason('');
+                  }}
                 >
                   <Text style={styles.modalCancelText}>Cancel</Text>
                 </TouchableOpacity>
@@ -750,141 +1141,196 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
             </View>
           </View>
         </Modal>
+
+        {/* Image preview modal */}
+        <Modal visible={!!previewImage} transparent animationType="fade">
+          <View style={styles.previewOverlay}>
+            <TouchableOpacity
+              style={styles.previewCloseBtn}
+              onPress={() => setPreviewImage(null)}
+            >
+              <Ionicons name="close" size={28} color="#FFF" />
+            </TouchableOpacity>
+            {previewImage && (
+              <Image
+                source={{ uri: previewImage }}
+                style={styles.previewImage}
+                resizeMode="contain"
+              />
+            )}
+          </View>
+        </Modal>
       </KeyboardAvoidingView>
     );
   }
 
-  /* =====================================================================
-   * Render: Conversation List (Inbox)
-   * ===================================================================== */
+  /* =================================================================
+   * INBOX VIEW
+   * ================================================================= */
 
-  if (inboxLoading) {
+  if (inboxLoading && inbox.length === 0) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.flex1, styles.centerContent, { backgroundColor: COLORS.bg }]}>
         <StatusBar hidden={true} />
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
-          <Text style={styles.loadingText}>Loading conversations...</Text>
-        </View>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+        <Text style={styles.loadingText}>Loading messages...</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.flex1, { backgroundColor: COLORS.bg }]}>
       <StatusBar hidden={true} />
 
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <Text style={styles.headerTitle}>Messages</Text>
+      {/* Inbox header */}
+      <View style={styles.inboxHeader}>
+        <View style={styles.inboxHeaderLeft}>
+          <Text style={styles.inboxTitle}>Messages</Text>
           {totalUnread > 0 && (
-            <View style={styles.headerBadge}>
-              <Text style={styles.headerBadgeText}>{totalUnread > 99 ? '99+' : totalUnread}</Text>
+            <View style={styles.inboxBadge}>
+              <Text style={styles.inboxBadgeText}>
+                {totalUnread > 99 ? '99+' : totalUnread}
+              </Text>
             </View>
           )}
         </View>
-        <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.headerIconBtn} onPress={() => setIsSearching(!isSearching)}>
-            <Ionicons name={isSearching ? 'close' : 'search-outline'} size={22} color={COLORS.text} />
+        <View style={styles.inboxHeaderRight}>
+          <TouchableOpacity
+            style={styles.inboxIconBtn}
+            onPress={() => {
+              setIsSearchOpen((v: boolean) => !v);
+              if (isSearchOpen) setSearchQuery('');
+            }}
+          >
+            <Ionicons
+              name={isSearchOpen ? 'close' : 'search-outline'}
+              size={22}
+              color={COLORS.text}
+            />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.headerIconBtn} onPress={openCompose}>
-            <Ionicons name="create-outline" size={22} color={COLORS.primary} />
+          <TouchableOpacity style={styles.inboxIconBtn} onPress={openCompose}>
+            <Feather name="edit" size={20} color={COLORS.primary} />
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* Search bar */}
-      {isSearching && (
-        <View style={styles.searchBar}>
-          <Ionicons name="search" size={18} color={COLORS.textMuted} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search conversations..."
-            placeholderTextColor={COLORS.textMuted}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            autoFocus
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Ionicons name="close-circle" size={18} color={COLORS.textMuted} />
-            </TouchableOpacity>
-          )}
+      {/* Search */}
+      {isSearchOpen && (
+        <View style={styles.searchBarWrap}>
+          <View style={styles.searchBar}>
+            <Ionicons name="search" size={18} color={COLORS.textMuted} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search conversations..."
+              placeholderTextColor={COLORS.textMuted}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              autoFocus
+              returnKeyType="search"
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <Ionicons name="close-circle" size={18} color={COLORS.textMuted} />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
       )}
 
       {/* Filter tabs */}
       <View style={styles.filterRow}>
-        <TouchableOpacity
-          style={[styles.filterTab, inboxFilter === 'all' && styles.filterTabActive]}
-          onPress={() => setInboxFilter('all')}
-        >
-          <Text style={[styles.filterTabText, inboxFilter === 'all' && styles.filterTabTextActive]}>
-            All
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.filterTab, inboxFilter === 'unread' && styles.filterTabActive]}
-          onPress={() => setInboxFilter('unread')}
-        >
-          <Text style={[styles.filterTabText, inboxFilter === 'unread' && styles.filterTabTextActive]}>
-            Unread{totalUnread > 0 ? ` (${totalUnread})` : ''}
-          </Text>
-        </TouchableOpacity>
+        {(['all', 'unread'] as const).map((f: 'all' | 'unread') => (
+          <TouchableOpacity
+            key={f}
+            style={[styles.filterTab, inboxFilter === f && styles.filterTabActive]}
+            onPress={() => setInboxFilter(f)}
+          >
+            <Text
+              style={[
+                styles.filterTabLabel,
+                inboxFilter === f && styles.filterTabLabelActive,
+              ]}
+            >
+              {f === 'all'
+                ? 'All'
+                : `Unread${totalUnread > 0 ? ` (${totalUnread})` : ''}`}
+            </Text>
+          </TouchableOpacity>
+        ))}
+        <View style={styles.filterRowRight}>
+          <View
+            style={[
+              styles.connectionDot,
+              pusherConnected ? styles.connectionDotOn : styles.connectionDotOff,
+            ]}
+          />
+        </View>
       </View>
 
-      {/* Conversations List */}
+      {/* Conversation list */}
       <FlatList
         data={filteredInbox}
-        keyExtractor={item => String(item.conversation_id)}
+        keyExtractor={(item: InboxItem) => String(item.conversation_id)}
         renderItem={renderConversationItem}
-        contentContainerStyle={filteredInbox.length === 0 ? { flex: 1 } : { paddingBottom: 20 }}
+        contentContainerStyle={
+          filteredInbox.length === 0 ? { flex: 1 } : { paddingBottom: 20 }
+        }
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={refreshInbox}
+            colors={[COLORS.primary]}
+            tintColor={COLORS.primary}
+          />
         }
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Ionicons name="chatbubbles-outline" size={64} color="#CCC" />
+          <View style={styles.emptyWrap}>
+            <View style={styles.emptyCircle}>
+              <Ionicons name="chatbubbles-outline" size={48} color={COLORS.textMuted} />
+            </View>
             <Text style={styles.emptyTitle}>
-              {inboxFilter === 'unread' ? 'No Unread Messages' : 'No Messages Yet'}
+              {inboxFilter === 'unread' ? 'All Caught Up!' : 'No Messages Yet'}
             </Text>
-            <Text style={styles.emptyText}>
+            <Text style={styles.emptySubtitle}>
               {inboxFilter === 'unread'
-                ? "You're all caught up!"
-                : 'Start a conversation with contractors or property owners'}
+                ? 'You have no unread messages.'
+                : 'Start a conversation with contractors or property owners.'}
             </Text>
             {inboxFilter === 'all' && (
-              <TouchableOpacity style={styles.emptyButton} onPress={openCompose}>
-                <Ionicons name="create-outline" size={18} color="#FFF" />
-                <Text style={styles.emptyButtonText}>New Message</Text>
+              <TouchableOpacity style={styles.emptyBtn} onPress={openCompose}>
+                <Feather name="edit" size={16} color="#FFF" />
+                <Text style={styles.emptyBtnText}>New Message</Text>
               </TouchableOpacity>
             )}
           </View>
         }
       />
 
-      {/* Compose Modal */}
+      {/* Compose modal */}
       <Modal visible={composeVisible} animationType="slide" presentationStyle="pageSheet">
-        <View style={styles.composeContainer}>
+        <View style={[styles.flex1, { backgroundColor: COLORS.bg }]}>
           <View style={styles.composeHeader}>
-            <TouchableOpacity onPress={() => { setComposeVisible(false); setSelectedRecipient(null); setComposeText(''); setComposeSearch(''); }}>
-              <Text style={styles.composeCancelText}>Cancel</Text>
+            <TouchableOpacity onPress={closeCompose}>
+              <Text style={styles.composeCancel}>Cancel</Text>
             </TouchableOpacity>
             <Text style={styles.composeTitle}>New Message</Text>
             <TouchableOpacity
               onPress={handleComposeSend}
               disabled={!selectedRecipient || !composeText.trim() || composeSending}
             >
-              <Text style={[styles.composeSendText, (!selectedRecipient || !composeText.trim()) && { opacity: 0.4 }]}>
+              <Text
+                style={[
+                  styles.composeSend,
+                  (!selectedRecipient || !composeText.trim()) && { opacity: 0.4 },
+                ]}
+              >
                 {composeSending ? 'Sending...' : 'Send'}
               </Text>
             </TouchableOpacity>
           </View>
 
-          {/* Recipient selection */}
-          <View style={styles.recipientSection}>
+          <View style={styles.recipientBar}>
             <Text style={styles.recipientLabel}>To:</Text>
             {selectedRecipient ? (
               <View style={styles.recipientChip}>
@@ -900,62 +1346,58 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
                 placeholderTextColor={COLORS.textMuted}
                 value={composeSearch}
                 onChangeText={setComposeSearch}
+                autoFocus
               />
             )}
           </View>
 
-          {/* User list (when no recipient selected) */}
           {!selectedRecipient && (
             <FlatList
-              data={availableUsers.filter(u =>
+              data={availableUsers.filter((u: UserInfo) =>
                 composeSearch
                   ? u.name.toLowerCase().includes(composeSearch.toLowerCase())
                   : true,
               )}
-              keyExtractor={item => String(item.id)}
-              style={styles.userList}
+              keyExtractor={(item: UserInfo) => String(item.id)}
+              style={{ flex: 1 }}
               ListHeaderComponent={
                 usersLoading ? (
-                  <ActivityIndicator size="small" color={COLORS.primary} style={{ marginVertical: 20 }} />
+                  <ActivityIndicator
+                    size="small"
+                    color={COLORS.primary}
+                    style={{ marginVertical: 20 }}
+                  />
                 ) : null
               }
-              renderItem={({ item: usr }) => {
-                const uAvatar = getAvatarUri(usr.avatar);
-                const uColor = getAvatarColor(usr.id);
-                return (
-                  <TouchableOpacity
-                    style={styles.userItem}
-                    onPress={() => { setSelectedRecipient(usr); setComposeSearch(''); }}
-                  >
-                    {uAvatar ? (
-                      <Image source={{ uri: uAvatar }} style={styles.userItemAvatar} />
-                    ) : (
-                      <View style={[styles.userItemAvatarPlaceholder, { backgroundColor: uColor }]}>
-                        <Text style={styles.userItemAvatarText}>{getInitials(usr.name)}</Text>
-                      </View>
-                    )}
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.userItemName}>{usr.name}</Text>
-                      <Text style={styles.userItemType}>
-                        {usr.type === 'contractor' ? 'Contractor' : usr.type === 'property_owner' ? 'Property Owner' : usr.type}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                );
-              }}
+              renderItem={({ item: usr }: { item: UserInfo }) => (
+                <TouchableOpacity
+                  style={styles.userRow}
+                  onPress={() => {
+                    setSelectedRecipient(usr);
+                    setComposeSearch('');
+                  }}
+                >
+                  <Avatar uri={usr.avatar} name={usr.name} id={usr.id} size={44} />
+                  <View style={{ flex: 1, marginLeft: 12 }}>
+                    <Text style={styles.userRowName}>{usr.name}</Text>
+                    <Text style={styles.userRowType}>{getRoleLabel(usr.type)}</Text>
+                  </View>
+                </TouchableOpacity>
+              )}
               ListEmptyComponent={
                 !usersLoading ? (
-                  <Text style={styles.noUsersText}>No users found</Text>
+                  <View style={styles.centerContent}>
+                    <Text style={styles.noUsersText}>No users found</Text>
+                  </View>
                 ) : null
               }
             />
           )}
 
-          {/* Compose text input (when recipient is selected) */}
           {selectedRecipient && (
-            <View style={styles.composeInputWrap}>
+            <View style={styles.composeTextWrap}>
               <TextInput
-                style={styles.composeInput}
+                style={styles.composeTextInput}
                 placeholder="Type your message..."
                 placeholderTextColor={COLORS.textMuted}
                 value={composeText}
@@ -977,79 +1419,76 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
  * ===================================================================== */
 
 const styles = StyleSheet.create({
-  // ─── Global ────────────────────────────────────────────────────
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  flex1: { flex: 1 },
+  centerContent: { justifyContent: 'center', alignItems: 'center' },
+
   loadingText: {
     marginTop: 12,
     fontSize: 14,
     color: COLORS.textSecondary,
   },
 
-  // ─── Header ────────────────────────────────────────────────────
-  header: {
+  /* Inbox header */
+  inboxHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 4,
+    paddingTop: 6,
     paddingBottom: 12,
     backgroundColor: COLORS.surface,
-    borderBottomWidth: 1,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: COLORS.border,
   },
-  headerLeft: {
+  inboxHeaderLeft: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  headerTitle: {
+  inboxTitle: {
     fontSize: 28,
-    fontWeight: 'bold',
+    fontWeight: '800',
     color: COLORS.text,
+    letterSpacing: -0.5,
   },
-  headerBadge: {
+  inboxBadge: {
     backgroundColor: COLORS.primary,
     borderRadius: 10,
-    minWidth: 20,
-    height: 20,
+    minWidth: 22,
+    height: 22,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 6,
     marginLeft: 8,
   },
-  headerBadgeText: {
+  inboxBadgeText: {
     color: '#FFF',
     fontSize: 11,
     fontWeight: '700',
   },
-  headerRight: {
+  inboxHeaderRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 2,
   },
-  headerIconBtn: {
+  inboxIconBtn: {
     padding: 8,
+    borderRadius: 20,
   },
 
-  // ─── Search ────────────────────────────────────────────────────
+  /* Search */
+  searchBarWrap: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 4,
+    backgroundColor: COLORS.surface,
+  },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.surface,
-    marginHorizontal: 16,
-    marginTop: 8,
+    backgroundColor: COLORS.bg,
     paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    paddingVertical: 10,
+    borderRadius: 12,
   },
   searchInput: {
     flex: 1,
@@ -1059,9 +1498,10 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
   },
 
-  // ─── Filter tabs ───────────────────────────────────────────────
+  /* Filter tabs */
   filterRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 16,
     paddingTop: 10,
     paddingBottom: 6,
@@ -1069,8 +1509,8 @@ const styles = StyleSheet.create({
   },
   filterTab: {
     paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingVertical: 7,
+    borderRadius: 18,
     backgroundColor: COLORS.surface,
     borderWidth: 1,
     borderColor: COLORS.border,
@@ -1079,54 +1519,53 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primaryLight,
     borderColor: COLORS.primary,
   },
-  filterTabText: {
+  filterTabLabel: {
     fontSize: 13,
     fontWeight: '500',
     color: COLORS.textSecondary,
   },
-  filterTabTextActive: {
+  filterTabLabelActive: {
     color: COLORS.primary,
     fontWeight: '600',
   },
+  filterRowRight: {
+    flex: 1,
+    alignItems: 'flex-end',
+  },
+  connectionDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  connectionDotOn: {
+    backgroundColor: COLORS.success,
+  },
+  connectionDotOff: {
+    backgroundColor: COLORS.textMuted,
+    opacity: 0.4,
+  },
 
-  // ─── Conversation Item ─────────────────────────────────────────
-  conversationItem: {
+  /* Conversation item */
+  convItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 14,
     backgroundColor: COLORS.surface,
-    borderBottomWidth: 1,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: COLORS.borderLight,
   },
-  conversationItemUnread: {
+  convItemUnread: {
     backgroundColor: COLORS.unreadBg,
   },
-  conversationItemSuspended: {
+  convItemSuspended: {
     backgroundColor: COLORS.suspended,
   },
-  conversationAvatar: {
+  convAvatarWrap: {
     position: 'relative',
-    marginRight: 12,
+    marginRight: 14,
   },
-  avatarImage: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-  },
-  avatarPlaceholder: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#FFF',
-  },
-  onlineDot: {
+  unreadDot: {
     position: 'absolute',
     top: 0,
     right: 0,
@@ -1137,31 +1576,31 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: COLORS.surface,
   },
-  conversationContent: {
+  convBody: {
     flex: 1,
   },
-  conversationHeader: {
+  convTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 2,
   },
-  conversationName: {
+  convName: {
     fontSize: 15,
     fontWeight: '500',
     color: COLORS.textSecondary,
     flex: 1,
+    marginRight: 8,
   },
-  conversationNameBold: {
+  convNameBold: {
     fontWeight: '700',
     color: COLORS.text,
   },
-  conversationTime: {
+  convTime: {
     fontSize: 11,
     color: COLORS.textMuted,
-    marginLeft: 8,
   },
-  roleBadgeRow: {
+  convBadgeRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 3,
@@ -1169,7 +1608,7 @@ const styles = StyleSheet.create({
   },
   roleBadge: {
     paddingHorizontal: 6,
-    paddingVertical: 1,
+    paddingVertical: 2,
     borderRadius: 4,
   },
   roleBadgeContractor: {
@@ -1183,130 +1622,127 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.textSecondary,
   },
-  suspendedBadge: {
+  suspBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 2,
   },
-  suspendedBadgeText: {
+  suspBadgeText: {
     fontSize: 10,
     fontWeight: '500',
     color: COLORS.error,
   },
-  lastMessage: {
+  convPreview: {
     fontSize: 13,
     color: COLORS.textMuted,
+    lineHeight: 18,
   },
-  lastMessageBold: {
+  convPreviewBold: {
     color: COLORS.textSecondary,
     fontWeight: '600',
   },
-  unreadCountBadge: {
+  unreadBadge: {
     backgroundColor: COLORS.primary,
     borderRadius: 12,
-    minWidth: 22,
-    height: 22,
+    minWidth: 24,
+    height: 24,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 6,
     marginLeft: 8,
   },
-  unreadCountText: {
+  unreadBadgeText: {
     color: '#FFF',
     fontSize: 11,
     fontWeight: '700',
   },
 
-  // ─── Empty state ───────────────────────────────────────────────
-  emptyContainer: {
+  /* Empty state */
+  emptyWrap: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 80,
+    paddingVertical: 60,
+    paddingHorizontal: 40,
+  },
+  emptyCircle: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: COLORS.borderLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
   },
   emptyTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: '700',
     color: COLORS.text,
-    marginTop: 16,
+    marginBottom: 8,
   },
-  emptyText: {
+  emptySubtitle: {
     fontSize: 14,
     color: COLORS.textSecondary,
     textAlign: 'center',
-    marginTop: 8,
-    paddingHorizontal: 40,
+    lineHeight: 20,
+    marginBottom: 24,
   },
-  emptyButton: {
+  emptyBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.primary,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-    marginTop: 20,
-    gap: 6,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 24,
+    gap: 8,
+    elevation: 2,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
   },
-  emptyButtonText: {
+  emptyBtnText: {
     color: '#FFF',
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
   },
 
-  // ─── Chat Header ──────────────────────────────────────────────
-  chatHeader: {
+  /* Chat top bar */
+  chatTopBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
+    paddingHorizontal: 8,
     paddingVertical: 10,
     backgroundColor: COLORS.surface,
-    borderBottomWidth: 1,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: COLORS.border,
   },
-  backButton: {
-    padding: 8,
-    marginRight: 4,
+  chatBackBtn: {
+    padding: 6,
+    marginRight: 2,
   },
-  chatHeaderInfo: {
+  chatTopUser: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
   },
-  chatHeaderAvatar: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    marginRight: 10,
+  chatTopTextWrap: {
+    marginLeft: 10,
+    flex: 1,
   },
-  chatHeaderAvatarPlaceholder: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 10,
-  },
-  chatHeaderAvatarText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#FFF',
-  },
-  chatHeaderName: {
+  chatTopName: {
     fontSize: 16,
     fontWeight: '600',
     color: COLORS.text,
   },
-  chatHeaderRole: {
+  chatTopRole: {
     fontSize: 12,
     color: COLORS.textMuted,
     marginTop: 1,
   },
-  moreButton: {
-    padding: 8,
-  },
 
-  // ─── Suspended banner ─────────────────────────────────────────
-  suspendedBanner: {
+  /* Suspended banner */
+  suspBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.suspended,
@@ -1314,103 +1750,148 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     gap: 8,
   },
-  suspendedBannerText: {
+  suspBannerText: {
     flex: 1,
     fontSize: 12,
     color: COLORS.error,
     fontWeight: '500',
+    lineHeight: 16,
   },
 
-  // ─── Chat Messages ────────────────────────────────────────────
-  chatLoadingContainer: {
+  /* Chat loading / empty */
+  chatLoadingWrap: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  messagesListContent: {
-    padding: 12,
-    paddingBottom: 8,
+  chatLoadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: COLORS.textSecondary,
   },
-  emptyChatContainer: {
+  chatEmptyWrap: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: 60,
   },
-  emptyChatText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: COLORS.textMuted,
-  },
-  messageBubble: {
-    flexDirection: 'row',
-    marginBottom: 12,
-    alignItems: 'flex-end',
-  },
-  messageBubbleOwn: {
-    justifyContent: 'flex-end',
-  },
-  messageBubbleOther: {
-    justifyContent: 'flex-start',
-  },
-  messageAvatarWrap: {
-    marginRight: 8,
-  },
-  messageAvatarImage: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-  },
-  messageAvatarPlaceholder: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+  chatEmptyCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: COLORS.borderLight,
     justifyContent: 'center',
     alignItems: 'center',
+    marginBottom: 16,
   },
-  messageAvatarText: {
-    fontSize: 11,
+  chatEmptyTitle: {
+    fontSize: 17,
     fontWeight: '600',
-    color: '#FFF',
+    color: COLORS.text,
+    marginBottom: 6,
   },
-  messageContent: {
-    maxWidth: '75%',
+  chatEmptySubtitle: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+  },
+
+  /* Chat list */
+  chatListContent: {
+    padding: 12,
+    paddingBottom: 8,
+  },
+
+  /* ─── Typing Indicator ─── */
+  typingIndicatorWrapper: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    alignItems: 'flex-start',
+  },
+  typingBubble: {
+    backgroundColor: '#E5E7EB',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderBottomLeftRadius: 4,
+    minHeight: 36,
+    justifyContent: 'center',
+  },
+  typingDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#9CA3AF',
+  },
+
+  /* Message bubble */
+  bubbleRow: {
+    flexDirection: 'row',
+    marginBottom: 8,
+    alignItems: 'flex-end',
+  },
+  bubbleRowOwn: {
+    justifyContent: 'flex-end',
+  },
+  bubbleRowOther: {
+    justifyContent: 'flex-start',
+  },
+  bubbleAvatarWrap: {
+    marginRight: 8,
+    marginBottom: 2,
+  },
+  bubble: {
+    maxWidth: '78%',
     paddingHorizontal: 14,
     paddingVertical: 10,
-    borderRadius: 16,
+    borderRadius: 18,
   },
-  messageContentOwn: {
+  bubbleOwn: {
     backgroundColor: COLORS.ownBubble,
-    borderBottomRightRadius: 4,
+    borderBottomRightRadius: 6,
   },
-  messageContentOther: {
+  bubbleOther: {
     backgroundColor: COLORS.otherBubble,
-    borderBottomLeftRadius: 4,
+    borderBottomLeftRadius: 6,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
-    shadowRadius: 2,
+    shadowRadius: 3,
     elevation: 1,
   },
-  messageContentFlagged: {
+  bubbleFlagged: {
     borderWidth: 1,
     borderColor: COLORS.error,
   },
-  messageSenderName: {
+  bubbleSender: {
     fontSize: 11,
     fontWeight: '600',
-    color: COLORS.textSecondary,
+    color: COLORS.primary,
     marginBottom: 3,
   },
-  messageText: {
+  bubbleText: {
     fontSize: 15,
-    lineHeight: 20,
+    lineHeight: 21,
   },
-  messageTextOwn: {
+  bubbleTextOwn: {
     color: '#FFF',
   },
-  messageTextOther: {
+  bubbleTextOther: {
     color: COLORS.text,
+  },
+  bubbleFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    marginTop: 4,
+  },
+  bubbleTime: {
+    fontSize: 10,
+  },
+  bubbleTimeOwn: {
+    color: 'rgba(255,255,255,0.7)',
+  },
+  bubbleTimeOther: {
+    color: COLORS.textMuted,
   },
   flaggedRow: {
     flexDirection: 'row',
@@ -1418,99 +1899,89 @@ const styles = StyleSheet.create({
     gap: 3,
     marginTop: 4,
   },
-  flaggedText: {
+  flaggedLabel: {
     fontSize: 10,
     color: COLORS.error,
     fontWeight: '500',
   },
-  messageTime: {
-    fontSize: 10,
-    marginTop: 4,
-  },
-  messageTimeOwn: {
-    color: '#FFF',
-    opacity: 0.75,
-  },
-  messageTimeOther: {
-    color: COLORS.textMuted,
-  },
 
-  // ─── Attachments ──────────────────────────────────────────────
-  attachmentsContainer: {
-    marginTop: 6,
-    gap: 4,
+  /* Attachments in bubble */
+  bubbleAttachments: {
+    marginTop: 8,
+    gap: 6,
   },
-  attachmentItem: {
-    borderRadius: 8,
-    overflow: 'hidden',
+  attachImage: {
+    width: 200,
+    height: 150,
+    borderRadius: 10,
   },
-  attachmentImage: {
-    width: 180,
-    height: 120,
-    borderRadius: 8,
-  },
-  attachmentFile: {
+  attachFile: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 6,
+    paddingHorizontal: 8,
+    backgroundColor: 'rgba(0,0,0,0.04)',
+    borderRadius: 8,
     gap: 6,
   },
-  attachmentFileName: {
+  attachFileName: {
     fontSize: 12,
     color: COLORS.primary,
     fontWeight: '500',
     flex: 1,
   },
 
-  // ─── Input Area ───────────────────────────────────────────────
-  pendingAttachments: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: 16,
-    paddingTop: 8,
+  /* Pending attachments bar */
+  pendingBar: {
+    paddingVertical: 8,
     backgroundColor: COLORS.surface,
-    borderTopWidth: 1,
+    borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: COLORS.border,
-    gap: 6,
   },
-  pendingFile: {
+  pendingChip: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.primaryLight,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
     gap: 4,
   },
-  pendingFileName: {
+  pendingChipName: {
     fontSize: 12,
     color: COLORS.primary,
+    fontWeight: '500',
     maxWidth: 100,
   },
-  messageInputContainer: {
+
+  /* Input bar */
+  inputBar: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: 10,
+    paddingTop: 10,
     backgroundColor: COLORS.surface,
-    borderTopWidth: 1,
+    borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: COLORS.border,
   },
-  attachButton: {
-    padding: 8,
+  inputAttachBtn: {
+    padding: 6,
     marginRight: 4,
+    marginBottom: 4,
   },
-  messageInput: {
+  inputField: {
     flex: 1,
     maxHeight: 100,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    backgroundColor: COLORS.background,
-    borderRadius: 20,
+    backgroundColor: COLORS.bg,
+    borderRadius: 22,
     fontSize: 15,
     color: COLORS.text,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
   },
-  sendButton: {
+  sendBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
@@ -1518,27 +1989,28 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 8,
+    marginBottom: 2,
   },
-  sendButtonDisabled: {
-    backgroundColor: '#CCC',
+  sendBtnDisabled: {
+    backgroundColor: COLORS.border,
   },
-  suspendedInputBar: {
+  suspInputBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 14,
     backgroundColor: COLORS.surface,
-    borderTopWidth: 1,
+    borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: COLORS.border,
     gap: 6,
   },
-  suspendedInputText: {
+  suspInputText: {
     fontSize: 14,
     color: COLORS.textMuted,
     fontWeight: '500',
   },
 
-  // ─── Report Modal ─────────────────────────────────────────────
+  /* Modals */
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
@@ -1546,36 +2018,38 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 24,
   },
-  modalBox: {
+  modalCard: {
     backgroundColor: COLORS.surface,
     borderRadius: 16,
     padding: 24,
     width: '100%',
-    maxWidth: 340,
+    maxWidth: 360,
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: COLORS.text,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   modalDesc: {
     fontSize: 14,
     color: COLORS.textSecondary,
     marginBottom: 16,
+    lineHeight: 20,
   },
   modalInput: {
     borderWidth: 1,
     borderColor: COLORS.border,
-    borderRadius: 10,
+    borderRadius: 12,
     padding: 12,
     fontSize: 14,
     color: COLORS.text,
     minHeight: 80,
     textAlignVertical: 'top',
     marginBottom: 16,
+    backgroundColor: COLORS.bg,
   },
-  modalButtons: {
+  modalActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
     gap: 10,
@@ -1583,7 +2057,7 @@ const styles = StyleSheet.create({
   modalCancelBtn: {
     paddingVertical: 10,
     paddingHorizontal: 18,
-    borderRadius: 8,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: COLORS.border,
   },
@@ -1595,7 +2069,7 @@ const styles = StyleSheet.create({
   modalConfirmBtn: {
     paddingVertical: 10,
     paddingHorizontal: 18,
-    borderRadius: 8,
+    borderRadius: 10,
     backgroundColor: COLORS.error,
   },
   modalConfirmText: {
@@ -1604,11 +2078,26 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // ─── Compose Modal ────────────────────────────────────────────
-  composeContainer: {
+  /* Image preview */
+  previewOverlay: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: 'rgba(0,0,0,0.92)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
+  previewCloseBtn: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    zIndex: 10,
+    padding: 8,
+  },
+  previewImage: {
+    width: SCREEN_WIDTH - 32,
+    height: SCREEN_WIDTH - 32,
+  },
+
+  /* Compose modal */
   composeHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1616,10 +2105,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     backgroundColor: COLORS.surface,
-    borderBottomWidth: 1,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: COLORS.border,
   },
-  composeCancelText: {
+  composeCancel: {
     fontSize: 15,
     color: COLORS.textSecondary,
   },
@@ -1628,18 +2117,18 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.text,
   },
-  composeSendText: {
+  composeSend: {
     fontSize: 15,
     fontWeight: '600',
     color: COLORS.primary,
   },
-  recipientSection: {
+  recipientBar: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 10,
     backgroundColor: COLORS.surface,
-    borderBottomWidth: 1,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: COLORS.border,
   },
   recipientLabel: {
@@ -1668,43 +2157,21 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     paddingVertical: 0,
   },
-  userList: {
-    flex: 1,
-  },
-  userItem: {
+  userRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
     backgroundColor: COLORS.surface,
-    borderBottomWidth: 1,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: COLORS.borderLight,
   },
-  userItemAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    marginRight: 12,
-  },
-  userItemAvatarPlaceholder: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  userItemAvatarText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFF',
-  },
-  userItemName: {
+  userRowName: {
     fontSize: 15,
     fontWeight: '500',
     color: COLORS.text,
   },
-  userItemType: {
+  userRowType: {
     fontSize: 12,
     color: COLORS.textMuted,
     marginTop: 1,
@@ -1715,17 +2182,19 @@ const styles = StyleSheet.create({
     marginTop: 30,
     fontSize: 14,
   },
-  composeInputWrap: {
+  composeTextWrap: {
     flex: 1,
     padding: 16,
   },
-  composeInput: {
+  composeTextInput: {
     flex: 1,
     backgroundColor: COLORS.surface,
-    borderRadius: 12,
+    borderRadius: 14,
     padding: 14,
     fontSize: 15,
     color: COLORS.text,
     textAlignVertical: 'top',
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
   },
 });

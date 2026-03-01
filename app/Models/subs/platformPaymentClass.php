@@ -23,36 +23,42 @@ class platformPaymentClass
             if ($contractor) {
                 // Check for active subscription in platform_payments
                 $subscription = DB::table('platform_payments')
-                    ->where('contractor_id', $contractor->contractor_id)
-                    ->where('payment_for', 'subscription')
-                    ->where('is_approved', 1)
+                    ->join('subscription_plans', 'platform_payments.subscriptionPlanId', '=', 'subscription_plans.id')
+                    ->where('platform_payments.contractor_id', $contractor->contractor_id)
+                    ->where('subscription_plans.plan_key', '!=', 'boost')
+                    ->where('platform_payments.is_approved', 1)
                     ->where(function ($query) {
-                    $query->whereNull('expiration_date')
-                        ->orWhere('expiration_date', '>', now());
-                })
-                    // Ensure start date is valid (if column exists) - robust check
+                        $query->whereNull('platform_payments.expiration_date')
+                            ->orWhere('platform_payments.expiration_date', '>', now());
+                    })
+                    // Ensure start date is valid
                     ->where(function ($query) {
-                    $query->whereNull('transaction_date')
-                        ->orWhere('transaction_date', '<=', now());
-                })
+                        $query->whereNull('platform_payments.transaction_date')
+                            ->orWhere('platform_payments.transaction_date', '<=', now());
+                    })
+                    ->select('platform_payments.*', 'subscription_plans.plan_key', 'subscription_plans.name as plan_name')
                     // Prioritize longest remaining validity to handle overlaps
-                    ->orderByDesc('expiration_date')
-                    ->orderByDesc('platform_payment_id')
+                    ->orderByDesc('platform_payments.expiration_date')
+                    ->orderByDesc('platform_payments.platform_payment_id')
                     ->first();
 
                 if ($subscription) {
-                    $tier = $subscription->subscription_tier ?? 'Basic';
+                    $tier = $subscription->plan_key;
+                    $benefits = [];
+                    if (!empty($subscription->benefits)) {
+                        $benefits = is_string($subscription->benefits) ? json_decode($subscription->benefits, true) : $subscription->benefits;
+                    }
+
                     return [
                         'plan_key' => $tier,
-                        'name' => ucfirst($tier) . ' Tier',
-                        'expires_at' => $subscription->expiration_date ?Carbon::parse($subscription->expiration_date)->format('F j, Y') : null,
+                        'name' => $subscription->plan_name,
+                        'expires_at' => $subscription->expiration_date ? Carbon::parse($subscription->expiration_date)->format('F j, Y') : null,
                         'is_active' => true,
-                        'benefits' => self::getBenefitsForTier($tier)
+                        'benefits' => $benefits ?: self::getBenefitsForTier($tier)
                     ];
                 }
             }
-        }
-        catch (\Throwable $e) {
+        } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error('getSubscriptionForUser Error: ' . $e->getMessage());
             return null;
         }
@@ -62,11 +68,18 @@ class platformPaymentClass
 
     private static function getBenefitsForTier($tier)
     {
+        try {
+            $plan = DB::table('subscription_plans')->where('plan_key', strtolower($tier))->first();
+            if ($plan && !empty($plan->benefits)) {
+                return is_string($plan->benefits) ? json_decode($plan->benefits, true) : $plan->benefits;
+            }
+        } catch (\Throwable $e) {
+        }
+
         $tier = strtolower($tier);
         if ($tier === 'gold') {
             return ['Unlock AI driven analytics', 'Unlimited Bids', 'Boosted Bids (Stay at the top)'];
-        }
-        elseif ($tier === 'silver') {
+        } elseif ($tier === 'silver') {
             return ['25 Bids per month', 'Boosted Bids (Stay at the top)'];
         }
         return ['10 Bids per month'];
@@ -89,13 +102,12 @@ class platformPaymentClass
             $clicks = 0;
 
             if (Schema::hasTable('boosts')) {
-                $reach = (int)DB::table('boosts')->where('user_id', $userId)->sum('reach');
-                $bids = (int)DB::table('boosts')->where('user_id', $userId)->sum('bids');
-                $clicks = (int)DB::table('boosts')->where('user_id', $userId)->sum('clicks');
-            }
-            else {
-            // Fallback: Just show 0 or some base data if we only have payments
-            // In a real scenario, we'd join with an analytics table.
+                $reach = (int) DB::table('boosts')->where('user_id', $userId)->sum('reach');
+                $bids = (int) DB::table('boosts')->where('user_id', $userId)->sum('bids');
+                $clicks = (int) DB::table('boosts')->where('user_id', $userId)->sum('clicks');
+            } else {
+                // Fallback: Just show 0 or some base data if we only have payments
+                // In a real scenario, we'd join with an analytics table.
             }
 
             return [
@@ -107,8 +119,7 @@ class platformPaymentClass
                 'clicks_change' => 0,
                 'period' => '7d',
             ];
-        }
-        catch (\Throwable $e) {
+        } catch (\Throwable $e) {
             return null;
         }
     }
@@ -127,17 +138,18 @@ class platformPaymentClass
             if ($owner) {
                 $posts = DB::table('platform_payments')
                     ->join('projects', 'platform_payments.project_id', '=', 'projects.project_id')
+                    ->join('subscription_plans', 'platform_payments.subscriptionPlanId', '=', 'subscription_plans.id')
                     ->where('platform_payments.owner_id', $owner->owner_id)
-                    ->where('platform_payments.payment_for', 'boosted_post')
+                    ->where('subscription_plans.plan_key', 'boost')
                     ->where('platform_payments.is_approved', 1)
                     ->select(
-                    'projects.project_id as id',
-                    'projects.project_title as title',
-                    'projects.project_description as description',
-                    'projects.project_location as location',
-                    'platform_payments.expiration_date as ends_at',
-                    'platform_payments.transaction_date as starts_at'
-                )
+                        'projects.project_id as id',
+                        'projects.project_title as title',
+                        'projects.project_description as description',
+                        'projects.project_location as location',
+                        'platform_payments.expiration_date as ends_at',
+                        'platform_payments.transaction_date as starts_at'
+                    )
                     ->orderByDesc('platform_payments.platform_payment_id')
                     ->get();
 
@@ -156,12 +168,10 @@ class platformPaymentClass
 
                         if ($totalDuration > 0) {
                             $post->percentage = max(0, min(100, round(($elapsed / $totalDuration) * 100)));
-                        }
-                        else {
+                        } else {
                             $post->percentage = 0;
                         }
-                    }
-                    else {
+                    } else {
                         $post->percentage = 0;
                     }
 
@@ -188,8 +198,7 @@ class platformPaymentClass
                     return $post;
                 });
             }
-        }
-        catch (\Throwable $e) {
+        } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error('getBoostedPosts Error: ' . $e->getMessage());
             return [];
         }
@@ -216,22 +225,23 @@ class platformPaymentClass
                 ->whereNull('milestones.milestone_id')
                 // Only show projects that don't have an active boost
                 ->whereNotExists(function ($query) {
-                $query->select(DB::raw(1))
-                    ->from('platform_payments')
-                    ->whereColumn('platform_payments.project_id', 'projects.project_id')
-                    ->where('platform_payments.payment_for', 'boosted_post')
-                    ->where('platform_payments.is_approved', 1)
-                    ->where('platform_payments.expiration_date', '>', now());
-            })
+                    $query->select(DB::raw(1))
+                        ->from('platform_payments')
+                        ->join('subscription_plans', 'platform_payments.subscriptionPlanId', '=', 'subscription_plans.id')
+                        ->whereColumn('platform_payments.project_id', 'projects.project_id')
+                        ->where('subscription_plans.plan_key', 'boost')
+                        ->where('platform_payments.is_approved', 1)
+                        ->where('platform_payments.expiration_date', '>', now());
+                })
                 ->select(
-                'projects.project_id as id',
-                'projects.project_title as title',
-                'projects.project_description as description',
-                'projects.project_location as location',
-                'project_relationships.created_at as date',
-                'projects.project_status',
-                'project_relationships.project_post_status'
-            )
+                    'projects.project_id as id',
+                    'projects.project_title as title',
+                    'projects.project_description as description',
+                    'projects.project_location as location',
+                    'project_relationships.created_at as date',
+                    'projects.project_status',
+                    'project_relationships.project_post_status'
+                )
                 ->distinct()
                 ->orderBy('project_relationships.created_at', 'desc')
                 ->get();
@@ -265,8 +275,7 @@ class platformPaymentClass
             });
 
             return $projects;
-        }
-        catch (\Throwable $e) {
+        } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error('getBoostableProjects Error: ' . $e->getMessage());
             return [];
         }

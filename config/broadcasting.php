@@ -42,6 +42,7 @@ return [
                 'scheme' => env('PUSHER_SCHEME', 'https'),
                 'encrypted' => true, // Required for Hostinger and production
                 'useTLS' => true,
+                'enable_client_messages' => true, // Required for typing indicators (client-* events)
             ],
             'client_options' => [
                 // Guzzle client options: https://docs.guzzlephp.org/en/stable/request-options.html

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\both\feedClass;
+use App\Services\feedRankingService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -11,14 +12,19 @@ use Illuminate\Support\Facades\Log;
  *
  * Keeps controllers thin. Both the web (Blade) and API (mobile) homepage
  * actions funnel through this service so feed rules are in one place.
+ *
+ * Contractor project feed now uses feedRankingService for scored ordering:
+ *   feedClass (filter + fetch) → feedRankingService (score + sort) → paginate → hydrate
  */
-class feedService
+class FeedService
 {
     protected feedClass $feed;
+    protected feedRankingService $ranker;
 
-    public function __construct(feedClass $feed)
+    public function __construct(feedClass $feed, ?feedRankingService $ranker = null)
     {
-        $this->feed = $feed;
+        $this->feed   = $feed;
+        $this->ranker = $ranker ?? new feedRankingService();
     }
 
     /* =====================================================================
@@ -49,7 +55,10 @@ class feedService
                 'total_reviews'        => 0,
                 'completed_projects'   => $c->completed_projects ?? 0,
                 'specialization'       => $c->services_offered ?? $c->type_name ?? '',
-                'cover_photo'          => $c->cover_photo ?? null,
+                'cover_photo'          => $c->company_banner ?? $c->cover_photo ?? null,
+                'company_logo'         => $c->company_logo ?? null,
+                'company_banner'       => $c->company_banner ?? null,
+                'logo_url'             => $c->company_logo ?? $c->profile_pic ?? null,
             ];
         })->toArray();
 
@@ -69,17 +78,41 @@ class feedService
     }
 
     /* =====================================================================
-     * CONTRACTOR HOMEPAGE  — shows project cards
+     * CONTRACTOR HOMEPAGE  — shows project cards (RANKED)
      * ===================================================================== */
 
     /**
      * Build the full page payload for the contractor web homepage.
      *
+     * Uses feedRankingService for scored ordering, then hydrates with
+     * bids_count and files for the Blade view.
+     *
      * @return array{projects: \Illuminate\Support\Collection, jsProjects: array, propertyTypes: array}
      */
-    public function contractorHomepageData(): array
+    public function contractorHomepageData(?int $userId = null): array
     {
-        $projects = $this->feed->getAllApprovedProjects();
+        // Resolve contractor context for ranking
+        $contractorId     = null;
+        $contractorTypeId = null;
+
+        if ($userId) {
+            $contractor = DB::table('contractors')->where('user_id', $userId)->first();
+            if ($contractor) {
+                $contractorId     = $contractor->contractor_id;
+                $contractorTypeId = $contractor->type_id;
+            }
+        }
+
+        // Fetch all filtered projects (lightweight, no files)
+        $allProjects = $this->feed->getFilteredProjectsForRanking($contractorId);
+
+        // Score and sort
+        if ($contractorId && $contractorTypeId) {
+            $allProjects = $this->ranker->rankFeed($contractorId, $contractorTypeId, $allProjects);
+        }
+
+        // Hydrate ALL with bids_count + files (web view needs all for JS filtering)
+        $projects = $this->feed->hydrateProjectSlice($allProjects);
 
         $jsProjects = $this->buildJsProjects($projects);
 
@@ -91,10 +124,13 @@ class feedService
     }
 
     /**
-     * API: paginated project list for mobile contractor feed.
+     * API: paginated, ranked project list for mobile contractor feed.
      *
-     * Resolves the contractor's type_id so matching projects sort first,
-     * and excludes projects the contractor already bid on.
+     * Pipeline:
+     *   1. feedClass::getFilteredProjectsForRanking() — fetch all matching projects
+     *   2. feedRankingService::rankFeed() — score and sort
+     *   3. Manual pagination on the scored collection
+     *   4. feedClass::hydrateProjectSlice() — attach files + bids_count to page only
      */
     public function contractorFeedApi(?int $userId, int $page = 1, int $perPage = 15, array $filters = []): array
     {
@@ -109,7 +145,46 @@ class feedService
             }
         }
 
-        return $this->feed->getApprovedProjects($contractorId, $contractorTypeId, $page, $perPage, $filters);
+        // 1. Fetch all filtered projects (lightweight — no files, no bids_count)
+        $allProjects = $this->feed->getFilteredProjectsForRanking($contractorId, $filters);
+
+        // 2. Score and sort using the ranking service
+        if ($contractorId && $contractorTypeId) {
+            try {
+                $allProjects = $this->ranker->rankFeed($contractorId, $contractorTypeId, $allProjects);
+            } catch (\Throwable $e) {
+                Log::warning('feedService: ranking failed, falling back to chronological', [
+                    'contractor_id' => $contractorId,
+                    'error'         => $e->getMessage(),
+                ]);
+                // Fallback: sort by created_at desc
+                $allProjects = $allProjects->sortByDesc('created_at')->values();
+            }
+        } else {
+            // No contractor context — fallback to chronological
+            $allProjects = $allProjects->sortByDesc('created_at')->values();
+        }
+
+        // 3. Manual pagination on the scored collection
+        $totalCount = $allProjects->count();
+        $offset = ($page - 1) * $perPage;
+        $pageSlice = $allProjects->slice($offset, $perPage)->values();
+
+        // 4. Hydrate only the page slice with bids_count + files
+        $pageSlice = $this->feed->hydrateProjectSlice($pageSlice);
+
+        $totalPages = (int) ceil($totalCount / $perPage);
+
+        return [
+            'data'       => $pageSlice,
+            'pagination' => [
+                'current_page' => $page,
+                'per_page'     => $perPage,
+                'total'        => $totalCount,
+                'total_pages'  => $totalPages,
+                'has_more'     => $page < $totalPages,
+            ],
+        ];
     }
 
     /* =====================================================================
@@ -188,6 +263,8 @@ class feedService
                     'lot_size'     => $p->lot_size ?? null,
                     'floor_area'   => $p->floor_area ?? null,
                     'bids_count'   => $p->bids_count ?? 0,
+                    'is_boosted'   => $p->is_boosted ?? false,
+                    'feed_score'   => $p->feed_score ?? null,
                     'files'        => $jsFiles,
                     'project'      => $p,
                 ];

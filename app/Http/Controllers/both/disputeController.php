@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Storage;
 use Exception;
 use Laravel\Sanctum\PersonalAccessToken;
-use App\Services\notificationService;
+use App\Services\NotificationService;
 
 class disputeController extends Controller
 {
@@ -357,7 +357,7 @@ class disputeController extends Controller
                 // Notify the other party about the dispute
                 if (isset($againstUserId) && $againstUserId) {
                     $projTitle = DB::table('projects')->where('project_id', $validated['project_id'])->value('project_title');
-                    notificationService::create((int) $againstUserId, 'dispute_opened', 'Dispute Filed', "A {$validated['dispute_type']} dispute has been filed against you on \"{$projTitle}\".", 'critical', 'dispute', (int) $disputeId, ['screen' => 'DisputeDetails', 'params' => ['disputeId' => (int) $disputeId]]);
+                    NotificationService::create((int) $againstUserId, 'dispute_opened', 'Dispute Filed', "A {$validated['dispute_type']} dispute has been filed against you on \"{$projTitle}\".", 'critical', 'dispute', (int) $disputeId, ['screen' => 'DisputeDetails', 'params' => ['disputeId' => (int) $disputeId]]);
                 }
 
                 if ($request->expectsJson()) {
@@ -1002,7 +1002,7 @@ class disputeController extends Controller
             // Notify the other party about the dispute update
             if (isset($dispute->against_user_id) && $dispute->against_user_id) {
                 $projTitle = DB::table('projects')->where('project_id', $dispute->project_id)->value('project_title');
-                notificationService::create((int) $dispute->against_user_id, 'dispute_updated', 'Dispute Updated', "A dispute on \"{$projTitle}\" has been updated.", 'normal', 'dispute', (int) $disputeId, ['screen' => 'DisputeDetails', 'params' => ['disputeId' => (int) $disputeId]]);
+                NotificationService::create((int) $dispute->against_user_id, 'dispute_updated', 'Dispute Updated', "A dispute on \"{$projTitle}\" has been updated.", 'normal', 'dispute', (int) $disputeId, ['screen' => 'DisputeDetails', 'params' => ['disputeId' => (int) $disputeId]]);
             }
 
             return response()->json([
@@ -1062,7 +1062,7 @@ class disputeController extends Controller
             // Notify the other party about dispute cancellation
             if (isset($dispute->against_user_id) && $dispute->against_user_id) {
                 $projTitle = DB::table('projects')->where('project_id', $dispute->project_id)->value('project_title');
-                notificationService::create((int) $dispute->against_user_id, 'dispute_resolved', 'Dispute Cancelled', "A dispute on \"{$projTitle}\" has been cancelled.", 'normal', 'dispute', (int) $disputeId, ['screen' => 'DisputeDetails', 'params' => ['disputeId' => (int) $disputeId]]);
+                NotificationService::create((int) $dispute->against_user_id, 'dispute_resolved', 'Dispute Cancelled', "A dispute on \"{$projTitle}\" has been cancelled.", 'normal', 'dispute', (int) $disputeId, ['screen' => 'DisputeDetails', 'params' => ['disputeId' => (int) $disputeId]]);
             }
 
             return response()->json([

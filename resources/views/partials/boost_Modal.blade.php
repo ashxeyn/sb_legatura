@@ -33,14 +33,31 @@
                         <h3 class="boost-section-title">Choose your boosting plan</h3>
 
                         <div class="boost-plans-list">
-                            <!-- Single Boost Plan: ₱49 per post -->
-                            <div class="boost-plan-card single-plan" data-plan="single" data-reach="1000" data-price="49">
-                                <div class="boost-plan-emoji">🚀</div>
-                                <div class="boost-plan-info">
-                                    <div class="boost-plan-reach">1,000+ <span class="reach-label">reach</span></div>
-                                    <div class="boost-plan-price">₱49 <span class="per-post">per post</span></div>
+                            <!-- Dynamic Boost Plan -->
+                            @if(isset($boostPlan))
+                                <div class="boost-plan-card single-plan" data-plan="boost" 
+                                     data-reach="{{ $boostPlan->benefits[0] ?? '1,000+' }}" 
+                                     data-price="{{ $boostPlan->amount / 100 }}">
+                                    <div class="boost-plan-emoji">🚀</div>
+                                    <div class="boost-plan-info">
+                                        <div class="boost-plan-reach">{{ $boostPlan->benefits[0] ?? '1,000+' }} <span class="reach-label">reach</span></div>
+                                        <div class="boost-plan-price">₱{{ number_format($boostPlan->amount / 100, 0) }} <span class="per-post">per post</span></div>
+                                    </div>
                                 </div>
-                            </div>
+                            @endif
+
+                            @foreach($ownerPlans ?? [] as $plan)
+                                @if($plan->plan_key === 'boost') @continue @endif
+                                <div class="boost-plan-card single-plan" data-plan="{{ strtolower($plan->plan_key) }}" 
+                                     data-reach="{{ $plan->benefits[0] ?? 'Unlimited' }}" 
+                                     data-price="{{ $plan->amount / 100 }}">
+                                    <div class="boost-plan-emoji">👑</div>
+                                    <div class="boost-plan-info">
+                                        <div class="boost-plan-reach">{{ strtoupper($plan->name) }}</div>
+                                        <div class="boost-plan-price">₱{{ number_format($plan->amount / 100, 0) }}</div>
+                                    </div>
+                                </div>
+                            @endforeach
                         </div>
 
                         <!-- Choose Post Section -->

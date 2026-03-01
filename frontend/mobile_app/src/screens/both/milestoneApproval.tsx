@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -118,6 +118,8 @@ interface MilestoneApprovalProps {
       userId: number;
       userRole: 'owner' | 'contractor';
       projectStatus?: string;
+      initialItemId?: number;
+      initialItemTab?: 'payments';
       onApprovalComplete: () => void;
     };
   };
@@ -137,12 +139,19 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
     projectEndDate,
     totalCost,
     paymentMethod,
-    milestones,
+    milestones: initialMilestones,
     userId,
     userRole,
     projectStatus,
+    initialItemId,
+    initialItemTab,
     onApprovalComplete,
   } = route.params;
+
+  // Live milestones state — initialised from props, then refreshed from API on mount
+  // so the timeline always shows the latest data even when navigating from a notification.
+  const [milestones, setMilestones] = useState<Milestone[]>(initialMilestones || []);
+  const [milestonesLoading, setMilestonesLoading] = useState(!initialMilestones || initialMilestones.length === 0);
 
   const [approvingMilestone, setApprovingMilestone] = useState<number | null>(null);
   const [rejectingMilestone, setRejectingMilestone] = useState<number | null>(null);
@@ -196,6 +205,33 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
     fetchPendingUpdate();
   }, [fetchPendingUpdate]);
 
+  // ── Fetch fresh milestones on mount so deep-linked views always have data ──
+  const fetchMilestones = useCallback(async () => {
+    try {
+      let response;
+      if (userRole === 'owner') {
+        response = await projects_service.get_owner_projects(userId);
+      } else {
+        response = await projects_service.get_contractor_projects(userId);
+      }
+      if (response.success) {
+        const projects = response.data?.data || response.data || [];
+        const project = projects.find((p: any) => p.project_id === projectId);
+        if (project?.milestones && project.milestones.length > 0) {
+          setMilestones(project.milestones);
+        }
+      }
+    } catch (e) {
+      console.error('MilestoneApproval: failed to fetch milestones', e);
+    } finally {
+      setMilestonesLoading(false);
+    }
+  }, [projectId, userId, userRole]);
+
+  useEffect(() => {
+    fetchMilestones();
+  }, [fetchMilestones]);
+
   // Fetch approved updates for project-level extension history
   useEffect(() => {
     update_service.list(projectId)
@@ -233,6 +269,24 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
 
   // Sort by sequence order
   allMilestoneItems.sort((a, b) => a.sequence_order - b.sequence_order);
+
+  // ── Auto-select a specific milestone item when deep-linked from a notification ──
+  const initialItemProcessed = useRef(false);
+  useEffect(() => {
+    if (initialItemProcessed.current || !initialItemId || milestonesLoading || allMilestoneItems.length === 0) return;
+
+    const targetIdx = allMilestoneItems.findIndex(i => i.item_id === initialItemId);
+    if (targetIdx === -1) return;
+
+    initialItemProcessed.current = true;
+    const target = allMilestoneItems[targetIdx];
+    const milestoneNumber = targetIdx + 1;
+    const cumulativePercentage = allMilestoneItems
+      .slice(0, targetIdx + 1)
+      .reduce((sum, i) => sum + (i.percentage_progress || 0), 0);
+
+    setSelectedMilestoneDetail({ item: target, milestoneNumber, cumulativePercentage });
+  }, [initialItemId, milestonesLoading, milestones]); // milestones triggers rebuild of allMilestoneItems
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-PH', {
@@ -683,6 +737,7 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
             userId,
             isPreviousItemComplete,
             projectStatus,
+            initialTab: initialItemId === selectedMilestoneDetail.item.item_id ? initialItemTab : undefined,
           },
         }}
         navigation={{
@@ -726,6 +781,14 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
       </View>
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* Loading indicator while milestones are being fetched */}
+        {milestonesLoading && milestones.length === 0 && (
+          <View style={{ alignItems: 'center', paddingVertical: 60 }}>
+            <ActivityIndicator size="large" color={COLORS.accent} />
+            <Text style={{ color: COLORS.textSecondary, marginTop: 12, fontSize: 14 }}>Loading milestones...</Text>
+          </View>
+        )}
+
         {/* Milestone Setup Summary Card */}
         <View style={styles.summaryCard}>
           {/* Title + Update button row */}

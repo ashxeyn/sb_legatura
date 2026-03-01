@@ -1,0 +1,606 @@
+2026-01-30 10:27:11,497 INFO {'project_id': 986, 'input': {'avg_temp': 31.2, 'avg_humidity': 59, 'avg_wind': 3.6, 'total_rain': 0.0, 'duration_days': 30, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-30 10:27:11,520 INFO {'project_id': 985, 'input': {'avg_temp': 31.2, 'avg_humidity': 59, 'avg_wind': 3.6, 'total_rain': 0.0, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}
+2026-01-30 10:32:05,703 INFO {'project_id': 986, 'input': {'avg_temp': 31.2, 'avg_humidity': 59, 'avg_wind': 3.6, 'total_rain': 0.0, 'duration_days': 30, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-30 10:32:06,219 INFO {'project_id': 986, 'response': {'prediction': {'delay_probability': 0.0, 'prediction': 'ON-TIME', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 31.2, 'avg_humidity': 59, 'avg_wind': 3.6, 'total_rain': 0.0, 'duration_days': 30, 'contractor_experience_years': 1, 'weather_severity': 0}}, 'weather': {'avg_temp': 31.2, 'avg_humidity': 59, 'avg_wind': 3.6, 'total_rain': 0.0}, 'weather_severity': 0, 'recommendations': ['Assign a senior project supervisor to assist execution.', 'Increase monitoring and milestone reporting frequency.']}}
+2026-01-30 10:32:11,856 INFO {'project_id': 985, 'input': {'avg_temp': 31.2, 'avg_humidity': 59, 'avg_wind': 3.6, 'total_rain': 0.0, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}
+2026-01-30 10:32:11,994 INFO {'project_id': 985, 'response': {'prediction': {'delay_probability': 0.0, 'prediction': 'ON-TIME', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 31.2, 'avg_humidity': 59, 'avg_wind': 3.6, 'total_rain': 0.0, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}, 'weather': {'avg_temp': 31.2, 'avg_humidity': 59, 'avg_wind': 3.6, 'total_rain': 0.0}, 'weather_severity': 0, 'recommendations': ['Project risk is acceptable. Maintain current execution plan.']}}
+2026-01-30 10:32:18,068 INFO {'project_id': 987, 'input': {'avg_temp': 26.3, 'avg_humidity': 68, 'avg_wind': 13.3, 'total_rain': 0.01, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-30 10:32:18,209 INFO {'project_id': 987, 'response': {'prediction': {'delay_probability': 0.783, 'prediction': 'DELAYED', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 26.3, 'avg_humidity': 68, 'avg_wind': 13.3, 'total_rain': 0.01, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 0}}, 'weather': {'avg_temp': 26.3, 'avg_humidity': 68, 'avg_wind': 13.3, 'total_rain': 0.01}, 'weather_severity': 0, 'recommendations': ['High delay risk detected. Immediate mitigation is required.', 'Assign a senior project supervisor to assist execution.', 'Increase monitoring and milestone reporting frequency.']}}
+2026-01-30 10:35:32,609 INFO {'project_id': 986, 'input': {'avg_temp': 31.2, 'avg_humidity': 59, 'avg_wind': 3.6, 'total_rain': 0.0, 'duration_days': 30, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-30 10:35:33,439 INFO {'project_id': 986, 'response': {'prediction': {'delay_probability': 0.0, 'prediction': 'ON-TIME', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 31.2, 'avg_humidity': 59, 'avg_wind': 3.6, 'total_rain': 0.0, 'duration_days': 30, 'contractor_experience_years': 1, 'weather_severity': 0}}, 'weather': {'avg_temp': 31.2, 'avg_humidity': 59, 'avg_wind': 3.6, 'total_rain': 0.0}, 'weather_severity': 0, 'recommendations': ['Assign a senior project supervisor to assist execution.', 'Increase monitoring and milestone reporting frequency.']}}
+2026-01-30 10:36:54,832 INFO {'project_id': 985, 'input': {'avg_temp': 31.2, 'avg_humidity': 59, 'avg_wind': 3.6, 'total_rain': 0.0, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}
+2026-01-30 10:36:55,626 INFO {'project_id': 985, 'response': {'prediction': {'delay_probability': 0.0, 'prediction': 'ON-TIME', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 31.2, 'avg_humidity': 59, 'avg_wind': 3.6, 'total_rain': 0.0, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}, 'weather': {'avg_temp': 31.2, 'avg_humidity': 59, 'avg_wind': 3.6, 'total_rain': 0.0}, 'weather_severity': 0, 'recommendations': ['Project risk is acceptable. Maintain current execution plan.']}}
+2026-01-30 10:37:07,431 INFO {'project_id': 985, 'input': {'avg_temp': 31.2, 'avg_humidity': 59, 'avg_wind': 3.6, 'total_rain': 0.0, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}
+2026-01-30 10:37:07,563 INFO {'project_id': 985, 'response': {'prediction': {'delay_probability': 0.0, 'prediction': 'ON-TIME', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 31.2, 'avg_humidity': 59, 'avg_wind': 3.6, 'total_rain': 0.0, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}, 'weather': {'avg_temp': 31.2, 'avg_humidity': 59, 'avg_wind': 3.6, 'total_rain': 0.0}, 'weather_severity': 0, 'recommendations': ['Project risk is acceptable. Maintain current execution plan.']}}
+2026-01-30 10:37:17,275 INFO {'project_id': 986, 'input': {'avg_temp': 31.2, 'avg_humidity': 59, 'avg_wind': 3.6, 'total_rain': 0.0, 'duration_days': 30, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-30 10:37:17,421 INFO {'project_id': 986, 'response': {'prediction': {'delay_probability': 0.0, 'prediction': 'ON-TIME', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 31.2, 'avg_humidity': 59, 'avg_wind': 3.6, 'total_rain': 0.0, 'duration_days': 30, 'contractor_experience_years': 1, 'weather_severity': 0}}, 'weather': {'avg_temp': 31.2, 'avg_humidity': 59, 'avg_wind': 3.6, 'total_rain': 0.0}, 'weather_severity': 0, 'recommendations': ['Assign a senior project supervisor to assist execution.', 'Increase monitoring and milestone reporting frequency.']}}
+2026-01-30 10:37:26,136 INFO {'project_id': 987, 'input': {'avg_temp': 26.4, 'avg_humidity': 69, 'avg_wind': 14.0, 'total_rain': 0.02, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-30 10:37:26,300 INFO {'project_id': 987, 'response': {'prediction': {'delay_probability': 0.8986, 'prediction': 'DELAYED', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 26.4, 'avg_humidity': 69, 'avg_wind': 14.0, 'total_rain': 0.02, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 0}}, 'weather': {'avg_temp': 26.4, 'avg_humidity': 69, 'avg_wind': 14.0, 'total_rain': 0.02}, 'weather_severity': 0, 'recommendations': ['High delay risk detected. Immediate mitigation is required.', 'Assign a senior project supervisor to assist execution.', 'Increase monitoring and milestone reporting frequency.']}}
+2026-01-30 10:39:05,530 INFO {'project_id': 985, 'input': {'avg_temp': 31.2, 'avg_humidity': 59, 'avg_wind': 3.6, 'total_rain': 0.0, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}
+2026-01-30 10:39:06,190 INFO {'project_id': 985, 'response': {'prediction': {'delay_probability': 0.0, 'prediction': 'ON-TIME', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 31.2, 'avg_humidity': 59, 'avg_wind': 3.6, 'total_rain': 0.0, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}, 'weather': {'avg_temp': 31.2, 'avg_humidity': 59, 'avg_wind': 3.6, 'total_rain': 0.0}, 'weather_severity': 0, 'recommendations': ['Project risk is acceptable. Maintain current execution plan.']}}
+2026-01-30 10:39:13,306 INFO {'project_id': 988, 'input': {'avg_temp': 31.2, 'avg_humidity': 59, 'avg_wind': 3.6, 'total_rain': 0.0, 'duration_days': None, 'contractor_experience_years': 0, 'weather_severity': 0}}
+2026-01-30 10:39:13,448 INFO {'project_id': 988, 'response': {'prediction': {'delay_probability': 0.0, 'prediction': 'ON-TIME', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 31.2, 'avg_humidity': 59, 'avg_wind': 3.6, 'total_rain': 0.0, 'duration_days': None, 'contractor_experience_years': 0, 'weather_severity': 0}}, 'weather': {'avg_temp': 31.2, 'avg_humidity': 59, 'avg_wind': 3.6, 'total_rain': 0.0}, 'weather_severity': 0, 'recommendations': ['Assign a senior project supervisor to assist execution.', 'Increase monitoring and milestone reporting frequency.']}}
+2026-01-30 10:39:44,592 INFO {'project_id': 989, 'input': {'avg_temp': 31.2, 'avg_humidity': 59, 'avg_wind': 3.6, 'total_rain': 0.0, 'duration_days': None, 'contractor_experience_years': 0, 'weather_severity': 0}}
+2026-01-30 10:39:44,772 INFO {'project_id': 989, 'response': {'prediction': {'delay_probability': 0.0, 'prediction': 'ON-TIME', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 31.2, 'avg_humidity': 59, 'avg_wind': 3.6, 'total_rain': 0.0, 'duration_days': None, 'contractor_experience_years': 0, 'weather_severity': 0}}, 'weather': {'avg_temp': 31.2, 'avg_humidity': 59, 'avg_wind': 3.6, 'total_rain': 0.0}, 'weather_severity': 0, 'recommendations': ['Assign a senior project supervisor to assist execution.', 'Increase monitoring and milestone reporting frequency.']}}
+2026-01-30 11:47:59,697 INFO {'project_id': 987, 'input': {'avg_temp': 27.0, 'avg_humidity': 66, 'avg_wind': 13.3, 'total_rain': 0.02, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-30 11:48:00,668 INFO {'project_id': 987, 'response': {'prediction': {'delay_probability': 0.6603, 'prediction': 'DELAYED', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 27.0, 'avg_humidity': 66, 'avg_wind': 13.3, 'total_rain': 0.02, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 0}}, 'weather': {'avg_temp': 27.0, 'avg_humidity': 66, 'avg_wind': 13.3, 'total_rain': 0.02}, 'weather_severity': 0, 'recommendations': ['Assign a senior project supervisor to assist execution.', 'Increase monitoring and milestone reporting frequency.']}}
+2026-01-30 12:04:17,968 INFO {'project_id': 987, 'input': {'avg_temp': 27.4, 'avg_humidity': 64, 'avg_wind': 13.3, 'total_rain': 0.04, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-30 12:04:18,918 INFO {'project_id': 987, 'response': {'prediction': {'delay_probability': 0.5854, 'prediction': 'DELAYED', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 27.4, 'avg_humidity': 64, 'avg_wind': 13.3, 'total_rain': 0.04, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 0}}, 'weather': {'avg_temp': 27.4, 'avg_humidity': 64, 'avg_wind': 13.3, 'total_rain': 0.04}, 'weather_severity': 0, 'recommendations': ['Assign a senior project supervisor to assist execution.', 'Increase monitoring and milestone reporting frequency.']}}
+2026-01-30 12:04:29,353 INFO {'project_id': 985, 'input': {'avg_temp': 31.0, 'avg_humidity': 63, 'avg_wind': 3.6, 'total_rain': 0.05, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}
+2026-01-30 12:04:29,490 INFO {'project_id': 985, 'response': {'prediction': {'delay_probability': 0.0, 'prediction': 'ON-TIME', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 31.0, 'avg_humidity': 63, 'avg_wind': 3.6, 'total_rain': 0.05, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}, 'weather': {'avg_temp': 31.0, 'avg_humidity': 63, 'avg_wind': 3.6, 'total_rain': 0.05}, 'weather_severity': 0, 'recommendations': ['Project risk is acceptable. Maintain current execution plan.']}}
+2026-01-30 12:05:10,412 INFO {'project_id': 986, 'input': {'avg_temp': 31.0, 'avg_humidity': 63, 'avg_wind': 3.6, 'total_rain': 0.05, 'duration_days': 30, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-30 12:05:10,588 INFO {'project_id': 986, 'response': {'prediction': {'delay_probability': 0.0, 'prediction': 'ON-TIME', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 31.0, 'avg_humidity': 63, 'avg_wind': 3.6, 'total_rain': 0.05, 'duration_days': 30, 'contractor_experience_years': 1, 'weather_severity': 0}}, 'weather': {'avg_temp': 31.0, 'avg_humidity': 63, 'avg_wind': 3.6, 'total_rain': 0.05}, 'weather_severity': 0, 'recommendations': ['Assign a senior project supervisor to assist execution.', 'Increase monitoring and milestone reporting frequency.']}}
+2026-01-30 12:05:19,557 INFO {'project_id': 985, 'input': {'avg_temp': 31.0, 'avg_humidity': 63, 'avg_wind': 3.6, 'total_rain': 0.05, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}
+2026-01-30 12:05:19,735 INFO {'project_id': 985, 'response': {'prediction': {'delay_probability': 0.0, 'prediction': 'ON-TIME', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 31.0, 'avg_humidity': 63, 'avg_wind': 3.6, 'total_rain': 0.05, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}, 'weather': {'avg_temp': 31.0, 'avg_humidity': 63, 'avg_wind': 3.6, 'total_rain': 0.05}, 'weather_severity': 0, 'recommendations': ['Project risk is acceptable. Maintain current execution plan.']}}
+2026-01-30 12:07:43,947 INFO {'project_id': 986, 'input': {'avg_temp': 31.1, 'avg_humidity': 63, 'avg_wind': 3.6, 'total_rain': 0.05, 'duration_days': 30, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-30 12:07:44,884 INFO {'project_id': 986, 'response': {'prediction': {'delay_probability': 0.0, 'prediction': 'ON-TIME', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 31.1, 'avg_humidity': 63, 'avg_wind': 3.6, 'total_rain': 0.05, 'duration_days': 30, 'contractor_experience_years': 1, 'weather_severity': 0}}, 'weather': {'avg_temp': 31.1, 'avg_humidity': 63, 'avg_wind': 3.6, 'total_rain': 0.05}, 'weather_severity': 0, 'recommendations': ['Assign a senior project supervisor to assist execution.', 'Increase monitoring and milestone reporting frequency.']}}
+2026-01-30 12:08:20,542 INFO {'project_id': 987, 'input': {'avg_temp': 27.4, 'avg_humidity': 64, 'avg_wind': 13.3, 'total_rain': 0.04, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-30 12:08:20,672 INFO {'project_id': 987, 'response': {'prediction': {'delay_probability': 0.5854, 'prediction': 'DELAYED', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 27.4, 'avg_humidity': 64, 'avg_wind': 13.3, 'total_rain': 0.04, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 0}}, 'weather': {'avg_temp': 27.4, 'avg_humidity': 64, 'avg_wind': 13.3, 'total_rain': 0.04}, 'weather_severity': 0, 'recommendations': ['Assign a senior project supervisor to assist execution.', 'Increase monitoring and milestone reporting frequency.']}}
+2026-01-30 12:09:18,775 INFO {'project_id': 985, 'input': {'avg_temp': 31.1, 'avg_humidity': 63, 'avg_wind': 3.6, 'total_rain': 0.05, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}
+2026-01-30 12:09:18,912 INFO {'project_id': 985, 'response': {'prediction': {'delay_probability': 0.0, 'prediction': 'ON-TIME', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 31.1, 'avg_humidity': 63, 'avg_wind': 3.6, 'total_rain': 0.05, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}, 'weather': {'avg_temp': 31.1, 'avg_humidity': 63, 'avg_wind': 3.6, 'total_rain': 0.05}, 'weather_severity': 0, 'recommendations': ['Project risk is acceptable. Maintain current execution plan.']}}
+2026-01-30 12:09:29,753 INFO {'project_id': 986, 'input': {'avg_temp': 31.1, 'avg_humidity': 63, 'avg_wind': 3.6, 'total_rain': 0.05, 'duration_days': 30, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-30 12:09:29,888 INFO {'project_id': 986, 'response': {'prediction': {'delay_probability': 0.0, 'prediction': 'ON-TIME', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 31.1, 'avg_humidity': 63, 'avg_wind': 3.6, 'total_rain': 0.05, 'duration_days': 30, 'contractor_experience_years': 1, 'weather_severity': 0}}, 'weather': {'avg_temp': 31.1, 'avg_humidity': 63, 'avg_wind': 3.6, 'total_rain': 0.05}, 'weather_severity': 0, 'recommendations': ['Assign a senior project supervisor to assist execution.', 'Increase monitoring and milestone reporting frequency.']}}
+2026-01-30 12:09:40,836 INFO {'project_id': 987, 'input': {'avg_temp': 27.4, 'avg_humidity': 64, 'avg_wind': 13.3, 'total_rain': 0.04, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-30 12:09:40,971 INFO {'project_id': 987, 'response': {'prediction': {'delay_probability': 0.5854, 'prediction': 'DELAYED', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 27.4, 'avg_humidity': 64, 'avg_wind': 13.3, 'total_rain': 0.04, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 0}}, 'weather': {'avg_temp': 27.4, 'avg_humidity': 64, 'avg_wind': 13.3, 'total_rain': 0.04}, 'weather_severity': 0, 'recommendations': ['Assign a senior project supervisor to assist execution.', 'Increase monitoring and milestone reporting frequency.']}}
+2026-01-30 12:10:23,314 INFO {'project_id': 985, 'input': {'avg_temp': 31.1, 'avg_humidity': 63, 'avg_wind': 3.6, 'total_rain': 0.05, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}
+2026-01-30 12:10:25,251 INFO {'project_id': 985, 'response': {'prediction': {'delay_probability': 0.0, 'prediction': 'ON-TIME', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 31.1, 'avg_humidity': 63, 'avg_wind': 3.6, 'total_rain': 0.05, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}, 'weather': {'avg_temp': 31.1, 'avg_humidity': 63, 'avg_wind': 3.6, 'total_rain': 0.05}, 'weather_severity': 0, 'recommendations': ['Project risk is acceptable. Maintain current execution plan.']}}
+2026-01-30 13:03:50,642 ERROR predict endpoint failed
+Traceback (most recent call last):
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\venv\Lib\site-packages\urllib3\connection.py", line 204, in _new_conn
+    sock = connection.create_connection(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\venv\Lib\site-packages\urllib3\util\connection.py", line 60, in create_connection
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\Python311\Lib\socket.py", line 962, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno 11001] getaddrinfo failed
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\venv\Lib\site-packages\urllib3\connectionpool.py", line 787, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\venv\Lib\site-packages\urllib3\connectionpool.py", line 493, in _make_request
+    conn.request(
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\venv\Lib\site-packages\urllib3\connection.py", line 500, in request
+    self.endheaders()
+  File "C:\Program Files\Python311\Lib\http\client.py", line 1277, in endheaders
+    self._send_output(message_body, encode_chunked=encode_chunked)
+  File "C:\Program Files\Python311\Lib\http\client.py", line 1037, in _send_output
+    self.send(msg)
+  File "C:\Program Files\Python311\Lib\http\client.py", line 975, in send
+    self.connect()
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\venv\Lib\site-packages\urllib3\connection.py", line 331, in connect
+    self.sock = self._new_conn()
+                ^^^^^^^^^^^^^^^^
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\venv\Lib\site-packages\urllib3\connection.py", line 211, in _new_conn
+    raise NameResolutionError(self.host, self, e) from e
+urllib3.exceptions.NameResolutionError: HTTPConnection(host='api.weatherapi.com', port=80): Failed to resolve 'api.weatherapi.com' ([Errno 11001] getaddrinfo failed)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\venv\Lib\site-packages\requests\adapters.py", line 644, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\venv\Lib\site-packages\urllib3\connectionpool.py", line 841, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\venv\Lib\site-packages\urllib3\util\retry.py", line 535, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPConnectionPool(host='api.weatherapi.com', port=80): Max retries exceeded with url: /v1/current.json?key=1f561f8ff4fa47d5a3a195321262601&q=Pasonanca%2C+Zamboanga+City (Caused by NameResolutionError("HTTPConnection(host='api.weatherapi.com', port=80): Failed to resolve 'api.weatherapi.com' ([Errno 11001] getaddrinfo failed)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\app.py", line 29, in predict
+    weather = get_weather(data["project_location"])
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\weather.py", line 12, in get_weather
+    r = requests.get(url, params=params)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\venv\Lib\site-packages\requests\api.py", line 73, in get
+    return request("get", url, params=params, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\venv\Lib\site-packages\requests\api.py", line 59, in request
+    return session.request(method=method, url=url, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\venv\Lib\site-packages\requests\sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\venv\Lib\site-packages\requests\sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\venv\Lib\site-packages\requests\adapters.py", line 677, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPConnectionPool(host='api.weatherapi.com', port=80): Max retries exceeded with url: /v1/current.json?key=1f561f8ff4fa47d5a3a195321262601&q=Pasonanca%2C+Zamboanga+City (Caused by NameResolutionError("HTTPConnection(host='api.weatherapi.com', port=80): Failed to resolve 'api.weatherapi.com' ([Errno 11001] getaddrinfo failed)"))
+2026-01-30 13:04:49,232 INFO {'project_id': 986, 'input': {'avg_temp': 30.1, 'avg_humidity': 70, 'avg_wind': 3.6, 'total_rain': 0.31, 'duration_days': 30, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-30 13:04:50,293 INFO {'project_id': 986, 'response': {'prediction': {'delay_probability': 0.0, 'prediction': 'ON-TIME', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 30.1, 'avg_humidity': 70, 'avg_wind': 3.6, 'total_rain': 0.31, 'duration_days': 30, 'contractor_experience_years': 1, 'weather_severity': 0}}, 'weather': {'avg_temp': 30.1, 'avg_humidity': 70, 'avg_wind': 3.6, 'total_rain': 0.31}, 'weather_severity': 0, 'recommendations': ['Assign a senior project supervisor to assist execution.', 'Increase monitoring and milestone reporting frequency.']}}
+2026-01-30 13:05:56,934 INFO {'project_id': 987, 'input': {'avg_temp': 27.5, 'avg_humidity': 65, 'avg_wind': 13.3, 'total_rain': 0.06, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-30 13:05:57,244 INFO {'project_id': 987, 'response': {'prediction': {'delay_probability': 0.5841, 'prediction': 'DELAYED', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 27.5, 'avg_humidity': 65, 'avg_wind': 13.3, 'total_rain': 0.06, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 0}}, 'weather': {'avg_temp': 27.5, 'avg_humidity': 65, 'avg_wind': 13.3, 'total_rain': 0.06}, 'weather_severity': 0, 'recommendations': ['Assign a senior project supervisor to assist execution.', 'Increase monitoring and milestone reporting frequency.']}}
+2026-01-30 13:11:05,807 INFO {'project_id': 988, 'input': {'avg_temp': 29.3, 'avg_humidity': 66, 'avg_wind': 15.1, 'total_rain': 0.0, 'duration_days': 360, 'contractor_experience_years': 6, 'weather_severity': 0}}
+2026-01-30 13:11:06,728 INFO {'project_id': 988, 'response': {'prediction': {'delay_probability': 0.2872, 'prediction': 'ON-TIME', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 29.3, 'avg_humidity': 66, 'avg_wind': 15.1, 'total_rain': 0.0, 'duration_days': 360, 'contractor_experience_years': 6, 'weather_severity': 0}}, 'weather': {'avg_temp': 29.3, 'avg_humidity': 66, 'avg_wind': 15.1, 'total_rain': 0.0}, 'weather_severity': 0, 'recommendations': ['Project risk is acceptable. Maintain current execution plan.']}}
+2026-01-30 13:12:24,829 INFO {'project_id': 985, 'input': {'avg_temp': 30.0, 'avg_humidity': 70, 'avg_wind': 3.6, 'total_rain': 0.31, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}
+2026-01-30 13:12:24,965 INFO {'project_id': 985, 'response': {'prediction': {'delay_probability': 0.0, 'prediction': 'ON-TIME', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 30.0, 'avg_humidity': 70, 'avg_wind': 3.6, 'total_rain': 0.31, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}, 'weather': {'avg_temp': 30.0, 'avg_humidity': 70, 'avg_wind': 3.6, 'total_rain': 0.31}, 'weather_severity': 0, 'recommendations': ['Project risk is acceptable. Maintain current execution plan.']}}
+2026-01-30 13:12:51,444 INFO {'project_id': 988, 'input': {'avg_temp': 29.3, 'avg_humidity': 66, 'avg_wind': 15.1, 'total_rain': 0.0, 'duration_days': 360, 'contractor_experience_years': 6, 'weather_severity': 0}}
+2026-01-30 13:12:51,589 INFO {'project_id': 988, 'response': {'prediction': {'delay_probability': 0.2872, 'prediction': 'ON-TIME', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 29.3, 'avg_humidity': 66, 'avg_wind': 15.1, 'total_rain': 0.0, 'duration_days': 360, 'contractor_experience_years': 6, 'weather_severity': 0}}, 'weather': {'avg_temp': 29.3, 'avg_humidity': 66, 'avg_wind': 15.1, 'total_rain': 0.0}, 'weather_severity': 0, 'recommendations': ['Project risk is acceptable. Maintain current execution plan.']}}
+2026-01-30 13:14:09,785 INFO {'project_id': 987, 'input': {'avg_temp': 27.5, 'avg_humidity': 65, 'avg_wind': 13.3, 'total_rain': 0.06, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-30 13:14:09,937 INFO {'project_id': 987, 'response': {'prediction': {'delay_probability': 0.5841, 'prediction': 'DELAYED', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 27.5, 'avg_humidity': 65, 'avg_wind': 13.3, 'total_rain': 0.06, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 0}}, 'weather': {'avg_temp': 27.5, 'avg_humidity': 65, 'avg_wind': 13.3, 'total_rain': 0.06}, 'weather_severity': 0, 'recommendations': ['Assign a senior project supervisor to assist execution.', 'Increase monitoring and milestone reporting frequency.']}}
+2026-01-30 13:15:11,043 INFO {'project_id': 988, 'input': {'avg_temp': 27.3, 'avg_humidity': 66, 'avg_wind': 15.1, 'total_rain': 0.0, 'duration_days': 360, 'contractor_experience_years': 3, 'weather_severity': 0}}
+2026-01-30 13:15:11,215 INFO {'project_id': 988, 'response': {'prediction': {'delay_probability': 0.8538, 'prediction': 'DELAYED', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 27.3, 'avg_humidity': 66, 'avg_wind': 15.1, 'total_rain': 0.0, 'duration_days': 360, 'contractor_experience_years': 3, 'weather_severity': 0}}, 'weather': {'avg_temp': 27.3, 'avg_humidity': 66, 'avg_wind': 15.1, 'total_rain': 0.0}, 'weather_severity': 0, 'recommendations': ['High delay risk detected. Immediate mitigation is required.', 'Assign a senior project supervisor to assist execution.', 'Increase monitoring and milestone reporting frequency.']}}
+2026-01-30 13:16:04,236 INFO {'project_id': 988, 'input': {'avg_temp': 27.3, 'avg_humidity': 66, 'avg_wind': 15.1, 'total_rain': 0.0, 'duration_days': 360, 'contractor_experience_years': 4, 'weather_severity': 0}}
+2026-01-30 13:16:06,239 INFO {'project_id': 988, 'response': {'prediction': {'delay_probability': 0.8002, 'prediction': 'DELAYED', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 27.3, 'avg_humidity': 66, 'avg_wind': 15.1, 'total_rain': 0.0, 'duration_days': 360, 'contractor_experience_years': 4, 'weather_severity': 0}}, 'weather': {'avg_temp': 27.3, 'avg_humidity': 66, 'avg_wind': 15.1, 'total_rain': 0.0}, 'weather_severity': 0, 'recommendations': ['High delay risk detected. Immediate mitigation is required.', 'Assign a senior project supervisor to assist execution.', 'Increase monitoring and milestone reporting frequency.']}}
+2026-01-30 13:16:30,442 INFO {'project_id': 988, 'input': {'avg_temp': 27.3, 'avg_humidity': 66, 'avg_wind': 15.1, 'total_rain': 0.0, 'duration_days': 360, 'contractor_experience_years': 5, 'weather_severity': 0}}
+2026-01-30 13:16:30,575 INFO {'project_id': 988, 'response': {'prediction': {'delay_probability': 0.7355, 'prediction': 'DELAYED', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 27.3, 'avg_humidity': 66, 'avg_wind': 15.1, 'total_rain': 0.0, 'duration_days': 360, 'contractor_experience_years': 5, 'weather_severity': 0}}, 'weather': {'avg_temp': 27.3, 'avg_humidity': 66, 'avg_wind': 15.1, 'total_rain': 0.0}, 'weather_severity': 0, 'recommendations': ['High delay risk detected. Immediate mitigation is required.']}}
+2026-01-30 13:17:29,882 INFO {'project_id': 988, 'input': {'avg_temp': 27.3, 'avg_humidity': 66, 'avg_wind': 15.1, 'total_rain': 0.0, 'duration_days': 360, 'contractor_experience_years': 6, 'weather_severity': 0}}
+2026-01-30 13:17:30,045 INFO {'project_id': 988, 'response': {'prediction': {'delay_probability': 0.6604, 'prediction': 'DELAYED', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 27.3, 'avg_humidity': 66, 'avg_wind': 15.1, 'total_rain': 0.0, 'duration_days': 360, 'contractor_experience_years': 6, 'weather_severity': 0}}, 'weather': {'avg_temp': 27.3, 'avg_humidity': 66, 'avg_wind': 15.1, 'total_rain': 0.0}, 'weather_severity': 0, 'recommendations': ['Project risk is acceptable. Maintain current execution plan.']}}
+2026-01-30 13:17:39,283 INFO {'project_id': 988, 'input': {'avg_temp': 27.3, 'avg_humidity': 66, 'avg_wind': 15.1, 'total_rain': 0.0, 'duration_days': 360, 'contractor_experience_years': 6, 'weather_severity': 0}}
+2026-01-30 13:17:39,406 INFO {'project_id': 988, 'response': {'prediction': {'delay_probability': 0.6604, 'prediction': 'DELAYED', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 27.3, 'avg_humidity': 66, 'avg_wind': 15.1, 'total_rain': 0.0, 'duration_days': 360, 'contractor_experience_years': 6, 'weather_severity': 0}}, 'weather': {'avg_temp': 27.3, 'avg_humidity': 66, 'avg_wind': 15.1, 'total_rain': 0.0}, 'weather_severity': 0, 'recommendations': ['Project risk is acceptable. Maintain current execution plan.']}}
+2026-01-30 13:18:20,158 INFO {'project_id': 988, 'input': {'avg_temp': 29.1, 'avg_humidity': 66, 'avg_wind': 15.1, 'total_rain': 0.0, 'duration_days': 360, 'contractor_experience_years': 20, 'weather_severity': 0}}
+2026-01-30 13:18:20,291 INFO {'project_id': 988, 'response': {'prediction': {'delay_probability': 0.0026, 'prediction': 'ON-TIME', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 29.1, 'avg_humidity': 66, 'avg_wind': 15.1, 'total_rain': 0.0, 'duration_days': 360, 'contractor_experience_years': 20, 'weather_severity': 0}}, 'weather': {'avg_temp': 29.1, 'avg_humidity': 66, 'avg_wind': 15.1, 'total_rain': 0.0}, 'weather_severity': 0, 'recommendations': ['Project risk is acceptable. Maintain current execution plan.']}}
+2026-01-30 13:19:45,716 INFO {'project_id': 988, 'input': {'avg_temp': 29.1, 'avg_humidity': 66, 'avg_wind': 15.1, 'total_rain': 0.0, 'duration_days': 360, 'contractor_experience_years': 3, 'weather_severity': 0}}
+2026-01-30 13:19:45,868 INFO {'project_id': 988, 'response': {'prediction': {'delay_probability': 0.5883, 'prediction': 'DELAYED', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 29.1, 'avg_humidity': 66, 'avg_wind': 15.1, 'total_rain': 0.0, 'duration_days': 360, 'contractor_experience_years': 3, 'weather_severity': 0}}, 'weather': {'avg_temp': 29.1, 'avg_humidity': 66, 'avg_wind': 15.1, 'total_rain': 0.0}, 'weather_severity': 0, 'recommendations': ['Assign a senior project supervisor to assist execution.', 'Increase monitoring and milestone reporting frequency.']}}
+2026-01-30 13:20:03,372 INFO {'project_id': 985, 'input': {'avg_temp': 30.2, 'avg_humidity': 66, 'avg_wind': 3.6, 'total_rain': 0.31, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}
+2026-01-30 13:20:03,525 INFO {'project_id': 985, 'response': {'prediction': {'delay_probability': 0.0, 'prediction': 'ON-TIME', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 30.2, 'avg_humidity': 66, 'avg_wind': 3.6, 'total_rain': 0.31, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}, 'weather': {'avg_temp': 30.2, 'avg_humidity': 66, 'avg_wind': 3.6, 'total_rain': 0.31}, 'weather_severity': 0, 'recommendations': ['Project risk is acceptable. Maintain current execution plan.']}}
+2026-01-30 13:20:47,411 INFO {'project_id': 986, 'input': {'avg_temp': 30.2, 'avg_humidity': 66, 'avg_wind': 3.6, 'total_rain': 0.31, 'duration_days': 30, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-30 13:20:47,552 INFO {'project_id': 986, 'response': {'prediction': {'delay_probability': 0.0, 'prediction': 'ON-TIME', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 30.2, 'avg_humidity': 66, 'avg_wind': 3.6, 'total_rain': 0.31, 'duration_days': 30, 'contractor_experience_years': 1, 'weather_severity': 0}}, 'weather': {'avg_temp': 30.2, 'avg_humidity': 66, 'avg_wind': 3.6, 'total_rain': 0.31}, 'weather_severity': 0, 'recommendations': ['Assign a senior project supervisor to assist execution.', 'Increase monitoring and milestone reporting frequency.']}}
+2026-01-30 13:21:12,423 INFO {'project_id': 988, 'input': {'avg_temp': 29.1, 'avg_humidity': 66, 'avg_wind': 15.1, 'total_rain': 0.0, 'duration_days': 360, 'contractor_experience_years': 3, 'weather_severity': 0}}
+2026-01-30 13:21:12,587 INFO {'project_id': 988, 'response': {'prediction': {'delay_probability': 0.5883, 'prediction': 'DELAYED', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 29.1, 'avg_humidity': 66, 'avg_wind': 15.1, 'total_rain': 0.0, 'duration_days': 360, 'contractor_experience_years': 3, 'weather_severity': 0}}, 'weather': {'avg_temp': 29.1, 'avg_humidity': 66, 'avg_wind': 15.1, 'total_rain': 0.0}, 'weather_severity': 0, 'recommendations': ['Assign a senior project supervisor to assist execution.', 'Increase monitoring and milestone reporting frequency.']}}
+2026-01-30 13:21:33,404 INFO {'project_id': 986, 'input': {'avg_temp': 30.2, 'avg_humidity': 66, 'avg_wind': 3.6, 'total_rain': 0.31, 'duration_days': 30, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-30 13:21:33,554 INFO {'project_id': 986, 'response': {'prediction': {'delay_probability': 0.0, 'prediction': 'ON-TIME', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 30.2, 'avg_humidity': 66, 'avg_wind': 3.6, 'total_rain': 0.31, 'duration_days': 30, 'contractor_experience_years': 1, 'weather_severity': 0}}, 'weather': {'avg_temp': 30.2, 'avg_humidity': 66, 'avg_wind': 3.6, 'total_rain': 0.31}, 'weather_severity': 0, 'recommendations': ['Assign a senior project supervisor to assist execution.', 'Increase monitoring and milestone reporting frequency.']}}
+2026-01-30 13:21:38,065 INFO {'project_id': 987, 'input': {'avg_temp': 27.5, 'avg_humidity': 65, 'avg_wind': 13.3, 'total_rain': 0.06, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-30 13:21:38,204 INFO {'project_id': 987, 'response': {'prediction': {'delay_probability': 0.5841, 'prediction': 'DELAYED', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 27.5, 'avg_humidity': 65, 'avg_wind': 13.3, 'total_rain': 0.06, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 0}}, 'weather': {'avg_temp': 27.5, 'avg_humidity': 65, 'avg_wind': 13.3, 'total_rain': 0.06}, 'weather_severity': 0, 'recommendations': ['Assign a senior project supervisor to assist execution.', 'Increase monitoring and milestone reporting frequency.']}}
+2026-01-30 13:22:28,776 INFO {'project_id': 988, 'input': {'avg_temp': 29.1, 'avg_humidity': 66, 'avg_wind': 15.1, 'total_rain': 0.0, 'duration_days': 360, 'contractor_experience_years': 3, 'weather_severity': 0}}
+2026-01-30 13:22:28,921 INFO {'project_id': 988, 'response': {'prediction': {'delay_probability': 0.5883, 'prediction': 'DELAYED', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 29.1, 'avg_humidity': 66, 'avg_wind': 15.1, 'total_rain': 0.0, 'duration_days': 360, 'contractor_experience_years': 3, 'weather_severity': 0}}, 'weather': {'avg_temp': 29.1, 'avg_humidity': 66, 'avg_wind': 15.1, 'total_rain': 0.0}, 'weather_severity': 0, 'recommendations': ['Assign a senior project supervisor to assist execution.', 'Increase monitoring and milestone reporting frequency.']}}
+2026-01-30 13:22:44,519 INFO {'project_id': 985, 'input': {'avg_temp': 30.2, 'avg_humidity': 66, 'avg_wind': 3.6, 'total_rain': 0.31, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}
+2026-01-30 13:22:44,663 INFO {'project_id': 985, 'response': {'prediction': {'delay_probability': 0.0, 'prediction': 'ON-TIME', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 30.2, 'avg_humidity': 66, 'avg_wind': 3.6, 'total_rain': 0.31, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}, 'weather': {'avg_temp': 30.2, 'avg_humidity': 66, 'avg_wind': 3.6, 'total_rain': 0.31}, 'weather_severity': 0, 'recommendations': ['Project risk is acceptable. Maintain current execution plan.']}}
+2026-01-30 13:23:50,100 INFO {'project_id': 986, 'input': {'avg_temp': 30.2, 'avg_humidity': 66, 'avg_wind': 3.6, 'total_rain': 0.31, 'duration_days': 30, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-30 13:23:50,225 INFO {'project_id': 986, 'response': {'prediction': {'delay_probability': 0.0, 'prediction': 'ON-TIME', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 30.2, 'avg_humidity': 66, 'avg_wind': 3.6, 'total_rain': 0.31, 'duration_days': 30, 'contractor_experience_years': 1, 'weather_severity': 0}}, 'weather': {'avg_temp': 30.2, 'avg_humidity': 66, 'avg_wind': 3.6, 'total_rain': 0.31}, 'weather_severity': 0, 'recommendations': ['Assign a senior project supervisor to assist execution.', 'Increase monitoring and milestone reporting frequency.']}}
+2026-01-30 13:24:10,125 INFO {'project_id': 987, 'input': {'avg_temp': 27.5, 'avg_humidity': 65, 'avg_wind': 13.3, 'total_rain': 0.06, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-30 13:24:10,247 INFO {'project_id': 987, 'response': {'prediction': {'delay_probability': 0.5841, 'prediction': 'DELAYED', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 27.5, 'avg_humidity': 65, 'avg_wind': 13.3, 'total_rain': 0.06, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 0}}, 'weather': {'avg_temp': 27.5, 'avg_humidity': 65, 'avg_wind': 13.3, 'total_rain': 0.06}, 'weather_severity': 0, 'recommendations': ['Assign a senior project supervisor to assist execution.', 'Increase monitoring and milestone reporting frequency.']}}
+2026-01-30 13:24:39,052 INFO {'project_id': 988, 'input': {'avg_temp': 29.1, 'avg_humidity': 66, 'avg_wind': 15.1, 'total_rain': 0.0, 'duration_days': 360, 'contractor_experience_years': 3, 'weather_severity': 0}}
+2026-01-30 13:24:39,178 INFO {'project_id': 988, 'response': {'prediction': {'delay_probability': 0.5883, 'prediction': 'DELAYED', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 29.1, 'avg_humidity': 66, 'avg_wind': 15.1, 'total_rain': 0.0, 'duration_days': 360, 'contractor_experience_years': 3, 'weather_severity': 0}}, 'weather': {'avg_temp': 29.1, 'avg_humidity': 66, 'avg_wind': 15.1, 'total_rain': 0.0}, 'weather_severity': 0, 'recommendations': ['Assign a senior project supervisor to assist execution.', 'Increase monitoring and milestone reporting frequency.']}}
+2026-01-30 13:26:32,295 INFO {'project_id': 985, 'input': {'avg_temp': 30.2, 'avg_humidity': 66, 'avg_wind': 3.6, 'total_rain': 0.31, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}
+2026-01-30 13:26:32,430 INFO {'project_id': 985, 'response': {'prediction': {'delay_probability': 0.0, 'prediction': 'ON-TIME', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 30.2, 'avg_humidity': 66, 'avg_wind': 3.6, 'total_rain': 0.31, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}, 'weather': {'avg_temp': 30.2, 'avg_humidity': 66, 'avg_wind': 3.6, 'total_rain': 0.31}, 'weather_severity': 0, 'recommendations': ['Project risk is acceptable. Maintain current execution plan.']}}
+2026-01-30 13:26:39,950 INFO {'project_id': 987, 'input': {'avg_temp': 27.5, 'avg_humidity': 65, 'avg_wind': 13.3, 'total_rain': 0.06, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-30 13:26:40,089 INFO {'project_id': 987, 'response': {'prediction': {'delay_probability': 0.5841, 'prediction': 'DELAYED', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 27.5, 'avg_humidity': 65, 'avg_wind': 13.3, 'total_rain': 0.06, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 0}}, 'weather': {'avg_temp': 27.5, 'avg_humidity': 65, 'avg_wind': 13.3, 'total_rain': 0.06}, 'weather_severity': 0, 'recommendations': ['Assign a senior project supervisor to assist execution.', 'Increase monitoring and milestone reporting frequency.']}}
+2026-01-30 13:30:05,298 INFO {'project_id': 985, 'input': {'avg_temp': 30.2, 'avg_humidity': 66, 'avg_wind': 3.6, 'total_rain': 0.31, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}
+2026-01-30 13:30:05,598 INFO {'project_id': 985, 'response': {'prediction': {'delay_probability': 0.0, 'prediction': 'ON-TIME', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 30.2, 'avg_humidity': 66, 'avg_wind': 3.6, 'total_rain': 0.31, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}, 'weather': {'avg_temp': 30.2, 'avg_humidity': 66, 'avg_wind': 3.6, 'total_rain': 0.31}, 'weather_severity': 0, 'recommendations': ['Project risk is acceptable. Maintain current execution plan.']}}
+2026-01-30 13:30:19,985 INFO {'project_id': 986, 'input': {'avg_temp': 30.2, 'avg_humidity': 66, 'avg_wind': 3.6, 'total_rain': 0.31, 'duration_days': 30, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-30 13:30:20,146 INFO {'project_id': 986, 'response': {'prediction': {'delay_probability': 0.0, 'prediction': 'ON-TIME', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 30.2, 'avg_humidity': 66, 'avg_wind': 3.6, 'total_rain': 0.31, 'duration_days': 30, 'contractor_experience_years': 1, 'weather_severity': 0}}, 'weather': {'avg_temp': 30.2, 'avg_humidity': 66, 'avg_wind': 3.6, 'total_rain': 0.31}, 'weather_severity': 0, 'recommendations': ['Assign a senior project supervisor to assist execution.', 'Increase monitoring and milestone reporting frequency.']}}
+2026-01-30 13:30:29,767 INFO {'project_id': 987, 'input': {'avg_temp': 27.5, 'avg_humidity': 65, 'avg_wind': 13.3, 'total_rain': 0.06, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-30 13:30:29,923 INFO {'project_id': 987, 'response': {'prediction': {'delay_probability': 0.5841, 'prediction': 'DELAYED', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 27.5, 'avg_humidity': 65, 'avg_wind': 13.3, 'total_rain': 0.06, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 0}}, 'weather': {'avg_temp': 27.5, 'avg_humidity': 65, 'avg_wind': 13.3, 'total_rain': 0.06}, 'weather_severity': 0, 'recommendations': ['Assign a senior project supervisor to assist execution.', 'Increase monitoring and milestone reporting frequency.']}}
+2026-01-30 13:30:36,934 INFO {'project_id': 988, 'input': {'avg_temp': 29.1, 'avg_humidity': 66, 'avg_wind': 15.1, 'total_rain': 0.0, 'duration_days': 360, 'contractor_experience_years': 3, 'weather_severity': 0}}
+2026-01-30 13:30:37,073 INFO {'project_id': 988, 'response': {'prediction': {'delay_probability': 0.5883, 'prediction': 'DELAYED', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 29.1, 'avg_humidity': 66, 'avg_wind': 15.1, 'total_rain': 0.0, 'duration_days': 360, 'contractor_experience_years': 3, 'weather_severity': 0}}, 'weather': {'avg_temp': 29.1, 'avg_humidity': 66, 'avg_wind': 15.1, 'total_rain': 0.0}, 'weather_severity': 0, 'recommendations': ['Assign a senior project supervisor to assist execution.', 'Increase monitoring and milestone reporting frequency.']}}
+2026-01-30 13:37:13,233 INFO {'project_id': 985, 'input': {'avg_temp': 30.3, 'avg_humidity': 66, 'avg_wind': 3.6, 'total_rain': 0.31, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}
+2026-01-30 13:37:14,122 INFO {'project_id': 985, 'response': {'prediction': {'delay_probability': 0.0, 'prediction': 'ON-TIME', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 30.3, 'avg_humidity': 66, 'avg_wind': 3.6, 'total_rain': 0.31, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}, 'weather': {'avg_temp': 30.3, 'avg_humidity': 66, 'avg_wind': 3.6, 'total_rain': 0.31}, 'weather_severity': 0, 'recommendations': ['Project risk is acceptable. Maintain current execution plan.']}}
+2026-01-30 13:42:41,050 INFO {'project_id': 989, 'input': {'avg_temp': 30.3, 'avg_humidity': 66, 'avg_wind': 3.6, 'total_rain': 0.31, 'duration_days': None, 'contractor_experience_years': 0, 'weather_severity': 0}}
+2026-01-30 13:42:41,879 INFO {'project_id': 989, 'response': {'prediction': {'delay_probability': 0.0, 'prediction': 'ON-TIME', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 30.3, 'avg_humidity': 66, 'avg_wind': 3.6, 'total_rain': 0.31, 'duration_days': None, 'contractor_experience_years': 0, 'weather_severity': 0}}, 'weather': {'avg_temp': 30.3, 'avg_humidity': 66, 'avg_wind': 3.6, 'total_rain': 0.31}, 'weather_severity': 0, 'recommendations': ['Assign a senior project supervisor to assist execution.', 'Increase monitoring and milestone reporting frequency.']}}
+2026-01-30 13:43:20,517 INFO {'project_id': 985, 'input': {'avg_temp': 30.3, 'avg_humidity': 66, 'avg_wind': 3.6, 'total_rain': 0.31, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}
+2026-01-30 13:43:20,651 INFO {'project_id': 985, 'response': {'prediction': {'delay_probability': 0.0, 'prediction': 'ON-TIME', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 30.3, 'avg_humidity': 66, 'avg_wind': 3.6, 'total_rain': 0.31, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}, 'weather': {'avg_temp': 30.3, 'avg_humidity': 66, 'avg_wind': 3.6, 'total_rain': 0.31}, 'weather_severity': 0, 'recommendations': ['Project risk is acceptable. Maintain current execution plan.']}}
+2026-01-30 14:03:45,549 INFO {'project_id': 985, 'input': {'avg_temp': 30.2, 'avg_humidity': 66, 'avg_wind': 5.8, 'total_rain': 0.44, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}
+2026-01-30 14:03:46,452 INFO {'project_id': 985, 'response': {'prediction': {'delay_probability': 0.0, 'prediction': 'ON-TIME', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 30.2, 'avg_humidity': 66, 'avg_wind': 5.8, 'total_rain': 0.44, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}, 'weather': {'avg_temp': 30.2, 'avg_humidity': 66, 'avg_wind': 5.8, 'total_rain': 0.44}, 'weather_severity': 0, 'recommendations': ['Project risk is acceptable. Maintain current execution plan.']}}
+2026-01-30 14:05:30,482 INFO {'project_id': 986, 'input': {'avg_temp': 30.2, 'avg_humidity': 66, 'avg_wind': 5.8, 'total_rain': 0.44, 'duration_days': 30, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-30 14:05:30,659 INFO {'project_id': 986, 'response': {'prediction': {'delay_probability': 0.0, 'prediction': 'ON-TIME', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 30.2, 'avg_humidity': 66, 'avg_wind': 5.8, 'total_rain': 0.44, 'duration_days': 30, 'contractor_experience_years': 1, 'weather_severity': 0}}, 'weather': {'avg_temp': 30.2, 'avg_humidity': 66, 'avg_wind': 5.8, 'total_rain': 0.44}, 'weather_severity': 0, 'recommendations': ['Assign a senior project supervisor to assist execution.', 'Increase monitoring and milestone reporting frequency.']}}
+2026-01-30 14:05:36,097 INFO {'project_id': 987, 'input': {'avg_temp': 27.2, 'avg_humidity': 67, 'avg_wind': 14.4, 'total_rain': 0.04, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-30 14:05:36,209 INFO {'project_id': 987, 'response': {'prediction': {'delay_probability': 0.8966, 'prediction': 'DELAYED', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 27.2, 'avg_humidity': 67, 'avg_wind': 14.4, 'total_rain': 0.04, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 0}}, 'weather': {'avg_temp': 27.2, 'avg_humidity': 67, 'avg_wind': 14.4, 'total_rain': 0.04}, 'weather_severity': 0, 'recommendations': ['High delay risk detected. Immediate mitigation is required.', 'Assign a senior project supervisor to assist execution.', 'Increase monitoring and milestone reporting frequency.']}}
+2026-01-31 09:14:47,209 ERROR predict endpoint failed
+Traceback (most recent call last):
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\venv\Lib\site-packages\urllib3\connection.py", line 204, in _new_conn
+    sock = connection.create_connection(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\venv\Lib\site-packages\urllib3\util\connection.py", line 60, in create_connection
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\Python311\Lib\socket.py", line 962, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno 11001] getaddrinfo failed
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\venv\Lib\site-packages\urllib3\connectionpool.py", line 787, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\venv\Lib\site-packages\urllib3\connectionpool.py", line 493, in _make_request
+    conn.request(
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\venv\Lib\site-packages\urllib3\connection.py", line 500, in request
+    self.endheaders()
+  File "C:\Program Files\Python311\Lib\http\client.py", line 1277, in endheaders
+    self._send_output(message_body, encode_chunked=encode_chunked)
+  File "C:\Program Files\Python311\Lib\http\client.py", line 1037, in _send_output
+    self.send(msg)
+  File "C:\Program Files\Python311\Lib\http\client.py", line 975, in send
+    self.connect()
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\venv\Lib\site-packages\urllib3\connection.py", line 331, in connect
+    self.sock = self._new_conn()
+                ^^^^^^^^^^^^^^^^
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\venv\Lib\site-packages\urllib3\connection.py", line 211, in _new_conn
+    raise NameResolutionError(self.host, self, e) from e
+urllib3.exceptions.NameResolutionError: HTTPConnection(host='api.weatherapi.com', port=80): Failed to resolve 'api.weatherapi.com' ([Errno 11001] getaddrinfo failed)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\venv\Lib\site-packages\requests\adapters.py", line 644, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\venv\Lib\site-packages\urllib3\connectionpool.py", line 841, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\venv\Lib\site-packages\urllib3\util\retry.py", line 535, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPConnectionPool(host='api.weatherapi.com', port=80): Max retries exceeded with url: /v1/current.json?key=1f561f8ff4fa47d5a3a195321262601&q=Pasonanca%2C+Zamboanga+City (Caused by NameResolutionError("HTTPConnection(host='api.weatherapi.com', port=80): Failed to resolve 'api.weatherapi.com' ([Errno 11001] getaddrinfo failed)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\app.py", line 29, in predict
+    weather = get_weather(data["project_location"])
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\weather.py", line 12, in get_weather
+    r = requests.get(url, params=params)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\venv\Lib\site-packages\requests\api.py", line 73, in get
+    return request("get", url, params=params, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\venv\Lib\site-packages\requests\api.py", line 59, in request
+    return session.request(method=method, url=url, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\venv\Lib\site-packages\requests\sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\venv\Lib\site-packages\requests\sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\venv\Lib\site-packages\requests\adapters.py", line 677, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPConnectionPool(host='api.weatherapi.com', port=80): Max retries exceeded with url: /v1/current.json?key=1f561f8ff4fa47d5a3a195321262601&q=Pasonanca%2C+Zamboanga+City (Caused by NameResolutionError("HTTPConnection(host='api.weatherapi.com', port=80): Failed to resolve 'api.weatherapi.com' ([Errno 11001] getaddrinfo failed)"))
+2026-01-31 09:15:20,071 INFO {'project_id': 985, 'input': {'avg_temp': 28.5, 'avg_humidity': 64, 'avg_wind': 3.6, 'total_rain': 0.0, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}
+2026-01-31 09:15:21,211 INFO {'project_id': 985, 'response': {'prediction': {'delay_probability': 0.0, 'prediction': 'ON-TIME', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 28.5, 'avg_humidity': 64, 'avg_wind': 3.6, 'total_rain': 0.0, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}, 'weather': {'avg_temp': 28.5, 'avg_humidity': 64, 'avg_wind': 3.6, 'total_rain': 0.0}, 'weather_severity': 0, 'recommendations': ['Project risk is acceptable. Maintain current execution plan.']}}
+2026-01-31 09:15:27,580 INFO {'project_id': 986, 'input': {'avg_temp': 28.5, 'avg_humidity': 64, 'avg_wind': 3.6, 'total_rain': 0.0, 'duration_days': 30, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-31 09:15:27,711 INFO {'project_id': 986, 'response': {'prediction': {'delay_probability': 0.0, 'prediction': 'ON-TIME', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 28.5, 'avg_humidity': 64, 'avg_wind': 3.6, 'total_rain': 0.0, 'duration_days': 30, 'contractor_experience_years': 1, 'weather_severity': 0}}, 'weather': {'avg_temp': 28.5, 'avg_humidity': 64, 'avg_wind': 3.6, 'total_rain': 0.0}, 'weather_severity': 0, 'recommendations': ['Assign a senior project supervisor to assist execution.', 'Increase monitoring and milestone reporting frequency.']}}
+2026-01-31 09:15:32,839 INFO {'project_id': 987, 'input': {'avg_temp': 23.5, 'avg_humidity': 89, 'avg_wind': 14.0, 'total_rain': 0.04, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-31 09:15:32,981 INFO {'project_id': 987, 'response': {'prediction': {'delay_probability': 0.9957, 'prediction': 'DELAYED', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 23.5, 'avg_humidity': 89, 'avg_wind': 14.0, 'total_rain': 0.04, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 0}}, 'weather': {'avg_temp': 23.5, 'avg_humidity': 89, 'avg_wind': 14.0, 'total_rain': 0.04}, 'weather_severity': 0, 'recommendations': ['High delay risk detected. Immediate mitigation is required.', 'Assign a senior project supervisor to assist execution.', 'Increase monitoring and milestone reporting frequency.']}}
+2026-01-31 09:15:38,698 INFO {'project_id': 988, 'input': {'avg_temp': 25.3, 'avg_humidity': 85, 'avg_wind': 15.8, 'total_rain': 0.07, 'duration_days': 360, 'contractor_experience_years': 3, 'weather_severity': 0}}
+2026-01-31 09:15:38,875 INFO {'project_id': 988, 'response': {'prediction': {'delay_probability': 0.9935, 'prediction': 'DELAYED', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 25.3, 'avg_humidity': 85, 'avg_wind': 15.8, 'total_rain': 0.07, 'duration_days': 360, 'contractor_experience_years': 3, 'weather_severity': 0}}, 'weather': {'avg_temp': 25.3, 'avg_humidity': 85, 'avg_wind': 15.8, 'total_rain': 0.07}, 'weather_severity': 0, 'recommendations': ['High delay risk detected. Immediate mitigation is required.', 'Assign a senior project supervisor to assist execution.', 'Increase monitoring and milestone reporting frequency.']}}
+2026-01-31 09:17:05,954 INFO {'project_id': 985, 'input': {'avg_temp': 28.5, 'avg_humidity': 64, 'avg_wind': 3.6, 'total_rain': 0.0, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}
+2026-01-31 09:17:07,104 INFO {'project_id': 985, 'response': {'prediction': {'delay_probability': 0.0, 'prediction': 'ON-TIME', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 28.5, 'avg_humidity': 64, 'avg_wind': 3.6, 'total_rain': 0.0, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}, 'weather': {'avg_temp': 28.5, 'avg_humidity': 64, 'avg_wind': 3.6, 'total_rain': 0.0}, 'weather_severity': 0, 'recommendations': ['Project risk is acceptable. Maintain current execution plan.']}}
+2026-01-31 09:19:07,507 INFO {'project_id': 987, 'input': {'avg_temp': 23.5, 'avg_humidity': 89, 'avg_wind': 14.0, 'total_rain': 0.04, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-31 09:19:08,222 INFO {'project_id': 987, 'response': {'prediction': {'delay_probability': 0.9957, 'prediction': 'DELAYED', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 23.5, 'avg_humidity': 89, 'avg_wind': 14.0, 'total_rain': 0.04, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 0}}, 'weather': {'avg_temp': 23.5, 'avg_humidity': 89, 'avg_wind': 14.0, 'total_rain': 0.04}, 'weather_severity': 0, 'recommendations': ['High delay risk detected. Immediate mitigation is required.', 'Assign a senior project supervisor to assist execution.', 'Increase monitoring and milestone reporting frequency.']}}
+2026-01-31 09:53:16,602 INFO {'project_id': 985, 'input': {'avg_temp': 29.3, 'avg_humidity': 55, 'avg_wind': 3.6, 'total_rain': 0.0, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}
+2026-01-31 09:53:17,505 INFO {'project_id': 985, 'response': {'prediction': {'delay_probability': 0.0, 'prediction': 'ON-TIME', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 29.3, 'avg_humidity': 55, 'avg_wind': 3.6, 'total_rain': 0.0, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}, 'weather': {'avg_temp': 29.3, 'avg_humidity': 55, 'avg_wind': 3.6, 'total_rain': 0.0}, 'weather_severity': 0, 'recommendations': ['Project risk is acceptable. Maintain current execution plan.']}}
+2026-01-31 10:33:11,570 INFO {'project_id': 986, 'input': {'avg_temp': 30.3, 'avg_humidity': 55, 'avg_wind': 3.6, 'total_rain': 0.0, 'duration_days': 30, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-31 10:33:13,048 INFO {'project_id': 986, 'response': {'prediction': {'delay_probability': 0.0, 'prediction': 'ON-TIME', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 30.3, 'avg_humidity': 55, 'avg_wind': 3.6, 'total_rain': 0.0, 'duration_days': 30, 'contractor_experience_years': 1, 'weather_severity': 0}}, 'weather': {'avg_temp': 30.3, 'avg_humidity': 55, 'avg_wind': 3.6, 'total_rain': 0.0}, 'weather_severity': 0, 'recommendations': ['Assign a senior project supervisor to assist execution.', 'Increase monitoring and milestone reporting frequency.']}}
+2026-01-31 10:33:18,232 INFO {'project_id': 987, 'input': {'avg_temp': 24.0, 'avg_humidity': 87, 'avg_wind': 14.4, 'total_rain': 0.43, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-31 10:33:18,459 INFO {'project_id': 987, 'response': {'prediction': {'delay_probability': 0.9957, 'prediction': 'DELAYED', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 24.0, 'avg_humidity': 87, 'avg_wind': 14.4, 'total_rain': 0.43, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 0}}, 'weather': {'avg_temp': 24.0, 'avg_humidity': 87, 'avg_wind': 14.4, 'total_rain': 0.43}, 'weather_severity': 0, 'recommendations': ['High delay risk detected. Immediate mitigation is required.', 'Assign a senior project supervisor to assist execution.', 'Increase monitoring and milestone reporting frequency.']}}
+2026-01-31 10:33:22,256 INFO {'project_id': 988, 'input': {'avg_temp': 28.2, 'avg_humidity': 74, 'avg_wind': 16.6, 'total_rain': 0.24, 'duration_days': 360, 'contractor_experience_years': 3, 'weather_severity': 0}}
+2026-01-31 10:33:22,431 INFO {'project_id': 988, 'response': {'prediction': {'delay_probability': 0.9625, 'prediction': 'DELAYED', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 28.2, 'avg_humidity': 74, 'avg_wind': 16.6, 'total_rain': 0.24, 'duration_days': 360, 'contractor_experience_years': 3, 'weather_severity': 0}}, 'weather': {'avg_temp': 28.2, 'avg_humidity': 74, 'avg_wind': 16.6, 'total_rain': 0.24}, 'weather_severity': 0, 'recommendations': ['High delay risk detected. Immediate mitigation is required.', 'Assign a senior project supervisor to assist execution.', 'Increase monitoring and milestone reporting frequency.']}}
+2026-01-31 10:33:31,573 INFO {'project_id': 985, 'input': {'avg_temp': 30.3, 'avg_humidity': 55, 'avg_wind': 3.6, 'total_rain': 0.0, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}
+2026-01-31 10:33:31,727 INFO {'project_id': 985, 'response': {'prediction': {'delay_probability': 0.0, 'prediction': 'ON-TIME', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 30.3, 'avg_humidity': 55, 'avg_wind': 3.6, 'total_rain': 0.0, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}, 'weather': {'avg_temp': 30.3, 'avg_humidity': 55, 'avg_wind': 3.6, 'total_rain': 0.0}, 'weather_severity': 0, 'recommendations': ['Project risk is acceptable. Maintain current execution plan.']}}
+2026-01-31 16:26:34,121 INFO {'project_id': 987, 'input': {'avg_temp': 23.1, 'avg_humidity': 93, 'avg_wind': 13.3, 'total_rain': 0.05, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-01-31 16:26:35,023 INFO {'project_id': 987, 'response': {'prediction': {'delay_probability': 0.9934, 'prediction': 'DELAYED', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 23.1, 'avg_humidity': 93, 'avg_wind': 13.3, 'total_rain': 0.05, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 0}}, 'weather': {'avg_temp': 23.1, 'avg_humidity': 93, 'avg_wind': 13.3, 'total_rain': 0.05}, 'weather_severity': 0, 'recommendations': ['High delay risk detected. Immediate mitigation is required.', 'Assign a senior project supervisor to assist execution.', 'Increase monitoring and milestone reporting frequency.']}}
+2026-02-04 06:17:13,370 INFO {'project_id': 985, 'input': {'avg_temp': 27.3, 'avg_humidity': 74, 'avg_wind': 5.4, 'total_rain': 0.0, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}
+2026-02-04 06:17:13,923 INFO {'project_id': 985, 'response': {'prediction': {'delay_probability': 0.0, 'prediction': 'ON-TIME', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 27.3, 'avg_humidity': 74, 'avg_wind': 5.4, 'total_rain': 0.0, 'duration_days': 12, 'contractor_experience_years': 10, 'weather_severity': 0}}, 'weather': {'avg_temp': 27.3, 'avg_humidity': 74, 'avg_wind': 5.4, 'total_rain': 0.0}, 'weather_severity': 0, 'recommendations': ['Project risk is acceptable. Maintain current execution plan.']}}
+2026-02-04 06:17:26,129 INFO {'project_id': 986, 'input': {'avg_temp': 27.3, 'avg_humidity': 74, 'avg_wind': 5.4, 'total_rain': 0.0, 'duration_days': 30, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-02-04 06:17:26,250 INFO {'project_id': 986, 'response': {'prediction': {'delay_probability': 0.0, 'prediction': 'ON-TIME', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 27.3, 'avg_humidity': 74, 'avg_wind': 5.4, 'total_rain': 0.0, 'duration_days': 30, 'contractor_experience_years': 1, 'weather_severity': 0}}, 'weather': {'avg_temp': 27.3, 'avg_humidity': 74, 'avg_wind': 5.4, 'total_rain': 0.0}, 'weather_severity': 0, 'recommendations': ['Assign a senior project supervisor to assist execution.', 'Increase monitoring and milestone reporting frequency.']}}
+2026-02-04 06:17:36,117 INFO {'project_id': 987, 'input': {'avg_temp': 21.5, 'avg_humidity': 88, 'avg_wind': 10.4, 'total_rain': 0.07, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 0}}
+2026-02-04 06:17:36,295 INFO {'project_id': 987, 'response': {'prediction': {'delay_probability': 0.8893, 'prediction': 'DELAYED', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 21.5, 'avg_humidity': 88, 'avg_wind': 10.4, 'total_rain': 0.07, 'duration_days': 240, 'contractor_experience_years': 1, 'weather_severity': 0}}, 'weather': {'avg_temp': 21.5, 'avg_humidity': 88, 'avg_wind': 10.4, 'total_rain': 0.07}, 'weather_severity': 0, 'recommendations': ['High delay risk detected. Immediate mitigation is required.', 'Assign a senior project supervisor to assist execution.', 'Increase monitoring and milestone reporting frequency.']}}
+2026-02-04 06:17:42,777 INFO {'project_id': 988, 'input': {'avg_temp': 24.2, 'avg_humidity': 89, 'avg_wind': 24.5, 'total_rain': 0.0, 'duration_days': 360, 'contractor_experience_years': 3, 'weather_severity': 0}}
+2026-02-04 06:17:42,923 INFO {'project_id': 988, 'response': {'prediction': {'delay_probability': 1.0, 'prediction': 'DELAYED', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 24.2, 'avg_humidity': 89, 'avg_wind': 24.5, 'total_rain': 0.0, 'duration_days': 360, 'contractor_experience_years': 3, 'weather_severity': 0}}, 'weather': {'avg_temp': 24.2, 'avg_humidity': 89, 'avg_wind': 24.5, 'total_rain': 0.0}, 'weather_severity': 0, 'recommendations': ['High delay risk detected. Immediate mitigation is required.', 'Assign a senior project supervisor to assist execution.', 'Increase monitoring and milestone reporting frequency.']}}
+2026-02-04 06:17:46,183 INFO {'project_id': 989, 'input': {'avg_temp': 27.3, 'avg_humidity': 74, 'avg_wind': 5.4, 'total_rain': 0.0, 'duration_days': None, 'contractor_experience_years': 0, 'weather_severity': 0}}
+2026-02-04 06:17:46,324 INFO {'project_id': 989, 'response': {'prediction': {'delay_probability': 0.0, 'prediction': 'ON-TIME', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 27.3, 'avg_humidity': 74, 'avg_wind': 5.4, 'total_rain': 0.0, 'duration_days': None, 'contractor_experience_years': 0, 'weather_severity': 0}}, 'weather': {'avg_temp': 27.3, 'avg_humidity': 74, 'avg_wind': 5.4, 'total_rain': 0.0}, 'weather_severity': 0, 'recommendations': ['Assign a senior project supervisor to assist execution.', 'Increase monitoring and milestone reporting frequency.']}}
+2026-02-06 17:58:34,567 INFO {'project_id': 985, 'input': {'avg_temp': 29.1, 'avg_humidity': 70, 'avg_wind': 18.4, 'total_rain': 0.06, 'duration_days': None, 'contractor_experience_years': 0, 'weather_severity': 0}}
+2026-02-06 17:58:35,724 INFO {'project_id': 985, 'response': {'prediction': {'delay_probability': 0.9999, 'prediction': 'DELAYED', 'model_loaded': True, 'scaler_loaded': True, 'input': {'avg_temp': 29.1, 'avg_humidity': 70, 'avg_wind': 18.4, 'total_rain': 0.06, 'duration_days': None, 'contractor_experience_years': 0, 'weather_severity': 0}}, 'weather': {'avg_temp': 29.1, 'avg_humidity': 70, 'avg_wind': 18.4, 'total_rain': 0.06}, 'weather_severity': 0, 'recommendations': ['High delay risk detected. Immediate mitigation is required.', 'Assign a senior project supervisor to assist execution.', 'Increase monitoring and milestone reporting frequency.']}}
+2026-02-06 19:45:30,449 ERROR predict endpoint failed
+Traceback (most recent call last):
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\.venv\Lib\site-packages\mysql\connector\connection_cext.py", line 772, in cmd_query
+    self._cmysql.query(
+_mysql_connector.MySQLInterfaceError: Unknown column 'p.actual_progress' in 'field list'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "c:\Users\user\Documents\GitHub\sb_legatura\ai_service\app.py", line 26, in predict
+    data = get_project_and_contractor(project_id)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\user\Documents\GitHub\sb_legatura\ai_service\database.py", line 15, in get_project_and_contractor
+    cursor.execute("""
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\.venv\Lib\site-packages\mysql\connector\cursor_cext.py", line 353, in execute
+    self._connection.cmd_query(
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\.venv\Lib\site-packages\mysql\connector\opentelemetry\context_propagation.py", line 97, in wrapper
+    return method(cnx, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\.venv\Lib\site-packages\mysql\connector\connection_cext.py", line 781, in cmd_query
+    raise get_mysql_exception(
+mysql.connector.errors.ProgrammingError: 1054 (42S22): Unknown column 'p.actual_progress' in 'field list'
+2026-02-06 22:04:01,199 ERROR predict endpoint failed
+Traceback (most recent call last):
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\.venv\Lib\site-packages\mysql\connector\connection_cext.py", line 772, in cmd_query
+    self._cmysql.query(
+_mysql_connector.MySQLInterfaceError: Unknown column 'p.actual_progress' in 'field list'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "c:\Users\user\Documents\GitHub\sb_legatura\ai_service\app.py", line 26, in predict
+    data = get_project_and_contractor(project_id)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\user\Documents\GitHub\sb_legatura\ai_service\database.py", line 15, in get_project_and_contractor
+    cursor.execute("""
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\.venv\Lib\site-packages\mysql\connector\cursor_cext.py", line 353, in execute
+    self._connection.cmd_query(
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\.venv\Lib\site-packages\mysql\connector\opentelemetry\context_propagation.py", line 97, in wrapper
+    return method(cnx, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\.venv\Lib\site-packages\mysql\connector\connection_cext.py", line 781, in cmd_query
+    raise get_mysql_exception(
+mysql.connector.errors.ProgrammingError: 1054 (42S22): Unknown column 'p.actual_progress' in 'field list'
+2026-02-06 22:27:21,487 ERROR predict endpoint failed
+Traceback (most recent call last):
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\.venv\Lib\site-packages\mysql\connector\connection_cext.py", line 772, in cmd_query
+    self._cmysql.query(
+_mysql_connector.MySQLInterfaceError: Unknown column 'p.actual_progress' in 'field list'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "c:\Users\user\Documents\GitHub\sb_legatura\ai_service\app.py", line 26, in predict
+    data = get_project_and_contractor(project_id)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\user\Documents\GitHub\sb_legatura\ai_service\database.py", line 15, in get_project_and_contractor
+    cursor.execute("""
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\.venv\Lib\site-packages\mysql\connector\cursor_cext.py", line 353, in execute
+    self._connection.cmd_query(
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\.venv\Lib\site-packages\mysql\connector\opentelemetry\context_propagation.py", line 97, in wrapper
+    return method(cnx, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\.venv\Lib\site-packages\mysql\connector\connection_cext.py", line 781, in cmd_query
+    raise get_mysql_exception(
+mysql.connector.errors.ProgrammingError: 1054 (42S22): Unknown column 'p.actual_progress' in 'field list'
+2026-02-06 22:27:26,722 ERROR predict endpoint failed
+Traceback (most recent call last):
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\.venv\Lib\site-packages\mysql\connector\connection_cext.py", line 772, in cmd_query
+    self._cmysql.query(
+_mysql_connector.MySQLInterfaceError: Unknown column 'p.actual_progress' in 'field list'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "c:\Users\user\Documents\GitHub\sb_legatura\ai_service\app.py", line 26, in predict
+    data = get_project_and_contractor(project_id)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\user\Documents\GitHub\sb_legatura\ai_service\database.py", line 15, in get_project_and_contractor
+    cursor.execute("""
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\.venv\Lib\site-packages\mysql\connector\cursor_cext.py", line 353, in execute
+    self._connection.cmd_query(
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\.venv\Lib\site-packages\mysql\connector\opentelemetry\context_propagation.py", line 97, in wrapper
+    return method(cnx, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\.venv\Lib\site-packages\mysql\connector\connection_cext.py", line 781, in cmd_query
+    raise get_mysql_exception(
+mysql.connector.errors.ProgrammingError: 1054 (42S22): Unknown column 'p.actual_progress' in 'field list'
+2026-02-06 22:27:42,227 ERROR predict endpoint failed
+Traceback (most recent call last):
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\.venv\Lib\site-packages\mysql\connector\connection_cext.py", line 772, in cmd_query
+    self._cmysql.query(
+_mysql_connector.MySQLInterfaceError: Unknown column 'p.actual_progress' in 'field list'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "c:\Users\user\Documents\GitHub\sb_legatura\ai_service\app.py", line 26, in predict
+    data = get_project_and_contractor(project_id)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\user\Documents\GitHub\sb_legatura\ai_service\database.py", line 15, in get_project_and_contractor
+    cursor.execute("""
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\.venv\Lib\site-packages\mysql\connector\cursor_cext.py", line 353, in execute
+    self._connection.cmd_query(
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\.venv\Lib\site-packages\mysql\connector\opentelemetry\context_propagation.py", line 97, in wrapper
+    return method(cnx, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\.venv\Lib\site-packages\mysql\connector\connection_cext.py", line 781, in cmd_query
+    raise get_mysql_exception(
+mysql.connector.errors.ProgrammingError: 1054 (42S22): Unknown column 'p.actual_progress' in 'field list'
+2026-02-06 22:47:26,720 ERROR predict endpoint failed
+Traceback (most recent call last):
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\.venv\Lib\site-packages\mysql\connector\connection_cext.py", line 772, in cmd_query
+    self._cmysql.query(
+_mysql_connector.MySQLInterfaceError: You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near 'current_time
+        FROM milestones m
+        WHERE m.project_id = 985 AND m...' at line 4
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "c:\Users\user\Documents\GitHub\sb_legatura\ai_service\app.py", line 26, in predict
+    data = get_project_and_contractor(project_id)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\user\Documents\GitHub\sb_legatura\ai_service\database.py", line 131, in get_project_and_contractor
+    pacing_index = calculate_pacing_index(conn, project_id)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\user\Documents\GitHub\sb_legatura\ai_service\database.py", line 36, in calculate_pacing_index
+    cursor.execute("""
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\.venv\Lib\site-packages\mysql\connector\cursor_cext.py", line 353, in execute
+    self._connection.cmd_query(
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\.venv\Lib\site-packages\mysql\connector\opentelemetry\context_propagation.py", line 97, in wrapper
+    return method(cnx, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\.venv\Lib\site-packages\mysql\connector\connection_cext.py", line 781, in cmd_query
+    raise get_mysql_exception(
+mysql.connector.errors.ProgrammingError: 1064 (42000): You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near 'current_time
+        FROM milestones m
+        WHERE m.project_id = 985 AND m...' at line 4
+2026-02-06 22:56:42,902 INFO {'project_id': 985, 'input': {'pacing_index': 0, 'climate_stress': 0, 'dispute_count': 0, 'holiday_impact_pct': 0, 'avg_temp': 25.2, 'avg_rain': 0.01, 'low_visibility_days': 0, 'enso_index': 0}}
+2026-02-06 22:56:43,084 ERROR predict endpoint failed
+Traceback (most recent call last):
+  File "c:\Users\user\Documents\GitHub\sb_legatura\ai_service\app.py", line 83, in predict
+    prediction = predict_delay(input_data)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\user\Documents\GitHub\sb_legatura\ai_service\predictor.py", line 43, in predict_delay
+    X = scaler.transform(df)
+        ^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\.venv\Lib\site-packages\sklearn\utils\_set_output.py", line 316, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\.venv\Lib\site-packages\sklearn\preprocessing\_data.py", line 1094, in transform
+    X = validate_data(
+        ^^^^^^^^^^^^^^
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\.venv\Lib\site-packages\sklearn\utils\validation.py", line 2877, in validate_data
+    _check_feature_names(_estimator, X, reset=reset)
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\.venv\Lib\site-packages\sklearn\utils\validation.py", line 2729, in _check_feature_names
+    raise ValueError(message)
+ValueError: The feature names should match those that were passed during fit.
+Feature names unseen at fit time:
+- enso_index
+
+2026-02-06 23:18:17,826 INFO {'project_id': 985, 'input': {'pacing_index': 0, 'climate_stress': 0, 'dispute_count': 0, 'holiday_impact_pct': 0, 'avg_temp': 25.0, 'avg_rain': 0.01, 'low_visibility_days': 0, 'enso_index': 0}}
+2026-02-06 23:18:17,973 ERROR predict endpoint failed
+Traceback (most recent call last):
+  File "c:\Users\user\Documents\GitHub\sb_legatura\ai_service\app.py", line 83, in predict
+    prediction = predict_delay(input_data)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\user\Documents\GitHub\sb_legatura\ai_service\predictor.py", line 43, in predict_delay
+    X = scaler.transform(df)
+        ^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\.venv\Lib\site-packages\sklearn\utils\_set_output.py", line 316, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\.venv\Lib\site-packages\sklearn\preprocessing\_data.py", line 1094, in transform
+    X = validate_data(
+        ^^^^^^^^^^^^^^
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\.venv\Lib\site-packages\sklearn\utils\validation.py", line 2877, in validate_data
+    _check_feature_names(_estimator, X, reset=reset)
+  File "C:\Users\user\Documents\GitHub\sb_legatura\ai_service\.venv\Lib\site-packages\sklearn\utils\validation.py", line 2729, in _check_feature_names
+    raise ValueError(message)
+ValueError: The feature names should match those that were passed during fit.
+Feature names unseen at fit time:
+- enso_index
+
+2026-02-06 23:35:58,374 INFO {'project_id': 985, 'input_for_model': {'pacing_index': 0, 'climate_stress': 0, 'dispute_count': 0, 'holiday_impact_pct': 0, 'avg_temp': 26.1, 'avg_rain': 0.01, 'low_visibility_days': 0}}
+2026-02-06 23:35:58,485 INFO {'project_id': 985, 'response': {'prediction': {'delay_probability': 0.1936, 'prediction': 'ON-TIME'}, 'weather': {'avg_temp': 26.1, 'avg_humidity': 79, 'avg_wind': 11.5, 'total_rain': 0.01}, 'weather_severity': 0, 'dds_recommendations': ['Low delay risk based on historical patterns.', 'Weather conditions acceptable for work continuity.', 'Assign a senior site engineer to support contractor performance.'], 'enso_state': 'Neutral', 'oni_value': 0.0, 'feature_sources': {'pacing_index': 'Computed from milestone_items progress vs expected timeline', 'dispute_count': 'Active disputes: 0', 'holiday_impact_pct': '0% of project duration', 'climate_stress': 'Derived from weather API', 'enso_state': 'Rule-based from NOAA ONI (0.0)'}}}
+2026-02-06 23:39:15,155 INFO {'project_id': 985, 'input_for_model': {'pacing_index': 0, 'climate_stress': 0, 'dispute_count': 0, 'holiday_impact_pct': 0, 'avg_temp': 26.1, 'avg_rain': 0.01, 'low_visibility_days': 0}}
+2026-02-06 23:39:15,252 INFO {'project_id': 985, 'response': {'prediction': {'delay_probability': 0.1936, 'prediction': 'ON-TIME'}, 'weather': {'avg_temp': 26.1, 'avg_humidity': 79, 'avg_wind': 11.5, 'total_rain': 0.01}, 'weather_severity': 0, 'dds_recommendations': ['Low delay risk based on historical patterns.', 'Weather conditions acceptable for work continuity.', 'Assign a senior site engineer to support contractor performance.'], 'enso_state': 'Neutral', 'oni_value': 0.0, 'feature_sources': {'pacing_index': 'Computed from milestone_items progress vs expected timeline', 'dispute_count': 'Active disputes: 0', 'holiday_impact_pct': '0% of project duration', 'climate_stress': 'Derived from weather API', 'enso_state': 'Rule-based from NOAA ONI (0.0)'}}}
+2026-02-13 04:53:54,649 ERROR Error in predict: can't compare datetime.datetime to datetime.date
+Traceback (most recent call last):
+  File "c:\Users\user\Documents\GitHub\sb_legatura\ai_service\app.py", line 28, in predict
+    data = get_project_and_contractor(project_id)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\user\Documents\GitHub\sb_legatura\ai_service\database.py", line 215, in get_project_and_contractor
+    pacing_data = get_detailed_pacing_stats(conn, project_id)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\user\Documents\GitHub\sb_legatura\ai_service\database.py", line 79, in get_detailed_pacing_stats
+    elif deadline and deadline < today:
+                      ^^^^^^^^^^^^^^^^
+TypeError: can't compare datetime.datetime to datetime.date
+
+2026-02-13 04:54:43,739 ERROR Error in predict: can't compare datetime.datetime to datetime.date
+Traceback (most recent call last):
+  File "c:\Users\user\Documents\GitHub\sb_legatura\ai_service\app.py", line 28, in predict
+    data = get_project_and_contractor(project_id)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\user\Documents\GitHub\sb_legatura\ai_service\database.py", line 215, in get_project_and_contractor
+    pacing_data = get_detailed_pacing_stats(conn, project_id)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\user\Documents\GitHub\sb_legatura\ai_service\database.py", line 79, in get_detailed_pacing_stats
+    elif deadline and deadline < today:
+                      ^^^^^^^^^^^^^^^^
+TypeError: can't compare datetime.datetime to datetime.date
+
+2026-02-13 04:56:34,531 ERROR Error in predict: can't compare datetime.datetime to datetime.date
+Traceback (most recent call last):
+  File "c:\Users\user\Documents\GitHub\sb_legatura\ai_service\app.py", line 28, in predict
+    data = get_project_and_contractor(project_id)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\user\Documents\GitHub\sb_legatura\ai_service\database.py", line 215, in get_project_and_contractor
+    pacing_data = get_detailed_pacing_stats(conn, project_id)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\user\Documents\GitHub\sb_legatura\ai_service\database.py", line 79, in get_detailed_pacing_stats
+    elif deadline and deadline < today:
+                      ^^^^^^^^^^^^^^^^
+TypeError: can't compare datetime.datetime to datetime.date
+
+2026-02-13 05:09:11,721 ERROR Error in predict: can't compare datetime.datetime to datetime.date
+Traceback (most recent call last):
+  File "c:\Users\user\Documents\GitHub\sb_legatura\ai_service\app.py", line 28, in predict
+    data = get_project_and_contractor(project_id)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\user\Documents\GitHub\sb_legatura\ai_service\database.py", line 215, in get_project_and_contractor
+    pacing_data = get_detailed_pacing_stats(conn, project_id)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\user\Documents\GitHub\sb_legatura\ai_service\database.py", line 79, in get_detailed_pacing_stats
+    elif deadline and deadline < today:
+                      ^^^^^^^^^^^^^^^^
+TypeError: can't compare datetime.datetime to datetime.date
+
+2026-02-13 05:19:04,556 ERROR Error in predict: can't compare datetime.datetime to datetime.date
+Traceback (most recent call last):
+  File "c:\Users\user\Documents\GitHub\sb_legatura\ai_service\app.py", line 28, in predict
+    data = get_project_and_contractor(project_id)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\user\Documents\GitHub\sb_legatura\ai_service\database.py", line 215, in get_project_and_contractor
+    pacing_data = get_detailed_pacing_stats(conn, project_id)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\user\Documents\GitHub\sb_legatura\ai_service\database.py", line 79, in get_detailed_pacing_stats
+    elif deadline and deadline < today:
+                      ^^^^^^^^^^^^^^^^
+TypeError: can't compare datetime.datetime to datetime.date
+
+2026-02-13 05:33:52,525 ERROR Error in predict: can't compare datetime.datetime to datetime.date
+Traceback (most recent call last):
+  File "c:\Users\user\Documents\GitHub\sb_legatura\ai_service\app.py", line 28, in predict
+    data = get_project_and_contractor(project_id)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\user\Documents\GitHub\sb_legatura\ai_service\database.py", line 215, in get_project_and_contractor
+    if res:
+            
+  File "c:\Users\user\Documents\GitHub\sb_legatura\ai_service\database.py", line 79, in get_detailed_pacing_stats
+    if isinstance(deadline, datetime): deadline = deadline.date()
+              ^^^^^^^^^^^^^^^^
+TypeError: can't compare datetime.datetime to datetime.date
+
+2026-02-13 05:34:02,435 ERROR Error in predict: can't compare datetime.datetime to datetime.date
+Traceback (most recent call last):
+  File "c:\Users\user\Documents\GitHub\sb_legatura\ai_service\app.py", line 28, in predict
+    data = get_project_and_contractor(project_id)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\user\Documents\GitHub\sb_legatura\ai_service\database.py", line 215, in get_project_and_contractor
+    if res:
+            
+  File "c:\Users\user\Documents\GitHub\sb_legatura\ai_service\database.py", line 79, in get_detailed_pacing_stats
+    if isinstance(deadline, datetime): deadline = deadline.date()
+              ^^^^^^^^^^^^^^^^
+TypeError: can't compare datetime.datetime to datetime.date
+
+2026-02-13 05:34:19,455 ERROR Error in predict: can't compare datetime.datetime to datetime.date
+Traceback (most recent call last):
+  File "c:\Users\user\Documents\GitHub\sb_legatura\ai_service\app.py", line 28, in predict
+    data = get_project_and_contractor(project_id)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\user\Documents\GitHub\sb_legatura\ai_service\database.py", line 215, in get_project_and_contractor
+    if res:
+            
+  File "c:\Users\user\Documents\GitHub\sb_legatura\ai_service\database.py", line 79, in get_detailed_pacing_stats
+    if isinstance(deadline, datetime): deadline = deadline.date()
+              ^^^^^^^^^^^^^^^^
+TypeError: can't compare datetime.datetime to datetime.date
+
+2026-02-13 05:37:37,860 ERROR Error in predict: can't compare datetime.datetime to datetime.date
+Traceback (most recent call last):
+  File "c:\Users\user\Documents\GitHub\sb_legatura\ai_service\app.py", line 28, in predict
+    data = get_project_and_contractor(project_id)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\user\Documents\GitHub\sb_legatura\ai_service\database.py", line 215, in get_project_and_contractor
+    if res:
+            
+  File "c:\Users\user\Documents\GitHub\sb_legatura\ai_service\database.py", line 79, in get_detailed_pacing_stats
+    if isinstance(deadline, datetime): deadline = deadline.date()
+              ^^^^^^^^^^^^^^^^
+TypeError: can't compare datetime.datetime to datetime.date
+
