@@ -608,8 +608,9 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
     remainingBalance,
   });
 
-  // Get attachment from milestone item (from database)
-  const hasAttachment = milestoneItem.attachment_path && milestoneItem.attachment_name;
+  // Get attachments from item_files (new multi-file system)
+  const itemFiles: Array<{ file_id: number; item_id: number; file_path: string }> = milestoneItem.files || [];
+  const hasAttachment = itemFiles.length > 0;
 
   // ── Reusable Due Date Modal ──
   const renderDueDateModal = () => (
@@ -862,20 +863,31 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
                       <Text style={{ fontSize: 13, color: COLORS.textMuted }}>No attachments</Text>
                     </View>
                   ) : (
-                    <TouchableOpacity style={styles.fdInfoAttachItem} activeOpacity={0.7}>
-                      <View style={styles.fdInfoAttachIcon}>
-                        <Feather name={getFileIcon(milestoneItem.attachment_name || '')} size={18} color={COLORS.accent} />
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.fdInfoAttachName} numberOfLines={1}>
-                          {milestoneItem.attachment_name}
-                        </Text>
-                        <Text style={styles.fdInfoAttachType}>
-                          {getFileExtension(milestoneItem.attachment_name || '').toUpperCase()} file
-                        </Text>
-                      </View>
-                      <Feather name="download" size={18} color={COLORS.textSecondary} />
-                    </TouchableOpacity>
+                    itemFiles.map((file) => {
+                      const fileName = file.file_path.split('/').pop() || file.file_path;
+                      const fileUrl = `${api_config.base_url}/api/files/${file.file_path}`;
+                      return (
+                        <TouchableOpacity
+                          key={file.file_id}
+                          style={styles.fdInfoAttachItem}
+                          activeOpacity={0.7}
+                          onPress={() => { const { Linking } = require('react-native'); Linking.openURL(fileUrl); }}
+                        >
+                          <View style={styles.fdInfoAttachIcon}>
+                            <Feather name={getFileIcon(fileName)} size={18} color={COLORS.accent} />
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.fdInfoAttachName} numberOfLines={1}>
+                              {fileName}
+                            </Text>
+                            <Text style={styles.fdInfoAttachType}>
+                              {getFileExtension(fileName).toUpperCase() || 'FILE'}
+                            </Text>
+                          </View>
+                          <Feather name="external-link" size={18} color={COLORS.textSecondary} />
+                        </TouchableOpacity>
+                      );
+                    })
                   )}
                 </View>
               </View>

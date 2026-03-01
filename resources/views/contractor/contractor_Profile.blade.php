@@ -68,6 +68,9 @@
                 <button class="profile-tab" data-tab="reviews">
                     Reviews
                 </button>
+                <button class="profile-tab" data-tab="about">
+                    About
+                </button>
             </div>
         </div>
 
@@ -267,22 +270,18 @@
                         </div>
                     </div>
 
-                    <!-- Portfolio Feed (Portfolio Tab) -->
-                    <div class="project-posts-feed" id="portfolioFeed">
-                        <!-- Post Input Section -->
-                        <div class="post-project-input-section">
-                            <div class="post-project-input-container">
-                                <div class="post-input-avatar">
-                                    <div class="post-input-avatar-circle">
-                                        <span class="post-input-initials" id="portfolioPostInputInitials">BC</span>
-                                    </div>
-                                </div>
-                                <button type="button" class="post-project-input-field" id="openPortfolioPostModalBtn" aria-label="Create portfolio post">
-                                    <span class="post-input-placeholder">Share your portfolio work...</span>
-                                </button>
-                            </div>
+                    <!-- Portfolio Section (Portfolio Tab) -->
+                    <div class="portfolio-section" id="portfolioSection">
+                        <div class="section-action-bar">
+                            <h2 class="section-action-title">Portfolio</h2>
+                            <button type="button" class="btn-section-action" id="openPortfolioPostModalBtn">
+                                <i class="fi fi-rr-plus"></i>
+                                <span>Add Project</span>
+                            </button>
                         </div>
-                        <!-- Portfolio items will be dynamically inserted here -->
+                        <div class="portfolio-grid" id="portfolioFeed">
+                            {{-- Portfolio cards dynamically inserted by JS --}}
+                        </div>
                     </div>
 
                     <!-- Highlights List (Highlights Tab) -->
@@ -295,17 +294,98 @@
 
                     <!-- Reviews Container (Reviews Tab) -->
                     <div class="reviews-container hidden" id="reviewsContainer">
-                        <div class="reviews-header">
-                            <h2 class="reviews-title">Client Reviews</h2>
-                            <div class="reviews-header-divider"></div>
+                        <!-- Rating Summary -->
+                        <div class="reviews-summary" id="reviewsSummary">
+                            <div class="reviews-summary-left">
+                                <span class="reviews-summary-avg" id="reviewsAvgRating">—</span>
+                                <span class="reviews-summary-label">out of 5</span>
+                            </div>
+                            <div class="reviews-summary-right">
+                                <div class="reviews-summary-stars" id="reviewsSummaryStars"></div>
+                                <span class="reviews-summary-count" id="reviewsTotalCount">No reviews yet</span>
+                            </div>
                         </div>
+                        <div class="reviews-section-divider"></div>
                         <div class="reviews-list" id="reviewsList">
-                            <!-- Reviews will be dynamically inserted here -->
+                            {{-- Reviews dynamically inserted by JS --}}
                         </div>
                         <div class="reviews-empty-state hidden" id="reviewsEmptyState">
                             <i class="fi fi-rr-star"></i>
                             <h3>No Reviews Yet</h3>
-                            <p>Reviews will be displayed here</p>
+                            <p>Be the first to leave a review</p>
+                        </div>
+                    </div>
+
+                    <!-- About Section (About Tab) -->
+                    <div class="about-section hidden" id="aboutSection" data-profile-id="" data-profile-type="contractor">
+                        <div class="about-block">
+                            <h3 class="about-block-title">Bio</h3>
+                            <p class="about-bio-text" id="aboutBioText">BuildRight Construction is a leading construction company specializing in residential and commercial projects. With over 15 years of experience, we deliver quality craftsmanship and exceptional service.</p>
+                        </div>
+                        <div class="about-divider"></div>
+                        <div class="about-block">
+                            <h3 class="about-block-title">Skills &amp; Specializations</h3>
+                            <div class="about-skills-grid" id="aboutSkillsGrid">
+                                <span class="about-skill-tag">Warehouse</span>
+                                <span class="about-skill-tag">Factories</span>
+                                <span class="about-skill-tag">Large-scale</span>
+                                <span class="about-skill-tag">Modern Building</span>
+                                <span class="about-skill-tag">Renovation</span>
+                            </div>
+                        </div>
+                        <div class="about-divider"></div>
+                        <div class="about-block">
+                            <h3 class="about-block-title">Details</h3>
+                            <div class="about-details-list">
+                                <div class="about-detail-row">
+                                    <span class="about-detail-label"><i class="fi fi-rr-briefcase"></i> Specialization</span>
+                                    <span class="about-detail-value" id="aboutSpecialization">General Contractor</span>
+                                </div>
+                                <div class="about-detail-row">
+                                    <span class="about-detail-label"><i class="fi fi-rr-time-past"></i> Experience</span>
+                                    <span class="about-detail-value" id="aboutExperience">50 Years</span>
+                                </div>
+                                <div class="about-detail-row">
+                                    <span class="about-detail-label"><i class="fi fi-rr-marker"></i> Location</span>
+                                    <span class="about-detail-value" id="aboutLocation">Manila, Philippines</span>
+                                </div>
+                                <div class="about-detail-row">
+                                    <span class="about-detail-label"><i class="fi fi-rr-check-circle"></i> Projects Done</span>
+                                    <span class="about-detail-value" id="aboutProjectsDone">128</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="about-divider"></div>
+                        <div class="about-block">
+                            <h3 class="about-block-title">Certifications</h3>
+                            <div class="about-certifications-list" id="aboutCertificationsList">
+                                <div class="about-cert-item">
+                                    <i class="fi fi-rr-badge-check"></i>
+                                    <span>Licensed General Contractor — PCAB</span>
+                                </div>
+                                <div class="about-cert-item">
+                                    <i class="fi fi-rr-badge-check"></i>
+                                    <span>ISO 9001 Certified</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="about-divider"></div>
+                        <div class="about-block">
+                            <h3 class="about-block-title">Contact Information</h3>
+                            <div class="about-details-list">
+                                <div class="about-detail-row">
+                                    <span class="about-detail-label"><i class="fi fi-rr-phone-call"></i> Mobile</span>
+                                    <span class="about-detail-value" id="aboutPhone">+63 912 345 6789</span>
+                                </div>
+                                <div class="about-detail-row">
+                                    <span class="about-detail-label"><i class="fi fi-rr-envelope"></i> Email</span>
+                                    <span class="about-detail-value" id="aboutEmail">info@buildrightconstruction.com</span>
+                                </div>
+                                <div class="about-detail-row">
+                                    <span class="about-detail-label"><i class="fi fi-rr-phone"></i> Telephone</span>
+                                    <span class="about-detail-value" id="aboutTelephone">02 1234 5678</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

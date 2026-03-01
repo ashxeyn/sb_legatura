@@ -1351,6 +1351,11 @@ class cprocessController extends Controller
                             ->where('item_id', $mItemId)
                             ->where('payment_status', 'rejected')
                             ->count();
+
+                        // Attachments
+                        $mItem->files = DB::table('item_files')
+                            ->where('item_id', $mItemId)
+                            ->get();
                     }
 
                     $milestone->payment_plan = DB::table('payment_plans')

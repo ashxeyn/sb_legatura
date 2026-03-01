@@ -354,6 +354,9 @@ class PropertyOwnerProfile {
             case 'reviews':
                 this.showReviewsTab();
                 break;
+            case 'about':
+                this.showAboutTab();
+                break;
         }
     }
 
@@ -361,12 +364,13 @@ class PropertyOwnerProfile {
         const postFeed = document.getElementById('projectPostsFeed');
         const projectsContainer = document.getElementById('projectsListContainer');
         const reviewsContainer = document.getElementById('reviewsContainer');
+        const aboutSection = document.getElementById('aboutSection');
         const filterSection = document.getElementById('projectsFilterSection');
 
         // Fade out current content
         if (postFeed && !postFeed.classList.contains('hidden')) return;
         
-        [projectsContainer, reviewsContainer].forEach(container => {
+        [projectsContainer, reviewsContainer, aboutSection].forEach(container => {
             if (container && !container.classList.contains('hidden')) {
                 container.style.opacity = '0';
                 container.style.transform = 'translateY(10px)';
@@ -398,12 +402,13 @@ class PropertyOwnerProfile {
         const postFeed = document.getElementById('projectPostsFeed');
         const projectsContainer = document.getElementById('projectsListContainer');
         const reviewsContainer = document.getElementById('reviewsContainer');
+        const aboutSection = document.getElementById('aboutSection');
         const filterSection = document.getElementById('projectsFilterSection');
 
         // Fade out current content
         if (projectsContainer && !projectsContainer.classList.contains('hidden')) return;
         
-        [postFeed, reviewsContainer].forEach(container => {
+        [postFeed, reviewsContainer, aboutSection].forEach(container => {
             if (container && !container.classList.contains('hidden')) {
                 container.style.opacity = '0';
                 container.style.transform = 'translateY(10px)';
@@ -443,12 +448,13 @@ class PropertyOwnerProfile {
         const postFeed = document.getElementById('projectPostsFeed');
         const projectsContainer = document.getElementById('projectsListContainer');
         const reviewsContainer = document.getElementById('reviewsContainer');
+        const aboutSection = document.getElementById('aboutSection');
         const filterSection = document.getElementById('projectsFilterSection');
 
         // Fade out current content
         if (reviewsContainer && !reviewsContainer.classList.contains('hidden')) return;
         
-        [postFeed, projectsContainer].forEach(container => {
+        [postFeed, projectsContainer, aboutSection].forEach(container => {
             if (container && !container.classList.contains('hidden')) {
                 container.style.opacity = '0';
                 container.style.transform = 'translateY(10px)';
@@ -474,6 +480,41 @@ class PropertyOwnerProfile {
         if (filterSection) filterSection.classList.add('hidden');
 
         this.renderReviews();
+    }
+
+    showAboutTab() {
+        const postFeed = document.getElementById('projectPostsFeed');
+        const projectsContainer = document.getElementById('projectsListContainer');
+        const reviewsContainer = document.getElementById('reviewsContainer');
+        const aboutSection = document.getElementById('aboutSection');
+        const filterSection = document.getElementById('projectsFilterSection');
+
+        // Fade out current content
+        if (aboutSection && !aboutSection.classList.contains('hidden')) return;
+
+        [postFeed, projectsContainer, reviewsContainer].forEach(container => {
+            if (container && !container.classList.contains('hidden')) {
+                container.style.opacity = '0';
+                container.style.transform = 'translateY(10px)';
+                setTimeout(() => {
+                    container.classList.add('hidden');
+                }, 200);
+            }
+        });
+
+        // Fade in about section
+        if (aboutSection) {
+            aboutSection.classList.remove('hidden');
+            aboutSection.style.opacity = '0';
+            aboutSection.style.transform = 'translateY(10px)';
+            aboutSection.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+            setTimeout(() => {
+                aboutSection.style.opacity = '1';
+                aboutSection.style.transform = 'translateY(0)';
+            }, 50);
+        }
+
+        if (filterSection) filterSection.classList.add('hidden');
     }
 
     loadReviews() {
@@ -557,6 +598,9 @@ class PropertyOwnerProfile {
 
         reviewsList.innerHTML = '';
 
+        // Update reviews summary
+        this.updateReviewsSummary();
+
         if (!this.reviews || this.reviews.length === 0) {
             if (emptyState) emptyState.classList.remove('hidden');
             return;
@@ -580,6 +624,34 @@ class PropertyOwnerProfile {
                 });
             }, index * 100);
         });
+    }
+
+    updateReviewsSummary() {
+        const avgEl = document.getElementById('reviewsAvgRating');
+        const starsEl = document.getElementById('reviewsSummaryStars');
+        const countEl = document.getElementById('reviewsTotalCount');
+
+        if (!this.reviews || this.reviews.length === 0) {
+            if (avgEl) avgEl.textContent = '—';
+            if (starsEl) starsEl.innerHTML = '';
+            if (countEl) countEl.textContent = 'No reviews yet';
+            return;
+        }
+
+        const total = this.reviews.length;
+        const avg = this.reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / total;
+        const avgRounded = Math.round(avg * 10) / 10;
+
+        if (avgEl) avgEl.textContent = avgRounded.toFixed(1);
+        if (countEl) countEl.textContent = `Based on ${total} review${total !== 1 ? 's' : ''}`;
+
+        if (starsEl) {
+            let starsHTML = '';
+            for (let i = 1; i <= 5; i++) {
+                starsHTML += `<i class="fi fi-rr-star star-icon${i > avg ? ' empty' : ''}"></i>`;
+            }
+            starsEl.innerHTML = starsHTML;
+        }
     }
 
     createReviewCard(review) {

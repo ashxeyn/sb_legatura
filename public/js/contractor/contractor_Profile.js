@@ -279,60 +279,26 @@ class ContractorProfile {
         const feed = document.getElementById('portfolioFeed');
         if (!feed) return;
 
-        // Save the post input section if it exists
-        const postInputSection = feed.querySelector('.post-project-input-section');
-        let postInputHTML = postInputSection ? postInputSection.outerHTML : '';
-
-        // If post input section doesn't exist, create it
-        if (!postInputHTML) {
-            const userName = this.profileData?.name || 'BuildRight Construction';
-            const initials = this.getInitials(userName);
-            postInputHTML = `
-                <div class="post-project-input-section">
-                    <div class="post-project-input-container">
-                        <div class="post-input-avatar">
-                            <div class="post-input-avatar-circle">
-                                <span class="post-input-initials" id="portfolioPostInputInitials">${initials}</span>
-                            </div>
-                        </div>
-                        <button type="button" class="post-project-input-field" id="openPortfolioPostModalBtn" aria-label="Create portfolio post">
-                            <span class="post-input-placeholder">Share your portfolio work...</span>
-                        </button>
-                    </div>
-                </div>
-            `;
+        // Wire up the action bar "Add Project" button (once)
+        const addBtn = document.getElementById('openPortfolioPostModalBtn');
+        if (addBtn && !addBtn.dataset.listenerAttached) {
+            addBtn.addEventListener('click', () => {
+                this.handleCreatePortfolioPost();
+            });
+            addBtn.dataset.listenerAttached = 'true';
         }
 
-        // Clear feed but preserve post input section
+        // Clear the portfolio grid
         feed.innerHTML = '';
 
-        // Restore/create the post input section first
-        if (postInputHTML) {
-            feed.insertAdjacentHTML('afterbegin', postInputHTML);
-            // Re-attach event listener
-            const openBtn = feed.querySelector('#openPortfolioPostModalBtn');
-            if (openBtn) {
-                openBtn.addEventListener('click', () => {
-                    this.handleCreatePortfolioPost();
-                });
-            }
-            // Update initials if needed
-            const initialsEl = feed.querySelector('#portfolioPostInputInitials');
-            if (initialsEl && this.profileData) {
-                const initials = this.getInitials(this.profileData.name);
-                initialsEl.textContent = initials;
-            }
-        }
-
         if (!this.portfolioItems || this.portfolioItems.length === 0) {
-            const emptyState = document.createElement('div');
-            emptyState.className = 'project-post-card';
-            emptyState.innerHTML = `
-                    <div class="post-card-content" style="text-align: center; padding: 3rem;">
-                    <p class="text-gray-500">No portfolio items yet</p>
+            feed.innerHTML = `
+                <div class="portfolio-empty-state">
+                    <i class="fi fi-rr-picture"></i>
+                    <h3>No Portfolio Items Yet</h3>
+                    <p>Add your completed projects to showcase your work</p>
                 </div>
             `;
-            feed.appendChild(emptyState);
             return;
         }
 
@@ -344,53 +310,30 @@ class ContractorProfile {
 
     createPortfolioCard(item) {
         const card = document.createElement('div');
-        card.className = 'project-post-card';
-        card.setAttribute('data-post-id', item.id);
-
-        const initials = item.userInitials || this.getInitials(item.userName);
+        card.className = 'portfolio-grid-card';
+        if (item.isHighlighted) card.classList.add('is-highlighted');
+        card.setAttribute('data-portfolio-id', item.id);
 
         card.innerHTML = `
-            <div class="post-card-header">
-                <div class="post-card-avatar">
-                    ${item.userProfilePicture 
-                        ? `<img src="${item.userProfilePicture}" alt="${item.userName}">`
-                        : `<span class="post-card-avatar-initials">${initials}</span>`
-                    }
-                </div>
-                <div class="post-card-user-info">
-                    <p class="post-card-name">${item.userName}</p>
-                    <p class="post-card-handle">${item.userHandle || ''}</p>
-                </div>
+            <div class="portfolio-card-image-wrap">
+                ${item.projectImage
+                    ? `<img src="${item.projectImage}" alt="${item.projectTitle}" loading="lazy">`
+                    : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#f3f4f6;"><i class="fi fi-rr-picture" style="font-size:2rem;color:#c4c4c4;"></i></div>`
+                }
+                ${item.isHighlighted ? '<span class="portfolio-card-highlighted-badge">Highlighted</span>' : ''}
             </div>
-            ${item.projectImage ? `
-                <img src="${item.projectImage}" alt="${item.projectTitle}" class="post-card-image">
-            ` : ''}
-            <div class="post-card-content">
-                <h3 class="post-card-title">${item.projectTitle}</h3>
-                ${item.description ? `<p style="color: #6b7280; font-size: 0.9375rem; margin-bottom: 0.5rem;">${item.description}</p>` : ''}
-                <a href="#" class="post-card-more" data-post-id="${item.id}">More details...</a>
-            </div>
-            <div class="post-card-footer">
-                <span class="post-card-timestamp">${item.timestamp}</span>
+            <div class="portfolio-card-body">
+                <h3 class="portfolio-card-title">${item.projectTitle}</h3>
+                ${item.description ? `<p class="portfolio-card-description">${item.description}</p>` : ''}
+                <div class="portfolio-card-meta">
+                    ${item.location ? `<span class="portfolio-card-meta-item"><i class="fi fi-rr-marker"></i>${item.location}</span>` : ''}
+                    ${item.timestamp ? `<span class="portfolio-card-meta-item"><i class="fi fi-rr-calendar"></i>${item.timestamp}</span>` : ''}
+                </div>
             </div>
         `;
 
-        // Add click handler for "More details"
-        const moreLink = card.querySelector('.post-card-more');
-        if (moreLink) {
-            moreLink.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                this.createRippleEffect(moreLink, e);
-                setTimeout(() => {
-                    this.handleViewProjectDetails(item.id);
-                }, 300);
-            });
-        }
-
-        // Add hover effect animation
-        card.addEventListener('mouseenter', () => {
-            card.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+        card.addEventListener('click', () => {
+            this.handleViewProjectDetails(item.id);
         });
 
         return card;
@@ -424,20 +367,24 @@ class ContractorProfile {
             case 'reviews':
                 this.showReviewsTab();
                 break;
+            case 'about':
+                this.showAboutTab();
+                break;
         }
     }
 
     showPortfolioTab() {
-        const postFeed = document.getElementById('portfolioFeed');
+        const postFeed = document.getElementById('portfolioSection');
         const projectsContainer = document.getElementById('highlightsListContainer');
         const reviewsContainer = document.getElementById('reviewsContainer');
+        const aboutSection = document.getElementById('aboutSection');
         const filterSection = document.getElementById('highlightsFilterSection');
 
         // Check if already showing portfolio tab
         const isAlreadyVisible = postFeed && !postFeed.classList.contains('hidden');
         
         // Fade out current content
-        [projectsContainer, reviewsContainer].forEach(container => {
+        [projectsContainer, reviewsContainer, aboutSection].forEach(container => {
             if (container && !container.classList.contains('hidden')) {
                 container.style.opacity = '0';
                 container.style.transform = 'translateY(10px)';
@@ -464,20 +411,21 @@ class ContractorProfile {
         
         if (filterSection) filterSection.classList.add('hidden');
 
-        // Always render portfolio to ensure post input section is present
+        // Render portfolio cards
         this.renderPortfolio();
     }
 
     showHighlightsTab() {
-        const postFeed = document.getElementById('portfolioFeed');
+        const postFeed = document.getElementById('portfolioSection');
         const projectsContainer = document.getElementById('highlightsListContainer');
         const reviewsContainer = document.getElementById('reviewsContainer');
+        const aboutSection = document.getElementById('aboutSection');
         const filterSection = document.getElementById('highlightsFilterSection');
 
         // Fade out current content
         if (projectsContainer && !projectsContainer.classList.contains('hidden')) return;
         
-        [postFeed, reviewsContainer].forEach(container => {
+        [postFeed, reviewsContainer, aboutSection].forEach(container => {
             if (container && !container.classList.contains('hidden')) {
                 container.style.opacity = '0';
                 container.style.transform = 'translateY(10px)';
@@ -514,15 +462,16 @@ class ContractorProfile {
     }
 
     showReviewsTab() {
-        const postFeed = document.getElementById('portfolioFeed');
+        const postFeed = document.getElementById('portfolioSection');
         const projectsContainer = document.getElementById('highlightsListContainer');
         const reviewsContainer = document.getElementById('reviewsContainer');
+        const aboutSection = document.getElementById('aboutSection');
         const filterSection = document.getElementById('highlightsFilterSection');
 
         // Fade out current content
         if (reviewsContainer && !reviewsContainer.classList.contains('hidden')) return;
         
-        [postFeed, projectsContainer].forEach(container => {
+        [postFeed, projectsContainer, aboutSection].forEach(container => {
             if (container && !container.classList.contains('hidden')) {
                 container.style.opacity = '0';
                 container.style.transform = 'translateY(10px)';
@@ -548,6 +497,41 @@ class ContractorProfile {
         if (filterSection) filterSection.classList.add('hidden');
 
         this.renderReviews();
+    }
+
+    showAboutTab() {
+        const postFeed = document.getElementById('portfolioSection');
+        const projectsContainer = document.getElementById('highlightsListContainer');
+        const reviewsContainer = document.getElementById('reviewsContainer');
+        const aboutSection = document.getElementById('aboutSection');
+        const filterSection = document.getElementById('highlightsFilterSection');
+
+        // Fade out current content
+        if (aboutSection && !aboutSection.classList.contains('hidden')) return;
+
+        [postFeed, projectsContainer, reviewsContainer].forEach(container => {
+            if (container && !container.classList.contains('hidden')) {
+                container.style.opacity = '0';
+                container.style.transform = 'translateY(10px)';
+                setTimeout(() => {
+                    container.classList.add('hidden');
+                }, 200);
+            }
+        });
+
+        // Fade in about section
+        if (aboutSection) {
+            aboutSection.classList.remove('hidden');
+            aboutSection.style.opacity = '0';
+            aboutSection.style.transform = 'translateY(10px)';
+            aboutSection.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+            setTimeout(() => {
+                aboutSection.style.opacity = '1';
+                aboutSection.style.transform = 'translateY(0)';
+            }, 50);
+        }
+
+        if (filterSection) filterSection.classList.add('hidden');
     }
 
     loadReviews() {
@@ -631,6 +615,9 @@ class ContractorProfile {
 
         reviewsList.innerHTML = '';
 
+        // Update reviews summary
+        this.updateReviewsSummary();
+
         if (!this.reviews || this.reviews.length === 0) {
             if (emptyState) emptyState.classList.remove('hidden');
             return;
@@ -654,6 +641,34 @@ class ContractorProfile {
                 });
             }, index * 100);
         });
+    }
+
+    updateReviewsSummary() {
+        const avgEl = document.getElementById('reviewsAvgRating');
+        const starsEl = document.getElementById('reviewsSummaryStars');
+        const countEl = document.getElementById('reviewsTotalCount');
+
+        if (!this.reviews || this.reviews.length === 0) {
+            if (avgEl) avgEl.textContent = '—';
+            if (starsEl) starsEl.innerHTML = '';
+            if (countEl) countEl.textContent = 'No reviews yet';
+            return;
+        }
+
+        const total = this.reviews.length;
+        const avg = this.reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / total;
+        const avgRounded = Math.round(avg * 10) / 10;
+
+        if (avgEl) avgEl.textContent = avgRounded.toFixed(1);
+        if (countEl) countEl.textContent = `Based on ${total} review${total !== 1 ? 's' : ''}`;
+
+        if (starsEl) {
+            let starsHTML = '';
+            for (let i = 1; i <= 5; i++) {
+                starsHTML += `<i class="fi fi-rr-star star-icon${i > avg ? ' empty' : ''}"></i>`;
+            }
+            starsEl.innerHTML = starsHTML;
+        }
     }
 
     createReviewCard(review) {
@@ -939,22 +954,8 @@ class ContractorProfile {
 
     createHighlightCard(project) {
         const card = document.createElement('div');
-        card.className = 'project-post-card';
+        card.className = 'highlight-card';
         card.setAttribute('data-project-id', project.id);
-
-        // Get user info from profile data or use defaults
-        const userName = this.profileData?.name || 'BuildRight Construction';
-        const userInitials = this.getInitials(userName);
-        const userHandle = this.profileData?.handle || '';
-
-        // Status colors and labels
-        const statusColors = {
-            'pending': '#f59e0b',
-            'active': '#10b981',
-            'in_progress': '#3b82f6',
-            'completed': '#6b7280',
-            'cancelled': '#ef4444'
-        };
 
         const statusLabels = {
             'pending': 'Pending',
@@ -964,69 +965,28 @@ class ContractorProfile {
             'cancelled': 'Cancelled'
         };
 
-        const statusColor = statusColors[project.status] || '#6b7280';
         const statusLabel = statusLabels[project.status] || project.status;
+        const statusClass = `status-${project.status || 'pending'}`;
 
         card.innerHTML = `
-            <div class="post-card-header">
-                <div class="post-card-avatar">
-                    ${this.profileData?.profilePicture 
-                        ? `<img src="${this.profileData.profilePicture}" alt="${userName}">`
-                        : `<span class="post-card-avatar-initials">${userInitials}</span>`
-                    }
-                </div>
-                <div class="post-card-user-info">
-                    <p class="post-card-name">${userName}</p>
-                    ${userHandle ? `<p class="post-card-handle">${userHandle}</p>` : ''}
-                </div>
+            <div class="highlight-card-image-wrap">
+                ${project.image
+                    ? `<img src="${project.image}" alt="${project.title}" loading="lazy">`
+                    : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#f3f4f6;"><i class="fi fi-rr-picture" style="font-size:2rem;color:#c4c4c4;"></i></div>`
+                }
             </div>
-            ${project.image ? `
-                <div class="post-card-image-wrapper" style="position: relative;">
-                    <img src="${project.image}" alt="${project.title}" class="post-card-image">
-                    <div class="project-status-badge" style="position: absolute; top: 1rem; right: 1rem; padding: 0.5rem 0.875rem; border-radius: 0.5rem; font-size: 0.8125rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; background-color: ${statusColor}20; color: ${statusColor}; border: 2px solid ${statusColor}; backdrop-filter: blur(8px); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
-                        <span style="width: 8px; height: 8px; border-radius: 50%; background-color: ${statusColor}; display: inline-block; flex-shrink: 0;"></span>
-                        ${statusLabel}
-                    </div>
+            <div class="highlight-card-body">
+                <h3 class="highlight-card-title">${project.title}</h3>
+                ${project.description ? `<p class="highlight-card-description">${project.description}</p>` : ''}
+                <div class="highlight-card-footer">
+                    <span class="highlight-status-badge ${statusClass}">${statusLabel}</span>
+                    ${project.location ? `<span style="font-size:0.75rem;color:#9ca3af;display:inline-flex;align-items:center;gap:0.3rem;"><i class="fi fi-rr-marker"></i>${project.location}</span>` : ''}
                 </div>
-            ` : ''}
-            <div class="post-card-content">
-                <h3 class="post-card-title">${project.title}</h3>
-                ${project.type ? `<p style="color: #EEA24B; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem;">${project.type}</p>` : ''}
-                ${project.description ? `<p style="color: #6b7280; font-size: 0.9375rem; margin-bottom: 0.5rem;">${project.description}</p>` : ''}
-                ${project.location ? `<p style="color: #6b7280; font-size: 0.875rem; margin-bottom: 0.5rem;"><i class="fi fi-rr-marker" style="color: #EEA24B; margin-right: 0.5rem;"></i>${project.location}</p>` : ''}
-                <a href="#" class="post-card-more" data-project-id="${project.id}">More details...</a>
-            </div>
-            <div class="post-card-footer">
-                <span class="post-card-timestamp">${this.formatDate(project.date)}</span>
             </div>
         `;
 
-        // Add click handler for "More details"
-        const moreLink = card.querySelector('.post-card-more');
-        if (moreLink) {
-            moreLink.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                this.createRippleEffect(moreLink, e);
-                setTimeout(() => {
-                    this.handleViewProjectDetails(project.id);
-                }, 300);
-            });
-        }
-
-        // Add click handler for card
-        card.addEventListener('click', (e) => {
-            if (!e.target.closest('.post-card-more') && !e.target.closest('.project-status-badge')) {
-                this.createRippleEffect(card, e);
-                setTimeout(() => {
-                    this.handleViewProjectDetails(project.id);
-                }, 300);
-            }
-        });
-
-        // Add hover effect animation
-        card.addEventListener('mouseenter', () => {
-            card.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+        card.addEventListener('click', () => {
+            this.handleViewProjectDetails(project.id);
         });
 
         return card;

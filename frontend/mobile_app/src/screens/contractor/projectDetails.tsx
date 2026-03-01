@@ -15,6 +15,7 @@ import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import ProjectView from '../both/projectView';
 import MilestoneApproval from '../both/milestoneApproval';
+import MilestoneSetup from './milestoneSetup';
 import { api_config } from '../../config/api';
 import { projects_service } from '../../services/projects_service';
 
@@ -111,6 +112,7 @@ export default function ContractorProjectDetails({ project, userId, onClose, onP
   const [expandedSummary, setExpandedSummary] = useState(false);
   const [showMilestones, setShowMilestones] = useState(false);
   const [showMilestoneApproval, setShowMilestoneApproval] = useState(false);
+  const [showMilestoneSetup, setShowMilestoneSetup] = useState(false);
 
   const milestones: Milestone[] = currentProject.milestones || [];
 
@@ -146,7 +148,7 @@ export default function ContractorProjectDetails({ project, userId, onClose, onP
   const getProjectStatusConfig = () => {
     const ds = (currentProject.display_status || currentProject.project_status || '').toLowerCase();
     if (ds === 'waiting_milestone_setup')
-      return { color: COLORS.warning, bg: COLORS.warningLight, label: 'Waiting for Milestone Setup', icon: 'alert-circle' };
+      return { color: COLORS.warning, bg: COLORS.warningLight, label: 'Project Setup Required', icon: 'settings' };
     if (ds === 'waiting_for_approval')
       return { color: COLORS.info, bg: COLORS.infoLight, label: 'Awaiting Owner Approval', icon: 'clock' };
     if (ds === 'in_progress')
@@ -169,10 +171,10 @@ export default function ContractorProjectDetails({ project, userId, onClose, onP
       return (
         <View style={styles.banner}>
           <View style={[styles.bannerInner, { borderLeftColor: COLORS.warning, backgroundColor: COLORS.warningLight }]}>
-            <Feather name="edit" size={18} color={COLORS.warning} />
+            <Feather name="settings" size={18} color={COLORS.warning} />
             <View style={styles.bannerText}>
-              <Text style={[styles.bannerTitle, { color: COLORS.warning }]}>Milestone Setup Required</Text>
-              <Text style={styles.bannerMsg}>Set up the milestone plan and payment breakdown for this project.</Text>
+              <Text style={[styles.bannerTitle, { color: COLORS.warning }]}>Project Setup Required</Text>
+              <Text style={styles.bannerMsg}>Complete the project setup by creating a milestone plan and payment breakdown.</Text>
             </View>
           </View>
         </View>
@@ -186,7 +188,7 @@ export default function ContractorProjectDetails({ project, userId, onClose, onP
             <Feather name="alert-circle" size={18} color={COLORS.error} />
             <View style={styles.bannerText}>
               <Text style={[styles.bannerTitle, { color: COLORS.error }]}>Changes Requested</Text>
-              <Text style={styles.bannerMsg}>The property owner has requested changes to your milestone setup. Please review and resubmit.</Text>
+              <Text style={styles.bannerMsg}>The owner requested changes to your project setup. Please review and resubmit.</Text>
             </View>
           </View>
         </View>
@@ -200,7 +202,7 @@ export default function ContractorProjectDetails({ project, userId, onClose, onP
             <Feather name="clock" size={18} color={COLORS.info} />
             <View style={styles.bannerText}>
               <Text style={[styles.bannerTitle, { color: COLORS.info }]}>Awaiting Approval</Text>
-              <Text style={styles.bannerMsg}>Your milestone setup is pending approval from the property owner.</Text>
+              <Text style={styles.bannerMsg}>Your project setup is pending approval from the property owner.</Text>
             </View>
           </View>
         </View>
@@ -219,10 +221,10 @@ export default function ContractorProjectDetails({ project, userId, onClose, onP
     const hasNone      = milestones.length === 0;
 
     if (hasApproved) return { title: 'Project Progress', desc: 'Track milestone completion, upload progress reports, and manage payments.', label: 'View Progress', icon: 'trending-up', color: COLORS.success };
-    if (hasRejected) return { title: 'Milestone Setup Rejected', desc: 'The owner requested changes. Review the feedback and resubmit your proposal.', label: 'Review & Modify', icon: 'alert-triangle', color: COLORS.error };
-    if (hasPending)  return { title: 'Milestone Under Review', desc: 'Your milestone proposal has been submitted and is awaiting owner approval.', label: 'View Proposal', icon: 'clock', color: COLORS.warning };
-    if (hasNone)     return { title: 'Set Up Milestones', desc: 'Create a milestone plan and payment breakdown to start the project.', label: 'Setup Milestones', icon: 'clipboard', color: COLORS.info };
-    return { title: 'Milestone Setup', desc: 'Manage your milestone plan for this project.', label: 'View Details', icon: 'clipboard', color: COLORS.info };
+    if (hasRejected) return { title: 'Project Setup Rejected', desc: 'The owner requested changes. Review the feedback and resubmit your project setup.', label: 'Review & Modify', icon: 'alert-triangle', color: COLORS.error };
+    if (hasPending)  return { title: 'Project Setup Under Review', desc: 'Your project setup has been submitted and is awaiting owner approval.', label: 'View Proposal', icon: 'clock', color: COLORS.warning };
+    if (hasNone)     return { title: 'Project Setup', desc: 'Create a milestone plan and payment breakdown to get the project started.', label: 'Start Project Setup', icon: 'settings', color: COLORS.primary };
+    return { title: 'Project Setup', desc: 'Manage your project setup.', label: 'View Details', icon: 'settings', color: COLORS.primary };
   };
 
   const statusConfig = getProjectStatusConfig();
@@ -245,6 +247,17 @@ export default function ContractorProjectDetails({ project, userId, onClose, onP
         userId={userId}
         userRole="contractor"
         onClose={() => { setShowMilestones(false); refreshProjectData(); }}
+      />
+    );
+  }
+
+  if (showMilestoneSetup) {
+    return (
+      <MilestoneSetup
+        project={currentProject as any}
+        userId={userId}
+        onClose={() => { setShowMilestoneSetup(false); }}
+        onSave={async () => { setShowMilestoneSetup(false); await refreshProjectData(); }}
       />
     );
   }
@@ -377,7 +390,7 @@ export default function ContractorProjectDetails({ project, userId, onClose, onP
         {renderStatusBanner()}
 
         {/* ── Milestone action card ── */}
-        <TouchableOpacity style={styles.actionCard} onPress={() => setShowMilestoneApproval(true)} activeOpacity={0.8}>
+        <TouchableOpacity style={styles.actionCard} onPress={() => { const hasNone = milestones.length === 0; hasNone ? setShowMilestoneSetup(true) : setShowMilestoneApproval(true); }} activeOpacity={0.8}>
           <View style={[styles.actionIconWrap, { backgroundColor: milestoneConfig.color + '1A' }]}>
             <Feather name={milestoneConfig.icon as any} size={22} color={milestoneConfig.color} />
           </View>

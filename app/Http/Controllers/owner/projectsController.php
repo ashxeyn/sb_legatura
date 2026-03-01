@@ -1379,6 +1379,11 @@ class projectsController extends Controller
                                     ->where('item_id', $itemId)
                                     ->where('payment_status', 'rejected')
                                     ->count();
+
+                                // Attachments
+                                $item->files = DB::table('item_files')
+                                    ->where('item_id', $itemId)
+                                    ->get();
                             }
                             unset($item); // break reference
 

@@ -187,8 +187,22 @@ class milestoneController extends Controller
             'items.*.title'          => 'required|string|max:255',
             'items.*.description'    => 'nullable|string',
             'items.*.percentage'     => 'required|numeric|min:0.01|max:100',
+            'items.*.start_date'     => 'nullable|date',
             'items.*.date_to_finish' => 'required|date',
         ]);
+
+        // Process uploaded files per milestone item (item_files_{index}[])
+        foreach ($validated['items'] as $index => &$item) {
+            $itemFiles = $request->file("item_files_{$index}") ?? [];
+            $paths = [];
+            foreach ((array)$itemFiles as $file) {
+                if ($file && $file->isValid()) {
+                    $paths[] = $file->store('milestone_items', 'public');
+                }
+            }
+            $item['file_paths'] = $paths;
+        }
+        unset($item);
 
         $result = $this->milestoneService->submit($validated, $contractor, $projectId);
         $status = $result['status'] ?? 200;
@@ -229,8 +243,22 @@ class milestoneController extends Controller
             'items.*.title'          => 'required|string|max:255',
             'items.*.description'    => 'nullable|string',
             'items.*.percentage'     => 'required|numeric|min:0.01|max:100',
+            'items.*.start_date'     => 'nullable|date',
             'items.*.date_to_finish' => 'required|date',
         ]);
+
+        // Process uploaded files per milestone item (item_files_{index}[])
+        foreach ($validated['items'] as $index => &$item) {
+            $itemFiles = $request->file("item_files_{$index}") ?? [];
+            $paths = [];
+            foreach ((array)$itemFiles as $file) {
+                if ($file && $file->isValid()) {
+                    $paths[] = $file->store('milestone_items', 'public');
+                }
+            }
+            $item['file_paths'] = $paths;
+        }
+        unset($item);
 
         $result = $this->milestoneService->update($milestoneId, $projectId, $validated, $contractor);
         $status = $result['status'] ?? 200;

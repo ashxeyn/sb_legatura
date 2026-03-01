@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -9,8 +9,6 @@ import {
   Image,
   Dimensions,
   StatusBar,
-  Animated,
-  FlatList,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, MaterialIcons, Ionicons } from '@expo/vector-icons';
@@ -23,26 +21,40 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const defaultCoverPhoto = require('../../../assets/images/pictures/cp_default.jpg');
 const defaultContractorAvatar = require('../../../assets/images/pictures/contractor_default.png');
 
-// Color palette
+// Design tokens
+const BRAND   = '#EEA24B';
+const BRAND_L = '#FFF8EE';
+const BORDER  = '#E8EAED';
+const BG      = '#f0f2f5';
+const T1      = '#1a1a1a';
+const T2      = '#6b7280';
+const CARD_R  = 8;
+const STATUS_LABELS: Record<string, {label:string;color:string;bg:string}> = {
+  completed:   { label: 'Completed',   color: '#16a34a', bg: '#dcfce7' },
+  in_progress: { label: 'In Progress', color: '#d97706', bg: '#fef3c7' },
+  active:      { label: 'Active',      color: '#2563eb', bg: '#dbeafe' },
+  pending:     { label: 'Pending',     color: '#6b7280', bg: '#f3f4f6' },
+};
+const SAMPLE_PORTFOLIO = [
+  { id: 1, title: 'Makati Office Renovation', description: 'Full interior renovation of a 5-storey commercial building.', date: 'Jan 2025', image_url: null, isHighlighted: true },
+  { id: 2, title: 'BGC Residential Fit-out', description: 'Luxury condo unit fit-out for a private client.', date: 'Nov 2024', image_url: null, isHighlighted: false },
+  { id: 3, title: 'QC School Expansion', description: 'Added two-storey extension to an existing school building.', date: 'Sep 2024', image_url: null, isHighlighted: false },
+];
+const SAMPLE_HIGHLIGHTS = [
+  { id: 1, title: 'SM Aura Food Hall Renovation', status: 'completed', budget: '₱4.2M', duration: '5 months' },
+  { id: 2, title: 'Alabang Town Center Expansion', status: 'in_progress', budget: '₱8.7M', duration: '10 months' },
+];
+const SAMPLE_REVIEWS = [
+  { id: 1, reviewer: 'Maria Santos', rating: 5, comment: 'Excellent work! Delivered on time and within budget.', date: 'Feb 2025' },
+  { id: 2, reviewer: 'Juan dela Cruz', rating: 4, comment: 'Professional team, clean workmanship.', date: 'Jan 2025' },
+];
+// Legacy COLORS kept for any remaining references
 const COLORS = {
-  primary: '#EC7E00',
-  primaryLight: '#FFF3E6',
-  primaryDark: '#C96A00',
-  success: '#10B981',
-  successLight: '#D1FAE5',
-  warning: '#F59E0B',
-  warningLight: '#FEF3C7',
-  error: '#EF4444',
-  info: '#3B82F6',
-  infoLight: '#DBEAFE',
-  background: '#F8FAFC',
-  surface: '#FFFFFF',
-  text: '#0F172A',
-  textSecondary: '#64748B',
-  textMuted: '#94A3B8',
-  border: '#E2E8F0',
-  borderLight: '#F1F5F9',
-  star: '#FFC107',
+  primary: BRAND, primaryLight: BRAND_L, primaryDark: '#C96A00',
+  success: '#10B981', successLight: '#D1FAE5', warning: '#F59E0B', warningLight: '#FEF3C7',
+  error: '#EF4444', info: '#3B82F6', infoLight: '#DBEAFE',
+  background: BG, surface: '#FFFFFF', text: T1, textSecondary: T2,
+  textMuted: '#94A3B8', border: BORDER, borderLight: '#f3f4f6', star: BRAND,
 };
 
 interface Contractor {
@@ -87,7 +99,6 @@ type TabType = 'portfolio' | 'highlights' | 'reviews' | 'about';
 export default function CheckProfile({ contractor, onClose, onSendMessage }: CheckProfileProps) {
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<TabType>('portfolio');
-  const scrollY = useRef(new Animated.Value(0)).current;
 
   // Build image URLs
   const coverPhotoUrl = contractor.cover_photo
@@ -143,99 +154,77 @@ export default function CheckProfile({ contractor, onClose, onSendMessage }: Che
     { key: 'about', label: 'About' },
   ];
 
-  const renderPortfolioItem = ({ item }: { item: PortfolioProject }) => (
-    <View style={styles.portfolioItem}>
-      {/* Project Header */}
-      <View style={styles.portfolioHeader}>
-        <View style={styles.portfolioAvatar}>
-          {logoUrl ? (
-            <Image source={{ uri: logoUrl }} style={styles.portfolioAvatarImage} />
-          ) : (
-            <View style={styles.portfolioAvatarPlaceholder}>
-              <Text style={styles.portfolioAvatarText}>{initials}</Text>
-            </View>
-          )}
-        </View>
-        <View style={styles.portfolioInfo}>
-          <Text style={styles.portfolioCompany}>{item.company_name}</Text>
-          <Text style={styles.portfolioUsername}>{item.username}</Text>
-        </View>
-        <TouchableOpacity style={styles.portfolioMoreBtn}>
-          <Feather name="more-horizontal" size={20} color={COLORS.textMuted} />
-        </TouchableOpacity>
-      </View>
-
-      {/* Project Title */}
-      <Text style={styles.portfolioTitle}>{item.title}</Text>
-      <TouchableOpacity>
-        <Text style={styles.portfolioMoreDetails}>More details...</Text>
-      </TouchableOpacity>
-
-      {/* Project Image */}
-      {item.image_url && (
-        <Image
-          source={{ uri: item.image_url }}
-          style={styles.portfolioImage}
-          resizeMode="cover"
-        />
-      )}
-    </View>
-  );
-
   const renderPortfolioTab = () => (
-    <FlatList
-      data={portfolioProjects}
-      renderItem={renderPortfolioItem}
-      keyExtractor={(item) => item.id.toString()}
-      contentContainerStyle={styles.portfolioList}
-      scrollEnabled={false}
-      ListEmptyComponent={
-        <View style={styles.emptyState}>
-          <Feather name="image" size={48} color={COLORS.border} />
-          <Text style={styles.emptyTitle}>No Portfolio Yet</Text>
-          <Text style={styles.emptySubtext}>
-            This contractor hasn't added any portfolio projects yet.
-          </Text>
-        </View>
-      }
-    />
+    <View style={styles.tabContent}>
+      <View style={styles.portfolioGrid}>
+        {SAMPLE_PORTFOLIO.map((item) => (
+          <View key={item.id} style={[styles.portfolioCard, item.isHighlighted && styles.portfolioCardHL]}>
+            <View style={styles.portfolioCardImg}>
+              <MaterialIcons name="image" size={28} color="#c8cbd0" />
+              {item.isHighlighted && (
+                <View style={styles.hlBadge}>
+                  <MaterialIcons name="star" size={10} color="#fff" />
+                  <Text style={styles.hlBadgeText}>Highlighted</Text>
+                </View>
+              )}
+            </View>
+            <View style={styles.portfolioCardBody}>
+              <Text style={styles.portfolioCardTitle} numberOfLines={1}>{item.title}</Text>
+              <Text style={styles.portfolioCardDesc} numberOfLines={2}>{item.description}</Text>
+              <Text style={styles.portfolioCardDate}>{item.date}</Text>
+            </View>
+          </View>
+        ))}
+      </View>
+    </View>
   );
 
   const renderHighlightsTab = () => (
     <View style={styles.tabContent}>
-      <View style={styles.highlightsGrid}>
-        <View style={styles.highlightCard}>
-          <View style={[styles.highlightIcon, { backgroundColor: COLORS.primaryLight }]}>
-            <Feather name="award" size={24} color={COLORS.primary} />
-          </View>
-          <Text style={styles.highlightValue}>{contractor.years_of_experience || 0}</Text>
-          <Text style={styles.highlightLabel}>Years Experience</Text>
-        </View>
-
-        <View style={styles.highlightCard}>
-          <View style={[styles.highlightIcon, { backgroundColor: COLORS.successLight }]}>
-            <Feather name="check-circle" size={24} color={COLORS.success} />
-          </View>
-          <Text style={styles.highlightValue}>{contractor.completed_projects || 0}</Text>
-          <Text style={styles.highlightLabel}>Projects Completed</Text>
-        </View>
-
-        <View style={styles.highlightCard}>
-          <View style={[styles.highlightIcon, { backgroundColor: COLORS.warningLight }]}>
-            <MaterialIcons name="star" size={24} color={COLORS.star} />
-          </View>
-          <Text style={styles.highlightValue}>{contractor.rating?.toFixed(1) || '5.0'}</Text>
-          <Text style={styles.highlightLabel}>Average Rating</Text>
-        </View>
-
-        <View style={styles.highlightCard}>
-          <View style={[styles.highlightIcon, { backgroundColor: COLORS.infoLight }]}>
-            <Feather name="message-square" size={24} color={COLORS.info} />
-          </View>
-          <Text style={styles.highlightValue}>{contractor.reviews_count || 0}</Text>
-          <Text style={styles.highlightLabel}>Client Reviews</Text>
-        </View>
+      {/* Stats strip */}
+      <View style={styles.statsStrip}>
+        {[
+          { label: 'Experience', value: `${contractor.years_of_experience || 0} yrs` },
+          { label: 'Completed', value: String(contractor.completed_projects || 0) },
+          { label: 'Rating', value: contractor.rating?.toFixed(1) || 'N/A' },
+          { label: 'Reviews', value: String(contractor.reviews_count || 0) },
+        ].map((stat, i, arr) => (
+          <React.Fragment key={stat.label}>
+            <View style={styles.statStripItem}>
+              <Text style={styles.statStripValue}>{stat.value}</Text>
+              <Text style={styles.statStripLabel}>{stat.label}</Text>
+            </View>
+            {i < arr.length - 1 && <View style={styles.statStripDivider} />}
+          </React.Fragment>
+        ))}
       </View>
+
+      {/* Featured project cards */}
+      <Text style={styles.hlSectionTitle}>Featured Projects</Text>
+      {SAMPLE_HIGHLIGHTS.map((item) => {
+        const st = STATUS_LABELS[item.status] || STATUS_LABELS.pending;
+        return (
+          <View key={item.id} style={styles.hlProjectCard}>
+            <View style={styles.hlProjectImg}>
+              <MaterialIcons name="image" size={28} color="#c8cbd0" />
+            </View>
+            <View style={styles.hlProjectBody}>
+              <View style={styles.hlProjectTitleRow}>
+                <Text style={styles.hlProjectTitle} numberOfLines={1}>{item.title}</Text>
+                <View style={[styles.statusBadge, { backgroundColor: st.bg }]}>
+                  <Text style={[styles.statusBadgeText, { color: st.color }]}>{st.label}</Text>
+                </View>
+              </View>
+              <View style={styles.hlProjectMeta}>
+                <Ionicons name="cash-outline" size={13} color={T2} />
+                <Text style={styles.hlProjectMetaText}>{item.budget}</Text>
+                <Ionicons name="time-outline" size={13} color={T2} style={{ marginLeft: 12 }} />
+                <Text style={styles.hlProjectMetaText}>{item.duration}</Text>
+              </View>
+            </View>
+          </View>
+        );
+      })}
 
       {contractor.services_offered && (
         <View style={styles.servicesSection}>
@@ -246,34 +235,48 @@ export default function CheckProfile({ contractor, onClose, onSendMessage }: Che
     </View>
   );
 
+  const avgRating = SAMPLE_REVIEWS.length
+    ? Math.round((SAMPLE_REVIEWS.reduce((s, r) => s + r.rating, 0) / SAMPLE_REVIEWS.length) * 10) / 10
+    : (contractor.rating || 0);
+
   const renderReviewsTab = () => (
     <View style={styles.tabContent}>
+      {/* Summary */}
       <View style={styles.reviewsSummary}>
-        <View style={styles.ratingBig}>
-          <Text style={styles.ratingBigValue}>{contractor.rating?.toFixed(1) || '5.0'}</Text>
+        <View style={styles.reviewsSummaryLeft}>
+          <Text style={styles.reviewsAvgVal}>{avgRating.toFixed(1)}</Text>
+          <Text style={styles.reviewsAvgSub}>out of 5</Text>
+        </View>
+        <View style={styles.reviewsSummaryRight}>
           <View style={styles.starsRow}>
-            {[1, 2, 3, 4, 5].map((star) => (
-              <MaterialIcons
-                key={star}
-                name="star"
-                size={20}
-                color={star <= (contractor.rating || 5) ? COLORS.star : COLORS.border}
-              />
+            {[1,2,3,4,5].map((i) => (
+              <MaterialIcons key={i} name={i<=Math.round(avgRating)?'star':'star-border'} size={18} color={i<=Math.round(avgRating)?BRAND:'#d1d5db'} />
             ))}
           </View>
-          <Text style={styles.reviewsCountText}>
-            Based on {contractor.reviews_count || 0} reviews
-          </Text>
+          <Text style={styles.reviewsCountText}>{SAMPLE_REVIEWS.length} review{SAMPLE_REVIEWS.length!==1?'s':''}</Text>
         </View>
       </View>
-
-      <View style={styles.emptyState}>
-        <Feather name="message-circle" size={48} color={COLORS.border} />
-        <Text style={styles.emptyTitle}>No Reviews Yet</Text>
-        <Text style={styles.emptySubtext}>
-          Be the first to leave a review for this contractor.
-        </Text>
-      </View>
+      <View style={styles.reviewsDivider} />
+      {/* Cards */}
+      {SAMPLE_REVIEWS.map((rev) => (
+        <View key={rev.id} style={styles.reviewCard}>
+          <View style={styles.reviewCardHeader}>
+            <View style={styles.reviewAvatar}>
+              <Text style={styles.reviewAvatarText}>{rev.reviewer.substring(0,2).toUpperCase()}</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.reviewerName}>{rev.reviewer}</Text>
+              <View style={styles.starsRow}>
+                {[1,2,3,4,5].map((i) => (
+                  <MaterialIcons key={i} name={i<=rev.rating?'star':'star-border'} size={13} color={i<=rev.rating?BRAND:'#d1d5db'} />
+                ))}
+              </View>
+            </View>
+            <Text style={styles.reviewDate}>{rev.date}</Text>
+          </View>
+          <Text style={styles.reviewComment}>{rev.comment}</Text>
+        </View>
+      ))}
     </View>
   );
 
@@ -421,15 +424,13 @@ export default function CheckProfile({ contractor, onClose, onSendMessage }: Che
             <Text style={styles.seeMoreText}>See more...</Text>
           </Text>
 
-          {/* Send Message Button */}
-          <TouchableOpacity
-            style={styles.sendMessageBtn}
-            activeOpacity={0.8}
-            onPress={onSendMessage}
-          >
-            <Feather name="send" size={18} color={COLORS.primary} />
-            <Text style={styles.sendMessageText}>Send Message</Text>
-          </TouchableOpacity>
+          {/* Action buttons */}
+          <View style={styles.profileActions}>
+            <TouchableOpacity style={styles.sendMessageBtn} activeOpacity={0.8} onPress={onSendMessage}>
+              <Feather name="send" size={16} color={BRAND} />
+              <Text style={styles.sendMessageText}>Send Message</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Tabs */}
@@ -525,341 +526,476 @@ const styles = StyleSheet.create({
   profilePicContainer: {
     position: 'absolute',
     bottom: 0,
-    left: SCREEN_WIDTH / 2 - 55,
-    width: 110,
-    height: 110,
-    borderRadius: 55,
+    left: 16,
+    width: 86,
+    height: 86,
+    borderRadius: 43,
     backgroundColor: COLORS.surface,
-    padding: 4,
+    padding: 3,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   profilePic: {
     width: '100%',
     height: '100%',
-    borderRadius: 53,
+    borderRadius: 40,
   },
   profilePicPlaceholder: {
     width: '100%',
     height: '100%',
-    borderRadius: 53,
-    backgroundColor: COLORS.primaryLight,
+    borderRadius: 40,
+    backgroundColor: BRAND_L,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 3,
-    borderColor: COLORS.primary,
   },
   profilePicText: {
-    fontSize: 32,
+    fontSize: 26,
     fontWeight: '700',
-    color: COLORS.primary,
+    color: BRAND,
   },
 
   // Company Section
   companySection: {
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER,
   },
   companyName: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '700',
-    color: COLORS.text,
-    textAlign: 'center',
-    marginBottom: 8,
+    color: T1,
+    marginBottom: 4,
   },
   ratingLocationRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
+    gap: 4,
   },
   ratingText: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-    marginLeft: 4,
+    fontSize: 13,
+    color: T2,
   },
   dotSeparator: {
-    fontSize: 14,
-    color: COLORS.textMuted,
-    marginHorizontal: 8,
+    fontSize: 13,
+    color: '#c8cbd0',
+    marginHorizontal: 2,
   },
   locationText: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
+    fontSize: 13,
+    color: T2,
   },
   descriptionPreview: {
     fontSize: 14,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
+    color: T2,
     lineHeight: 20,
-    marginBottom: 16,
-    paddingHorizontal: 10,
+    marginBottom: 12,
   },
   seeMoreText: {
-    color: COLORS.primary,
+    color: BRAND,
     fontWeight: '500',
+  },
+  profileActions: {
+    marginBottom: 14,
   },
   sendMessageBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 28,
-    borderRadius: 25,
-    borderWidth: 2,
-    borderColor: COLORS.primary,
-    marginBottom: 20,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: CARD_R,
+    borderWidth: 1.5,
+    borderColor: BRAND,
+    alignSelf: 'flex-start',
+    gap: 6,
   },
   sendMessageText: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '600',
-    color: COLORS.primary,
-    marginLeft: 8,
+    color: BRAND,
   },
 
   // Tabs
   tabsContainer: {
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    borderBottomColor: BORDER,
+    backgroundColor: '#fff',
   },
   tabsScrollContent: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 8,
   },
   tab: {
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    marginRight: 8,
-    borderBottomWidth: 3,
+    paddingVertical: 13,
+    paddingHorizontal: 18,
+    borderBottomWidth: 2,
     borderBottomColor: 'transparent',
   },
   tabActive: {
-    borderBottomColor: COLORS.primary,
+    borderBottomColor: BRAND,
   },
   tabText: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '500',
-    color: COLORS.textMuted,
+    color: T2,
   },
   tabTextActive: {
-    color: COLORS.text,
-    fontWeight: '600',
-  },
-
-  // Tab Content
-  tabContent: {
-    paddingHorizontal: 16,
-    paddingTop: 20,
-  },
-
-  // Portfolio Tab
-  portfolioList: {
-    paddingTop: 12,
-  },
-  portfolioItem: {
-    backgroundColor: COLORS.surface,
-    marginBottom: 16,
-    paddingHorizontal: 16,
-  },
-  portfolioHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  portfolioAvatar: {
-    marginRight: 10,
-  },
-  portfolioAvatarImage: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-  },
-  portfolioAvatarPlaceholder: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: COLORS.primaryLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  portfolioAvatarText: {
-    fontSize: 14,
+    color: BRAND,
     fontWeight: '700',
-    color: COLORS.primary,
-  },
-  portfolioInfo: {
-    flex: 1,
-  },
-  portfolioCompany: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: COLORS.text,
-  },
-  portfolioUsername: {
-    fontSize: 13,
-    color: COLORS.textMuted,
-  },
-  portfolioMoreBtn: {
-    padding: 8,
-  },
-  portfolioTitle: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: COLORS.text,
-    marginBottom: 4,
-  },
-  portfolioMoreDetails: {
-    fontSize: 14,
-    color: COLORS.primary,
-    marginBottom: 12,
-  },
-  portfolioImage: {
-    width: '100%',
-    height: 250,
-    borderRadius: 12,
   },
 
-  // Highlights Tab
-  highlightsGrid: {
+  // Tab Content wrapper
+  tabContent: {
+    padding: 16,
+    backgroundColor: BG,
+  },
+
+  // Portfolio grid
+  portfolioGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    gap: 10,
   },
-  highlightCard: {
-    width: '48%',
-    backgroundColor: COLORS.background,
-    borderRadius: 16,
-    padding: 16,
-    alignItems: 'center',
-    marginBottom: 12,
+  portfolioCard: {
+    width: (SCREEN_WIDTH - 42) / 2,
+    backgroundColor: '#fff',
+    borderRadius: CARD_R,
+    borderWidth: 1,
+    borderColor: BORDER,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 3,
+    elevation: 1,
   },
-  highlightIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+  portfolioCardHL: {
+    borderColor: BRAND,
+    borderWidth: 1.5,
+  },
+  portfolioCardImg: {
+    height: 100,
+    backgroundColor: '#f3f4f6',
     justifyContent: 'center',
     alignItems: 'center',
+    position: 'relative',
+  },
+  hlBadge: {
+    position: 'absolute',
+    top: 6,
+    left: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: BRAND,
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+  },
+  hlBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  portfolioCardBody: {
+    padding: 10,
+  },
+  portfolioCardTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: T1,
+  },
+  portfolioCardDesc: {
+    fontSize: 12,
+    color: T2,
+    marginTop: 3,
+    lineHeight: 16,
+  },
+  portfolioCardDate: {
+    fontSize: 11,
+    color: '#9ca3af',
+    marginTop: 6,
+  },
+
+  // Highlights tab
+  statsStrip: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderRadius: CARD_R,
+    borderWidth: 1,
+    borderColor: BORDER,
+    marginBottom: 16,
+    overflow: 'hidden',
+  },
+  statStripItem: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 14,
+  },
+  statStripValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: T1,
+  },
+  statStripLabel: {
+    fontSize: 11,
+    color: T2,
+    marginTop: 2,
+  },
+  statStripDivider: {
+    width: 1,
+    backgroundColor: BORDER,
+    marginVertical: 10,
+  },
+  hlSectionTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: T2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
     marginBottom: 10,
   },
-  highlightValue: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: COLORS.text,
-    marginBottom: 4,
+  hlProjectCard: {
+    backgroundColor: '#fff',
+    borderRadius: CARD_R,
+    borderWidth: 1,
+    borderColor: BORDER,
+    marginBottom: 10,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 3,
+    elevation: 1,
   },
-  highlightLabel: {
+  hlProjectImg: {
+    height: 80,
+    backgroundColor: '#f3f4f6',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  hlProjectBody: {
+    padding: 12,
+  },
+  hlProjectTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginBottom: 8,
+  },
+  hlProjectTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: T1,
+    flex: 1,
+  },
+  statusBadge: {
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  statusBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  hlProjectMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  hlProjectMetaText: {
     fontSize: 12,
-    color: COLORS.textMuted,
-    textAlign: 'center',
+    color: T2,
+    marginLeft: 4,
   },
   servicesSection: {
-    marginTop: 20,
-    backgroundColor: COLORS.background,
-    borderRadius: 16,
-    padding: 16,
+    marginTop: 16,
+    backgroundColor: '#fff',
+    borderRadius: CARD_R,
+    borderWidth: 1,
+    borderColor: BORDER,
+    padding: 14,
   },
   servicesSectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.text,
+    fontSize: 13,
+    fontWeight: '700',
+    color: T2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
     marginBottom: 8,
   },
   servicesText: {
     fontSize: 14,
-    color: COLORS.textSecondary,
+    color: T2,
     lineHeight: 20,
   },
 
-  // Reviews Tab
+  // Reviews
   reviewsSummary: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 24,
-    backgroundColor: COLORS.background,
-    borderRadius: 16,
-    marginBottom: 20,
+    gap: 16,
+    padding: 16,
+    backgroundColor: '#fff',
+    borderRadius: CARD_R,
+    borderWidth: 1,
+    borderColor: BORDER,
+    marginBottom: 8,
   },
-  ratingBig: {
+  reviewsSummaryLeft: {
     alignItems: 'center',
+    paddingRight: 16,
+    borderRightWidth: 1,
+    borderRightColor: BORDER,
   },
-  ratingBigValue: {
-    fontSize: 48,
-    fontWeight: '700',
-    color: COLORS.text,
+  reviewsAvgVal: {
+    fontSize: 36,
+    fontWeight: '800',
+    color: T1,
+  },
+  reviewsAvgSub: {
+    fontSize: 11,
+    color: T2,
+    marginTop: 2,
+  },
+  reviewsSummaryRight: {
+    flex: 1,
+    gap: 4,
   },
   starsRow: {
     flexDirection: 'row',
-    marginVertical: 8,
+    gap: 2,
   },
   reviewsCountText: {
-    fontSize: 14,
-    color: COLORS.textMuted,
+    fontSize: 13,
+    color: T2,
+    marginTop: 4,
+  },
+  reviewsDivider: {
+    height: 1,
+    backgroundColor: BORDER,
+    marginVertical: 10,
+  },
+  reviewCard: {
+    backgroundColor: '#fff',
+    borderRadius: CARD_R,
+    borderWidth: 1,
+    borderColor: BORDER,
+    padding: 12,
+    marginBottom: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  reviewCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 8,
+  },
+  reviewAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: BRAND_L,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  reviewAvatarText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: BRAND,
+  },
+  reviewerName: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: T1,
+    marginBottom: 3,
+  },
+  reviewDate: {
+    fontSize: 11,
+    color: '#9ca3af',
+  },
+  reviewComment: {
+    fontSize: 13,
+    color: T2,
+    lineHeight: 18,
   },
 
   // About Tab
   aboutSection: {
-    marginBottom: 24,
+    marginBottom: 16,
   },
   aboutSectionTitle: {
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: '700',
-    color: COLORS.text,
-    marginBottom: 12,
+    color: T2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 10,
   },
   aboutText: {
     fontSize: 14,
-    color: COLORS.textSecondary,
-    lineHeight: 22,
+    color: T1,
+    lineHeight: 21,
   },
   contactItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.borderLight,
+    borderBottomColor: '#f3f4f6',
+    gap: 10,
   },
   contactText: {
     fontSize: 14,
-    color: COLORS.text,
-    marginLeft: 12,
+    color: T1,
     flex: 1,
   },
   contactClickable: {
-    color: COLORS.primary,
+    color: BRAND,
   },
   contactMessageBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.primary,
-    paddingVertical: 12,
+    backgroundColor: BRAND,
+    paddingVertical: 11,
     paddingHorizontal: 20,
-    borderRadius: 8,
-    marginTop: 16,
+    borderRadius: CARD_R,
+    marginTop: 14,
     gap: 8,
   },
   contactMessageText: {
     fontSize: 14,
     fontWeight: '600',
-    color: COLORS.surface,
+    color: '#fff',
   },
   detailRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: 9,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.borderLight,
+    borderBottomColor: '#f3f4f6',
+    gap: 8,
   },
   detailLabel: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
+    fontSize: 13,
+    color: T2,
+    width: 120,
   },
   detailValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.text,
+    fontSize: 13,
+    fontWeight: '500',
+    color: T1,
+    flex: 1,
   },
 
   // Empty State
@@ -868,15 +1004,15 @@ const styles = StyleSheet.create({
     paddingVertical: 40,
   },
   emptyTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
-    color: COLORS.textSecondary,
+    color: T2,
     marginTop: 16,
     marginBottom: 8,
   },
   emptySubtext: {
-    fontSize: 14,
-    color: COLORS.textMuted,
+    fontSize: 13,
+    color: '#9ca3af',
     textAlign: 'center',
     paddingHorizontal: 40,
   },

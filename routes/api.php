@@ -428,12 +428,16 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/search', [\App\Http\Controllers\message\messageController::class , 'search']); // Search messages
             Route::get('/{conversationId}', [\App\Http\Controllers\message\messageController::class , 'show']); // Conversation history
             Route::post('/', [\App\Http\Controllers\message\messageController::class , 'store']); // Send message
+            Route::post('/report', [\App\Http\Controllers\message\messageController::class , 'report']); // Report message (mobile)
             Route::post('/{messageId}/flag', [\App\Http\Controllers\message\messageController::class , 'flag']); // Flag message
             Route::post('/{messageId}/unflag', [\App\Http\Controllers\message\messageController::class , 'unflag']); // Unflag message
             Route::post('/conversation/{conversationId}/suspend', [\App\Http\Controllers\message\messageController::class , 'suspend']); // Suspend
             Route::post('/conversation/{conversationId}/restore', [\App\Http\Controllers\message\messageController::class , 'restore']); // Restore
         }
         );
+
+        // Pusher Broadcasting Auth for Sanctum-authenticated mobile users
+        Route::post('/broadcasting/auth', [\App\Http\Controllers\message\broadcastAuthController::class, 'authorize']);
 
         // Dashboard
         Route::get('/dashboard', [\App\Http\Controllers\both\dashboardController::class , 'apiDashboard']);

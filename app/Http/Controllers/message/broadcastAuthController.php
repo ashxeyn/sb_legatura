@@ -19,27 +19,43 @@ class broadcastAuthController extends Controller
         $channelName = $request->input('channel_name') ?? $request->channel_name;
         $socketId = $request->input('socket_id') ?? $request->socket_id;
 
-        // Log::info('Custom broadcast auth request', [
-        //     'channel' => $channelName,
-        //     'socket_id' => $socketId,
-        //     'has_session' => !!session('user'),
-        //     'session_id' => session()->getId(),
-        //     'request_method' => $request->method(),
-        //     'content_type' => $request->header('Content-Type'),
-        //     'all_input' => $request->all(),
-        //     'raw_body' => $request->getContent()
-        // ]);
-
-        // Get user ID from session (admin web dashboard)
-        $sessionUser = session('user');
-        $currentUserId = null;
-
-        if ($sessionUser) {
-            // Admin users: admin_id, Regular users: user_id or id
-            $currentUserId = $sessionUser->admin_id ?? $sessionUser->user_id ?? $sessionUser->id ?? null;
+        // Fallback: parse raw body when Content-Type mismatch causes empty input
+        // (Pusher JS sends form-encoded body but mobile clients may set JSON content-type)
+        if (empty($channelName) || empty($socketId)) {
+            $rawBody = $request->getContent();
+            if ($rawBody) {
+                // Try JSON first
+                $json = json_decode($rawBody, true);
+                if ($json) {
+                    $channelName = $channelName ?: ($json['channel_name'] ?? null);
+                    $socketId    = $socketId    ?: ($json['socket_id'] ?? null);
+                } else {
+                    // Try form-encoded
+                    parse_str($rawBody, $parsed);
+                    $channelName = $channelName ?: ($parsed['channel_name'] ?? null);
+                    $socketId    = $socketId    ?: ($parsed['socket_id'] ?? null);
+                }
+            }
         }
 
-        // Also check Laravel auth (fallback)
+        // Try Sanctum token auth first (mobile app sends Bearer token)
+        $currentUserId = null;
+
+        if (auth('sanctum')->check()) {
+            $authUser = auth('sanctum')->user();
+            $currentUserId = $authUser->user_id ?? $authUser->id ?? null;
+        }
+
+        // Fallback: session-based auth (admin web dashboard)
+        if (!$currentUserId) {
+            $sessionUser = session('user');
+            if ($sessionUser) {
+                // Admin users: admin_id, Regular users: user_id or id
+                $currentUserId = $sessionUser->admin_id ?? $sessionUser->user_id ?? $sessionUser->id ?? null;
+            }
+        }
+
+        // Fallback: default Laravel auth guard
         if (!$currentUserId && auth()->check()) {
             $authUser = auth()->user();
             $currentUserId = $authUser->user_id ?? $authUser->id ?? null;

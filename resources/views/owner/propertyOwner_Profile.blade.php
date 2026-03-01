@@ -68,6 +68,9 @@
                 <button class="profile-tab" data-tab="reviews">
                     Reviews
                 </button>
+                <button class="profile-tab" data-tab="about">
+                    About
+                </button>
             </div>
         </div>
 
@@ -211,17 +214,83 @@
 
                     <!-- Reviews Container (Reviews Tab) -->
                     <div class="reviews-container hidden" id="reviewsContainer">
-                        <div class="reviews-header">
-                            <h2 class="reviews-title">Client Reviews</h2>
-                            <div class="reviews-header-divider"></div>
+                        <!-- Rating Summary -->
+                        <div class="reviews-summary" id="reviewsSummary">
+                            <div class="reviews-summary-left">
+                                <span class="reviews-summary-avg" id="reviewsAvgRating">—</span>
+                                <span class="reviews-summary-label">out of 5</span>
+                            </div>
+                            <div class="reviews-summary-right">
+                                <div class="reviews-summary-stars" id="reviewsSummaryStars"></div>
+                                <span class="reviews-summary-count" id="reviewsTotalCount">No reviews yet</span>
+                            </div>
                         </div>
+                        <div class="reviews-section-divider"></div>
                         <div class="reviews-list" id="reviewsList">
-                            <!-- Reviews will be dynamically inserted here -->
+                            {{-- Reviews dynamically inserted by JS --}}
                         </div>
                         <div class="reviews-empty-state hidden" id="reviewsEmptyState">
                             <i class="fi fi-rr-star"></i>
                             <h3>No Reviews Yet</h3>
-                            <p>Reviews will be displayed here</p>
+                            <p>Be the first to leave a review</p>
+                        </div>
+                    </div>
+
+                    <!-- About Section (About Tab) -->
+                    <div class="about-section hidden" id="aboutSection" data-profile-id="" data-profile-type="owner">
+                        <div class="about-block">
+                            <h3 class="about-block-title">Bio</h3>
+                            <p class="about-bio-text" id="aboutBioText">Emmanuelle Santos is an active property owner and client on the Legatura platform, managing multiple residential and commercial construction projects within Zamboanga City.</p>
+                        </div>
+                        <div class="about-divider"></div>
+                        <div class="about-block">
+                            <h3 class="about-block-title">Property Interests</h3>
+                            <div class="about-skills-grid" id="aboutSkillsGrid">
+                                <span class="about-skill-tag">Residential</span>
+                                <span class="about-skill-tag">Commercial</span>
+                                <span class="about-skill-tag">Renovation</span>
+                                <span class="about-skill-tag">Airbnb</span>
+                            </div>
+                        </div>
+                        <div class="about-divider"></div>
+                        <div class="about-block">
+                            <h3 class="about-block-title">Details</h3>
+                            <div class="about-details-list">
+                                <div class="about-detail-row">
+                                    <span class="about-detail-label"><i class="fi fi-rr-briefcase"></i> Occupation</span>
+                                    <span class="about-detail-value" id="aboutOccupation">Airbnb Host</span>
+                                </div>
+                                <div class="about-detail-row">
+                                    <span class="about-detail-label"><i class="fi fi-rr-marker"></i> Location</span>
+                                    <span class="about-detail-value" id="aboutLocation">Zamboanga City</span>
+                                </div>
+                                <div class="about-detail-row">
+                                    <span class="about-detail-label"><i class="fi fi-rr-check-circle"></i> Projects Completed</span>
+                                    <span class="about-detail-value" id="aboutProjectsDone">45</span>
+                                </div>
+                                <div class="about-detail-row">
+                                    <span class="about-detail-label"><i class="fi fi-rr-time-fast"></i> Active Projects</span>
+                                    <span class="about-detail-value" id="aboutActiveProjects">3</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="about-divider"></div>
+                        <div class="about-block">
+                            <h3 class="about-block-title">Contact Information</h3>
+                            <div class="about-details-list">
+                                <div class="about-detail-row">
+                                    <span class="about-detail-label"><i class="fi fi-rr-phone-call"></i> Mobile</span>
+                                    <span class="about-detail-value" id="aboutPhone">+63 924 681 24098</span>
+                                </div>
+                                <div class="about-detail-row">
+                                    <span class="about-detail-label"><i class="fi fi-rr-envelope"></i> Email</span>
+                                    <span class="about-detail-value" id="aboutEmail">emmanuelleSantos@gmail.com</span>
+                                </div>
+                                <div class="about-detail-row">
+                                    <span class="about-detail-label"><i class="fi fi-rr-phone"></i> Telephone</span>
+                                    <span class="about-detail-value" id="aboutTelephone">061 234 5878</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

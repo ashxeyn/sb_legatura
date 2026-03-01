@@ -297,6 +297,11 @@ class contractorClass
 					->orderBy('transaction_date', 'desc')
 					->get();
 
+				// Attachments for this item
+				$item->files = DB::table('item_files')
+					->where('item_id', $item->item_id)
+					->get();
+
 				$itemsArr[] = $item;
 			}
 

@@ -750,25 +750,51 @@ export class projects_service {
         title: string;
         description?: string;
         percentage: number;
-        duration_days: number;
+        start_date: string;
+        date_to_finish: string;
+        files?: Array<{ uri: string; name: string; type: string }>;
       }>;
     }
   ): Promise<ApiResponse> {
     try {
-      const response = await api_request(`/api/contractor/projects/${projectId}/milestones`, {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-        body: JSON.stringify({
-          user_id: userId,
-          ...milestoneData,
-        }),
+      const formData = new FormData();
+      formData.append('user_id', userId.toString());
+      formData.append('milestone_name', milestoneData.milestone_name);
+      formData.append('payment_mode', milestoneData.payment_mode);
+      formData.append('start_date', milestoneData.start_date);
+      formData.append('end_date', milestoneData.end_date);
+      formData.append('total_project_cost', milestoneData.total_project_cost.toString());
+      if (milestoneData.downpayment_amount !== undefined) {
+        formData.append('downpayment_amount', milestoneData.downpayment_amount.toString());
+      }
+
+      milestoneData.items.forEach((item, i) => {
+        formData.append(`items[${i}][title]`, item.title);
+        formData.append(`items[${i}][description]`, item.description ?? '');
+        formData.append(`items[${i}][percentage]`, item.percentage.toString());
+        formData.append(`items[${i}][start_date]`, item.start_date);
+        formData.append(`items[${i}][date_to_finish]`, item.date_to_finish);
+        if (item.files && item.files.length > 0) {
+          item.files.forEach((file) => {
+            formData.append(`item_files_${i}[]`, { uri: file.uri, name: file.name, type: file.type } as any);
+          });
+        }
       });
 
-      return response;
+      const url = `${api_config.base_url}/api/contractor/projects/${projectId}/milestones`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        body: formData,
+      });
+
+      const data = await response.json();
+      return {
+        success: response.ok && (data.success !== false),
+        message: data.message || (response.ok ? 'Milestones submitted' : 'Failed to submit milestones'),
+        data,
+        status: response.status,
+      };
     } catch (error) {
       console.error('Error submitting milestones:', error);
       return {
@@ -798,25 +824,51 @@ export class projects_service {
         title: string;
         description?: string;
         percentage: number;
+        start_date: string;
         date_to_finish: string;
+        files?: Array<{ uri: string; name: string; type: string }>;
       }>;
     }
   ): Promise<ApiResponse> {
     try {
-      const response = await api_request(`/api/contractor/projects/${projectId}/milestones/${milestoneId}`, {
-        method: 'PUT',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-        body: JSON.stringify({
-          user_id: userId,
-          ...milestoneData,
-        }),
+      const formData = new FormData();
+      formData.append('user_id', userId.toString());
+      formData.append('milestone_name', milestoneData.milestone_name);
+      formData.append('payment_mode', milestoneData.payment_mode);
+      formData.append('start_date', milestoneData.start_date);
+      formData.append('end_date', milestoneData.end_date);
+      formData.append('total_project_cost', milestoneData.total_project_cost.toString());
+      if (milestoneData.downpayment_amount !== undefined) {
+        formData.append('downpayment_amount', milestoneData.downpayment_amount.toString());
+      }
+
+      milestoneData.items.forEach((item, i) => {
+        formData.append(`items[${i}][title]`, item.title);
+        formData.append(`items[${i}][description]`, item.description ?? '');
+        formData.append(`items[${i}][percentage]`, item.percentage.toString());
+        formData.append(`items[${i}][start_date]`, item.start_date);
+        formData.append(`items[${i}][date_to_finish]`, item.date_to_finish);
+        if (item.files && item.files.length > 0) {
+          item.files.forEach((file) => {
+            formData.append(`item_files_${i}[]`, { uri: file.uri, name: file.name, type: file.type } as any);
+          });
+        }
       });
 
-      return response;
+      const url = `${api_config.base_url}/api/contractor/projects/${projectId}/milestones/${milestoneId}`;
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        body: formData,
+      });
+
+      const data = await response.json();
+      return {
+        success: response.ok && (data.success !== false),
+        message: data.message || (response.ok ? 'Milestone updated' : 'Failed to update milestone'),
+        data,
+        status: response.status,
+      };
     } catch (error) {
       console.error('Error updating milestone:', error);
       return {

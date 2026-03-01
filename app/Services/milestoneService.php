@@ -466,15 +466,21 @@ class milestoneService
             $remaining = $data['total_project_cost'] - ($data['downpayment_amount'] ?? 0);
             foreach ($data['items'] as $index => $item) {
                 $base = $data['payment_mode'] === 'downpayment' ? $remaining : $data['total_project_cost'];
-                DB::table('milestone_items')->insert([
+                $itemId = DB::table('milestone_items')->insertGetId([
                     'milestone_id'              => $milestoneId,
                     'sequence_order'            => $index + 1,
                     'percentage_progress'       => $item['percentage'],
                     'milestone_item_title'      => $item['title'],
                     'milestone_item_description'=> $item['description'] ?? '',
                     'milestone_item_cost'       => round($base * ($item['percentage'] / 100), 2),
+                    'start_date'                => !empty($item['start_date']) ? date('Y-m-d 00:00:00', strtotime($item['start_date'])) : null,
                     'date_to_finish'            => date('Y-m-d 23:59:59', strtotime($item['date_to_finish'])),
                 ]);
+                if (!empty($item['file_paths'])) {
+                    foreach ($item['file_paths'] as $filePath) {
+                        DB::table('item_files')->insert(['item_id' => $itemId, 'file_path' => $filePath]);
+                    }
+                }
             }
 
             DB::commit();
@@ -563,20 +569,30 @@ class milestoneService
                 'updated_at'            => now(),
             ]);
 
+            $oldItemIds = DB::table('milestone_items')->where('milestone_id', $milestoneId)->pluck('item_id');
+            if ($oldItemIds->isNotEmpty()) {
+                DB::table('item_files')->whereIn('item_id', $oldItemIds)->delete();
+            }
             DB::table('milestone_items')->where('milestone_id', $milestoneId)->delete();
 
             $remaining = $data['total_project_cost'] - ($data['downpayment_amount'] ?? 0);
             foreach ($data['items'] as $index => $item) {
                 $base = $data['payment_mode'] === 'downpayment' ? $remaining : $data['total_project_cost'];
-                DB::table('milestone_items')->insert([
+                $itemId = DB::table('milestone_items')->insertGetId([
                     'milestone_id'              => $milestoneId,
                     'sequence_order'            => $index + 1,
                     'percentage_progress'       => $item['percentage'],
                     'milestone_item_title'      => $item['title'],
                     'milestone_item_description'=> $item['description'] ?? '',
                     'milestone_item_cost'       => round($base * ($item['percentage'] / 100), 2),
+                    'start_date'                => !empty($item['start_date']) ? date('Y-m-d 00:00:00', strtotime($item['start_date'])) : null,
                     'date_to_finish'            => date('Y-m-d 23:59:59', strtotime($item['date_to_finish'])),
                 ]);
+                if (!empty($item['file_paths'])) {
+                    foreach ($item['file_paths'] as $filePath) {
+                        DB::table('item_files')->insert(['item_id' => $itemId, 'file_path' => $filePath]);
+                    }
+                }
             }
 
             DB::commit();
