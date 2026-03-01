@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\Both\notificationClass;
+use App\Models\both\notificationClass;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 

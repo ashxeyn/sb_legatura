@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\both;
 
 use App\Http\Controllers\Controller;
-use App\Models\Both\notificationClass;
+use App\Models\both\notificationClass;
 use App\Services\NotificationService;
 use App\Services\NotificationRedirectService;
 use Illuminate\Http\Request;
