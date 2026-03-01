@@ -1,6 +1,9 @@
 /**
  * Payment History Modal JavaScript
- * Handles the display and interactions for the payment history modal
+ * Matches the mobile milestoneApproval.tsx Payment History UI.
+ * ─────────────────────────────────────────────────────────────
+ *  List view  → header · "Mark all as read" · payment items · summary card
+ *  Detail view → status badge · amount card · milestone info · transaction details · receipt · actions
  */
 
 class OwnerPaymenthistoryModal {
@@ -9,291 +12,376 @@ class OwnerPaymenthistoryModal {
         this.overlay = null;
         this.paymentData = null;
         this.projectData = null;
-        
+        this.selectedPayment = null;
         this.init();
     }
 
+    // ── Initialisation ──────────────────────────────────────────────────
     init() {
         this.modal = document.getElementById('paymentHistoryModal');
         this.overlay = document.getElementById('paymentHistoryModalOverlay');
-        
-        if (!this.modal || !this.overlay) {
-            console.error('Payment History Modal elements not found');
-            return;
-        }
-
+        if (!this.modal || !this.overlay) return;
         this.setupEventListeners();
     }
 
     setupEventListeners() {
-        // Close button
         const closeBtn = document.getElementById('closePaymentHistoryModalBtn');
-        if (closeBtn) {
-            closeBtn.addEventListener('click', () => this.close());
-        }
+        if (closeBtn) closeBtn.addEventListener('click', () => this.close());
 
-        // Overlay click to close
-        if (this.overlay) {
-            this.overlay.addEventListener('click', () => this.close());
-        }
+        const backBtn = document.getElementById('phBackBtn');
+        if (backBtn) backBtn.addEventListener('click', () => this.handleBack());
 
-        // Mark all as read link
-        const markAllReadLink = document.getElementById('markAllReadLink');
-        if (markAllReadLink) {
-            markAllReadLink.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.handleMarkAllAsRead();
-            });
-        }
+        if (this.overlay) this.overlay.addEventListener('click', () => this.close());
 
-        // ESC key to close
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && this.isOpen()) {
-                this.close();
-            }
-        });
+        const markAll = document.getElementById('markAllReadLink');
+        if (markAll) markAll.addEventListener('click', (e) => { e.preventDefault(); this.handleMarkAllAsRead(); });
+
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && this.isOpen()) this.close(); });
     }
 
+    // ── Open / Close ────────────────────────────────────────────────────
     open(paymentData, projectData) {
-        if (!paymentData) {
-            console.error('No payment data provided');
-            return;
-        }
-
+        if (!paymentData) return;
         this.paymentData = paymentData;
         this.projectData = projectData || {};
+        this.selectedPayment = null;
 
-        this.populateModal(paymentData, projectData);
-        
-        if (this.modal) {
-            requestAnimationFrame(() => {
-                this.modal.classList.add('active');
-                document.body.style.overflow = 'hidden';
-                
-                // Add entrance animation
-                const container = this.modal.querySelector('.payment-history-modal-container');
-                if (container) {
-                    container.style.animation = 'slideUpScale 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
-                }
-            });
-        }
+        this.renderListView();
+        this.showListView();
+
+        requestAnimationFrame(() => {
+            this.modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        });
     }
 
     close() {
-        if (this.modal) {
-            const container = this.modal.querySelector('.payment-history-modal-container');
-            if (container) {
-                container.style.animation = 'slideDown 0.3s ease-in';
-            }
-            
-            setTimeout(() => {
-                this.modal.classList.remove('active');
-                document.body.style.overflow = '';
-            }, 250);
-        }
+        if (!this.modal) return;
+        this.modal.classList.remove('active');
+        document.body.style.overflow = '';
         this.paymentData = null;
         this.projectData = null;
+        this.selectedPayment = null;
     }
 
-    isOpen() {
-        return this.modal && this.modal.classList.contains('active');
+    isOpen() { return this.modal && this.modal.classList.contains('active'); }
+
+    handleBack() {
+        if (this.selectedPayment) {
+            this.selectedPayment = null;
+            this.showListView();
+        } else {
+            this.close();
+        }
     }
 
-    populateModal(paymentData, projectData) {
-        // Populate payment entries
-        this.populatePaymentEntries(paymentData.payments || []);
-
-        // Populate summary
-        this.populateSummary(paymentData.summary || {});
+    showListView() {
+        const list = document.getElementById('phListView');
+        const detail = document.getElementById('phDetailView');
+        if (list) list.style.display = '';
+        if (detail) detail.style.display = 'none';
+        const title = this.modal.querySelector('.ph-header-title');
+        if (title) title.textContent = 'Payment History';
     }
 
-    populatePaymentEntries(payments) {
+    showDetailView() {
+        const list = document.getElementById('phListView');
+        const detail = document.getElementById('phDetailView');
+        if (list) list.style.display = 'none';
+        if (detail) detail.style.display = '';
+        const title = this.modal.querySelector('.ph-header-title');
+        if (title) title.textContent = 'Payment Details';
+    }
+
+    // ── List View Rendering ─────────────────────────────────────────────
+    renderListView() {
+        const payments = this.paymentData?.payments || [];
         const entriesList = document.getElementById('paymentEntriesList');
+        const summaryCard = document.getElementById('phSummaryCard');
         if (!entriesList) return;
 
-        entriesList.innerHTML = '';
-
-        if (!payments || payments.length === 0) {
-            entriesList.innerHTML = '<p class="text-gray-500 text-center py-8">No payment history available</p>';
+        // Empty state
+        if (payments.length === 0) {
+            entriesList.innerHTML = `
+                <div class="ph-empty">
+                    <div style="width:80px;height:80px;background:#F1F5F9;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:8px;">
+                        <i class="fi fi-rr-credit-card" style="font-size:2.5rem;color:#94A3B8;"></i>
+                    </div>
+                    <span class="ph-empty-title">No Payment History</span>
+                    <span class="ph-empty-text">Payment receipts will appear here once submitted</span>
+                </div>`;
+            if (summaryCard) summaryCard.innerHTML = '';
             return;
         }
 
-        payments.forEach((payment, index) => {
-            const entry = this.createPaymentEntry(payment, index);
-            entriesList.appendChild(entry);
-        });
-    }
-
-    createPaymentEntry(payment, index) {
-        const entry = document.createElement('div');
-        entry.className = `payment-entry ${payment.unread ? 'unread' : ''}`;
-        entry.setAttribute('data-payment-id', payment.id);
-
-        const statusIcon = payment.status === 'pending' || payment.unread 
-            ? 'fi-rr-minus' 
-            : 'fi-rr-check';
-        const statusClass = payment.status === 'pending' || payment.unread 
-            ? 'pending' 
-            : 'completed';
-
-        const paymentType = payment.type || 'Bank Payment';
-        const milestoneNumber = payment.milestoneNumber || payment.milestoneId || index + 1;
-        const amount = payment.amount || '₱0';
-        const date = payment.date || '';
-        const time = payment.time || '';
-
-        entry.innerHTML = `
-            <div class="payment-status-icon ${statusClass}">
-                <i class="fi ${statusIcon}"></i>
-            </div>
-            <div class="payment-entry-content">
-                <div class="payment-entry-header">
-                    <div class="payment-entry-description">
-                        <p class="payment-entry-type">
-                            ${paymentType}: <span class="payment-entry-milestone">Milestone ${milestoneNumber}</span>
-                        </p>
-                        <p class="payment-entry-amount">${amount}</p>
+        // Payment items
+        entriesList.innerHTML = payments.map((p, i) => {
+            const statusIcon = p.status === 'approved' ? 'fi-rr-check'
+                             : p.status === 'rejected' ? 'fi-rr-cross-small'
+                             : 'fi-rr-time-half-past';
+            const statusColor = p.status === 'approved' ? '#10B981'
+                              : p.status === 'rejected' ? '#EF4444'
+                              : '#EC7E00';
+            const statusBg = statusColor + '15';
+            return `
+            <div class="ph-payment-item${p.unread ? ' ph-unread' : ''}" data-index="${i}">
+                <div class="ph-payment-row">
+                    <div class="ph-status-icon" style="background:${statusBg};">
+                        <i class="fi ${statusIcon}" style="color:${statusColor};"></i>
                     </div>
-                    <div class="payment-entry-meta">
-                        <p class="payment-entry-date">${date}</p>
-                        <p class="payment-entry-time">${time}</p>
-                        <a href="#" class="payment-details-link" data-payment-id="${payment.id}">Details</a>
+                    <div class="ph-payment-main">
+                        <div class="ph-payment-top">
+                            <div class="ph-payment-title-wrap">
+                                <span class="ph-payment-type">${this.esc(p.type)}: </span>
+                                <span class="ph-payment-milestone">${this.esc(p.milestoneNumber)}</span>
+                            </div>
+                            <div class="ph-payment-date-wrap">
+                                <span class="ph-payment-date">${this.esc(p.date)}</span>
+                                <span class="ph-payment-time">${this.esc(p.time)}</span>
+                            </div>
+                        </div>
+                        <div class="ph-payment-bottom">
+                            <span class="ph-payment-amount">${this.esc(p.amount)}</span>
+                            <button class="ph-details-link" data-index="${i}">Details</button>
+                        </div>
                     </div>
                 </div>
-            </div>
-        `;
+            </div>`;
+        }).join('');
 
-        // Add click handlers
-        const detailsLink = entry.querySelector('.payment-details-link');
-        if (detailsLink) {
-            detailsLink.addEventListener('click', (e) => {
+        // Summary card
+        if (summaryCard) {
+            const s = this.paymentData.summary || {};
+            const dpAmount = this.paymentData.summary?.downpayment;
+            summaryCard.innerHTML = `
+                <div class="ph-summary-row">
+                    <span class="ph-summary-label">Total Estimated Project Amount:</span>
+                    <span class="ph-summary-value">${this.esc(s.totalEstimated || '₱0')}</span>
+                </div>
+                ${dpAmount ? `
+                <div class="ph-summary-row">
+                    <span class="ph-summary-label">Downpayment Amount:</span>
+                    <span class="ph-summary-value">${this.esc(dpAmount)}</span>
+                </div>` : ''}
+                <div class="ph-summary-row">
+                    <span class="ph-summary-label">Total Amount Paid:</span>
+                    <span class="ph-summary-value ph-value-success">${this.formatPaid(s.totalPaid)}</span>
+                </div>
+                <div class="ph-summary-divider"></div>
+                <div class="ph-summary-row ph-summary-row-last">
+                    <span class="ph-summary-label ph-label-bold">Total Remaining Amount:</span>
+                    <span class="ph-summary-value ph-value-danger">${this.esc(s.totalRemaining || '₱0')}</span>
+                </div>`;
+        }
+
+        // Bind click events
+        entriesList.querySelectorAll('.ph-payment-item').forEach(el => {
+            el.addEventListener('click', (e) => {
+                if (!e.target.closest('.ph-details-link')) {
+                    const idx = parseInt(el.dataset.index);
+                    if (payments[idx]?.unread) {
+                        el.classList.remove('ph-unread');
+                        payments[idx].unread = false;
+                    }
+                }
+            });
+        });
+
+        entriesList.querySelectorAll('.ph-details-link').forEach(btn => {
+            btn.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                this.handlePaymentDetails(payment.id);
+                const idx = parseInt(btn.dataset.index);
+                this.openPaymentDetail(payments[idx]);
             });
-        }
-
-        // Mark as read on click
-        entry.addEventListener('click', (e) => {
-            if (!e.target.closest('.payment-details-link')) {
-                if (payment.unread) {
-                    this.markPaymentAsRead(payment.id, entry);
-                }
-            }
         });
-
-        return entry;
     }
 
-    populateSummary(summary) {
-        const totalEstimated = document.getElementById('totalEstimatedAmount');
-        const totalPaid = document.getElementById('totalAmountPaid');
-        const totalRemaining = document.getElementById('totalRemainingAmount');
+    // ── Detail View Rendering ───────────────────────────────────────────
+    openPaymentDetail(payment) {
+        if (!payment) return;
+        this.selectedPayment = payment;
+        const raw = payment._raw || payment;
+        const container = document.getElementById('phDetailContent');
+        if (!container) return;
 
-        if (totalEstimated) {
-            totalEstimated.textContent = summary.totalEstimated || '₱0';
+        const statusColor = raw.payment_status === 'approved' ? '#10B981'
+                          : raw.payment_status === 'rejected' ? '#EF4444'
+                          : '#F59E0B';
+        const statusLabel = (raw.payment_status || 'pending').charAt(0).toUpperCase() + (raw.payment_status || 'pending').slice(1);
+
+        const amount = payment.amount || this.formatCur(parseFloat(raw.amount || 0));
+        const milestoneTitle = raw.milestone_item_title || payment.milestoneNumber || '';
+        const progress = raw.percentage_progress != null ? `${raw.percentage_progress}%` : '';
+        const transDate = payment.date || '';
+        const paymentMethod = payment.type || this.getPaymentTypeLabel(raw.payment_type);
+        const refNumber = raw.transaction_number || '';
+        const ownerName = raw.owner_name || '';
+        const receiptPhoto = raw.receipt_photo || '';
+        const rejectionReason = (raw.payment_status === 'rejected' && raw.reason) ? raw.reason : '';
+
+        let html = '';
+
+        // Status Badge
+        html += `
+            <div class="ph-detail-status-container">
+                <span class="ph-detail-status-badge" style="background:${statusColor};">${this.esc(statusLabel)}</span>
+            </div>`;
+
+        // Amount Card
+        html += `
+            <div class="ph-detail-amount-card">
+                <span class="ph-detail-amount-label">PAYMENT AMOUNT</span>
+                <span class="ph-detail-amount-value">${this.esc(amount)}</span>
+            </div>`;
+
+        // Milestone Info Card
+        html += `
+            <div class="ph-detail-card">
+                <div class="ph-detail-card-header">
+                    <i class="fi fi-rr-flag" style="color:#EC7E00;"></i>
+                    <span class="ph-detail-card-title">Milestone Information</span>
+                </div>
+                <div class="ph-detail-card-body">
+                    <div class="ph-detail-milestone-title">${this.esc(milestoneTitle)}</div>
+                    ${progress ? `
+                    <div class="ph-detail-info-row">
+                        <span class="ph-detail-info-label">Progress:</span>
+                        <span class="ph-detail-info-value">${this.esc(progress)}</span>
+                    </div>` : ''}
+                </div>
+            </div>`;
+
+        // Transaction Details Card
+        html += `
+            <div class="ph-detail-card">
+                <div class="ph-detail-card-header">
+                    <i class="fi fi-rr-info" style="color:#EC7E00;"></i>
+                    <span class="ph-detail-card-title">Transaction Details</span>
+                </div>
+                <div class="ph-detail-card-body">
+                    <div class="ph-detail-info-row">
+                        <span class="ph-detail-info-label">Date:</span>
+                        <span class="ph-detail-info-value">${this.esc(transDate)}</span>
+                    </div>
+                    <div class="ph-detail-info-row">
+                        <span class="ph-detail-info-label">Payment Method:</span>
+                        <span class="ph-detail-info-value">${this.esc(paymentMethod)}</span>
+                    </div>
+                    ${refNumber ? `
+                    <div class="ph-detail-info-row">
+                        <span class="ph-detail-info-label">Reference #:</span>
+                        <span class="ph-detail-info-value">${this.esc(refNumber)}</span>
+                    </div>` : ''}
+                    ${ownerName ? `
+                    <div class="ph-detail-info-row">
+                        <span class="ph-detail-info-label">Submitted By:</span>
+                        <span class="ph-detail-info-value">${this.esc(ownerName)}</span>
+                    </div>` : ''}
+                </div>
+            </div>`;
+
+        // Rejection Reason Card
+        if (rejectionReason) {
+            html += `
+                <div class="ph-detail-card ph-detail-card-error">
+                    <div class="ph-detail-card-header">
+                        <i class="fi fi-rr-exclamation" style="color:#EF4444;"></i>
+                        <span class="ph-detail-card-title" style="color:#EF4444;">Rejection Reason</span>
+                    </div>
+                    <div class="ph-detail-card-body">
+                        <p class="ph-detail-rejection-text">${this.esc(rejectionReason)}</p>
+                    </div>
+                </div>`;
         }
 
-        if (totalPaid) {
-            const paidAmount = summary.totalPaid || 0;
-            totalPaid.textContent = paidAmount > 0 ? `-₱${this.formatNumber(paidAmount)}` : '₱0';
+        // Receipt Photo Card
+        if (receiptPhoto) {
+            const receiptUrl = this.getReceiptUrl(receiptPhoto);
+            html += `
+                <div class="ph-detail-card">
+                    <div class="ph-detail-card-header">
+                        <i class="fi fi-rr-picture" style="color:#EC7E00;"></i>
+                        <span class="ph-detail-card-title">Payment Receipt</span>
+                    </div>
+                    <div class="ph-detail-card-body">
+                        <div class="ph-receipt-image-container">
+                            <img src="${this.esc(receiptUrl)}" alt="Receipt" class="ph-receipt-image" loading="lazy"
+                                 onerror="this.parentElement.innerHTML='<div class=\\'ph-receipt-error\\'><i class=\\'fi fi-rr-picture\\'></i><span>Image not available</span></div>';">
+                            <button class="ph-receipt-expand" title="View full size" onclick="window.open('${this.esc(receiptUrl)}', '_blank')">
+                                <i class="fi fi-rr-expand"></i>
+                            </button>
+                        </div>
+                        <p class="ph-receipt-hint">Click the expand icon to view full size</p>
+                    </div>
+                </div>`;
         }
 
-        if (totalRemaining) {
-            totalRemaining.textContent = summary.totalRemaining || '₱0';
-        }
+        container.innerHTML = html;
+        this.showDetailView();
     }
 
-    formatNumber(num) {
-        if (typeof num === 'string') {
-            // Remove currency symbols and commas, then parse
-            num = num.replace(/[₱,]/g, '');
-            num = parseFloat(num);
-        }
-        return num.toLocaleString('en-US');
-    }
-
-    handlePaymentDetails(paymentId) {
-        const payment = this.paymentData.payments?.find(p => p.id === paymentId);
-        if (payment) {
-            console.log('Viewing payment details:', payment);
-            // In a real implementation, open a detailed view or modal
-            this.showNotification(`Viewing details for payment ${paymentId}`, 'info');
-        }
-    }
-
-    markPaymentAsRead(paymentId, entryElement) {
-        if (entryElement) {
-            entryElement.classList.remove('unread');
-            
-            // Update icon from pending to completed
-            const statusIcon = entryElement.querySelector('.payment-status-icon');
-            if (statusIcon) {
-                statusIcon.classList.remove('pending');
-                statusIcon.classList.add('completed');
-                const icon = statusIcon.querySelector('i');
-                if (icon) {
-                    icon.className = 'fi fi-rr-check';
-                }
-            }
-        }
-
-        // In a real implementation, send request to server
-        console.log('Marking payment as read:', paymentId);
-    }
-
+    // ── Helpers ──────────────────────────────────────────────────────────
     handleMarkAllAsRead() {
-        const unreadEntries = document.querySelectorAll('.payment-entry.unread');
-        
-        unreadEntries.forEach(entry => {
-            const paymentId = entry.getAttribute('data-payment-id');
-            this.markPaymentAsRead(paymentId, entry);
-        });
-
-        this.showNotification('All payments marked as read', 'success');
+        const items = document.querySelectorAll('.ph-payment-item.ph-unread');
+        items.forEach(el => el.classList.remove('ph-unread'));
+        if (this.paymentData?.payments) {
+            this.paymentData.payments.forEach(p => p.unread = false);
+        }
+        this.showToast('All payments marked as read', 'success');
     }
 
-    showNotification(message, type = 'info') {
-        const toast = document.createElement('div');
-        let bgColor = '#EEA24B';
-        if (type === 'success') {
-            bgColor = '#10b981';
-        } else if (type === 'error') {
-            bgColor = '#dc2626';
+    getReceiptUrl(path) {
+        if (!path) return '';
+        if (path.startsWith('http://') || path.startsWith('https://')) return path;
+        let cleaned = path.replace(/^\/+/, '');
+        if (cleaned.startsWith('storage/')) cleaned = cleaned.replace(/^storage\//, '');
+        if (cleaned.startsWith('public/')) cleaned = cleaned.replace(/^public\//, '');
+        return `/api/files/${cleaned}`;
+    }
+
+    getPaymentTypeLabel(type) {
+        if (!type) return 'Payment';
+        return type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    }
+
+    formatPaid(val) {
+        if (typeof val === 'number') {
+            return `₱${val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
         }
-        
-        toast.className = 'fixed bottom-4 right-4 text-white px-6 py-3 rounded-lg shadow-lg z-50';
-        toast.style.backgroundColor = bgColor;
+        return val || '₱0';
+    }
+
+    formatCur(num) {
+        return `₱${num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+
+    esc(str) {
+        if (str == null) return '';
+        const d = document.createElement('div');
+        d.textContent = String(str);
+        return d.innerHTML;
+    }
+
+    showToast(message, type = 'info') {
+        const toast = document.createElement('div');
+        toast.className = 'ph-toast';
+        const bg = type === 'success' ? '#10B981' : type === 'error' ? '#EF4444' : '#EC7E00';
+        toast.style.background = bg;
         toast.textContent = message;
-        toast.style.cssText += `
-            animation: slideUp 0.3s ease-out;
-        `;
-
         document.body.appendChild(toast);
-
-        setTimeout(() => {
-            toast.style.animation = 'slideDown 0.3s ease-out';
-            setTimeout(() => {
-                if (document.body.contains(toast)) {
-                    document.body.removeChild(toast);
-                }
-            }, 300);
-        }, 3000);
+        setTimeout(() => { toast.classList.add('ph-toast-hide'); setTimeout(() => toast.remove(), 300); }, 3000);
     }
 }
 
-// Initialize modal when DOM is ready
+// ── Global Interface ────────────────────────────────────────────────────────
 let paymentHistoryModalInstance = null;
 
 function initializePaymentHistoryModal() {
     if (!paymentHistoryModalInstance) {
         paymentHistoryModalInstance = new OwnerPaymenthistoryModal();
-        
-        // Make it globally accessible
         window.openPaymentHistoryModal = (paymentData, projectData) => {
-            if (paymentHistoryModalInstance) {
-                paymentHistoryModalInstance.open(paymentData, projectData);
-            }
+            if (paymentHistoryModalInstance) paymentHistoryModalInstance.open(paymentData, projectData);
         };
     }
 }

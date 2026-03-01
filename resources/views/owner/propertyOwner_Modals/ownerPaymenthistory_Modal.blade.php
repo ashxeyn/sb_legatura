@@ -1,42 +1,39 @@
 <!-- Payment History Modal -->
-<div id="paymentHistoryModal" class="payment-history-modal">
-    <div class="modal-overlay" id="paymentHistoryModalOverlay"></div>
-    <div class="payment-history-modal-container">
+<div id="paymentHistoryModal" class="ph-modal">
+    <div class="ph-modal-overlay" id="paymentHistoryModalOverlay"></div>
+    <div class="ph-modal-container">
         <!-- Modal Header -->
-        <div class="payment-history-modal-header">
-            <div class="payment-history-header-content">
-                <h2 class="payment-history-modal-title">Payment history</h2>
-                <a href="#" class="mark-all-read-link" id="markAllReadLink">Mark all as read</a>
+        <div class="ph-modal-header">
+            <button class="ph-back-btn" id="phBackBtn" title="Close">
+                <i class="fi fi-rr-angle-left"></i>
+            </button>
+            <div class="ph-header-content">
+                <h2 class="ph-header-title">Payment History</h2>
             </div>
-            <button class="payment-history-close-btn" id="closePaymentHistoryModalBtn" aria-label="Close modal">
-                <i class="fi fi-rr-cross"></i>
+            <button class="ph-close-btn" id="closePaymentHistoryModalBtn" aria-label="Close modal">
+                <i class="fi fi-rr-cross-small"></i>
             </button>
         </div>
 
-        <!-- Modal Body -->
-        <div class="payment-history-modal-body">
-            <!-- Payment Entries List -->
-            <div class="payment-entries-list" id="paymentEntriesList">
-                <!-- Payment entries will be dynamically inserted here -->
+        <!-- Modal Body: Payment List View -->
+        <div class="ph-modal-body" id="phListView">
+            <!-- Mark All as Read -->
+            <div class="ph-mark-all-container">
+                <a href="#" class="ph-mark-all-link" id="markAllReadLink">Mark all as read</a>
             </div>
+            <!-- Payment entries injected here by JS -->
+            <div class="ph-entries-list" id="paymentEntriesList"></div>
+
+            <!-- Summary Card (injected by JS) -->
+            <div class="ph-summary-card" id="phSummaryCard"></div>
         </div>
 
-        <!-- Modal Footer - Summary -->
-        <div class="payment-history-modal-footer">
-            <div class="payment-summary-section">
-                <div class="payment-summary-item">
-                    <span class="payment-summary-label">Total Estimated Project Amount:</span>
-                    <span class="payment-summary-value estimated" id="totalEstimatedAmount">₱36,000,000</span>
-                </div>
-                <div class="payment-summary-item">
-                    <span class="payment-summary-label">Total Amount Paid:</span>
-                    <span class="payment-summary-value paid" id="totalAmountPaid">-₱32,400,000</span>
-                </div>
-                <div class="payment-summary-item">
-                    <span class="payment-summary-label">Total Remaining Amount:</span>
-                    <span class="payment-summary-value remaining" id="totalRemainingAmount">₱3,600,000</span>
-                </div>
+        <!-- Modal Body: Payment Detail View (hidden by default) -->
+        <div class="ph-modal-body ph-detail-view" id="phDetailView" style="display:none;">
+            <div id="phDetailContent">
+                <!-- Detail content injected by JS -->
             </div>
         </div>
     </div>
 </div>
+

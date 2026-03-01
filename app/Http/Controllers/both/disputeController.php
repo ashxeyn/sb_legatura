@@ -938,8 +938,9 @@ class disputeController extends Controller
             }
 
             $request->validate([
-                'dispute_type' => 'sometimes|required|in:Payment,Delay,Quality,Others',
+                'dispute_type' => 'sometimes|required|in:Payment,Delay,Quality,Halt,Others',
                 'dispute_desc' => 'sometimes|required|string|max:2000',
+                'if_others_distype' => 'nullable|required_if:dispute_type,Others|string|max:255',
                 'evidence_files.*' => 'nullable|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:5120'
             ]);
 
@@ -949,6 +950,9 @@ class disputeController extends Controller
             }
             if ($request->has('dispute_desc')) {
                 $updateData['dispute_desc'] = $request->input('dispute_desc');
+            }
+            if ($request->has('if_others_distype')) {
+                $updateData['if_others_distype'] = $request->input('if_others_distype');
             }
 
             // Update dispute

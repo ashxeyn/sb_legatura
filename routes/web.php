@@ -279,6 +279,10 @@ Route::delete('/contractor/progress/{progressId}', [\App\Http\Controllers\contra
 Route::post('/owner/payment/upload', [\App\Http\Controllers\owner\paymentUploadController::class, 'uploadPayment']);
 Route::put('/owner/payment/{paymentId}', [\App\Http\Controllers\owner\paymentUploadController::class, 'updatePayment']);
 Route::delete('/owner/payment/{paymentId}', [\App\Http\Controllers\owner\paymentUploadController::class, 'deletePayment']);
+// Owner milestone item completion
+Route::post('/owner/milestone-items/{itemId}/complete', [\App\Http\Controllers\both\milestoneController::class, 'apiSetMilestoneItemComplete']);
+// Owner milestone settlement due date
+Route::post('/owner/milestone-items/{itemId}/settlement-due-date', [\App\Http\Controllers\both\milestoneController::class, 'setSettlementDueDateOwner']);
 Route::post('/contractor/progress/approve/{progressId}', [\App\Http\Controllers\contractor\progressUploadController::class, 'approveProgress']);
 Route::post('/contractor/progress/reject/{progressId}', [\App\Http\Controllers\contractor\progressUploadController::class, 'rejectProgress']);
 

@@ -17,7 +17,9 @@
                 <i class="fi fi-rr-cross-small"></i>
             </button>
             <h2 class="pdm-header-title" id="pdmDialogTitle">Project Details</h2>
-            <div class="w-9 shrink-0"></div>
+            <button class="pdm-header-edit-btn" id="headerEditBtn" type="button" aria-label="Edit project" title="Edit project">
+                <i class="fi fi-rr-pencil"></i>
+            </button>
         </div>
 
         {{-- ── Scrollable body ───────────────────────────────────── --}}
@@ -175,6 +177,7 @@
                         <i class="fi fi-rr-arrow-right text-xs"></i>
                     </div>
                 </div>
+
 
             </div>
             {{-- end cards grid --}}
@@ -413,6 +416,164 @@
             </div>
         </div>
         {{-- end reject overlay --}}
+
+        {{-- ═══ Edit Project Panel (slide-in like bids panel) ═══ --}}
+        <div class="pdm-edit-panel" id="editProjectPanel"
+             style="position:absolute;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;overflow:hidden;z-index:35">
+
+            {{-- Header --}}
+            <div class="pdm-header" style="flex-shrink:0">
+                <button class="pdm-close-btn" id="editPanelBackBtn" type="button" aria-label="Back to project details">
+                    <i class="fi fi-rr-arrow-left"></i>
+                </button>
+                <h2 class="pdm-header-title">Edit Project</h2>
+                <button class="pdm-edit-save-btn" id="editSaveBtn" type="button">
+                    <i class="fi fi-rr-check"></i>
+                    <span>Save</span>
+                </button>
+            </div>
+
+            {{-- Scrollable form body --}}
+            <div class="pdm-edit-body" id="editPanelBody" style="flex:1 1 0%;min-height:0;overflow-y:auto;overflow-x:hidden;padding:20px;">
+
+                {{-- Validation error banner --}}
+                <div class="pdm-edit-error-banner" id="editErrorBanner" style="display:none">
+                    <i class="fi fi-rr-exclamation"></i>
+                    <span id="editErrorText">Please fix the errors below.</span>
+                </div>
+
+                {{-- ── Basic Information ── --}}
+                <div class="pdm-edit-section">
+                    <div class="pdm-edit-section-header">
+                        <i class="fi fi-rr-document-signed"></i>
+                        <span>Basic Information</span>
+                    </div>
+
+                    <div class="pdm-edit-field">
+                        <label class="pdm-edit-label" for="editTitle">Project Title <span class="pdm-edit-req">*</span></label>
+                        <input type="text" class="pdm-edit-input" id="editTitle" placeholder="Enter project title" maxlength="200" autocomplete="off">
+                        <span class="pdm-edit-field-error" id="editTitleError"></span>
+                    </div>
+
+                    <div class="pdm-edit-field">
+                        <label class="pdm-edit-label" for="editDescription">Description <span class="pdm-edit-req">*</span></label>
+                        <textarea class="pdm-edit-textarea" id="editDescription" placeholder="Describe your project" rows="4"></textarea>
+                        <span class="pdm-edit-field-error" id="editDescriptionError"></span>
+                    </div>
+                </div>
+
+                {{-- ── Location ── --}}
+                <div class="pdm-edit-section">
+                    <div class="pdm-edit-section-header">
+                        <i class="fi fi-rr-marker"></i>
+                        <span>Location</span>
+                    </div>
+
+                    <div class="pdm-edit-field">
+                        <label class="pdm-edit-label" for="editLocation">Project Location <span class="pdm-edit-req">*</span></label>
+                        <input type="text" class="pdm-edit-input" id="editLocation" placeholder="Project address or location" autocomplete="off">
+                        <span class="pdm-edit-field-error" id="editLocationError"></span>
+                    </div>
+                </div>
+
+                {{-- ── Budget Range ── --}}
+                <div class="pdm-edit-section">
+                    <div class="pdm-edit-section-header">
+                        <i class="fi fi-rr-coins"></i>
+                        <span>Budget Range</span>
+                    </div>
+
+                    <div class="pdm-edit-row">
+                        <div class="pdm-edit-field pdm-edit-half">
+                            <label class="pdm-edit-label" for="editBudgetMin">Minimum <span class="pdm-edit-req">*</span></label>
+                            <div class="pdm-edit-input-group">
+                                <span class="pdm-edit-input-prefix">₱</span>
+                                <input type="text" class="pdm-edit-input pdm-edit-input--prefixed" id="editBudgetMin" placeholder="0" inputmode="numeric" autocomplete="off">
+                            </div>
+                            <span class="pdm-edit-field-error" id="editBudgetMinError"></span>
+                        </div>
+                        <div class="pdm-edit-field pdm-edit-half">
+                            <label class="pdm-edit-label" for="editBudgetMax">Maximum <span class="pdm-edit-req">*</span></label>
+                            <div class="pdm-edit-input-group">
+                                <span class="pdm-edit-input-prefix">₱</span>
+                                <input type="text" class="pdm-edit-input pdm-edit-input--prefixed" id="editBudgetMax" placeholder="0" inputmode="numeric" autocomplete="off">
+                            </div>
+                            <span class="pdm-edit-field-error" id="editBudgetMaxError"></span>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- ── Property Details ── --}}
+                <div class="pdm-edit-section">
+                    <div class="pdm-edit-section-header">
+                        <i class="fi fi-rr-home"></i>
+                        <span>Property Details</span>
+                    </div>
+
+                    <div class="pdm-edit-field">
+                        <label class="pdm-edit-label" for="editPropertyType">Property Type <span class="pdm-edit-req">*</span></label>
+                        <select class="pdm-edit-select" id="editPropertyType">
+                            <option value="">Select property type</option>
+                            <option value="Residential">Residential</option>
+                            <option value="Commercial">Commercial</option>
+                            <option value="Industrial">Industrial</option>
+                            <option value="Agricultural">Agricultural</option>
+                        </select>
+                        <span class="pdm-edit-field-error" id="editPropertyTypeError"></span>
+                    </div>
+
+                    <div class="pdm-edit-field">
+                        <label class="pdm-edit-label" for="editContractorType">Contractor Type <span class="pdm-edit-req">*</span></label>
+                        <select class="pdm-edit-select" id="editContractorType">
+                            <option value="">Loading contractor types…</option>
+                        </select>
+                        <span class="pdm-edit-field-error" id="editContractorTypeError"></span>
+                    </div>
+
+                    <div class="pdm-edit-field" id="editOthersWrap" style="display:none">
+                        <label class="pdm-edit-label" for="editOthersCtype">Specify Contractor Type <span class="pdm-edit-req">*</span></label>
+                        <input type="text" class="pdm-edit-input" id="editOthersCtype" placeholder="e.g. Landscape Architect" maxlength="200" autocomplete="off">
+                        <span class="pdm-edit-field-error" id="editOthersCtypeError"></span>
+                    </div>
+
+                    <div class="pdm-edit-row">
+                        <div class="pdm-edit-field pdm-edit-half">
+                            <label class="pdm-edit-label" for="editLotSize">Lot Size <span class="pdm-edit-req">*</span></label>
+                            <div class="pdm-edit-input-group">
+                                <input type="text" class="pdm-edit-input pdm-edit-input--suffixed" id="editLotSize" placeholder="0" inputmode="numeric" autocomplete="off">
+                                <span class="pdm-edit-input-suffix">sqm</span>
+                            </div>
+                            <span class="pdm-edit-field-error" id="editLotSizeError"></span>
+                        </div>
+                        <div class="pdm-edit-field pdm-edit-half">
+                            <label class="pdm-edit-label" for="editFloorArea">Floor Area <span class="pdm-edit-req">*</span></label>
+                            <div class="pdm-edit-input-group">
+                                <input type="text" class="pdm-edit-input pdm-edit-input--suffixed" id="editFloorArea" placeholder="0" inputmode="numeric" autocomplete="off">
+                                <span class="pdm-edit-input-suffix">sqm</span>
+                            </div>
+                            <span class="pdm-edit-field-error" id="editFloorAreaError"></span>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- ── Bidding Deadline ── --}}
+                <div class="pdm-edit-section">
+                    <div class="pdm-edit-section-header">
+                        <i class="fi fi-rr-calendar"></i>
+                        <span>Bidding Deadline</span>
+                    </div>
+
+                    <div class="pdm-edit-field">
+                        <label class="pdm-edit-label" for="editBiddingDeadline">Deadline (optional)</label>
+                        <input type="datetime-local" class="pdm-edit-input" id="editBiddingDeadline">
+                        <span class="pdm-edit-field-error" id="editBiddingDeadlineError"></span>
+                    </div>
+                </div>
+
+                <div style="height:24px"></div>
+            </div>
+        </div>
+        {{-- end edit project panel --}}
 
     </div>
     {{-- end dialog --}}

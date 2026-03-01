@@ -62,13 +62,37 @@ class ProjectDetailsModal {
                 if (!this.currentProject) return;
                 try {
                     const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
-                    const res  = await fetch('/owner/projects/set-milestone', {
-                        method:  'POST',
-                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
-                        body:    JSON.stringify({ project_id: this.currentProject.id }),
-                    });
-                    const data = await res.json().catch(() => ({}));
-                    if (data.success) window.location.href = '/owner/projects/milestone-report';
+                    const projectId = this.currentProject.id;
+                    const milestones = this.currentProject.milestones || [];
+                    // Find the first milestone item to navigate to progress report
+                    let firstItemId = null;
+                    for (const m of milestones) {
+                        const items = m.items || m.milestone_items || [];
+                        if (items.length > 0) {
+                            firstItemId = items[0].item_id;
+                            break;
+                        }
+                    }
+
+                    if (firstItemId) {
+                        // Set milestone item in session, then go to progress report
+                        const res = await fetch('/owner/projects/set-milestone-item', {
+                            method:  'POST',
+                            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
+                            body:    JSON.stringify({ item_id: firstItemId, project_id: projectId }),
+                        });
+                        const data = await res.json().catch(() => ({}));
+                        if (data.success) window.location.href = '/owner/projects/milestone-progress-report';
+                    } else {
+                        // No items yet, fall back to project timeline
+                        const res = await fetch('/owner/projects/set-milestone', {
+                            method:  'POST',
+                            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
+                            body:    JSON.stringify({ project_id: projectId }),
+                        });
+                        const data = await res.json().catch(() => ({}));
+                        if (data.success) window.location.href = '/owner/projects/milestone-report';
+                    }
                 } catch (err) { console.error('Milestone nav error:', err); }
             });
             milestoneCard.addEventListener('keydown', (e) => {
@@ -132,6 +156,9 @@ class ProjectDetailsModal {
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && this.isOpen()) this.close();
         });
+
+        // Edit project panel
+        this._bindEditEvents();
     }
 
     /* ── Expand / Collapse ───────────────────────────────────── */
@@ -173,6 +200,8 @@ class ProjectDetailsModal {
         if (toggleBtn) toggleBtn.setAttribute('aria-expanded', 'false');
         // Reset bids panel
         this._closeBidsPanel();
+        // Reset edit panel
+        this._closeEditPanel();
         this.currentProject = null;
     }
 
@@ -432,6 +461,12 @@ class ProjectDetailsModal {
         /* ── Bids count ── */
         const bidsCount = raw.bids_count ?? p.bids_count ?? 0;
         this._setEl('bidsCountLabel', `${bidsCount} ${bidsCount === 1 ? 'bid' : 'bids'} submitted`);
+
+        /* ── Edit project card — always visible (backend has no status restriction) ── */
+        const editCard = document.getElementById('editProjectCard');
+        if (editCard) {
+            editCard.style.display = '';
+        }
     }
 
     /* ── Bids Panel ──────────────────────────────────────────── */
@@ -777,6 +812,446 @@ class ProjectDetailsModal {
             alert(err.message || 'Failed to reject bid.');
             if (btn) { btn.disabled = false; btn.textContent = 'Reject'; }
         }
+    }
+
+    /* ════════════════════════════════════════════════════════════
+       EDIT PROJECT PANEL
+    ════════════════════════════════════════════════════════════ */
+
+    _bindEditEvents() {
+        /* Header edit icon */
+        const headerEditBtn = document.getElementById('headerEditBtn');
+        if (headerEditBtn) headerEditBtn.addEventListener('click', () => this._openEditPanel());
+
+        /* Card edit (secondary) */
+        const editCard = document.getElementById('editProjectCard');
+        if (editCard) {
+            editCard.addEventListener('click', (e) => {
+                this._ripple(editCard, e);
+                this._openEditPanel();
+            });
+            editCard.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); editCard.click(); }
+            });
+        }
+
+        const editBackBtn = document.getElementById('editPanelBackBtn');
+        if (editBackBtn) editBackBtn.addEventListener('click', () => this._closeEditPanel());
+
+        const editSaveBtn = document.getElementById('editSaveBtn');
+        if (editSaveBtn) editSaveBtn.addEventListener('click', () => this._saveEdit());
+
+        // Budget formatting
+        ['editBudgetMin', 'editBudgetMax'].forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.addEventListener('input', () => {
+                let raw = el.value.replace(/[^0-9]/g, '');
+                if (raw) el.value = Number(raw).toLocaleString('en-PH');
+                else el.value = '';
+            });
+        });
+
+        // Lot size / floor area — digits only
+        ['editLotSize', 'editFloorArea'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener('input', () => { el.value = el.value.replace(/[^0-9]/g, ''); });
+        });
+
+        // Contractor type "Others" toggle
+        const ctSelect = document.getElementById('editContractorType');
+        if (ctSelect) {
+            ctSelect.addEventListener('change', () => {
+                const othersWrap = document.getElementById('editOthersWrap');
+                const selOpt = ctSelect.options[ctSelect.selectedIndex];
+                const isOthers = selOpt && selOpt.text.toLowerCase().trim() === 'others';
+                if (othersWrap) othersWrap.style.display = isOthers ? '' : 'none';
+            });
+        }
+
+        // Clear field errors on input
+        const fieldMap = {
+            editTitle: 'editTitleError',
+            editDescription: 'editDescriptionError',
+            editLocation: 'editLocationError',
+            editBudgetMin: 'editBudgetMinError',
+            editBudgetMax: 'editBudgetMaxError',
+            editPropertyType: 'editPropertyTypeError',
+            editContractorType: 'editContractorTypeError',
+            editOthersCtype: 'editOthersCtypeError',
+            editLotSize: 'editLotSizeError',
+            editFloorArea: 'editFloorAreaError',
+            editBiddingDeadline: 'editBiddingDeadlineError',
+        };
+        Object.entries(fieldMap).forEach(([inputId, errorId]) => {
+            const inp = document.getElementById(inputId);
+            const err = document.getElementById(errorId);
+            if (inp && err) {
+                inp.addEventListener('input', () => { err.textContent = ''; inp.classList.remove('pdm-edit-input--error'); });
+                inp.addEventListener('change', () => { err.textContent = ''; inp.classList.remove('pdm-edit-input--error'); });
+            }
+        });
+    }
+
+    async _loadContractorTypes() {
+        if (this._contractorTypes) return;
+        try {
+            const res = await fetch('/api/contractor-types');
+            const json = await res.json();
+            const types = json.data || json.contractor_types || json;
+            if (Array.isArray(types)) {
+                this._contractorTypes = types;
+                this._populateContractorTypeSelect(types);
+            }
+        } catch (e) {
+            console.error('Failed to load contractor types:', e);
+        }
+    }
+
+    _populateContractorTypeSelect(types) {
+        const sel = document.getElementById('editContractorType');
+        if (!sel) return;
+        sel.innerHTML = '<option value="">Select contractor type</option>';
+        types.forEach(t => {
+            const opt = document.createElement('option');
+            opt.value = t.type_id;
+            opt.textContent = t.type_name;
+            sel.appendChild(opt);
+        });
+    }
+
+    _openEditPanel() {
+        if (!this.currentProject) return;
+        const panel = document.getElementById('editProjectPanel');
+        if (!panel) return;
+
+        this._loadContractorTypes().then(() => {
+            this._populateEditForm();
+            requestAnimationFrame(() => panel.classList.add('is-open'));
+        });
+    }
+
+    _closeEditPanel() {
+        const panel = document.getElementById('editProjectPanel');
+        if (panel) panel.classList.remove('is-open');
+    }
+
+    _populateEditForm() {
+        const p = this.currentProject;
+        if (!p) return;
+        const raw = p._raw || p;
+
+        const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val ?? ''; };
+
+        setVal('editTitle', raw.project_title || p.title || '');
+        setVal('editDescription', raw.project_description || p.description || '');
+        setVal('editLocation', raw.project_location || p.location || '');
+
+        // Budget — format with commas
+        const bMin = raw.budget_range_min || 0;
+        const bMax = raw.budget_range_max || 0;
+        setVal('editBudgetMin', bMin ? Number(bMin).toLocaleString('en-PH') : '');
+        setVal('editBudgetMax', bMax ? Number(bMax).toLocaleString('en-PH') : '');
+
+        // Property type
+        setVal('editPropertyType', raw.property_type || '');
+
+        // Contractor type
+        const typeId = raw.type_id || '';
+        setVal('editContractorType', typeId);
+
+        // Others field
+        const othersWrap = document.getElementById('editOthersWrap');
+        const ctSelect = document.getElementById('editContractorType');
+        if (ctSelect && othersWrap) {
+            const selOpt = ctSelect.options[ctSelect.selectedIndex];
+            const isOthers = selOpt && selOpt.text.toLowerCase().trim() === 'others';
+            othersWrap.style.display = isOthers ? '' : 'none';
+            if (isOthers) setVal('editOthersCtype', raw.if_others_ctype || '');
+        }
+
+        // Lot size / floor area
+        setVal('editLotSize', raw.lot_size || '');
+        setVal('editFloorArea', raw.floor_area || '');
+
+        // Bidding deadline
+        const bd = raw.bidding_due || p.bidding_due || p.bidding_deadline || '';
+        if (bd) {
+            try {
+                const d = new Date(bd);
+                const pad = n => String(n).padStart(2, '0');
+                const localStr = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+                setVal('editBiddingDeadline', localStr);
+            } catch(e) { setVal('editBiddingDeadline', ''); }
+        } else {
+            setVal('editBiddingDeadline', '');
+        }
+
+        // Set min date on bidding deadline
+        const dlInput = document.getElementById('editBiddingDeadline');
+        if (dlInput) {
+            const now = new Date();
+            const pad = n => String(n).padStart(2, '0');
+            dlInput.min = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+        }
+
+        // Clear all errors
+        document.querySelectorAll('.pdm-edit-field-error').forEach(el => el.textContent = '');
+        document.querySelectorAll('.pdm-edit-input--error').forEach(el => el.classList.remove('pdm-edit-input--error'));
+        const errBanner = document.getElementById('editErrorBanner');
+        if (errBanner) errBanner.style.display = 'none';
+    }
+
+    _validateEditForm() {
+        let valid = true;
+        const setError = (inputId, errorId, msg) => {
+            const inp = document.getElementById(inputId);
+            const err = document.getElementById(errorId);
+            if (inp) inp.classList.add('pdm-edit-input--error');
+            if (err) err.textContent = msg;
+            valid = false;
+        };
+
+        const getVal = (id) => (document.getElementById(id)?.value || '').trim();
+        const getNum = (id) => Number(getVal(id).replace(/[^0-9]/g, '')) || 0;
+
+        // Title
+        if (!getVal('editTitle')) setError('editTitle', 'editTitleError', 'Project title is required.');
+        // Description
+        if (!getVal('editDescription')) setError('editDescription', 'editDescriptionError', 'Description is required.');
+        // Location
+        if (!getVal('editLocation')) setError('editLocation', 'editLocationError', 'Location is required.');
+        // Budget min
+        if (!getNum('editBudgetMin')) setError('editBudgetMin', 'editBudgetMinError', 'Minimum budget is required.');
+        // Budget max
+        if (!getNum('editBudgetMax')) setError('editBudgetMax', 'editBudgetMaxError', 'Maximum budget is required.');
+        else if (getNum('editBudgetMax') < getNum('editBudgetMin')) setError('editBudgetMax', 'editBudgetMaxError', 'Must be ≥ minimum budget.');
+        // Property type
+        if (!getVal('editPropertyType')) setError('editPropertyType', 'editPropertyTypeError', 'Property type is required.');
+        // Contractor type
+        if (!getVal('editContractorType')) setError('editContractorType', 'editContractorTypeError', 'Contractor type is required.');
+        // Others
+        const ctSelect = document.getElementById('editContractorType');
+        if (ctSelect) {
+            const selOpt = ctSelect.options[ctSelect.selectedIndex];
+            if (selOpt && selOpt.text.toLowerCase().trim() === 'others' && !getVal('editOthersCtype')) {
+                setError('editOthersCtype', 'editOthersCtypeError', 'Please specify the contractor type.');
+            }
+        }
+        // Lot size
+        if (!getNum('editLotSize')) setError('editLotSize', 'editLotSizeError', 'Lot size is required.');
+        // Floor area
+        if (!getNum('editFloorArea')) setError('editFloorArea', 'editFloorAreaError', 'Floor area is required.');
+
+        // Bidding deadline
+        const dl = getVal('editBiddingDeadline');
+        if (dl && new Date(dl) <= new Date()) {
+            setError('editBiddingDeadline', 'editBiddingDeadlineError', 'Deadline must be in the future.');
+        }
+
+        const errBanner = document.getElementById('editErrorBanner');
+        if (!valid && errBanner) {
+            errBanner.style.display = '';
+            // Scroll to top of form
+            const body = document.getElementById('editPanelBody');
+            if (body) body.scrollTop = 0;
+        } else if (errBanner) {
+            errBanner.style.display = 'none';
+        }
+
+        return valid;
+    }
+
+    async _saveEdit() {
+        if (!this._validateEditForm()) return;
+
+        const p = this.currentProject;
+        if (!p) return;
+        const raw = p._raw || p;
+        const projectId = raw.project_id || p.id || p.project_id;
+        if (!projectId) return;
+
+        const btn = document.getElementById('editSaveBtn');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<span class="pdm-edit-spinner"></span> Saving…';
+        }
+
+        const getVal = (id) => (document.getElementById(id)?.value || '').trim();
+        const getNum = (id) => Number(getVal(id).replace(/[^0-9]/g, '')) || 0;
+
+        const payload = {
+            project_title: getVal('editTitle'),
+            project_description: getVal('editDescription'),
+            project_location: getVal('editLocation'),
+            budget_range_min: getNum('editBudgetMin'),
+            budget_range_max: getNum('editBudgetMax'),
+            property_type: getVal('editPropertyType'),
+            type_id: parseInt(getVal('editContractorType')) || null,
+            lot_size: getNum('editLotSize'),
+            floor_area: getNum('editFloorArea'),
+            bidding_deadline: getVal('editBiddingDeadline') || null,
+        };
+
+        // Others
+        const ctSelect = document.getElementById('editContractorType');
+        if (ctSelect) {
+            const selOpt = ctSelect.options[ctSelect.selectedIndex];
+            if (selOpt && selOpt.text.toLowerCase().trim() === 'others') {
+                payload.if_others_ctype = getVal('editOthersCtype');
+            }
+        }
+
+        const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+        try {
+            const res = await fetch(`/owner/projects/${projectId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrf,
+                },
+                body: JSON.stringify(payload),
+            });
+
+            const json = await res.json();
+
+            if (!res.ok || !json.success) {
+                // Handle validation errors from server
+                if (json.errors) {
+                    const fieldMapping = {
+                        project_title: ['editTitle', 'editTitleError'],
+                        project_description: ['editDescription', 'editDescriptionError'],
+                        project_location: ['editLocation', 'editLocationError'],
+                        budget_range_min: ['editBudgetMin', 'editBudgetMinError'],
+                        budget_range_max: ['editBudgetMax', 'editBudgetMaxError'],
+                        property_type: ['editPropertyType', 'editPropertyTypeError'],
+                        type_id: ['editContractorType', 'editContractorTypeError'],
+                        if_others_ctype: ['editOthersCtype', 'editOthersCtypeError'],
+                        lot_size: ['editLotSize', 'editLotSizeError'],
+                        floor_area: ['editFloorArea', 'editFloorAreaError'],
+                        bidding_deadline: ['editBiddingDeadline', 'editBiddingDeadlineError'],
+                    };
+                    Object.entries(json.errors).forEach(([key, msgs]) => {
+                        const mapping = fieldMapping[key];
+                        if (mapping) {
+                            const inp = document.getElementById(mapping[0]);
+                            const err = document.getElementById(mapping[1]);
+                            if (inp) inp.classList.add('pdm-edit-input--error');
+                            if (err) err.textContent = Array.isArray(msgs) ? msgs[0] : msgs;
+                        }
+                    });
+                    const errBanner = document.getElementById('editErrorBanner');
+                    if (errBanner) errBanner.style.display = '';
+                    const body = document.getElementById('editPanelBody');
+                    if (body) body.scrollTop = 0;
+                } else {
+                    throw new Error(json.message || 'Update failed');
+                }
+                return;
+            }
+
+            // Success — update local data + close panel
+            // Merge edits into local project data
+            raw.project_title = payload.project_title;
+            raw.project_description = payload.project_description;
+            raw.project_location = payload.project_location;
+            raw.budget_range_min = payload.budget_range_min;
+            raw.budget_range_max = payload.budget_range_max;
+            raw.property_type = payload.property_type;
+            raw.type_id = payload.type_id;
+            raw.lot_size = payload.lot_size;
+            raw.floor_area = payload.floor_area;
+            if (payload.bidding_deadline) raw.bidding_due = payload.bidding_deadline;
+
+            // Also update the normalized fields
+            p.title = payload.project_title;
+            p.description = payload.project_description;
+            p.location = payload.project_location;
+
+            // Re-populate the details view with updated data
+            this._populate(p);
+
+            // Update the card in the grid too
+            this._updateProjectCard(projectId, payload);
+
+            // Close the edit panel
+            this._closeEditPanel();
+
+            // Show success toast
+            this._showEditToast('Project updated successfully');
+
+        } catch (err) {
+            console.error('Edit project error:', err);
+            const errBanner = document.getElementById('editErrorBanner');
+            const errText = document.getElementById('editErrorText');
+            if (errBanner) errBanner.style.display = '';
+            if (errText) errText.textContent = err.message || 'Failed to save changes.';
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fi fi-rr-check"></i><span>Save</span>';
+            }
+        }
+    }
+
+    _updateProjectCard(projectId, data) {
+        const card = document.querySelector(`.project-card[data-project-id="${projectId}"]`);
+        if (!card) return;
+
+        // Update data attributes
+        card.setAttribute('data-title', data.project_title);
+        card.setAttribute('data-description', data.project_description);
+        card.setAttribute('data-location', data.project_location);
+        card.setAttribute('data-budget-min', data.budget_range_min);
+        card.setAttribute('data-budget-max', data.budget_range_max);
+
+        // Update visible elements
+        const titleEl = card.querySelector('.project-title');
+        if (titleEl) titleEl.textContent = data.project_title;
+
+        const descEl = card.querySelector('.project-description');
+        if (descEl) descEl.textContent = data.project_description;
+
+        const locEl = card.querySelector('.meta-row:first-child span');
+        if (locEl) locEl.textContent = data.project_location;
+
+        const budgetEl = card.querySelector('.project-budget');
+        if (budgetEl) {
+            const bMin = '₱' + Number(data.budget_range_min).toLocaleString('en-PH');
+            const bMax = '₱' + Number(data.budget_range_max).toLocaleString('en-PH');
+            budgetEl.textContent = `${bMin} – ${bMax}`;
+        }
+
+        // Update the data-project JSON attribute
+        try {
+            const existingData = JSON.parse(card.getAttribute('data-project'));
+            Object.assign(existingData, {
+                project_title: data.project_title,
+                project_description: data.project_description,
+                project_location: data.project_location,
+                budget_range_min: data.budget_range_min,
+                budget_range_max: data.budget_range_max,
+                property_type: data.property_type,
+                type_id: data.type_id,
+                lot_size: data.lot_size,
+                floor_area: data.floor_area,
+            });
+            card.setAttribute('data-project', JSON.stringify(existingData));
+        } catch (e) { /* ignore parse errors */ }
+    }
+
+    _showEditToast(message) {
+        const existing = document.querySelector('.pdm-edit-toast');
+        if (existing) existing.remove();
+
+        const toast = document.createElement('div');
+        toast.className = 'pdm-edit-toast';
+        toast.innerHTML = `<i class="fi fi-rr-check-circle"></i> ${message}`;
+        document.body.appendChild(toast);
+        setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity .3s'; }, 2500);
+        setTimeout(() => toast.remove(), 3000);
     }
 }
 

@@ -454,8 +454,24 @@ class projectsController extends Controller
 
         // If in testing mode and no user, allow access anyway
         if ($isLocalOrTesting && !$user) {
-            // Allow access without authentication for testing
-            return view('owner.propertyOwner_MilestoneReport');
+            // Fetch project summary
+            $projectSummary = null;
+            if ($projectId) {
+                try {
+                    $summaryResult = (new \App\Services\summaryService())->getProjectSummary((int)$projectId);
+                    if (!empty($summaryResult['success'])) {
+                        $projectSummary = $summaryResult['data'];
+                    }
+                } catch (\Exception $e) {
+                    \Log::error('showMilestoneReport summary error: ' . $e->getMessage());
+                }
+            }
+            return view('owner.propertyOwner_MilestoneReport', [
+                'projectId' => $projectId,
+                'payments' => [],
+                'disputes' => [],
+                'projectSummary' => $projectSummary,
+            ]);
         }
 
         // Normal authentication flow for logged-in users
@@ -472,8 +488,123 @@ class projectsController extends Controller
             }
         }
 
+        // ── Fetch Payment History server-side so JS doesn't need an API call ──
+        $payments = [];
+        if ($projectId) {
+            try {
+                $payments = DB::table('milestone_payments as mp')
+                    ->join('milestone_items as mi', 'mp.item_id', '=', 'mi.item_id')
+                    ->join('milestones as m', 'mi.milestone_id', '=', 'm.milestone_id')
+                    ->leftJoin('property_owners as po', 'mp.owner_id', '=', 'po.owner_id')
+                    ->where('mp.project_id', $projectId)
+                    ->whereNotIn('mp.payment_status', ['deleted'])
+                    ->select(
+                        'mp.payment_id',
+                        'mp.item_id',
+                        'mp.amount',
+                        'mp.payment_type',
+                        'mp.transaction_number',
+                        'mp.receipt_photo',
+                        'mp.transaction_date',
+                        'mp.payment_status',
+                        'mp.reason',
+                        'mp.updated_at',
+                        'mi.milestone_item_title',
+                        'mi.milestone_item_cost',
+                        'mi.milestone_id',
+                        'mi.sequence_order',
+                        'mi.percentage_progress',
+                        'mi.settlement_due_date',
+                        'mi.extension_date',
+                        'm.milestone_name',
+                        DB::raw('CONCAT(po.first_name, " ", po.last_name) as owner_name')
+                    )
+                    ->orderBy('mp.transaction_date', 'desc')
+                    ->orderBy('mp.payment_id', 'desc')
+                    ->get()
+                    ->toArray();
+            } catch (\Exception $e) {
+                \Log::error('showMilestoneReport payment fetch error: ' . $e->getMessage());
+                $payments = [];
+            }
+        }
+
+        // ── Fetch Disputes server-side ──
+        $disputes = [];
+        if ($user) {
+            try {
+                $userId = $user->user_id;
+                $disputeRows = DB::table('disputes as d')
+                    ->join('projects as p', 'd.project_id', '=', 'p.project_id')
+                    ->leftJoin('milestones as m', 'd.milestone_id', '=', 'm.milestone_id')
+                    ->leftJoin('milestone_items as mi', 'd.milestone_item_id', '=', 'mi.item_id')
+                    ->where(function ($query) use ($userId) {
+                        $query->where('d.raised_by_user_id', $userId)
+                              ->orWhere('d.against_user_id', $userId);
+                    })
+                    ->select(
+                        'd.dispute_id',
+                        'd.project_id',
+                        'd.raised_by_user_id',
+                        'd.against_user_id',
+                        'd.milestone_id',
+                        'd.milestone_item_id',
+                        'd.dispute_type',
+                        'd.dispute_desc',
+                        'd.if_others_distype',
+                        'd.dispute_status',
+                        'd.admin_response',
+                        'd.created_at as dispute_created_at',
+                        'd.resolved_at',
+                        'p.project_title',
+                        'm.milestone_name',
+                        'mi.milestone_item_title'
+                    )
+                    ->orderBy('d.created_at', 'desc')
+                    ->get();
+
+                // Attach evidence files to each dispute so the JS detail view doesn't need an API call
+                $disputeIds = $disputeRows->pluck('dispute_id')->toArray();
+                $allFiles = [];
+                if (!empty($disputeIds)) {
+                    $allFiles = DB::table('dispute_files')
+                        ->whereIn('dispute_id', $disputeIds)
+                        ->select('file_id', 'dispute_id', 'storage_path', 'original_name', 'mime_type', 'size', 'uploaded_at')
+                        ->orderBy('uploaded_at', 'desc')
+                        ->get()
+                        ->groupBy('dispute_id');
+                }
+
+                $disputes = $disputeRows->map(function ($d) use ($allFiles) {
+                    $d->files = isset($allFiles[$d->dispute_id])
+                        ? $allFiles[$d->dispute_id]->values()->toArray()
+                        : [];
+                    return $d;
+                })->toArray();
+            } catch (\Exception $e) {
+                \Log::error('showMilestoneReport dispute fetch error: ' . $e->getMessage());
+                $disputes = [];
+            }
+        }
+
+        // Fetch project summary
+        $projectSummary = null;
+        if ($projectId) {
+            try {
+                $summaryResult = (new \App\Services\summaryService())->getProjectSummary((int)$projectId);
+                if (!empty($summaryResult['success'])) {
+                    $projectSummary = $summaryResult['data'];
+                }
+            } catch (\Exception $e) {
+                \Log::error('showMilestoneReport summary error: ' . $e->getMessage());
+            }
+        }
+
         return view('owner.propertyOwner_MilestoneReport', [
-            'projectId' => $projectId // Pass ID to view if needed by JS (but JS currently fetches from URL, will need update)
+            'projectId' => $projectId,
+            'payments' => $payments,
+            'disputes' => $disputes,
+            'projectSummary' => $projectSummary,
         ]);
     }
 
@@ -504,8 +635,21 @@ class projectsController extends Controller
 
         // If in testing mode and no user, allow access anyway
         if ($isLocalOrTesting && !$user) {
-            // Allow access without authentication for testing
-            return view('owner.propertyOwner_MilestoneprogressReport');
+            return view('owner.propertyOwner_MilestoneprogressReport', [
+                'itemId' => $itemId,
+                'projectId' => $projectId,
+                'milestoneItem' => null,
+                'progressReports' => [],
+                'payments' => [],
+                'paymentSummary' => [],
+                'projectTitle' => '',
+                'milestoneTitle' => '',
+                'allItems' => [],
+                'itemFiles' => [],
+                'dateHistories' => [],
+                'disputes' => [],
+                'projectSummary' => null,
+            ]);
         }
 
         // Normal authentication flow for logged-in users
@@ -522,9 +666,209 @@ class projectsController extends Controller
             }
         }
 
+        // ── Fetch milestone item data, progress reports, and payments server-side ──
+        $milestoneItem = null;
+        $progressReports = [];
+        $payments = [];
+        $paymentSummary = [];
+        $projectTitle = '';
+        $milestoneTitle = '';
+        $allItems = [];
+
+        try {
+            if ($itemId) {
+                // Get the milestone item with project and milestone info
+                $milestoneItem = DB::table('milestone_items as mi')
+                    ->join('milestones as m', 'mi.milestone_id', '=', 'm.milestone_id')
+                    ->join('projects as p', 'm.project_id', '=', 'p.project_id')
+                    ->where('mi.item_id', $itemId)
+                    ->select(
+                        'mi.item_id',
+                        'mi.milestone_id',
+                        'mi.sequence_order',
+                        'mi.percentage_progress',
+                        'mi.milestone_item_title',
+                        'mi.milestone_item_description',
+                        'mi.milestone_item_cost',
+                        'mi.adjusted_cost',
+                        'mi.carry_forward_amount',
+                        'mi.date_to_finish',
+                        'mi.original_date_to_finish',
+                        'mi.was_extended',
+                        'mi.extension_count',
+                        'mi.settlement_due_date',
+                        'mi.extension_date',
+                        'mi.start_date',
+                        DB::raw("COALESCE(mi.item_status, '') as item_status"),
+                        'm.milestone_id',
+                        'm.project_id',
+                        'p.project_title',
+                        'p.project_status'
+                    )
+                    ->first();
+
+                if ($milestoneItem) {
+                    $projectTitle = $milestoneItem->project_title ?? '';
+                    $milestoneTitle = $milestoneItem->milestone_item_title ?? '';
+
+                    // Get all items for this milestone (for navigation context)
+                    $allItems = DB::table('milestone_items')
+                        ->where('milestone_id', $milestoneItem->milestone_id)
+                        ->orderBy('sequence_order', 'asc')
+                        ->select('item_id', 'milestone_id', 'sequence_order', 'milestone_item_title', 'milestone_item_cost',
+                            'adjusted_cost', 'percentage_progress', 'date_to_finish',
+                            DB::raw("COALESCE(item_status, '') as item_status"))
+                        ->get()
+                        ->toArray();
+
+                    // Get progress reports for this item with files
+                    $progressList = DB::table('progress as pr')
+                        ->where('pr.milestone_item_id', $itemId)
+                        ->where('pr.progress_status', '!=', 'deleted')
+                        ->orderBy('pr.submitted_at', 'desc')
+                        ->select('pr.progress_id', 'pr.milestone_item_id', 'pr.purpose',
+                            'pr.progress_status', 'pr.submitted_at')
+                        ->get();
+
+                    $progressIds = $progressList->pluck('progress_id')->toArray();
+                    $allFiles = [];
+                    if (!empty($progressIds)) {
+                        $allFiles = DB::table('progress_files')
+                            ->whereIn('progress_id', $progressIds)
+                            ->select('file_id', 'progress_id', 'file_path', 'original_name')
+                            ->get()
+                            ->groupBy('progress_id');
+                    }
+
+                    foreach ($progressList as $progress) {
+                        $files = isset($allFiles[$progress->progress_id])
+                            ? $allFiles[$progress->progress_id]->values()->toArray()
+                            : [];
+                        $progress->files = $files;
+                        $progressReports[] = $progress;
+                    }
+
+                    // Get payments for this item
+                    $payments = DB::table('milestone_payments as mp')
+                        ->leftJoin('property_owners as po', 'mp.owner_id', '=', 'po.owner_id')
+                        ->where('mp.item_id', $itemId)
+                        ->whereNotIn('mp.payment_status', ['deleted'])
+                        ->select(
+                            'mp.payment_id', 'mp.item_id', 'mp.amount', 'mp.payment_type',
+                            'mp.transaction_number', 'mp.receipt_photo', 'mp.transaction_date',
+                            'mp.payment_status', 'mp.reason', 'mp.updated_at',
+                            DB::raw('CONCAT(po.first_name, " ", po.last_name) as owner_name')
+                        )
+                        ->orderBy('mp.transaction_date', 'desc')
+                        ->get()
+                        ->toArray();
+
+                    // Payment summary
+                    try {
+                        $milestoneService = new \App\Services\milestoneService();
+                        $paymentSummary = $milestoneService->getItemPaymentSummary((int) $itemId);
+                    } catch (\Exception $e) {
+                        \Log::error('showMilestoneProgressReport payment summary error: ' . $e->getMessage());
+                        $paymentSummary = [];
+                    }
+
+                    // Item attachment files
+                    $itemFiles = DB::table('item_files')
+                        ->where('item_id', $itemId)
+                        ->select('file_id', 'item_id', 'file_path')
+                        ->get()
+                        ->toArray();
+
+                    // Date extension history
+                    $dateHistories = [];
+                    if ($milestoneItem->was_extended) {
+                        $dateHistories = DB::table('milestone_date_histories')
+                            ->where('item_id', $itemId)
+                            ->orderBy('changed_at', 'desc')
+                            ->select('id', 'previous_date', 'new_date', 'changed_by', 'changed_at', 'change_reason')
+                            ->get()
+                            ->toArray();
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            \Log::error('showMilestoneProgressReport data fetch error: ' . $e->getMessage());
+        }
+
+        // ── Fetch Disputes server-side ──
+        $disputes = [];
+        if ($user && $projectId) {
+            try {
+                $userId = $user->user_id;
+                $disputeRows = DB::table('disputes as d')
+                    ->join('projects as p', 'd.project_id', '=', 'p.project_id')
+                    ->leftJoin('milestones as m', 'd.milestone_id', '=', 'm.milestone_id')
+                    ->leftJoin('milestone_items as mi', 'd.milestone_item_id', '=', 'mi.item_id')
+                    ->where(function ($query) use ($userId) {
+                        $query->where('d.raised_by_user_id', $userId)
+                              ->orWhere('d.against_user_id', $userId);
+                    })
+                    ->select(
+                        'd.dispute_id', 'd.project_id', 'd.raised_by_user_id', 'd.against_user_id',
+                        'd.milestone_id', 'd.milestone_item_id', 'd.dispute_type', 'd.dispute_desc',
+                        'd.if_others_distype', 'd.dispute_status', 'd.admin_response',
+                        'd.created_at as dispute_created_at', 'd.resolved_at',
+                        'p.project_title', 'm.milestone_name', 'mi.milestone_item_title'
+                    )
+                    ->orderBy('d.created_at', 'desc')
+                    ->get();
+
+                $disputeIds = $disputeRows->pluck('dispute_id')->toArray();
+                $allDisputeFiles = [];
+                if (!empty($disputeIds)) {
+                    $allDisputeFiles = DB::table('dispute_files')
+                        ->whereIn('dispute_id', $disputeIds)
+                        ->select('file_id', 'dispute_id', 'storage_path', 'original_name', 'mime_type', 'size', 'uploaded_at')
+                        ->orderBy('uploaded_at', 'desc')
+                        ->get()
+                        ->groupBy('dispute_id');
+                }
+
+                $disputes = $disputeRows->map(function ($d) use ($allDisputeFiles) {
+                    $d->files = isset($allDisputeFiles[$d->dispute_id])
+                        ? $allDisputeFiles[$d->dispute_id]->values()->toArray()
+                        : [];
+                    return $d;
+                })->toArray();
+            } catch (\Exception $e) {
+                \Log::error('showMilestoneProgressReport dispute fetch error: ' . $e->getMessage());
+                $disputes = [];
+            }
+        }
+
+        // ── Fetch Project Summary via summaryService ──
+        $projectSummary = null;
+        if ($projectId) {
+            try {
+                $summaryService = new \App\Services\summaryService();
+                $summaryResult = $summaryService->getProjectSummary((int) $projectId);
+                if (!empty($summaryResult['success'])) {
+                    $projectSummary = $summaryResult['data'];
+                }
+            } catch (\Exception $e) {
+                \Log::error('showMilestoneProgressReport summary fetch error: ' . $e->getMessage());
+            }
+        }
+
         return view('owner.propertyOwner_MilestoneprogressReport', [
             'itemId' => $itemId,
-            'projectId' => $projectId
+            'projectId' => $projectId,
+            'milestoneItem' => $milestoneItem,
+            'progressReports' => $progressReports,
+            'payments' => $payments,
+            'paymentSummary' => $paymentSummary,
+            'projectTitle' => $projectTitle,
+            'milestoneTitle' => $milestoneTitle,
+            'allItems' => $allItems,
+            'itemFiles' => $itemFiles ?? [],
+            'dateHistories' => $dateHistories ?? [],
+            'disputes' => $disputes,
+            'projectSummary' => $projectSummary,
         ]);
     }
 
