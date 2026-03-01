@@ -132,13 +132,37 @@ export default function BoostScreen({ navigation }: any) {
 		let attempts = 0;
 		const interval = setInterval(async () => {
 			attempts++;
-			if (attempts > 15) clearInterval(interval);
-			const res = await api_request('/subs/modal-data', { method: 'GET' });
-			const found = res.data?.boostedPosts?.find((b: any) => b.id === projectId || b.project_id === projectId);
-			if (found) {
+			if (attempts > 15) {
 				clearInterval(interval);
-				Alert.alert('Success!', 'Your post is now boosted.');
-				fetchModalData(true);
+				return;
+			}
+
+			try {
+				// First, verify the payment with PayMongo to set is_approved = 1
+				const verifyRes = await api_request('/api/boost/verify', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ project_id: projectId }),
+				});
+
+				// If payment was approved, refresh and show success
+				if (verifyRes.success && verifyRes.data?.approved) {
+					clearInterval(interval);
+					Alert.alert('Success!', 'Your post is now boosted.');
+					fetchModalData(true);
+					return;
+				}
+
+				// Fallback: check if boost already appears in boosted posts
+				const res = await api_request('/subs/modal-data', { method: 'GET' });
+				const found = res.data?.boostedPosts?.find((b: any) => b.id === projectId || b.project_id === projectId);
+				if (found) {
+					clearInterval(interval);
+					Alert.alert('Success!', 'Your post is now boosted.');
+					fetchModalData(true);
+				}
+			} catch (e) {
+				console.warn('Poll verification error:', e);
 			}
 		}, 4000);
 	};
@@ -330,7 +354,7 @@ export default function BoostScreen({ navigation }: any) {
 						<Text style={styles.backText}>Back</Text>
 					</TouchableOpacity>
 
-			
+
 				</View>
 
 				{/* Stats Preview Card */}

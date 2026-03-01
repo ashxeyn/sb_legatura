@@ -16,7 +16,6 @@ import {
     Animated,
     Dimensions,
 } from 'react-native';
-import { Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { api_request } from '../../config/api';
@@ -27,16 +26,20 @@ interface Props {
     onBack: () => void;
 }
 
-type PlanTier = 'gold' | 'silver' | 'bronze';
-
-interface Plan {
-    tier: PlanTier;
+interface SubscriptionPlan {
+    id: number;
+    plan_key: string;
+    for_contractor: number;
     name: string;
-    price: number;
-    icon: keyof typeof Ionicons.glyphMap;
-    color: string;
-    gradient: string[];
-    features: string[];
+    amount: number;
+    currency: string;
+    billing_cycle: string;
+    duration_days: number;
+    benefits: string[];
+    is_active: number;
+    is_deleted: number;
+    created_at: string;
+    updated_at: string;
 }
 
 interface Subscription {
@@ -44,43 +47,34 @@ interface Subscription {
     plan_name: string;
     plan_key: string;
     expires_at: string;
+    expiration_date?: string;
+    expires_on?: string;
     benefits: string[];
 }
 
-const PLANS: Record<PlanTier, Plan> = {
-    gold: {
-        tier: 'gold',
-        name: 'Gold Tier',
-        price: 1999,
-        icon: 'trophy',
-        color: '#F59E0B',
-        gradient: ['#FBBF24', '#F59E0B'],
-        features: ['Unlock AI-driven analytics', 'Unlimited bids', 'Boost bids for 3 months (Stay at the top'],
-    },
-    silver: {
-        tier: 'silver',
-        name: 'Silver Tier',
-        price: 1499,
-        icon: 'star',
-        color: '#6B7280',
-        gradient: ['#9CA3AF', '#6B7280'],
-        features: ['25 Bids per month', 'Boosted Bid (Stay at the top)'],
-    },
-    bronze: {
-        tier: 'bronze',
-        name: 'Bronze Tier',
-        price: 999,
-        icon: 'leaf',
-        color: '#B45309',
-        gradient: ['#D97706', '#B45309'],
-        features: ['10 Bids per month'],
-    },
+// Dynamic styling based on plan_key
+const getPlanStyle = (planKey: string): { icon: keyof typeof Ionicons.glyphMap; color: string; gradient: string[] } => {
+    const key = planKey?.toLowerCase() || '';
+    if (key.includes('gold') || key.includes('premium')) {
+        return { icon: 'trophy', color: '#F59E0B', gradient: ['#FBBF24', '#F59E0B'] };
+    } else if (key.includes('silver') || key.includes('standard')) {
+        return { icon: 'star', color: '#6B7280', gradient: ['#9CA3AF', '#6B7280'] };
+    } else if (key.includes('bronze') || key.includes('basic')) {
+        return { icon: 'leaf', color: '#B45309', gradient: ['#D97706', '#B45309'] };
+    }
+    // Default fallback
+    return { icon: 'ribbon', color: '#3B82F6', gradient: ['#60A5FA', '#3B82F6'] };
+};
+
+const isGoldTier = (planKey: string): boolean => {
+    const key = planKey?.toLowerCase() || '';
+    return key.includes('gold') || key.includes('premium');
 };
 
 export default function SubscriptionScreen({ onBack }: Props) {
-    const [selectedPlan, setSelectedPlan] = useState<PlanTier>('gold');
-    const [expandedPlan, setExpandedPlan] = useState<PlanTier | null>('gold');
-    const tierImageUri = (tier: PlanTier) => `http://192.168.100.27:8000/img/${tier}-tier.png`;
+    const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+    const [expandedPlan, setExpandedPlan] = useState<string | null>(null);
+    const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
     const [loading, setLoading] = useState(false);
     const [activeTab, setActiveTab] = useState<'overview' | 'plans'>('overview');
     const [subscription, setSubscription] = useState<Subscription | null>(null);
@@ -91,6 +85,7 @@ export default function SubscriptionScreen({ onBack }: Props) {
     const [showConfirmCancel, setShowConfirmCancel] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
 
+    const selectedPlanData = plans.find(p => p.plan_key === selectedPlan);
     const isAlreadySubscribed = subscription && subscription.plan_key === selectedPlan;
 
     useEffect(() => {
@@ -103,6 +98,17 @@ export default function SubscriptionScreen({ onBack }: Props) {
             const response = await api_request('/subs/modal-data', { method: 'GET' });
             if (response.success && response.data) {
                 setSubscription(response.data.subscription || null);
+                // Load plans from API
+                const fetchedPlans: SubscriptionPlan[] = response.data.plans || [];
+                setPlans(fetchedPlans);
+                // Set default selection to first plan if not already selected
+                if (fetchedPlans.length > 0 && !selectedPlan) {
+                    // Prefer gold tier as default, otherwise first plan
+                    const goldPlan = fetchedPlans.find(p => isGoldTier(p.plan_key));
+                    const defaultPlan = goldPlan || fetchedPlans[0];
+                    setSelectedPlan(defaultPlan.plan_key);
+                    setExpandedPlan(defaultPlan.plan_key);
+                }
             }
         } catch (error) {
             console.error('Failed to fetch subscription:', error);
@@ -121,6 +127,7 @@ export default function SubscriptionScreen({ onBack }: Props) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     plan_tier: selectedPlan,
+                    plan_id: selectedPlanData?.id,
                     return_url: returnUrl
                 }),
             });
@@ -245,25 +252,27 @@ export default function SubscriptionScreen({ onBack }: Props) {
         });
     };
 
-    const renderOverviewTab = () => (
+    const renderOverviewTab = () => {
+        const subscriptionStyle = subscription ? getPlanStyle(subscription.plan_key) : getPlanStyle('gold');
+        const subscriptionPlanData = subscription ? plans.find(p => p.plan_key === subscription.plan_key) : null;
+
+        return (
         <View style={styles.tabContent}>
             {fetching ? (
                 <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color={PLANS.gold.color} />
+                    <ActivityIndicator size="large" color="#F59E0B" />
                 </View>
             ) : subscription ? (
                 <View>
                     <View style={styles.activeSubscriptionCard}>
                         <View style={styles.activeSubscriptionHeader}>
-                                    {subscription.plan_key ? (
-                                        <Image source={{ uri: tierImageUri(subscription.plan_key as PlanTier) }} style={styles.activeTierLarge} />
-                                    ) : (
-                                        <Ionicons name={PLANS[subscription.plan_key as PlanTier]?.icon || 'trophy'} size={64} color={PLANS[subscription.plan_key as PlanTier]?.color || PLANS.gold.color} />
-                                    )}
+                            <View style={[styles.activeTierIconContainer, { backgroundColor: subscriptionStyle.color + '20' }]}>
+                                <Ionicons name={subscriptionStyle.icon} size={48} color={subscriptionStyle.color} />
+                            </View>
 
                                 <View style={styles.planInfo}>
                                 <Text style={styles.planLabel}>You are currently Subscribed to</Text>
-                                <Text style={styles.planNameLarge}>{subscription.plan_name || PLANS[subscription.plan_key as PlanTier]?.name || 'Gold Tier'}</Text>
+                                <Text style={[styles.planNameLarge, { color: subscriptionStyle.color }]}>{subscription.plan_name || subscriptionPlanData?.name || 'Subscription'}</Text>
                             </View>
                         </View>
 
@@ -290,10 +299,10 @@ export default function SubscriptionScreen({ onBack }: Props) {
 
                     <Text style={styles.otherPlansTitle}>Other plans:</Text>
                     <View style={styles.otherPlansList}>
-                        {Object.values(PLANS).filter(p => p.tier !== subscription.plan_key).map(plan => (
-                            <TouchableOpacity key={plan.tier} style={styles.otherPlanPill} onPress={() => { setSelectedPlan(plan.tier); setActiveTab('plans'); }}>
+                        {plans.filter(p => p.plan_key !== subscription.plan_key).map(plan => (
+                            <TouchableOpacity key={plan.plan_key} style={styles.otherPlanPill} onPress={() => { setSelectedPlan(plan.plan_key); setExpandedPlan(plan.plan_key); setActiveTab('plans'); }}>
                                 <Text style={styles.otherPlanNamePill}>{plan.name.toUpperCase()}</Text>
-                                <Text style={styles.otherPlanPricePill}>₱ {plan.price.toLocaleString()}</Text>
+                                <Text style={styles.otherPlanPricePill}>₱ {plan.amount.toLocaleString()}</Text>
                             </TouchableOpacity>
                         ))}
                     </View>
@@ -319,22 +328,27 @@ export default function SubscriptionScreen({ onBack }: Props) {
             )}
         </View>
     );
+    };
 
-    const renderPlansTab = () => (
+    const renderPlansTab = () => {
+        const expandedPlanData = expandedPlan ? plans.find(p => p.plan_key === expandedPlan) : null;
+
+        return (
         <View style={styles.tabContent}>
             <View style={styles.plansHeader}>
                 <Text style={styles.plansTitle}>Choose Your Plan</Text>
             </View>
 
             <View style={styles.plansList}>
-                {Object.values(PLANS).map((plan) => {
-                    const isSelected = selectedPlan === plan.tier;
-                    const isExpanded = expandedPlan === plan.tier;
+                {plans.map((plan) => {
+                    const planStyle = getPlanStyle(plan.plan_key);
+                    const isSelected = selectedPlan === plan.plan_key;
+                    const isExpanded = expandedPlan === plan.plan_key;
                     const isActive = isSelected || isExpanded;
 
                     return (
                         <View
-                            key={plan.tier}
+                            key={plan.plan_key}
                             style={[
                                 styles.planCard,
                                 isSelected && styles.selectedPlanCard,
@@ -342,17 +356,16 @@ export default function SubscriptionScreen({ onBack }: Props) {
                         >
                             {/* overlapping icon outside the pill - only show when card is selected (clicked) */}
                             {isSelected && (
-                                <Image
-                                    source={{ uri: tierImageUri(plan.tier) }}
-                                    style={[styles.tierImageOverlap, isSelected && styles.tierImageOverlapSelected]}
-                                />
+                                <View style={[styles.tierIconOverlap, { backgroundColor: planStyle.color + '20' }]}>
+                                    <Ionicons name={planStyle.icon} size={36} color={planStyle.color} />
+                                </View>
                             )}
 
                             <TouchableOpacity
                                 style={styles.planHeaderRow}
                                 onPress={() => {
-                                    setSelectedPlan(plan.tier);
-                                    setExpandedPlan(prev => (prev === plan.tier ? null : plan.tier));
+                                    setSelectedPlan(plan.plan_key);
+                                    setExpandedPlan(prev => (prev === plan.plan_key ? null : plan.plan_key));
                                 }}
                                 activeOpacity={0.85}
                             >
@@ -360,12 +373,12 @@ export default function SubscriptionScreen({ onBack }: Props) {
                                     <Text style={[styles.planNamePill, isActive && styles.planNameCentered, isSelected && styles.planNamePillSelected]}>{plan.name.toUpperCase()}</Text>
 
                                     <View style={[styles.priceRight, isActive && styles.priceRightAbsolute]}>
-                                        <Text style={[styles.planPricePill, isSelected && styles.planPricePillSelected]}>₱ {plan.price.toLocaleString()}</Text>
+                                        <Text style={[styles.planPricePill, isSelected && styles.planPricePillSelected]}>₱ {plan.amount.toLocaleString()}</Text>
                                     </View>
                                 </View>
                             </TouchableOpacity>
 
-                            {plan.tier === 'gold' && (
+                            {isGoldTier(plan.plan_key) && (
                                 <View style={styles.starBadge}>
                                     <Ionicons name="star" size={14} color="#FFFFFF" />
                                 </View>
@@ -375,14 +388,14 @@ export default function SubscriptionScreen({ onBack }: Props) {
                 })}
             </View>
 
-            {expandedPlan && (
+            {expandedPlan && expandedPlanData && (
                 <View style={styles.benefitsPanel}>
                     <Text style={styles.benefitsTitle}>You'll get:</Text>
                     <View style={styles.benefitsListCompact}>
-                        {(PLANS[expandedPlan].features || []).map((feature, index) => (
+                        {(expandedPlanData.benefits || []).map((benefit, index) => (
                             <View key={index} style={styles.planFeatureItem}>
                                 <Ionicons name="checkmark" size={16} color="#10B981" />
-                                <Text style={styles.planFeatureText}>{feature}</Text>
+                                <Text style={styles.planFeatureText}>{benefit}</Text>
                             </View>
                         ))}
                     </View>
@@ -392,6 +405,7 @@ export default function SubscriptionScreen({ onBack }: Props) {
 
         </View>
     );
+    };
 
     return (
         <SafeAreaView style={styles.container}>
@@ -454,8 +468,8 @@ export default function SubscriptionScreen({ onBack }: Props) {
                             <RefreshControl
                                 refreshing={refreshing}
                                 onRefresh={onRefresh}
-                                tintColor={PLANS[selectedPlan].color}
-                                colors={[PLANS[selectedPlan].color]}
+                                tintColor={selectedPlanData ? getPlanStyle(selectedPlanData.plan_key).color : '#F59E0B'}
+                                colors={[selectedPlanData ? getPlanStyle(selectedPlanData.plan_key).color : '#F59E0B']}
                             />
                         }
                     >
@@ -470,8 +484,8 @@ export default function SubscriptionScreen({ onBack }: Props) {
                             <RefreshControl
                                 refreshing={refreshing}
                                 onRefresh={onRefresh}
-                                tintColor={PLANS[selectedPlan].color}
-                                colors={[PLANS[selectedPlan].color]}
+                                tintColor={selectedPlanData ? getPlanStyle(selectedPlanData.plan_key).color : '#F59E0B'}
+                                colors={[selectedPlanData ? getPlanStyle(selectedPlanData.plan_key).color : '#F59E0B']}
                             />
                         }
                     >
@@ -492,7 +506,7 @@ export default function SubscriptionScreen({ onBack }: Props) {
                     >
                         {loading ? (
                             <View style={{ paddingVertical: 14 }}>
-                                <ActivityIndicator color={PLANS[selectedPlan].color} />
+                                <ActivityIndicator color={selectedPlanData ? getPlanStyle(selectedPlanData.plan_key).color : '#F59E0B'} />
                             </View>
                         ) : isAlreadySubscribed ? (
                             <Text style={styles.cancelButtonLargeText}>Already Subscribed</Text>
@@ -521,11 +535,11 @@ export default function SubscriptionScreen({ onBack }: Props) {
                         <Text style={styles.modalTitle}>Confirm Subscription</Text>
                         {subscription ? (
                             <Text style={styles.modalMessage}>
-                                You're about to subscribe to the {PLANS[selectedPlan].name} plan. This will replace your current subscription. You will be redirected to complete your payment.
+                                You're about to subscribe to the {selectedPlanData?.name || 'selected'} plan. This will replace your current subscription. You will be redirected to complete your payment.
                             </Text>
                         ) : (
                             <Text style={styles.modalMessage}>
-                                You're about to subscribe to the {PLANS[selectedPlan].name} plan. You will be redirected to complete your payment.
+                                You're about to subscribe to the {selectedPlanData?.name || 'selected'} plan. You will be redirected to complete your payment.
                             </Text>
                         )}
                         <View style={styles.modalActions}>
@@ -596,7 +610,7 @@ export default function SubscriptionScreen({ onBack }: Props) {
                         </View>
                         <Text style={styles.modalTitle}>Subscription Successful!</Text>
                         <Text style={styles.modalMessage}>
-                            Welcome to {subscription?.name || PLANS[selectedPlan].name}!
+                            Welcome to {subscription?.name || selectedPlanData?.name || 'your new plan'}!
                             You now have access to all premium features.
                         </Text>
                         <TouchableOpacity
@@ -719,6 +733,25 @@ const styles = StyleSheet.create({
         height: 84,
         resizeMode: 'contain',
         marginRight: 16,
+    },
+    activeTierIconContainer: {
+        width: 84,
+        height: 84,
+        borderRadius: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 16,
+    },
+    tierIconOverlap: {
+        width: 70,
+        height: 70,
+        borderRadius: 18,
+        justifyContent: 'center',
+        alignItems: 'center',
+        position: 'absolute',
+        left: 8,
+        top: -8,
+        zIndex: 4,
     },
     activeInfo: {
         flex: 1,

@@ -3,8 +3,9 @@
 import os
 import sys
 
-# Change to ai_service directory
-os.chdir('c:\\Users\\user\\Documents\\GitHub\\sb_legatura\\ai_service')
+# Change to the directory where this script is located
+script_dir = os.path.dirname(os.path.abspath(__file__))
+os.chdir(script_dir)
 sys.path.insert(0, '.')
 
 from app import app

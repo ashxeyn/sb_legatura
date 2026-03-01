@@ -6,6 +6,7 @@ use App\Http\Controllers\subs\platformPaymentController;
 use App\Http\Controllers\subs\payMongoController;
 use App\Http\Controllers\contractor\cprocessController;
 use App\Http\Controllers\contractor\membersController;
+use App\Http\Controllers\contractor\AiController;
 use App\Http\Controllers\both\disputeController;
 use App\Http\Controllers\both\milestoneController;
 use App\Http\Controllers\both\homepageController;
@@ -171,7 +172,9 @@ Route::post('/security/change-otp/send', [\App\Http\Controllers\OTPChangeControl
 Route::post('/security/change-otp/verify', [\App\Http\Controllers\OTPChangeController::class, 'verifyOtp'])->name('security.otp.verify');
 
 // Contractor AI Analytics
-Route::get('/contractor/ai-analytics', [\App\Http\Controllers\contractor\cprocessController::class, 'showAIAnalytics'])->name('contractor.ai-analytics');
+Route::get('/contractor/ai-analytics', [AiController::class, 'showAnalytics'])->name('contractor.ai-analytics');
+Route::post('/contractor/ai-analytics/analyze/{id}', [AiController::class, 'analyzeProject'])->name('contractor.ai-analytics.analyze');
+Route::get('/contractor/ai-analytics/stats', [AiController::class, 'getStats'])->name('contractor.ai-analytics.stats');
 
 // PayMongo checkout endpoints (web, requires session auth)
 Route::post('/subscribe/checkout', [payMongoController::class, 'createSubscriptionCheckout']);
