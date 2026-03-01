@@ -128,14 +128,14 @@ class notificationService
                 Log::info('Notification dedup skip', ['user_id' => $userId, 'dedup_key' => $dedupKey]);
                 return null;
             }
-            Log::error('notificationService::create failed', [
+            Log::error('NotificationService::create failed', [
                 'error'   => $e->getMessage(),
                 'user_id' => $userId,
                 'type'    => $subType,
             ]);
             return null;
         } catch (\Exception $e) {
-            Log::error('notificationService::create failed', [
+            Log::error('NotificationService::create failed', [
                 'error'   => $e->getMessage(),
                 'user_id' => $userId,
                 'type'    => $subType,

@@ -2,7 +2,7 @@
 
 namespace App\Jobs;
 
-use App\Services\notificationService;
+use App\Services\NotificationService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -73,7 +73,7 @@ class SendDeadlineNotifications implements ShouldQueue
 
                 if (empty($bidders)) continue;
 
-                notificationService::createForUsers(
+                NotificationService::createForUsers(
                     $bidders,
                     'bid_received',
                     "Bidding closes in {$window['label']}",
@@ -111,7 +111,7 @@ class SendDeadlineNotifications implements ShouldQueue
             ->get();
 
         foreach ($milestones as $ms) {
-            notificationService::create(
+            NotificationService::create(
                 $ms->user_id,
                 'milestone_submitted',
                 'Milestone Starting Soon',
@@ -165,7 +165,7 @@ class SendDeadlineNotifications implements ShouldQueue
                 $recipients = array_filter([$item->owner_user_id, $item->contractor_user_id]);
                 $recipients = array_unique($recipients);
 
-                notificationService::createForUsers(
+                NotificationService::createForUsers(
                     $recipients,
                     'milestone_completed',
                     "Item due in {$window['label']}",
@@ -210,7 +210,7 @@ class SendDeadlineNotifications implements ShouldQueue
         foreach ($items as $item) {
             $recipients = array_filter(array_unique([$item->owner_user_id, $item->contractor_user_id]));
 
-            notificationService::createForUsers(
+            NotificationService::createForUsers(
                 $recipients,
                 'milestone_completed',
                 'Milestone Item Overdue',
@@ -254,7 +254,7 @@ class SendDeadlineNotifications implements ShouldQueue
             ->get();
 
         foreach ($items as $item) {
-            notificationService::create(
+            NotificationService::create(
                 $item->owner_user_id,
                 'payment_due',
                 'Payment Reminder',
@@ -330,7 +330,7 @@ class SendDeadlineNotifications implements ShouldQueue
 
                 // Notify owner
                 if ($item->owner_user_id) {
-                    notificationService::create(
+                    NotificationService::create(
                         (int) $item->owner_user_id,
                         'payment_due',
                         'Payment Due Soon',
@@ -345,7 +345,7 @@ class SendDeadlineNotifications implements ShouldQueue
 
                 // Notify contractor
                 if ($item->contractor_user_id) {
-                    notificationService::create(
+                    NotificationService::create(
                         (int) $item->contractor_user_id,
                         'payment_due',
                         'Payment Due Soon',
@@ -411,7 +411,7 @@ class SendDeadlineNotifications implements ShouldQueue
             $recipients = array_filter(array_unique([$item->owner_user_id, $item->contractor_user_id]));
 
             // Use date in dedup key so it fires once per day per item
-            notificationService::createForUsers(
+            NotificationService::createForUsers(
                 $recipients,
                 'payment_overdue',
                 'Payment Overdue',
@@ -441,7 +441,7 @@ class SendDeadlineNotifications implements ShouldQueue
             ->get();
 
         foreach ($disputes as $dispute) {
-            notificationService::create(
+            NotificationService::create(
                 $dispute->against_user_id,
                 'dispute_opened',
                 'Dispute Pending Response',

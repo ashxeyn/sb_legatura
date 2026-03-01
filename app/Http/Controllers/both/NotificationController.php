@@ -4,7 +4,7 @@ namespace App\Http\Controllers\both;
 
 use App\Http\Controllers\Controller;
 use App\Models\Both\notificationClass;
-use App\Services\notificationService;
+use App\Services\NotificationService;
 use App\Services\NotificationRedirectService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Session;
@@ -67,7 +67,7 @@ class NotificationController extends Controller
 
         // Map each row to frontend shape
         $formatted = collect($result['notifications'])->map(function ($row) {
-            return notificationService::formatForFrontend($row);
+            return NotificationService::formatForFrontend($row);
         })->values()->all();
 
         return response()->json([

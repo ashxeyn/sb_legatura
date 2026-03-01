@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\App;
 use Laravel\Sanctum\PersonalAccessToken;
-use App\Services\notificationService;
+use App\Services\NotificationService;
 
 class projectsController extends Controller
 {
@@ -330,7 +330,7 @@ class projectsController extends Controller
 
             // Apply ranking scores
             try {
-                $ranker = app(\App\Services\bidRankingService::class);
+                $ranker = app(\App\Services\BidRankingService::class);
                 $bids   = $ranker->rankBids((int) $projectId, $bids);
             } catch (\Exception $re) {
                 // Ranking failure is non-fatal — fall back to cost order
@@ -400,7 +400,7 @@ class projectsController extends Controller
                     ->value('user_id');
                 if ($cUserId) {
                     $projTitle = $project->project_title ?? '';
-                    notificationService::create(
+                    NotificationService::create(
                         (int) $cUserId, 'bid_rejected', 'Bid Rejected',
                         "Your bid for \"{$projTitle}\" was not accepted.",
                         'normal', 'project', (int) $projectId,
@@ -1071,7 +1071,7 @@ class projectsController extends Controller
                 $cUserId = DB::table('contractor_users')->where('contractor_id', $bid->contractor_id)->where('is_active', 1)->where('is_deleted', 0)->value('user_id');
                 $projTitle = DB::table('projects')->where('project_id', $projectId)->value('project_title');
                 if ($cUserId) {
-                    notificationService::create($cUserId, 'bid_accepted', 'Bid Accepted', "Your bid for \"{$projTitle}\" has been accepted!", 'high', 'project', (int) $projectId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int) $projectId]]);
+                    NotificationService::create($cUserId, 'bid_accepted', 'Bid Accepted', "Your bid for \"{$projTitle}\" has been accepted!", 'high', 'project', (int) $projectId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int) $projectId]]);
                 }
 
                 // Notify all other contractors whose bids were rejected
@@ -1083,7 +1083,7 @@ class projectsController extends Controller
                 foreach ($rejectedBids as $rBid) {
                     $rUserId = DB::table('contractor_users')->where('contractor_id', $rBid->contractor_id)->where('is_active', 1)->where('is_deleted', 0)->value('user_id');
                     if ($rUserId) {
-                        notificationService::create((int) $rUserId, 'bid_rejected', 'Bid Not Selected', "The property owner has already chosen a contractor for \"{$projTitle}\". Thank you for your bid.", 'normal', 'bid', (int) $rBid->bid_id, ['screen' => 'MyBids', 'params' => ['projectId' => (int) $projectId]]);
+                        NotificationService::create((int) $rUserId, 'bid_rejected', 'Bid Not Selected', "The property owner has already chosen a contractor for \"{$projTitle}\". Thank you for your bid.", 'normal', 'bid', (int) $rBid->bid_id, ['screen' => 'MyBids', 'params' => ['projectId' => (int) $projectId]]);
                     }
                 }
             }
@@ -1150,7 +1150,7 @@ class projectsController extends Controller
             if ($bid) {
                 $cUserId = DB::table('contractor_users')->where('contractor_id', $bid->contractor_id)->where('is_active', 1)->where('is_deleted', 0)->value('user_id');
                 if ($cUserId) {
-                    notificationService::create($cUserId, 'bid_accepted', 'Bid Accepted', "Your bid for \"{$project->project_title}\" has been accepted!", 'high', 'project', (int) $projectId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int) $projectId]]);
+                    NotificationService::create($cUserId, 'bid_accepted', 'Bid Accepted', "Your bid for \"{$project->project_title}\" has been accepted!", 'high', 'project', (int) $projectId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int) $projectId]]);
                 }
 
                 // Notify all other contractors whose bids were rejected
@@ -1162,7 +1162,7 @@ class projectsController extends Controller
                 foreach ($rejectedBids as $rBid) {
                     $rUserId = DB::table('contractor_users')->where('contractor_id', $rBid->contractor_id)->where('is_active', 1)->where('is_deleted', 0)->value('user_id');
                     if ($rUserId) {
-                        notificationService::create((int) $rUserId, 'bid_rejected', 'Bid Not Selected', "The property owner has already chosen a contractor for \"{$project->project_title}\". Thank you for your bid.", 'normal', 'bid', (int) $rBid->bid_id, ['screen' => 'MyBids', 'params' => ['projectId' => (int) $projectId]]);
+                        NotificationService::create((int) $rUserId, 'bid_rejected', 'Bid Not Selected', "The property owner has already chosen a contractor for \"{$project->project_title}\". Thank you for your bid.", 'normal', 'bid', (int) $rBid->bid_id, ['screen' => 'MyBids', 'params' => ['projectId' => (int) $projectId]]);
                     }
                 }
             }
@@ -1773,7 +1773,7 @@ class projectsController extends Controller
                 $cUserId = DB::table('contractor_users')->where('contractor_id', $rejBid->contractor_id)->where('is_active', 1)->where('is_deleted', 0)->value('user_id');
                 $projTitle = $project->project_title ?? DB::table('projects')->where('project_id', $projectId)->value('project_title');
                 if ($cUserId) {
-                    notificationService::create($cUserId, 'bid_rejected', 'Bid Rejected', "Your bid for \"{$projTitle}\" was not accepted.", 'normal', 'project', (int) $projectId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int) $projectId]]);
+                    NotificationService::create($cUserId, 'bid_rejected', 'Bid Rejected', "Your bid for \"{$projTitle}\" was not accepted.", 'normal', 'project', (int) $projectId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int) $projectId]]);
                 }
             }
 
@@ -1918,7 +1918,7 @@ class projectsController extends Controller
             if ($project->selected_contractor_id) {
                 $cUserId = DB::table('contractor_users')->where('contractor_id', $project->selected_contractor_id)->where('is_active', 1)->where('is_deleted', 0)->value('user_id');
                 if ($cUserId) {
-                    notificationService::create($cUserId, 'project_completed', 'Project Completed', "The project \"{$project->project_title}\" has been marked as completed. Congratulations!", 'high', 'project', (int) $projectId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int) $projectId]]);
+                    NotificationService::create($cUserId, 'project_completed', 'Project Completed', "The project \"{$project->project_title}\" has been marked as completed. Congratulations!", 'high', 'project', (int) $projectId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int) $projectId]]);
                 }
             }
 

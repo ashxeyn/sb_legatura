@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Log;
  * Keeps controllers thin. Both the web (Blade) and API (mobile) dashboard
  * actions funnel through this service so dashboard rules are in one place.
  */
-class dashboardService
+class DashboardService
 {
     protected dashboardClass $dashboard;
 

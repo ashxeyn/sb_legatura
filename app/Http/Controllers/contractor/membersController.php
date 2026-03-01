@@ -3,18 +3,18 @@
 namespace App\Http\Controllers\contractor;
 
 use App\Http\Controllers\Controller;
-use App\Services\contractorAuthorizationService;
+use App\Services\ContractorAuthorizationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
-use App\Services\notificationService;
+use App\Services\NotificationService;
 
 class membersController extends Controller
 {
-    protected contractorAuthorizationService $authService;
+    protected ContractorAuthorizationService $authService;
 
-    public function __construct(contractorAuthorizationService $authService)
+    public function __construct(ContractorAuthorizationService $authService)
     {
         $this->authService = $authService;
     }
@@ -271,7 +271,7 @@ class membersController extends Controller
             }
 
             // Notify the new team member
-            notificationService::create((int)$newUserId, 'team_member_added', 'Welcome to the Team', "You have been added as a {$validated['role']} to a contractor team.", 'normal', 'user', (int)$newUserId, ['screen' => 'Dashboard']);
+            NotificationService::create((int)$newUserId, 'team_member_added', 'Welcome to the Team', "You have been added as a {$validated['role']} to a contractor team.", 'normal', 'user', (int)$newUserId, ['screen' => 'Dashboard']);
 
             return response()->json([
                 'success' => true,
@@ -666,7 +666,7 @@ class membersController extends Controller
             // Notify the team member about their status change
             if ($contractorUser->user_id) {
                 $statusLabel = $newStatus ? 'activated' : 'deactivated';
-                notificationService::create((int)$contractorUser->user_id, 'team_member_status', "Account {$statusLabel}", "Your team member account has been {$statusLabel}.", $newStatus ? 'normal' : 'high', 'user', (int)$contractorUser->user_id, ['screen' => 'Dashboard']);
+                NotificationService::create((int)$contractorUser->user_id, 'team_member_status', "Account {$statusLabel}", "Your team member account has been {$statusLabel}.", $newStatus ? 'normal' : 'high', 'user', (int)$contractorUser->user_id, ['screen' => 'Dashboard']);
             }
 
             return response()->json([

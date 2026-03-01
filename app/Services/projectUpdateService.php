@@ -3,13 +3,13 @@
 namespace App\Services;
 
 use App\Models\both\ProjectUpdate;
-use App\Services\notificationService;
+use App\Services\NotificationService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
- * projectUpdateService  –  Enhanced v2
+ * ProjectUpdateService  –  Enhanced v2
  *
  * Features:
  *   - Project context (overview) for the modal
@@ -30,7 +30,7 @@ use Illuminate\Support\Facades\Log;
  *   - All financial mutations inside DB::transaction()
  *   - Carry-forward / overpayment logic is preserved (untouched)
  */
-class projectUpdateService
+class ProjectUpdateService
 {
     // ───────────────────────────────────────────────────────────────────────
     // 1. READ HELPERS
@@ -691,7 +691,7 @@ class projectUpdateService
                 : "Contractor submitted a project update request for \"{$ctx['project_title']}\". Please review.";
 
             if ($ctx['owner_user_id']) {
-                notificationService::create(
+                NotificationService::create(
                     (int) $ctx['owner_user_id'],
                     'project_update',
                     $notifTitle,
@@ -879,7 +879,7 @@ class projectUpdateService
                 ? 'Budget Adjustment Approved'
                 : 'Project Update Approved';
 
-            notificationService::create(
+            NotificationService::create(
                 (int) $ext->contractor_user_id,
                 'project_update',
                 $notifTitle,
@@ -922,7 +922,7 @@ class projectUpdateService
             ? 'Budget Adjustment Rejected'
             : 'Project Update Rejected';
 
-        notificationService::create(
+        NotificationService::create(
             (int) $ext->contractor_user_id,
             'project_update',
             $notifTitle,
@@ -959,7 +959,7 @@ class projectUpdateService
         // Notify owner that the contractor withdrew the update request
         $ctx = $this->getProjectContext($ext->project_id);
         if ($ctx['success'] && $ctx['owner_user_id']) {
-            notificationService::create(
+            NotificationService::create(
                 (int) $ctx['owner_user_id'],
                 'project_update',
                 'Project Update Withdrawn',
@@ -1005,7 +1005,7 @@ class projectUpdateService
             ]);
 
         // Notify contractor
-        notificationService::create(
+        NotificationService::create(
             (int) $ext->contractor_user_id,
             'project_update',
             'Update Revision Requested',
@@ -1174,7 +1174,7 @@ class projectUpdateService
 
         // Notify owner
         if ($ctx['owner_user_id']) {
-            notificationService::create(
+            NotificationService::create(
                 (int) $ctx['owner_user_id'],
                 'project_update',
                 'Revised Update Request Submitted',

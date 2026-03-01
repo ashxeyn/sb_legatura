@@ -2,7 +2,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Services\notificationService;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -54,7 +54,7 @@ class projectAdminController extends Controller
             ->value('po.user_id');
         if ($ownerUserId) {
             $projTitle = DB::table('projects')->where('project_id', $projectId)->value('project_title');
-            notificationService::create(
+            NotificationService::create(
                 (int) $ownerUserId,
                 'project_update',
                 'Project Approved',
@@ -92,7 +92,7 @@ class projectAdminController extends Controller
             ->value('po.user_id');
         if ($ownerUserId) {
             $projTitle = DB::table('projects')->where('project_id', $projectId)->value('project_title');
-            notificationService::create(
+            NotificationService::create(
                 (int) $ownerUserId,
                 'project_update',
                 'Project Rejected',

@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use App\Models\contractor\contractorClass;
 use App\Models\contractor\progressUploadClass;
-use App\Services\notificationService;
+use App\Services\NotificationService;
 
 class cprocessController extends Controller
 {
@@ -1190,7 +1190,7 @@ class cprocessController extends Controller
             $msg = $isEditing
                 ? "Contractor updated a milestone for \"{$projTitle}\". Please review."
                 : "Contractor submitted a milestone plan for \"{$projTitle}\". Please review.";
-            notificationService::create($ownerUserId, $subType, $title, $msg, 'normal', 'milestone', (int) $milestoneId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int) $step1['project_id'], 'tab' => 'milestones']]);
+            NotificationService::create($ownerUserId, $subType, $title, $msg, 'normal', 'milestone', (int) $milestoneId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int) $step1['project_id'], 'tab' => 'milestones']]);
         }
 
         if ($request->expectsJson()) {

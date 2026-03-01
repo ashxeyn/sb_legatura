@@ -3227,7 +3227,7 @@ class authController extends Controller
 
                 // For contractor users (including staff), include member authorization context
                 if ($isContractorUser) {
-                    $contractorAuthService = app(\App\Services\contractorAuthorizationService::class);
+                    $contractorAuthService = app(\App\Services\ContractorAuthorizationService::class);
                     $userId = $userData->user_id ?? $userData->id;
 
                     $memberContext = $contractorAuthService->getAuthorizationContext($userId);

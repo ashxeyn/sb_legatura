@@ -32,7 +32,7 @@ use Illuminate\Support\Collection;
  *   - Modular: each scorer is a standalone method, easy to extend
  *   - Efficient: batch-loads review aggregates and subscription data per project
  */
-class bidRankingService
+class BidRankingService
 {
     // ─── Configurable weights (must sum to 1.0) ────────────────────────
 

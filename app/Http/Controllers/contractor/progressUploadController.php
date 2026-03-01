@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\PersonalAccessToken;
-use App\Services\notificationService;
+use App\Services\NotificationService;
 
 class progressUploadController extends Controller
 {
@@ -331,7 +331,7 @@ class progressUploadController extends Controller
                 ->where('p.project_id', $milestoneItem->project_id)
                 ->value('po.user_id');
             if ($ownerUserId) {
-                notificationService::create($ownerUserId, 'progress_submitted', 'Progress Uploaded', "Contractor uploaded progress for \"{$milestoneItem->milestone_item_title}\" on \"{$milestoneItem->project_title}\".", 'normal', 'progress', (int) $progressId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int) $milestoneItem->project_id, 'tab' => 'progress']]);
+                NotificationService::create($ownerUserId, 'progress_submitted', 'Progress Uploaded', "Contractor uploaded progress for \"{$milestoneItem->milestone_item_title}\" on \"{$milestoneItem->project_title}\".", 'normal', 'progress', (int) $progressId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int) $milestoneItem->project_id, 'tab' => 'progress']]);
             }
 
             if ($request->expectsJson()) {
@@ -987,7 +987,7 @@ class progressUploadController extends Controller
             if ($progInfo) {
                 $cUserId = DB::table('contractor_users')->where('contractor_id', $progInfo->contractor_id)->where('is_active', 1)->where('is_deleted', 0)->value('user_id');
                 if ($cUserId) {
-                    notificationService::create($cUserId, 'progress_approved', 'Progress Approved', "Your progress for \"{$progInfo->milestone_item_title}\" on \"{$progInfo->project_title}\" was approved.", 'normal', 'progress', (int) $progressId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int) $progInfo->project_id, 'tab' => 'progress']]);
+                    NotificationService::create($cUserId, 'progress_approved', 'Progress Approved', "Your progress for \"{$progInfo->milestone_item_title}\" on \"{$progInfo->project_title}\" was approved.", 'normal', 'progress', (int) $progressId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int) $progInfo->project_id, 'tab' => 'progress']]);
                 }
             }
 
@@ -1138,7 +1138,7 @@ class progressUploadController extends Controller
                 $cUserId = DB::table('contractor_users')->where('contractor_id', $progInfo->contractor_id)->where('is_active', 1)->where('is_deleted', 0)->value('user_id');
                 if ($cUserId) {
                     $reasonNote = $reason ? " Reason: {$reason}" : '';
-                    notificationService::create($cUserId, 'progress_rejected', 'Progress Rejected', "Your progress for \"{$progInfo->milestone_item_title}\" on \"{$progInfo->project_title}\" was rejected.{$reasonNote}", 'high', 'progress', (int) $progressId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int) $progInfo->project_id, 'tab' => 'progress']]);
+                    NotificationService::create($cUserId, 'progress_rejected', 'Progress Rejected', "Your progress for \"{$progInfo->milestone_item_title}\" on \"{$progInfo->project_title}\" was rejected.{$reasonNote}", 'high', 'progress', (int) $progressId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int) $progInfo->project_id, 'tab' => 'progress']]);
                 }
             }
 

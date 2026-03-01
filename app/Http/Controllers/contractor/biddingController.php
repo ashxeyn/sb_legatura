@@ -11,8 +11,8 @@ use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use App\Services\notificationService;
-use App\Services\bidRankingService;
+use App\Services\NotificationService;
+use App\Services\BidRankingService;
 
 class biddingController extends Controller
 {
@@ -148,7 +148,7 @@ class biddingController extends Controller
 
             if ($ownerUserId) {
                 $projTitle = DB::table('projects')->where('project_id', $request->project_id)->value('project_title');
-                notificationService::create(
+                NotificationService::create(
                     (int) $ownerUserId,
                     'bid_received',
                     'New Bid Received',
@@ -426,7 +426,7 @@ class biddingController extends Controller
 
             // Apply ranking scores
             try {
-                $ranker = app(bidRankingService::class);
+                $ranker = app(BidRankingService::class);
                 $bids   = $ranker->rankBids((int) $projectId, $bids);
             } catch (\Exception $re) {
                 Log::warning('Bid ranking failed, falling back to submission order', [
@@ -466,7 +466,7 @@ class biddingController extends Controller
             }
 
             // Authorization check: Only owner/representative can place bids
-            $authService = app(\App\Services\contractorAuthorizationService::class);
+            $authService = app(\App\Services\ContractorAuthorizationService::class);
             $authError = $authService->validateBiddingAccess($userId);
             if ($authError) {
                 return response()->json([
@@ -605,7 +605,7 @@ class biddingController extends Controller
                 ->value('po.user_id');
             if ($ownerUserId) {
                 $projTitle = DB::table('projects')->where('project_id', $projectId)->value('project_title');
-                notificationService::create(
+                NotificationService::create(
                     (int) $ownerUserId,
                     'bid_received',
                     'New Bid Received',

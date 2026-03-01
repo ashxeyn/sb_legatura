@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\PersonalAccessToken;
-use App\Services\notificationService;
+use App\Services\NotificationService;
 
 class paymentUploadController extends Controller
 {
@@ -264,7 +264,7 @@ class paymentUploadController extends Controller
 			$contractorUserId = $project->contractor_notify_user_id ?? null;
 			if ($contractorUserId) {
 				$projTitle = $project->project_title ?? '';
-				notificationService::create((int)$contractorUserId, 'payment_submitted', 'Payment Uploaded', "Owner uploaded a payment for \"{$projTitle}\". Please review.", 'normal', 'payment', (int)$paymentId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int)$validated['project_id'], 'tab' => 'payments']]);
+				NotificationService::create((int)$contractorUserId, 'payment_submitted', 'Payment Uploaded', "Owner uploaded a payment for \"{$projTitle}\". Please review.", 'normal', 'payment', (int)$paymentId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int)$validated['project_id'], 'tab' => 'payments']]);
 			}
 
 			return response()->json(['success' => true, 'message' => 'Payment validation uploaded', 'payment_id' => $paymentId], 201);
