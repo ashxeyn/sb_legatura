@@ -67,6 +67,44 @@ class authService
         }
     }
 
+    public function sendAccountPendingEmail($email, $firstName, $accountType = 'account')
+    {
+        \Log::info("Sending account pending approval email to {$email}", ['account_type' => $accountType, 'timestamp' => now()]);
+
+        try {
+            $subject = 'Legatura - Account Registration Received';
+            $accountTypeText = $accountType === 'contractor' ? 'contractor' : ($accountType === 'owner' ? 'property owner' : 'account');
+
+            $message = "Dear {$firstName},\n\n";
+            $message .= "Thank you for registering your {$accountTypeText} account with Legatura!\n\n";
+            $message .= "We have received your registration and are currently reviewing your application. This process typically takes 1-3 business days.\n\n";
+            $message .= "What happens next:\n";
+            $message .= "• Our admin team will verify your submitted documents\n";
+            $message .= "• You will receive an email notification once your account is approved\n";
+            $message .= "• After approval, you can log in and start using all platform features\n\n";
+            $message .= "If you have any questions or need assistance, please don't hesitate to contact our support team.\n\n";
+            $message .= "Thank you for choosing Legatura!\n\n";
+            $message .= "Best regards,\n";
+            $message .= "The Legatura Team";
+
+            \Mail::raw($message, function($mailMessage) use ($email, $subject) {
+                $mailMessage->to($email)
+                           ->subject($subject);
+            });
+
+            \Log::info("Account pending approval email sent successfully to {$email}");
+            return true;
+        } catch (\Exception $e) {
+            \Log::error("Failed to send account pending approval email to {$email}", [
+                'error' => $e->getMessage(),
+                'code' => $e->getCode(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ]);
+            return false;
+        }
+    }
+
     /**
      * Send change OTP to a destination (email or phone) and cache the hashed OTP.
      * Returns array with success, masked destination and otp_token.

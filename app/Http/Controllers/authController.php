@@ -934,13 +934,25 @@ class authController extends Controller
             'phone_number' => $step1['company_phone']
         ]);
 
+        // Send account pending approval email notification
+        try {
+            $userEmail = $step2['company_email'] ?? $step2['email'] ?? null;
+            $firstName = $step2['first_name'] ?? 'User';
+            if ($userEmail) {
+                $this->authService->sendAccountPendingEmail($userEmail, $firstName, 'contractor');
+                \Log::info("Sent account pending email to contractor: {$userEmail}");
+            }
+        } catch (\Exception $e) {
+            \Log::warning("Failed to send account pending email for contractor registration: " . $e->getMessage());
+        }
+
         // Clear session
         Session::forget(['signup_user_type', 'signup_step', 'contractor_step1', 'contractor_step2', 'contractor_step4']);
 
         if ($request->expectsJson()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Registration successful! Please wait for admin approval.',
+                'message' => 'Registration successful! Please check your email for next steps and wait for admin approval.',
                 'user_id' => $userId,
                 'contractor_id' => $contractorId,
                 'pending_role_request' => true,
@@ -1828,10 +1840,22 @@ class authController extends Controller
             \Log::warning('Failed to clean up owner OTP cache in final step: ' . $e->getMessage());
         }
 
+        // Send account pending approval email notification
+        try {
+            $userEmail = $step2['email'] ?? null;
+            $firstName = $step1['first_name'] ?? 'User';
+            if ($userEmail) {
+                $this->authService->sendAccountPendingEmail($userEmail, $firstName, 'owner');
+                \Log::info("Sent account pending email to property owner: {$userEmail}");
+            }
+        } catch (\Exception $e) {
+            \Log::warning("Failed to send account pending email for property owner registration: " . $e->getMessage());
+        }
+
         if ($request->expectsJson()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Registration successful! Please wait for admin approval.',
+                'message' => 'Registration successful! Please check your email for next steps and wait for admin approval.',
                 'user_id' => $userId,
                 'owner_id' => $ownerId,
                 'pending_role_request' => true,
@@ -1841,7 +1865,7 @@ class authController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Registration successful! Please wait for admin approval.',
+            'message' => 'Registration successful! Please check your email for next steps and wait for admin approval.',
             'pending_role_request' => true,
             'redirect' => '/accounts/login'
         ]);
