@@ -4,6 +4,7 @@ namespace App\Models\both;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Collection;
 
 /**
  * feedClass — Query-builder helper for homepage / feed data.
@@ -262,63 +263,8 @@ class feedClass
             }
         }
 
-        // ── Search keyword ──────────────────────────────────────────────
-        if (!empty($filters['search'])) {
-            $keyword = '%' . $filters['search'] . '%';
-            $query->where(function ($q) use ($keyword) {
-                $q->where('p.project_title', 'LIKE', $keyword)
-                  ->orWhere('p.project_description', 'LIKE', $keyword)
-                  ->orWhere('p.project_location', 'LIKE', $keyword)
-                  ->orWhere('ct.type_name', 'LIKE', $keyword)
-                  ->orWhere('p.property_type', 'LIKE', $keyword)
-                  ->orWhereRaw("CONCAT(po.first_name, ' ', COALESCE(po.middle_name, ''), ' ', po.last_name) LIKE ?", [$keyword]);
-            });
-        }
-
-        // ── Contractor/project type ─────────────────────────────────────
-        if (!empty($filters['type_id'])) {
-            $query->where('p.type_id', $filters['type_id']);
-        }
-
-        // ── Property type ───────────────────────────────────────────────
-        if (!empty($filters['property_type'])) {
-            $query->where('p.property_type', $filters['property_type']);
-        }
-
-        // ── Location filters ────────────────────────────────────────────
-        if (!empty($filters['location'])) {
-            $query->where('p.project_location', 'LIKE', '%' . $filters['location'] . '%');
-        }
-        if (!empty($filters['province'])) {
-            $query->where('p.project_location', 'LIKE', '%' . $filters['province'] . '%');
-        }
-        if (!empty($filters['city'])) {
-            $query->where('p.project_location', 'LIKE', '%' . $filters['city'] . '%');
-        }
-
-        // ── Budget range ────────────────────────────────────────────────
-        if (isset($filters['budget_min']) && $filters['budget_min'] !== '') {
-            $query->where('p.budget_range_min', '>=', (float) $filters['budget_min']);
-        }
-        if (isset($filters['budget_max']) && $filters['budget_max'] !== '') {
-            $query->where('p.budget_range_max', '<=', (float) $filters['budget_max']);
-        }
-
-        // ── Lot size range ──────────────────────────────────────────────
-        if (isset($filters['min_lot_size']) && $filters['min_lot_size'] !== '') {
-            $query->where('p.lot_size', '>=', (float) $filters['min_lot_size']);
-        }
-        if (isset($filters['max_lot_size']) && $filters['max_lot_size'] !== '') {
-            $query->where('p.lot_size', '<=', (float) $filters['max_lot_size']);
-        }
-
-        // ── Floor area range ────────────────────────────────────────────
-        if (isset($filters['min_floor_area']) && $filters['min_floor_area'] !== '') {
-            $query->where('p.floor_area', '>=', (float) $filters['min_floor_area']);
-        }
-        if (isset($filters['max_floor_area']) && $filters['max_floor_area'] !== '') {
-            $query->where('p.floor_area', '<=', (float) $filters['max_floor_area']);
-        }
+        // ── Apply shared search/filter logic ─────────────────────────
+        $this->applyProjectFilters($query, $filters);
 
         // Sort: matching type first, then newest
         if ($contractorTypeId) {
@@ -354,6 +300,111 @@ class feedClass
         }
 
         return $this->paginationEnvelope($projects, $totalCount, $page, $perPage);
+    }
+
+    /**
+     * Return ALL filtered projects as a lightweight collection (no pagination,
+     * no files/bids attachment). Designed for the feedRankingService to score
+     * before manual pagination is applied by the caller.
+     *
+     * Accepts the same filters as getApprovedProjects().
+     */
+    public function getFilteredProjectsForRanking(?int $contractorId = null, array $filters = []): Collection
+    {
+        $this->expirePastDeadlines();
+
+        $projectStatusFilter = $filters['project_status'] ?? 'open';
+
+        $query = DB::table('projects as p')
+            ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
+            ->join('contractor_types as ct', 'p.type_id', '=', 'ct.type_id')
+            ->join('property_owners as po', 'pr.owner_id', '=', 'po.owner_id')
+            ->join('users as u', 'po.user_id', '=', 'u.user_id');
+
+        // Status-based filtering (identical to getApprovedProjects)
+        if ($projectStatusFilter === 'completed') {
+            $query->where('p.project_status', 'completed');
+        } elseif ($projectStatusFilter === 'all') {
+            $query->where('pr.project_post_status', 'approved')
+                  ->whereNotIn('p.project_status', ['deleted', 'deleted_post']);
+        } else {
+            $query->where('pr.project_post_status', 'approved')
+                  ->where('p.project_status', 'open')
+                  ->where(function ($q) {
+                      $q->whereNull('pr.bidding_due')
+                        ->orWhere('pr.bidding_due', '>=', now());
+                  });
+        }
+
+        $query->select(
+            'p.project_id',
+            'p.project_title',
+            'p.project_description',
+            'p.project_location',
+            'p.budget_range_min',
+            'p.budget_range_max',
+            'p.lot_size',
+            'p.floor_area',
+            'p.property_type',
+            'p.type_id',
+            'ct.type_name',
+            'p.project_status',
+            'pr.project_post_status',
+            'pr.bidding_due as bidding_deadline',
+            'pr.created_at',
+            'pr.owner_id as owner_id',
+            DB::raw("CONCAT(po.first_name, ' ', COALESCE(po.middle_name, ''), ' ', po.last_name) as owner_name"),
+            'u.profile_pic as owner_profile_pic',
+            'u.user_id as owner_user_id'
+        );
+
+        // Exclude projects the contractor already bid on
+        if ($contractorId) {
+            $bidProjectIds = DB::table('bids')
+                ->where('contractor_id', $contractorId)
+                ->whereNotIn('bid_status', ['cancelled'])
+                ->pluck('project_id');
+
+            if ($bidProjectIds->isNotEmpty()) {
+                $query->whereNotIn('p.project_id', $bidProjectIds);
+            }
+        }
+
+        // ── Apply the same search/filter logic ──────────────────────────
+        $this->applyProjectFilters($query, $filters);
+
+        return $query->get();
+    }
+
+    /**
+     * Hydrate a paginated slice of projects with bids_count and files[].
+     *
+     * Call this AFTER ranking + slicing so we only run N+1 queries for
+     * the visible page, not the entire result set.
+     */
+    public function hydrateProjectSlice(Collection $projects): Collection
+    {
+        foreach ($projects as $project) {
+            $project->bids_count = DB::table('bids')
+                ->where('project_id', $project->project_id)
+                ->whereNotIn('bid_status', ['cancelled'])
+                ->count();
+
+            $project->files = DB::table('project_files')
+                ->where('project_id', $project->project_id)
+                ->orderBy('file_id', 'asc')
+                ->select('file_id', 'file_type', 'file_path')
+                ->get()
+                ->map(fn ($f) => [
+                    'file_id'   => $f->file_id,
+                    'file_type' => $f->file_type,
+                    'file_path' => $f->file_path,
+                ])
+                ->values()
+                ->toArray();
+        }
+
+        return $projects;
     }
 
     /**
@@ -471,5 +522,72 @@ class feedClass
                 'has_more'     => $page < $totalPages,
             ],
         ];
+    }
+
+    /**
+     * Apply the shared set of search/filter WHERE clauses to a project query.
+     *
+     * Expects the query to use aliases: p (projects), ct (contractor_types),
+     * po (property_owners), pr (project_relationships).
+     */
+    private function applyProjectFilters($query, array $filters): void
+    {
+        // ── Search keyword ──────────────────────────────────────────────
+        if (!empty($filters['search'])) {
+            $keyword = '%' . $filters['search'] . '%';
+            $query->where(function ($q) use ($keyword) {
+                $q->where('p.project_title', 'LIKE', $keyword)
+                  ->orWhere('p.project_description', 'LIKE', $keyword)
+                  ->orWhere('p.project_location', 'LIKE', $keyword)
+                  ->orWhere('ct.type_name', 'LIKE', $keyword)
+                  ->orWhere('p.property_type', 'LIKE', $keyword)
+                  ->orWhereRaw("CONCAT(po.first_name, ' ', COALESCE(po.middle_name, ''), ' ', po.last_name) LIKE ?", [$keyword]);
+            });
+        }
+
+        // ── Contractor/project type ─────────────────────────────────────
+        if (!empty($filters['type_id'])) {
+            $query->where('p.type_id', $filters['type_id']);
+        }
+
+        // ── Property type ───────────────────────────────────────────────
+        if (!empty($filters['property_type'])) {
+            $query->where('p.property_type', $filters['property_type']);
+        }
+
+        // ── Location filters ────────────────────────────────────────────
+        if (!empty($filters['location'])) {
+            $query->where('p.project_location', 'LIKE', '%' . $filters['location'] . '%');
+        }
+        if (!empty($filters['province'])) {
+            $query->where('p.project_location', 'LIKE', '%' . $filters['province'] . '%');
+        }
+        if (!empty($filters['city'])) {
+            $query->where('p.project_location', 'LIKE', '%' . $filters['city'] . '%');
+        }
+
+        // ── Budget range ────────────────────────────────────────────────
+        if (isset($filters['budget_min']) && $filters['budget_min'] !== '') {
+            $query->where('p.budget_range_min', '>=', (float) $filters['budget_min']);
+        }
+        if (isset($filters['budget_max']) && $filters['budget_max'] !== '') {
+            $query->where('p.budget_range_max', '<=', (float) $filters['budget_max']);
+        }
+
+        // ── Lot size range ──────────────────────────────────────────────
+        if (isset($filters['min_lot_size']) && $filters['min_lot_size'] !== '') {
+            $query->where('p.lot_size', '>=', (float) $filters['min_lot_size']);
+        }
+        if (isset($filters['max_lot_size']) && $filters['max_lot_size'] !== '') {
+            $query->where('p.lot_size', '<=', (float) $filters['max_lot_size']);
+        }
+
+        // ── Floor area range ────────────────────────────────────────────
+        if (isset($filters['min_floor_area']) && $filters['min_floor_area'] !== '') {
+            $query->where('p.floor_area', '>=', (float) $filters['min_floor_area']);
+        }
+        if (isset($filters['max_floor_area']) && $filters['max_floor_area'] !== '') {
+            $query->where('p.floor_area', '<=', (float) $filters['max_floor_area']);
+        }
     }
 }
