@@ -36,13 +36,14 @@ export interface CompanyInfo {
 
 interface CompanyInfoScreenProps {
     onBackPress: () => void;
-    onNext: (companyInfo: CompanyInfo) => void;
+    onNext: (companyInfo: CompanyInfo) => Promise<Record<string, string[]> | void>;
     formData: any;
     initialData?: Partial<CompanyInfo>;
 }
 
 export default function CompanyInfoScreen({ onBackPress, onNext, formData, initialData }: CompanyInfoScreenProps) {
     const [isLoading, setIsLoading] = useState(false);
+    const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
     const [companyName, setCompanyName] = useState(initialData?.companyName || '');
     const [companyPhone, setCompanyPhone] = useState(initialData?.companyPhone || '');
     const [foundedDate, setFoundedDate] = useState(initialData?.foundedDate || '');
@@ -154,49 +155,31 @@ export default function CompanyInfoScreen({ onBackPress, onNext, formData, initi
     const [showDatePicker, setShowDatePicker] = useState(false);
 
     const handleNext = async () => {
-        // Validation
-        if (!companyName.trim()) {
-            Alert.alert('Error', 'Please enter company name');
-            return;
-        }
+        if (isLoading) return;
+
+        // Clear previous errors
+        setFieldErrors({});
+
+        // Local validation — build inline errors
+        const errors: Record<string, string[]> = {};
+        if (!companyName.trim()) errors.company_name = ['Company name is required.'];
         if (!companyPhone.trim()) {
-            Alert.alert('Error', 'Please enter company phone');
-            return;
+            errors.company_phone = ['Company phone is required.'];
+        } else if (!/^09[0-9]{9}$/.test(companyPhone.replace(/\s+/g, '').replace(/-/g, ''))) {
+            errors.company_phone = ['Phone number must be 11 digits starting with 09.'];
         }
-        if (!foundedDate.trim()) {
-            Alert.alert('Error', 'Please select founding date using the calendar');
-            return;
-        }
-        if (!contractorTypeId) {
-            Alert.alert('Error', 'Please select contractor type');
-            return;
-        }
-        if (contractorTypeId === '9' && !contractorTypeOtherText.trim()) {
-            Alert.alert('Error', 'Please specify other contractor type');
-            return;
-        }
-        if (!servicesOffered.trim()) {
-            Alert.alert('Error', 'Please enter services offered');
-            return;
-        }
-        if (!businessAddressStreet.trim()) {
-            Alert.alert('Error', 'Please enter business address');
-            return;
-        }
-        if (!businessAddressProvince) {
-            Alert.alert('Error', 'Please select province');
-            return;
-        }
-        if (!businessAddressCity) {
-            Alert.alert('Error', 'Please select city');
-            return;
-        }
-        if (!businessAddressBarangay) {
-            Alert.alert('Error', 'Please select barangay');
-            return;
-        }
-        if (!businessAddressPostal.trim()) {
-            Alert.alert('Error', 'Please enter postal code');
+        if (!foundedDate.trim()) errors.founded_date = ['Please select founding date.'];
+        if (!contractorTypeId) errors.contractor_type_id = ['Please select contractor type.'];
+        if (contractorTypeId === '9' && !contractorTypeOtherText.trim()) errors.contractor_type_other_text = ['Please specify other contractor type.'];
+        if (!servicesOffered.trim()) errors.services_offered = ['Services offered is required.'];
+        if (!businessAddressStreet.trim()) errors.business_address_street = ['Street address is required.'];
+        if (!businessAddressProvince) errors.business_address_province = ['Please select a province.'];
+        if (!businessAddressCity) errors.business_address_city = ['Please select a city.'];
+        if (!businessAddressBarangay) errors.business_address_barangay = ['Please select a barangay.'];
+        if (!businessAddressPostal.trim()) errors.business_address_postal = ['Postal code is required.'];
+
+        if (Object.keys(errors).length > 0) {
+            setFieldErrors(errors);
             return;
         }
 
@@ -224,7 +207,10 @@ export default function CompanyInfoScreen({ onBackPress, onNext, formData, initi
         };
 
         try {
-            await onNext(companyInfo);
+            const serverErrors = await onNext(companyInfo);
+            if (serverErrors) {
+                setFieldErrors(serverErrors);
+            }
         } finally {
             setIsLoading(false);
         }
@@ -329,29 +315,30 @@ export default function CompanyInfoScreen({ onBackPress, onNext, formData, initi
 
                     <View style={styles.inputContainer}>
                         <TextInput
-                            style={styles.input}
+                            style={[styles.input, fieldErrors.company_name && styles.inputError]}
                             value={companyName}
-                            onChangeText={setCompanyName}
+                            onChangeText={(text) => { setCompanyName(text); setFieldErrors(prev => { const { company_name, ...rest } = prev; return rest; }); }}
                             placeholder="Company Name *"
                             placeholderTextColor="#999"
                         />
+                        {fieldErrors.company_name && <Text style={styles.fieldErrorText}>{fieldErrors.company_name[0]}</Text>}
                     </View>
 
                     <View style={styles.inputContainer}>
                         <TextInput
-                            style={styles.input}
+                            style={[styles.input, fieldErrors.company_phone && styles.inputError]}
                             value={companyPhone}
-                            onChangeText={setCompanyPhone}
+                            onChangeText={(text) => { setCompanyPhone(text); setFieldErrors(prev => { const { company_phone, ...rest } = prev; return rest; }); }}
                             placeholder="Company Phone * (e.g., 09171234567)"
                             placeholderTextColor="#999"
                             keyboardType="phone-pad"
                             maxLength={11}
                         />
-                        <Text style={styles.fieldHint}>11 digits starting with 09</Text>
+                        {fieldErrors.company_phone ? <Text style={styles.fieldErrorText}>{fieldErrors.company_phone[0]}</Text> : <Text style={styles.fieldHint}>11 digits starting with 09</Text>}
                     </View>
 
                     <View style={styles.inputContainer}>
-                        <TouchableOpacity onPress={() => setShowDatePicker(true)} style={[styles.input, styles.dateInput]}> 
+                        <TouchableOpacity onPress={() => { setShowDatePicker(true); setFieldErrors(prev => { const { founded_date, ...rest } = prev; return rest; }); }} style={[styles.input, styles.dateInput, fieldErrors.founded_date && styles.inputError]}>
                             <View style={styles.dateInner}>
                                 <Text style={[styles.inputText, foundedDate ? styles.inputValue : styles.placeholderText]}>
                                     {foundedDate ? (() => {
@@ -368,6 +355,7 @@ export default function CompanyInfoScreen({ onBackPress, onNext, formData, initi
                                 <MaterialIcons name="event" size={20} color="#666666" style={styles.calendarIcon} />
                             </View>
                         </TouchableOpacity>
+                        {fieldErrors.founded_date && <Text style={styles.fieldErrorText}>{fieldErrors.founded_date[0]}</Text>}
                         {showDatePicker && (
                             <DateTimePicker
                                 value={foundedDate ? new Date(foundedDate) : new Date()}
@@ -388,7 +376,7 @@ export default function CompanyInfoScreen({ onBackPress, onNext, formData, initi
                     </View>
 
                     <View style={styles.inputContainer}>
-                        <TouchableOpacity style={styles.dropdownContainer} onPress={() => setShowContractorTypeModal(true)}>
+                        <TouchableOpacity style={[styles.dropdownContainer, fieldErrors.contractor_type_id && styles.dropdownError]} onPress={() => { setShowContractorTypeModal(true); setFieldErrors(prev => { const { contractor_type_id, ...rest } = prev; return rest; }); }}>
                             <View style={styles.dropdownInputWrapper}>
                                 <Text style={[styles.dropdownInputText, !contractorTypeId && styles.placeholderText]}>
                                     {getContractorTypeName() || 'Contractor Type *'}
@@ -396,30 +384,33 @@ export default function CompanyInfoScreen({ onBackPress, onNext, formData, initi
                                 <MaterialIcons name="keyboard-arrow-down" size={24} color="#666666" style={styles.dropdownIcon} />
                             </View>
                         </TouchableOpacity>
+                        {fieldErrors.contractor_type_id && <Text style={styles.fieldErrorText}>{fieldErrors.contractor_type_id[0]}</Text>}
                     </View>
 
                     {contractorTypeId === '9' && (
                         <View style={styles.inputContainer}>
                             <TextInput
-                                style={styles.input}
+                                style={[styles.input, fieldErrors.contractor_type_other_text && styles.inputError]}
                                 value={contractorTypeOtherText}
-                                onChangeText={setContractorTypeOtherText}
+                                onChangeText={(text) => { setContractorTypeOtherText(text); setFieldErrors(prev => { const { contractor_type_other_text, ...rest } = prev; return rest; }); }}
                                 placeholder="Specify Other Contractor Type *"
                                 placeholderTextColor="#999"
                             />
+                            {fieldErrors.contractor_type_other_text && <Text style={styles.fieldErrorText}>{fieldErrors.contractor_type_other_text[0]}</Text>}
                         </View>
                     )}
 
                     <View style={styles.inputContainer}>
                         <TextInput
-                            style={[styles.input, styles.textArea]}
+                            style={[styles.input, styles.textArea, fieldErrors.services_offered && styles.inputError]}
                             value={servicesOffered}
-                            onChangeText={setServicesOffered}
+                            onChangeText={(text) => { setServicesOffered(text); setFieldErrors(prev => { const { services_offered, ...rest } = prev; return rest; }); }}
                             placeholder="Services Offered *"
                             placeholderTextColor="#999"
                             multiline
                             numberOfLines={4}
                         />
+                        {fieldErrors.services_offered && <Text style={styles.fieldErrorText}>{fieldErrors.services_offered[0]}</Text>}
                     </View>
 
                     {/* Business Address Section */}
@@ -427,16 +418,17 @@ export default function CompanyInfoScreen({ onBackPress, onNext, formData, initi
 
                     <View style={styles.inputContainer}>
                         <TextInput
-                            style={styles.input}
+                            style={[styles.input, fieldErrors.business_address_street && styles.inputError]}
                             value={businessAddressStreet}
-                            onChangeText={setBusinessAddressStreet}
+                            onChangeText={(text) => { setBusinessAddressStreet(text); setFieldErrors(prev => { const { business_address_street, ...rest } = prev; return rest; }); }}
                             placeholder="Street/Building No. * (e.g., 456 Oak Avenue)"
                             placeholderTextColor="#999"
                         />
+                        {fieldErrors.business_address_street && <Text style={styles.fieldErrorText}>{fieldErrors.business_address_street[0]}</Text>}
                     </View>
 
                     <View style={styles.inputContainer}>
-                        <TouchableOpacity style={styles.dropdownContainer} onPress={() => setShowProvinceModal(true)}>
+                        <TouchableOpacity style={[styles.dropdownContainer, fieldErrors.business_address_province && styles.dropdownError]} onPress={() => { setShowProvinceModal(true); setFieldErrors(prev => { const { business_address_province, ...rest } = prev; return rest; }); }}>
                             <View style={styles.dropdownInputWrapper}>
                                 <Text style={[styles.dropdownInputText, !businessAddressProvince && styles.placeholderText]}>
                                     {provinces.find(p => p.code === businessAddressProvince)?.name || 'Province *'}
@@ -444,12 +436,13 @@ export default function CompanyInfoScreen({ onBackPress, onNext, formData, initi
                                 <MaterialIcons name="keyboard-arrow-down" size={24} color="#666666" style={styles.dropdownIcon} />
                             </View>
                         </TouchableOpacity>
+                        {fieldErrors.business_address_province && <Text style={styles.fieldErrorText}>{fieldErrors.business_address_province[0]}</Text>}
                     </View>
 
                     <View style={styles.inputContainer}>
                         <TouchableOpacity
-                            style={[styles.dropdownContainer, !businessAddressProvince && styles.dropdownDisabled]}
-                            onPress={() => businessAddressProvince && setShowCityModal(true)}
+                            style={[styles.dropdownContainer, !businessAddressProvince && styles.dropdownDisabled, fieldErrors.business_address_city && styles.dropdownError]}
+                            onPress={() => { if (businessAddressProvince) { setShowCityModal(true); setFieldErrors(prev => { const { business_address_city, ...rest } = prev; return rest; }); } }}
                             disabled={!businessAddressProvince}
                         >
                             <View style={styles.dropdownInputWrapper}>
@@ -459,12 +452,13 @@ export default function CompanyInfoScreen({ onBackPress, onNext, formData, initi
                                 <MaterialIcons name="keyboard-arrow-down" size={24} color="#666666" style={styles.dropdownIcon} />
                             </View>
                         </TouchableOpacity>
+                        {fieldErrors.business_address_city && <Text style={styles.fieldErrorText}>{fieldErrors.business_address_city[0]}</Text>}
                     </View>
 
                     <View style={styles.inputContainer}>
                         <TouchableOpacity
-                            style={[styles.dropdownContainer, !businessAddressCity && styles.dropdownDisabled]}
-                            onPress={() => businessAddressCity && setShowBarangayModal(true)}
+                            style={[styles.dropdownContainer, !businessAddressCity && styles.dropdownDisabled, fieldErrors.business_address_barangay && styles.dropdownError]}
+                            onPress={() => { if (businessAddressCity) { setShowBarangayModal(true); setFieldErrors(prev => { const { business_address_barangay, ...rest } = prev; return rest; }); } }}
                             disabled={!businessAddressCity}
                         >
                             <View style={styles.dropdownInputWrapper}>
@@ -474,17 +468,19 @@ export default function CompanyInfoScreen({ onBackPress, onNext, formData, initi
                                 <MaterialIcons name="keyboard-arrow-down" size={24} color="#666666" style={styles.dropdownIcon} />
                             </View>
                         </TouchableOpacity>
+                        {fieldErrors.business_address_barangay && <Text style={styles.fieldErrorText}>{fieldErrors.business_address_barangay[0]}</Text>}
                     </View>
 
                     <View style={styles.inputContainer}>
                         <TextInput
-                            style={styles.input}
+                            style={[styles.input, fieldErrors.business_address_postal && styles.inputError]}
                             value={businessAddressPostal}
-                            onChangeText={setBusinessAddressPostal}
+                            onChangeText={(text) => { setBusinessAddressPostal(text); setFieldErrors(prev => { const { business_address_postal, ...rest } = prev; return rest; }); }}
                             placeholder="Postal Code * (e.g., 1000)"
                             placeholderTextColor="#999"
                             keyboardType="numeric"
                         />
+                        {fieldErrors.business_address_postal && <Text style={styles.fieldErrorText}>{fieldErrors.business_address_postal[0]}</Text>}
                     </View>
 
                     {/* Optional Information Section */}
@@ -492,24 +488,26 @@ export default function CompanyInfoScreen({ onBackPress, onNext, formData, initi
 
                     <View style={styles.inputContainer}>
                         <TextInput
-                            style={styles.input}
+                            style={[styles.input, fieldErrors.company_website && styles.inputError]}
                             value={companyWebsite}
-                            onChangeText={setCompanyWebsite}
+                            onChangeText={(text) => { setCompanyWebsite(text); setFieldErrors(prev => { const { company_website, ...rest } = prev; return rest; }); }}
                             placeholder="Company Website (e.g., https://www.example.com)"
                             placeholderTextColor="#999"
                             keyboardType="url"
                             autoCapitalize="none"
                         />
+                        {fieldErrors.company_website && <Text style={styles.fieldErrorText}>{fieldErrors.company_website[0]}</Text>}
                     </View>
 
                     <View style={styles.inputContainer}>
                         <TextInput
-                            style={styles.input}
+                            style={[styles.input, fieldErrors.company_social_media && styles.inputError]}
                             value={companySocialMedia}
-                            onChangeText={setCompanySocialMedia}
+                            onChangeText={(text) => { setCompanySocialMedia(text); setFieldErrors(prev => { const { company_social_media, ...rest } = prev; return rest; }); }}
                             placeholder="Social Media (Facebook, Instagram, etc.)"
                             placeholderTextColor="#999"
                         />
+                        {fieldErrors.company_social_media && <Text style={styles.fieldErrorText}>{fieldErrors.company_social_media[0]}</Text>}
                     </View>
                 </View>
 
@@ -521,17 +519,17 @@ export default function CompanyInfoScreen({ onBackPress, onNext, formData, initi
                     <TouchableOpacity
                         style={[
                             styles.nextButton,
-                            (!isFormValid() || isLoading) && styles.nextButtonDisabled
+                            isLoading && styles.nextButtonDisabled
                         ]}
                         onPress={handleNext}
-                        disabled={!isFormValid() || isLoading}
+                        disabled={isLoading}
                     >
                         {isLoading ? (
                             <ActivityIndicator color="#FFFFFF" size="small" />
                         ) : (
                             <Text style={[
                                 styles.nextButtonText,
-                                (!isFormValid() || isLoading) && styles.nextButtonTextDisabled
+                                isLoading && styles.nextButtonTextDisabled
                             ]}>
                                 Next
                             </Text>
@@ -831,6 +829,18 @@ const styles = StyleSheet.create({
         color: '#666666',
         marginTop: 5,
         marginLeft: 4,
+    },
+    fieldErrorText: {
+        color: '#DC3545',
+        fontSize: 12,
+        marginTop: 4,
+        marginLeft: 4,
+    },
+    inputError: {
+        borderColor: '#DC3545',
+    },
+    dropdownError: {
+        borderColor: '#DC3545',
     },
     buttonContainer: {
         flexDirection: 'row',

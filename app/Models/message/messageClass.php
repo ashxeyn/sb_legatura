@@ -134,30 +134,30 @@ class messageClass extends Model
     {
         // Total suspended conversations (exclude admin conversations)
         $totalSuspended = DB::table('conversations')
-            ->where(function($query) {
+            ->where(function ($query) {
                 $query->where('status', 'suspended')
-                      ->orWhere('is_suspended', 1);
+                    ->orWhere('is_suspended', 1);
             })
-            ->whereNotExists(function($query) {
+            ->whereNotExists(function ($query) {
                 // Exclude conversations where sender is admin
                 $query->select(DB::raw(1))
                     ->from('admin_users')
                     ->whereColumn('admin_users.admin_id', 'conversations.sender_id');
             })
-            ->whereNotExists(function($query) {
+            ->whereNotExists(function ($query) {
                 // Exclude conversations where receiver is admin
                 $query->select(DB::raw(1))
                     ->from('admin_users')
                     ->whereColumn('admin_users.admin_id', 'conversations.receiver_id');
             })
-            ->whereNotExists(function($query) {
+            ->whereNotExists(function ($query) {
                 // Exclude conversations where sender has user_type='admin'
                 $query->select(DB::raw(1))
                     ->from('users')
                     ->whereColumn('users.user_id', 'conversations.sender_id')
                     ->where('users.user_type', 'admin');
             })
-            ->whereNotExists(function($query) {
+            ->whereNotExists(function ($query) {
                 // Exclude conversations where receiver has user_type='admin'
                 $query->select(DB::raw(1))
                     ->from('users')
@@ -171,23 +171,23 @@ class messageClass extends Model
             ->join('messages as m', 'c.conversation_id', '=', 'm.conversation_id')
             ->where('m.created_at', '>=', Carbon::now()->subDays(7))
             ->where('c.status', '!=', 'suspended')
-            ->whereNotExists(function($query) {
+            ->whereNotExists(function ($query) {
                 $query->select(DB::raw(1))
                     ->from('admin_users')
                     ->whereColumn('admin_users.admin_id', 'c.sender_id');
             })
-            ->whereNotExists(function($query) {
+            ->whereNotExists(function ($query) {
                 $query->select(DB::raw(1))
                     ->from('admin_users')
                     ->whereColumn('admin_users.admin_id', 'c.receiver_id');
             })
-            ->whereNotExists(function($query) {
+            ->whereNotExists(function ($query) {
                 $query->select(DB::raw(1))
                     ->from('users')
                     ->whereColumn('users.user_id', 'c.sender_id')
                     ->where('users.user_type', 'admin');
             })
-            ->whereNotExists(function($query) {
+            ->whereNotExists(function ($query) {
                 $query->select(DB::raw(1))
                     ->from('users')
                     ->whereColumn('users.user_id', 'c.receiver_id')
@@ -200,23 +200,23 @@ class messageClass extends Model
         $flaggedMessages = DB::table('messages as m')
             ->join('conversations as c', 'm.conversation_id', '=', 'c.conversation_id')
             ->where('m.is_flagged', 1)
-            ->whereNotExists(function($query) {
+            ->whereNotExists(function ($query) {
                 $query->select(DB::raw(1))
                     ->from('admin_users')
                     ->whereColumn('admin_users.admin_id', 'c.sender_id');
             })
-            ->whereNotExists(function($query) {
+            ->whereNotExists(function ($query) {
                 $query->select(DB::raw(1))
                     ->from('admin_users')
                     ->whereColumn('admin_users.admin_id', 'c.receiver_id');
             })
-            ->whereNotExists(function($query) {
+            ->whereNotExists(function ($query) {
                 $query->select(DB::raw(1))
                     ->from('users')
                     ->whereColumn('users.user_id', 'c.sender_id')
                     ->where('users.user_type', 'admin');
             })
-            ->whereNotExists(function($query) {
+            ->whereNotExists(function ($query) {
                 $query->select(DB::raw(1))
                     ->from('users')
                     ->whereColumn('users.user_id', 'c.receiver_id')
@@ -256,7 +256,7 @@ class messageClass extends Model
             ->whereRaw('m.message_id = (SELECT message_id FROM messages WHERE conversation_id = c.conversation_id ORDER BY created_at DESC LIMIT 1)')
             ->where(function ($query) use ($userId) {
                 $query->where('c.sender_id', $userId)
-                      ->orWhere('c.receiver_id', $userId);
+                    ->orWhere('c.receiver_id', $userId);
             })
             ->orderBy('m.created_at', 'desc')
             ->get();
@@ -266,7 +266,8 @@ class messageClass extends Model
             $otherUserId = ($conv->sender_id == $userId) ? $conv->receiver_id : $conv->sender_id;
             $otherUser = self::getUserDetails($otherUserId);
 
-            if (!$otherUser) continue;
+            if (!$otherUser)
+                continue;
 
             // Calculate unread count: only count messages sent TO this user
             $isSender = ($userId == $conv->sender_id);
@@ -391,7 +392,8 @@ class messageClass extends Model
             ->where('conversation_id', $conversationId)
             ->first();
 
-        if (!$conversation) return [];
+        if (!$conversation)
+            return [];
 
         $query = self::where('conversation_id', $conversationId)
             ->orderBy('created_at', 'asc');
@@ -466,7 +468,8 @@ class messageClass extends Model
         // Get base user from users table
         $user = DB::table('users')->where('user_id', $userId)->first();
 
-        if (!$user) return null;
+        if (!$user)
+            return null;
 
         $name = $user->username ?? $user->email;
         $type = $user->user_type ?? 'user';
@@ -672,34 +675,62 @@ class messageClass extends Model
 
     /**
      * SECURITY: Detect contact information (emails and Philippine phone numbers)
+     * Also catches spaced-out evasion like "e x a m p l e @ g m a i l . c o m"
      *
      * @param string $content
      * @return bool
      */
     private static function detectContactInfo(string $content): bool
     {
+        // ── 1. Check the ORIGINAL content first ──────────────────────────
+
         // Email pattern
         $emailPattern = '/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/';
 
         // Philippine phone patterns:
-        // +63XXXXXXXXXX, 09XXXXXXXXX, (02) XXX-XXXX, etc.
         $phonePatterns = [
-            '/\+63\s*\d{10}/',           // +63 9XX XXX XXXX
-            '/\b09\d{9}\b/',             // 09XXXXXXXXX
-            '/\(0?2\)\s*\d{3,4}[\s-]?\d{4}/', // (02) XXX-XXXX
-            '/\b0\d{2,3}[\s-]?\d{3,4}[\s-]?\d{4}\b/' // 0XX XXX XXXX
+            '/\+63\s*\d{10}/',                          // +63 9XX XXX XXXX
+            '/\b09\d{9}\b/',                             // 09XXXXXXXXX
+            '/\(0?2\)\s*\d{3,4}[\s-]?\d{4}/',           // (02) XXX-XXXX
+            '/\b0\d{2,3}[\s-]?\d{3,4}[\s-]?\d{4}\b/'   // 0XX XXX XXXX
         ];
 
-        // Check email
         if (preg_match($emailPattern, $content)) {
             return true;
         }
-
-        // Check phone patterns
         foreach ($phonePatterns as $pattern) {
             if (preg_match($pattern, $content)) {
                 return true;
             }
+        }
+
+        // ── 2. Strip spaces / common separators and re-check ─────────────
+        //    Catches evasion like "e x a m p l e @ g m a i l . c o m"
+        //    or "0 9 1 7 - 1 2 3 - 4 5 6 7"
+        $normalized = preg_replace('/[\s\-_.]+/', '', $content);
+
+        // Re-check email on normalized string (@ is kept because we only strip spaces/dashes/dots/underscores)
+        // We need a slightly relaxed pattern since dots were stripped
+        if (preg_match('/[A-Za-z0-9]+@[A-Za-z0-9]+[A-Za-z]{2,}/i', $normalized)) {
+            return true;
+        }
+
+        // Re-check phone patterns on normalized string
+        $phoneNormalized = [
+            '/\+63\d{10}/',   // +639XXXXXXXXX
+            '/09\d{9}/',      // 09XXXXXXXXX
+        ];
+        foreach ($phoneNormalized as $pattern) {
+            if (preg_match($pattern, $normalized)) {
+                return true;
+            }
+        }
+
+        // ── 3. Detect digits-only sequences (strip ALL non-digits) ───────
+        //    Catches "0 9 1 7 1 2 3 4 5 6 7" → "09171234567"
+        $digitsOnly = preg_replace('/\D/', '', $content);
+        if (preg_match('/^63\d{10}$/', $digitsOnly) || preg_match('/^09\d{9}$/', $digitsOnly)) {
+            return true;
         }
 
         return false;
@@ -712,75 +743,97 @@ class messageClass extends Model
      * @return bool
      */
     private static function detectSuspiciousKeywords(string $content): bool
-{
-    $path = storage_path('app/profanity_dataset.csv');
+    {
+        $path = storage_path('app/profanity_dataset.csv');
 
-    $exclude = [
-        'gcash',
-        'viber',
-        'facebook',
-        'instagram',
-        'twitter',
-        'tiktok',
-        'youtube',
-        'linkedin',
-        'pinterest'
-    ];
+        $exclude = [
+            'gcash',
+            'viber',
+            'facebook',
+            'instagram',
+            'twitter',
+            'tiktok',
+            'youtube',
+            'linkedin',
+            'pinterest'
+        ];
 
-    $keywords = [];
+        $keywords = [];
 
-    try {
-        if (file_exists($path) && is_readable($path)) {
-            if (($handle = fopen($path, 'r')) !== false) {
-                while (($row = fgetcsv($handle)) !== false) {
-                    foreach ($row as $cell) {
-                        $w = trim((string) $cell);
-                        if ($w === '') continue;
-                        $lw = strtolower($w);
-                        if (in_array($lw, $exclude, true)) continue;
-                        $keywords[] = $lw;
+        try {
+            if (file_exists($path) && is_readable($path)) {
+                if (($handle = fopen($path, 'r')) !== false) {
+                    while (($row = fgetcsv($handle)) !== false) {
+                        foreach ($row as $cell) {
+                            $w = trim((string) $cell);
+                            if ($w === '')
+                                continue;
+                            $lw = strtolower($w);
+                            if (in_array($lw, $exclude, true))
+                                continue;
+                            $keywords[] = $lw;
+                        }
                     }
+                    fclose($handle);
                 }
-                fclose($handle);
+            }
+        } catch (\Exception $e) {
+            \Log::error('Failed to load profanity dataset', ['error' => $e->getMessage()]);
+        }
+
+        if (empty($keywords)) {
+            $keywords = [
+                'sex',
+                'vagina',
+                'penis',
+                'fuck',
+                'bitch',
+                'whore',
+                'slut',
+                'dick',
+                'cock',
+                'pussy',
+                'ass',
+                'bastard',
+                'damn',
+                'harassment',
+                'assault',
+                'rape',
+                'molest',
+                'abuse',
+                'porn'
+            ];
+        }
+
+        $contentLower = strtolower($content);
+
+        // Also create a version that strips non-alphanumeric characters
+        // to catch spaced-out or punctuation-separated characters (e.g., f  u c k or f.u.c.k)
+        $normalized = preg_replace('/[^a-z0-9]+/i', '', $contentLower);
+
+        foreach ($keywords as $keyword) {
+            if ($keyword === '')
+                continue;
+
+            // Direct substring match first
+            if (stripos($contentLower, $keyword) !== false || stripos($normalized, $keyword) !== false) {
+                return true;
+            }
+
+            // Build a regex that allows any non-alphanumeric characters between letters
+            // e.g., 'fuck' -> /f[^A-Za-z0-9]*u[^A-Za-z0-9]*c[^A-Za-z0-9]*k/i
+            $letters = preg_split('//u', preg_quote($keyword, '/'), -1, PREG_SPLIT_NO_EMPTY);
+            if (empty($letters))
+                continue;
+            $pattern = '/' . implode('[^A-Za-z0-9]*', $letters) . '/i';
+
+            if (preg_match($pattern, $content)) {
+                return true;
             }
         }
-    } catch (\Exception $e) {
-        \Log::error('Failed to load profanity dataset', ['error' => $e->getMessage()]);
+
+        return false;
     }
-
-    if (empty($keywords)) {
-        $keywords = [
-            'sex', 'vagina', 'penis', 'fuck', 'bitch', 'whore', 'slut', 'dick', 'cock', 'pussy', 'ass', 'bastard', 'damn', 'harassment', 'assault', 'rape', 'molest', 'abuse', 'porn'
-        ];
-    }
-
-    $contentLower = strtolower($content);
-
-    // Also create a version that strips non-alphanumeric characters
-    // to catch spaced-out or punctuation-separated characters (e.g., f  u c k or f.u.c.k)
-    $normalized = preg_replace('/[^a-z0-9]+/i', '', $contentLower);
-
-    foreach ($keywords as $keyword) {
-        if ($keyword === '') continue;
-
-        // Direct substring match first
-        if (stripos($contentLower, $keyword) !== false || stripos($normalized, $keyword) !== false) {
-            return true;
-        }
-
-        // Build a regex that allows any non-alphanumeric characters between letters
-        // e.g., 'fuck' -> /f[^A-Za-z0-9]*u[^A-Za-z0-9]*c[^A-Za-z0-9]*k/i
-        $letters = preg_split('//u', preg_quote($keyword, '/'), -1, PREG_SPLIT_NO_EMPTY);
-        if (empty($letters)) continue;
-        $pattern = '/'.implode('[^A-Za-z0-9]*', $letters).'/i';
-
-        if (preg_match($pattern, $content)) {
-            return true;
-        }
-    }
-
-    return false;
-}
 
     /**
      * SECURITY: Validate message content against all rules
@@ -830,7 +883,8 @@ class messageClass extends Model
     {
         // Check admin_users table
         $isAdminUser = DB::table('admin_users')->where('admin_id', $userId)->exists();
-        if ($isAdminUser) return true;
+        if ($isAdminUser)
+            return true;
 
         // Check users table for user_type='admin'
         $user = DB::table('users')->where('user_id', $userId)->first();
@@ -878,7 +932,8 @@ class messageClass extends Model
             $senderUser = self::getUserDetails($conv->sender_id);
             $receiverUser = self::getUserDetails($conv->receiver_id);
 
-            if (!$senderUser || !$receiverUser) continue;
+            if (!$senderUser || !$receiverUser)
+                continue;
 
             $result[] = [
                 'conversation_id' => $conv->conversation_id,
@@ -938,7 +993,8 @@ class messageClass extends Model
             $senderUser = self::getUserDetails($conv->sender_id);
             $receiverUser = self::getUserDetails($conv->receiver_id);
 
-            if (!$senderUser || !$receiverUser) continue;
+            if (!$senderUser || !$receiverUser)
+                continue;
 
             // Check if conversation has any flagged messages
             $isFlagged = DB::table('messages')

@@ -283,10 +283,14 @@ class authController extends Controller
     // Handle Contractor Step 1
     public function contractorStep1(accountRequest $request)
     {
+        // Resolve PSGC codes to actual place names for address
+        $provinceName = $this->psgcService->resolveCodeToName($request->business_address_province ?? '', 'province');
+        $cityName = $this->psgcService->resolveCodeToName($request->business_address_city ?? '', 'city');
+        $barangayName = $this->psgcService->resolveCodeToName($request->business_address_barangay ?? '', 'barangay');
         $businessAddress = $request->business_address_street . ', ' .
-            $request->business_address_barangay . ', ' .
-            $request->business_address_city . ', ' .
-            $request->business_address_province . ' ' .
+            $barangayName . ', ' .
+            $cityName . ', ' .
+            $provinceName . ' ' .
             $request->business_address_postal;
 
         // Calculate years of experience from founded_date
@@ -379,9 +383,9 @@ class authController extends Controller
 
         // Store in session (include issued timestamp for reliable verification)
         Session::put('contractor_step2', [
-            'first_name' => $request->first_name,
-            'middle_name' => $request->middle_name,
-            'last_name' => $request->last_name,
+            'first_name' => strtoupper($request->first_name),
+            'middle_name' => $request->middle_name ? strtoupper($request->middle_name) : null,
+            'last_name' => strtoupper($request->last_name),
             'username' => $request->username,
             'company_email' => $request->company_email,
             'password' => $request->password,
@@ -658,16 +662,17 @@ class authController extends Controller
 
         // Build business_address from components if it's empty (mobile/stateless clients
         // send individual address parts instead of the pre-concatenated string)
+        // Also resolve PSGC codes to actual place names
         if (empty($step1['business_address'])) {
             $addressParts = [];
             if (!empty($step1['business_address_street']))
                 $addressParts[] = $step1['business_address_street'];
             if (!empty($step1['business_address_barangay']))
-                $addressParts[] = $step1['business_address_barangay'];
+                $addressParts[] = $this->psgcService->resolveCodeToName($step1['business_address_barangay'], 'barangay');
             if (!empty($step1['business_address_city']))
-                $addressParts[] = $step1['business_address_city'];
+                $addressParts[] = $this->psgcService->resolveCodeToName($step1['business_address_city'], 'city');
             if (!empty($step1['business_address_province']))
-                $addressParts[] = $step1['business_address_province'];
+                $addressParts[] = $this->psgcService->resolveCodeToName($step1['business_address_province'], 'province');
             if (!empty($step1['business_address_postal']))
                 $addressParts[] = $step1['business_address_postal'];
             if (count($addressParts) > 0) {
@@ -676,7 +681,10 @@ class authController extends Controller
             }
         }
 
-        // Ensure step2 defaults
+        // Ensure step2 defaults — and ensure names are uppercase (mobile fallback sends raw data)
+        $step2['first_name'] = !empty($step2['first_name']) ? strtoupper($step2['first_name']) : null;
+        $step2['middle_name'] = !empty($step2['middle_name']) ? strtoupper($step2['middle_name']) : null;
+        $step2['last_name'] = !empty($step2['last_name']) ? strtoupper($step2['last_name']) : null;
         $step2['username'] = $step2['username'] ?? null;
         $step2['company_email'] = $step2['company_email'] ?? ($step2['email'] ?? null);
         $step2['password'] = $step2['password'] ?? null;
@@ -974,19 +982,22 @@ class authController extends Controller
         // Age
         $age = $this->authService->calculateAge($request->date_of_birth);
 
-        // Combine address
+        // Combine address — resolve PSGC codes to actual place names
+        $provinceName = $this->psgcService->resolveCodeToName($request->owner_address_province ?? '', 'province');
+        $cityName = $this->psgcService->resolveCodeToName($request->owner_address_city ?? '', 'city');
+        $barangayName = $this->psgcService->resolveCodeToName($request->owner_address_barangay ?? '', 'barangay');
         $address = $request->owner_address_street . ', ' .
-            $request->owner_address_barangay . ', ' .
-            $request->owner_address_city . ', ' .
-            $request->owner_address_province . ', ' .
+            $barangayName . ', ' .
+            $cityName . ', ' .
+            $provinceName . ', ' .
             $request->owner_address_postal;
 
         $step1Data = [
-            'first_name' => $request->first_name,
-            'middle_name' => $request->middle_name,
-            'last_name' => $request->last_name,
+            'first_name' => strtoupper($request->first_name),
+            'middle_name' => $request->middle_name ? strtoupper($request->middle_name) : null,
+            'last_name' => strtoupper($request->last_name),
             'occupation_id' => $request->occupation_id,
-            'occupation_other' => $request->occupation_other_text,
+            'occupation_other' => $request->occupation_other_text ?? $request->occupation_other,
             'date_of_birth' => $request->date_of_birth,
             'phone_number' => $request->phone_number,
             'age' => $age,
@@ -1556,10 +1567,10 @@ class authController extends Controller
         $step2 = is_array($step2) ? $step2 : (is_object($step2) ? (array) $step2 : []);
         $step4 = is_array($step4) ? $step4 : (is_object($step4) ? (array) $step4 : []);
 
-        // Provide defaults
-        $step1['first_name'] = $step1['first_name'] ?? '';
-        $step1['last_name'] = $step1['last_name'] ?? '';
-        $step1['middle_name'] = $step1['middle_name'] ?? null;
+        // Provide defaults — and ensure names are uppercase (mobile fallback sends raw data)
+        $step1['first_name'] = strtoupper($step1['first_name'] ?? '');
+        $step1['last_name'] = strtoupper($step1['last_name'] ?? '');
+        $step1['middle_name'] = !empty($step1['middle_name']) ? strtoupper($step1['middle_name']) : null;
         $step1['phone_number'] = $step1['phone_number'] ?? '';
         $step1['date_of_birth'] = $step1['date_of_birth'] ?? null;
         $step1['age'] = $step1['age'] ?? null;
@@ -1586,16 +1597,17 @@ class authController extends Controller
         }
 
         // Build address from components if address is empty but components exist
+        // Also resolve PSGC codes to actual place names
         if (empty($step1['address'])) {
             $addressParts = [];
             if (!empty($step1['owner_address_street']))
                 $addressParts[] = $step1['owner_address_street'];
             if (!empty($step1['owner_address_barangay']))
-                $addressParts[] = $step1['owner_address_barangay'];
+                $addressParts[] = $this->psgcService->resolveCodeToName($step1['owner_address_barangay'], 'barangay');
             if (!empty($step1['owner_address_city']))
-                $addressParts[] = $step1['owner_address_city'];
+                $addressParts[] = $this->psgcService->resolveCodeToName($step1['owner_address_city'], 'city');
             if (!empty($step1['owner_address_province']))
-                $addressParts[] = $step1['owner_address_province'];
+                $addressParts[] = $this->psgcService->resolveCodeToName($step1['owner_address_province'], 'province');
             if (!empty($step1['owner_address_postal']))
                 $addressParts[] = $step1['owner_address_postal'];
             if (count($addressParts) > 0) {
@@ -2727,7 +2739,7 @@ class authController extends Controller
                 'date_of_birth' => $validated['date_of_birth'] ?? ($ownerStep1['date_of_birth'] ?? null),
                 'age' => $ownerStep1['age'] ?? null,
                 'occupation_id' => $validated['occupation_id'] ?? ($ownerStep1['occupation_id'] ?? null),
-                'occupation_other' => $validated['occupation_other_text'] ?? ($ownerStep1['occupation_other_text'] ?? null),
+                'occupation_other' => $validated['occupation_other_text'] ?? ($validated['occupation_other'] ?? ($ownerStep1['occupation_other'] ?? null)),
                 'address' => $validated['address'] ?? ($ownerStep1['address'] ?? null),
                 'verification_status' => 'pending',
                 'verification_date' => null,
@@ -3284,9 +3296,19 @@ class authController extends Controller
 
                 return response()->json($responseData, 200);
             } else {
+                // Build a user-friendly message from field-level errors if present
+                $message = $result['message'] ?? null;
+                $errors = $result['errors'] ?? null;
+                if (!$message && $errors) {
+                    $message = implode(' ', array_map(function ($v) {
+                        return is_array($v) ? implode(' ', $v) : $v;
+                    }, $errors));
+                }
+
                 return response()->json([
                     'success' => false,
-                    'message' => $result['message'],
+                    'message' => $message ?? 'Invalid credentials',
+                    'errors' => $errors,
                     'data' => [
                         'user' => $result['user'] ?? null
                     ]

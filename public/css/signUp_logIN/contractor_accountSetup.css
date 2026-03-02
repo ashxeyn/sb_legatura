@@ -462,7 +462,11 @@ body::before {
 }
 
 .field-label {
-	display: none;
+	display: block;
+	font-size: 14px;
+	font-weight: 500;
+	color: var(--text-color);
+	margin-bottom: 8px;
 }
 
 .upload-area {
@@ -678,4 +682,88 @@ border-radius: 50%;
 animation: spin 0.8s linear infinite;
 margin-right: 8px;
 vertical-align: middle;
+}
+
+/* Validation Error Styles */
+.field input.field-error,
+.field textarea.field-error,
+.select-button.field-error {
+	border-color: #f87171 !important;
+	background-color: #fef2f2 !important;
+	box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.08),
+	            inset 0 1px 2px rgba(220, 38, 38, 0.05) !important;
+	transition: all 0.2s ease;
+}
+
+.field input.field-error:focus,
+.field textarea.field-error:focus,
+.select-button.field-error:focus {
+	border-color: #dc2626 !important;
+	box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.12),
+	            inset 0 1px 2px rgba(220, 38, 38, 0.05) !important;
+}
+
+.field-error-message,
+.inline-error-msg {
+	font-size: 12px;
+	color: #dc2626;
+	font-weight: 400;
+	margin-left: 0;
+	margin-top: 4px;
+	display: block;
+	animation: slideDownError 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes slideDownError {
+	from {
+		opacity: 0;
+		transform: translateY(-8px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+.upload-area.field-error {
+	border-color: #f87171 !important;
+	background-color: #fef2f2 !important;
+	box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.08) !important;
+}
+
+/* Password Toggle Styles */
+.password-field {
+	position: relative;
+}
+
+.password-field input {
+	padding-right: 48px !important; /* Make room for the eye icon */
+}
+
+.password-toggle {
+	position: absolute;
+	right: 12px;
+	top: 50%;
+	transform: translateY(-50%);
+	background: none;
+	border: none;
+	cursor: pointer;
+	padding: 8px 4px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--muted-color);
+	opacity: 0.7;
+	transition: opacity 0.2s ease;
+	z-index: 10;
+}
+
+.password-toggle:hover {
+	opacity: 1;
+}
+
+.password-toggle i {
+	font-size: 18px;
+	display: inline-block;
+	text-decoration: none;
 }

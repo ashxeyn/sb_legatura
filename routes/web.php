@@ -20,6 +20,7 @@ use App\Http\Controllers\Admin\globalManagementController;
 use App\Http\Controllers\Admin\ProjectAdminController;
 use App\Http\Controllers\Admin\projectManagementController;
 use App\Http\Controllers\message\broadcastAuthController;
+use App\Http\Controllers\passwordController;
 
 Route::post('/admin/global-management/ai-management/analyze/{id}', [globalManagementController::class, 'analyzeProject']);
 
@@ -205,6 +206,12 @@ Route::post('/accounts/signup/select-role', [authController::class, 'selectRole'
 Route::post('/accounts/logout', [authController::class, 'logout']);
 Route::get('/accounts/logout', [authController::class, 'logout']);
 
+// Forgot Password Routes
+Route::get('/accounts/forgot-password', [passwordController::class, 'showForgotForm'])->name('password.forgot');
+Route::post('/accounts/password/send-otp', [passwordController::class, 'sendResetOtp'])->name('password.send-otp');
+Route::post('/accounts/password/verify-otp', [passwordController::class, 'verifyResetOtp'])->name('password.verify-otp');
+Route::post('/accounts/password/reset', [passwordController::class, 'resetPassword'])->name('password.reset');
+
 // Admin Authentication Routes
 Route::get('/admin/login', function () {
     return view('accounts.login');
@@ -315,7 +322,7 @@ Route::get('/owner/projects/{projectId}/edit', [\App\Http\Controllers\owner\proj
 Route::put('/owner/projects/{projectId}', [\App\Http\Controllers\owner\projectsController::class, 'update']);
 Route::delete('/owner/projects/{projectId}', [\App\Http\Controllers\owner\projectsController::class, 'delete']);
 Route::post('/owner/projects/{projectId}/bids/{bidId}/accept', [\App\Http\Controllers\owner\projectsController::class, 'acceptBid']);
-Route::post('/owner/projects/{projectId}/bids/{bidId}/reject', [\App\Http\Controllers\owner\projectsController::class , 'rejectBid'])->name('owner.projects.bids.reject');
+Route::post('/owner/projects/{projectId}/bids/{bidId}/reject', [\App\Http\Controllers\owner\projectsController::class, 'rejectBid'])->name('owner.projects.bids.reject');
 Route::post('/owner/milestones/{milestoneId}/approve', [milestoneController::class, 'webApproveMilestone']);
 Route::post('/owner/milestones/{milestoneId}/reject', [milestoneController::class, 'webRejectMilestone']);
 Route::post('/contractor/payments/{paymentId}/approve', [milestoneController::class, 'apiApprovePayment']);

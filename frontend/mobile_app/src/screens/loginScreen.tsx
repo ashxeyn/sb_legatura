@@ -19,18 +19,25 @@ interface LoginScreenProps {
   on_back: () => void;
   on_login_success: (userData?: any) => void;
   on_signup: () => void;
+  on_forgot_password?: () => void;
 }
 
 
-export default function LoginScreen({ on_back, on_login_success, on_signup }: LoginScreenProps) {
+export default function LoginScreen({ on_back, on_login_success, on_signup, on_forgot_password }: LoginScreenProps) {
   const [username, set_username] = useState('');
   const [password, set_password] = useState('');
   const [is_loading, set_is_loading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const handle_login = async () => {
+    setFieldErrors({});
+
     if (!username.trim() || !password.trim()) {
-      Alert.alert('Error', 'Please fill in all fields');
+      const errs: Record<string, string> = {};
+      if (!username.trim()) errs.username = 'Username is required.';
+      if (!password.trim()) errs.password = 'Password is required.';
+      setFieldErrors(errs);
       return;
     }
 
@@ -62,30 +69,43 @@ export default function LoginScreen({ on_back, on_login_success, on_signup }: Lo
             console.warn('Failed to save auth token:', e);
           }
         }
-        
+
         // Include contractor_member context if present (for contractor users including staff)
         if (response.data?.contractor_member) {
           userData.contractor_member = response.data.contractor_member;
           console.log('Contractor member context included:', response.data.contractor_member);
         }
-        
+
         // Include determinedRole if present
         if (response.data?.determinedRole) {
           userData.determinedRole = response.data.determinedRole;
         }
-        
+
         // Include must_change_password flag if present
         if (response.data?.must_change_password) {
           userData.must_change_password = true;
         }
-        
+
         console.log('Extracted userData:', userData);
         console.log('userData.profile_pic:', userData?.profile_pic);
         Alert.alert('Success', 'Login successful!', [
           { text: 'OK', onPress: () => on_login_success(userData) }
         ]);
       } else {
-        Alert.alert('Error', response.message || 'Login failed. Please check your credentials.');
+        // Show inline field errors if returned by the server
+        const serverErrors = response.data?.errors || response.errors || null;
+        if (serverErrors) {
+          const errs: Record<string, string> = {};
+          if (serverErrors.username) errs.username = Array.isArray(serverErrors.username) ? serverErrors.username[0] : serverErrors.username;
+          if (serverErrors.password) errs.password = Array.isArray(serverErrors.password) ? serverErrors.password[0] : serverErrors.password;
+          if (Object.keys(errs).length > 0) {
+            setFieldErrors(errs);
+          } else {
+            Alert.alert('Error', response.message || 'Login failed. Please check your credentials.');
+          }
+        } else {
+          Alert.alert('Error', response.message || 'Login failed. Please check your credentials.');
+        }
       }
     } catch (error) {
       console.error('Login error:', error);
@@ -125,24 +145,25 @@ export default function LoginScreen({ on_back, on_login_success, on_signup }: Lo
           <View style={styles.input_container}>
             <Text style={styles.label}>Username or Email *</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, fieldErrors.username && styles.inputError]}
               value={username}
-              onChangeText={set_username}
+              onChangeText={(text) => { set_username(text); setFieldErrors(prev => { const { username, ...rest } = prev; return rest; }); }}
               placeholder="Enter your username or email"
               placeholderTextColor="#999"
               autoCapitalize="none"
               autoCorrect={false}
               editable={!is_loading}
             />
+            {fieldErrors.username && <Text style={styles.fieldErrorText}>{fieldErrors.username}</Text>}
           </View>
 
           <View style={styles.input_container}>
             <Text style={styles.label}>Password *</Text>
             <View style={{ position: 'relative' }}>
               <TextInput
-                style={styles.input}
+                style={[styles.input, fieldErrors.password && styles.inputError]}
                 value={password}
-                onChangeText={set_password}
+                onChangeText={(text) => { set_password(text); setFieldErrors(prev => { const { password, ...rest } = prev; return rest; }); }}
                 placeholder="Enter your password"
                 placeholderTextColor="#999"
                 secureTextEntry={!showPassword}
@@ -160,7 +181,14 @@ export default function LoginScreen({ on_back, on_login_success, on_signup }: Lo
                 />
               </TouchableOpacity>
             </View>
+            {fieldErrors.password && <Text style={styles.fieldErrorText}>{fieldErrors.password}</Text>}
           </View>
+
+          {on_forgot_password && (
+            <TouchableOpacity onPress={on_forgot_password} style={styles.forgot_password_link}>
+              <Text style={styles.forgot_password_text}>Forgot Password?</Text>
+            </TouchableOpacity>
+          )}
 
           <TouchableOpacity
             style={[styles.login_button, is_loading && styles.button_disabled]}
@@ -255,6 +283,15 @@ const styles = StyleSheet.create({
     color: '#333333',
     paddingRight: 44, // space for eye icon
   },
+  inputError: {
+    borderColor: '#EF4444',
+  },
+  fieldErrorText: {
+    color: '#EF4444',
+    fontSize: 13,
+    marginTop: 4,
+    marginLeft: 4,
+  },
   eye_icon: {
     position: 'absolute',
     right: 12,
@@ -263,6 +300,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     width: 32,
+  },
+  forgot_password_link: {
+    alignSelf: 'flex-end',
+    marginTop: 4,
+    marginBottom: 4,
+  },
+  forgot_password_text: {
+    color: '#EC7E00',
+    fontSize: 14,
+    fontWeight: '500',
   },
   login_button: {
     backgroundColor: '#EC7E00',

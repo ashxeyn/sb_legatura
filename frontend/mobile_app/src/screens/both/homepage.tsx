@@ -130,14 +130,15 @@ interface HomepageProps {
   onEditProfile?: () => void;
   onOpenHelp?: () => void;
   onOpenSwitchRole?: () => void;
+  initialTab?: 'home' | 'dashboard' | 'messages' | 'profile';
 }
 
-export default function HomepageScreen({ userType = 'property_owner', userData, onLogout, onViewProfile, onEditProfile, onOpenHelp, onOpenSwitchRole }: HomepageProps) {
+export default function HomepageScreen({ userType = 'property_owner', userData, onLogout, onViewProfile, onEditProfile, onOpenHelp, onOpenSwitchRole, initialTab }: HomepageProps) {
   const insets = useSafeAreaInsets();
   const [popularContractors, setPopularContractors] = useState<ContractorType[]>([]);
   const [availableProjects, setAvailableProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('home');
+  const [activeTab, setActiveTab] = useState(initialTab || 'home');
   const [error, setError] = useState<string | null>(null);
   const [profileImageError, setProfileImageError] = useState(false);
   const [isFullScreenMode, setIsFullScreenMode] = useState(false);

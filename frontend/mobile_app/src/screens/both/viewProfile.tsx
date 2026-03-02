@@ -443,7 +443,7 @@ const ProjectCardSkeleton = () => (
 );
 
 // Main Component
-export default function ViewProfileScreen({ onBack, userData, userToken }) {
+export default function ViewProfileScreen({ onBack, userData, userToken = null }: { onBack: any; userData: any; userToken?: any }) {
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<TabType>('Posts');
   const [isUploading, setIsUploading] = useState(false);

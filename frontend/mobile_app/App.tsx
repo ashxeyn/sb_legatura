@@ -33,6 +33,9 @@ import HomepageScreen from './src/screens/both/homepage';
 import SubscriptionScreen from './src/screens/contractor/subscriptionScreen';
 import ChangePasswordScreen from './src/screens/both/changePassword';
 import ChangeOtpScreen from './src/screens/both/changeOtpScreen';
+import ForgotPasswordScreen from './src/screens/auth/forgotPasswordScreen';
+import ResetOtpScreen from './src/screens/auth/resetOtpScreen';
+import ResetPasswordScreen from './src/screens/auth/resetPasswordScreen';
 import { auth_service } from './src/services/auth_service';
 import { storage_service } from './src/utils/storage';
 
@@ -41,7 +44,8 @@ type AppState = 'loading' | 'onboarding' | 'auth_choice' | 'login' | 'signup' | 
     'contractor_company_info' | 'contractor_account_setup' | 'contractor_email_verification' | 'contractor_business_documents' | 'contractor_profile_picture' |
     // Property Owner Flow
     'po_personal_info' | 'po_account_setup' | 'po_email_verification' | 'po_role_verification' | 'po_profile_picture' |
-    'force_change_password' | 'change_otp' | 'subscription' |
+    'force_change_password' | 'change_otp' | 'change_otp_verify' | 'subscription' |
+    'forgot_password' | 'reset_otp' | 'reset_password' |
     'main' | 'edit_profile' | 'owner_profile' | 'contractor_profile' | 'view_profile' | 'help_center' | 'switch_role' | 'add_role_registration';
 
 
@@ -144,6 +148,10 @@ export default function App() {
     const [contractor_account_info, set_contractor_account_info] = useState<any>(null);
     const [contractor_documents_info, set_contractor_documents_info] = useState<any>(null);
 
+    // Forgot password flow data
+    const [reset_email, set_reset_email] = useState('');
+    const [reset_token, set_reset_token] = useState('');
+
     const handle_loading_complete = () => {
         // Only show onboarding if we're not already authenticated
         if (!checking_auth && app_state !== 'main') {
@@ -164,6 +172,29 @@ export default function App() {
     };
 
     const handle_login = () => {
+        set_app_state('login');
+    };
+
+    const handle_forgot_password = () => {
+        set_reset_email('');
+        set_reset_token('');
+        set_app_state('forgot_password');
+    };
+
+    const handle_otp_sent = (email: string) => {
+        set_reset_email(email);
+        set_app_state('reset_otp');
+    };
+
+    const handle_otp_verified = (email: string, token: string) => {
+        set_reset_email(email);
+        set_reset_token(token);
+        set_app_state('reset_password');
+    };
+
+    const handle_password_reset_success = () => {
+        set_reset_email('');
+        set_reset_token('');
         set_app_state('login');
     };
 
@@ -202,6 +233,10 @@ export default function App() {
                 set_po_personal_info(personalInfo);
                 set_app_state('po_account_setup');
             } else {
+                // Return field-level validation errors for inline display
+                if (response.data?.errors) {
+                    return response.data.errors;
+                }
                 Alert.alert('Error', response.message || 'Failed to save personal information. Please try again.');
             }
         } catch (error) {
@@ -216,11 +251,15 @@ export default function App() {
 
             if (response.success) {
                 // Preserve otp_token returned by backend so we can include it in verification
-                const otpToken = response.data?.otp_token || response.otp_token || null;
+                const otpToken = response.data?.otp_token || null;
                 set_po_account_setup({ ...accountSetup, otpToken });
                 set_app_state('po_email_verification');
                 Alert.alert('Success', 'OTP has been sent to your email. Please check your inbox.');
             } else {
+                // Return field-level validation errors for inline display
+                if (response.data?.errors) {
+                    return response.data.errors;
+                }
                 Alert.alert('Error', response.message || 'Failed to create account. Please try again.');
             }
         } catch (error) {
@@ -391,20 +430,20 @@ export default function App() {
                             body: JSON.stringify({ project_id: projectId })
                         });
 
-                        if (verify.success && verify.approved) {
-                            try {
-                                // @ts-ignore
-                                if (global.handlePaymentCallback) {
+                            if (verify.success && (verify as any).approved) {
+                                try {
                                     // @ts-ignore
-                                    await global.handlePaymentCallback(projectId);
-                                    return;
+                                    if (global.handlePaymentCallback) {
+                                        // @ts-ignore
+                                        await global.handlePaymentCallback(projectId);
+                                        return;
+                                    }
+                                } catch (e) {
+                                    console.warn('Error calling global.handlePaymentCallback after verify:', e);
                                 }
-                            } catch (e) {
-                                console.warn('Error calling global.handlePaymentCallback after verify:', e);
+                                Alert.alert('Payment Complete', `Boost activated for project ${projectId}!`, [{ text: 'OK' }]);
+                                return;
                             }
-                            Alert.alert('Payment Complete', `Boost activated for project ${projectId}!`, [{ text: 'OK' }]);
-                            return;
-                        }
 
                         // Not yet approved — fall back to queue + polling
                         // @ts-ignore
@@ -469,7 +508,7 @@ export default function App() {
         // Subscribe to deep link events
         const sub = Linking.addEventListener('url', handleUrl as any);
         return () => {
-            if (sub && (sub as any).remove) (sub as any).remove();
+            if (sub && typeof (sub as any).remove === 'function') (sub as any).remove();
         };
     }, []);
 
@@ -520,6 +559,43 @@ export default function App() {
                     on_back={handle_back_to_auth_choice}
                     on_login_success={handle_login_success}
                     on_signup={handle_register}
+                    on_forgot_password={handle_forgot_password}
+                />
+            </SafeAreaProvider>
+        );
+    }
+
+    if (app_state === 'forgot_password') {
+        return (
+            <SafeAreaProvider>
+                <ForgotPasswordScreen
+                    on_back={() => set_app_state('login')}
+                    on_otp_sent={handle_otp_sent}
+                />
+            </SafeAreaProvider>
+        );
+    }
+
+    if (app_state === 'reset_otp') {
+        return (
+            <SafeAreaProvider>
+                <ResetOtpScreen
+                    email={reset_email}
+                    on_back={() => set_app_state('forgot_password')}
+                    on_verified={handle_otp_verified}
+                />
+            </SafeAreaProvider>
+        );
+    }
+
+    if (app_state === 'reset_password') {
+        return (
+            <SafeAreaProvider>
+                <ResetPasswordScreen
+                    email={reset_email}
+                    reset_token={reset_token}
+                    on_back={() => set_app_state('forgot_password')}
+                    on_success={handle_password_reset_success}
                 />
             </SafeAreaProvider>
         );
@@ -663,7 +739,10 @@ export default function App() {
                                 po_account_setup?.email
                             );
                             if (response.success) {
-                                set_app_state('po_role_verification');
+                                // Brief delay so the success animation is visible
+                                setTimeout(() => {
+                                    set_app_state('po_role_verification');
+                                }, 1500);
                             } else {
                                 Alert.alert('Verification Failed', response.message || 'Invalid OTP. Please try again.');
                             }
@@ -1019,6 +1098,10 @@ export default function App() {
                                 set_contractor_company_info(companyInfo);
                                 set_app_state('contractor_account_setup');
                             } else {
+                                // Return field-level validation errors for inline display
+                                if (response.data?.errors) {
+                                    return response.data.errors;
+                                }
                                 Alert.alert('Error', response.message || 'Failed to save company information. Please try again.');
                             }
                         } catch (error) {
@@ -1043,11 +1126,15 @@ export default function App() {
 
                             if (response.success) {
                                 // Preserve otp_token returned by backend so we can include it in final request
-                                const otpToken = response.data?.otp_token || response.otp_token || null;
+                                const otpToken = response.data?.otp_token || null;
                                 set_contractor_account_info({ ...accountInfo, otpToken });
                                 set_app_state('contractor_email_verification');
                                 Alert.alert('Success', 'OTP has been sent to your email. Please check your inbox.');
                             } else {
+                                // Return field-level validation errors for inline display
+                                if (response.data?.errors) {
+                                    return response.data.errors;
+                                }
                                 Alert.alert('Error', response.message || 'Failed to create account. Please try again.');
                             }
                         } catch (error) {
@@ -1068,14 +1155,35 @@ export default function App() {
                     email={contractor_account_info?.companyEmail || ''}
                     onBackPress={() => set_app_state('contractor_account_setup')}
                     onComplete={async (verificationCode: string) => {
-                        // Child `EmailVerificationScreen` already verifies the OTP and
-                        // only calls this callback on success — just advance the flow.
-                        set_app_state('contractor_business_documents');
+                        try {
+                            console.log('Verifying contractor OTP...');
+                            const response = await auth_service.contractor_verify_otp(
+                                verificationCode,
+                                contractor_account_info?.companyEmail
+                            );
+                            if (response.success) {
+                                // Brief delay so the success animation is visible
+                                setTimeout(() => {
+                                    set_app_state('contractor_business_documents');
+                                }, 1500);
+                            } else {
+                                Alert.alert('Verification Failed', response.message || 'Invalid OTP. Please try again.');
+                            }
+                            return response;
+                        } catch (error) {
+                            console.error('Contractor OTP verification error:', error);
+                            Alert.alert('Error', 'Network error. Please check your connection and try again.');
+                            return { success: false, message: 'Network error' };
+                        }
                     }}
                     onResendOtp={async () => {
                         try {
                             const response = await auth_service.contractor_step2(contractor_account_info);
                             if (response.success) {
+                                const newOtpToken = response.data?.otp_token || null;
+                                if (newOtpToken) {
+                                    set_contractor_account_info({ ...contractor_account_info, otpToken: newOtpToken });
+                                }
                                 Alert.alert('Success', 'New OTP has been sent to your email.');
                             } else {
                                 Alert.alert('Error', response.message || 'Failed to resend OTP. Please try again.');
@@ -1101,6 +1209,10 @@ export default function App() {
                                 set_contractor_documents_info(documentsInfo);
                                 set_app_state('contractor_profile_picture');
                             } else {
+                                // Return field-level validation errors for inline display
+                                if (response.data?.errors) {
+                                    return response.data.errors;
+                                }
                                 Alert.alert('Error', response.message || 'Failed to save business documents. Please try again.');
                             }
                         } catch (error) {

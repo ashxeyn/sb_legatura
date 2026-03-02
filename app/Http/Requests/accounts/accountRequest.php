@@ -19,15 +19,15 @@ class accountRequest extends FormRequest
         $data = [];
 
         if ($this->has('first_name') && $this->first_name) {
-            $data['first_name'] = ucwords(strtolower(trim($this->first_name)));
+            $data['first_name'] = strtoupper(trim($this->first_name));
         }
 
         if ($this->has('middle_name') && $this->middle_name) {
-            $data['middle_name'] = ucwords(strtolower(trim($this->middle_name)));
+            $data['middle_name'] = strtoupper(trim($this->middle_name));
         }
 
         if ($this->has('last_name') && $this->last_name) {
-            $data['last_name'] = ucwords(strtolower(trim($this->last_name)));
+            $data['last_name'] = strtoupper(trim($this->last_name));
         }
 
         if (!empty($data)) {
@@ -101,15 +101,13 @@ class accountRequest extends FormRequest
     protected function contractorStep1Rules()
     {
         return [
-            'company_name' => 'required|string|max:255',
+            'company_name' => ['required', 'string', 'max:255', 'regex:/^[\pL\s\-\.\,\&0-9]+$/u'],
             'company_phone' => [
                 'required',
                 'string',
                 'regex:/^09[0-9]{9}$/'
             ],
-            // Note: `founded_date` is provided by the client date-picker
-            // but the server computes `years_of_experience` from that date
-            // and does not require a separate `founded_date` validation rule here.
+            'founded_date' => 'required|date|before:today',
             'contractor_type_id' => 'required|integer',
             'contractor_type_other_text' => 'nullable|string|max:255',
             'services_offered' => 'required|string',
@@ -126,9 +124,9 @@ class accountRequest extends FormRequest
     protected function contractorStep2Rules()
     {
         $rules = [
-            'first_name' => 'required|string|max:100',
-            'middle_name' => 'nullable|string|max:100',
-            'last_name' => 'required|string|max:100',
+            'first_name' => ['required', 'string', 'max:100', 'regex:/^[\pL\s\-]+$/u'],
+            'middle_name' => ['nullable', 'string', 'max:100', 'regex:/^[\pL\s\-]+$/u'],
+            'last_name' => ['required', 'string', 'max:100', 'regex:/^[\pL\s\-]+$/u'],
             'username' => 'required|string|max:50',
             'company_email' => 'required|email|max:255',
             'password' => [
@@ -189,9 +187,9 @@ class accountRequest extends FormRequest
     protected function ownerStep1Rules()
     {
         return [
-            'first_name' => 'required|string|max:100',
-            'middle_name' => 'nullable|string|max:100',
-            'last_name' => 'required|string|max:100',
+            'first_name' => ['required', 'string', 'max:100', 'regex:/^[\pL\s\-]+$/u'],
+            'middle_name' => ['nullable', 'string', 'max:100', 'regex:/^[\pL\s\-]+$/u'],
+            'last_name' => ['required', 'string', 'max:100', 'regex:/^[\pL\s\-]+$/u'],
             'date_of_birth' => [
                 'required',
                 'date',
@@ -204,6 +202,7 @@ class accountRequest extends FormRequest
             ],
             'occupation_id' => 'required|integer',
             'occupation_other_text' => 'nullable|string|max:255',
+            'occupation_other' => 'nullable|string|max:255',
             'owner_address_street' => 'required|string|max:255',
             'owner_address_barangay' => 'required|string|max:255',
             'owner_address_city' => 'required|string|max:255',
@@ -256,9 +255,9 @@ class accountRequest extends FormRequest
     protected function switchContractorStep1Rules()
     {
         return [
-            'first_name' => 'nullable|string|max:100',
-            'middle_name' => 'nullable|string|max:100',
-            'last_name' => 'nullable|string|max:100',
+            'first_name' => ['nullable', 'string', 'max:100', 'regex:/^[\pL\s\-]+$/u'],
+            'middle_name' => ['nullable', 'string', 'max:100', 'regex:/^[\pL\s\-]+$/u'],
+            'last_name' => ['nullable', 'string', 'max:100', 'regex:/^[\pL\s\-]+$/u'],
             'username' => 'nullable|string|max:50',
             'company_email' => 'nullable|email|max:255'
         ];
@@ -314,9 +313,9 @@ class accountRequest extends FormRequest
     protected function switchOwnerFinalRules()
     {
         return [
-            'first_name' => 'required|string|max:100',
-            'middle_name' => 'nullable|string|max:100',
-            'last_name' => 'required|string|max:100',
+            'first_name' => ['required', 'string', 'max:100', 'regex:/^[\pL\s\-]+$/u'],
+            'middle_name' => ['nullable', 'string', 'max:100', 'regex:/^[\pL\s\-]+$/u'],
+            'last_name' => ['required', 'string', 'max:100', 'regex:/^[\pL\s\-]+$/u'],
             'date_of_birth' => [
                 'required',
                 'date',
@@ -329,6 +328,7 @@ class accountRequest extends FormRequest
             ],
             'occupation_id' => 'required|integer',
             'occupation_other_text' => 'nullable|string|max:255',
+            'occupation_other' => 'nullable|string|max:255',
             'address' => 'required|string|max:500',
             'profile_pic' => 'nullable|file|mimes:jpg,jpeg,png|max:5120'
         ];
@@ -337,6 +337,12 @@ class accountRequest extends FormRequest
     public function messages()
     {
         return [
+            'first_name.regex' => 'First name may only contain letters, spaces, and hyphens.',
+            'middle_name.regex' => 'Middle name may only contain letters, spaces, and hyphens.',
+            'last_name.regex' => 'Last name may only contain letters, spaces, and hyphens.',
+            'company_name.regex' => 'Company name may only contain letters, numbers, spaces, hyphens, periods, commas, and ampersands.',
+            'founded_date.required' => 'Founding date is required.',
+            'founded_date.before' => 'Founding date must be a past date.',
             'company_phone.regex' => 'Phone number must be 11 digits starting with 09 (e.g., 09171234567)',
             'phone_number.regex' => 'Phone number must be 11 digits starting with 09 (e.g., 09171234567)',
             'password.min' => 'Password must be at least 8 characters',
@@ -368,7 +374,7 @@ class accountRequest extends FormRequest
         throw new HttpResponseException(
             response()->json([
                 'success' => false,
-                'errors' => $validator->errors()->all()
+                'errors' => $validator->errors()->toArray()
             ], 422)
         );
     }

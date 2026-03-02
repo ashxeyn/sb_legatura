@@ -67,8 +67,8 @@ document.addEventListener('DOMContentLoaded', () => {
 			try {
 				// Detect if we're in contractor or property owner flow based on URL
 				const isContractor = window.location.pathname.includes('contractor');
-				const verifyEndpoint = isContractor 
-					? '/accounts/signup/contractor/step3/verify-otp' 
+				const verifyEndpoint = isContractor
+					? '/accounts/signup/contractor/step3/verify-otp'
 					: '/accounts/signup/owner/step3/verify-otp';
 
 				const response = await fetch(verifyEndpoint, {
@@ -115,9 +115,17 @@ document.addEventListener('DOMContentLoaded', () => {
 						}
 					}, 1500);
 				} else {
-					// Verification failed
 					const errorMsg = result.message || 'Invalid OTP. Please try again.';
-					alert(errorMsg);
+					// Show error inline within OTP card
+					let otpErrorEl = document.getElementById('otpErrorMsg');
+					if (!otpErrorEl) {
+						otpErrorEl = document.createElement('p');
+						otpErrorEl.id = 'otpErrorMsg';
+						otpErrorEl.style.cssText = 'color:#d32f2f;font-size:13px;text-align:center;margin:8px 0 0;';
+						const otpInputGroup = document.getElementById('otpInputGroup');
+						if (otpInputGroup) otpInputGroup.parentNode.insertBefore(otpErrorEl, otpInputGroup.nextSibling);
+					}
+					otpErrorEl.textContent = errorMsg;
 
 					// Reset flag for retry
 					isVerifying = false;
@@ -134,8 +142,16 @@ document.addEventListener('DOMContentLoaded', () => {
 					console.error('OTP verification failed:', result.message);
 				}
 			} catch (error) {
-				console.error('Error verifying OTP:', error);
-				alert('Error: Unable to verify OTP. Please check your connection and try again.');
+				// Show error inline
+				let otpErrorEl = document.getElementById('otpErrorMsg');
+				if (!otpErrorEl) {
+					otpErrorEl = document.createElement('p');
+					otpErrorEl.id = 'otpErrorMsg';
+					otpErrorEl.style.cssText = 'color:#d32f2f;font-size:13px;text-align:center;margin:8px 0 0;';
+					const otpInputGroup = document.getElementById('otpInputGroup');
+					if (otpInputGroup) otpInputGroup.parentNode.insertBefore(otpErrorEl, otpInputGroup.nextSibling);
+				}
+				otpErrorEl.textContent = 'Unable to verify OTP. Please check your connection and try again.';
 
 				// Reset flag for retry
 				isVerifying = false;

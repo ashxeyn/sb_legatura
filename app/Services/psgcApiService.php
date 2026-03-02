@@ -103,6 +103,55 @@ class psgcApiService
         }
     }
 
+    /**
+     * Resolve a PSGC code to its human-readable name.
+     * Works for provinces, cities/municipalities, and barangays.
+     * If the value does not look like a numeric code, it is returned as-is.
+     */
+    public function resolveCodeToName(string $code, string $type = 'province'): string
+    {
+        if (empty($code)) return '';
+
+        // If the value already contains letters, it's probably a name — return as-is
+        if (preg_match('/[a-zA-Z]/', $code)) {
+            return $code;
+        }
+
+        try {
+            if ($type === 'province') {
+                $items = $this->getProvinces();
+            } elseif ($type === 'city') {
+                // For cities, we need to search all cities since we might not know the province
+                $items = $this->getAllCities();
+            } elseif ($type === 'barangay') {
+                // Try fetching barangays — we extrapolate the city code from the barangay code
+                // PSGC barangay codes: first 7 digits = city code + trailing zeroes
+                $cityCode = substr($code, 0, 7) . '000';
+                $items = $this->getBarangaysByCity($cityCode);
+                if (empty($items)) {
+                    // If that fails, try with first 6 digits
+                    $cityCode = substr($code, 0, 6) . '0000';
+                    $items = $this->getBarangaysByCity($cityCode);
+                }
+            } else {
+                return $code;
+            }
+
+            if (is_array($items)) {
+                foreach ($items as $item) {
+                    $itemCode = (string) ($item['code'] ?? '');
+                    if ($itemCode === $code) {
+                        return $item['name'] ?? $code;
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning('Failed to resolve PSGC code: ' . $code . ' (' . $type . '): ' . $e->getMessage());
+        }
+
+        return $code; // Fallback: return the code itself
+    }
+
     // Fallback provinces if API fails
     private function getFallbackProvinces()
     {

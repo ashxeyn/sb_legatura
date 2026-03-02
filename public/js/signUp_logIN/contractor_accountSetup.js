@@ -113,6 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		provinces: window.contractorFormData?.provinces || [],
 		cities: window.contractorFormData?.cities || [],
 		barangays: window.contractorFormData?.barangays || [],
+		allCities: [], // For business permit city dropdown
 		pcabCategories: ['AAAA', 'AAA', 'AA', 'A', 'B', 'C', 'D', 'Trade/E']
 	};
 
@@ -120,7 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
 	const fallbackBase = `${window.location.origin}${appBasePath}`;
 	const psgcBaseUrl = (window.psgcBaseUrl || `${fallbackBase}/api/psgc`).replace(/\/$/, '');
 
-	window.openModal = function(modalId) {
+	window.openModal = function (modalId) {
 		const modal = document.getElementById(modalId);
 		if (!modal) return;
 
@@ -135,7 +136,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		} else if (modalId === 'cityModal') {
 			const provinceCode = document.getElementById('provinceValue')?.value;
 			if (!provinceCode) {
-				alert('Please select a province first');
+				showToast('Please select a province first', 'warning');
 				return;
 			}
 			if (modalData.cities.length > 0) {
@@ -148,7 +149,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		} else if (modalId === 'barangayModal') {
 			const cityCode = document.getElementById('cityValue')?.value;
 			if (!cityCode) {
-				alert('Please select a city first');
+				showToast('Please select a city first', 'warning');
 				return;
 			}
 			if (modalData.barangays.length > 0) {
@@ -163,12 +164,20 @@ document.addEventListener('DOMContentLoaded', () => {
 			populateModalList('pcabCategoryList', categories, 'pcabCategorySearch', (item) => {
 				selectPcabCategory(item.value || item.name);
 			});
+		} else if (modalId === 'businessPermitCityModal') {
+			if (modalData.allCities && modalData.allCities.length > 0) {
+				populateModalList('businessPermitCityList', modalData.allCities, 'businessPermitCitySearch', (item) => {
+					selectBusinessPermitCity(item.code, item.name);
+				});
+			} else {
+				loadAllCitiesForModal();
+			}
 		}
 
 		modal.style.display = 'flex';
 	};
 
-	window.closeModal = function(modalId) {
+	window.closeModal = function (modalId) {
 		const modal = document.getElementById(modalId);
 		if (modal) {
 			modal.style.display = 'none';
@@ -186,7 +195,10 @@ document.addEventListener('DOMContentLoaded', () => {
 	function selectContractorType(id, name) {
 		const valueEl = document.getElementById('contractorTypeValue');
 		const displayEl = document.getElementById('contractorTypeDisplay');
-		if (valueEl) valueEl.value = id || '';
+		if (valueEl) {
+			valueEl.value = id || '';
+			valueEl.dispatchEvent(new Event('change', { bubbles: true }));
+		}
 		if (displayEl) displayEl.textContent = name || 'Select contractor type';
 		closeModal('contractorTypeModal');
 		updateContractorTypeOther(id);
@@ -195,7 +207,10 @@ document.addEventListener('DOMContentLoaded', () => {
 	function selectProvince(code, name) {
 		const valueEl = document.getElementById('provinceValue');
 		const displayEl = document.getElementById('provinceDisplay');
-		if (valueEl) valueEl.value = code || '';
+		if (valueEl) {
+			valueEl.value = code || '';
+			valueEl.dispatchEvent(new Event('change', { bubbles: true }));
+		}
 		if (displayEl) displayEl.textContent = name || 'Select province';
 
 		const cityValue = document.getElementById('cityValue');
@@ -216,7 +231,10 @@ document.addEventListener('DOMContentLoaded', () => {
 	function selectCity(code, name) {
 		const valueEl = document.getElementById('cityValue');
 		const displayEl = document.getElementById('cityDisplay');
-		if (valueEl) valueEl.value = code || '';
+		if (valueEl) {
+			valueEl.value = code || '';
+			valueEl.dispatchEvent(new Event('change', { bubbles: true }));
+		}
 		if (displayEl) displayEl.textContent = name || 'Select city/municipality';
 
 		const barangayValue = document.getElementById('barangayValue');
@@ -232,7 +250,10 @@ document.addEventListener('DOMContentLoaded', () => {
 	function selectBarangay(code, name) {
 		const valueEl = document.getElementById('barangayValue');
 		const displayEl = document.getElementById('barangayDisplay');
-		if (valueEl) valueEl.value = code || '';
+		if (valueEl) {
+			valueEl.value = code || '';
+			valueEl.dispatchEvent(new Event('change', { bubbles: true }));
+		}
 		if (displayEl) displayEl.textContent = name || 'Select barangay';
 		closeModal('barangayModal');
 	}
@@ -240,18 +261,32 @@ document.addEventListener('DOMContentLoaded', () => {
 	function selectPcabCategory(value) {
 		const valueEl = document.getElementById('pcabCategoryValue');
 		const displayEl = document.getElementById('pcabCategoryDisplay');
-		if (valueEl) valueEl.value = value || '';
-		if (displayEl) displayEl.textContent = value || 'Select PCAB Category';
+		if (valueEl) {
+			valueEl.value = value || '';
+			valueEl.dispatchEvent(new Event('change', { bubbles: true }));
+		}
+		if (displayEl) displayEl.textContent = value || 'Select PCAB category';
 		closeModal('pcabCategoryModal');
 	}
 
-	function populateModalList(listId, items, searchId, onSelect) {
+	function selectBusinessPermitCity(code, name) {
+		const valueEl = document.getElementById('businessPermitCityValue');
+		const displayEl = document.getElementById('businessPermitCityDisplay');
+		if (valueEl) {
+			valueEl.value = name || ''; // Store city name instead of code for business permit
+			valueEl.dispatchEvent(new Event('change', { bubbles: true }));
+		}
+		if (displayEl) displayEl.textContent = name || 'Select City/Municipality';
+		closeModal('businessPermitCityModal');
+	}
+
+	function populateModalList(listId, items, searchId, onSelect, customDisplayProp = null) {
 		const listEl = document.getElementById(listId);
 		const searchInput = document.getElementById(searchId);
 		if (!listEl) return;
 
-		let displayProp = 'name';
-		if (items.length > 0 && items[0].type_name) {
+		let displayProp = customDisplayProp || 'name';
+		if (!customDisplayProp && items.length > 0 && items[0].type_name) {
 			displayProp = 'type_name';
 		}
 
@@ -324,16 +359,105 @@ document.addEventListener('DOMContentLoaded', () => {
 		}
 	}
 
+	async function loadAllCitiesForModal() {
+		const listEl = document.getElementById('businessPermitCityList');
+		if (!listEl) return;
+		listEl.innerHTML = '<div style="padding: 20px; text-align: center; color: #9ca3af;">Loading cities...</div>';
+		try {
+			// Load all provinces first, then get cities for each
+			const provincesResponse = await fetch(`${psgcBaseUrl}/provinces`);
+			if (!provincesResponse.ok) throw new Error(`Provinces request failed: ${provincesResponse.status}`);
+			const provincesPayload = await provincesResponse.json();
+			const provinces = Array.isArray(provincesPayload) ? provincesPayload : (provincesPayload.data || []);
+
+			const allCities = [];
+
+			// Load cities for each province
+			for (const province of provinces) {
+				try {
+					const citiesResponse = await fetch(`${psgcBaseUrl}/provinces/${province.code}/cities`);
+					if (citiesResponse.ok) {
+						const citiesPayload = await citiesResponse.json();
+						const cities = Array.isArray(citiesPayload) ? citiesPayload : (citiesPayload.data || []);
+						// Add province name to each city for better identification
+						const citiesWithProvince = cities.map(city => ({
+							...city,
+							fullName: `${city.name}, ${province.name}`
+						}));
+						allCities.push(...citiesWithProvince);
+					}
+				} catch (error) {
+					console.warn(`Error loading cities for ${province.name}:`, error);
+				}
+			}
+
+			// Sort cities alphabetically
+			allCities.sort((a, b) => a.fullName.localeCompare(b.fullName));
+
+			modalData.allCities = allCities;
+			populateModalList('businessPermitCityList', allCities, 'businessPermitCitySearch', (item) => {
+				selectBusinessPermitCity(item.code, item.name);
+			}, 'fullName'); // Use fullName for display
+		} catch (error) {
+			console.error('Error loading all cities:', error);
+			listEl.innerHTML = '<div style="padding: 20px; text-align: center; color: #ef4444;">Error loading cities</div>';
+		}
+	}
+
+	const showInlineError = (input, message) => {
+		let container = input.closest('.field-block') || input.closest('.form-group') || input.parentNode;
+
+		// Clear any existing error first
+		let errorSpan = container.querySelector(':scope > .inline-error-msg') || container.querySelector('.inline-error-msg');
+		if (!errorSpan) {
+			errorSpan = document.createElement('span');
+			errorSpan.className = 'inline-error-msg field-error-message';
+			errorSpan.style.color = '#d32f2f';
+			errorSpan.style.fontSize = '12px';
+			errorSpan.style.marginTop = '4px';
+			errorSpan.style.display = 'block';
+			container.appendChild(errorSpan);
+		}
+		errorSpan.textContent = message;
+		errorSpan.style.display = 'block';
+		input.classList.add('field-error');
+
+		const clearError = () => {
+			if (errorSpan) {
+				errorSpan.style.display = 'none';
+				errorSpan.textContent = '';
+			}
+			input.classList.remove('field-error');
+		};
+
+		// Remove existing listeners to prevent duplicates
+		input.removeEventListener('focus', clearError);
+		input.removeEventListener('input', clearError);
+		input.removeEventListener('change', clearError);
+
+		// Add fresh listeners
+		input.addEventListener('focus', clearError, { once: true });
+		input.addEventListener('input', clearError, { once: true });
+		input.addEventListener('change', clearError, { once: true });
+	};
+
 	const validateStep = (step) => {
 		const stepElement = document.getElementById(`step-${step}`);
 		const inputs = stepElement.querySelectorAll('input[required], select[required], textarea[required]');
+		let isValid = true;
 
 		for (let input of inputs) {
 			if (!input.value.trim()) {
-				input.focus();
-				alert('Please fill in all required fields.');
-				return false;
+				showInlineError(input, 'This field is required.');
+				isValid = false;
 			}
+		}
+
+		if (!isValid) {
+			// Focus the first invalid input
+			const firstInvalid = stepElement.querySelector('.field-error');
+			if (firstInvalid) firstInvalid.focus();
+			return false;
 		}
 
 		// Step 2 specific validation: check password match
@@ -344,16 +468,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
 			if (passwordInput && confirmPasswordInput) {
 				if (passwordInput.value !== confirmPasswordInput.value) {
-					passwordMismatchError.style.display = 'block';
+					if (passwordMismatchError) passwordMismatchError.style.display = 'block';
+					showInlineError(confirmPasswordInput, 'Passwords do not match.');
 					confirmPasswordInput.focus();
 					return false;
 				} else {
-					passwordMismatchError.style.display = 'none';
+					if (passwordMismatchError) passwordMismatchError.style.display = 'none';
 				}
 
 				// Validate password length (min 8 characters)
 				if (passwordInput.value.length < 8) {
-					alert('Password must be at least 8 characters long.');
+					showInlineError(passwordInput, 'Password must be at least 8 characters long.');
 					passwordInput.focus();
 					return false;
 				}
@@ -366,17 +491,47 @@ document.addEventListener('DOMContentLoaded', () => {
 	// Real-time password mismatch validation for Step 2
 	const passwordInput = document.getElementById('passwordInput');
 	const confirmPasswordInput = document.getElementById('confirmPasswordInput');
-	const passwordMismatchError = document.getElementById('passwordMismatchError');
 
-	if (confirmPasswordInput && passwordMismatchError) {
+	if (confirmPasswordInput && passwordInput) {
 		confirmPasswordInput.addEventListener('input', () => {
+			// Clear existing error first
+			const container = confirmPasswordInput.closest('.field-block') || confirmPasswordInput.closest('.form-group') || confirmPasswordInput.parentNode;
+			const existingError = container?.querySelector('.inline-error-msg');
+			if (existingError) {
+				existingError.style.display = 'none';
+				existingError.textContent = '';
+			}
+			confirmPasswordInput.classList.remove('field-error');
+
 			if (confirmPasswordInput.value && passwordInput.value !== confirmPasswordInput.value) {
-				passwordMismatchError.style.display = 'block';
-			} else {
-				passwordMismatchError.style.display = 'none';
+				showInlineError(confirmPasswordInput, 'Passwords do not match.');
+			}
+		});
+
+		// Also add validation to password input to check when typing in the main password field
+		passwordInput.addEventListener('input', () => {
+			if (confirmPasswordInput.value && passwordInput.value !== confirmPasswordInput.value) {
+				showInlineError(confirmPasswordInput, 'Passwords do not match.');
+			} else if (confirmPasswordInput.value && passwordInput.value === confirmPasswordInput.value) {
+				// Clear error if passwords now match
+				const container = confirmPasswordInput.closest('.field-block') || confirmPasswordInput.closest('.form-group') || confirmPasswordInput.parentNode;
+				const existingError = container?.querySelector('.inline-error-msg');
+				if (existingError) {
+					existingError.style.display = 'none';
+					existingError.textContent = '';
+				}
+				confirmPasswordInput.classList.remove('field-error');
 			}
 		});
 	}
+
+	// Phone Number only allows digits
+	const phoneInputs = document.querySelectorAll('input[name="company_phone"]');
+	phoneInputs.forEach(input => {
+		input.addEventListener('input', function () {
+			this.value = this.value.replace(/[^0-9]/g, '');
+		});
+	});
 
 	// Password requirement validation
 	const setupPasswordValidation = () => {
@@ -420,6 +575,43 @@ document.addEventListener('DOMContentLoaded', () => {
 		});
 	};
 
+	// Password visibility toggles
+	const setupPasswordToggles = () => {
+		const passwordToggle = document.getElementById('passwordToggle');
+		const confirmPasswordToggle = document.getElementById('confirmPasswordToggle');
+		const passwordInput = document.getElementById('passwordInput');
+		const confirmPasswordInput = document.getElementById('confirmPasswordInput');
+
+		if (passwordToggle && passwordInput) {
+			passwordToggle.addEventListener('click', (e) => {
+				e.preventDefault();
+				e.stopPropagation();
+				const isPassword = passwordInput.type === 'password';
+				passwordInput.type = isPassword ? 'text' : 'password';
+				// Toggle icon between eye and eye-crossed
+				const icon = passwordToggle.querySelector('i');
+				if (icon) {
+					icon.className = isPassword ? 'fi fi-rr-eye-crossed' : 'fi fi-rr-eye';
+				}
+			});
+		}
+
+		if (confirmPasswordToggle && confirmPasswordInput) {
+			confirmPasswordToggle.addEventListener('click', (e) => {
+				e.preventDefault();
+				e.stopPropagation();
+				const isPassword = confirmPasswordInput.type === 'password';
+				confirmPasswordInput.type = isPassword ? 'text' : 'password';
+				// Toggle icon between eye and eye-crossed
+				const icon = confirmPasswordToggle.querySelector('i');
+				if (icon) {
+					icon.className = isPassword ? 'fi fi-rr-eye-crossed' : 'fi fi-rr-eye';
+				}
+			});
+		}
+	};
+
+	setupPasswordToggles();
 	setupPasswordValidation();
 
 	// Handle contractor type "Others" conditional display
@@ -456,7 +648,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				const foundedDate = new Date(foundedDateInput.value);
 				const today = new Date();
 				let yearsOfExperience = today.getFullYear() - foundedDate.getFullYear();
-				
+
 				// Check if anniversary hasn't occurred this year
 				const currentMonth = today.getMonth();
 				const currentDay = today.getDate();
@@ -506,12 +698,12 @@ document.addEventListener('DOMContentLoaded', () => {
 				const step1Data = new FormData();
 				const step1Element = document.getElementById('step-1');
 				const step1Inputs = step1Element.querySelectorAll('input, select, textarea');
-				
+
 				// Get CSRF token
 				const csrfTokenInput = document.querySelector('input[name="_token"]');
 				const csrfToken = csrfTokenInput ? csrfTokenInput.value : '';
 				step1Data.append('_token', csrfToken);
-				
+
 				// Add all Step 1 fields
 				step1Inputs.forEach(input => {
 					if (input.name) {
@@ -528,38 +720,45 @@ document.addEventListener('DOMContentLoaded', () => {
 					},
 					credentials: 'include'
 				})
-				.then(response => response.json())
-				.then(data => {
-					if (data.success) {
-						// Advance to Step 2
-						currentStep++;
-						showStep(currentStep);
-						// Restore button state
-						nextBtn.disabled = false;
-						nextBtn.classList.remove('loading');
-						nextBtn.innerHTML = originalText;
-					} else {
-						// Show validation errors
-						if (data.errors) {
-							const errorMessages = Object.values(data.errors).flat().join('\n');
-							showToast('Validation Error:\n' + errorMessages, 'error', 5000);
+					.then(response => response.json())
+					.then(data => {
+						if (data.success) {
+							// Advance to Step 2
+							currentStep++;
+							showStep(currentStep);
+							// Restore button state
+							nextBtn.disabled = false;
+							nextBtn.classList.remove('loading');
+							nextBtn.innerHTML = originalText;
 						} else {
-							showToast(data.message || 'Error saving company information', 'error');
+							// Show validation errors
+							if (data.errors) {
+								const stepElement = document.getElementById('step-1');
+								Object.entries(data.errors).forEach(([field, messages]) => {
+									const input = stepElement.querySelector(`[name="${field}"]`);
+									if (input) {
+										showInlineError(input, messages[0]);
+									} else {
+										showToast(messages[0], 'error', 5000);
+									}
+								});
+							} else {
+								showToast(data.message || 'Error saving company information', 'error');
+							}
+							// Restore button state
+							nextBtn.disabled = false;
+							nextBtn.classList.remove('loading');
+							nextBtn.innerHTML = originalText;
 						}
+					})
+					.catch(error => {
+						console.error('Error:', error);
+						showToast('Network error. Please try again.', 'error');
 						// Restore button state
 						nextBtn.disabled = false;
 						nextBtn.classList.remove('loading');
 						nextBtn.innerHTML = originalText;
-					}
-				})
-				.catch(error => {
-					console.error('Error:', error);
-					showToast('Network error. Please try again.', 'error');
-					// Restore button state
-					nextBtn.disabled = false;
-					nextBtn.classList.remove('loading');
-					nextBtn.innerHTML = originalText;
-				});
+					});
 			} else if (currentStep === 2) {
 				// Step 2: Submit via AJAX and redirect to OTP verification
 				// Show loading state
@@ -572,7 +771,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				const step2Data = new FormData();
 				const step2Element = document.getElementById('step-2');
 				const step2Inputs = step2Element.querySelectorAll('input, select, textarea');
-				
+
 				// Get CSRF token from hidden input in form
 				const csrfTokenInput = document.querySelector('input[name="_token"]');
 				const csrfToken = csrfTokenInput ? csrfTokenInput.value : '';
@@ -583,7 +782,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 				// Log the fields being sent
 				const fieldsBeingSent = {};
-				
+
 				// Add all Step 2 fields
 				step2Inputs.forEach(input => {
 					if (input.name) {
@@ -608,49 +807,54 @@ document.addEventListener('DOMContentLoaded', () => {
 					},
 					credentials: 'include' // Include cookies for session persistence
 				})
-				.then(response => {
-					console.log('Response status:', response.status);
-					return response.json();
-				})
-				.then(data => {
-					console.log('Step 2 response:', data);
-					if (data.success) {
-						// Show toast and display OTP modal on the same page
-						showToast('Verification code sent to your email', 'success', 2000);
-						// Show the OTP modal instead of redirecting
-						const otpModalBackdrop = document.getElementById('otpModalBackdrop');
-						if (otpModalBackdrop) {
-							otpModalBackdrop.style.display = 'flex';
-						}
-						// Restore button state
-						nextBtn.disabled = false;
-						nextBtn.classList.remove('loading');
-						nextBtn.innerHTML = originalText;
-					} else {
-						// Show validation errors
-						if (data.errors) {
-							const errorMessages = Object.values(data.errors)
-								.flat()
-								.join('\n');
-							console.error('Validation errors:', data.errors);
-							showToast('Validation Error:\n' + errorMessages, 'error', 5000);
+					.then(response => {
+						console.log('Response status:', response.status);
+						return response.json();
+					})
+					.then(data => {
+						console.log('Step 2 response:', data);
+						if (data.success) {
+							// Show toast and display OTP modal on the same page
+							showToast('Verification code sent to your email', 'success', 2000);
+							// Show the OTP modal instead of redirecting
+							const otpModalBackdrop = document.getElementById('otpModalBackdrop');
+							if (otpModalBackdrop) {
+								otpModalBackdrop.style.display = 'flex';
+							}
+							// Restore button state
+							nextBtn.disabled = false;
+							nextBtn.classList.remove('loading');
+							nextBtn.innerHTML = originalText;
 						} else {
-							showToast(data.message || 'Error sending verification code', 'error');
+							// Show validation errors
+							if (data.errors) {
+								console.error('Validation errors:', data.errors);
+								const stepElement = document.getElementById('step-2');
+								Object.entries(data.errors).forEach(([field, messages]) => {
+									const input = stepElement.querySelector(`[name="${field}"]`);
+									if (input) {
+										showInlineError(input, messages[0]);
+									} else {
+										showToast(messages[0], 'error', 5000);
+									}
+								});
+							} else {
+								showToast(data.message || 'Error sending verification code', 'error');
+							}
+							// Restore button state on error
+							nextBtn.disabled = false;
+							nextBtn.classList.remove('loading');
+							nextBtn.innerHTML = originalText;
 						}
+					})
+					.catch(error => {
+						console.error('Error:', error);
+						showToast('Network error. Please try again.', 'error');
 						// Restore button state on error
 						nextBtn.disabled = false;
 						nextBtn.classList.remove('loading');
 						nextBtn.innerHTML = originalText;
-					}
-				})
-				.catch(error => {
-					console.error('Error:', error);
-					showToast('Network error. Please try again.', 'error');
-					// Restore button state on error
-					nextBtn.disabled = false;
-					nextBtn.classList.remove('loading');
-					nextBtn.innerHTML = originalText;
-				});
+					});
 			} else if (currentStep === totalSteps) {
 				// Step 3: Submit via AJAX (supports file upload + keeps user on step 3 if errors occur)
 				const originalText = nextBtn.innerHTML;
@@ -685,32 +889,39 @@ document.addEventListener('DOMContentLoaded', () => {
 					headers: { 'X-Requested-With': 'XMLHttpRequest' },
 					credentials: 'include'
 				})
-				.then(response => response.json())
-				.then(data => {
-					if (data.success) {
-						showToast('Documents submitted! Redirecting...', 'success', 1500);
-						setTimeout(() => {
-							window.location.href = data.redirect_url || '/add-profile-photo';
-						}, 1500);
-					} else {
-						if (data.errors) {
-							const errorMessages = Object.values(data.errors).flat().join('\n');
-							showToast('Validation Error:\n' + errorMessages, 'error', 6000);
+					.then(response => response.json())
+					.then(data => {
+						if (data.success) {
+							showToast('Documents submitted! Redirecting...', 'success', 1500);
+							setTimeout(() => {
+								window.location.href = data.redirect_url || '/add-profile-photo';
+							}, 1500);
 						} else {
-							showToast(data.message || 'Error submitting documents. Please try again.', 'error', 4000);
+							if (data.errors) {
+								const stepElement = document.getElementById('step-3');
+								Object.entries(data.errors).forEach(([field, messages]) => {
+									const input = stepElement.querySelector(`[name="${field}"]`);
+									if (input) {
+										showInlineError(input, messages[0]);
+									} else {
+										showToast(messages[0], 'error', 6000);
+									}
+								});
+							} else {
+								showToast(data.message || 'Error submitting documents. Please try again.', 'error', 4000);
+							}
+							nextBtn.disabled = false;
+							nextBtn.classList.remove('loading');
+							nextBtn.innerHTML = originalText;
 						}
+					})
+					.catch(error => {
+						console.error('Step 3 submission error:', error);
+						showToast('Network error. Please try again.', 'error');
 						nextBtn.disabled = false;
 						nextBtn.classList.remove('loading');
 						nextBtn.innerHTML = originalText;
-					}
-				})
-				.catch(error => {
-					console.error('Step 3 submission error:', error);
-					showToast('Network error. Please try again.', 'error');
-					nextBtn.disabled = false;
-					nextBtn.classList.remove('loading');
-					nextBtn.innerHTML = originalText;
-				});
+					});
 			}
 		}
 	});
@@ -737,7 +948,7 @@ document.addEventListener('DOMContentLoaded', () => {
 	const setupUploadAreas = () => {
 		const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB in bytes
 		const uploadAreas = document.querySelectorAll('.upload-area');
-		
+
 		uploadAreas.forEach((area) => {
 			const inputId = area.dataset.input;
 			const input = inputId ? document.getElementById(inputId) : null;
@@ -748,7 +959,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			const removeBtn = area.querySelector('.upload-remove');
 			const icon = area.querySelector('.upload-icon');
 			const text = area.querySelector('.upload-text');
-			
+
 			let dragoverTimeout;
 
 			area.addEventListener('click', (e) => {
@@ -789,7 +1000,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			input.addEventListener('change', () => {
 				if (input.files && input.files[0]) {
 					const file = input.files[0];
-					
+
 					// Validate file type - allow images and PDF
 					const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
 					if (!allowedTypes.includes(file.type)) {
@@ -797,17 +1008,17 @@ document.addEventListener('DOMContentLoaded', () => {
 						input.value = '';
 						return;
 					}
-					
+
 					// Validate file size upfront
 					if (file.size > MAX_FILE_SIZE) {
 						showToast('File size must be less than 5MB', 'error');
 						input.value = '';
 						return;
 					}
-					
+
 					// Use URL.createObjectURL for instant preview
 					const blobUrl = URL.createObjectURL(file);
-					
+
 					if (preview) {
 						// Create new image to load preview
 						const img = new Image();
@@ -838,7 +1049,7 @@ document.addEventListener('DOMContentLoaded', () => {
 					}
 				}
 			});
-			
+
 			// Remove button functionality
 			if (removeBtn) {
 				removeBtn.addEventListener('click', (e) => {

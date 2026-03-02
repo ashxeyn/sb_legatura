@@ -111,6 +111,11 @@ Route::post('/login', [authController::class, 'apiLogin']);
 Route::post('/register', [authController::class, 'apiRegister']);
 Route::post('/force-change-password', [passwordController::class, 'apiForceChangePassword']);
 
+// Forgot Password API routes (stateless, for mobile)
+Route::post('/forgot-password/send-otp', [passwordController::class, 'sendResetOtp']);
+Route::post('/forgot-password/verify-otp', [passwordController::class, 'verifyResetOtp']);
+Route::post('/forgot-password/reset', [passwordController::class, 'resetPassword']);
+
 // Change OTP endpoints (public; controller will resolve user via bearer token if provided)
 Route::post('/change-otp/send', [\App\Http\Controllers\OTPChangeController::class, 'sendOtp']);
 Route::post('/change-otp/verify', [\App\Http\Controllers\OTPChangeController::class, 'verifyOtp']);

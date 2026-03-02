@@ -15,7 +15,7 @@ import { PersonalInfo } from './personal_info';
 
 interface AccountSetupScreenProps {
   onBackPress: () => void;
-  onNext: (accountInfo: AccountInfo) => void;
+  onNext: (accountInfo: AccountInfo) => Promise<Record<string, string[]> | void>;
   personalInfo: PersonalInfo;
   initialData?: AccountInfo | null;
 }
@@ -35,17 +35,31 @@ export default function AccountSetupScreen({ onBackPress, onNext, personalInfo, 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-
-  const isFormValid = () => {
-    return username.trim() !== '' &&
-      email.trim() !== '' &&
-      password.trim() !== '' &&
-      confirmPassword.trim() !== '' &&
-      password === confirmPassword;
-  };
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
 
   const handleNext = async () => {
-    if (!isFormValid() || isLoading) {
+    if (isLoading) return;
+
+    // Clear previous errors
+    setFieldErrors({});
+
+    // Local validation
+    const errors: Record<string, string[]> = {};
+    if (!username.trim()) errors.username = ['Username is required.'];
+    if (!email.trim()) errors.email = ['Email is required.'];
+    if (!password.trim()) {
+      errors.password = ['Password is required.'];
+    } else if (password.length < 8) {
+      errors.password = ['Password must be at least 8 characters.'];
+    }
+    if (!confirmPassword.trim()) {
+      errors.password_confirmation = ['Please confirm your password.'];
+    } else if (password !== confirmPassword) {
+      errors.password_confirmation = ['Passwords do not match.'];
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
       return;
     }
 
@@ -59,7 +73,10 @@ export default function AccountSetupScreen({ onBackPress, onNext, personalInfo, 
     };
 
     try {
-      await onNext(accountInfo);
+      const serverErrors = await onNext(accountInfo);
+      if (serverErrors) {
+        setFieldErrors(serverErrors);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -94,35 +111,37 @@ export default function AccountSetupScreen({ onBackPress, onNext, personalInfo, 
         <View style={styles.formContainer}>
           <View style={styles.inputContainer}>
             <TextInput
-              style={styles.input}
+              style={[styles.input, fieldErrors.username && styles.inputError]}
               value={username}
-              onChangeText={setUsername}
-              placeholder="Username"
+              onChangeText={(text) => { setUsername(text); setFieldErrors(prev => { const { username, ...rest } = prev; return rest; }); }}
+              placeholder="Username *"
               placeholderTextColor="#999"
               autoCapitalize="none"
             />
+            {fieldErrors.username && <Text style={styles.fieldErrorText}>{fieldErrors.username[0]}</Text>}
           </View>
 
           <View style={styles.inputContainer}>
             <TextInput
-              style={styles.input}
+              style={[styles.input, fieldErrors.email && styles.inputError]}
               value={email}
-              onChangeText={setEmail}
-              placeholder="Email"
+              onChangeText={(text) => { setEmail(text); setFieldErrors(prev => { const { email, ...rest } = prev; return rest; }); }}
+              placeholder="Email *"
               placeholderTextColor="#999"
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
             />
+            {fieldErrors.email && <Text style={styles.fieldErrorText}>{fieldErrors.email[0]}</Text>}
           </View>
 
           <View style={styles.inputContainer}>
             <View style={styles.passwordContainer}>
               <TextInput
-                style={[styles.input, styles.passwordInput]}
+                style={[styles.input, styles.passwordInput, fieldErrors.password && styles.inputError]}
                 value={password}
-                onChangeText={setPassword}
-                placeholder="Password"
+                onChangeText={(text) => { setPassword(text); setFieldErrors(prev => { const { password, ...rest } = prev; return rest; }); }}
+                placeholder="Password *"
                 placeholderTextColor="#999"
                 secureTextEntry={!showPassword}
               />
@@ -137,15 +156,16 @@ export default function AccountSetupScreen({ onBackPress, onNext, personalInfo, 
                 />
               </TouchableOpacity>
             </View>
+            {fieldErrors.password && <Text style={styles.fieldErrorText}>{fieldErrors.password[0]}</Text>}
           </View>
 
           <View style={styles.inputContainer}>
             <View style={styles.passwordContainer}>
               <TextInput
-                style={[styles.input, styles.passwordInput]}
+                style={[styles.input, styles.passwordInput, fieldErrors.password_confirmation && styles.inputError]}
                 value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                placeholder="Confirm password"
+                onChangeText={(text) => { setConfirmPassword(text); setFieldErrors(prev => { const { password_confirmation, ...rest } = prev; return rest; }); }}
+                placeholder="Confirm password *"
                 placeholderTextColor="#999"
                 secureTextEntry={!showConfirmPassword}
               />
@@ -160,6 +180,7 @@ export default function AccountSetupScreen({ onBackPress, onNext, personalInfo, 
                 />
               </TouchableOpacity>
             </View>
+            {fieldErrors.password_confirmation && <Text style={styles.fieldErrorText}>{fieldErrors.password_confirmation[0]}</Text>}
           </View>
         </View>
 
@@ -171,17 +192,17 @@ export default function AccountSetupScreen({ onBackPress, onNext, personalInfo, 
           <TouchableOpacity
             style={[
               styles.nextButton,
-              (!isFormValid() || isLoading) && styles.nextButtonDisabled
+              isLoading && styles.nextButtonDisabled
             ]}
             onPress={handleNext}
-            disabled={!isFormValid() || isLoading}
+            disabled={isLoading}
           >
             {isLoading ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
               <Text style={[
                 styles.nextButtonText,
-                (!isFormValid() || isLoading) && styles.nextButtonTextDisabled
+                isLoading && styles.nextButtonTextDisabled
               ]}>
                 Next
               </Text>
@@ -257,6 +278,15 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     fontSize: 16,
     color: '#333333',
+  },
+  inputError: {
+    borderColor: '#DC3545',
+  },
+  fieldErrorText: {
+    color: '#DC3545',
+    fontSize: 12,
+    marginTop: 4,
+    marginLeft: 4,
   },
   passwordContainer: {
     position: 'relative',
