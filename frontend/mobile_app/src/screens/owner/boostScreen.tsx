@@ -9,13 +9,14 @@ import {
 	Image,
 	ActivityIndicator,
 	Alert,
-	Linking,
 	RefreshControl,
 	SafeAreaView,
 	TextInput,
 	StatusBar,
 } from 'react-native';
 import { Ionicons, Feather } from '@expo/vector-icons';
+import * as Linking from 'expo-linking';
+import * as WebBrowser from 'expo-web-browser';
 
 // Color palette (local copy)
 const COLORS = {
@@ -108,14 +109,29 @@ export default function BoostScreen({ navigation }: any) {
 	const handleBoost = async (projectId: number) => {
 		setProcessingId(projectId);
 		try {
-			const returnUrl = `exp://192.168.100.27:8081/--/payment-callback?project_id=${projectId}`;
+			const returnUrl = Linking.createURL('payment-callback', { queryParams: { project_id: String(projectId) } });
+			console.log('Boost return URL:', returnUrl);
 			const res = await api_request('/api/boost/checkout', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ project_id: projectId, return_url: returnUrl }),
 			});
 			if (res.success && res.data?.checkout_url) {
-				await Linking.openURL(res.data.checkout_url);
+				// openAuthSessionAsync watches for the returnUrl redirect and auto-closes the browser
+				const result = await WebBrowser.openAuthSessionAsync(
+					res.data.checkout_url,
+					returnUrl
+				);
+				console.log('WebBrowser result:', result);
+
+				if (result.type === 'cancel' || result.type === 'dismiss') {
+					// User closed the browser without completing payment
+					Alert.alert('Payment Pending', 'Payment was not completed. You can try again anytime.');
+					setProcessingId(null);
+					return;
+				}
+
+				// Browser returned with a URL — start verifying & polling
 				pollForApproval(projectId);
 				setProcessingId(null);
 			} else {
@@ -435,7 +451,7 @@ export default function BoostScreen({ navigation }: any) {
 							const loc = (p.location || p.project_location || p.address || '').toString().toLowerCase();
 							return title.includes(q) || desc.includes(q) || loc.includes(q);
 						})}
-						keyExtractor={(item) => String(item.id || item.project_id || Math.random())}
+						keyExtractor={(item, index) => `boost-${item.id || item.project_id || index}`}
 						renderItem={renderItem}
 						contentContainerStyle={styles.listContent}
 						refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchModalData(true)} tintColor="#EC7E00" />}
@@ -477,8 +493,8 @@ export default function BoostScreen({ navigation }: any) {
 					</View>
 
 					{boostedPosts && boostedPosts.length > 0 ? (
-						boostedPosts.map((b: any) => (
-							<View key={String(b.id || b.project_id || b._id || Math.random())}>
+						boostedPosts.map((b: any, idx: number) => (
+							<View key={`boosted-${b.id || b.project_id || b._id || idx}`}>
 								{renderBoostedItem(b)}
 							</View>
 						))

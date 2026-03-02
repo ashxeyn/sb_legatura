@@ -601,7 +601,11 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
       if (response.success && contractorsData && Array.isArray(contractorsData)) {
         const transformedContractors = contractors_service.transform_contractors(contractorsData);
         console.log(`Loaded ${transformedContractors.length} more contractors`);
-        setPopularContractors(prev => [...prev, ...transformedContractors]);
+        setPopularContractors(prev => {
+          const existingIds = new Set(prev.map(c => c.contractor_id));
+          const unique = transformedContractors.filter(c => !existingIds.has(c.contractor_id));
+          return [...prev, ...unique];
+        });
         setContractorsPage(nextPage);
 
         if (response.pagination) {
@@ -635,7 +639,11 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
 
       if (response.success && projectsData && Array.isArray(projectsData)) {
         console.log(`Loaded ${projectsData.length} more projects`);
-        setAvailableProjects(prev => [...prev, ...projectsData]);
+        setAvailableProjects(prev => {
+          const existingIds = new Set(prev.map(p => p.project_id));
+          const unique = projectsData.filter(p => !existingIds.has(p.project_id));
+          return [...prev, ...unique];
+        });
         setProjectsPage(nextPage);
 
         if (response.pagination) {

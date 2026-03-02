@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { StatusBar, View, Text, Alert, Linking } from 'react-native';
+import { StatusBar, View, Text, Alert } from 'react-native';
+import * as Linking from 'expo-linking';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import LoadingScreen from './src/screens/loadingScreen';
 import OnboardingScreen from './src/screens/onboardingScreen';
@@ -315,102 +316,141 @@ export default function App() {
         };
     }, [set_app_state]);
 
-    // Deep link handler: catch Expo return from payment checkout and show confirmation
+    // Deep link handler: catch return from payment checkout and show confirmation
     useEffect(() => {
         const handleUrl = async (event: { url: string }) => {
             try {
                 const url = event.url || '';
-                // Look for payment-callback and project_id in query
-                if (url.includes('/--/payment-callback')) {
-                    const match = url.match(/[?&]project_id=([^&]+)/);
-                    const projectId = match ? decodeURIComponent(match[1]) : null;
-                    if (projectId) {
-                        // Check status param in deep-link (if provided by server)
-                        const statusMatch = url.match(/[?&]status=([^&]+)/);
-                        const status = statusMatch ? decodeURIComponent(statusMatch[1]) : null;
+                console.log('Deep link received:', url);
 
-                        // If status explicitly indicates cancel/back, treat as pending immediately
-                        if (status === 'cancel') {
-                            // @ts-ignore
-                            global.pendingPaymentProjectId = projectId;
-                            console.log('Deep link returned with status=cancel for', projectId);
-                            Alert.alert('Payment Pending', 'Payment was not completed. Complete the payment in the checkout to activate the boost.', [{ text: 'OK' }]);
-                            return;
-                        }
+                // Parse the URL using expo-linking for reliable extraction
+                const parsed = Linking.parse(url);
+                const path = parsed.path || '';
+                const params = parsed.queryParams || {};
 
-                        // For status=success or when no explicit status, first ask server to verify
-                        // the PayMongo checkout session directly. This speeds up detection when
-                        // webhooks are delayed.
+                // Match payment-callback in the path (works for both exp:// and legatura:// schemes)
+                const isPaymentCallback = path.includes('payment-callback') || url.includes('payment-callback');
+                if (!isPaymentCallback) return;
+
+                const projectId = params.project_id ? String(params.project_id) : null;
+                const isSubscription = params.subscription === '1' || params.subscription === 'true';
+                const status = params.status ? String(params.status) : null;
+
+                // --- SUBSCRIPTION CALLBACK ---
+                if (isSubscription) {
+                    console.log('Subscription payment callback received');
+                    if (status === 'cancel') {
+                        Alert.alert('Payment Pending', 'Subscription payment was not completed.');
+                        return;
+                    }
+                    // Poll for subscription activation
+                    let attempts = 0;
+                    const maxAttempts = 10;
+                    const pollInterval = setInterval(async () => {
+                        attempts++;
                         try {
-                            const verify = await api_request('/api/boost/verify', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ project_id: projectId })
-                            });
-
-                            if (verify.success && verify.approved) {
-                                try {
+                            const check = await api_request('/subs/modal-data', { method: 'GET' });
+                            if (check.success && check.data?.subscription) {
+                                clearInterval(pollInterval);
+                                // @ts-ignore
+                                if (global.handleSubscriptionCallback) {
                                     // @ts-ignore
-                                    if (global.handlePaymentCallback) {
-                                        // @ts-ignore
-                                        await global.handlePaymentCallback(projectId);
-                                        return;
-                                    }
-                                } catch (e) {
-                                    console.warn('Error calling global.handlePaymentCallback after verify:', e);
+                                    await global.handleSubscriptionCallback(check.data.subscription);
                                 }
-                                Alert.alert('Payment Complete', `Boost activated for project ${projectId}!`, [{ text: 'OK' }]);
+                                Alert.alert('Success!', 'Your subscription is now active.');
                                 return;
                             }
-
-                            // Not yet approved — fall back to queue + polling as before
-                            // @ts-ignore
-                            global.pendingPaymentProjectId = projectId;
-                            console.log('Queued pendingPaymentProjectId (not approved yet):', projectId);
-
-                            // Poll server for a short window to auto-detect approval (e.g., ~32s)
-                            let attempts = 0;
-                            const maxAttempts = 8;
-                            const pollIntervalMs = 4000;
-                            const pollInterval = setInterval(async () => {
-                                attempts++;
-                                try {
-                                    const check = await api_request('/subs/modal-data', { method: 'GET' });
-                                    const found2 = check.data?.boostedPosts?.find((b: any) => String(b.id) === String(projectId) || String(b.project_id) === String(projectId));
-                                    if (found2) {
-                                        clearInterval(pollInterval);
-                                        try {
-                                            // @ts-ignore
-                                            if (global.handlePaymentCallback) {
-                                                // @ts-ignore
-                                                await global.handlePaymentCallback(projectId);
-                                                return;
-                                            }
-                                        } catch (e) {
-                                            console.warn('Error calling global.handlePaymentCallback during poll:', e);
-                                        }
-                                        Alert.alert('Payment Complete', `Boost activated for project ${projectId}!`, [{ text: 'OK' }]);
-                                        return;
-                                    }
-                                } catch (e) {
-                                    console.warn('Polling error for payment status:', e);
-                                }
-
-                                if (attempts >= maxAttempts) {
-                                    clearInterval(pollInterval);
-                                    Alert.alert('Payment Pending', 'No completed payment was detected yet. Complete the payment in the checkout to activate the boost.', [{ text: 'OK' }]);
-                                }
-                            }, pollIntervalMs);
-
-                            return;
                         } catch (e) {
-                            console.warn('Deep link verification error:', e);
+                            console.warn('Subscription poll error:', e);
                         }
-                    }
-                    // Do not show a blind success message here — only show success when
-                    // the server confirms the boost/payment. Log the event for debugging.
-                    console.log('Deep link received but no verification performed or project_id missing.');
+                        if (attempts >= maxAttempts) {
+                            clearInterval(pollInterval);
+                            Alert.alert('Payment Pending', 'Subscription not detected yet. Please check your payments or pull to refresh.');
+                        }
+                    }, 4000);
+                    return;
                 }
+
+                // --- BOOST CALLBACK ---
+                if (projectId) {
+                    // If status explicitly indicates cancel/back, treat as pending immediately
+                    if (status === 'cancel') {
+                        // @ts-ignore
+                        global.pendingPaymentProjectId = projectId;
+                        console.log('Deep link returned with status=cancel for', projectId);
+                        Alert.alert('Payment Pending', 'Payment was not completed. Complete the payment in the checkout to activate the boost.', [{ text: 'OK' }]);
+                        return;
+                    }
+
+                    // For status=success or when no explicit status, first ask server to verify
+                    // the PayMongo checkout session directly.
+                    try {
+                        const verify = await api_request('/api/boost/verify', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ project_id: projectId })
+                        });
+
+                        if (verify.success && verify.approved) {
+                            try {
+                                // @ts-ignore
+                                if (global.handlePaymentCallback) {
+                                    // @ts-ignore
+                                    await global.handlePaymentCallback(projectId);
+                                    return;
+                                }
+                            } catch (e) {
+                                console.warn('Error calling global.handlePaymentCallback after verify:', e);
+                            }
+                            Alert.alert('Payment Complete', `Boost activated for project ${projectId}!`, [{ text: 'OK' }]);
+                            return;
+                        }
+
+                        // Not yet approved — fall back to queue + polling
+                        // @ts-ignore
+                        global.pendingPaymentProjectId = projectId;
+                        console.log('Queued pendingPaymentProjectId (not approved yet):', projectId);
+
+                        let attempts = 0;
+                        const maxAttempts = 8;
+                        const pollIntervalMs = 4000;
+                        const pollInterval = setInterval(async () => {
+                            attempts++;
+                            try {
+                                const check = await api_request('/subs/modal-data', { method: 'GET' });
+                                const found2 = check.data?.boostedPosts?.find((b: any) => String(b.id) === String(projectId) || String(b.project_id) === String(projectId));
+                                if (found2) {
+                                    clearInterval(pollInterval);
+                                    try {
+                                        // @ts-ignore
+                                        if (global.handlePaymentCallback) {
+                                            // @ts-ignore
+                                            await global.handlePaymentCallback(projectId);
+                                            return;
+                                        }
+                                    } catch (e) {
+                                        console.warn('Error calling global.handlePaymentCallback during poll:', e);
+                                    }
+                                    Alert.alert('Payment Complete', `Boost activated for project ${projectId}!`, [{ text: 'OK' }]);
+                                    return;
+                                }
+                            } catch (e) {
+                                console.warn('Polling error for payment status:', e);
+                            }
+
+                            if (attempts >= maxAttempts) {
+                                clearInterval(pollInterval);
+                                Alert.alert('Payment Pending', 'No completed payment was detected yet. Complete the payment in the checkout to activate the boost.', [{ text: 'OK' }]);
+                            }
+                        }, pollIntervalMs);
+
+                        return;
+                    } catch (e) {
+                        console.warn('Deep link verification error:', e);
+                    }
+                }
+
+                console.log('Deep link received but no verification performed or project_id missing.');
             } catch (e) {
                 console.warn('Deep link handling error:', e);
             }
@@ -429,9 +469,7 @@ export default function App() {
         // Subscribe to deep link events
         const sub = Linking.addEventListener('url', handleUrl as any);
         return () => {
-            // @ts-ignore - removeEventListener for older RN versions
             if (sub && (sub as any).remove) (sub as any).remove();
-            else Linking.removeEventListener('url', handleUrl as any);
         };
     }, []);
 

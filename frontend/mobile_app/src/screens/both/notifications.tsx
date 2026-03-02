@@ -431,7 +431,11 @@ export default function Notifications({ userId, userType, onClose, onNavigate }:
           priority: n.priority || 'normal',
         }));
         if (append) {
-          setNotifications(prev => [...prev, ...mapped]);
+          setNotifications(prev => {
+            const existingIds = new Set(prev.map(n => n.id));
+            const unique = mapped.filter(n => !existingIds.has(n.id));
+            return [...prev, ...unique];
+          });
         } else {
           setNotifications(mapped);
         }
