@@ -26,12 +26,59 @@ class globalManagementController extends Controller
     /**
      * Display the proof of payments page
      */
-    public function proofOfPayments()
+    public function proofOfPayments(Request $request)
     {
-        $payments = $this->getAllPaymentProofs();
+        $filters = [
+            'search'    => $request->query('search'),
+            'status'    => $request->query('status'),
+            'date_from' => $request->query('date_from'),
+            'date_to'   => $request->query('date_to'),
+        ];
+
+        $payments = $this->getAllPaymentProofs(
+            $filters['search'],
+            $filters['status'],
+            $request->query('page', 1)
+        );
+
+        // Real statistics from DB
+        $stats = $this->getPaymentStats();
+
+        if ($request->ajax()) {
+            return response()->json([
+                'payments_html' => view('admin.globalManagement.partials.paymentsTable', [
+                    'payments' => $payments,
+                ])->render(),
+                'pagination_html' => $payments->links()->render(),
+            ]);
+        }
+
         return view('admin.globalManagement.proofOfpayments', [
-            'payments' => $payments
+            'payments' => $payments,
+            'stats'    => $stats,
         ]);
+    }
+
+    /**
+     * Get payment stats summary
+     */
+    private function getPaymentStats(): array
+    {
+        $rows = DB::table('milestone_payments')
+            ->selectRaw("
+                COUNT(*) as total,
+                SUM(CASE WHEN payment_status = 'submitted' THEN 1 ELSE 0 END) as pending,
+                SUM(CASE WHEN payment_status = 'rejected' THEN 1 ELSE 0 END) as failed,
+                SUM(CASE WHEN payment_status = 'approved' THEN 1 ELSE 0 END) as completed
+            ")
+            ->first();
+
+        return [
+            'total'     => $rows->total     ?? 0,
+            'pending'   => $rows->pending   ?? 0,
+            'failed'    => $rows->failed    ?? 0,
+            'completed' => $rows->completed ?? 0,
+        ];
     }
 
      /**
@@ -139,22 +186,33 @@ class globalManagementController extends Controller
     private function getAllBids($search = null, $status = null, $page = 1)
     {
         $query = DB::table('bids')
-            ->join('projects', 'bids.project_id', '=', 'projects.project_id')
+            ->join('projects',    'bids.project_id',    '=', 'projects.project_id')
             ->join('contractors', 'bids.contractor_id', '=', 'contractors.contractor_id')
             ->select(
                 'bids.bid_id',
                 'bids.proposed_cost as bid_amount',
                 'bids.submitted_at as bid_date',
                 'bids.bid_status',
+                'bids.contractor_notes',
+                'bids.reason',
+                'bids.decision_date',
+                'bids.estimated_timeline',
                 'projects.project_title',
                 'contractors.company_name',
-                DB::raw("'N/A' as contact_person")
+                'contractors.company_email',
+                'contractors.picab_number',
+                'contractors.picab_category',
+                'contractors.picab_expiration_date',
+                'contractors.business_permit_number',
+                'contractors.business_permit_city',
+                'contractors.business_permit_expiration',
+                'contractors.tin_business_reg_number'
             );
 
         if ($search) {
             $query->where(function ($q) use ($search) {
-                $q->where('projects.project_title', 'like', "%{$search}%")
-                  ->orWhere('contractors.company_name', 'like', "%{$search}%");
+                $q->where('projects.project_title',  'like', "%{$search}%")
+                ->orWhere('contractors.company_name', 'like', "%{$search}%");
             });
         }
 
@@ -162,55 +220,137 @@ class globalManagementController extends Controller
             $query->where('bids.bid_status', $status);
         }
 
-        return $query->paginate(15, ['*'], 'page', $page);
+        return $query->orderBy('bids.submitted_at', 'desc')
+                    ->paginate(15, ['*'], 'page', $page);
+    }
+// ----------------------------------------------------------------
+// 2. NEW: getBidFiles() — AJAX endpoint to load files for a bid
+//    Route: GET /admin/global-management/bid-management/files/{id}
+// ----------------------------------------------------------------
+
+    public function getBidFiles($id)
+    {
+        $files = DB::table('bid_files')
+            ->where('bid_id', $id)
+            ->select('file_id', 'file_name', 'file_path', 'description', 'uploaded_at')
+            ->get()
+            ->map(function ($f) {
+                $f->uploaded_at = \Carbon\Carbon::parse($f->uploaded_at)->format('M d, Y');
+                return $f;
+            });
+
+        return response()->json($files);
     }
 
-    /**
-     * Get all payment proofs with payment details
+// ----------------------------------------------------------------
+// 3. NEW: updateBid() — AJAX PUT to update status/cost/notes
+//    Route: PUT /admin/global-management/bid-management/{id}
+// ----------------------------------------------------------------
+
+    public function updateBid(Request $request, $id)
+    {
+        $allowed = ['submitted', 'under_review', 'accepted', 'rejected', 'cancelled'];
+        $status  = $request->input('bid_status');
+
+        if ($status && !in_array($status, $allowed)) {
+            return response()->json(['success' => false, 'message' => 'Invalid status.'], 422);
+        }
+
+        $data = array_filter([
+            'bid_status'       => $status,
+            'proposed_cost'    => $request->input('proposed_cost'),
+            'contractor_notes' => $request->input('contractor_notes'),
+        ], fn($v) => !is_null($v));
+
+        if (empty($data)) {
+            return response()->json(['success' => false, 'message' => 'No data to update.'], 422);
+        }
+
+        $updated = DB::table('bids')->where('bid_id', $id)->update($data);
+
+        if ($updated !== false) {
+            return response()->json(['success' => true, 'message' => 'Bid updated successfully.']);
+        }
+
+        return response()->json(['success' => false, 'message' => 'Failed to update bid.'], 400);
+    }
+
+// ----------------------------------------------------------------
+// 4. NEW: deleteBid() — AJAX DELETE
+//    Route: DELETE /admin/global-management/bid-management/{id}
+// ----------------------------------------------------------------
+
+    public function deleteBid($id)
+    {
+        // Also remove associated files
+        DB::table('bid_files')->where('bid_id', $id)->delete();
+
+        $deleted = DB::table('bids')->where('bid_id', $id)->delete();
+
+        if ($deleted) {
+            return response()->json(['success' => true, 'message' => 'Bid deleted.']);
+        }
+
+        return response()->json(['success' => false, 'message' => 'Failed to delete bid.'], 400);
+    }
+   /**
+     * Get all payment proofs — joined correctly using milestone_payments schema.
+     *
+     * milestone_payments columns used:
+     *   payment_id, item_id, project_id, owner_id, contractor_user_id,
+     *   amount, payment_type, transaction_number, receipt_photo,
+     *   transaction_date, payment_status, reason, updated_at
+     *
+     * owner_id  → property_owners.owner_id
+     * contractor_user_id → users.user_id → contractors.user_id (company_name)
+     * item_id   → milestone_items.item_id (milestone_item_title)
      */
     private function getAllPaymentProofs($search = null, $status = null, $page = 1)
     {
-        // Map legacy `payment_proofs` usage to `milestone_payments` table in current schema.
-        $paymentsTable = 'milestone_payments';
-        $projectsTable = 'projects';
-        $projRelTable = 'project_relationships';
-        $ownersTable = 'property_owners';
-        $usersTable = 'users';
-
-        $query = DB::table($paymentsTable)
-            ->join($projectsTable, "$paymentsTable.project_id", '=', "$projectsTable.project_id")
-            ->leftJoin($projRelTable, "$projectsTable.relationship_id", '=', "$projRelTable.rel_id")
-            ->leftJoin($ownersTable, "$projRelTable.owner_id", '=', "$ownersTable.owner_id")
+        $query = DB::table('milestone_payments as mp')
+            // project info
+            ->join('projects as p', 'mp.project_id', '=', 'p.project_id')
+            // owner info
+            ->leftJoin('property_owners as po', 'mp.owner_id', '=', 'po.owner_id')
+            // ── FIX: go through contractor_users first ──
+            ->leftJoin('contractor_users as cu', 'mp.contractor_user_id', '=', 'cu.contractor_user_id')
+            ->leftJoin('contractors as c', 'cu.contractor_id', '=', 'c.contractor_id')
+            // milestone item title
+            ->leftJoin('milestone_items as mi', 'mp.item_id', '=', 'mi.item_id')
             ->select(
-                "$paymentsTable.payment_id as proof_id",
-                "$paymentsTable.amount",
-                "$paymentsTable.transaction_date as payment_date",
-                "$paymentsTable.payment_status as proof_status",
-                "$projectsTable.project_title",
-                DB::raw("CONCAT($ownersTable.first_name, ' ', $ownersTable.last_name) as owner_name"),
-                "$paymentsTable.receipt_photo as proof_file"
+                'mp.payment_id',
+                'mp.amount',
+                'mp.transaction_date as payment_date',
+                'mp.payment_status',
+                'mp.payment_type',
+                'mp.transaction_number',
+                'mp.receipt_photo',
+                'mp.reason',
+                'mp.updated_at',
+                'p.project_title',
+                DB::raw("CONCAT(po.first_name, ' ', po.last_name) as owner_name"),
+                'c.company_name',
+                'c.company_email',
+                'mi.milestone_item_title'
             );
 
-        // if users.email is available, join users and allow email search
-        if (Schema::hasColumn($ownersTable, 'user_id') && Schema::hasColumn($usersTable, 'user_id')) {
-            $query->leftJoin($usersTable, "$ownersTable.user_id", '=', "$usersTable.user_id");
-        }
-
         if ($search) {
-            $query->where(function ($q) use ($search, $projectsTable, $usersTable) {
-                $q->where("$projectsTable.project_title", 'like', "%{$search}%");
-                if (Schema::hasColumn($usersTable, 'email')) {
-                    $q->orWhere("$usersTable.email", 'like', "%{$search}%");
-                }
+            $query->where(function ($q) use ($search) {
+                $q->where('p.project_title',  'like', "%{$search}%")
+                  ->orWhere('c.company_name', 'like', "%{$search}%")
+                  ->orWhere('po.first_name',  'like', "%{$search}%")
+                  ->orWhere('po.last_name',   'like', "%{$search}%");
             });
         }
 
         if ($status) {
-            $query->where("$paymentsTable.payment_status", $status);
+            $query->where('mp.payment_status', $status);
         }
 
-        return $query->paginate(15, ['*'], 'page', $page);
+        return $query->orderBy('mp.transaction_date', 'desc')
+                     ->paginate(15, ['*'], 'page', $page);
     }
+
 
      /**
      * Get AI usage statistics by connecting to Python Service
@@ -336,52 +476,142 @@ class globalManagementController extends Controller
     /**
      * Get payments as JSON (for AJAX)
      */
-    public function getPaymentsApi(Request $request)
+    
+    public function getPaymentDetail($id)
     {
-        $search = $request->input('search');
-        $status = $request->input('status');
-        $page = $request->input('page', 1);
+        $payment = DB::table('milestone_payments as mp')
+            ->join('projects as p', 'mp.project_id', '=', 'p.project_id')
+            ->leftJoin('property_owners as po', 'mp.owner_id', '=', 'po.owner_id')
+            // ── FIX: correct contractor join ──
+            ->leftJoin('contractor_users as cu', 'mp.contractor_user_id', '=', 'cu.contractor_user_id')
+            ->leftJoin('contractors as c', 'cu.contractor_id', '=', 'c.contractor_id')
+            ->leftJoin('milestone_items as mi', 'mp.item_id', '=', 'mi.item_id')
+            ->select(
+                'mp.*',
+                'p.project_title',
+                'p.project_description',
+                DB::raw("CONCAT(po.first_name, ' ', po.last_name) as owner_name"),
+                'c.company_name',
+                'c.company_email',
+                'mi.milestone_item_title'
+            )
+            ->where('mp.payment_id', $id)
+            ->first();
 
-        $payments = $this->getAllPaymentProofs($search, $status, $page);
+        if (!$payment) {
+            return response()->json(['success' => false, 'message' => 'Payment not found.'], 404);
+        }
 
-        return response()->json($payments);
+        return response()->json(['success' => true, 'data' => $payment]);
     }
 
     /**
-     * Verify a payment
+     * Update payment fields freely (amount, transaction_number, payment_type, status, reason).
+     * Route: PUT /admin/global-management/proof-of-payments/{id}
+     */
+    public function updatePayment(Request $request, $id)
+    {
+        $allowed = ['submitted', 'approved', 'rejected', 'deleted'];
+        $status  = $request->input('payment_status');
+
+        if ($status && !in_array($status, $allowed)) {
+            return response()->json(['success' => false, 'message' => 'Invalid status.'], 422);
+        }
+
+        $allowedMethods = ['cash', 'check', 'bank_transfer', 'online_payment'];
+        $method = $request->input('payment_type');
+        if ($method && !in_array($method, $allowedMethods)) {
+            return response()->json(['success' => false, 'message' => 'Invalid payment method.'], 422);
+        }
+
+        // Build update payload — only include fields that were actually sent
+        $data = [];
+
+        if (!is_null($status)) {
+            $data['payment_status'] = $status;
+        }
+        if (!is_null($method)) {
+            $data['payment_type'] = $method;
+        }
+        if ($request->has('amount') && $request->input('amount') !== '') {
+            $data['amount'] = (float) $request->input('amount');
+        }
+        if ($request->has('transaction_number')) {
+            $data['transaction_number'] = $request->input('transaction_number');
+        }
+        if ($request->has('reason')) {
+            $data['reason'] = $request->input('reason');
+        }
+
+        if (empty($data)) {
+            return response()->json(['success' => false, 'message' => 'No data to update.'], 422);
+        }
+
+        $data['updated_at'] = now();
+
+        $updated = DB::table('milestone_payments')
+            ->where('payment_id', $id)
+            ->update($data);
+
+        return ($updated !== false)
+            ? response()->json(['success' => true,  'message' => 'Payment updated successfully.'])
+            : response()->json(['success' => false, 'message' => 'Failed to update payment.'], 400);
+    }
+
+    /**
+     * Verify / approve a payment.
      */
     public function verifyPayment($id)
     {
         $updated = DB::table('milestone_payments')
             ->where('payment_id', $id)
-            ->update(['payment_status' => 'approved']);
+            ->update(['payment_status' => 'approved', 'updated_at' => now()]);
 
-        if ($updated) {
-            return response()->json(['success' => true, 'message' => 'Payment verified']);
-        }
-
-        return response()->json(['success' => false, 'message' => 'Failed to verify payment'], 400);
+        return $updated
+            ? response()->json(['success' => true,  'message' => 'Payment approved.'])
+            : response()->json(['success' => false, 'message' => 'Failed to approve payment.'], 400);
     }
 
     /**
-     * Reject a payment
+     * Reject a payment.
      */
     public function rejectPayment(Request $request, $id)
     {
-        $reason = $request->input('reason', 'Rejected by admin');
-
+        $reason  = $request->input('reason', 'Rejected by admin');
         $updated = DB::table('milestone_payments')
             ->where('payment_id', $id)
-            ->update([
-                'payment_status' => 'rejected',
-                'reason' => $reason
-            ]);
+            ->update(['payment_status' => 'rejected', 'reason' => $reason, 'updated_at' => now()]);
 
-        if ($updated) {
-            return response()->json(['success' => true, 'message' => 'Payment rejected']);
-        }
+        return $updated
+            ? response()->json(['success' => true,  'message' => 'Payment rejected.'])
+            : response()->json(['success' => false, 'message' => 'Failed to reject payment.'], 400);
+    }
 
-        return response()->json(['success' => false, 'message' => 'Failed to reject payment'], 400);
+    /**
+     * Soft-delete a payment record.
+     */
+    public function deletePayment($id)
+    {
+        $deleted = DB::table('milestone_payments')
+            ->where('payment_id', $id)
+            ->update(['payment_status' => 'deleted', 'updated_at' => now()]);
+
+        return $deleted
+            ? response()->json(['success' => true,  'message' => 'Payment deleted.'])
+            : response()->json(['success' => false, 'message' => 'Failed to delete payment.'], 400);
+    }
+    /**
+     * AJAX: paginated payments list (JSON).
+     */
+    public function getPaymentsApi(Request $request)
+    {
+        $payments = $this->getAllPaymentProofs(
+            $request->input('search'),
+            $request->input('status'),
+            $request->input('page', 1)
+        );
+
+        return response()->json($payments);
     }
 
     /**

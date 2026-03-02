@@ -363,7 +363,20 @@ Route::post('/admin/user-management/suspended-accounts/reactivate', [userManagem
 
 // Global Management Routes
 Route::get('/admin/global-management/bid-management', [globalManagementController::class, 'bidManagement'])->name('admin.globalManagement.bidManagement');
+Route::get('/admin/global-management/bid-management/files/{id}',[globalManagementController::class, 'getBidFiles'])->name('admin.globalManagement.bidFiles');
+Route::put('/admin/global-management/bid-management/{id}',[globalManagementController::class, 'updateBid'])->name('admin.globalManagement.updateBid');
+Route::delete('/admin/global-management/bid-management/{id}',[globalManagementController::class, 'deleteBid'])->name('admin.globalManagement.deleteBid');
 Route::get('/admin/global-management/proof-of-payments', [globalManagementController::class, 'proofOfPayments'])->name('admin.globalManagement.proofOfpayments');
+// Get single payment detail (AJAX – used by view modal)
+Route::get('/admin/global-management/proof-of-payments/{id}', [globalManagementController::class, 'getPaymentDetail'])->name('admin.globalManagement.proofOfpayments.detail');
+// Approve a payment
+Route::post('/admin/global-management/proof-of-payments/{id}/verify', [globalManagementController::class, 'verifyPayment'])->name('admin.globalManagement.proofOfpayments.verify');
+// Reject a payment (with reason)
+Route::post('/admin/global-management/proof-of-payments/{id}/reject', [globalManagementController::class, 'rejectPayment'])->name('admin.globalManagement.proofOfpayments.reject');
+// Soft-delete a payment (sets status = 'deleted')
+Route::delete('/admin/global-management/proof-of-payments/{id}', [globalManagementController::class, 'deletePayment'])->name('admin.globalManagement.proofOfpayments.delete');
+Route::put('/{id}',     [GlobalManagementController::class, 'updatePayment']);
+
 Route::get('/admin/global-management/ai-management', [globalManagementController::class, 'aiManagement'])->name('admin.globalManagement.aiManagement');
 Route::get('/admin/global-management/posting-management', [globalManagementController::class, 'postingManagement'])->name('admin.globalManagement.postingManagement');
 
@@ -489,6 +502,8 @@ Route::prefix('/api/admin/management')->group(function () {
     Route::get('/payments', [globalManagementController::class, 'getPaymentsApi'])->name('api.admin.payments');
     Route::post('/payments/{id}/verify', [globalManagementController::class, 'verifyPayment'])->name('api.admin.payment.verify');
     Route::post('/payments/{id}/reject', [globalManagementController::class, 'rejectPayment'])->name('api.admin.payment.reject');
+    Route::get('/api/admin/management/payments/{id}', [globalManagementController::class, 'getPaymentDetail'])->name('api.admin.payment.detail');
+    Route::delete('/api/admin/management/payments/{id}', [globalManagementController::class, 'deletePayment'])->name('api.admin.payment.delete');
 
     Route::get('/postings', [globalManagementController::class, 'getPostingsApi'])->name('api.admin.postings');
     Route::get('/postings/{id}', [globalManagementController::class, 'getPostDetails'])->name('api.admin.posting.details');
@@ -504,6 +519,8 @@ Route::prefix('/api/admin/analytics')->group(function () {
     Route::get('/subscription', [analyticsController::class, 'subscriptionAnalytics'])->name('api.admin.analytics.subscription');
     Route::get('/subscription/revenue', [analyticsController::class, 'subscriptionRevenue'])->name('api.admin.analytics.subscriptionRevenue');
     Route::get('/user-activity', [analyticsController::class, 'userActivityAnalytics'])->name('api.admin.analytics.userActivity');
+    Route::get('admin/analytics/user-activity/feed', [analyticsController::class, 'getUserActivityFeed'])
+     ->name('admin.analytics.userActivity.feed');
     Route::get('/project-performance', [analyticsController::class, 'projectPerformanceAnalytics'])->name('api.admin.analytics.projectPerformance');
     Route::get('/bid-completion', [analyticsController::class, 'bidCompletionAnalytics'])->name('api.admin.analytics.bidCompletion');
 });
