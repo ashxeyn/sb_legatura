@@ -56,6 +56,71 @@ class notificationService
     ];
 
     /**
+     * Map each sub-type to its intended recipient role.
+     *
+     * This tells the system WHO should see each notification type:
+     * - 'contractor' → the contractor working on a project
+     * - 'owner' → the property owner who posted the project
+     * - 'both' → both roles can see it (shared types like disputes, project lifecycle)
+     *
+     * Used by notificationClass::ROLE_SUB_TYPES for query filtering.
+     */
+    public static array $subTypeRoleMap = [
+        // Bid notifications
+        'bid_accepted'        => 'contractor',  // contractor's bid was accepted
+        'bid_rejected'        => 'contractor',  // contractor's bid was rejected
+        'bid_received'        => 'owner',       // owner received a new bid
+
+        // Milestone notifications — contractor is doing the work
+        'milestone_submitted'      => 'contractor',
+        'milestone_approved'       => 'contractor',
+        'milestone_rejected'       => 'contractor',
+        'milestone_completed'      => 'contractor',
+        'milestone_item_completed' => 'contractor',
+        'milestone_deleted'        => 'contractor',
+        'milestone_resubmitted'    => 'contractor',
+        'milestone_updated'        => 'contractor',
+
+        // Progress notifications — owner reviews progress
+        'progress_submitted'  => 'owner',
+        'progress_approved'   => 'owner',
+        'progress_rejected'   => 'owner',
+        'progress_updated'    => 'owner',
+
+        // Payment notifications — both roles are involved
+        'payment_submitted'       => 'both',
+        'payment_approved'        => 'both',
+        'payment_rejected'        => 'both',
+        'payment_updated'         => 'both',
+        'payment_deleted'         => 'both',
+        'payment_fully_paid'      => 'both',
+        'payment_overpaid'        => 'both',
+        'payment_underpaid_carry' => 'both',
+        'payment_due'             => 'owner',    // owner needs to pay
+        'payment_overdue'         => 'owner',    // owner overdue on payment
+
+        // Dispute notifications — both parties involved
+        'dispute_opened'       => 'both',
+        'dispute_updated'      => 'both',
+        'dispute_cancelled'    => 'both',
+        'dispute_under_review' => 'both',
+        'dispute_resolved'     => 'both',
+        'dispute_rejected'     => 'both',
+
+        // Project lifecycle — both roles are involved
+        'project_completed'  => 'both',
+        'project_halted'     => 'both',
+        'project_terminated' => 'both',
+        'project_update'     => 'owner',  // general project updates for owner
+
+        // Team notifications — contractor's team
+        'team_invite'         => 'contractor',
+        'team_removed'        => 'contractor',
+        'team_role_changed'   => 'contractor',
+        'team_access_changed' => 'contractor',
+    ];
+
+    /**
      * Create a single notification for one user.
      *
      * @param int         $userId        Recipient user_id
@@ -192,6 +257,7 @@ class notificationService
             'reference_id'   => $row->reference_id,
             'action_url'     => $row->action_link,
             'redirect_url'   => "/api/notifications/{$row->notification_id}/redirect",
+            'notification_role' => self::$subTypeRoleMap[$subType] ?? 'both',
             'created_at'     => $row->created_at,
         ];
     }

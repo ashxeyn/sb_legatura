@@ -100,6 +100,7 @@ interface Notification {
   reference_type?: string | null;
   reference_id?: number | null;
   priority?: string;
+  notification_role?: 'contractor' | 'owner' | 'both';
 }
 
 interface NotificationsProps {
@@ -393,6 +394,7 @@ export default function Notifications({ userId, userType, onClose, onNavigate }:
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [activeRole, setActiveRole] = useState<'contractor' | 'owner' | null>(null);
 
   const categories: { id: NotificationCategory; label: string }[] = [
     { id: 'all', label: 'All' },
@@ -417,6 +419,10 @@ export default function Notifications({ userId, userType, onClose, onNavigate }:
       const response = await notifications_service.get_notifications(page, 20);
       if (response.success && response.data) {
         const items = response.data.notifications || [];
+        // Track the active role returned by the backend
+        if (response.data.active_role) {
+          setActiveRole(response.data.active_role);
+        }
         const mapped: Notification[] = items.map((n: ApiNotification) => ({
           id: n.id,
           type: (n.type || 'general') as NotificationType,
@@ -429,6 +435,7 @@ export default function Notifications({ userId, userType, onClose, onNavigate }:
           reference_type: n.reference_type,
           reference_id: n.reference_id,
           priority: n.priority || 'normal',
+          notification_role: n.notification_role || 'both',
         }));
         if (append) {
           setNotifications(prev => {
@@ -664,7 +671,19 @@ export default function Notifications({ userId, userType, onClose, onNavigate }:
         <TouchableOpacity style={styles.backButton} onPress={onClose}>
           <Feather name="chevron-left" size={28} color={COLORS.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Notifications</Text>
+        <View style={{ alignItems: 'center', flex: 1 }}>
+          <Text style={styles.headerTitle}>Notifications</Text>
+          {userType === 'both' && activeRole && (
+            <Text style={{
+              fontSize: 11,
+              color: COLORS.textMuted,
+              marginTop: 1,
+              textTransform: 'capitalize',
+            }}>
+              Viewing as {activeRole === 'owner' ? 'Property Owner' : 'Contractor'}
+            </Text>
+          )}
+        </View>
         <TouchableOpacity
           style={styles.settingsButton}
           onPress={() => {

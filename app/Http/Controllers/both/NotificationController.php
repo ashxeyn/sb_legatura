@@ -7,6 +7,8 @@ use App\Models\both\notificationClass;
 use App\Services\NotificationService;
 use App\Services\NotificationRedirectService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
 use Laravel\Sanctum\PersonalAccessToken;
 
@@ -62,8 +64,9 @@ class NotificationController extends Controller
 
         $page = max(1, (int) $request->query('page', 1));
         $perPage = min(50, max(1, (int) $request->query('per_page', 20)));
+        $role = $this->resolvePreferredRole($user);
 
-        $result = $this->notificationClass->getByUserId($user->user_id, $page, $perPage);
+        $result = $this->notificationClass->getByUserId($user->user_id, $page, $perPage, $role);
 
         // Map each row to frontend shape
         $formatted = collect($result['notifications'])->map(function ($row) {
@@ -74,11 +77,12 @@ class NotificationController extends Controller
             'success' => true,
             'data' => [
                 'notifications' => $formatted,
-                'unread_count'  => $this->notificationClass->getUnreadCount($user->user_id),
+                'unread_count'  => $this->notificationClass->getUnreadCount($user->user_id, $role),
                 'current_page'  => $result['current_page'],
                 'last_page'     => $result['last_page'],
                 'per_page'      => $result['per_page'],
                 'total'         => $result['total'],
+                'active_role'   => $role,
             ],
         ]);
     }
@@ -93,10 +97,13 @@ class NotificationController extends Controller
             return response()->json(['success' => false, 'message' => 'Authentication required'], 401);
         }
 
+        $role = $this->resolvePreferredRole($user);
+
         return response()->json([
             'success' => true,
             'data' => [
-                'unread_count' => $this->notificationClass->getUnreadCount($user->user_id),
+                'unread_count' => $this->notificationClass->getUnreadCount($user->user_id, $role),
+                'active_role'  => $role,
             ],
         ]);
     }
@@ -129,12 +136,13 @@ class NotificationController extends Controller
             return response()->json(['success' => false, 'message' => 'Authentication required'], 401);
         }
 
-        $count = $this->notificationClass->markAllAsRead($user->user_id);
+        $role = $this->resolvePreferredRole($user);
+        $count = $this->notificationClass->markAllAsRead($user->user_id, $role);
 
         return response()->json([
             'success' => true,
-            'message' => "{$count} notification(s) marked as read",
-            'data' => ['affected' => $count],
+            'message' => "{$count} notification(s) marked as read" . ($role ? " for {$role} role" : ''),
+            'data' => ['affected' => $count, 'active_role' => $role],
         ]);
     }
 
@@ -241,7 +249,16 @@ class NotificationController extends Controller
             return 'property_owner';
         }
 
-        // Fallback to DB field
+        // Fallback to preferred_role from DB
+        $preferred = $this->resolvePreferredRole($user);
+        if ($preferred === 'contractor') {
+            return 'contractor';
+        }
+        if ($preferred === 'owner') {
+            return 'property_owner';
+        }
+
+        // Final fallback to DB field
         $userType = $user->user_type ?? null;
         if ($userType === 'contractor') {
             return 'contractor';
@@ -251,6 +268,61 @@ class NotificationController extends Controller
         }
 
         return 'property_owner';
+    }
+
+    /**
+     * Resolve the user's preferred_role for notification filtering.
+     *
+     * For 'both' users: returns 'contractor' or 'owner' based on
+     *   1. Session current_role
+     *   2. DB preferred_role
+     *   3. Default 'contractor'
+     *
+     * For single-role users (contractor/property_owner) returns the
+     * corresponding role string, or null for staff/admin.
+     */
+    private function resolvePreferredRole(object $user): ?string
+    {
+        $userType = $user->user_type ?? null;
+
+        // Single-role users: always return their fixed role, no filtering needed
+        if ($userType === 'contractor') {
+            return null; // single-role, show all their notifications
+        }
+        if ($userType === 'property_owner') {
+            return null;
+        }
+        if ($userType === 'staff' || $userType === 'admin') {
+            return null;
+        }
+
+        // "both" users: need role-based filtering
+        // 1. Check session
+        $sessionRole = Session::get('current_role');
+        if ($sessionRole === 'contractor') {
+            return 'contractor';
+        }
+        if ($sessionRole === 'property_owner' || $sessionRole === 'owner') {
+            return 'owner';
+        }
+
+        // 2. Check DB preferred_role
+        $userId = $user->user_id ?? null;
+        if ($userId) {
+            try {
+                $preferred = DB::table('users')
+                    ->where('user_id', $userId)
+                    ->value('preferred_role');
+                if (!empty($preferred)) {
+                    return $preferred; // 'contractor' or 'owner'
+                }
+            } catch (\Throwable $e) {
+                Log::warning('resolvePreferredRole: DB lookup failed: ' . $e->getMessage());
+            }
+        }
+
+        // 3. Default to contractor for 'both' users
+        return 'contractor';
     }
 
     /**
