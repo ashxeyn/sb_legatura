@@ -84,7 +84,9 @@ class OTPChangeController extends Controller
             $currentPassword = $request->input('current_password');
             if (empty($currentPassword)) return response()->json(['success' => false, 'message' => 'Current password required'], 422);
             try {
-                $hashed = $user->password_hash ?? ($user->password ?? null);
+                // Always fetch fresh password hash from DB (session object may be stale after password change)
+                $freshUser = DB::table('users')->where('user_id', $user->user_id)->first();
+                $hashed = $freshUser->password_hash ?? ($user->password_hash ?? ($user->password ?? null));
                 if (empty($hashed) || !$this->authService->verifyPassword($currentPassword, $hashed)) {
                     return response()->json(['success' => false, 'message' => 'Invalid password'], 422);
                 }
@@ -111,11 +113,14 @@ class OTPChangeController extends Controller
         // increment counter
         try { Cache::increment($hourKey); Cache::put($hourKey, Cache::get($hourKey), now()->addHour()); } catch (\Throwable $e) { Log::warning('Failed to increment change otp send counter: ' . $e->getMessage()); }
 
+        $ttlSeconds = (int)config('otp.ttl_seconds', 900);
+
         return response()->json([
             'success' => true,
             'message' => 'OTP sent',
             'masked' => $result['masked'] ?? null,
-            'otp_token' => $result['otp_token'] ?? null
+            'otp_token' => $result['otp_token'] ?? null,
+            'ttl_seconds' => $ttlSeconds,
         ], 200);
     }
 
@@ -263,6 +268,18 @@ class OTPChangeController extends Controller
             if (!empty($normalized)) Cache::forget('change_otp_' . $normalized);
             if (!empty($otpToken)) Cache::forget('change_otp_token_' . $otpToken);
         } catch (\Throwable $e) { Log::warning('Failed to cleanup change otp cache: ' . $e->getMessage()); }
+
+        // Refresh session user for web flows so subsequent requests use updated data
+        try {
+            if (Session::has('user')) {
+                $refreshedUser = DB::table('users')->where('user_id', $user->user_id)->first();
+                if ($refreshedUser) {
+                    Session::put('user', $refreshedUser);
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Failed to refresh session user after OTP verify: ' . $e->getMessage());
+        }
 
         return response()->json(['success' => true, 'message' => 'Updated successfully'], 200);
     }

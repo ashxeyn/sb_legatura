@@ -120,7 +120,7 @@ class profileController extends Controller
             // Personal/profile fields that belong to property_owners table
             $owner = DB::table('property_owners')->where('user_id', $userId)->first();
             $ownerKeys = [
-                'first_name','middle_name','last_name','phone','date_of_birth','occupation_id','occupation_other',
+                'first_name','middle_name','last_name','phone','date_of_birth','occupation_id','occupation_other','occupation',
                 'address_street','address_barangay','address_city','address_province','address_postal'
             ];
 
@@ -147,6 +147,8 @@ class profileController extends Controller
                 if (!empty($ownerPayload['phone'])) $updateOwner['phone_number'] = $ownerPayload['phone'];
                 if (!empty($ownerPayload['date_of_birth'])) $updateOwner['date_of_birth'] = $ownerPayload['date_of_birth'];
                 if (isset($ownerPayload['occupation_id'])) $updateOwner['occupation_id'] = $ownerPayload['occupation_id'];
+                // Map 'occupation' (text from frontend) to 'occupation_other'
+                if (!empty($ownerPayload['occupation'])) $updateOwner['occupation_other'] = $ownerPayload['occupation'];
                 if (!empty($ownerPayload['occupation_other'])) $updateOwner['occupation_other'] = $ownerPayload['occupation_other'];
                 if (!empty($addressParts)) $updateOwner['address'] = implode(', ', $addressParts);
 
@@ -173,6 +175,21 @@ class profileController extends Controller
             foreach ($contractorKeys as $k) {
                 if ($request->has($k)) {
                     $contractorPayload[$k] = $request->input($k);
+                    $hasContractorPayload = true;
+                }
+            }
+
+            // Build combined business_address from individual address fields (similar to owner)
+            if ($request->has('address_street') || $request->has('address_barangay') || $request->has('address_city') || $request->has('address_province')) {
+                $addressParts = [];
+                if (!empty($request->input('address_street'))) $addressParts[] = $request->input('address_street');
+                if (!empty($request->input('address_barangay'))) $addressParts[] = $request->input('address_barangay');
+                if (!empty($request->input('address_city'))) $addressParts[] = $request->input('address_city');
+                if (!empty($request->input('address_province'))) $addressParts[] = $request->input('address_province');
+                if (!empty($request->input('address_postal'))) $addressParts[] = $request->input('address_postal');
+
+                if (!empty($addressParts)) {
+                    $contractorPayload['business_address'] = implode(', ', $addressParts);
                     $hasContractorPayload = true;
                 }
             }
@@ -392,12 +409,21 @@ class profileController extends Controller
                 $projects = DB::table('projects as p')
                     ->leftJoin(DB::raw($pfSub), 'p.project_id', '=', 'pfagg.project_id')
                     ->leftJoin('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
+                    ->leftJoin('contractor_types as ct', 'p.type_id', '=', 'ct.type_id')
                     ->join('property_owners as o', 'o.owner_id', '=', 'pr.owner_id')
                     ->join('users as u', 'u.user_id', '=', 'o.user_id')
                     ->where('u.user_id', $userId)
-                    ->select('p.*', 'pfagg.files', 'pr.created_at as post_created_at')
+                    ->select('p.*', 'pfagg.files', 'pr.created_at as post_created_at', 'pr.bidding_due', 'ct.type_name as contractor_type_name')
                     ->orderBy('pr.created_at', 'desc')
                     ->get();
+
+                // Add bids count for each project
+                foreach ($projects as $project) {
+                    $project->bids_count = DB::table('bids')
+                        ->where('project_id', $project->project_id)
+                        ->whereNotIn('bid_status', ['cancelled'])
+                        ->count();
+                }
 
                 $finished = DB::table('projects as p')
                     ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
@@ -416,17 +442,23 @@ class profileController extends Controller
                     ->count();
             }
 
-            // Normalize concatenated files into arrays (GROUP_CONCAT uses '||' separator)
+            // Fetch files with file_type from project_files table for each project
             if ($projects && $projects->count()) {
                 $projects = $projects->map(function ($p) {
-                    $filesArr = [];
-                    if (!empty($p->files)) {
-                        $parts = explode('||', $p->files);
-                        $parts = array_map('trim', $parts);
-                        $parts = array_filter($parts, function ($v) { return $v !== '' && $v !== null; });
-                        $filesArr = array_values($parts);
-                    }
-                    $p->files = $filesArr;
+                    $projectFiles = DB::table('project_files')
+                        ->where('project_id', $p->project_id)
+                        ->orderBy('uploaded_at', 'asc')
+                        ->get();
+
+                    $p->files = $projectFiles->map(function ($f) {
+                        return [
+                            'file_id' => $f->file_id,
+                            'file_type' => $f->file_type,
+                            'file_path' => $f->file_path,
+                            'uploaded_at' => $f->uploaded_at
+                        ];
+                    })->toArray();
+
                     return $p;
                 });
             }

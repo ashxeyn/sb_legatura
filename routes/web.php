@@ -92,6 +92,14 @@ Route::get('/owner/projects', [\App\Http\Controllers\owner\projectsController::c
 // Property Owner Profile
 Route::get('/owner/profile', [\App\Http\Controllers\owner\projectsController::class, 'showProfile'])->name('owner.profile');
 
+// Property Owner Project Details (individual project)
+Route::get('/owner/projects/{projectId}', [\App\Http\Controllers\owner\projectsController::class, 'showProjectDetails'])->name('owner.projects.show');
+
+// Property Owner Profile API (web session-based routes)
+Route::get('/owner/profile/fetch', [\App\Http\Controllers\profileController::class, 'apiGetProfile'])->name('owner.profile.fetch');
+Route::get('/owner/profile/reviews', [\App\Http\Controllers\profileController::class, 'apiGetReviews'])->name('owner.profile.reviews');
+Route::post('/owner/profile/update', [\App\Http\Controllers\profileController::class, 'update'])->name('owner.profile.update');
+
 // Property Owner Finished Projects
 Route::get('/owner/projects/finished', [\App\Http\Controllers\owner\projectsController::class, 'showFinishedProjects'])->name('owner.projects.finished');
 

@@ -129,21 +129,6 @@
                                 <span class="stat-value" id="ongoingProjects">0</span>
                             </div>
                         </div>
-
-                        <div class="info-card-contact">
-                            <div class="contact-item">
-                                <i class="fi fi-rr-phone-call"></i>
-                                <span>Contact No.: <span id="contactNumber">—</span></span>
-                            </div>
-                            <div class="contact-item">
-                                <i class="fi fi-rr-envelope"></i>
-                                <span>Email: <span id="contactEmail">—</span></span>
-                            </div>
-                            <div class="contact-item">
-                                <i class="fi fi-rr-phone"></i>
-                                <span>Telephone: <span id="telephone">—</span></span>
-                            </div>
-                        </div>
                     </div>
 
                     <!-- Contact Person Card -->
@@ -156,23 +141,6 @@
                             <div class="contact-card-name-section">
                                 <h3 class="contact-card-name" id="contactPersonName">—</h3>
                                 <p class="contact-card-role" id="contactPersonRole">Representative</p>
-                            </div>
-                        </div>
-
-                        <div class="contact-card-divider"></div>
-
-                        <div class="contact-card-info">
-                            <div class="contact-card-contact-item">
-                                <i class="fi fi-rr-phone-call"></i>
-                                <span>Contact No.: <span class="contact-card-value" id="contactPersonPhone">—</span></span>
-                            </div>
-                            <div class="contact-card-contact-item">
-                                <i class="fi fi-rr-envelope"></i>
-                                <span>Email: <span class="contact-card-value" id="contactPersonEmail">—</span></span>
-                            </div>
-                            <div class="contact-card-contact-item">
-                                <i class="fi fi-rr-phone"></i>
-                                <span>Telephone: <span class="contact-card-value" id="contactPersonTelephone">—</span></span>
                             </div>
                         </div>
 
@@ -363,18 +331,6 @@
                         <div class="about-block">
                             <h3 class="about-block-title">Contact Information</h3>
                             <div class="about-details-list">
-                                <div class="about-detail-row">
-                                    <span class="about-detail-label"><i class="fi fi-rr-phone-call"></i> Mobile</span>
-                                    <span class="about-detail-value" id="aboutPhone">—</span>
-                                </div>
-                                <div class="about-detail-row">
-                                    <span class="about-detail-label"><i class="fi fi-rr-envelope"></i> Email</span>
-                                    <span class="about-detail-value" id="aboutEmail">—</span>
-                                </div>
-                                <div class="about-detail-row">
-                                    <span class="about-detail-label"><i class="fi fi-rr-phone"></i> Telephone</span>
-                                    <span class="about-detail-value" id="aboutTelephone">—</span>
-                                </div>
                                 <div class="about-detail-row">
                                     <span class="about-detail-label"><i class="fi fi-rr-globe"></i> Website</span>
                                     <span class="about-detail-value" id="aboutWebsite">—</span>
