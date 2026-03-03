@@ -1156,10 +1156,11 @@ export default function App() {
                     onBackPress={() => set_app_state('contractor_account_setup')}
                     onComplete={async (verificationCode: string) => {
                         try {
-                            console.log('Verifying contractor OTP...');
+                            console.log('Verifying contractor OTP with token:', contractor_account_info?.otpToken);
                             const response = await auth_service.contractor_verify_otp(
                                 verificationCode,
-                                contractor_account_info?.companyEmail
+                                contractor_account_info?.companyEmail,
+                                contractor_account_info?.otpToken
                             );
                             if (response.success) {
                                 // Brief delay so the success animation is visible

@@ -506,9 +506,10 @@ export class auth_service {
     });
   }
 
-  static async contractor_verify_otp(otp: string, companyEmail?: string): Promise<api_response> {
+  static async contractor_verify_otp(otp: string, companyEmail?: string, otpToken?: string): Promise<api_response> {
     const body: any = { otp };
     if (companyEmail) body.company_email = companyEmail;
+    if (otpToken) body.otp_token = otpToken;
     return await api_request(api_config.endpoints.contractor.verify_otp, {
       method: 'POST',
       body: JSON.stringify(body),
