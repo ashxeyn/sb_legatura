@@ -443,9 +443,9 @@ const ProjectCardSkeleton = () => (
 );
 
 // Main Component
-export default function ViewProfileScreen({ onBack, userData, userToken = null }: { onBack: any; userData: any; userToken?: any }) {
+export default function ViewProfileScreen({ onBack, userData, userToken, initialTab }) {
   const insets = useSafeAreaInsets();
-  const [activeTab, setActiveTab] = useState<TabType>('Posts');
+  const [activeTab, setActiveTab] = useState<TabType>(initialTab || 'Posts');
   const [isUploading, setIsUploading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 

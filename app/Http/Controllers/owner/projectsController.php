@@ -2394,16 +2394,20 @@ class projectsController extends Controller
             }
 
             // Check if all milestone items are completed
-            $totalItems = DB::table('milestone_items as mi')
+            // Scope to the selected contractor's milestones only — other contractors
+            // may have submitted separate milestone plans that should not block completion.
+            $milestoneQuery = DB::table('milestone_items as mi')
                 ->join('milestones as m', 'mi.milestone_id', '=', 'm.milestone_id')
                 ->where('m.project_id', $projectId)
-                ->where('m.setup_status', 'approved')
-                ->count();
+                ->where('m.setup_status', 'approved');
 
-            $completedItems = DB::table('milestone_items as mi')
-                ->join('milestones as m', 'mi.milestone_id', '=', 'm.milestone_id')
-                ->where('m.project_id', $projectId)
-                ->where('m.setup_status', 'approved')
+            if ($project->selected_contractor_id) {
+                $milestoneQuery->where('m.contractor_id', $project->selected_contractor_id);
+            }
+
+            $totalItems = (clone $milestoneQuery)->count();
+
+            $completedItems = (clone $milestoneQuery)
                 ->where('mi.item_status', 'completed')
                 ->count();
 
@@ -2428,6 +2432,7 @@ class projectsController extends Controller
                 ]);
 
             // Notify contractor that the project is completed
+            $cUserId = null;
             if ($project->selected_contractor_id) {
                 $cUserId = DB::table('contractor_users')->where('contractor_id', $project->selected_contractor_id)->where('is_active', 1)->where('is_deleted', 0)->value('user_id');
                 if ($cUserId) {
@@ -2435,10 +2440,44 @@ class projectsController extends Controller
                 }
             }
 
+            // Send review prompt notifications to both parties
+            // Owner gets prompted to review the contractor
+            if ($cUserId) {
+                NotificationService::create(
+                    $user->user_id,
+                    'review_prompt',
+                    'Leave a Review',
+                    "How was your experience with the contractor on \"{$project->project_title}\"? Tap here to leave a review.",
+                    'high',
+                    'project',
+                    (int) $projectId,
+                    ['screen' => 'review', 'params' => ['projectId' => (int) $projectId, 'revieweeUserId' => (int) $cUserId]]
+                );
+            }
+
+            // Contractor gets prompted to review the owner
+            if ($cUserId) {
+                NotificationService::create(
+                    $cUserId,
+                    'review_prompt',
+                    'Leave a Review',
+                    "How was your experience with the property owner on \"{$project->project_title}\"? Tap here to leave a review.",
+                    'high',
+                    'project',
+                    (int) $projectId,
+                    ['screen' => 'review', 'params' => ['projectId' => (int) $projectId, 'revieweeUserId' => (int) $user->user_id]]
+                );
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Project completed successfully! Congratulations on finishing this project.',
-                'project_id' => $projectId
+                'project_id' => $projectId,
+                'reviewee_user_id' => $cUserId,
+                'reviewee_name' => $cUserId ? DB::table('users')->where('user_id', $cUserId)->value('username') : null,
+                'contractor_name' => $project->selected_contractor_id
+                    ? DB::table('contractors')->where('contractor_id', $project->selected_contractor_id)->value('company_name')
+                    : null,
             ]);
 
         } catch (\Exception $e) {

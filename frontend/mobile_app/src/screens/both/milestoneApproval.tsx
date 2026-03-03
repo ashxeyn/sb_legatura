@@ -27,6 +27,9 @@ import ProjectSummary from './projectSummary';
 import MilestoneSummary from './milestoneSummary';
 import { update_service, ExtensionRecord } from '../../services/update_service';
 import { api_config } from '../../config/api';
+import WriteReview from './writeReview';
+import { review_service } from '../../services/review_service';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 
 // Color palette
 const COLORS = {
@@ -176,6 +179,10 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
   const [showCompleteProjectModal, setShowCompleteProjectModal] = useState(false);
   const [completingProject, setCompletingProject] = useState(false);
   const [isProjectCompleted, setIsProjectCompleted] = useState(projectStatus === 'completed');
+  // Review prompt after project completion
+  const [showReviewPrompt, setShowReviewPrompt] = useState(false);
+  const [reviewPromptData, setReviewPromptData] = useState<{ revieweeUserId: number; revieweeName: string } | null>(null);
+  const [showWriteReview, setShowWriteReview] = useState(false);
   const [showEditMilestone, setShowEditMilestone] = useState(false);
   const [milestoneToEdit, setMilestoneToEdit] = useState<Milestone | null>(null);
   const [showDownpaymentDetail, setShowDownpaymentDetail] = useState(false);
@@ -185,6 +192,28 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
   const [showProjectDateHistory, setShowProjectDateHistory] = useState(false);
   const [showProjectSummary, setShowProjectSummary] = useState(false);
   const [showMilestoneSummary, setShowMilestoneSummary] = useState<number | null>(null);
+
+  // ── Contractor: check if they can leave a review for the owner on a completed project ──
+  useEffect(() => {
+    if (!isProjectCompleted || userRole !== 'contractor') return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await review_service.can_review(projectId);
+        if (cancelled) return;
+        if (res.success && res.data?.can_review && res.data.reviewee_user_id) {
+          setReviewPromptData({
+            revieweeUserId: res.data.reviewee_user_id,
+            revieweeName: res.data.reviewee_name || 'the property owner',
+          });
+          setShowReviewPrompt(true);
+        }
+      } catch (e) {
+        console.warn('[MilestoneApproval] contractor can_review check failed', e);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isProjectCompleted, userRole, projectId]);
 
   // ── Fetch pending update for the owner banner ──
   const fetchPendingUpdate = useCallback(async () => {
@@ -610,23 +639,20 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
 
       if (response.success) {
         setIsProjectCompleted(true);
-        Alert.alert(
-          '🎉 Congratulations!',
-          'Your project has been successfully completed! Thank you for using our platform to bring your vision to life.',
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                // Call the refresh callback if provided
-                if (onApprovalComplete) {
-                  onApprovalComplete();
-                }
-              }
-            }
-          ]
-        );
+
+        // Extract reviewee info from the API response body
+        const data = response.data || {};
+        const revieweeUserId = data.reviewee_user_id;
+        const revieweeName = data.contractor_name || contractorName || 'the contractor';
+
+        // Always show the combined completion + review prompt modal
+        setReviewPromptData({
+          revieweeUserId: revieweeUserId || 0,
+          revieweeName,
+        });
+        setShowReviewPrompt(true);
       } else {
-        Alert.alert('Error', response.message || 'Failed to complete project');
+        Alert.alert('Error', response.message || response.data?.message || 'Failed to complete project');
       }
     } catch (error) {
       console.error('Error completing project:', error);
@@ -675,6 +701,26 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
   };
 
   // If a milestone detail is selected, show the detail view
+  // ── Inline: WriteReview screen ──
+  if (showWriteReview && reviewPromptData) {
+    return (
+      <WriteReview
+        projectId={projectId}
+        revieweeUserId={reviewPromptData.revieweeUserId}
+        onClose={() => {
+          setShowWriteReview(false);
+          setReviewPromptData(null);
+          onApprovalComplete?.();
+        }}
+        onReviewSubmitted={() => {
+          setShowWriteReview(false);
+          setReviewPromptData(null);
+          onApprovalComplete?.();
+        }}
+      />
+    );
+  }
+
   // ── Inline: Project Summary ──
   if (showProjectSummary) {
     return (
@@ -1807,32 +1853,17 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
         <View style={styles.completeModalOverlay}>
           <View style={styles.completeModalContent}>
             <View style={styles.completeModalIconContainer}>
-              <Feather name="alert-circle" size={48} color={COLORS.warning} />
+              <Feather name="check-circle" size={48} color={COLORS.success} />
             </View>
 
             <Text style={styles.completeModalTitle}>Complete This Project?</Text>
             
             <Text style={styles.completeModalDescription}>
-              You are about to mark this entire project as completed. This action will:
+              All milestones are finished. You're about to mark this project as completed.
             </Text>
 
-            <View style={styles.completeModalList}>
-              <View style={styles.completeModalListItem}>
-                <Feather name="check" size={16} color={COLORS.success} />
-                <Text style={styles.completeModalListText}>Mark all milestones as finished</Text>
-              </View>
-              <View style={styles.completeModalListItem}>
-                <Feather name="check" size={16} color={COLORS.success} />
-                <Text style={styles.completeModalListText}>Close the project timeline</Text>
-              </View>
-              <View style={styles.completeModalListItem}>
-                <Feather name="check" size={16} color={COLORS.success} />
-                <Text style={styles.completeModalListText}>Archive all project data</Text>
-              </View>
-            </View>
-
             <Text style={styles.completeModalWarning}>
-              This action cannot be undone. Are you sure you want to proceed?
+              This action cannot be undone.
             </Text>
 
             <View style={styles.completeModalButtons}>
@@ -1845,10 +1876,105 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
               <TouchableOpacity
                 style={[styles.completeModalButton, styles.completeConfirmButton]}
                 onPress={confirmCompleteProject}
+                disabled={completingProject}
               >
-                <Text style={styles.completeConfirmButtonText}>Complete Project</Text>
+                {completingProject ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <Text style={styles.completeConfirmButtonText}>Complete Project</Text>
+                )}
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Combined Project Complete + Review Prompt Modal */}
+      <Modal
+        visible={showReviewPrompt}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => {
+          setShowReviewPrompt(false);
+          setReviewPromptData(null);
+          onApprovalComplete?.();
+        }}
+      >
+        <View style={styles.completeModalOverlay}>
+          <View style={[styles.completeModalContent, { paddingVertical: 28, paddingHorizontal: 24, maxWidth: 360 }]}>
+            {/* Celebration icon */}
+            <View style={styles.reviewPromptIconWrap}>
+              <View style={[styles.reviewPromptIconCircle, { width: 80, height: 80, borderRadius: 20, backgroundColor: '#D1FAE5' }]}>
+                <MaterialIcons name="check-circle" size={48} color={COLORS.success} />
+              </View>
+            </View>
+
+            <Text style={[styles.completeModalTitle, { fontSize: 24, marginTop: 20, marginBottom: 0 }]}>
+              Project Complete!
+            </Text>
+
+            <Text style={{ fontSize: 13, color: COLORS.success, fontWeight: '600', textAlign: 'center', marginTop: 4, marginBottom: 16 }}>
+              Congratulations on finishing this project
+            </Text>
+
+            {/* Divider */}
+            <View style={{ width: '100%', height: 1, backgroundColor: COLORS.border, marginBottom: 16 }} />
+
+            <Text style={{ fontSize: 16, color: COLORS.text, textAlign: 'center', lineHeight: 24 }}>
+              How was your experience with{' '}
+              <Text style={{ fontWeight: '800', color: COLORS.accent }}>
+                {reviewPromptData?.revieweeName || 'the other party'}
+              </Text>
+              ?
+            </Text>
+
+            <Text style={{ fontSize: 13, color: COLORS.textMuted, textAlign: 'center', marginTop: 6, lineHeight: 18 }}>
+              Please leave a review to help others make better decisions
+            </Text>
+
+            {/* Decorative star row */}
+            <View style={styles.reviewPromptStars}>
+              {[1, 2, 3, 4, 5].map(i => (
+                <MaterialIcons key={i} name="star" size={34} color="#FBBF24" />
+              ))}
+            </View>
+
+            {/* Buttons */}
+            <TouchableOpacity
+              style={{
+                width: '100%',
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: '#EC7E00',
+                borderRadius: 10,
+                paddingVertical: 15,
+                marginTop: 20,
+                shadowColor: '#EC7E00',
+                shadowOpacity: 0.3,
+                shadowOffset: { width: 0, height: 4 },
+                shadowRadius: 10,
+                elevation: 4,
+              }}
+              onPress={() => {
+                setShowReviewPrompt(false);
+                setShowWriteReview(true);
+              }}
+            >
+              <MaterialIcons name="rate-review" size={20} color="#FFF" style={{ marginRight: 8 }} />
+              <Text style={{ fontSize: 16, fontWeight: '700', color: '#FFF' }}>Leave a Review</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={{ marginTop: 12, paddingVertical: 10 }}
+              onPress={() => {
+                setShowReviewPrompt(false);
+                setReviewPromptData(null);
+                onApprovalComplete?.();
+              }}
+            >
+              <Text style={{ fontSize: 14, color: COLORS.textMuted, textAlign: 'center' }}>Maybe Later</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -3492,6 +3618,25 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: COLORS.accent,
+  },
+  // ── Review Prompt Modal ──
+  reviewPromptIconWrap: {
+    alignItems: 'center',
+  },
+  reviewPromptIconCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#FFF3E6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reviewPromptStars: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 16,
   },
 });
 

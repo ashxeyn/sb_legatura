@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,26 +9,21 @@ import {
   ActivityIndicator,
   RefreshControl,
   Modal,
-  Dimensions,
   Alert,
   Platform,
   StatusBar,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { MaterialIcons, Ionicons, Feather } from '@expo/vector-icons';
+import { MaterialIcons, Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { api_request } from '../../config/api';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
-/* ────────────────────── Colors ────────────────────── */
-const COLORS = {
-  primary: '#EC7E00',
-  primaryLight: '#FFF3E6',
-  primaryDark: '#C96A00',
-  primaryDeep: '#B35E00',
-  secondary: '#1A1A2E',
-  accent: '#16213E',
+/* ── Palette (matches system) ── */
+const C = {
+  primary: '#1E3A5F',
+  primaryLight: '#E8EEF4',
+  accent: '#EC7E00',
+  accentLight: '#FFF3E6',
   success: '#10B981',
   successLight: '#D1FAE5',
   warning: '#F59E0B',
@@ -37,12 +32,11 @@ const COLORS = {
   errorLight: '#FEE2E2',
   info: '#3B82F6',
   infoLight: '#DBEAFE',
-  background: '#F8FAFC',
+  bg: '#FFFFFF',
   surface: '#FFFFFF',
-  surfaceHover: '#F1F5F9',
-  text: '#0F172A',
-  textSecondary: '#64748B',
-  textMuted: '#94A3B8',
+  text: '#1E3A5F',
+  sub: '#64748B',
+  muted: '#94A3B8',
   border: '#E2E8F0',
   borderLight: '#F1F5F9',
   gold: '#D4A017',
@@ -50,77 +44,62 @@ const COLORS = {
   goldDark: '#B8860B',
 };
 
-/* ────────────────────── Interfaces ────────────────────── */
+/* ── Interfaces ── */
 interface AiAnalyticsProps {
-  userData?: {
-    user_id?: number;
-    username?: string;
-    company_name?: string;
-  };
+  userData?: { user_id?: number; username?: string; company_name?: string };
   onClose: () => void;
 }
-
-interface Project {
-  project_id: number;
-  project_title: string;
-  project_status: string;
-}
-
+interface Project { project_id: number; project_title: string; project_status: string }
 interface PredictionLog {
-  id?: number;
-  project_id: number;
-  project_title: string;
-  prediction: string;
-  delay_probability: number;
-  weather_severity: number;
-  ai_response_snapshot: string;
-  created_at: string;
+  id?: number; project_id: number; project_title: string; prediction: string;
+  delay_probability: number; weather_severity: number; ai_response_snapshot: string; created_at: string;
 }
-
-interface AiStats {
-  total_analyses: number;
-  on_time_predictions: number;
-  delayed_predictions: number;
-  avg_delay_probability: number;
-}
-
+interface AiStats { total_analyses: number; on_time_predictions: number; delayed_predictions: number; avg_delay_probability: number }
 interface AnalysisData {
-  prediction: {
-    prediction: string;
-    delay_probability: number;
-    reason?: string;
-  };
+  prediction: { prediction: string; delay_probability: number; reason?: string };
   analysis_report?: {
     conclusion?: string;
-    pacing_status?: {
-      avg_delay_days?: number;
-      details?: Array<{
-        title: string;
-        status: string;
-        days_variance: number;
-        pacing_label: string;
-      }>;
-    };
-    contractor_audit?: {
-      flagged?: boolean;
-      status?: string;
-    };
+    pacing_status?: { avg_delay_days?: number; details?: Array<{ title: string; status: string; days_variance: number; pacing_label: string }> };
+    contractor_audit?: { flagged?: boolean; status?: string };
   };
-  weather?: {
-    total_rain?: number;
-    avg_temp?: number;
-    condition_text?: string;
-  };
+  weather?: { total_rain?: number; avg_temp?: number; condition_text?: string };
   weather_severity?: number;
   dds_recommendations?: string[];
   enso_state?: string;
 }
 
-/* ────────────────────── Component ────────────────────── */
+/* ── Helpers ── */
+const pct = (v: number) => `${(v * 100).toFixed(1)}%`;
+const timeAgo = (dateStr: string) => {
+  const ms = Date.now() - new Date(dateStr).getTime();
+  const m = Math.floor(ms / 60000);
+  if (m < 1) return 'Just now';
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  if (d < 7) return `${d}d ago`;
+  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+};
+
+/* ── Reusable section header (collapsible) ── */
+function SectionHead({ title, icon, count, expanded, onToggle }: {
+  title: string; icon: string; count?: number; expanded?: boolean; onToggle?: () => void;
+}) {
+  const Wrap: any = onToggle ? TouchableOpacity : View;
+  return (
+    <Wrap style={s.secHead} onPress={onToggle} activeOpacity={0.7}>
+      <Feather name={icon as any} size={15} color={C.primary} />
+      <Text style={s.secHeadText}>{title}{count != null ? ` (${count})` : ''}</Text>
+      {onToggle && <Feather name={expanded ? 'chevron-up' : 'chevron-down'} size={15} color={C.sub} />}
+    </Wrap>
+  );
+}
+
+/* ━━━━━━━━━━ Component ━━━━━━━━━━ */
 export default function AiAnalytics({ userData, onClose }: AiAnalyticsProps) {
   const insets = useSafeAreaInsets();
 
-  // State
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [isGold, setIsGold] = useState(false);
@@ -128,220 +107,127 @@ export default function AiAnalytics({ userData, onClose }: AiAnalyticsProps) {
   const [aiFeatures, setAiFeatures] = useState<string[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [predictionLogs, setPredictionLogs] = useState<PredictionLog[]>([]);
-  const [stats, setStats] = useState<AiStats>({
-    total_analyses: 0,
-    on_time_predictions: 0,
-    delayed_predictions: 0,
-    avg_delay_probability: 0,
-  });
+  const [stats, setStats] = useState<AiStats>({ total_analyses: 0, on_time_predictions: 0, delayed_predictions: 0, avg_delay_probability: 0 });
 
-  // Analysis state
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<AnalysisData | null>(null);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
 
-  // Project picker
   const [showProjectPicker, setShowProjectPicker] = useState(false);
-
-  // Detail modal
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [detailData, setDetailData] = useState<AnalysisData | null>(null);
 
-  /* ───── fetch dashboard data ───── */
+  // Collapsible sections in detail modal
+  const [detailSections, setDetailSections] = useState<Record<string, boolean>>({ risk: true, env: true, pacing: true, recs: true });
+  const toggleDetail = (k: string) => setDetailSections(p => ({ ...p, [k]: !p[k] }));
+
+  /* ── Fetch ── */
   const fetchData = useCallback(async () => {
     try {
       const response = await api_request('/api/contractor/ai-analytics', { method: 'GET' });
-
       if (response.success && response.data?.success) {
         const d = response.data;
-
-        if (!d.is_gold) {
-          setIsGold(false);
-          setIsLoading(false);
-          return;
-        }
-
+        if (!d.is_gold) { setIsGold(false); setIsLoading(false); return; }
         setIsGold(true);
         setAiStatus(d.ai_status || 'Offline');
         setAiFeatures(d.ai_features || []);
         setProjects(d.projects || []);
         setPredictionLogs(d.prediction_logs || []);
-        setStats(d.stats || {
-          total_analyses: 0,
-          on_time_predictions: 0,
-          delayed_predictions: 0,
-          avg_delay_probability: 0,
-        });
-      } else {
-        console.error('AI Analytics fetch failed:', response.data?.message);
+        setStats(d.stats || { total_analyses: 0, on_time_predictions: 0, delayed_predictions: 0, avg_delay_probability: 0 });
       }
-    } catch (err) {
-      console.error('AI Analytics error:', err);
-    } finally {
-      setIsLoading(false);
-    }
+    } catch (err) { console.error('AI Analytics error:', err); }
+    finally { setIsLoading(false); }
   }, []);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  useEffect(() => { fetchData(); }, [fetchData]);
+  const onRefresh = async () => { setRefreshing(true); await fetchData(); setRefreshing(false); };
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await fetchData();
-    setRefreshing(false);
-  };
-
-  /* ───── Run Analysis ───── */
+  /* ── Run Analysis ── */
   const runAnalysis = async () => {
-    if (!selectedProjectId) {
-      Alert.alert('Select Project', 'Please select a project to analyze.');
-      return;
-    }
-
-    setIsAnalyzing(true);
-    setAnalysisResult(null);
-    setAnalysisError(null);
-
+    if (!selectedProjectId) { Alert.alert('Select Project', 'Please select a project to analyze.'); return; }
+    setIsAnalyzing(true); setAnalysisResult(null); setAnalysisError(null);
     try {
-      const response = await api_request(`/api/contractor/ai-analytics/analyze/${selectedProjectId}`, {
-        method: 'POST',
-      });
-
-      if (response.success && response.data?.success) {
-        setAnalysisResult(response.data.data);
-        // Refresh data to get updated history
-        fetchData();
-      } else {
-        setAnalysisError(response.data?.message || 'Analysis failed');
-      }
-    } catch (err: any) {
-      setAnalysisError(err.message || 'Network error');
-    } finally {
-      setIsAnalyzing(false);
-    }
+      const response = await api_request(`/api/contractor/ai-analytics/analyze/${selectedProjectId}`, { method: 'POST' });
+      if (response.success && response.data?.success) { setAnalysisResult(response.data.data); fetchData(); }
+      else { setAnalysisError(response.data?.message || 'Analysis failed'); }
+    } catch (err: any) { setAnalysisError(err.message || 'Network error'); }
+    finally { setIsAnalyzing(false); }
   };
 
-  /* ───── Show Details Modal ───── */
+  /* ── Show Details ── */
   const showDetails = (log: PredictionLog) => {
     try {
-      const snapshot = typeof log.ai_response_snapshot === 'string'
-        ? JSON.parse(log.ai_response_snapshot)
-        : log.ai_response_snapshot;
+      const snapshot = typeof log.ai_response_snapshot === 'string' ? JSON.parse(log.ai_response_snapshot) : log.ai_response_snapshot;
       setDetailData(snapshot);
+      setDetailSections({ risk: true, env: true, pacing: true, recs: true });
       setShowDetailModal(true);
-    } catch (e) {
-      Alert.alert('Error', 'Could not parse analysis data.');
-    }
+    } catch { Alert.alert('Error', 'Could not parse analysis data.'); }
   };
 
-  /* ───── Format helpers ───── */
-  const timeAgo = (dateStr: string) => {
-    const now = new Date();
-    const d = new Date(dateStr);
-    const diffMs = now.getTime() - d.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    const diffHrs = Math.floor(diffMins / 60);
-    if (diffHrs < 24) return `${diffHrs}h ago`;
-    const diffDays = Math.floor(diffHrs / 24);
-    if (diffDays < 7) return `${diffDays}d ago`;
-    return d.toLocaleDateString();
-  };
+  const selectedProject = projects.find(p => p.project_id === selectedProjectId);
 
-  const formatPercent = (val: number) => `${(val * 100).toFixed(1)}%`;
-
-  /* ───── Loading Screen ───── */
+  /* ━━ LOADING ━━ */
   if (isLoading) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <StatusBar hidden />
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
-          <Text style={styles.loadingText}>Loading AI Analytics...</Text>
+      <View style={s.container}>
+        <StatusBar barStyle="dark-content" backgroundColor={C.bg} />
+        <View style={s.centered}>
+          <ActivityIndicator size="large" color={C.primary} />
+          <Text style={s.loadingText}>Loading AI Analytics…</Text>
         </View>
       </View>
     );
   }
 
-  /* ───── Not Gold Tier — Upgrade Prompt ───── */
+  /* ━━ NOT GOLD ━━ */
   if (!isGold) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <StatusBar hidden />
-
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={onClose}>
-            <Feather name="arrow-left" size={24} color={COLORS.text} />
+      <View style={s.container}>
+        <StatusBar barStyle="dark-content" backgroundColor={C.bg} />
+        <View style={s.topBar}>
+          <TouchableOpacity onPress={onClose} style={s.backBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+            <Feather name="arrow-left" size={20} color={C.text} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>AI Analytics</Text>
-          <View style={{ width: 40 }} />
+          <Text style={s.topBarTitle}>AI Analytics</Text>
+          <View style={{ width: 32 }} />
         </View>
 
-        {/* Upgrade CTA */}
-        <ScrollView contentContainerStyle={styles.upgradeContainer}>
-          <View style={styles.upgradeCard}>
-            <LinearGradient
-              colors={['#F9E8A0', '#D4A017', '#B8860B']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.upgradeIconContainer}
-            >
-              <MaterialIcons name="auto-awesome" size={48} color="#FFFFFF" />
+        <ScrollView contentContainerStyle={s.upgradeScroll}>
+          <View style={s.upgradeCard}>
+            <LinearGradient colors={['#F9E8A0', '#D4A017', '#B8860B']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.upgradeIcon}>
+              <MaterialIcons name="auto-awesome" size={36} color="#FFF" />
             </LinearGradient>
 
-            <Text style={styles.upgradeTitle}>Unlock AI Analytics</Text>
-            <Text style={styles.upgradeSubtitle}>
-              AI-powered delay predictions for your construction projects
-            </Text>
+            <Text style={s.upgradeTitle}>Unlock AI Analytics</Text>
+            <Text style={s.upgradeSub}>AI-powered delay predictions for your construction projects</Text>
 
-            <View style={styles.upgradeFeaturesList}>
-              {[
-                { icon: 'trending-up', text: 'Predict project delays before they happen' },
-                { icon: 'cloud', text: 'Weather-aware risk assessments' },
-                { icon: 'bar-chart-2', text: 'Milestone pacing analysis' },
-                { icon: 'zap', text: 'AI-powered recommendations' },
-                { icon: 'shield', text: 'Contractor performance audits' },
-              ].map((item, i) => (
-                <View key={i} style={styles.upgradeFeatureRow}>
-                  <View style={styles.upgradeFeatureIcon}>
-                    <Feather name={item.icon as any} size={18} color={COLORS.gold} />
-                  </View>
-                  <Text style={styles.upgradeFeatureText}>{item.text}</Text>
-                </View>
-              ))}
-            </View>
+            <View style={s.divider} />
 
-            <View style={styles.upgradeBadge}>
-              <MaterialIcons name="workspace-premium" size={20} color={COLORS.goldDark} />
-              <Text style={styles.upgradeBadgeText}>Gold Tier Exclusive Feature</Text>
+            {['Predict project delays before they happen',
+              'Weather-aware risk assessments',
+              'Milestone pacing analysis',
+              'AI-powered recommendations',
+              'Contractor performance audits',
+            ].map((t, i) => (
+              <View key={i} style={s.upgradeRow}>
+                <Feather name="check" size={14} color={C.gold} />
+                <Text style={s.upgradeRowText}>{t}</Text>
+              </View>
+            ))}
+
+            <View style={s.upgradeBadge}>
+              <MaterialIcons name="workspace-premium" size={14} color={C.goldDark} />
+              <Text style={s.upgradeBadgeText}>Gold Tier Exclusive</Text>
             </View>
 
             <TouchableOpacity
-              style={styles.upgradeButton}
+              style={s.upgradeBtn}
               activeOpacity={0.8}
-              onPress={() => {
-                onClose();
-                // Navigate to subscription screen via global setter
-                setTimeout(() => {
-                  if (global.set_app_state) {
-                    global.set_app_state('subscription');
-                  }
-                }, 100);
-              }}
+              onPress={() => { onClose(); setTimeout(() => { if (global.set_app_state) global.set_app_state('subscription'); }, 100); }}
             >
-              <LinearGradient
-                colors={[COLORS.gold, COLORS.goldDark]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.upgradeButtonGradient}
-              >
-                <MaterialIcons name="workspace-premium" size={22} color="#FFFFFF" />
-                <Text style={styles.upgradeButtonText}>Upgrade to Gold</Text>
-              </LinearGradient>
+              <MaterialIcons name="workspace-premium" size={18} color="#FFF" />
+              <Text style={s.upgradeBtnText}>Upgrade to Gold</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -349,221 +235,163 @@ export default function AiAnalytics({ userData, onClose }: AiAnalyticsProps) {
     );
   }
 
-  /* ───── Gold Tier — Full AI Analytics ───── */
-  const selectedProject = projects.find(p => p.project_id === selectedProjectId);
-
+  /* ━━ GOLD DASHBOARD ━━ */
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar hidden />
+    <View style={s.container}>
+      <StatusBar barStyle="dark-content" backgroundColor={C.bg} />
 
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={onClose}>
-          <Feather name="arrow-left" size={24} color={COLORS.text} />
+      {/* Top Bar */}
+      <View style={s.topBar}>
+        <TouchableOpacity onPress={onClose} style={s.backBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+          <Feather name="arrow-left" size={20} color={C.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>AI Analytics</Text>
-        <View style={[styles.statusBadge, aiStatus === 'Online' ? styles.statusOnline : styles.statusOffline]}>
-          <View style={[styles.statusDot, aiStatus === 'Online' ? styles.dotOnline : styles.dotOffline]} />
-          <Text style={[styles.statusText, aiStatus === 'Online' ? styles.statusTextOnline : styles.statusTextOffline]}>
-            {aiStatus}
-          </Text>
+        <View style={s.topBarCenter}>
+          <Text style={s.topBarTitle}>AI Analytics</Text>
+          {aiFeatures.length > 0 && (
+            <Text style={s.topBarSub} numberOfLines={1}>{aiFeatures.join(' · ')}</Text>
+          )}
+        </View>
+        <View style={[s.statusPill, aiStatus === 'Online' ? s.statusOn : s.statusOff]}>
+          <View style={[s.statusDot, { backgroundColor: aiStatus === 'Online' ? C.success : C.error }]} />
+          <Text style={[s.statusLabel, { color: aiStatus === 'Online' ? C.success : C.error }]}>{aiStatus}</Text>
         </View>
       </View>
 
       <ScrollView
-        style={styles.scrollView}
+        style={s.scroll}
+        contentContainerStyle={s.scrollInner}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} tintColor={COLORS.primary} />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[C.primary]} tintColor={C.primary} />}
       >
-        {/* Stats Cards */}
-        <View style={styles.statsRow}>
-          <View style={[styles.statCard, { borderLeftColor: COLORS.info }]}>
-            <Text style={styles.statValue}>{stats.total_analyses}</Text>
-            <Text style={styles.statLabel}>Analyses</Text>
-          </View>
-          <View style={[styles.statCard, { borderLeftColor: COLORS.success }]}>
-            <Text style={[styles.statValue, { color: COLORS.success }]}>{stats.on_time_predictions}</Text>
-            <Text style={styles.statLabel}>On-Time</Text>
-          </View>
-          <View style={[styles.statCard, { borderLeftColor: COLORS.error }]}>
-            <Text style={[styles.statValue, { color: COLORS.error }]}>{stats.delayed_predictions}</Text>
-            <Text style={styles.statLabel}>Delayed</Text>
-          </View>
-          <View style={[styles.statCard, { borderLeftColor: COLORS.warning }]}>
-            <Text style={[styles.statValue, { color: COLORS.warning }]}>{stats.avg_delay_probability}%</Text>
-            <Text style={styles.statLabel}>Avg Risk</Text>
+
+        {/* ═══ OVERVIEW GRID ═══ */}
+        <View style={s.overviewCard}>
+          <Text style={s.overviewLabel}>OVERVIEW</Text>
+          <View style={s.grid}>
+            <View style={s.gridCell}>
+              <Text style={s.gridNum}>{stats.total_analyses}</Text>
+              <Text style={s.gridLabel}>Total Analyses</Text>
+            </View>
+            <View style={s.gridCell}>
+              <Text style={[s.gridNum, { color: C.success }]}>{stats.on_time_predictions}</Text>
+              <Text style={s.gridLabel}>On-Time</Text>
+            </View>
+            <View style={s.gridCell}>
+              <Text style={[s.gridNum, { color: C.error }]}>{stats.delayed_predictions}</Text>
+              <Text style={s.gridLabel}>Delayed</Text>
+            </View>
+            <View style={s.gridCell}>
+              <Text style={[s.gridNum, { color: C.warning }]}>{stats.avg_delay_probability}%</Text>
+              <Text style={s.gridLabel}>Avg. Risk</Text>
+            </View>
           </View>
         </View>
 
-        {/* AI Features */}
-        {aiFeatures.length > 0 && (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.featuresRow} contentContainerStyle={{ paddingHorizontal: 20 }}>
-            {aiFeatures.map((f, i) => (
-              <View key={i} style={styles.featureBadge}>
-                <Text style={styles.featureBadgeText}>{f}</Text>
-              </View>
-            ))}
-          </ScrollView>
-        )}
-
-        {/* Run New Analysis */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeaderRow}>
-            <Feather name="activity" size={18} color={COLORS.info} />
-            <Text style={styles.sectionTitle}>Run New Analysis</Text>
-          </View>
-
+        {/* ═══ RUN ANALYSIS ═══ */}
+        <SectionHead title="Run Analysis" icon="play-circle" />
+        <View style={s.sectionBody}>
           {projects.length > 0 ? (
-            <View style={styles.analysisCard}>
-              {/* Project Picker */}
-              <TouchableOpacity
-                style={styles.projectPicker}
-                activeOpacity={0.7}
-                onPress={() => setShowProjectPicker(true)}
-              >
-                <Feather name="folder" size={18} color={COLORS.textSecondary} />
-                <Text style={[styles.projectPickerText, !selectedProject && { color: COLORS.textMuted }]} numberOfLines={1}>
-                  {selectedProject ? `${selectedProject.project_title} (${selectedProject.project_status})` : 'Select a project...'}
+            <>
+              <TouchableOpacity style={s.picker} activeOpacity={0.7} onPress={() => setShowProjectPicker(true)}>
+                <Feather name="briefcase" size={16} color={C.sub} />
+                <Text style={[s.pickerText, !selectedProject && { color: C.muted }]} numberOfLines={1}>
+                  {selectedProject ? selectedProject.project_title : 'Select a project…'}
                 </Text>
-                <Feather name="chevron-down" size={18} color={COLORS.textMuted} />
+                <Feather name="chevron-down" size={16} color={C.muted} />
               </TouchableOpacity>
 
-              {/* Analyze Button */}
+              {selectedProject && (
+                <Text style={s.pickerMeta}>Status: {selectedProject.project_status}</Text>
+              )}
+
               <TouchableOpacity
-                style={[styles.analyzeButton, isAnalyzing && styles.analyzeButtonDisabled]}
+                style={[s.primaryBtn, isAnalyzing && { opacity: 0.6 }]}
                 activeOpacity={0.8}
                 onPress={runAnalysis}
                 disabled={isAnalyzing}
               >
-                <LinearGradient
-                  colors={isAnalyzing ? ['#94A3B8', '#94A3B8'] : [COLORS.info, '#2563EB']}
-                  style={styles.analyzeButtonGradient}
-                >
-                  {isAnalyzing ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  ) : (
-                    <MaterialIcons name="psychology" size={20} color="#FFFFFF" />
-                  )}
-                  <Text style={styles.analyzeButtonText}>
-                    {isAnalyzing ? 'Analyzing...' : 'Analyze Now'}
-                  </Text>
-                </LinearGradient>
+                {isAnalyzing
+                  ? <ActivityIndicator size="small" color="#FFF" />
+                  : <MaterialIcons name="psychology" size={18} color="#FFF" />}
+                <Text style={s.primaryBtnText}>{isAnalyzing ? 'Analyzing…' : 'Analyze Now'}</Text>
               </TouchableOpacity>
 
-              {/* Analysis Result (inline) */}
+              {/* Inline result */}
               {analysisResult && (
-                <View style={styles.resultCard}>
-                  <Text style={styles.resultTitle}>Analysis Complete</Text>
-                  {analysisResult.analysis_report?.conclusion && (
-                    <View style={styles.resultConclusion}>
-                      <View style={styles.conclusionBar} />
-                      <Text style={styles.resultConclusionText}>
-                        {analysisResult.analysis_report.conclusion}
-                      </Text>
-                    </View>
-                  )}
-                  <View style={styles.resultMetrics}>
-                    <View style={styles.resultMetricItem}>
-                      <Text style={styles.resultMetricLabel}>Verdict</Text>
-                      <Text style={[
-                        styles.resultMetricValue,
-                        { color: analysisResult.prediction.prediction === 'DELAYED' ? COLORS.error : COLORS.success }
-                      ]}>
+                <View style={s.resultCard}>
+                  <View style={s.resultRow}>
+                    <View>
+                      <Text style={s.resultLabel}>VERDICT</Text>
+                      <Text style={[s.resultVerdict, { color: analysisResult.prediction.prediction === 'DELAYED' ? C.error : C.success }]}>
                         {analysisResult.prediction.prediction}
                       </Text>
                     </View>
-                    <View style={styles.resultMetricItem}>
-                      <Text style={styles.resultMetricLabel}>Confidence</Text>
-                      <Text style={styles.resultMetricValue}>
-                        {formatPercent(analysisResult.prediction.delay_probability)}
-                      </Text>
+                    <View style={{ alignItems: 'flex-end' }}>
+                      <Text style={s.resultLabel}>DELAY PROBABILITY</Text>
+                      <Text style={s.resultProb}>{pct(analysisResult.prediction.delay_probability)}</Text>
                     </View>
                   </View>
+
+                  {analysisResult.analysis_report?.conclusion && (
+                    <Text style={s.resultConclusion}>{analysisResult.analysis_report.conclusion}</Text>
+                  )}
+
                   <TouchableOpacity
-                    style={styles.viewFullReportBtn}
-                    onPress={() => { setDetailData(analysisResult); setShowDetailModal(true); }}
+                    style={s.linkBtn}
+                    onPress={() => { setDetailData(analysisResult); setDetailSections({ risk: true, env: true, pacing: true, recs: true }); setShowDetailModal(true); }}
                   >
-                    <Text style={styles.viewFullReportText}>View Full Report</Text>
-                    <Feather name="arrow-right" size={14} color={COLORS.info} />
+                    <Text style={s.linkBtnText}>View Full Report</Text>
+                    <Feather name="arrow-right" size={13} color={C.accent} />
                   </TouchableOpacity>
                 </View>
               )}
 
-              {/* Analysis Error */}
+              {/* Error */}
               {analysisError && (
-                <View style={styles.errorCard}>
-                  <Feather name="alert-circle" size={18} color={COLORS.error} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.errorTitle}>Analysis Failed</Text>
-                    <Text style={styles.errorMessage}>{analysisError}</Text>
-                  </View>
+                <View style={s.errorBanner}>
+                  <Feather name="alert-circle" size={15} color={C.error} />
+                  <Text style={s.errorBannerText}>{analysisError}</Text>
                 </View>
               )}
-            </View>
+            </>
           ) : (
-            <View style={styles.emptyProjectsCard}>
-              <Feather name="folder" size={32} color={COLORS.border} />
-              <Text style={styles.emptyProjectsTitle}>No Projects Yet</Text>
-              <Text style={styles.emptyProjectsText}>
-                Once you're assigned to a project, you'll be able to run AI analysis.
-              </Text>
+            <View style={s.emptyState}>
+              <Feather name="briefcase" size={24} color={C.border} />
+              <Text style={s.emptyTitle}>No Projects</Text>
+              <Text style={s.emptyText}>Once you're assigned to a project, you can run AI analysis.</Text>
             </View>
           )}
         </View>
 
-        {/* Prediction History */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeaderRow}>
-            <Feather name="clock" size={18} color={COLORS.textSecondary} />
-            <Text style={styles.sectionTitle}>Prediction History</Text>
-          </View>
-
+        {/* ═══ PREDICTION HISTORY ═══ */}
+        <SectionHead title="Prediction History" icon="clock" count={predictionLogs.length} />
+        <View style={s.sectionBody}>
           {predictionLogs.length === 0 ? (
-            <View style={styles.emptyHistoryCard}>
-              <MaterialIcons name="psychology" size={40} color={COLORS.border} />
-              <Text style={styles.emptyHistoryText}>No predictions yet. Run your first analysis above!</Text>
+            <View style={s.emptyState}>
+              <Feather name="bar-chart-2" size={24} color={C.border} />
+              <Text style={s.emptyText}>No predictions yet — run your first analysis above.</Text>
             </View>
           ) : (
             predictionLogs.map((log, idx) => {
-              const isDelayed = log.prediction === 'DELAYED';
+              const delayed = log.prediction === 'DELAYED';
               return (
-                <TouchableOpacity
-                  key={log.id || idx}
-                  style={styles.historyCard}
-                  activeOpacity={0.7}
-                  onPress={() => showDetails(log)}
-                >
-                  <View style={styles.historyCardHeader}>
-                    <View style={[styles.verdictBadge, isDelayed ? styles.verdictDelayed : styles.verdictOnTime]}>
-                      <Feather
-                        name={isDelayed ? 'alert-triangle' : 'check-circle'}
-                        size={12}
-                        color={isDelayed ? COLORS.error : COLORS.success}
-                      />
-                      <Text style={[styles.verdictText, { color: isDelayed ? COLORS.error : COLORS.success }]}>
-                        {log.prediction}
-                      </Text>
-                    </View>
-                    <Text style={styles.historyTime}>{timeAgo(log.created_at)}</Text>
-                  </View>
-                  <Text style={styles.historyProject} numberOfLines={1}>{log.project_title}</Text>
-                  <View style={styles.historyMeta}>
-                    <Text style={styles.historyRisk}>Risk: {formatPercent(log.delay_probability)}</Text>
-                    <View style={styles.historyDots}>
-                      {[1, 2, 3, 4, 5].map(i => (
-                        <View
-                          key={i}
-                          style={[styles.severityDot, i <= (log.weather_severity || 0) ? styles.dotActive : styles.dotInactive]}
-                        />
-                      ))}
+                <TouchableOpacity key={log.id || idx} style={s.histRow} activeOpacity={0.7} onPress={() => showDetails(log)}>
+                  <View style={s.histLeft}>
+                    <View style={[s.histDot, { backgroundColor: delayed ? C.error : C.success }]} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.histProject} numberOfLines={1}>{log.project_title}</Text>
+                      <View style={s.histMeta}>
+                        <Text style={s.histMetaText}>Risk {pct(log.delay_probability)}</Text>
+                        <Text style={s.histMetaText}>·</Text>
+                        <Text style={s.histMetaText}>Weather {log.weather_severity || 0}/5</Text>
+                      </View>
                     </View>
                   </View>
-                  <View style={styles.historyViewBtn}>
-                    <Text style={styles.historyViewText}>View Details</Text>
-                    <Feather name="chevron-right" size={14} color={COLORS.info} />
+                  <View style={s.histRight}>
+                    <View style={[s.badge, { backgroundColor: delayed ? C.errorLight : C.successLight }]}>
+                      <Text style={[s.badgeText, { color: delayed ? C.error : C.success }]}>{log.prediction}</Text>
+                    </View>
+                    <Text style={s.histTime}>{timeAgo(log.created_at)}</Text>
                   </View>
                 </TouchableOpacity>
               );
@@ -571,900 +399,322 @@ export default function AiAnalytics({ userData, onClose }: AiAnalyticsProps) {
           )}
         </View>
 
-        <View style={{ height: 40 }} />
+        <View style={{ height: 32 }} />
       </ScrollView>
 
-      {/* ─── Project Picker Modal ─── */}
+      {/* ═══ PROJECT PICKER MODAL ═══ */}
       <Modal visible={showProjectPicker} transparent animationType="slide" onRequestClose={() => setShowProjectPicker(false)}>
-        <TouchableOpacity style={styles.pickerOverlay} activeOpacity={1} onPress={() => setShowProjectPicker(false)}>
-          <View style={styles.pickerContainer}>
-            <View style={styles.pickerHeader}>
-              <Text style={styles.pickerTitle}>Select Project</Text>
-              <TouchableOpacity onPress={() => setShowProjectPicker(false)}>
-                <Feather name="x" size={22} color={COLORS.text} />
+        <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={() => setShowProjectPicker(false)}>
+          <View style={s.modalSheet}>
+            <View style={s.modalHandle} />
+            <View style={s.modalHeader}>
+              <Text style={s.modalTitle}>Select Project</Text>
+              <TouchableOpacity onPress={() => setShowProjectPicker(false)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Feather name="x" size={20} color={C.text} />
               </TouchableOpacity>
             </View>
-            <ScrollView style={styles.pickerList}>
-              {projects.map(p => (
-                <TouchableOpacity
-                  key={p.project_id}
-                  style={[styles.pickerItem, p.project_id === selectedProjectId && styles.pickerItemSelected]}
-                  onPress={() => { setSelectedProjectId(p.project_id); setShowProjectPicker(false); }}
-                >
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.pickerItemTitle} numberOfLines={1}>{p.project_title}</Text>
-                    <Text style={styles.pickerItemStatus}>{p.project_status}</Text>
-                  </View>
-                  {p.project_id === selectedProjectId && (
-                    <Feather name="check-circle" size={20} color={COLORS.info} />
-                  )}
-                </TouchableOpacity>
-              ))}
+            <ScrollView style={s.modalList}>
+              {projects.map(p => {
+                const active = p.project_id === selectedProjectId;
+                return (
+                  <TouchableOpacity
+                    key={p.project_id}
+                    style={[s.modalItem, active && s.modalItemActive]}
+                    onPress={() => { setSelectedProjectId(p.project_id); setShowProjectPicker(false); }}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.modalItemTitle} numberOfLines={1}>{p.project_title}</Text>
+                      <Text style={s.modalItemSub}>{p.project_status}</Text>
+                    </View>
+                    {active && <Feather name="check" size={18} color={C.primary} />}
+                  </TouchableOpacity>
+                );
+              })}
             </ScrollView>
           </View>
         </TouchableOpacity>
       </Modal>
 
-      {/* ─── Detail Report Modal ─── */}
+      {/* ═══ DETAIL REPORT MODAL ═══ */}
       <Modal visible={showDetailModal} transparent animationType="slide" onRequestClose={() => setShowDetailModal(false)}>
-        <View style={styles.detailOverlay}>
-          <View style={[styles.detailContainer, { paddingTop: insets.top }]}>
-            {/* Modal Header */}
-            <View style={styles.detailHeader}>
-              <View>
-                <Text style={styles.detailHeaderTitle}>AI Analysis Report</Text>
-                <Text style={styles.detailHeaderSub}>Detailed Insights</Text>
-              </View>
-              <TouchableOpacity style={styles.detailCloseBtn} onPress={() => setShowDetailModal(false)}>
-                <Feather name="x" size={22} color={COLORS.text} />
-              </TouchableOpacity>
+        <View style={[s.container, { paddingTop: insets.top, backgroundColor: C.bg }]}>
+          {/* Header */}
+          <View style={s.topBar}>
+            <TouchableOpacity onPress={() => setShowDetailModal(false)} style={s.backBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+              <Feather name="arrow-left" size={20} color={C.text} />
+            </TouchableOpacity>
+            <View style={s.topBarCenter}>
+              <Text style={s.topBarTitle}>Analysis Report</Text>
+              <Text style={s.topBarSub}>Detailed Insights</Text>
             </View>
+            <View style={{ width: 32 }} />
+          </View>
 
-            {detailData && (
-              <ScrollView style={styles.detailScroll} showsVerticalScrollIndicator={false}>
-                {/* Executive Summary */}
-                <View style={styles.execSummary}>
-                  <Text style={styles.execLabel}>EXECUTIVE SUMMARY</Text>
-                  <Text style={styles.execText}>
-                    "{detailData.analysis_report?.conclusion || 'Analysis complete.'}"
-                  </Text>
+          {detailData && (
+            <ScrollView style={s.scroll} contentContainerStyle={[s.scrollInner, { paddingBottom: insets.bottom + 24 }]} showsVerticalScrollIndicator={false}>
+
+              {/* Executive Summary */}
+              {detailData.analysis_report?.conclusion && (
+                <View style={s.summaryBanner}>
+                  <Text style={s.summaryLabel}>SUMMARY</Text>
+                  <Text style={s.summaryText}>{detailData.analysis_report.conclusion}</Text>
                 </View>
+              )}
 
-                {/* Risk Assessment */}
-                <View style={styles.detailSection}>
-                  <Text style={styles.detailSectionTitle}>Risk Assessment</Text>
-                  <View style={styles.riskCard}>
-                    <View style={styles.riskRow}>
-                      <Text style={[
-                        styles.riskVerdict,
-                        { color: detailData.prediction.prediction === 'DELAYED' ? COLORS.error : COLORS.success }
-                      ]}>
+              {/* Risk Assessment */}
+              <SectionHead title="Risk Assessment" icon="shield" expanded={detailSections.risk} onToggle={() => toggleDetail('risk')} />
+              {detailSections.risk && (
+                <View style={s.sectionBody}>
+                  <View style={s.riskGrid}>
+                    <View style={s.riskGridCell}>
+                      <Text style={s.gridLabel}>VERDICT</Text>
+                      <Text style={[s.riskVerdict, { color: detailData.prediction.prediction === 'DELAYED' ? C.error : C.success }]}>
                         {detailData.prediction.prediction}
                       </Text>
-                      <View style={styles.riskRight}>
-                        <Text style={styles.riskProbLabel}>Probability</Text>
-                        <Text style={styles.riskProbValue}>{formatPercent(detailData.prediction.delay_probability)}</Text>
+                    </View>
+                    <View style={s.riskGridCell}>
+                      <Text style={s.gridLabel}>PROBABILITY</Text>
+                      <Text style={s.riskProb}>{pct(detailData.prediction.delay_probability)}</Text>
+                    </View>
+                  </View>
+                  {/* Bar */}
+                  <View style={s.progressTrack}>
+                    <View style={[s.progressFill, {
+                      width: `${detailData.prediction.delay_probability * 100}%`,
+                      backgroundColor: detailData.prediction.prediction === 'DELAYED' ? C.error : C.success,
+                    }]} />
+                  </View>
+                  {detailData.prediction.reason && (
+                    <Text style={s.riskReason}>{detailData.prediction.reason}</Text>
+                  )}
+                </View>
+              )}
+
+              {/* Environment */}
+              <SectionHead title="Environment Context" icon="cloud" expanded={detailSections.env} onToggle={() => toggleDetail('env')} />
+              {detailSections.env && (
+                <View style={s.sectionBody}>
+                  <View style={s.envGrid}>
+                    <View style={s.envCell}>
+                      <Text style={s.gridLabel}>RAINFALL</Text>
+                      <Text style={s.envVal}>{detailData.weather?.total_rain || 0} mm</Text>
+                    </View>
+                    <View style={s.envCell}>
+                      <Text style={s.gridLabel}>ENSO STATE</Text>
+                      <Text style={s.envVal}>{detailData.enso_state || 'N/A'}</Text>
+                    </View>
+                    <View style={s.envCell}>
+                      <Text style={s.gridLabel}>SEVERITY</Text>
+                      <Text style={s.envVal}>{detailData.weather_severity || 0} / 5</Text>
+                    </View>
+                    {detailData.weather?.avg_temp != null && (
+                      <View style={s.envCell}>
+                        <Text style={s.gridLabel}>AVG TEMP</Text>
+                        <Text style={s.envVal}>{detailData.weather.avg_temp}°C</Text>
                       </View>
-                    </View>
-                    {/* Progress bar */}
-                    <View style={styles.riskBar}>
-                      <View style={[
-                        styles.riskBarFill,
-                        {
-                          width: `${detailData.prediction.delay_probability * 100}%`,
-                          backgroundColor: detailData.prediction.prediction === 'DELAYED' ? COLORS.error : COLORS.success,
-                        }
-                      ]} />
-                    </View>
-                    {detailData.prediction.reason && (
-                      <Text style={styles.riskReason}>{detailData.prediction.reason}</Text>
                     )}
                   </View>
                 </View>
+              )}
 
-                {/* Environment Context */}
-                <View style={styles.detailSection}>
-                  <Text style={styles.detailSectionTitle}>Environment Context</Text>
-                  <View style={styles.envCard}>
-                    <View style={styles.envGrid}>
-                      <View style={styles.envItem}>
-                        <Feather name="cloud-rain" size={20} color={COLORS.info} />
-                        <Text style={styles.envLabel}>Rainfall</Text>
-                        <Text style={styles.envValue}>{detailData.weather?.total_rain || 0}mm</Text>
-                      </View>
-                      <View style={styles.envItem}>
-                        <Feather name="thermometer" size={20} color={COLORS.warning} />
-                        <Text style={styles.envLabel}>ENSO</Text>
-                        <Text style={styles.envValue}>{detailData.enso_state || 'N/A'}</Text>
-                      </View>
-                    </View>
-                    <View style={styles.envSeverityRow}>
-                      <Text style={styles.envSeverityLabel}>Weather Severity</Text>
-                      <View style={styles.envDots}>
-                        {[1, 2, 3, 4, 5].map(i => (
-                          <View
-                            key={i}
-                            style={[styles.severityDotLarge, i <= (detailData.weather_severity || 0) ? styles.dotActiveLarge : styles.dotInactiveLarge]}
-                          />
-                        ))}
-                      </View>
-                    </View>
-                  </View>
-                </View>
-
-                {/* Milestone Pacing */}
-                <View style={styles.detailSection}>
-                  <Text style={styles.detailSectionTitle}>Milestone Pacing Analysis</Text>
+              {/* Milestone Pacing */}
+              <SectionHead title="Milestone Pacing" icon="trending-up" expanded={detailSections.pacing} onToggle={() => toggleDetail('pacing')} />
+              {detailSections.pacing && (
+                <View style={s.sectionBody}>
                   {(() => {
                     const details = detailData.analysis_report?.pacing_status?.details || [];
-                    if (details.length === 0) {
-                      return (
-                        <View style={styles.emptyMilestones}>
-                          <Text style={styles.emptyMilestonesText}>No milestone data available yet.</Text>
-                        </View>
-                      );
-                    }
+                    if (details.length === 0) return <Text style={s.emptyText}>No milestone data available yet.</Text>;
                     return (
-                      <View style={styles.milestonesCard}>
+                      <>
                         {details.map((item, idx) => {
-                          const isRejected = item.status === 'rejected';
-                          const isLate = item.days_variance > 0;
+                          const late = item.days_variance > 0;
+                          const rejected = item.status === 'rejected';
+                          const fg = rejected ? C.error : late ? C.warning : C.success;
                           return (
-                            <View key={idx} style={[styles.milestoneRow, idx < details.length - 1 && styles.milestoneRowBorder]}>
-                              <View style={styles.milestoneInfo}>
-                                <Text style={styles.milestoneName} numberOfLines={1}>{item.title}</Text>
-                                <Text style={[styles.milestoneStatus, isRejected && { color: COLORS.error }]}>
-                                  {item.status.toUpperCase()}
-                                </Text>
+                            <View key={idx} style={s.paceRow}>
+                              <View style={{ flex: 1 }}>
+                                <Text style={s.paceTitle} numberOfLines={1}>{item.title}</Text>
+                                <Text style={[s.paceSub, rejected && { color: C.error }]}>{item.status.replace(/_/g, ' ')}</Text>
                               </View>
-                              <View style={styles.milestoneRight}>
-                                <Text style={[styles.milestoneVariance, { color: isLate ? COLORS.warning : COLORS.success }]}>
-                                  {item.days_variance > 0 ? '+' : ''}{item.days_variance}d
-                                </Text>
-                                <View style={[
-                                  styles.milestoneBadge,
-                                  {
-                                    backgroundColor: isRejected ? COLORS.errorLight
-                                      : isLate ? COLORS.warningLight : COLORS.successLight
-                                  }
-                                ]}>
-                                  <Text style={[
-                                    styles.milestoneBadgeText,
-                                    {
-                                      color: isRejected ? COLORS.error
-                                        : isLate ? COLORS.warning : COLORS.success
-                                    }
-                                  ]}>
-                                    {item.pacing_label}
-                                  </Text>
+                              <View style={{ alignItems: 'flex-end' }}>
+                                <Text style={[s.paceVar, { color: fg }]}>{item.days_variance > 0 ? '+' : ''}{item.days_variance}d</Text>
+                                <View style={[s.badge, { backgroundColor: rejected ? C.errorLight : late ? C.warningLight : C.successLight }]}>
+                                  <Text style={[s.badgeText, { color: fg }]}>{item.pacing_label}</Text>
                                 </View>
                               </View>
                             </View>
                           );
                         })}
-                        {/* Avg pacing footer */}
-                        <View style={styles.milestoneFooter}>
-                          <Text style={styles.milestoneFooterLabel}>Average Pacing:</Text>
-                          <Text style={[
-                            styles.milestoneFooterValue,
-                            {
-                              color: (detailData.analysis_report?.pacing_status?.avg_delay_days || 0) > 0
-                                ? COLORS.error : COLORS.success
-                            }
-                          ]}>
+                        <View style={s.paceFooter}>
+                          <Text style={s.paceFooterLabel}>Average Pacing</Text>
+                          <Text style={[s.paceFooterVal, {
+                            color: (detailData.analysis_report?.pacing_status?.avg_delay_days || 0) > 0 ? C.error : C.success,
+                          }]}>
                             {detailData.analysis_report?.pacing_status?.avg_delay_days || 0} days{' '}
                             {(detailData.analysis_report?.pacing_status?.avg_delay_days || 0) > 0 ? 'behind' : 'ahead'}
                           </Text>
                         </View>
-                      </View>
+                      </>
                     );
                   })()}
                 </View>
+              )}
 
-                {/* AI Recommendations */}
-                <View style={styles.detailSection}>
-                  <Text style={styles.detailSectionTitle}>AI Recommendations</Text>
+              {/* Recommendations */}
+              <SectionHead title="Recommendations" icon="message-circle" expanded={detailSections.recs} onToggle={() => toggleDetail('recs')} />
+              {detailSections.recs && (
+                <View style={s.sectionBody}>
                   {(detailData.dds_recommendations || []).length === 0 ? (
-                    <Text style={styles.noRecsText}>No recommendations generated.</Text>
+                    <Text style={s.emptyText}>No recommendations generated.</Text>
                   ) : (
-                    detailData.dds_recommendations!.map((rec, idx) => {
-                      let iconName = 'zap';
-                      let iconColor = '#8B5CF6';
-                      if (rec.includes('QUALITY') || rec.includes('REJECT')) {
-                        iconName = 'alert-triangle'; iconColor = COLORS.error;
-                      } else if (rec.includes('WEATHER') || rec.includes('RAIN')) {
-                        iconName = 'cloud-off'; iconColor = COLORS.warning;
-                      }
-
-                      return (
-                        <View key={idx} style={styles.recCard}>
-                          <Feather name={iconName as any} size={18} color={iconColor} />
-                          <Text style={styles.recText}>{rec}</Text>
-                        </View>
-                      );
-                    })
+                    detailData.dds_recommendations!.map((rec, idx) => (
+                      <View key={idx} style={s.recRow}>
+                        <Text style={s.recNum}>{idx + 1}</Text>
+                        <Text style={s.recText}>{rec}</Text>
+                      </View>
+                    ))
                   )}
                 </View>
-
-                <View style={{ height: 32 }} />
-              </ScrollView>
-            )}
-          </View>
+              )}
+            </ScrollView>
+          )}
         </View>
       </Modal>
     </View>
   );
 }
 
-/* ────────────────────── Styles ────────────────────── */
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: COLORS.textSecondary,
-    fontWeight: '500',
-  },
+/* ━━━━━━━━━━ Styles ━━━━━━━━━━ */
+const s = StyleSheet.create({
+  container: { flex: 1, backgroundColor: C.bg },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
+  loadingText: { marginTop: 12, fontSize: 13, color: C.sub },
+  scroll: { flex: 1 },
+  scrollInner: { paddingHorizontal: 20, paddingTop: 2, paddingBottom: 20 },
 
-  /* Header */
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: COLORS.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.text,
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 20,
-    gap: 5,
-  },
-  statusOnline: { backgroundColor: COLORS.successLight },
-  statusOffline: { backgroundColor: COLORS.errorLight },
-  statusDot: { width: 7, height: 7, borderRadius: 4 },
-  dotOnline: { backgroundColor: COLORS.success },
-  dotOffline: { backgroundColor: COLORS.error },
-  statusText: { fontSize: 11, fontWeight: '700' },
-  statusTextOnline: { color: COLORS.success },
-  statusTextOffline: { color: COLORS.error },
+  /* Top Bar */
+  topBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: C.border },
+  backBtn: { width: 32, height: 32, justifyContent: 'center', alignItems: 'center' },
+  topBarCenter: { flex: 1, marginHorizontal: 8 },
+  topBarTitle: { fontSize: 16, fontWeight: '700', color: C.text },
+  topBarSub: { fontSize: 11, color: C.sub, marginTop: 1 },
+  statusPill: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4, gap: 5 },
+  statusOn: { backgroundColor: C.successLight },
+  statusOff: { backgroundColor: C.errorLight },
+  statusDot: { width: 6, height: 6, borderRadius: 3 },
+  statusLabel: { fontSize: 10, fontWeight: '700' },
 
-  /* Scroll */
-  scrollView: { flex: 1 },
-  scrollContent: { paddingBottom: 20 },
+  /* Overview grid */
+  overviewCard: { marginTop: 8, marginBottom: 4 },
+  overviewLabel: { fontSize: 9, fontWeight: '700', color: C.muted, letterSpacing: 0.8, marginBottom: 8 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 1, backgroundColor: C.border, borderRadius: 3, overflow: 'hidden' },
+  gridCell: { width: '49%', flexGrow: 1, backgroundColor: C.surface, padding: 12 },
+  gridNum: { fontSize: 20, fontWeight: '700', color: C.text, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
+  gridLabel: { fontSize: 9, fontWeight: '700', color: C.muted, letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 2 },
 
-  /* Stats */
-  statsRow: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    gap: 8,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: COLORS.surface,
-    borderRadius: 12,
-    padding: 12,
-    borderLeftWidth: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
-  },
-  statValue: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: COLORS.text,
-  },
-  statLabel: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: COLORS.textMuted,
-    marginTop: 2,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
+  /* Section header */
+  secHead: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 4, marginTop: 6, gap: 8, borderBottomWidth: 1, borderBottomColor: C.borderLight },
+  secHeadText: { flex: 1, fontSize: 14, fontWeight: '700', color: C.text },
+  sectionBody: { paddingVertical: 8 },
 
-  /* Features badges */
-  featuresRow: {
-    marginTop: 12,
-  },
-  featureBadge: {
-    backgroundColor: COLORS.infoLight,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 20,
-    marginRight: 8,
-  },
-  featureBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: COLORS.info,
-  },
+  /* Picker */
+  picker: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderColor: C.border, borderRadius: 3, paddingHorizontal: 12, paddingVertical: 11 },
+  pickerText: { flex: 1, fontSize: 14, fontWeight: '500', color: C.text },
+  pickerMeta: { fontSize: 11, color: C.sub, marginTop: 4, marginLeft: 2 },
 
-  /* Sections */
-  section: {
-    paddingHorizontal: 16,
-    marginTop: 20,
-  },
-  sectionHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 12,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: COLORS.text,
-  },
-
-  /* Analysis Card */
-  analysisCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 16,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  projectPicker: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.background,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    gap: 10,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  projectPickerText: {
-    flex: 1,
-    fontSize: 14,
-    color: COLORS.text,
-    fontWeight: '500',
-  },
-  analyzeButton: {
-    borderRadius: 12,
-    overflow: 'hidden',
-    marginTop: 12,
-  },
-  analyzeButtonDisabled: { opacity: 0.7 },
-  analyzeButtonGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 13,
-    gap: 8,
-  },
-  analyzeButtonText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '700',
-  },
+  /* Primary button */
+  primaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: C.accent, borderRadius: 3, paddingVertical: 14, marginTop: 10 },
+  primaryBtnText: { color: '#FFF', fontSize: 14, fontWeight: '700' },
 
   /* Result */
-  resultCard: {
-    marginTop: 16,
-    backgroundColor: '#F0F9FF',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#BAE6FD',
-  },
-  resultTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: COLORS.text,
-    marginBottom: 8,
-  },
-  resultConclusion: {
-    flexDirection: 'row',
-    marginBottom: 12,
-  },
-  conclusionBar: {
-    width: 3,
-    backgroundColor: COLORS.info,
-    borderRadius: 2,
-    marginRight: 10,
-  },
-  resultConclusionText: {
-    flex: 1,
-    fontSize: 13,
-    color: COLORS.textSecondary,
-    lineHeight: 20,
-  },
-  resultMetrics: {
-    flexDirection: 'row',
-    gap: 24,
-    marginBottom: 12,
-  },
-  resultMetricItem: {},
-  resultMetricLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: COLORS.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  resultMetricValue: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: COLORS.text,
-    marginTop: 2,
-  },
-  viewFullReportBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    alignSelf: 'flex-end',
-  },
-  viewFullReportText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: COLORS.info,
-  },
+  resultCard: { borderWidth: 1, borderColor: C.border, borderRadius: 3, padding: 14, marginTop: 12 },
+  resultRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  resultLabel: { fontSize: 9, fontWeight: '700', color: C.muted, letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 2 },
+  resultVerdict: { fontSize: 18, fontWeight: '800' },
+  resultProb: { fontSize: 18, fontWeight: '700', color: C.text },
+  resultConclusion: { fontSize: 13, color: C.sub, lineHeight: 19, marginTop: 10, borderTopWidth: 1, borderTopColor: C.borderLight, paddingTop: 10 },
+  linkBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 10, alignSelf: 'flex-end' },
+  linkBtnText: { fontSize: 13, fontWeight: '600', color: C.accent },
 
   /* Error */
-  errorCard: {
-    marginTop: 12,
-    backgroundColor: '#FEF2F2',
-    borderRadius: 10,
-    padding: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  errorTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: COLORS.error,
-  },
-  errorMessage: {
-    fontSize: 12,
-    color: COLORS.error,
-    marginTop: 2,
-  },
+  errorBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: C.errorLight, borderRadius: 3, padding: 12, marginTop: 10 },
+  errorBannerText: { flex: 1, fontSize: 13, color: C.error, fontWeight: '500' },
 
-  /* Empty states */
-  emptyProjectsCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 16,
-    padding: 32,
-    alignItems: 'center',
-  },
-  emptyProjectsTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: COLORS.textSecondary,
-    marginTop: 12,
-  },
-  emptyProjectsText: {
-    fontSize: 13,
-    color: COLORS.textMuted,
-    textAlign: 'center',
-    marginTop: 6,
-    lineHeight: 19,
-  },
-  emptyHistoryCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 16,
-    padding: 40,
-    alignItems: 'center',
-  },
-  emptyHistoryText: {
-    fontSize: 13,
-    color: COLORS.textMuted,
-    marginTop: 10,
-    textAlign: 'center',
-  },
+  /* Empty */
+  emptyState: { alignItems: 'center', paddingVertical: 24, gap: 8 },
+  emptyTitle: { fontSize: 14, fontWeight: '600', color: C.sub },
+  emptyText: { fontSize: 13, color: C.muted, textAlign: 'center', lineHeight: 19 },
 
-  /* History cards */
-  historyCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 1,
-  },
-  historyCardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  verdictBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    gap: 4,
-  },
-  verdictDelayed: { backgroundColor: COLORS.errorLight },
-  verdictOnTime: { backgroundColor: COLORS.successLight },
-  verdictText: { fontSize: 11, fontWeight: '800' },
-  historyTime: { fontSize: 11, color: COLORS.textMuted, fontWeight: '500' },
-  historyProject: { fontSize: 14, fontWeight: '700', color: COLORS.text, marginBottom: 6 },
-  historyMeta: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  historyRisk: { fontSize: 12, fontWeight: '600', color: COLORS.textSecondary },
-  historyDots: { flexDirection: 'row', gap: 3 },
-  severityDot: { width: 6, height: 6, borderRadius: 3 },
-  dotActive: { backgroundColor: COLORS.warning },
-  dotInactive: { backgroundColor: COLORS.border },
-  historyViewBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    gap: 3,
-    paddingTop: 6,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.borderLight,
-  },
-  historyViewText: { fontSize: 12, fontWeight: '600', color: COLORS.info },
+  /* History */
+  histRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: C.borderLight },
+  histLeft: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 10, marginRight: 12 },
+  histDot: { width: 8, height: 8, borderRadius: 4 },
+  histProject: { fontSize: 14, fontWeight: '600', color: C.text },
+  histMeta: { flexDirection: 'row', gap: 4, marginTop: 2 },
+  histMetaText: { fontSize: 11, color: C.muted },
+  histRight: { alignItems: 'flex-end', gap: 4 },
+  histTime: { fontSize: 10, color: C.muted },
 
-  /* Project Picker Modal */
-  pickerOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  pickerContainer: {
-    backgroundColor: COLORS.surface,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    maxHeight: '65%',
-    paddingBottom: 30,
-  },
-  pickerHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-  },
-  pickerTitle: { fontSize: 18, fontWeight: '700', color: COLORS.text },
-  pickerList: { paddingHorizontal: 14, paddingTop: 10 },
-  pickerItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    borderRadius: 12,
-    marginBottom: 6,
-    backgroundColor: COLORS.background,
-  },
-  pickerItemSelected: { backgroundColor: COLORS.infoLight, borderWidth: 1, borderColor: COLORS.info },
-  pickerItemTitle: { fontSize: 14, fontWeight: '600', color: COLORS.text },
-  pickerItemStatus: { fontSize: 12, color: COLORS.textMuted, marginTop: 2, textTransform: 'capitalize' },
+  /* Badge */
+  badge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 3 },
+  badgeText: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4 },
 
-  /* Upgrade Screen */
-  upgradeContainer: {
-    flexGrow: 1,
-    padding: 20,
-    justifyContent: 'center',
-  },
-  upgradeCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 24,
-    padding: 28,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 20,
-    elevation: 5,
-  },
-  upgradeIconContainer: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  upgradeTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: COLORS.text,
-    textAlign: 'center',
-  },
-  upgradeSubtitle: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-    marginTop: 6,
-    lineHeight: 20,
-    paddingHorizontal: 10,
-  },
-  upgradeFeaturesList: {
-    alignSelf: 'stretch',
-    marginTop: 24,
-    gap: 12,
-  },
-  upgradeFeatureRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  upgradeFeatureIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: COLORS.goldLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  upgradeFeatureText: {
-    flex: 1,
-    fontSize: 14,
-    color: COLORS.text,
-    fontWeight: '500',
-  },
-  upgradeBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: COLORS.goldLight,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
-    marginTop: 24,
-  },
-  upgradeBadgeText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: COLORS.goldDark,
-  },
-  upgradeButton: {
-    alignSelf: 'stretch',
-    borderRadius: 14,
-    overflow: 'hidden',
-    marginTop: 20,
-  },
-  upgradeButtonGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 15,
-    gap: 8,
-  },
-  upgradeButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
+  /* Picker modal */
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  modalSheet: { backgroundColor: C.surface, borderTopLeftRadius: 8, borderTopRightRadius: 8, maxHeight: '60%', paddingBottom: 28 },
+  modalHandle: { width: 36, height: 4, borderRadius: 2, backgroundColor: C.border, alignSelf: 'center', marginTop: 10, marginBottom: 6 },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: C.border },
+  modalTitle: { fontSize: 16, fontWeight: '700', color: C.text },
+  modalList: { paddingHorizontal: 16, paddingTop: 8 },
+  modalItem: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: C.borderLight },
+  modalItemActive: { backgroundColor: C.primaryLight },
+  modalItemTitle: { fontSize: 14, fontWeight: '600', color: C.text },
+  modalItemSub: { fontSize: 11, color: C.muted, marginTop: 1, textTransform: 'capitalize' },
 
-  /* Detail Modal */
-  detailOverlay: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  detailContainer: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  detailHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    backgroundColor: COLORS.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-  },
-  detailHeaderTitle: { fontSize: 17, fontWeight: '800', color: COLORS.text },
-  detailHeaderSub: { fontSize: 11, color: COLORS.textMuted, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 2 },
-  detailCloseBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: COLORS.background,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  detailScroll: { flex: 1, paddingHorizontal: 16 },
+  /* Upgrade */
+  upgradeScroll: { flexGrow: 1, padding: 20, justifyContent: 'center' },
+  upgradeCard: { borderWidth: 1, borderColor: C.border, borderRadius: 3, padding: 24, alignItems: 'center' },
+  upgradeIcon: { width: 64, height: 64, borderRadius: 3, justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
+  upgradeTitle: { fontSize: 18, fontWeight: '700', color: C.text },
+  upgradeSub: { fontSize: 13, color: C.sub, textAlign: 'center', marginTop: 4, lineHeight: 19 },
+  divider: { height: 1, backgroundColor: C.border, alignSelf: 'stretch', marginVertical: 16 },
+  upgradeRow: { flexDirection: 'row', alignItems: 'center', gap: 10, alignSelf: 'stretch', paddingVertical: 5 },
+  upgradeRowText: { flex: 1, fontSize: 13, color: C.text, fontWeight: '500' },
+  upgradeBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: C.goldLight, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 3, marginTop: 14 },
+  upgradeBadgeText: { fontSize: 10, fontWeight: '700', color: C.goldDark },
+  upgradeBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: C.gold, borderRadius: 3, paddingVertical: 14, alignSelf: 'stretch', marginTop: 16 },
+  upgradeBtnText: { color: '#FFF', fontSize: 14, fontWeight: '700' },
 
-  /* Executive Summary */
-  execSummary: {
-    backgroundColor: '#EFF6FF',
-    borderLeftWidth: 4,
-    borderLeftColor: COLORS.info,
-    borderRadius: 8,
-    padding: 16,
-    marginTop: 16,
-  },
-  execLabel: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#1E40AF',
-    letterSpacing: 1,
-    marginBottom: 6,
-  },
-  execText: {
-    fontSize: 15,
-    color: '#1E3A8A',
-    lineHeight: 22,
-    fontWeight: '500',
-    fontStyle: 'italic',
-  },
+  /* Detail modal */
+  summaryBanner: { backgroundColor: C.primaryLight, borderLeftWidth: 3, borderLeftColor: C.primary, borderRadius: 3, padding: 14, marginTop: 12 },
+  summaryLabel: { fontSize: 9, fontWeight: '700', color: C.primary, letterSpacing: 0.8, marginBottom: 4 },
+  summaryText: { fontSize: 14, color: C.text, lineHeight: 21, fontWeight: '500' },
 
-  /* Detail sections */
-  detailSection: { marginTop: 20 },
-  detailSectionTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: COLORS.text,
-    marginBottom: 10,
-  },
+  /* Risk */
+  riskGrid: { flexDirection: 'row', gap: 1, backgroundColor: C.border, borderRadius: 3, overflow: 'hidden' },
+  riskGridCell: { flex: 1, backgroundColor: C.surface, padding: 12 },
+  riskVerdict: { fontSize: 22, fontWeight: '800', marginTop: 2 },
+  riskProb: { fontSize: 22, fontWeight: '700', color: C.text, marginTop: 2 },
+  progressTrack: { height: 6, backgroundColor: C.borderLight, borderRadius: 3, overflow: 'hidden', marginTop: 8 },
+  progressFill: { height: '100%', borderRadius: 3 },
+  riskReason: { fontSize: 12, color: C.sub, marginTop: 8, fontStyle: 'italic', lineHeight: 18 },
 
-  /* Risk Card */
-  riskCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 14,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
-  },
-  riskRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  riskVerdict: { fontSize: 26, fontWeight: '900' },
-  riskRight: { alignItems: 'flex-end' },
-  riskProbLabel: { fontSize: 11, color: COLORS.textMuted },
-  riskProbValue: { fontSize: 20, fontWeight: '800', color: COLORS.text },
-  riskBar: {
-    height: 6,
-    backgroundColor: COLORS.borderLight,
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  riskBarFill: { height: 6, borderRadius: 3 },
-  riskReason: { fontSize: 12, color: COLORS.textMuted, marginTop: 10, fontStyle: 'italic' },
+  /* Env */
+  envGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 1, backgroundColor: C.border, borderRadius: 3, overflow: 'hidden' },
+  envCell: { width: '49%', flexGrow: 1, backgroundColor: C.surface, padding: 10 },
+  envVal: { fontSize: 15, fontWeight: '700', color: C.text, marginTop: 2 },
 
-  /* Environment Card */
-  envCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 14,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
-  },
-  envGrid: { flexDirection: 'row', gap: 12 },
-  envItem: {
-    flex: 1,
-    alignItems: 'center',
-    backgroundColor: COLORS.background,
-    borderRadius: 10,
-    paddingVertical: 14,
-  },
-  envLabel: { fontSize: 11, color: COLORS.textMuted, marginTop: 6 },
-  envValue: { fontSize: 15, fontWeight: '700', color: COLORS.text, marginTop: 2 },
-  envSeverityRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 14,
-    paddingTop: 14,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.borderLight,
-  },
-  envSeverityLabel: { fontSize: 12, color: COLORS.textMuted },
-  envDots: { flexDirection: 'row', gap: 4 },
-  severityDotLarge: { width: 10, height: 10, borderRadius: 5 },
-  dotActiveLarge: { backgroundColor: COLORS.warning },
-  dotInactiveLarge: { backgroundColor: COLORS.border },
+  /* Pacing */
+  paceRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: C.borderLight },
+  paceTitle: { fontSize: 13, fontWeight: '600', color: C.text },
+  paceSub: { fontSize: 10, fontWeight: '600', color: C.muted, textTransform: 'uppercase', marginTop: 1 },
+  paceVar: { fontSize: 13, fontWeight: '700', fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
+  paceFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 8, marginTop: 4, borderTopWidth: 1, borderTopColor: C.border },
+  paceFooterLabel: { fontSize: 11, fontWeight: '600', color: C.sub },
+  paceFooterVal: { fontSize: 13, fontWeight: '700' },
 
-  /* Milestones */
-  milestoneRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-  },
-  milestoneRowBorder: { borderBottomWidth: 1, borderBottomColor: COLORS.borderLight },
-  milestoneInfo: { flex: 1, marginRight: 10 },
-  milestoneName: { fontSize: 13, fontWeight: '600', color: COLORS.text },
-  milestoneStatus: { fontSize: 10, fontWeight: '700', color: COLORS.textMuted, textTransform: 'uppercase', marginTop: 2 },
-  milestoneRight: { alignItems: 'flex-end' },
-  milestoneVariance: { fontSize: 13, fontWeight: '700', fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
-  milestoneBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginTop: 3 },
-  milestoneBadgeText: { fontSize: 9, fontWeight: '800' },
-  milestonesCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 14,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
-  },
-  milestoneFooter: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    backgroundColor: COLORS.background,
-    gap: 6,
-  },
-  milestoneFooterLabel: { fontSize: 11, fontWeight: '700', color: COLORS.textMuted },
-  milestoneFooterValue: { fontSize: 13, fontWeight: '700' },
-  emptyMilestones: { padding: 24, alignItems: 'center' },
-  emptyMilestonesText: { fontSize: 13, color: COLORS.textMuted, fontStyle: 'italic' },
-
-  /* Recommendations */
-  recCard: {
-    flexDirection: 'row',
-    backgroundColor: COLORS.surface,
-    borderRadius: 12,
-    padding: 14,
-    gap: 12,
-    marginBottom: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
-    alignItems: 'flex-start',
-  },
-  recText: {
-    flex: 1,
-    fontSize: 13,
-    color: COLORS.textSecondary,
-    fontWeight: '500',
-    lineHeight: 19,
-  },
-  noRecsText: { fontSize: 13, color: COLORS.textMuted, fontStyle: 'italic' },
+  /* Recs */
+  recRow: { flexDirection: 'row', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: C.borderLight, gap: 10 },
+  recNum: { width: 20, height: 20, borderRadius: 10, backgroundColor: C.primaryLight, textAlign: 'center', lineHeight: 20, fontSize: 11, fontWeight: '700', color: C.primary, overflow: 'hidden' },
+  recText: { flex: 1, fontSize: 13, color: C.sub, lineHeight: 19, fontWeight: '500' },
 });

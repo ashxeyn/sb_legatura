@@ -81,6 +81,7 @@ interface SearchScreenProps {
   contractors?: Contractor[];
   projects?: Project[];
   onContractorPress?: (contractor: Contractor) => void;
+  onOwnerPress?: (owner: any) => void;
   onProjectPress?: (project: Project) => void;
 }
 
@@ -93,6 +94,7 @@ export default function SearchScreen({
   contractors = [],
   projects = [],
   onContractorPress,
+  onOwnerPress,
   onProjectPress,
 }: SearchScreenProps) {
   const insets = useSafeAreaInsets();
@@ -172,10 +174,10 @@ export default function SearchScreen({
     }
 
     try {
-      // Contractors ("Users")
+      // Users (contractors + property owners)
       if (fetchContractors) {
-        const response = await search_service.search_contractors(
-          { ...cFilters, search: query.trim() },
+        const response = await search_service.search_users(
+          query.trim(),
           pageNum,
           PER_PAGE,
         );
@@ -187,8 +189,9 @@ export default function SearchScreen({
           } else {
             setContractorResults(dataArray);
           }
-          setContractorHasMore(response.pagination?.has_more || false);
-          setContractorTotal(response.pagination?.total || dataArray.length);
+          const pag = response.data?.pagination || response.pagination;
+          setContractorHasMore(pag?.has_more || false);
+          setContractorTotal(pag?.total || dataArray.length);
           setContractorPage(pageNum);
         }
       }
@@ -208,8 +211,9 @@ export default function SearchScreen({
           } else {
             setProjectResults(dataArray);
           }
-          setProjectHasMore(response.pagination?.has_more || false);
-          setProjectTotal(response.pagination?.total || dataArray.length);
+          const pPag = response.data?.pagination || response.pagination;
+          setProjectHasMore(pPag?.has_more || false);
+          setProjectTotal(pPag?.total || dataArray.length);
           setProjectPage(pageNum);
         }
       }
@@ -241,7 +245,7 @@ export default function SearchScreen({
 
         // Fetch both contractors (Users) and projects (Posts) for suggestions
         const [cRes, pRes] = await Promise.all([
-          search_service.search_contractors({ search: q }, 1, 5),
+          search_service.search_users(q, 1, 5),
           search_service.search_projects({ search: q }, 1, 5),
         ]);
 
@@ -439,6 +443,7 @@ export default function SearchScreen({
   //  RENDER: Contractor Card (feed-style, matching homepage)
   // ==================================================================
   const renderContractorCard = (item: Contractor) => {
+    const isOwner = (item as any).role === 'property_owner';
     const hasCoverPhoto = item.cover_photo && !item.cover_photo.includes('placeholder');
     const coverPhotoUri = hasCoverPhoto
       ? `${api_config.base_url}/storage/${item.cover_photo}`
@@ -447,12 +452,19 @@ export default function SearchScreen({
       ? (item.profile_pic.startsWith('http') ? item.profile_pic : `${api_config.base_url}/storage/${item.profile_pic}`)
       : null;
     const initials = getInitials(item.company_name);
+    const fallbackAvatar = isOwner ? defaultOwnerAvatar : defaultContractorAvatar;
 
     return (
       <TouchableOpacity
         style={styles.card}
         activeOpacity={0.7}
-        onPress={() => onContractorPress?.(item)}
+        onPress={() => {
+          if ((item as any).role === 'property_owner' && onOwnerPress) {
+            onOwnerPress(item);
+          } else {
+            onContractorPress?.(item);
+          }
+        }}
       >
         {/* Cover Photo */}
         <ImageFallback
@@ -465,7 +477,9 @@ export default function SearchScreen({
         {/* Type Badge (overlapping cover) */}
         <View style={styles.typeBadgeOverlap}>
           <View style={styles.typeBadgeContainer}>
-            <Text style={styles.typeBadgeText}>{item.type_name || 'General'}</Text>
+            <Text style={styles.typeBadgeText}>
+              {item.role === 'property_owner' ? 'Property Owner' : (item.type_name || 'General')}
+            </Text>
           </View>
         </View>
 
@@ -474,7 +488,7 @@ export default function SearchScreen({
           <View style={styles.avatarWrapper}>
             <ImageFallback
               uri={logoUri || undefined}
-              defaultImage={defaultContractorAvatar}
+              defaultImage={fallbackAvatar}
               style={styles.avatarImg}
               resizeMode="cover"
             />
@@ -484,31 +498,37 @@ export default function SearchScreen({
         {/* Info */}
         <View style={styles.cardBody}>
           <Text style={styles.cardTitle} numberOfLines={2}>{item.company_name}</Text>
-          <Text style={styles.cardSubtitle}>
-            {item.years_of_experience || 0} years experience
-          </Text>
+          {!isOwner && (
+            <Text style={styles.cardSubtitle}>
+              {item.years_of_experience || 0} years experience
+            </Text>
+          )}
 
           {/* Details */}
           <View style={styles.cardDetails}>
             <View style={styles.detailRow}>
               <MaterialIcons name="location-on" size={16} color="#666" />
               <Text style={styles.detailText} numberOfLines={1}>
-                {item.business_address || 'Location not specified'}
+                {item.business_address || item.address || 'Location not specified'}
               </Text>
             </View>
-            <View style={styles.detailRow}>
-              <MaterialIcons name="star" size={16} color="#EC7E00" />
-              <Text style={styles.detailText}>
-                {item.rating?.toFixed(1) || '5.0'} rating • {item.reviews_count || 0} reviews
-              </Text>
-            </View>
-            <View style={styles.detailRow}>
-              <MaterialIcons name="work" size={16} color="#666" />
-              <Text style={styles.detailText}>
-                {item.completed_projects || 0} projects completed
-                {item.picab_category ? ` • PICAB ${item.picab_category}` : ''}
-              </Text>
-            </View>
+            {!isOwner && (
+              <>
+                <View style={styles.detailRow}>
+                  <MaterialIcons name="star" size={16} color="#EC7E00" />
+                  <Text style={styles.detailText}>
+                    {item.rating?.toFixed(1) || '5.0'} rating • {item.reviews_count || 0} reviews
+                  </Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <MaterialIcons name="work" size={16} color="#666" />
+                  <Text style={styles.detailText}>
+                    {item.completed_projects || 0} projects completed
+                    {item.picab_category ? ` • PICAB ${item.picab_category}` : ''}
+                  </Text>
+                </View>
+              </>
+            )}
           </View>
         </View>
 
@@ -689,12 +709,12 @@ export default function SearchScreen({
     if (item.type === 'contractor') return renderContractorCard(item.data);
     if (item.type === 'project') return renderProjectCard(item.data);
     return null;
-  }, [onContractorPress, onProjectPress]);
+  }, [onContractorPress, onOwnerPress, onProjectPress]);
 
   const getItemKey = (item: any, index: number) => {
     if (item.type === 'section_header') return `section-${index}`;
     if (item.type === 'see_all') return `seeall-${index}`;
-    if (item.type === 'contractor') return `c-${item.data.contractor_id}`;
+    if (item.type === 'contractor') return `c-${item.data.contractor_id || item.data.user_id}`;
     return `p-${item.data.project_id}`;
   };
 
@@ -710,8 +730,13 @@ export default function SearchScreen({
     }
     setSuggestions([]);
     setShowResults(false);
-    onContractorPress?.(contractor);
-  }, [searchQuery, onContractorPress]);
+    // Route to the correct profile based on role
+    if (contractor.role === 'property_owner' && onOwnerPress) {
+      onOwnerPress(contractor);
+    } else {
+      onContractorPress?.(contractor);
+    }
+  }, [searchQuery, onContractorPress, onOwnerPress]);
 
   const handleSuggestionProjectPress = useCallback((project: any) => {
     const q = searchQuery.trim();
@@ -733,6 +758,7 @@ export default function SearchScreen({
       const logoUri = c.profile_pic
         ? (c.profile_pic.startsWith('http') ? c.profile_pic : `${api_config.base_url}/storage/${c.profile_pic}`)
         : null;
+      const suggestionFallback = c.role === 'property_owner' ? defaultOwnerAvatar : defaultContractorAvatar;
       return (
         <TouchableOpacity
           style={styles.suggestionRow}
@@ -741,19 +767,19 @@ export default function SearchScreen({
         >
           <ImageFallback
             uri={logoUri || undefined}
-            defaultImage={defaultContractorAvatar}
+            defaultImage={suggestionFallback}
             style={styles.suggestionAvatar}
             resizeMode="cover"
           />
           <View style={styles.suggestionInfo}>
             <Text style={styles.suggestionTitle} numberOfLines={1}>{c.company_name}</Text>
             <Text style={styles.suggestionMeta} numberOfLines={1}>
-              {c.type_name || 'Contractor'}
-              {c.business_address ? ` • ${c.business_address}` : ''}
+              {c.role === 'property_owner' ? 'Property Owner' : (c.type_name || 'Contractor')}
+              {(c.business_address || c.address) ? ` • ${c.business_address || c.address}` : ''}
             </Text>
           </View>
           <View style={styles.suggestionTypeBadge}>
-            <MaterialIcons name="engineering" size={14} color="#65676B" />
+            <MaterialIcons name={c.role === 'property_owner' ? 'person' : 'engineering'} size={14} color="#65676B" />
           </View>
         </TouchableOpacity>
       );
@@ -814,7 +840,7 @@ export default function SearchScreen({
                 data={suggestions}
                 keyExtractor={(item, i) =>
                   item.type === 'contractor'
-                    ? `sc-${item.data.contractor_id}`
+                    ? `sc-${item.data.contractor_id || item.data.user_id}`
                     : `sp-${item.data.project_id}`
                 }
                 renderItem={renderSuggestionItem}

@@ -43,12 +43,7 @@ class feedClass
     {
         $query = DB::table('contractors as c')
             ->join('users as u', 'c.user_id', '=', 'u.user_id')
-            ->join('contractor_users as cu', function ($join) {
-                $join->on('c.contractor_id', '=', 'cu.contractor_id')
-                    ->on('c.user_id', '=', 'cu.user_id');
-            })
             ->join('contractor_types as ct', 'c.type_id', '=', 'ct.type_id')
-            ->where('cu.is_active', 1)
             ->where('c.verification_status', 'approved')
             ->select(
                 'c.contractor_id',
@@ -84,6 +79,7 @@ class feedClass
             $keyword = '%' . $filters['search'] . '%';
             $query->where(function ($q) use ($keyword) {
                 $q->where('c.company_name', 'LIKE', $keyword)
+                  ->orWhere('u.username', 'LIKE', $keyword)
                   ->orWhere('c.services_offered', 'LIKE', $keyword)
                   ->orWhere('c.business_address', 'LIKE', $keyword)
                   ->orWhere('ct.type_name', 'LIKE', $keyword)
@@ -589,5 +585,100 @@ class feedClass
         if (isset($filters['max_floor_area']) && $filters['max_floor_area'] !== '') {
             $query->where('p.floor_area', '<=', (float) $filters['max_floor_area']);
         }
+    }
+
+    /* =====================================================================
+     * COMBINED USER SEARCH  (contractors + property owners)
+     * ===================================================================== */
+
+    /**
+     * Search both contractors and property owners by keyword.
+     *
+     * Returns a combined, paginated list of users with a `role` field
+     * ('contractor' or 'property_owner') so the frontend can distinguish.
+     */
+    public function searchUsers(string $keyword, int $page = 1, int $perPage = 15, ?int $excludeUserId = null): array
+    {
+        $like = '%' . $keyword . '%';
+
+        // ── Contractors sub-query ────────────────────────────────────────
+        $contractors = DB::table('contractors as c')
+            ->join('users as u', 'c.user_id', '=', 'u.user_id')
+            ->join('contractor_types as ct', 'c.type_id', '=', 'ct.type_id')
+            ->where('c.verification_status', 'approved')
+            ->where(function ($q) use ($like) {
+                $q->where('c.company_name', 'LIKE', $like)
+                  ->orWhere('u.username', 'LIKE', $like)
+                  ->orWhere('c.services_offered', 'LIKE', $like)
+                  ->orWhere('c.business_address', 'LIKE', $like)
+                  ->orWhere('ct.type_name', 'LIKE', $like);
+            })
+            ->when($excludeUserId, fn($q) => $q->where('c.user_id', '!=', $excludeUserId))
+            ->select(
+                'u.user_id',
+                'u.username',
+                'u.profile_pic',
+                'u.cover_photo',
+                'c.contractor_id',
+                'c.company_name',
+                'c.company_logo',
+                'c.company_banner',
+                'c.business_address as address',
+                'c.years_of_experience',
+                'c.completed_projects',
+                'c.picab_category',
+                'ct.type_name',
+                'c.services_offered',
+                'c.created_at',
+                DB::raw("'contractor' as role")
+            );
+
+        // ── Property owners sub-query ────────────────────────────────────
+        $owners = DB::table('property_owners as po')
+            ->join('users as u', 'po.user_id', '=', 'u.user_id')
+            ->where('po.verification_status', 'approved')
+            ->where(function ($q) use ($like) {
+                $q->where('u.username', 'LIKE', $like)
+                  ->orWhere('po.first_name', 'LIKE', $like)
+                  ->orWhere('po.last_name', 'LIKE', $like)
+                  ->orWhere('po.address', 'LIKE', $like)
+                  ->orWhereRaw("CONCAT(po.first_name, ' ', po.last_name) LIKE ?", [$like]);
+            })
+            ->when($excludeUserId, fn($q) => $q->where('po.user_id', '!=', $excludeUserId))
+            ->select(
+                'u.user_id',
+                'u.username',
+                'u.profile_pic',
+                'u.cover_photo',
+                DB::raw('NULL as contractor_id'),
+                DB::raw("CONCAT(po.first_name, ' ', po.last_name) as company_name"),
+                DB::raw('NULL as company_logo'),
+                DB::raw('NULL as company_banner'),
+                'po.address',
+                DB::raw('NULL as years_of_experience'),
+                DB::raw('NULL as completed_projects'),
+                DB::raw('NULL as picab_category'),
+                DB::raw('NULL as type_name'),
+                DB::raw('NULL as services_offered'),
+                'po.created_at',
+                DB::raw("'property_owner' as role")
+            );
+
+        // ── Union + paginate ─────────────────────────────────────────────
+        $union = $contractors->unionAll($owners);
+
+        // Count total
+        $totalCount = DB::query()->fromSub($union, 'combined')->count();
+
+        // Get page slice (order by created_at desc)
+        $offset = ($page - 1) * $perPage;
+        $items = DB::query()
+            ->fromSub($union, 'combined')
+            ->orderByDesc('created_at')
+            ->skip($offset)
+            ->take($perPage)
+            ->get();
+
+        return $this->paginationEnvelope($items, $totalCount, $page, $perPage);
     }
 }

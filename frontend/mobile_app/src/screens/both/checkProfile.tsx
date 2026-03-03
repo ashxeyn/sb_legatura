@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,11 +9,24 @@ import {
   Image,
   Dimensions,
   StatusBar,
+  ActivityIndicator,
+  RefreshControl,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { api_config } from '../../config/api';
 import ImageFallback from '../../components/ImageFallbackFixed';
+import { storage_service } from '../../utils/storage';
+import CreateShowcase from './createShowcase';
+import {
+  profile_service,
+  ProfileData,
+  SocialPost,
+  ReviewItem,
+  ReviewStats,
+  ContractorAbout,
+} from '../../services/profile_service';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -28,27 +41,16 @@ const BORDER  = '#E8EAED';
 const BG      = '#f0f2f5';
 const T1      = '#1a1a1a';
 const T2      = '#6b7280';
-const CARD_R  = 8;
-const STATUS_LABELS: Record<string, {label:string;color:string;bg:string}> = {
-  completed:   { label: 'Completed',   color: '#16a34a', bg: '#dcfce7' },
-  in_progress: { label: 'In Progress', color: '#d97706', bg: '#fef3c7' },
-  active:      { label: 'Active',      color: '#2563eb', bg: '#dbeafe' },
-  pending:     { label: 'Pending',     color: '#6b7280', bg: '#f3f4f6' },
+const CARD_R  = 12;
+const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }> = {
+  completed:      { label: 'Completed',      color: '#16a34a', bg: '#dcfce7' },
+  in_progress:    { label: 'In Progress',    color: '#d97706', bg: '#fef3c7' },
+  active:         { label: 'Active',         color: '#2563eb', bg: '#dbeafe' },
+  open:           { label: 'Open',           color: '#2563eb', bg: '#dbeafe' },
+  closed:         { label: 'Closed',         color: '#6b7280', bg: '#f3f4f6' },
+  pending:        { label: 'Pending',        color: '#6b7280', bg: '#f3f4f6' },
+  bidding_closed: { label: 'Bidding Closed', color: '#9333ea', bg: '#f3e8ff' },
 };
-const SAMPLE_PORTFOLIO = [
-  { id: 1, title: 'Makati Office Renovation', description: 'Full interior renovation of a 5-storey commercial building.', date: 'Jan 2025', image_url: null, isHighlighted: true },
-  { id: 2, title: 'BGC Residential Fit-out', description: 'Luxury condo unit fit-out for a private client.', date: 'Nov 2024', image_url: null, isHighlighted: false },
-  { id: 3, title: 'QC School Expansion', description: 'Added two-storey extension to an existing school building.', date: 'Sep 2024', image_url: null, isHighlighted: false },
-];
-const SAMPLE_HIGHLIGHTS = [
-  { id: 1, title: 'SM Aura Food Hall Renovation', status: 'completed', budget: '₱4.2M', duration: '5 months' },
-  { id: 2, title: 'Alabang Town Center Expansion', status: 'in_progress', budget: '₱8.7M', duration: '10 months' },
-];
-const SAMPLE_REVIEWS = [
-  { id: 1, reviewer: 'Maria Santos', rating: 5, comment: 'Excellent work! Delivered on time and within budget.', date: 'Feb 2025' },
-  { id: 2, reviewer: 'Juan dela Cruz', rating: 4, comment: 'Professional team, clean workmanship.', date: 'Jan 2025' },
-];
-// Legacy COLORS kept for any remaining references
 const COLORS = {
   primary: BRAND, primaryLight: BRAND_L, primaryDark: '#C96A00',
   success: '#10B981', successLight: '#D1FAE5', warning: '#F59E0B', warningLight: '#FEF3C7',
@@ -78,15 +80,6 @@ interface Contractor {
   company_social_media?: string;
 }
 
-interface PortfolioProject {
-  id: number;
-  title: string;
-  description?: string;
-  image_url?: string;
-  company_name?: string;
-  username?: string;
-}
-
 interface CheckProfileProps {
   contractor: Contractor;
   onClose: () => void;
@@ -94,191 +87,296 @@ interface CheckProfileProps {
 }
 
 // Tab options
-type TabType = 'portfolio' | 'highlights' | 'reviews' | 'about';
+type TabType = 'portfolio' | 'reviews' | 'about';
+
+/* ─── Helpers ───────────────────────────────────────────────────────── */
+
+const resolveImageUrl = (path: string | null | undefined): string | undefined => {
+  if (!path) return undefined;
+  if (path.startsWith('http')) return path;
+  return `${api_config.base_url}/storage/${path}`;
+};
+
+const formatDate = (dateString?: string | null): string => {
+  if (!dateString) return 'N/A';
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+};
+
+const formatCurrency = (amount: number | null | undefined): string => {
+  if (amount == null) return '—';
+  return '₱' + Number(amount).toLocaleString('en-PH', { maximumFractionDigits: 0 });
+};
 
 export default function CheckProfile({ contractor, onClose, onSendMessage }: CheckProfileProps) {
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<TabType>('portfolio');
 
-  // Build image URLs
-  const coverPhotoUrl = contractor.cover_photo
-    ? (contractor.cover_photo.startsWith('http')
-      ? contractor.cover_photo
-      : `${api_config.base_url}/storage/${contractor.cover_photo}`)
-    : null;
+  // ── State ──
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [profile, setProfile] = useState<ProfileData | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [showCreateShowcase, setShowCreateShowcase] = useState(false);
+  const [isOwnProfile, setIsOwnProfile] = useState(false);
 
-  const logoUrl = contractor.logo_url
-    ? (contractor.logo_url.startsWith('http')
-      ? contractor.logo_url
-      : `${api_config.base_url}/storage/${contractor.logo_url}`)
-    : null;
+  // ── Check if viewing own profile ──
+  useEffect(() => {
+    (async () => {
+      const user = await storage_service.get_user_data();
+      if (user && contractor.user_id && user.user_id === contractor.user_id) {
+        setIsOwnProfile(true);
+      }
+    })();
+  }, [contractor.user_id]);
 
-  // Generate initials for avatar fallback
-  const initials = contractor.company_name
-    ?.split(' ')
-    .slice(0, 2)
-    .map(word => word[0])
-    .join('')
-    .toUpperCase() || 'CO';
+  // ── Fetch profile ──
+  const fetchProfile = useCallback(async (silent = false) => {
+    if (!contractor.user_id) {
+      setError('No user ID available for this contractor.');
+      setLoading(false);
+      return;
+    }
+    if (!silent) setLoading(true);
+    setError(null);
+    try {
+      const res = await profile_service.get_profile(contractor.user_id, 'contractor');
+      if (res.success && res.data) {
+        setProfile(res.data);
+      } else {
+        setError(res.message || 'Could not load profile.');
+      }
+    } catch (e) {
+      setError('An unexpected error occurred.');
+      console.error('[CheckProfile] fetchProfile:', e);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [contractor.user_id]);
 
-  // Mock portfolio projects (replace with API data when available)
-  const portfolioProjects: PortfolioProject[] = [
-    {
-      id: 1,
-      title: 'Modern Two-Storey Residential House Project',
-      company_name: contractor.company_name,
-      username: `@${contractor.company_name?.toLowerCase().replace(/\s+/g, '_')}`,
-      image_url: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800',
-    },
-    {
-      id: 2,
-      title: 'Commercial Building Renovation',
-      company_name: contractor.company_name,
-      username: `@${contractor.company_name?.toLowerCase().replace(/\s+/g, '_')}`,
-      image_url: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800',
-    },
-  ];
+  useEffect(() => { fetchProfile(); }, [fetchProfile]);
 
-  // Format date
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return 'N/A';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-  };
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchProfile(true);
+  }, [fetchProfile]);
 
-  // Render tabs
-  const tabs: { key: TabType; label: string }[] = [
-    { key: 'portfolio', label: 'Portfolio' },
-    { key: 'highlights', label: 'Highlights' },
-    { key: 'reviews', label: 'Reviews' },
+  // ── Derived values (prefer API data, fallback to prop) ──
+  const header       = profile?.header;
+  const displayName  = header?.display_name || contractor.company_name;
+  const avgRating    = header?.avg_rating ?? contractor.rating ?? 0;
+  const totalReviews = header?.total_reviews ?? contractor.reviews_count ?? 0;
+  const completedProjects = header?.completed_projects ?? contractor.completed_projects ?? 0;
+  const coverPhotoUrl = resolveImageUrl(header?.cover_photo) || resolveImageUrl(contractor.cover_photo);
+  const logoUrl       = resolveImageUrl(header?.profile_pic) || resolveImageUrl(contractor.logo_url);
+  const description   = profile?.about?.contractor?.company_description
+    || profile?.about?.contractor?.bio
+    || contractor.company_description;
+
+  // Reviews
+  const reviewsData  = profile?.reviews;
+  const reviews      = reviewsData?.reviews ?? [];
+  const reviewStats  = reviewsData?.stats ?? { avg_rating: avgRating, total_reviews: totalReviews, distribution: {} };
+
+  // Posts (showcase only — no automatic project listing)
+  const showcasePosts       = profile?.posts?.showcase_posts ?? [];
+  const totalPortfolioItems = showcasePosts.length;
+
+  // About
+  const contractorAbout = profile?.about?.contractor;
+
+  // Tabs (3 tabs)
+  const tabs: { key: TabType; label: string; count?: number }[] = [
+    { key: 'portfolio', label: 'Portfolio', count: totalPortfolioItems || undefined },
+    { key: 'reviews', label: 'Reviews', count: totalReviews || undefined },
     { key: 'about', label: 'About' },
   ];
 
-  const renderPortfolioTab = () => (
-    <View style={styles.tabContent}>
-      <View style={styles.portfolioGrid}>
-        {SAMPLE_PORTFOLIO.map((item) => (
-          <View key={item.id} style={[styles.portfolioCard, item.isHighlighted && styles.portfolioCardHL]}>
-            <View style={styles.portfolioCardImg}>
-              <MaterialIcons name="image" size={28} color="#c8cbd0" />
-              {item.isHighlighted && (
-                <View style={styles.hlBadge}>
-                  <MaterialIcons name="star" size={10} color="#fff" />
-                  <Text style={styles.hlBadgeText}>Highlighted</Text>
+  const renderPortfolioTab = () => {
+    return (
+      <View style={styles.tabContent}>
+        {/* Quick Stats Strip */}
+        <View style={styles.statsStrip}>
+          {[
+            { label: 'Experience', value: `${contractorAbout?.years_of_experience ?? contractor.years_of_experience ?? 0} yrs` },
+            { label: 'Completed', value: String(completedProjects) },
+            { label: 'Rating', value: avgRating ? avgRating.toFixed(1) : 'N/A' },
+            { label: 'Reviews', value: String(totalReviews) },
+          ].map((stat, i, arr) => (
+            <React.Fragment key={stat.label}>
+              <View style={styles.statStripItem}>
+                <Text style={styles.statStripValue}>{stat.value}</Text>
+                <Text style={styles.statStripLabel}>{stat.label}</Text>
+              </View>
+              {i < arr.length - 1 && <View style={styles.statStripDivider} />}
+            </React.Fragment>
+          ))}
+        </View>
+
+        {/* Add Showcase button (only on own profile) */}
+        {isOwnProfile && (
+          <TouchableOpacity
+            style={styles.addShowcaseBtn}
+            onPress={() => setShowCreateShowcase(true)}
+            activeOpacity={0.8}
+          >
+            <Feather name="plus-circle" size={18} color={BRAND} />
+            <Text style={styles.addShowcaseBtnText}>Add Showcase Post</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Showcase Posts */}
+        {showcasePosts.length > 0 ? (
+          showcasePosts.map((post) => (
+            <View key={`sp-${post.post_id}`} style={styles.socialPostCard}>
+              {post.images && post.images.length > 0 ? (
+                <ImageFallback
+                  uri={resolveImageUrl(post.images[0]?.file_path)}
+                  style={styles.socialPostImg}
+                  resizeMode="cover"
+                />
+              ) : (
+                <View style={styles.portfolioCardImg}>
+                  <MaterialIcons name="image" size={28} color="#c8cbd0" />
                 </View>
               )}
-            </View>
-            <View style={styles.portfolioCardBody}>
-              <Text style={styles.portfolioCardTitle} numberOfLines={1}>{item.title}</Text>
-              <Text style={styles.portfolioCardDesc} numberOfLines={2}>{item.description}</Text>
-              <Text style={styles.portfolioCardDate}>{item.date}</Text>
-            </View>
-          </View>
-        ))}
-      </View>
-    </View>
-  );
+              <View style={styles.socialPostBody}>
+                <Text style={styles.portfolioCardTitle} numberOfLines={1}>
+                  {post.title || 'Untitled Post'}
+                </Text>
 
-  const renderHighlightsTab = () => (
-    <View style={styles.tabContent}>
-      {/* Stats strip */}
-      <View style={styles.statsStrip}>
-        {[
-          { label: 'Experience', value: `${contractor.years_of_experience || 0} yrs` },
-          { label: 'Completed', value: String(contractor.completed_projects || 0) },
-          { label: 'Rating', value: contractor.rating?.toFixed(1) || 'N/A' },
-          { label: 'Reviews', value: String(contractor.reviews_count || 0) },
-        ].map((stat, i, arr) => (
-          <React.Fragment key={stat.label}>
-            <View style={styles.statStripItem}>
-              <Text style={styles.statStripValue}>{stat.value}</Text>
-              <Text style={styles.statStripLabel}>{stat.label}</Text>
-            </View>
-            {i < arr.length - 1 && <View style={styles.statStripDivider} />}
-          </React.Fragment>
-        ))}
-      </View>
+                {/* Linked project badge */}
+                {post.linked_project_id && (
+                  <View style={styles.linkedBadge}>
+                    <MaterialIcons name="verified" size={13} color="#16a34a" />
+                    <Text style={styles.linkedBadgeText}>
+                      {post.linked_project_title || 'Linked to completed project'}
+                    </Text>
+                  </View>
+                )}
 
-      {/* Featured project cards */}
-      <Text style={styles.hlSectionTitle}>Featured Projects</Text>
-      {SAMPLE_HIGHLIGHTS.map((item) => {
-        const st = STATUS_LABELS[item.status] || STATUS_LABELS.pending;
-        return (
-          <View key={item.id} style={styles.hlProjectCard}>
-            <View style={styles.hlProjectImg}>
-              <MaterialIcons name="image" size={28} color="#c8cbd0" />
-            </View>
-            <View style={styles.hlProjectBody}>
-              <View style={styles.hlProjectTitleRow}>
-                <Text style={styles.hlProjectTitle} numberOfLines={1}>{item.title}</Text>
-                <View style={[styles.statusBadge, { backgroundColor: st.bg }]}>
-                  <Text style={[styles.statusBadgeText, { color: st.color }]}>{st.label}</Text>
+                <Text style={styles.portfolioCardDesc} numberOfLines={3}>
+                  {post.content}
+                </Text>
+                <View style={styles.socialPostMeta}>
+                  {post.images && post.images.length > 1 && (
+                    <View style={styles.metaChip}>
+                      <Ionicons name="images-outline" size={12} color={T2} />
+                      <Text style={styles.metaChipText}>{post.images.length} photos</Text>
+                    </View>
+                  )}
                 </View>
-              </View>
-              <View style={styles.hlProjectMeta}>
-                <Ionicons name="cash-outline" size={13} color={T2} />
-                <Text style={styles.hlProjectMetaText}>{item.budget}</Text>
-                <Ionicons name="time-outline" size={13} color={T2} style={{ marginLeft: 12 }} />
-                <Text style={styles.hlProjectMetaText}>{item.duration}</Text>
+                <Text style={styles.portfolioCardDate}>{formatDate(post.created_at)}</Text>
               </View>
             </View>
+          ))
+        ) : !loading ? (
+          <View style={styles.emptyState}>
+            <MaterialIcons name="photo-library" size={48} color="#d1d5db" />
+            <Text style={styles.emptyTitle}>No showcase posts yet</Text>
+            <Text style={styles.emptySubtext}>
+              {isOwnProfile
+                ? 'Tap \"Add Showcase Post\" to highlight your completed work.'
+                : 'This contractor hasn\'t showcased any work yet.'}
+            </Text>
           </View>
-        );
-      })}
+        ) : null}
 
-      {contractor.services_offered && (
-        <View style={styles.servicesSection}>
-          <Text style={styles.servicesSectionTitle}>Services Offered</Text>
-          <Text style={styles.servicesText}>{contractor.services_offered}</Text>
-        </View>
-      )}
-    </View>
-  );
-
-  const avgRating = SAMPLE_REVIEWS.length
-    ? Math.round((SAMPLE_REVIEWS.reduce((s, r) => s + r.rating, 0) / SAMPLE_REVIEWS.length) * 10) / 10
-    : (contractor.rating || 0);
-
-  const renderReviewsTab = () => (
-    <View style={styles.tabContent}>
-      {/* Summary */}
-      <View style={styles.reviewsSummary}>
-        <View style={styles.reviewsSummaryLeft}>
-          <Text style={styles.reviewsAvgVal}>{avgRating.toFixed(1)}</Text>
-          <Text style={styles.reviewsAvgSub}>out of 5</Text>
-        </View>
-        <View style={styles.reviewsSummaryRight}>
-          <View style={styles.starsRow}>
-            {[1,2,3,4,5].map((i) => (
-              <MaterialIcons key={i} name={i<=Math.round(avgRating)?'star':'star-border'} size={18} color={i<=Math.round(avgRating)?BRAND:'#d1d5db'} />
-            ))}
+        {/* Services Offered */}
+        {(contractorAbout?.services_offered || contractor.services_offered) && (
+          <View style={styles.servicesSection}>
+            <Text style={styles.servicesSectionTitle}>Services Offered</Text>
+            <Text style={styles.servicesText}>
+              {contractorAbout?.services_offered || contractor.services_offered}
+            </Text>
           </View>
-          <Text style={styles.reviewsCountText}>{SAMPLE_REVIEWS.length} review{SAMPLE_REVIEWS.length!==1?'s':''}</Text>
-        </View>
+        )}
       </View>
-      <View style={styles.reviewsDivider} />
-      {/* Cards */}
-      {SAMPLE_REVIEWS.map((rev) => (
-        <View key={rev.id} style={styles.reviewCard}>
-          <View style={styles.reviewCardHeader}>
-            <View style={styles.reviewAvatar}>
-              <Text style={styles.reviewAvatarText}>{rev.reviewer.substring(0,2).toUpperCase()}</Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.reviewerName}>{rev.reviewer}</Text>
-              <View style={styles.starsRow}>
-                {[1,2,3,4,5].map((i) => (
-                  <MaterialIcons key={i} name={i<=rev.rating?'star':'star-border'} size={13} color={i<=rev.rating?BRAND:'#d1d5db'} />
-                ))}
-              </View>
-            </View>
-            <Text style={styles.reviewDate}>{rev.date}</Text>
+    );
+  };
+
+  const renderReviewsTab = () => {
+    const avg = reviewStats.avg_rating || avgRating;
+    const total = reviewStats.total_reviews || totalReviews;
+    const dist = reviewStats.distribution || {};
+
+    return (
+      <View style={styles.tabContent}>
+        {/* Summary */}
+        <View style={styles.reviewsSummary}>
+          <View style={styles.reviewsSummaryLeft}>
+            <Text style={styles.reviewsAvgVal}>{avg ? avg.toFixed(1) : '0.0'}</Text>
+            <Text style={styles.reviewsAvgSub}>out of 5</Text>
           </View>
-          <Text style={styles.reviewComment}>{rev.comment}</Text>
+          <View style={styles.reviewsSummaryRight}>
+            <View style={styles.starsRow}>
+              {[1,2,3,4,5].map((i) => (
+                <MaterialIcons key={i} name={i<=Math.round(avg)?'star':'star-border'} size={18} color={i<=Math.round(avg)?BRAND:'#d1d5db'} />
+              ))}
+            </View>
+            <Text style={styles.reviewsCountText}>{total} review{total!==1?'s':''}</Text>
+
+            {/* Distribution bars */}
+            {Object.keys(dist).length > 0 && (
+              <View style={styles.distributionContainer}>
+                {[5, 4, 3, 2, 1].map((star) => {
+                  const count = dist[String(star)] || 0;
+                  const pct = total > 0 ? (count / total) * 100 : 0;
+                  return (
+                    <View key={star} style={styles.distRow}>
+                      <Text style={styles.distLabel}>{star}</Text>
+                      <MaterialIcons name="star" size={11} color={BRAND} />
+                      <View style={styles.distBarBg}>
+                        <View style={[styles.distBarFill, { width: `${pct}%` }]} />
+                      </View>
+                      <Text style={styles.distCount}>{count}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+          </View>
         </View>
-      ))}
-    </View>
-  );
+        <View style={styles.reviewsDivider} />
+        {/* Cards */}
+        {reviews.length > 0 ? (
+          reviews.map((rev) => (
+            <View key={rev.review_id} style={styles.reviewCard}>
+              <View style={styles.reviewCardHeader}>
+                <View style={styles.reviewAvatar}>
+                  <Text style={styles.reviewAvatarText}>
+                    {(rev.reviewer_name || 'U').substring(0,2).toUpperCase()}
+                  </Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.reviewerName}>{rev.reviewer_name || 'Anonymous'}</Text>
+                  <View style={styles.starsRow}>
+                    {[1,2,3,4,5].map((i) => (
+                      <MaterialIcons key={i} name={i<=rev.rating?'star':'star-border'} size={13} color={i<=rev.rating?BRAND:'#d1d5db'} />
+                    ))}
+                  </View>
+                </View>
+                <Text style={styles.reviewDate}>{formatDate(rev.created_at)}</Text>
+              </View>
+              {rev.project_title && (
+                <Text style={styles.reviewProjectTitle}>
+                  <Feather name="briefcase" size={11} color={T2} /> {rev.project_title}
+                </Text>
+              )}
+              <Text style={styles.reviewComment}>{rev.comment}</Text>
+            </View>
+          ))
+        ) : (
+          <View style={styles.emptyState}>
+            <MaterialIcons name="rate-review" size={40} color="#d1d5db" />
+            <Text style={styles.emptyTitle}>No reviews yet</Text>
+            <Text style={styles.emptySubtext}>This contractor hasn't received any reviews.</Text>
+          </View>
+        )}
+      </View>
+    );
+  };
 
   const renderAboutTab = () => (
     <View style={styles.tabContent}>
@@ -286,7 +384,7 @@ export default function CheckProfile({ contractor, onClose, onSendMessage }: Che
       <View style={styles.aboutSection}>
         <Text style={styles.aboutSectionTitle}>About</Text>
         <Text style={styles.aboutText}>
-          {contractor.company_description || 'No description available.'}
+          {description || 'No description available.'}
         </Text>
       </View>
 
@@ -296,28 +394,36 @@ export default function CheckProfile({ contractor, onClose, onSendMessage }: Che
 
         <View style={styles.contactItem}>
           <Feather name="map-pin" size={18} color={COLORS.primary} />
-          <Text style={styles.contactText}>{contractor.location || 'Location not specified'}</Text>
+          <Text style={styles.contactText}>
+            {contractorAbout?.business_address || contractor.location || 'Location not specified'}
+          </Text>
         </View>
 
-        {contractor.company_email && (
+        {(contractorAbout?.company_email || contractor.company_email) && (
           <TouchableOpacity style={styles.contactItem} onPress={onSendMessage} activeOpacity={0.7}>
             <Feather name="mail" size={18} color={COLORS.primary} />
-            <Text style={[styles.contactText, styles.contactClickable]}>{contractor.company_email}</Text>
+            <Text style={[styles.contactText, styles.contactClickable]}>
+              {contractorAbout?.company_email || contractor.company_email}
+            </Text>
             <Feather name="chevron-right" size={16} color={COLORS.textMuted} style={{ marginLeft: 'auto' }} />
           </TouchableOpacity>
         )}
 
-        {contractor.company_phone && (
+        {(contractorAbout?.company_phone || contractor.company_phone) && (
           <View style={styles.contactItem}>
             <Feather name="phone" size={18} color={COLORS.primary} />
-            <Text style={styles.contactText}>{contractor.company_phone}</Text>
+            <Text style={styles.contactText}>
+              {contractorAbout?.company_phone || contractor.company_phone}
+            </Text>
           </View>
         )}
 
-        {contractor.company_website && (
+        {(contractorAbout?.company_website || contractor.company_website) && (
           <View style={styles.contactItem}>
             <Feather name="globe" size={18} color={COLORS.primary} />
-            <Text style={styles.contactText}>{contractor.company_website}</Text>
+            <Text style={styles.contactText}>
+              {contractorAbout?.company_website || contractor.company_website}
+            </Text>
           </View>
         )}
 
@@ -334,12 +440,65 @@ export default function CheckProfile({ contractor, onClose, onSendMessage }: Che
 
         <View style={styles.detailRow}>
           <Text style={styles.detailLabel}>Contractor Type</Text>
-          <Text style={styles.detailValue}>{contractor.contractor_type || 'General'}</Text>
+          <Text style={styles.detailValue}>
+            {contractorAbout?.type_name || contractor.contractor_type || 'General'}
+          </Text>
+        </View>
+
+        <View style={styles.detailRow}>
+          <Text style={styles.detailLabel}>Experience</Text>
+          <Text style={styles.detailValue}>
+            {contractorAbout?.years_of_experience ?? contractor.years_of_experience ?? 0} years
+          </Text>
+        </View>
+
+        {contractorAbout?.picab_category && (
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>PICAB Category</Text>
+            <Text style={styles.detailValue}>{contractorAbout.picab_category}</Text>
+          </View>
+        )}
+
+        {contractorAbout?.subscription_tier && contractorAbout.subscription_tier !== 'free' && (
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Subscription</Text>
+            <View style={[styles.tierBadge, { backgroundColor: contractorAbout.subscription_tier === 'gold' ? '#FEF3C7' : '#F3E8FF' }]}>
+              <Text style={[styles.tierBadgeText, { color: contractorAbout.subscription_tier === 'gold' ? '#d97706' : '#7c3aed' }]}>
+                {contractorAbout.subscription_tier.charAt(0).toUpperCase() + contractorAbout.subscription_tier.slice(1)}
+              </Text>
+            </View>
+          </View>
+        )}
+
+        <View style={styles.detailRow}>
+          <Text style={styles.detailLabel}>Verification</Text>
+          <View style={[
+            styles.verificationBadge,
+            {
+              backgroundColor:
+                (header?.verification_status || contractorAbout?.verification_status) === 'approved' ? '#dcfce7'
+                : (header?.verification_status || contractorAbout?.verification_status) === 'rejected' ? '#fef2f2'
+                : '#f3f4f6',
+            },
+          ]}>
+            <Text style={[
+              styles.verificationText,
+              {
+                color:
+                  (header?.verification_status || contractorAbout?.verification_status) === 'approved' ? '#16a34a'
+                  : (header?.verification_status || contractorAbout?.verification_status) === 'rejected' ? '#dc2626'
+                  : '#6b7280',
+              },
+            ]}>
+              {((header?.verification_status || contractorAbout?.verification_status || 'pending').charAt(0).toUpperCase()
+                + (header?.verification_status || contractorAbout?.verification_status || 'pending').slice(1))}
+            </Text>
+          </View>
         </View>
 
         <View style={styles.detailRow}>
           <Text style={styles.detailLabel}>Member Since</Text>
-          <Text style={styles.detailValue}>{formatDate(contractor.created_at)}</Text>
+          <Text style={styles.detailValue}>{formatDate(header?.member_since || contractor.created_at)}</Text>
         </View>
       </View>
     </View>
@@ -349,8 +508,6 @@ export default function CheckProfile({ contractor, onClose, onSendMessage }: Che
     switch (activeTab) {
       case 'portfolio':
         return renderPortfolioTab();
-      case 'highlights':
-        return renderHighlightsTab();
       case 'reviews':
         return renderReviewsTab();
       case 'about':
@@ -360,23 +517,30 @@ export default function CheckProfile({ contractor, onClose, onSendMessage }: Che
     }
   };
 
+  /* ─── Loading state ───────────────────────────────────────────────── */
+
+  const renderLoading = () => (
+    <View style={styles.loadingContainer}>
+      <ActivityIndicator size="large" color={BRAND} />
+      <Text style={styles.loadingText}>Loading profile…</Text>
+    </View>
+  );
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.surface} />
 
-      {/* Fixed Header */}
+      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={onClose} style={styles.backButton}>
-          <Feather name="chevron-left" size={24} color={COLORS.text} />
-          <Text style={styles.backText}>Back</Text>
+        <TouchableOpacity onPress={onClose} style={styles.headerBtn} activeOpacity={0.7}>
+          <Feather name="arrow-left" size={20} color={T1} />
         </TouchableOpacity>
         <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.headerIconBtn}>
-            <Feather name="search" size={22} color={COLORS.text} />
+          <TouchableOpacity style={styles.headerBtn} activeOpacity={0.7}>
+            <Feather name="share-2" size={18} color={T1} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.headerIconBtn}>
-            <Feather name="bell" size={22} color={COLORS.text} />
-            <View style={styles.notificationDot} />
+          <TouchableOpacity style={styles.headerBtn} activeOpacity={0.7}>
+            <Feather name="more-horizontal" size={20} color={T1} />
           </TouchableOpacity>
         </View>
       </View>
@@ -385,6 +549,9 @@ export default function CheckProfile({ contractor, onClose, onSendMessage }: Che
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[BRAND]} tintColor={BRAND} />
+        }
       >
         {/* Cover Photo Section */}
         <View style={styles.coverSection}>
@@ -408,57 +575,95 @@ export default function CheckProfile({ contractor, onClose, onSendMessage }: Che
 
         {/* Company Info */}
         <View style={styles.companySection}>
-          <Text style={styles.companyName}>{contractor.company_name}</Text>
-
-          <View style={styles.ratingLocationRow}>
-            <MaterialIcons name="star" size={18} color={COLORS.star} />
-            <Text style={styles.ratingText}>{contractor.rating?.toFixed(1) || '5.0'} Rating</Text>
-            <Text style={styles.dotSeparator}>•</Text>
-            <Text style={styles.locationText}>{contractor.location || 'Location not set'}</Text>
+          <View style={styles.nameRow}>
+            <Text style={styles.companyName}>{displayName}</Text>
+            {header?.verification_status === 'approved' && (
+              <MaterialIcons name="verified" size={22} color="#3b82f6" style={{ marginLeft: 6 }} />
+            )}
           </View>
 
-          {/* Description Preview */}
+          {/* Contractor type */}
+          {(contractorAbout?.type_name || contractor.contractor_type) && (
+            <View style={styles.typeBadge}>
+              <Feather name="briefcase" size={11} color={BRAND} />
+              <Text style={styles.typeBadgeText}>
+                {contractorAbout?.type_name || contractor.contractor_type}
+              </Text>
+            </View>
+          )}
+
+          {/* Rating & Location */}
+          <View style={styles.infoChipsRow}>
+            <View style={styles.infoChip}>
+              <MaterialIcons name="star" size={14} color={BRAND} />
+              <Text style={styles.infoChipValue}>{avgRating ? avgRating.toFixed(1) : '0.0'}</Text>
+              <Text style={styles.infoChipSub}>({totalReviews})</Text>
+            </View>
+            <View style={styles.infoChipDivider} />
+            <View style={[styles.infoChip, { flexShrink: 1 }]}>
+              <Feather name="map-pin" size={12} color={T2} />
+              <Text style={styles.infoChipText} numberOfLines={1}>
+                {contractorAbout?.business_address || contractor.location || 'Location not set'}
+              </Text>
+            </View>
+          </View>
+
+          {/* Description */}
           <Text style={styles.descriptionPreview} numberOfLines={3}>
-            {contractor.company_description || `We're ${contractor.company_name} — passionate about building spaces that last.`}
+            {description || `We're ${displayName} — passionate about building spaces that last.`}
             {' '}
-            <Text style={styles.seeMoreText}>See more...</Text>
+            <Text style={styles.seeMoreText}>See more</Text>
           </Text>
 
           {/* Action buttons */}
           <View style={styles.profileActions}>
             <TouchableOpacity style={styles.sendMessageBtn} activeOpacity={0.8} onPress={onSendMessage}>
-              <Feather name="send" size={16} color={BRAND} />
+              <Feather name="message-circle" size={16} color="#fff" />
               <Text style={styles.sendMessageText}>Send Message</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.shareProfileBtn} activeOpacity={0.7}>
+              <Feather name="share-2" size={18} color={BRAND} />
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Tabs */}
         <View style={styles.tabsContainer}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.tabsScrollContent}
-          >
-            {tabs.map((tab) => (
-              <TouchableOpacity
-                key={tab.key}
-                style={[styles.tab, activeTab === tab.key && styles.tabActive]}
-                onPress={() => setActiveTab(tab.key)}
-              >
-                <Text style={[styles.tabText, activeTab === tab.key && styles.tabTextActive]}>
-                  {tab.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+          <View style={styles.tabsRow}>
+            {tabs.map((tab) => {
+              const active = activeTab === tab.key;
+              const iconMap: Record<TabType, string> = {
+                portfolio: 'grid', reviews: 'star', about: 'info',
+              };
+              return (
+                <TouchableOpacity
+                  key={tab.key}
+                  style={[styles.tab, active && styles.tabActive]}
+                  onPress={() => setActiveTab(tab.key)}
+                  activeOpacity={0.7}
+                >
+                  <Feather name={iconMap[tab.key]} size={14} color={active ? BRAND : '#9ca3af'} />
+                  <Text style={[styles.tabText, active && styles.tabTextActive]}>
+                    {tab.label}{tab.count != null ? ` (${tab.count})` : ''}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         </View>
 
         {/* Tab Content */}
-        {renderTabContent()}
+        {loading ? renderLoading() : renderTabContent()}
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* Create Showcase Modal */}
+      <CreateShowcase
+        visible={showCreateShowcase}
+        onClose={() => setShowCreateShowcase(false)}
+        onCreated={() => fetchProfile(true)}
+      />
     </View>
   );
 }
@@ -472,40 +677,34 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     backgroundColor: COLORS.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.borderLight,
   },
-  backButton: {
-    flexDirection: 'row',
+  headerBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#f3f4f6',
+    justifyContent: 'center',
     alignItems: 'center',
-  },
-  backText: {
-    fontSize: 1,
-    color: COLORS.text,
-    marginLeft: 4,
   },
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
   },
-  headerIconBtn: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
+
+  /* ── Loading ─────────────────────────────── */
+  loadingContainer: {
     alignItems: 'center',
-    position: 'relative',
+    justifyContent: 'center',
+    paddingVertical: 60,
   },
-  notificationDot: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: COLORS.error,
+  loadingText: {
+    fontSize: 13,
+    color: T2,
+    marginTop: 12,
   },
   scrollView: {
     flex: 1,
@@ -517,31 +716,31 @@ const styles = StyleSheet.create({
   // Cover Section
   coverSection: {
     position: 'relative',
-    height: 180,
+    height: 215,
   },
   coverPhoto: {
     width: '100%',
-    height: 150,
+    height: 180,
   },
   profilePicContainer: {
     position: 'absolute',
     bottom: 0,
     left: 16,
-    width: 86,
-    height: 86,
-    borderRadius: 43,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
     backgroundColor: COLORS.surface,
-    padding: 3,
+    padding: 3.5,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
   },
   profilePic: {
     width: '100%',
     height: '100%',
-    borderRadius: 40,
+    borderRadius: 47,
   },
   profilePicPlaceholder: {
     width: '100%',
@@ -565,30 +764,61 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: BORDER,
   },
-  companyName: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: T1,
-    marginBottom: 4,
-  },
-  ratingLocationRow: {
+  nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: 4,
+  },
+  companyName: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: T1,
+  },
+  typeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: BRAND_L,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+    gap: 5,
     marginBottom: 8,
+  },
+  typeBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: BRAND,
+  },
+  infoChipsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+    gap: 8,
+  },
+  infoChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 4,
   },
-  ratingText: {
+  infoChipValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: T1,
+  },
+  infoChipText: {
     fontSize: 13,
     color: T2,
   },
-  dotSeparator: {
-    fontSize: 13,
-    color: '#c8cbd0',
-    marginHorizontal: 2,
+  infoChipSub: {
+    fontSize: 12,
+    color: '#9ca3af',
   },
-  locationText: {
-    fontSize: 13,
-    color: T2,
+  infoChipDivider: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#d1d5db',
   },
   descriptionPreview: {
     fontSize: 14,
@@ -601,39 +831,59 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   profileActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
     marginBottom: 14,
   },
   sendMessageBtn: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
+    paddingVertical: 12,
     borderRadius: CARD_R,
-    borderWidth: 1.5,
-    borderColor: BRAND,
-    alignSelf: 'flex-start',
-    gap: 6,
+    backgroundColor: BRAND,
+    gap: 8,
+    shadowColor: BRAND,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 3,
   },
   sendMessageText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
-    color: BRAND,
+    color: '#fff',
+  },
+  shareProfileBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1.5,
+    borderColor: BORDER,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
   },
 
   // Tabs
   tabsContainer: {
+    backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: BORDER,
-    backgroundColor: '#fff',
   },
-  tabsScrollContent: {
-    paddingHorizontal: 8,
+  tabsRow: {
+    flexDirection: 'row',
   },
   tab: {
-    paddingVertical: 13,
-    paddingHorizontal: 18,
-    borderBottomWidth: 2,
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    gap: 5,
+    borderBottomWidth: 3,
     borderBottomColor: 'transparent',
   },
   tabActive: {
@@ -642,7 +892,7 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: 13,
     fontWeight: '500',
-    color: T2,
+    color: '#9ca3af',
   },
   tabTextActive: {
     color: BRAND,
@@ -655,66 +905,55 @@ const styles = StyleSheet.create({
     backgroundColor: BG,
   },
 
-  // Portfolio grid
-  portfolioGrid: {
+  // Portfolio
+  addShowcaseBtn: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  portfolioCard: {
-    width: (SCREEN_WIDTH - 42) / 2,
-    backgroundColor: '#fff',
-    borderRadius: CARD_R,
-    borderWidth: 1,
-    borderColor: BORDER,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 3,
-    elevation: 1,
-  },
-  portfolioCardHL: {
-    borderColor: BRAND,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1.5,
+    borderColor: BRAND,
+    borderStyle: 'dashed',
+    borderRadius: CARD_R,
+    paddingVertical: 12,
+    marginBottom: 14,
+    gap: 6,
+  },
+  addShowcaseBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: BRAND,
+  },
+  linkedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ecfdf5',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    gap: 4,
+  },
+  linkedBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#047857',
   },
   portfolioCardImg: {
-    height: 100,
+    height: 120,
     backgroundColor: '#f3f4f6',
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
   },
-  hlBadge: {
-    position: 'absolute',
-    top: 6,
-    left: 6,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    backgroundColor: BRAND,
-    borderRadius: 4,
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-  },
-  hlBadgeText: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  portfolioCardBody: {
-    padding: 10,
-  },
   portfolioCardTitle: {
-    fontSize: 13,
+    fontSize: 15,
     fontWeight: '700',
     color: T1,
   },
   portfolioCardDesc: {
-    fontSize: 12,
+    fontSize: 13,
     color: T2,
-    marginTop: 3,
-    lineHeight: 16,
+    marginTop: 4,
+    lineHeight: 18,
   },
   portfolioCardDate: {
     fontSize: 11,
@@ -739,8 +978,8 @@ const styles = StyleSheet.create({
   },
   statStripValue: {
     fontSize: 18,
-    fontWeight: '700',
-    color: T1,
+    fontWeight: '800',
+    color: BRAND,
   },
   statStripLabel: {
     fontSize: 11,
@@ -759,59 +998,6 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 10,
-  },
-  hlProjectCard: {
-    backgroundColor: '#fff',
-    borderRadius: CARD_R,
-    borderWidth: 1,
-    borderColor: BORDER,
-    marginBottom: 10,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 3,
-    elevation: 1,
-  },
-  hlProjectImg: {
-    height: 80,
-    backgroundColor: '#f3f4f6',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  hlProjectBody: {
-    padding: 12,
-  },
-  hlProjectTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 8,
-    marginBottom: 8,
-  },
-  hlProjectTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: T1,
-    flex: 1,
-  },
-  statusBadge: {
-    borderRadius: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  statusBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  hlProjectMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  hlProjectMetaText: {
-    fontSize: 12,
-    color: T2,
-    marginLeft: 4,
   },
   servicesSection: {
     marginTop: 16,
@@ -931,7 +1117,12 @@ const styles = StyleSheet.create({
 
   // About Tab
   aboutSection: {
-    marginBottom: 16,
+    marginBottom: 12,
+    backgroundColor: '#fff',
+    borderRadius: CARD_R,
+    borderWidth: 1,
+    borderColor: BORDER,
+    padding: 16,
   },
   aboutSectionTitle: {
     fontSize: 13,
@@ -1001,7 +1192,12 @@ const styles = StyleSheet.create({
   // Empty State
   emptyState: {
     alignItems: 'center',
-    paddingVertical: 40,
+    paddingVertical: 48,
+    backgroundColor: '#fff',
+    borderRadius: CARD_R,
+    borderWidth: 1,
+    borderColor: BORDER,
+    marginBottom: 12,
   },
   emptyTitle: {
     fontSize: 15,
@@ -1015,5 +1211,115 @@ const styles = StyleSheet.create({
     color: '#9ca3af',
     textAlign: 'center',
     paddingHorizontal: 40,
+  },
+
+  /* ── Social Post Cards (Portfolio) ──────── */
+  socialPostCard: {
+    backgroundColor: '#fff',
+    borderRadius: CARD_R,
+    borderWidth: 1,
+    borderColor: BORDER,
+    marginBottom: 12,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  socialPostImg: {
+    width: '100%',
+    height: 220,
+    backgroundColor: '#f3f4f6',
+  },
+  socialPostBody: {
+    padding: 14,
+  },
+  socialPostMeta: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 8,
+  },
+  metaChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f3f4f6',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    gap: 4,
+  },
+  metaChipText: {
+    fontSize: 11,
+    color: T2,
+  },
+  /* ── Star Distribution Bars (Reviews) ──── */
+  distributionContainer: {
+    marginTop: 8,
+  },
+  distRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+    gap: 6,
+  },
+  distLabel: {
+    fontSize: 12,
+    color: T2,
+    width: 12,
+    textAlign: 'right',
+  },
+  distBarBg: {
+    flex: 1,
+    height: 6,
+    backgroundColor: '#f3f4f6',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  distBarFill: {
+    height: '100%',
+    backgroundColor: COLORS.star,
+    borderRadius: 3,
+  },
+  distCount: {
+    fontSize: 11,
+    color: '#9ca3af',
+    width: 24,
+    textAlign: 'right',
+  },
+
+  /* ── Review extras ─────────────────────── */
+  reviewProjectTitle: {
+    fontSize: 11,
+    color: BRAND,
+    marginBottom: 4,
+  },
+
+  /* ── Tier & Verification badges (About) ─ */
+  tierBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fef3c7',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    gap: 4,
+    alignSelf: 'flex-start',
+  },
+  tierBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#92400e',
+  },
+  verificationBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 2,
+  },
+  verificationText: {
+    fontSize: 12,
+    fontWeight: '500',
   },
 });

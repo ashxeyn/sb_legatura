@@ -24,7 +24,7 @@ use Illuminate\Support\Facades\Log;
  * 2. If it needs parent-ID lookup, add a private resolve*() helper.
  * 3. That's it — the controller and frontend need no changes.
  */
-class NotificationRedirectService
+class notificationRedirectService
 {
     // ─── Public entry point ────────────────────────────────────────────
 
@@ -235,6 +235,26 @@ class NotificationRedirectService
                         'project_id'      => $pid,
                         'initial_action'  => 'project_timeline',
                         'initial_section' => 'milestones',
+                    ],
+                ];
+
+            // ── Review prompt → open write-review screen ──
+            case 'review_prompt':
+                $revieweeUserId = $actionData['params']['revieweeUserId'] ?? null;
+                return [
+                    'screen' => 'review',
+                    'params' => [
+                        'project_id'       => $projectId ?? $notification->reference_id,
+                        'reviewee_user_id' => $revieweeUserId,
+                    ],
+                ];
+
+            // ── Review submitted → open profile reviews tab ──
+            case 'review_submitted':
+                return [
+                    'screen' => 'profile',
+                    'params' => [
+                        'tab' => 'reviews',
                     ],
                 ];
 

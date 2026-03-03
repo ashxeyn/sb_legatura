@@ -51,6 +51,7 @@ interface ProjectPostDetailProps {
   onPlaceBid?: () => void;
   userRole?: 'owner' | 'contractor';
   canBid?: boolean; // Whether user has permission to bid (owner/representative only)
+  onViewOwnerProfile?: () => void;
 }
 
 /**
@@ -73,7 +74,7 @@ const classifyImportant = (fileType: string, rawPath: string): boolean => {
   return false;
 };
 
-export default function ProjectPostDetail({ project, onClose, onPlaceBid, userRole = 'contractor', canBid = true }: ProjectPostDetailProps) {
+export default function ProjectPostDetail({ project, onClose, onPlaceBid, userRole = 'contractor', canBid = true, onViewOwnerProfile }: ProjectPostDetailProps) {
   const insets = useSafeAreaInsets();
   const [imageViewerVisible, setImageViewerVisible] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
@@ -361,7 +362,12 @@ export default function ProjectPostDetail({ project, onClose, onPlaceBid, userRo
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Post Header - Owner Info */}
         <View style={styles.postHeader}>
-          <View style={styles.ownerInfo}>
+          <TouchableOpacity
+            style={styles.ownerInfo}
+            activeOpacity={onViewOwnerProfile ? 0.7 : 1}
+            onPress={onViewOwnerProfile}
+            disabled={!onViewOwnerProfile}
+          >
             <ImageFallback
               uri={ownerProfileUrl}
               defaultImage={defaultOwnerAvatar}
@@ -383,7 +389,7 @@ export default function ProjectPostDetail({ project, onClose, onPlaceBid, userRo
 
                 {/* contractor/type removed from header (shown in Project Details badge) */}
               </View>
-          </View>
+          </TouchableOpacity>
         </View>
 
         {/* Project Title */}

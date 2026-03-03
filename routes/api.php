@@ -10,7 +10,7 @@ use App\Http\Controllers\contractor\progressUploadController;
 use App\Http\Controllers\owner\paymentUploadController;
 use App\Http\Controllers\projectPosting\projectPostingController;
 use App\Http\Controllers\both\disputeController;
-use App\Http\Controllers\both\NotificationController;
+use App\Http\Controllers\both\notificationController;
 use App\Http\Controllers\passwordController;
 use App\Http\Controllers\profileController;
 use App\Http\Controllers\both\milestoneController;
@@ -152,6 +152,9 @@ Route::get('/contractor-types', [\App\Http\Controllers\both\homepageController::
 // Search & filter options for mobile search/filter UI
 Route::get('/search/filter-options', [\App\Http\Controllers\both\homepageController::class, 'apiGetFilterOptions']);
 
+// Combined user search (contractors + property owners)
+Route::get('/search/users', [\App\Http\Controllers\both\homepageController::class, 'apiSearchUsers']);
+
 // Owner endpoints - for owner dashboard/project management
 Route::get('/owner/projects', [projectsController::class, 'apiGetOwnerProjects']);
 Route::post('/owner/projects', [projectsController::class, 'apiCreateProject']);
@@ -210,11 +213,11 @@ Route::post('/contractor/ai-analytics/analyze/{id}', [\App\Http\Controllers\cont
 Route::get('/contractor/ai-analytics/stats', [\App\Http\Controllers\contractor\AiController::class, 'apiGetStats']);
 
 // Notification endpoints - controller handles both session and token auth
-Route::get('/notifications', [NotificationController::class , 'index']);
-Route::get('/notifications/unread-count', [NotificationController::class , 'unreadCount']);
-Route::post('/notifications/{id}/read', [NotificationController::class , 'markAsRead']);
-Route::post('/notifications/read-all', [NotificationController::class , 'markAllAsRead']);
-Route::get('/notifications/{id}/redirect', [NotificationController::class , 'apiResolveRedirect']);
+Route::get('/notifications', [notificationController::class , 'index']);
+Route::get('/notifications/unread-count', [notificationController::class , 'unreadCount']);
+Route::post('/notifications/{id}/read', [notificationController::class , 'markAsRead']);
+Route::post('/notifications/read-all', [notificationController::class , 'markAllAsRead']);
+Route::get('/notifications/{id}/redirect', [notificationController::class , 'apiResolveRedirect']);
 
 // Note: profile update registered below inside sanctum-protected group
 
@@ -578,5 +581,45 @@ Route::post('/projects/{projectId}/updates/{extensionId}/withdraw', [projectUpda
 Route::post('/projects/{projectId}/updates/{extensionId}/approve', [projectUpdateController::class, 'approve']);
 Route::post('/projects/{projectId}/updates/{extensionId}/reject', [projectUpdateController::class, 'reject']);
 Route::post('/projects/{projectId}/updates/{extensionId}/request-changes', [projectUpdateController::class, 'requestChanges']);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// FEATURE ROUTES: Reviews, Highlights, Profile (aggregated), Posts, Feed
+// ═══════════════════════════════════════════════════════════════════════════
+
+use App\Http\Controllers\reviewController;
+use App\Http\Controllers\both\highlightController;
+use App\Http\Controllers\profileApiController;
+use App\Http\Controllers\both\postController;
+
+// ── Reviews ─────────────────────────────────────────────────────────────────
+Route::post('/reviews', [reviewController::class, 'store']);
+Route::get('/reviews/user/{userId}', [reviewController::class, 'forUser']);
+Route::get('/reviews/project/{projectId}', [reviewController::class, 'forProject']);
+Route::get('/reviews/can-review', [reviewController::class, 'canReview']);
+Route::get('/reviews/stats/{userId}', [reviewController::class, 'stats']);
+
+// ── Highlights (Pinned Posts) ───────────────────────────────────────────
+Route::post('/posts/{postId}/highlight', [highlightController::class, 'highlightPost']);
+Route::delete('/posts/{postId}/highlight', [highlightController::class, 'unhighlightPost']);
+Route::get('/posts/highlights', [highlightController::class, 'getHighlights']);
+Route::post('/projects/{projectId}/highlight', [highlightController::class, 'highlightProject']);
+Route::delete('/projects/{projectId}/highlight', [highlightController::class, 'unhighlightProject']);
+
+// ── Profile (aggregated: header, posts, highlights, reviews, about) ─────
+Route::get('/profile/view/{userId}', [profileApiController::class, 'show']);
+
+// ── Project Posts (Facebook-style CRUD) ─────────────────────────────────
+Route::post('/posts', [postController::class, 'store']);
+Route::put('/posts/{id}', [postController::class, 'update']);
+Route::delete('/posts/{id}', [postController::class, 'destroy']);
+Route::get('/posts/{id}', [postController::class, 'show'])->where('id', '[0-9]+');
+Route::get('/posts/user/{userId}', [postController::class, 'forUser']);
+Route::get('/posts/completed-projects', [postController::class, 'completedProjects']);
+
+// ── Social Feed (scored ordering) ───────────────────────────────────────
+Route::get('/feed', [postController::class, 'feed']);
+
+// ── Unified Feed (bidding projects + showcase posts merged) ─────────────
+Route::get('/unified-feed', [postController::class, 'unifiedFeed']);
 
 // NOTE: change-otp endpoints are registered publicly (do not rely on Sanctum middleware)

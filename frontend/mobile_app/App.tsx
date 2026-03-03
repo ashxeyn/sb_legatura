@@ -130,6 +130,7 @@ export default function App() {
 
 
     const [initial_home_tab, set_initial_home_tab] = useState<'home' | 'dashboard' | 'messages' | 'profile'>('home');
+    const [view_profile_initial_tab, set_view_profile_initial_tab] = useState<string | undefined>(undefined);
     const [registration_target_role, set_registration_target_role] = useState<'contractor' | 'owner' | null>(null);
 
     // Form data from backend
@@ -900,7 +901,7 @@ export default function App() {
                     userType={selected_user_type || 'property_owner'}
                     userData={user_data}
                     onLogout={handle_logout}
-                    onViewProfile={() => set_app_state('view_profile')}
+                    onViewProfile={(initialTab) => { set_view_profile_initial_tab(initialTab); set_app_state('view_profile'); }}
                     onEditProfile={() => set_app_state('edit_profile')}
                     onOpenHelp={() => set_app_state('help_center')}
                     onOpenSwitchRole={() => set_app_state('switch_role')}
@@ -966,12 +967,13 @@ export default function App() {
         return (
             <SafeAreaProvider>
                 <ViewProfileScreen
-                    onBack={() => set_app_state('main')}
+                    onBack={() => { set_view_profile_initial_tab(undefined); set_app_state('main'); }}
                     userData={{
                         ...user_data,
                         profile_pic: user_data?.profile_pic ? `${api_config.base_url}/storage/${user_data.profile_pic}` : undefined,
                         cover_photo: user_data?.cover_photo ? `${api_config.base_url}/storage/${user_data.cover_photo}` : undefined,
                     }}
+                    initialTab={view_profile_initial_tab}
                 />
             </SafeAreaProvider>
         );

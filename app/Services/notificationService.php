@@ -53,6 +53,8 @@ class notificationService
         'team_removed'        => 'Team Update',
         'team_role_changed'   => 'Team Update',
         'team_access_changed' => 'Team Update',
+        'review_prompt'       => 'Project Alert',
+        'review_submitted'    => 'Project Alert',
     ];
 
     /**

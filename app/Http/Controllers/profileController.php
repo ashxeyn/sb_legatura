@@ -754,9 +754,9 @@ class profileController extends Controller
                     'r.created_at',
                     'ru.profile_pic as reviewer_profile_pic',
                     'ru.username as reviewer_username',
-                    'ru.username as reviewer_name',
+                    DB::raw("COALESCE(c.company_name, ru.username) as reviewer_name"),
                     'c.company_name as reviewer_company_name',
-                    DB::raw("ru.username as reviewer_display_name")
+                    DB::raw("COALESCE(c.company_name, ru.username) as reviewer_display_name")
                 )
                 ->get();
 
