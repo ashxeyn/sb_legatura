@@ -1,580 +1,806 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Dashboard - Legatura</title>
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>Security Settings – Legatura</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
   <link rel="stylesheet" href="{{ asset('css/admin/home/mainComponents.css') }}">
-  <link rel="stylesheet" href="{{ asset('css/admin/settings/security.css') }}">
-  
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-solid-straight/css/uicons-solid-straight.css'>
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-solid-rounded/css/uicons-solid-rounded.css'>
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-bold-rounded/css/uicons-bold-rounded.css'>
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-regular-rounded/css/uicons-regular-rounded.css'>
-  
-
   <script src="{{ asset('js/admin/home/mainComponents.js') }}" defer></script>
 
-  
+  <style>
+    #toast {
+      position: fixed; bottom: 1.5rem; right: 1.5rem;
+      padding: .75rem 1.25rem; border-radius: .75rem;
+      font-size: .875rem; font-weight: 500;
+      box-shadow: 0 4px 20px rgba(0,0,0,.15);
+      z-index: 9999; opacity: 0; transform: translateY(8px);
+      transition: opacity .3s, transform .3s; pointer-events: none;
+    }
+    #toast.show   { opacity: 1; transform: translateY(0); }
+    #toast.success{ background:#dcfce7; color:#166534; border:1px solid #bbf7d0; }
+    #toast.error  { background:#fee2e2; color:#991b1b; border:1px solid #fecaca; }
+    #toast.warn   { background:#fef9c3; color:#713f12; border:1px solid #fde68a; }
+
+    #editModal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:1000; align-items:center; justify-content:center; }
+    #editModal.open { display:flex; }
+
+    .action-badge { display:inline-flex; align-items:center; gap:.35rem; padding:.25rem .7rem; border-radius:9999px; font-size:.72rem; font-weight:600; text-transform:uppercase; letter-spacing:.04em; }
+    .badge-profile  { background:#e0e7ff; color:#4338ca; }
+    .badge-password { background:#fef3c7; color:#92400e; }
+    .badge-deleted  { background:#fee2e2; color:#991b1b; }
+    .badge-default  { background:#f3f4f6; color:#374151; }
+
+    .field-label { display:block; font-size:.7rem; font-weight:600; text-transform:uppercase; letter-spacing:.05em; color:#9ca3af; margin-bottom:.25rem; }
+    .field-value { background:#f9fafb; border:1px solid #e5e7eb; border-radius:.5rem; padding:.5rem 1rem; color:#374151; font-size:.875rem; min-height:2.5rem; }
+  </style>
 </head>
 
 <body class="bg-gray-50 text-gray-800 font-sans">
-  <div class="flex min-h-screen">
+<div class="flex min-h-screen">
 
-    <aside class="bg-white shadow-xl flex flex-col">
+  {{-- ── SIDEBAR ── --}}
+  <aside class="bg-white shadow-xl flex flex-col">
+    <div class="flex justify-center items-center">
+      <img src="{{ asset('img/logo.svg') }}" alt="Legatura Logo" class="logo-img">
+    </div>
 
-      <div class="flex justify-center items-center">
-        <img src="{{ asset('img/logo.svg') }}" alt="Legatura Logo" class="logo-img">
+    <nav class="flex-1 px-3 py-4 space-y-1">
+      <div class="nav-group">
+        <button class="nav-btn">
+          <div class="flex items-center gap-3"><i class="fi fi-ss-home" style="font-size:20px"></i><span>Home</span></div>
+          <span class="arrow">▼</span>
+        </button>
+        <div class="nav-submenu">
+          <a href="{{ route('admin.dashboard') }}" class="submenu-link">Dashboard</a>
+          <div class="submenu-nested">
+            <button class="submenu-link submenu-nested-btn"><span>Analytics</span><span class="arrow-small">▼</span></button>
+            <div class="submenu-nested-content">
+              <a href="{{ route('admin.analytics') }}" class="submenu-nested-link">Project Analytics</a>
+              <a href="{{ route('admin.analytics.subscription') }}" class="submenu-nested-link">Subscription Analytics</a>
+              <a href="{{ route('admin.analytics.userActivity') }}" class="submenu-nested-link">User Activity Analytics</a>
+              <a href="{{ route('admin.analytics.projectPerformance') }}" class="submenu-nested-link">Project Performance Analytics</a>
+              <a href="{{ route('admin.analytics.bidCompletion') }}" class="submenu-nested-link">Bid Completion Analytics</a>
+              <a href="{{ route('admin.analytics.reports') }}" class="submenu-nested-link">Reports and Analytics</a>
+            </div>
+          </div>
+        </div>
       </div>
 
-
-
-        <nav class="flex-1 px-3 py-4 space-y-1">
-            <div class="nav-group">
-                <button class="nav-btn">
-                  <div class="flex items-center gap-3">
-                  <i class="fi fi-ss-home" style="font-size: 20px;"></i>
-                    <span>Home</span>
-                  </div>
-                  <span class="arrow">▼</span>
-                </button>
-                <div class="nav-submenu">
-                  <a href="{{ route('admin.dashboard') }}" class="submenu-link">Dashboard</a>
-                  <div class="submenu-nested">
-                    <button class="submenu-link submenu-nested-btn">
-                      <span>Analytics</span>
-                      <span class="arrow-small">▼</span>
-                    </button>
-                    <div class="submenu-nested-content">
-                      <a href="{{ route('admin.analytics') }}" class="submenu-nested-link">Project Analytics</a>
-                      <a href="{{ route('admin.analytics.subscription') }}" class="submenu-nested-link">Subscription Analytics</a>
-                      <a href="{{ route('admin.analytics.userActivity') }}" class="submenu-nested-link">User Activity Analytics</a>
-                      <a href="{{ route('admin.analytics.projectPerformance') }}" class="submenu-nested-link">Project Performance Analytics</a>
-                      <a href="{{ route('admin.analytics.bidCompletion') }}" class="submenu-nested-link">Bid Completion Analytics</a>
-                      <a href="{{ route('admin.analytics.reports') }}" class="submenu-nested-link">Reports and Analytics</a>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-
-        <div class="nav-group">
-          <button class="nav-btn">
-            <div class="flex items-center gap-3">
-              <i class="fi fi-ss-users-alt" style="font-size: 20px;"></i>
-              <span>User Management</span>
-            </div>
-            <span class="arrow">▼</span>
-          </button>
-
-          <div class="nav-submenu">
-            <a href="{{ route('admin.userManagement.propertyOwner') }}" class="submenu-link">Property Owner</a>
-            <a href="{{ route('admin.userManagement.contractor') }}" class="submenu-link">Contractor</a>
-            <a href="{{ route('admin.userManagement.verificationRequest') }}" class="submenu-link">Verification Request</a>
-            <a href="{{ route('admin.userManagement.suspendedAccounts') }}" class="submenu-link">Suspended Accounts</a>
-          </div>
+      <div class="nav-group">
+        <button class="nav-btn">
+          <div class="flex items-center gap-3"><i class="fi fi-ss-users-alt" style="font-size:20px"></i><span>User Management</span></div>
+          <span class="arrow">▼</span>
+        </button>
+        <div class="nav-submenu">
+          <a href="{{ route('admin.userManagement.propertyOwner') }}" class="submenu-link">Property Owner</a>
+          <a href="{{ route('admin.userManagement.contractor') }}" class="submenu-link">Contractor</a>
+          <a href="{{ route('admin.userManagement.verificationRequest') }}" class="submenu-link">Verification Request</a>
+          <a href="{{ route('admin.userManagement.suspendedAccounts') }}" class="submenu-link">Suspended Accounts</a>
         </div>
-
-
-        <div class="nav-group">
-          <button class="nav-btn">
-            <div class="flex items-center gap-3">
-            <i class="fi fi-ss-globe" style="font-size: 20px;"></i>
-
-              <span>Global Management</span>
-            </div>
-            <span class="arrow">▼</span>
-          </button>
-          <div class="nav-submenu">
-            <a href="{{ route('admin.globalManagement.bidManagement') }}" class="submenu-link">Bid Management</a>
-            <a href="{{ route('admin.globalManagement.proofOfpayments') }}" class="submenu-link">Proof of Payments</a>
-            <a href="{{ route('admin.globalManagement.aiManagement') }}" class="submenu-link">AI Management</a>
-            <a href="{{ route('admin.globalManagement.postingManagement') }}" class="submenu-link">Posting Management</a>
-          </div>
-        </div>
-
-        <div class="nav-group">
-          <button class="nav-btn">
-            <div class="flex items-center gap-3">
-              <i class="fi fi-sr-master-plan" style="font-size: 20px;"></i>
-              <span>Project Management</span>
-            </div>
-            <span class="arrow">▼</span>
-          </button>
-          <div class="nav-submenu">
-            <a href="{{ route('admin.projectManagement.listOfProjects') }}" class="submenu-link">List of Projects</a>
-            <a href="{{ route('admin.projectManagement.disputesReports') }}" class="submenu-link">Disputes/Reports</a>
-            <a href="{{ route('admin.projectManagement.messages') }}" class="submenu-link">Messages</a>
-            <a href="{{ route('admin.projectManagement.subscriptions') }}" class="submenu-link">Subscriptions & Boosts</a>
-          </div>
-        </div>
-
-        <div class="nav-group">
-          <button class="nav-btn">
-            <div class="flex items-center gap-3">
-            <i class="fi fi-br-settings-sliders" style="font-size: 20px;"></i>
-              <span>Settings</span>
-            </div>
-            <span class="arrow">▼</span>
-          </button>
-          <div class="nav-submenu">
-            <a href="{{ route('admin.settings.notifications') }}" class="submenu-link">Notifications</a>
-            <a href="{{ route('admin.settings.security') }}" class="submenu-link active">Security</a>
-          </div>
-        </div>
-      </nav>
-
-      <div class="mt-auto p-4">
-          <div class="user-card flex items-center gap-3 p-3 rounded-lg shadow-md text-white">
-              <div class="w-10 h-10 rounded-full bg-white text-indigo-900 flex items-center justify-center font-bold shadow flex-shrink-0">
-                  ES
-              </div>
-              <div class="flex-1 min-w-0">
-                  <div class="font-semibold text-sm truncate">Emmanuelle Santos</div>
-                  <div class="text-xs opacity-80 truncate">santos@Legatura.com</div>
-              </div>
-              <div class="relative">
-                <button id="userMenuBtn" class="text-white opacity-80 hover:opacity-100 transition text-2xl w-8 h-8 flex items-center justify-center rounded-full">⋮</button>
-                <div id="userMenuDropdown" class="absolute right-0 bottom-full mb-2 w-44 bg-white text-gray-800 rounded-xl shadow-2xl border border-gray-200 hidden">
-                  <div class="px-4 py-3 border-b border-gray-100">
-                    <div class="text-sm font-semibold truncate">Emmanuelle Santos</div>
-                    <div class="text-xs text-gray-500 truncate">santos@Legatura.com</div>
-                  </div>
-                  <ul class="py-1">
-                    <li>
-                      <a href="{{ route('admin.settings.security') }}" class="flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-50">
-                        <i class="fi fi-br-settings-sliders"></i>
-                        <span>Account settings</span>
-                      </a>
-                    </li>
-                    <li>
-                      <button id="logoutBtn" class="w-full text-left flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-50 text-red-600">
-                        <i class="fi fi-ss-exit"></i>
-                        <span>Logout</span>
-                      </button>
-                    </li>
-                  </ul>
-                </div>
-              </div>
-          </div>
       </div>
 
-    </aside>
-
-    <main class="flex-1">
-      <header class="bg-white shadow-sm border-b border-gray-200 flex items-center justify-between px-8 py-4 sticky top-0 z-30">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center shadow">
-            <i class="fi fi-ss-lock text-white text-lg"></i>
-          </div>
-          <h1 class="text-2xl font-semibold text-gray-800">Security</h1>
+      <div class="nav-group">
+        <button class="nav-btn">
+          <div class="flex items-center gap-3"><i class="fi fi-ss-globe" style="font-size:20px"></i><span>Global Management</span></div>
+          <span class="arrow">▼</span>
+        </button>
+        <div class="nav-submenu">
+          <a href="{{ route('admin.globalManagement.bidManagement') }}" class="submenu-link">Bid Management</a>
+          <a href="{{ route('admin.globalManagement.proofOfpayments') }}" class="submenu-link">Proof of Payments</a>
+          <a href="{{ route('admin.globalManagement.aiManagement') }}" class="submenu-link">AI Management</a>
+          <a href="{{ route('admin.globalManagement.postingManagement') }}" class="submenu-link">Posting Management</a>
         </div>
+      </div>
 
-        <div class="flex items-center gap-6">
-          <div class="relative w-64" style="width: 600px;">
-            <input 
-              type="text" 
-              placeholder="Search..." 
-              class="border border-gray-300 rounded-lg px-4 py-2 pr-10 focus:ring-2 focus:ring-indigo-400 focus:outline-none w-full"
-            >
-            <i class="fi fi-rr-search absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-          </div>
-
-
-          <div class="relative">
-            <button id="notificationBell" class="cursor-pointer w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition">
-              <i class="fi fi-ss-bell-notification-social-media" style="font-size: 20px;"></i>
-            </button>
-            <span class="absolute -top-1 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">3</span>
-
-            <!-- Notifications Dropdown -->
-            <div id="notificationDropdown" class="absolute right-0 mt-3 w-80 bg-white rounded-xl shadow-2xl border border-gray-200 hidden">
-              <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-                <span class="text-sm font-semibold text-gray-800">Notifications</span>
-                <button id="clearNotifications" class="text-xs text-indigo-600 hover:text-indigo-700">Clear all</button>
-              </div>
-              <ul class="max-h-80 overflow-y-auto" id="notificationList">
-                <li class="px-4 py-3 hover:bg-gray-50 transition">
-                  <div class="flex items-start gap-3">
-                    <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center">
-                      <i class="fi fi-ss-bell"></i>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                      <p class="text-sm text-gray-800 truncate">New bid submitted on “GreenBelt Building”.</p>
-                      <p class="text-xs text-gray-500">2 mins ago</p>
-                    </div>
-                    <span class="inline-block px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-700">New</span>
-                  </div>
-                </li>
-                <li class="px-4 py-3 hover:bg-gray-50 transition">
-                  <div class="flex items-start gap-3">
-                    <div class="w-8 h-8 rounded-full bg-green-100 text-green-700 flex items-center justify-center">
-                      <i class="fi fi-ss-check-circle"></i>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                      <p class="text-sm text-gray-800 truncate">Verification request approved for Cabonting Architects.</p>
-                      <p class="text-xs text-gray-500">1 hour ago</p>
-                    </div>
-                  </div>
-                </li>
-                <li class="px-4 py-3 hover:bg-gray-50 transition">
-                  <div class="flex items-start gap-3">
-                    <div class="w-8 h-8 rounded-full bg-red-100 text-red-700 flex items-center justify-center">
-                      <i class="fi fi-ss-exclamation"></i>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                      <p class="text-sm text-gray-800 truncate">High-risk flag: Duplex Housing requires review.</p>
-                      <p class="text-xs text-gray-500">Yesterday</p>
-                    </div>
-                  </div>
-                </li>
-              </ul>
-              <div class="px-4 py-3 border-t border-gray-100">
-                <a href="{{ route('admin.settings.notifications') }}" class="text-sm text-indigo-600 hover:text-indigo-700">Notification settings</a>
-              </div>
-            </div>
-          </div>
+      <div class="nav-group">
+        <button class="nav-btn">
+          <div class="flex items-center gap-3"><i class="fi fi-sr-master-plan" style="font-size:20px"></i><span>Project Management</span></div>
+          <span class="arrow">▼</span>
+        </button>
+        <div class="nav-submenu">
+          <a href="{{ route('admin.projectManagement.listOfProjects') }}" class="submenu-link">List of Projects</a>
+          <a href="{{ route('admin.projectManagement.disputesReports') }}" class="submenu-link">Disputes/Reports</a>
+          <a href="{{ route('admin.projectManagement.messages') }}" class="submenu-link">Messages</a>
+          <a href="{{ route('admin.projectManagement.subscriptions') }}" class="submenu-link">Subscriptions & Boosts</a>
         </div>
-      </header>
+      </div>
 
-      <!-- Content -->
-      <section class="px-8 py-8 space-y-8">
-        <!-- Intro Banner -->
-        <div class="rounded-2xl border-2 border-indigo-100 bg-gradient-to-r from-indigo-50 via-purple-50 to-violet-50 p-5">
-          <div class="flex items-start gap-4">
-            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center shadow">
-              <i class="fi fi-ss-shield-check text-white"></i>
-            </div>
-            <div class="flex-1">
-              <h2 class="text-lg font-bold text-gray-800">Account Security & Access Control</h2>
-              <p class="text-sm text-gray-600">Protect your admin account with multi-factor authentication, monitor active sessions, review login history, and configure security policies.</p>
-            </div>
-            <div class="flex items-center gap-2">
-              <button id="exportSecurityLogBtn" class="px-4 py-2 rounded-lg bg-white border-2 border-gray-300 text-gray-700 text-sm font-semibold hover:bg-gray-50 transition flex items-center gap-2">
-                <i class="fi fi-rr-download"></i>
-                <span>Export Log</span>
-              </button>
-            </div>
-          </div>
+      <div class="nav-group">
+        <button class="nav-btn">
+          <div class="flex items-center gap-3"><i class="fi fi-br-settings-sliders" style="font-size:20px"></i><span>Settings</span></div>
+          <span class="arrow">▼</span>
+        </button>
+        <div class="nav-submenu">
+          <a href="{{ route('admin.settings.notifications') }}" class="submenu-link">Notifications</a>
+          <a href="{{ route('admin.settings.security') }}" class="submenu-link active">Security</a>
         </div>
+      </div>
+    </nav>
 
-        <!-- Account Information Card -->
-        <div class="bg-white rounded-2xl shadow-md border border-gray-200 overflow-hidden">
-          <div class="px-6 py-4 border-b bg-gradient-to-r from-orange-500 to-amber-500 text-white">
-            <div class="flex items-center gap-2 font-semibold"><i class="fi fi-ss-id-badge"></i><span>Account Information</span></div>
-            <p class="text-xs opacity-80 mt-1">Manage your profile details</p>
-          </div>
-          <div class="p-6">
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-              <!-- Avatar -->
-              <div class="flex flex-col items-center gap-3">
-                <div class="relative group">
-                  <img id="profileAvatar" src="https://via.placeholder.com/120x120.png?text=Avatar" alt="Avatar" class="w-28 h-28 rounded-full object-cover ring-4 ring-orange-100 shadow-md">
-                  <label for="avatarInput" class="absolute bottom-0 right-0 translate-x-1/4 translate-y-1/4 bg-white rounded-full p-2 shadow cursor-pointer border hover:shadow-md transition">
-                    <i class="fi fi-rr-pencil text-gray-700"></i>
-                  </label>
-                  <input id="avatarInput" type="file" accept="image/*" class="hidden" />
-                </div>
-                <p class="text-xs text-gray-500">PNG/JPG up to 2MB</p>
-              </div>
-
-              <!-- Fields -->
-              <div class="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div>
-                  <label class="block text-sm font-semibold text-gray-800 mb-2">Email</label>
-                  <input id="accountEmail" type="email" class="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 transition placeholder-gray-400" placeholder="olive@legatura.com" value="olive@legatura.com">
-                </div>
-                <div>
-                  <label class="block text-sm font-semibold text-gray-800 mb-2">Username</label>
-                  <input id="accountUsername" type="text" class="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-300 transition placeholder-gray-400" placeholder="olive" value="olive">
-                </div>
-                <div class="md:col-span-2 flex justify-end">
-                  <button id="saveProfileBtn" class="px-6 py-2.5 rounded-lg border-2 border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition">Save Profile</button>
-                </div>
-              </div>
-            </div>
-          </div>
+    <div class="mt-auto p-4">
+      <div class="user-card flex items-center gap-3 p-3 rounded-lg shadow-md text-white">
+        <div id="sidebarAvatar" class="w-10 h-10 rounded-full bg-white text-indigo-900 flex items-center justify-center font-bold shadow flex-shrink-0 text-sm overflow-hidden">
+          <span id="sidebarInitials">–</span>
+          <img id="sidebarAvatarImg" class="hidden w-full h-full object-cover rounded-full" alt="">
         </div>
-
-        <!-- Security Settings Card -->
-        <div class="bg-white rounded-2xl shadow-md border border-gray-200 overflow-hidden">
-          <div class="px-6 py-4 border-b bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
-            <div class="flex items-center gap-2 font-semibold"><i class="fi fi-ss-lock"></i><span>Security Settings</span></div>
-            <p class="text-xs opacity-80 mt-1">Update your password and authentication</p>
-          </div>
-          <div class="p-6 space-y-6">
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div class="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div>
-                  <label class="block text-sm font-semibold text-gray-800 mb-2">New Password</label>
-                  <div class="relative">
-                    <input id="newPassword" type="password" class="w-full pr-12 px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 transition" placeholder="••••••••">
-                    <button type="button" data-target="newPassword" class="toggle-visibility absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"><i class="fi fi-rr-eye"></i></button>
-                  </div>
-                </div>
-                <div>
-                  <label class="block text-sm font-semibold text-gray-800 mb-2">Confirm Password</label>
-                  <div class="relative">
-                    <input id="confirmPassword" type="password" class="w-full pr-12 px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 transition" placeholder="••••••••">
-                    <button type="button" data-target="confirmPassword" class="toggle-visibility absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"><i class="fi fi-rr-eye"></i></button>
-                  </div>
-                </div>
-                <div class="md:col-span-2">
-                  <div class="flex items-center justify-between text-xs text-gray-600 mb-2"><span>Password strength</span><span id="strengthLabel" class="font-semibold">Weak</span></div>
-                  <div class="strength-bar h-2 rounded-full bg-gray-200 overflow-hidden"><div id="strengthProgress" class="h-full w-1/12 bg-red-500 transition-all"></div></div>
-                </div>
-              </div>
-
-              <div class="space-y-3">
-                <div class="text-sm font-semibold text-gray-800">Requirements</div>
-                <ul id="requirementsList" class="space-y-2 text-sm">
-                  <li data-req="len" class="req-item flex items-center gap-2 text-gray-500"><i class="fi fi-rr-circle-small"></i>At least 8 characters</li>
-                  <li data-req="upper" class="req-item flex items-center gap-2 text-gray-500"><i class="fi fi-rr-circle-small"></i>Contains an uppercase letter</li>
-                  <li data-req="num" class="req-item flex items-center gap-2 text-gray-500"><i class="fi fi-rr-circle-small"></i>Contains a number</li>
-                  <li data-req="sym" class="req-item flex items-center gap-2 text-gray-500"><i class="fi fi-rr-circle-small"></i>Contains a symbol</li>
-                  <li data-req="match" class="req-item flex items-center gap-2 text-gray-500"><i class="fi fi-rr-circle-small"></i>Passwords match</li>
-                </ul>
-              </div>
-            </div>
-
-            <div class="flex items-center justify-end gap-3">
-              <button id="updatePasswordBtn" class="px-8 py-2.5 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold shadow-md hover:shadow-lg transition">Update Password</button>
-            </div>
-          </div>
+        <div class="flex-1 min-w-0">
+          <div id="sidebarName" class="font-semibold text-sm truncate">Loading…</div>
+          <div id="sidebarEmail" class="text-xs opacity-80 truncate">–</div>
         </div>
-
-        <!-- Two-Factor Authentication -->
-        <div class="bg-white rounded-2xl shadow-md border border-gray-200 overflow-hidden">
-          <div class="px-6 py-4 border-b bg-gradient-to-r from-emerald-500 to-teal-600 text-white">
-            <div class="flex items-center gap-2 font-semibold"><i class="fi fi-ss-mobile-notch"></i><span>Two-Factor Authentication</span></div>
-            <p class="text-xs opacity-80 mt-1">Add an extra layer of security to your account</p>
-          </div>
-          <div class="p-6">
-            <div class="flex items-start gap-6">
-              <div class="flex-shrink-0 w-16 h-16 rounded-xl bg-gradient-to-br from-emerald-100 to-teal-100 flex items-center justify-center">
-                <i class="fi fi-sr-shield-check text-emerald-600 text-2xl"></i>
-              </div>
-              <div class="flex-1">
-                <div class="flex items-center gap-3 mb-3">
-                  <h3 class="text-lg font-bold text-gray-800">Authenticator App (Recommended)</h3>
-                  <span id="twoFaStatus" class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600">Disabled</span>
-                </div>
-                <p class="text-sm text-gray-600 mb-4">Use an authenticator app like Google Authenticator or Authy to generate secure verification codes.</p>
-                <div class="flex items-center gap-3">
-                  <button id="enableTwoFaBtn" class="px-5 py-2.5 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold shadow-md transition">Enable 2FA</button>
-                  <button id="disableTwoFaBtn" class="hidden px-5 py-2.5 rounded-lg border-2 border-red-300 text-red-600 font-semibold hover:bg-red-50 transition">Disable 2FA</button>
-                  <button id="viewRecoveryCodesBtn" class="hidden px-5 py-2.5 rounded-lg border-2 border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition">Recovery Codes</button>
-                </div>
-              </div>
+        <div class="relative">
+          <button id="secUserMenuBtn" class="text-white opacity-80 hover:opacity-100 transition text-2xl w-8 h-8 flex items-center justify-center rounded-full">⋮</button>
+          <div id="secUserMenuDropdown" class="absolute right-0 bottom-full mb-2 w-44 bg-white text-gray-800 rounded-xl shadow-2xl border border-gray-200 hidden z-50">
+            <div class="px-4 py-3 border-b border-gray-100">
+              <div id="dropdownName" class="text-sm font-semibold truncate">–</div>
+              <div id="dropdownEmail" class="text-xs text-gray-500 truncate">–</div>
             </div>
-          </div>
-        </div>
-
-        <!-- Session Management -->
-        <div class="bg-white rounded-2xl shadow-md border border-gray-200 overflow-hidden">
-          <div class="px-6 py-4 border-b bg-gradient-to-r from-sky-500 to-blue-600 text-white">
-            <div class="flex items-center justify-between">
-              <div>
-                <div class="flex items-center gap-2 font-semibold"><i class="fi fi-ss-devices"></i><span>Active Sessions</span></div>
-                <p class="text-xs opacity-80 mt-1">Manage devices connected to your account</p>
-              </div>
-              <button id="logoutAllSessionsBtn" class="px-4 py-2 rounded-lg bg-white/20 hover:bg-white/30 text-white text-sm font-semibold transition">Logout All</button>
-            </div>
-          </div>
-          <div class="p-6">
-            <div class="space-y-4" id="activeSessions">
-              <!-- Current Session -->
-              <div class="session-item flex items-start gap-4 p-4 rounded-xl border-2 border-sky-100 bg-sky-50">
-                <div class="flex-shrink-0 w-12 h-12 rounded-lg bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center">
-                  <i class="fi fi-sr-laptop text-white text-xl"></i>
-                </div>
-                <div class="flex-1 min-w-0">
-                  <div class="flex items-center gap-2 mb-1">
-                    <h4 class="font-bold text-gray-800">Windows Desktop • Chrome</h4>
-                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">Current</span>
-                  </div>
-                  <p class="text-sm text-gray-600">Manila, Philippines • 192.168.1.100</p>
-                  <p class="text-xs text-gray-500 mt-1">Last active: Just now</p>
-                </div>
-              </div>
-
-              <!-- Other Sessions -->
-              <div class="session-item flex items-start gap-4 p-4 rounded-xl border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition">
-                <div class="flex-shrink-0 w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center">
-                  <i class="fi fi-sr-mobile text-gray-600 text-xl"></i>
-                </div>
-                <div class="flex-1 min-w-0">
-                  <h4 class="font-bold text-gray-800 mb-1">iPhone 14 • Safari</h4>
-                  <p class="text-sm text-gray-600">Quezon City, Philippines • 10.0.0.52</p>
-                  <p class="text-xs text-gray-500 mt-1">Last active: 2 hours ago</p>
-                </div>
-                <button class="revoke-session-btn flex-shrink-0 p-2 rounded-lg text-red-600 hover:bg-red-50 transition" title="Revoke">
-                  <i class="fi fi-rr-cross-circle"></i>
+            <ul class="py-1">
+              <li>
+                <a href="{{ route('admin.settings.security') }}" class="flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-50">
+                  <i class="fi fi-br-settings-sliders"></i>
+                  <span>Account settings</span>
+                </a>
+              </li>
+              <li>
+                <button id="secLogoutBtn" class="w-full text-left flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-50 text-red-600">
+                  <i class="fi fi-ss-exit"></i>
+                  <span>Logout</span>
                 </button>
-              </div>
+                  <form id="secLogoutForm" method="POST" action="/admin/logout" class="hidden">@csrf
+              </form>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </aside>
 
-              <div class="session-item flex items-start gap-4 p-4 rounded-xl border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition">
-                <div class="flex-shrink-0 w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center">
-                  <i class="fi fi-sr-tablet text-gray-600 text-xl"></i>
-                </div>
-                <div class="flex-1 min-w-0">
-                  <h4 class="font-bold text-gray-800 mb-1">iPad Pro • Safari</h4>
-                  <p class="text-sm text-gray-600">Manila, Philippines • 192.168.1.105</p>
-                  <p class="text-xs text-gray-500 mt-1">Last active: Yesterday</p>
-                </div>
-                <button class="revoke-session-btn flex-shrink-0 p-2 rounded-lg text-red-600 hover:bg-red-50 transition" title="Revoke">
-                  <i class="fi fi-rr-cross-circle"></i>
-                </button>
-              </div>
-            </div>
+  {{-- ── MAIN ── --}}
+  <main class="flex-1 overflow-y-auto">
+
+    <header class="bg-white shadow-sm border-b border-gray-200 flex items-center justify-between px-8 py-4 sticky top-0 z-30">
+      <h1 class="text-2xl font-semibold text-gray-800">Security Settings</h1>
+      <div class="flex items-center gap-6">
+        <div class="relative" style="width:600px">
+          <input type="text" placeholder="Search…"
+                 class="border border-gray-300 rounded-lg px-4 py-2 pr-10 focus:ring-2 focus:ring-indigo-400 focus:outline-none w-full">
+          <i class="fi fi-rr-search absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+        </div>
+        <div class="relative">
+          <button id="notificationBell" class="cursor-pointer w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition">
+            <i class="fi fi-ss-bell-notification-social-media" style="font-size:20px"></i>
+          </button>
+          <span class="absolute -top-1 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">3</span>
+        </div>
+      </div>
+    </header>
+
+    <section class="px-8 py-8 space-y-8">
+
+      {{-- ── ERROR BANNER ── --}}
+      <div id="globalError" class="hidden bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-5 py-4 flex items-start gap-3">
+        <i class="fi fi-ss-exclamation mt-0.5 flex-shrink-0"></i>
+        <div>
+          <p class="font-semibold">Failed to load account data</p>
+          <p id="globalErrorMsg" class="text-xs text-red-600 mt-1 font-mono"></p>
+        </div>
+      </div>
+
+      {{-- ── ACCOUNT INFORMATION ── --}}
+      <div class="bg-white rounded-2xl shadow border p-6">
+        <div class="flex items-center justify-between mb-6">
+          <h2 class="text-lg font-semibold">Account Information</h2>
+          <button id="openEditBtn"
+                  class="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-5 py-2 rounded-lg transition">
+            <i class="fi fi-sr-pencil" style="font-size:13px"></i> Edit Profile
+          </button>
+        </div>
+
+        {{-- Skeleton --}}
+        <div id="profileSkeleton" class="flex gap-6 items-start animate-pulse">
+          <div class="w-28 h-28 rounded-full bg-gray-200 flex-shrink-0"></div>
+          <div class="flex-1 grid grid-cols-3 gap-4 mt-2">
+            <div class="h-10 bg-gray-200 rounded-lg"></div>
+            <div class="h-10 bg-gray-200 rounded-lg"></div>
+            <div class="h-10 bg-gray-200 rounded-lg"></div>
+            <div class="h-10 bg-gray-200 rounded-lg col-span-1"></div>
+            <div class="h-10 bg-gray-200 rounded-lg col-span-1"></div>
           </div>
         </div>
 
-        <!-- Login History -->
-        <div class="bg-white rounded-2xl shadow-md border border-gray-200 overflow-hidden">
-          <div class="px-6 py-4 border-b bg-gradient-to-r from-violet-500 to-purple-600 text-white">
-            <div class="flex items-center justify-between">
-              <div>
-                <div class="flex items-center gap-2 font-semibold"><i class="fi fi-ss-time-past"></i><span>Login History</span></div>
-                <p class="text-xs opacity-80 mt-1">Review recent authentication attempts</p>
-              </div>
-              <button id="clearHistoryBtn" class="px-4 py-2 rounded-lg bg-white/20 hover:bg-white/30 text-white text-sm font-semibold transition">Clear History</button>
+        {{-- Real content --}}
+        <div id="profileDisplay" class="hidden flex gap-6 items-start">
+          <div class="flex-shrink-0 text-center">
+            <div class="relative inline-block">
+              <img id="profileAvatar" src=""
+                   class="w-28 h-28 rounded-full object-cover shadow border-2 border-indigo-100" alt="Avatar">
             </div>
+            <p id="profileMemberSince" class="text-xs text-gray-400 mt-2"></p>
           </div>
-          <div class="p-6">
-            <div class="overflow-hidden rounded-xl border border-gray-200">
-              <table class="w-full">
-                <thead class="bg-gray-50 border-b border-gray-200">
-                  <tr class="text-xs font-bold text-gray-600 uppercase tracking-wide">
-                    <th class="px-4 py-3 text-left">Status</th>
-                    <th class="px-4 py-3 text-left">Date & Time</th>
-                    <th class="px-4 py-3 text-left">Device</th>
-                    <th class="px-4 py-3 text-left">Location</th>
-                    <th class="px-4 py-3 text-left">IP Address</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-100" id="loginHistoryTable">
-                  <tr class="hover:bg-gray-50 transition">
-                    <td class="px-4 py-3">
-                      <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
-                        <i class="fi fi-sr-check-circle mr-1"></i>Success
-                      </span>
-                    </td>
-                    <td class="px-4 py-3 text-sm text-gray-800">Dec 2, 2025 09:15 AM</td>
-                    <td class="px-4 py-3 text-sm text-gray-600">Windows • Chrome</td>
-                    <td class="px-4 py-3 text-sm text-gray-600">Manila, PH</td>
-                    <td class="px-4 py-3 text-sm text-gray-600 font-mono">192.168.1.100</td>
-                  </tr>
-                  <tr class="hover:bg-gray-50 transition">
-                    <td class="px-4 py-3">
-                      <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
-                        <i class="fi fi-sr-check-circle mr-1"></i>Success
-                      </span>
-                    </td>
-                    <td class="px-4 py-3 text-sm text-gray-800">Dec 1, 2025 07:30 PM</td>
-                    <td class="px-4 py-3 text-sm text-gray-600">iPhone • Safari</td>
-                    <td class="px-4 py-3 text-sm text-gray-600">Quezon City, PH</td>
-                    <td class="px-4 py-3 text-sm text-gray-600 font-mono">10.0.0.52</td>
-                  </tr>
-                  <tr class="hover:bg-gray-50 transition">
-                    <td class="px-4 py-3">
-                      <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">
-                        <i class="fi fi-sr-cross-circle mr-1"></i>Failed
-                      </span>
-                    </td>
-                    <td class="px-4 py-3 text-sm text-gray-800">Nov 30, 2025 11:45 PM</td>
-                    <td class="px-4 py-3 text-sm text-gray-600">Unknown • Unknown</td>
-                    <td class="px-4 py-3 text-sm text-gray-600">Unknown</td>
-                    <td class="px-4 py-3 text-sm text-gray-600 font-mono">203.0.113.42</td>
-                  </tr>
-                  <tr class="hover:bg-gray-50 transition">
-                    <td class="px-4 py-3">
-                      <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
-                        <i class="fi fi-sr-check-circle mr-1"></i>Success
-                      </span>
-                    </td>
-                    <td class="px-4 py-3 text-sm text-gray-800">Nov 30, 2025 08:00 AM</td>
-                    <td class="px-4 py-3 text-sm text-gray-600">iPad • Safari</td>
-                    <td class="px-4 py-3 text-sm text-gray-600">Manila, PH</td>
-                    <td class="px-4 py-3 text-sm text-gray-600 font-mono">192.168.1.105</td>
-                  </tr>
-                </tbody>
-              </table>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 flex-1">
+            <div>
+              <span class="field-label">First Name</span>
+              <div id="dispFirstName" class="field-value">–</div>
+            </div>
+            <div>
+              <span class="field-label">Middle Name</span>
+              <div id="dispMiddleName" class="field-value">–</div>
+            </div>
+            <div>
+              <span class="field-label">Last Name</span>
+              <div id="dispLastName" class="field-value">–</div>
+            </div>
+            <div>
+              <span class="field-label">Email</span>
+              <div id="dispEmail" class="field-value">–</div>
+            </div>
+            <div>
+              <span class="field-label">Username</span>
+              <div id="dispUsername" class="field-value">–</div>
             </div>
           </div>
         </div>
+      </div>
 
-        <!-- Security Preferences -->
-        <div class="bg-white rounded-2xl shadow-md border border-gray-200 overflow-hidden">
-          <div class="px-6 py-4 border-b bg-gradient-to-r from-rose-500 to-pink-600 text-white">
-            <div class="flex items-center gap-2 font-semibold"><i class="fi fi-ss-settings-sliders"></i><span>Security Preferences</span></div>
-            <p class="text-xs opacity-80 mt-1">Configure authentication policies and alerts</p>
-          </div>
-          <div class="p-6 space-y-4">
-            <div class="setting-row flex items-center justify-between py-3 border-b border-gray-100">
-              <div>
-                <div class="font-medium text-gray-800">Email notifications for new logins</div>
-                <div class="text-xs text-gray-500">Get notified when your account is accessed from a new device</div>
-              </div>
-              <label class="switch">
-                <input type="checkbox" class="security-toggle" data-setting="login_notifications" checked>
-                <span class="slider"></span>
-              </label>
+      {{-- ── CHANGE PASSWORD ── --}}
+      <div class="bg-white rounded-2xl shadow border p-6">
+        <h2 class="text-lg font-semibold mb-6">Change Password</h2>
+        <form id="passwordForm" class="space-y-4">
+          @csrf
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label class="field-label">Current Password</label>
+              <input id="currentPassword" name="current_password" type="password"
+                     placeholder="Enter current password"
+                     class="border rounded-lg px-4 py-2 w-full focus:ring-2 focus:ring-indigo-400 focus:outline-none text-sm" required>
             </div>
-            <div class="setting-row flex items-center justify-between py-3 border-b border-gray-100">
-              <div>
-                <div class="font-medium text-gray-800">Require password for sensitive actions</div>
-                <div class="text-xs text-gray-500">Re-enter password when changing security settings</div>
+            <div>
+              <label class="field-label">New Password</label>
+              <input id="newPassword" name="new_password" type="password"
+                     placeholder="Min. 8 characters"
+                     class="border rounded-lg px-4 py-2 w-full focus:ring-2 focus:ring-indigo-400 focus:outline-none text-sm" required>
+              <div id="pwStrengthBar" class="hidden mt-1.5 h-1.5 rounded-full bg-gray-200 overflow-hidden">
+                <div id="pwStrengthFill" class="h-full rounded-full transition-all duration-300 w-0"></div>
               </div>
-              <label class="switch">
-                <input type="checkbox" class="security-toggle" data-setting="password_confirmation" checked>
-                <span class="slider"></span>
-              </label>
+              <p id="pwStrengthLabel" class="hidden text-xs mt-1 text-gray-400"></p>
             </div>
-            <div class="setting-row flex items-center justify-between py-3 border-b border-gray-100">
-              <div>
-                <div class="font-medium text-gray-800">Auto-logout on inactivity</div>
-                <div class="text-xs text-gray-500">Automatically sign out after 30 minutes of inactivity</div>
-              </div>
-              <label class="switch">
-                <input type="checkbox" class="security-toggle" data-setting="auto_logout">
-                <span class="slider"></span>
-              </label>
-            </div>
-            <div class="setting-row flex items-center justify-between py-3 border-b border-gray-100">
-              <div>
-                <div class="font-medium text-gray-800">Block suspicious login attempts</div>
-                <div class="text-xs text-gray-500">Prevent access from unrecognized locations or devices</div>
-              </div>
-              <label class="switch">
-                <input type="checkbox" class="security-toggle" data-setting="block_suspicious" checked>
-                <span class="slider"></span>
-              </label>
-            </div>
-            <div class="setting-row flex items-center justify-between py-3">
-              <div>
-                <div class="font-medium text-gray-800">Security audit log</div>
-                <div class="text-xs text-gray-500">Keep detailed logs of all security-related actions</div>
-              </div>
-              <label class="switch">
-                <input type="checkbox" class="security-toggle" data-setting="audit_log" checked>
-                <span class="slider"></span>
-              </label>
+            <div>
+              <label class="field-label">Confirm Password</label>
+              <input id="confirmPassword" name="new_password_confirmation" type="password"
+                     placeholder="Re-enter new password"
+                     class="border rounded-lg px-4 py-2 w-full focus:ring-2 focus:ring-indigo-400 focus:outline-none text-sm" required>
+              <p id="pwMatchMsg" class="hidden text-xs text-red-500 mt-1">Passwords do not match.</p>
             </div>
           </div>
+          <div id="pwError" class="hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-2"></div>
+          <button type="submit"
+                  class="bg-rose-600 hover:bg-rose-700 text-white text-sm font-medium px-6 py-2 rounded-lg transition flex items-center gap-2">
+            <span>Update Password</span>
+            <svg id="pwSpinner" class="hidden animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+            </svg>
+          </button>
+        </form>
+      </div>
+
+      {{-- ── ACTIVITY LOGS ── --}}
+      <div class="bg-white rounded-2xl shadow border p-6">
+        <div class="flex items-center justify-between mb-5">
+          <h2 class="text-lg font-semibold">Activity Logs</h2>
+          <span id="logCount" class="text-xs text-gray-400 bg-gray-100 px-3 py-1 rounded-full">loading…</span>
         </div>
+        <div class="overflow-x-auto rounded-xl border border-gray-100">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
+              <tr>
+                <th class="px-5 py-3 text-left font-semibold">Action</th>
+                <th class="px-5 py-3 text-left font-semibold">Details</th>
+                <th class="px-5 py-3 text-left font-semibold">IP Address</th>
+                <th class="px-5 py-3 text-left font-semibold">Date & Time</th>
+              </tr>
+            </thead>
+            <tbody id="activityTableBody">
+              <tr>
+                <td colspan="4" class="px-5 py-8 text-center">
+                  <div class="flex justify-center items-center gap-2 text-gray-400">
+                    <svg class="animate-spin h-4 w-4 text-indigo-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                    </svg>
+                    Loading logs…
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
 
-      </section>
+      {{-- ── DANGER ZONE ── --}}
+      <div class="bg-white rounded-2xl shadow border border-red-100 p-6">
+        <h2 class="text-base font-semibold text-red-600 mb-1">Danger Zone</h2>
+        <p class="text-sm text-gray-400 mb-4">Deleting your account will deactivate it permanently.</p>
+        <button id="deleteAccountBtn"
+                class="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium px-6 py-2 rounded-lg transition">
+          <i class="fi fi-ss-trash" style="font-size:13px"></i> Delete Account
+        </button>
+      </div>
 
-    </main>
-  
+    </section>
+  </main>
+</div>
 
-  <script src="{{ asset('js/admin/settings/security.js') }}" defer></script>
+{{-- ── EDIT PROFILE MODAL ── --}}
+<div id="editModal">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
+    <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+      <h3 class="text-base font-semibold">Edit Profile</h3>
+      <button id="closeEditBtn" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 text-xl transition">&times;</button>
+    </div>
 
+    <form id="profileForm" enctype="multipart/form-data" class="px-6 py-5 space-y-4">
+      @csrf
+
+      {{-- Avatar --}}
+      <div class="flex items-center gap-4">
+        <div class="relative">
+          <img id="modalAvatar" src=""
+               class="w-20 h-20 rounded-full object-cover border-2 border-indigo-200 shadow" alt="">
+          <label for="avatarInput"
+                 class="absolute -bottom-1 -right-1 w-7 h-7 bg-indigo-600 hover:bg-indigo-700 rounded-full flex items-center justify-center cursor-pointer shadow transition">
+            <i class="fi fi-ss-camera text-white" style="font-size:11px"></i>
+          </label>
+          <input id="avatarInput" name="avatar" type="file" accept="image/*" class="hidden">
+        </div>
+        <div>
+          <p class="text-xs text-gray-500 font-medium">Change profile picture</p>
+          <p class="text-xs text-gray-400">JPG, PNG up to 2 MB</p>
+        </div>
+      </div>
+
+      {{-- Names --}}
+      <div class="grid grid-cols-3 gap-3">
+        <div>
+          <label class="field-label">First Name <span class="text-red-500">*</span></label>
+          <input id="editFirstName" name="first_name" type="text"
+                 class="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-indigo-400 focus:outline-none text-sm" required>
+        </div>
+        <div>
+          <label class="field-label">Middle Name</label>
+          <input id="editMiddleName" name="middle_name" type="text"
+                 class="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-indigo-400 focus:outline-none text-sm">
+        </div>
+        <div>
+          <label class="field-label">Last Name <span class="text-red-500">*</span></label>
+          <input id="editLastName" name="last_name" type="text"
+                 class="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-indigo-400 focus:outline-none text-sm" required>
+        </div>
+      </div>
+
+      {{-- Email / Username --}}
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="field-label">Email <span class="text-red-500">*</span></label>
+          <input id="editEmail" name="email" type="email"
+                 class="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-indigo-400 focus:outline-none text-sm" required>
+        </div>
+        <div>
+          <label class="field-label">Username <span class="text-red-500">*</span></label>
+          <input id="editUsername" name="username" type="text"
+                 class="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-indigo-400 focus:outline-none text-sm" required>
+        </div>
+      </div>
+
+      <div id="profileError" class="hidden text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-4 py-2"></div>
+
+      <div class="flex justify-end gap-3 pt-1">
+        <button type="button" id="cancelEditBtn"
+                class="px-5 py-2 text-sm rounded-lg border border-gray-200 hover:bg-gray-50 transition text-gray-600">
+          Cancel
+        </button>
+        <button type="submit" id="saveProfileBtn"
+                class="px-6 py-2 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition flex items-center gap-2">
+          <span>Save Changes</span>
+          <svg id="savingSpinner" class="hidden animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+          </svg>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+
+  // ── CSRF token (must exist in <head> meta tag) ──
+  const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+  const csrf = csrfMeta ? csrfMeta.content : '';
+
+  // ── Avatar helper — never loads /img/default-avatar.png ──────
+  // Shows a real <img> when a storage path exists, otherwise replaces
+  // the element with an initials-based coloured circle so no HTTP
+  // request is made for a file that may not exist.
+  function setAvatar(imgId, picPath, firstName, lastName, sizeClasses = 'w-16 h-16 text-xl') {
+    const img = document.getElementById(imgId);
+    if (!img) return;
+
+    if (picPath) {
+      img.onload = () => {
+        img.classList.remove('hidden');
+        // Hide sibling initials placeholder if any
+        const sib = img.parentElement?.querySelector('[data-initials]');
+        if (sib) sib.classList.add('hidden');
+      };
+      img.onerror = () => {
+        // Storage file missing — swap to initials without any further requests
+        img.classList.add('hidden');
+        showInitialsPlaceholder(img, firstName, lastName, sizeClasses);
+      };
+      img.src = '/storage/' + picPath;
+    } else {
+      img.classList.add('hidden');
+      showInitialsPlaceholder(img, firstName, lastName, sizeClasses);
+    }
+  }
+
+  function showInitialsPlaceholder(img, firstName, lastName, sizeClasses) {
+    // Re-use existing placeholder if already injected
+    let placeholder = img.parentElement?.querySelector('[data-initials]');
+    if (!placeholder) {
+      placeholder = document.createElement('div');
+      placeholder.setAttribute('data-initials', '1');
+      placeholder.className = `${sizeClasses} rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center flex-shrink-0`;
+      img.parentElement?.insertBefore(placeholder, img);
+    }
+    placeholder.textContent = initials(firstName, lastName);
+    placeholder.classList.remove('hidden');
+  }
+
+  // ── Toast ──────────────────────────────────────
+  function toast(msg, type = 'success', duration = 3500) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = `show ${type}`;
+    setTimeout(() => { el.className = ''; }, duration);
+  }
+
+  // ── Safe fetch wrapper – returns {ok, status, data} ──
+  async function apiFetch(url, options = {}) {
+    const defaults = {
+      headers: {
+        'X-CSRF-TOKEN': csrf,
+        'X-Requested-With': 'XMLHttpRequest',
+        'Accept': 'application/json',
+        ...(options.headers || {}),
+      },
+    };
+    // Don't set Content-Type for FormData – browser sets it with boundary
+    if (options.body instanceof FormData) {
+      delete defaults.headers['Content-Type'];
+    }
+    try {
+      const res = await fetch(url, { ...options, ...defaults });
+      let data;
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        data = await res.json();
+      } else {
+        // Got HTML (likely a redirect to login page or a Laravel error page)
+        const text = await res.text();
+        if (res.status === 302 || text.includes('<form') || text.includes('login')) {
+          return { ok: false, status: res.status, data: { success: false, message: 'Session expired. Please log in again.' }, redirect: true };
+        }
+        return { ok: false, status: res.status, data: { success: false, message: `Server returned non-JSON (${res.status}). Check console.` } };
+      }
+      return { ok: res.ok, status: res.status, data };
+    } catch (err) {
+      return { ok: false, status: 0, data: { success: false, message: 'Network error: ' + err.message } };
+    }
+  }
+
+  // ── Helpers ────────────────────────────────────
+  function esc(str) {
+    return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function formatDate(str) {
+    if (!str) return '–';
+    try {
+      return new Date(str).toLocaleString('en-PH', { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+    } catch { return str; }
+  }
+
+  function initials(first, last) {
+    return ((first?.[0] ?? '') + (last?.[0] ?? '')).toUpperCase() || '?';
+  }
+
+  function badgeFor(action) {
+    const map = {
+      profile_updated:  ['badge-profile',  '👤 Profile Updated'],
+      password_changed: ['badge-password', '🔑 Password Changed'],
+      account_deleted:  ['badge-deleted',  '🗑 Account Deleted'],
+    };
+    const [cls, label] = map[action] ?? ['badge-default', esc(action).replace(/_/g,' ')];
+    return `<span class="action-badge ${cls}">${label}</span>`;
+  }
+
+  function prettyDetails(raw) {
+    if (!raw) return '<span class="text-gray-300">–</span>';
+    try {
+      const obj = JSON.parse(raw);
+      return Object.entries(obj)
+        .map(([k, v]) => `<span class="font-medium text-gray-500">${esc(k)}:</span> ${esc(v)}`)
+        .join(' &nbsp;·&nbsp; ');
+    } catch { return esc(raw); }
+  }
+
+  // ── Load profile + logs ────────────────────────
+  async function loadData() {
+    const { ok, data, redirect } = await apiFetch('/admin/settings/security/data');
+
+    if (redirect) { window.location.href = '/login'; return; }
+
+    if (!ok || !data.success) {
+      document.getElementById('globalError').classList.remove('hidden');
+      document.getElementById('globalErrorMsg').textContent = data.message || 'Unknown error.';
+      document.getElementById('profileSkeleton').classList.add('hidden');
+      document.getElementById('logCount').textContent = 'error';
+      document.getElementById('activityTableBody').innerHTML =
+        `<tr><td colspan="4" class="px-5 py-6 text-center text-red-400 text-sm">${esc(data.message || 'Could not load logs.')}</td></tr>`;
+      return;
+    }
+
+    const a = data.data.admin;
+
+    // ── Sidebar ──
+    const fullName = [a.first_name, a.last_name].filter(Boolean).join(' ');
+    document.getElementById('sidebarName').textContent   = fullName || 'Admin';
+    document.getElementById('sidebarEmail').textContent  = a.email  || '–';
+    document.getElementById('dropdownName').textContent  = fullName || 'Admin';
+    document.getElementById('dropdownEmail').textContent = a.email  || '–';
+    if (a.profile_pic) {
+      const img = document.getElementById('sidebarAvatarImg');
+      img.onload = () => {
+        document.getElementById('sidebarInitials').classList.add('hidden');
+        img.classList.remove('hidden');
+      };
+      img.onerror = () => {
+        // Storage file missing — fall back to initials silently
+        img.classList.add('hidden');
+        document.getElementById('sidebarInitials').textContent = initials(a.first_name, a.last_name);
+        document.getElementById('sidebarInitials').classList.remove('hidden');
+      };
+      img.src = '/storage/' + a.profile_pic;
+    } else {
+      document.getElementById('sidebarInitials').textContent = initials(a.first_name, a.last_name);
+    }
+
+    // ── Profile card ──
+    // Set avatars — use initials placeholder if no profile pic (avoids broken-image loop)
+    setAvatar('profileAvatar', a.profile_pic, a.first_name, a.last_name, 'w-28 h-28 text-2xl');
+    setAvatar('modalAvatar',   a.profile_pic, a.first_name, a.last_name, 'w-20 h-20 text-xl');
+
+    document.getElementById('dispFirstName').textContent  = a.first_name  || '–';
+    document.getElementById('dispMiddleName').textContent = a.middle_name || '–';
+    document.getElementById('dispLastName').textContent   = a.last_name   || '–';
+    document.getElementById('dispEmail').textContent      = a.email       || '–';
+    document.getElementById('dispUsername').textContent   = a.username    || '–';
+
+    if (a.created_at) {
+      const d = new Date(a.created_at);
+      document.getElementById('profileMemberSince').textContent =
+        'Member since ' + d.toLocaleDateString('en-PH', { year:'numeric', month:'long', day:'numeric' });
+    }
+
+    // Pre-fill modal inputs
+    document.getElementById('editFirstName').value  = a.first_name  || '';
+    document.getElementById('editMiddleName').value = a.middle_name || '';
+    document.getElementById('editLastName').value   = a.last_name   || '';
+    document.getElementById('editEmail').value      = a.email       || '';
+    document.getElementById('editUsername').value   = a.username    || '';
+
+    // Show real content
+    document.getElementById('profileSkeleton').classList.add('hidden');
+    document.getElementById('profileDisplay').classList.remove('hidden');
+
+    // ── Logs ──
+    renderLogs(data.data.logs);
+  }
+
+  function renderLogs(logs) {
+    const tbody = document.getElementById('activityTableBody');
+    document.getElementById('logCount').textContent = logs.length ? logs.length + ' records' : '0 records';
+
+    if (!logs.length) {
+      tbody.innerHTML = `<tr><td colspan="4" class="px-5 py-10 text-center text-gray-400 text-sm">No activity recorded yet. Actions like editing your profile or changing your password will appear here.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = logs.map(log => `
+      <tr class="border-t border-gray-50 hover:bg-gray-50/60 transition">
+        <td class="px-5 py-3">${badgeFor(log.action)}</td>
+        <td class="px-5 py-3 text-gray-500 text-xs max-w-xs">${prettyDetails(log.details)}</td>
+        <td class="px-5 py-3 font-mono text-xs text-gray-400">${esc(log.ip_address ?? '–')}</td>
+        <td class="px-5 py-3 text-xs text-gray-400">${formatDate(log.created_at)}</td>
+      </tr>
+    `).join('');
+  }
+
+  // ── Modal open/close ───────────────────────────
+  const modal = document.getElementById('editModal');
+
+  document.getElementById('openEditBtn').addEventListener('click', () => {
+    document.getElementById('profileError').classList.add('hidden');
+    modal.classList.add('open');
+  });
+  ['closeEditBtn','cancelEditBtn'].forEach(id =>
+    document.getElementById(id)?.addEventListener('click', () => modal.classList.remove('open'))
+  );
+  modal.addEventListener('click', e => { if (e.target === modal) modal.classList.remove('open'); });
+
+  // ── Avatar preview ─────────────────────────────
+  document.getElementById('avatarInput').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const src = ev.target.result;
+      const modal   = document.getElementById('modalAvatar');
+      const profile = document.getElementById('profileAvatar');
+      // Show as <img> when user picks a file (it's a valid data URL)
+      modal.classList.remove('hidden');   profile.classList.remove('hidden');
+      modal.src = src; profile.src = src;
+      // Hide any initials placeholder siblings
+      modal.previousElementSibling?.classList?.add('hidden');
+    };
+    reader.readAsDataURL(file);
+  });
+
+  // ── Profile form submit ────────────────────────
+  document.getElementById('profileForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const errEl  = document.getElementById('profileError');
+    const spinner= document.getElementById('savingSpinner');
+    const saveBtn= document.getElementById('saveProfileBtn');
+    errEl.classList.add('hidden');
+    spinner.classList.remove('hidden');
+    saveBtn.disabled = true;
+
+    const { ok, data, redirect } = await apiFetch('/admin/settings/security/update', {
+      method: 'POST',
+      body: new FormData(e.target),
+    });
+
+    spinner.classList.add('hidden');
+    saveBtn.disabled = false;
+
+    if (redirect) { window.location.href = '/login'; return; }
+
+    if (ok && data.success) {
+      modal.classList.remove('open');
+      toast('Profile updated successfully.');
+      loadData();
+    } else {
+      errEl.textContent = data.message || 'Update failed. Please try again.';
+      errEl.classList.remove('hidden');
+    }
+  });
+
+  // ── Password strength ──────────────────────────
+  document.getElementById('newPassword').addEventListener('input', e => {
+    const v = e.target.value;
+    const bar   = document.getElementById('pwStrengthBar');
+    const fill  = document.getElementById('pwStrengthFill');
+    const label = document.getElementById('pwStrengthLabel');
+    if (!v) { bar.classList.add('hidden'); label.classList.add('hidden'); return; }
+    bar.classList.remove('hidden'); label.classList.remove('hidden');
+    const hasUpper  = /[A-Z]/.test(v);
+    const hasNum    = /[0-9]/.test(v);
+    const hasSymbol = /[^A-Za-z0-9]/.test(v);
+    const score = (v.length >= 8 ? 1 : 0) + (hasUpper ? 1 : 0) + (hasNum ? 1 : 0) + (hasSymbol ? 1 : 0);
+    if (score <= 1)      { fill.style.width='25%'; fill.className='h-full rounded-full transition-all duration-300 bg-red-400';    label.textContent='Weak'; label.className='text-xs mt-1 text-red-500'; }
+    else if (score <= 2) { fill.style.width='55%'; fill.className='h-full rounded-full transition-all duration-300 bg-yellow-400'; label.textContent='Fair'; label.className='text-xs mt-1 text-yellow-500'; }
+    else if (score === 3){ fill.style.width='75%'; fill.className='h-full rounded-full transition-all duration-300 bg-blue-400';   label.textContent='Good'; label.className='text-xs mt-1 text-blue-500'; }
+    else                 { fill.style.width='100%';fill.className='h-full rounded-full transition-all duration-300 bg-green-500';  label.textContent='Strong'; label.className='text-xs mt-1 text-green-600'; }
+  });
+
+  document.getElementById('confirmPassword').addEventListener('input', () => {
+    const match = document.getElementById('newPassword').value === document.getElementById('confirmPassword').value;
+    document.getElementById('pwMatchMsg').classList.toggle('hidden', match || !document.getElementById('confirmPassword').value);
+  });
+
+  // ── Password form ──────────────────────────────
+  document.getElementById('passwordForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const errEl  = document.getElementById('pwError');
+    const spinner= document.getElementById('pwSpinner');
+    const btn    = e.target.querySelector('button[type=submit]');
+    errEl.classList.add('hidden');
+
+    if (document.getElementById('newPassword').value !== document.getElementById('confirmPassword').value) {
+      errEl.textContent = 'New password and confirmation do not match.';
+      errEl.classList.remove('hidden');
+      return;
+    }
+
+    spinner.classList.remove('hidden');
+    btn.disabled = true;
+
+    const { ok, data, redirect } = await apiFetch('/admin/settings/security/change-password', {
+      method: 'POST',
+      body: new FormData(e.target),
+    });
+
+    spinner.classList.add('hidden');
+    btn.disabled = false;
+
+    if (redirect) { window.location.href = '/login'; return; }
+
+    if (ok && data.success) {
+      toast('Password changed successfully.');
+      e.target.reset();
+      document.getElementById('pwStrengthBar').classList.add('hidden');
+      document.getElementById('pwStrengthLabel').classList.add('hidden');
+      loadData();
+    } else {
+      errEl.textContent = data.message || 'Failed to change password.';
+      errEl.classList.remove('hidden');
+    }
+  });
+
+  // ── Delete account ─────────────────────────────
+  document.getElementById('deleteAccountBtn').addEventListener('click', async () => {
+    if (!confirm('Are you sure? This will permanently deactivate your admin account.')) return;
+
+    const { ok, data } = await apiFetch('/admin/settings/security/delete', { method: 'POST' });
+    if (ok && data.success) {
+      window.location.href = '/login';
+    } else {
+      toast(data.message || 'Could not delete account.', 'error');
+    }
+  });
+
+  // ── Sidebar user menu ─────────────────────────
+  const _menuBtn      = document.getElementById('secUserMenuBtn');
+  const _menuDropdown = document.getElementById('secUserMenuDropdown');
+
+  _menuBtn?.addEventListener('click', e => {
+    e.stopPropagation();
+    _menuDropdown.classList.toggle('hidden');
+  });
+
+  // Close when clicking OUTSIDE the dropdown — check target, not just any click
+  document.addEventListener('click', e => {
+    if (_menuDropdown && !_menuDropdown.classList.contains('hidden')) {
+      if (!_menuDropdown.contains(e.target) && !_menuBtn.contains(e.target)) {
+        _menuDropdown.classList.add('hidden');
+      }
+    }
+  });
+
+  // ── Logout ─────────────────────────────────────
+  document.getElementById('secLogoutBtn')?.addEventListener('click', e => {
+    e.stopPropagation();
+    document.getElementById('secLogoutForm').submit();
+  });
+
+  // ── Boot ───────────────────────────────────────
+  loadData();
+});
+
+</script>
 </body>
-
 </html>

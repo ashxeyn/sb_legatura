@@ -22,6 +22,29 @@ use App\Http\Controllers\Admin\projectManagementController;
 use App\Http\Controllers\message\broadcastAuthController;
 use App\Http\Controllers\passwordController;
 
+Route::prefix('admin/settings/security')
+     ->middleware([\App\Http\Middleware\AdminAuthMiddleware::class])
+     ->group(function () {
+
+    // ── VIEW ──────────────────────────────────────────────────────────────────
+    Route::get('/', function () {
+        return view('admin.settings.security');
+    })->name('admin.settings.security');
+
+    // ── JSON ENDPOINTS ────────────────────────────────────────────────────────
+    Route::get( '/data',            [\App\Http\Controllers\Admin\AccountController::class, 'data'])
+         ->name('admin.settings.security.data');
+
+    Route::post('/update',          [\App\Http\Controllers\Admin\AccountController::class, 'update'])
+         ->name('admin.settings.security.update');
+
+    Route::post('/change-password', [\App\Http\Controllers\Admin\AccountController::class, 'changePassword'])
+         ->name('admin.settings.security.changePassword');
+
+    Route::post('/delete',          [\App\Http\Controllers\Admin\AccountController::class, 'delete'])
+         ->name('admin.settings.security.delete');
+});
+
 Route::post('/admin/global-management/ai-management/analyze/{id}', [globalManagementController::class, 'analyzeProject']);
 
 Route::get('/', function () {
@@ -470,9 +493,12 @@ Route::get('/admin/settings/notifications', function () {
     return view('admin.settings.notifications');
 })->name('admin.settings.notifications');
 
-Route::get('/admin/settings/security', function () {
-    return view('admin.settings.security');
-})->name('admin.settings.security');
+// NOTE: The main admin/settings/security routes are defined earlier with AdminAuthMiddleware
+// This is a fallback route - but we should NOT have it without the middleware
+// Commenting this out to avoid duplicate route definitions without middleware
+// Route::get('/admin/settings/security', function () {
+//     return view('admin.settings.security');
+// })->name('admin.settings.security');
 
 // =============================================
 // ADMIN API ROUTES
