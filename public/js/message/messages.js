@@ -134,27 +134,27 @@ function initializePusher() {
         const userId = getUserId();
 
         if (!userId) {
-            // console.log('Pusher: No user ID found, skipping initialization');
+            console.log('Pusher: No user ID found, skipping initialization');
             updatePusherStatus('disconnected', 'Not authenticated');
             return;
         }
 
-        // console.log('Pusher: Initializing for user ID:', userId);
-        // console.log('Pusher: Subscribing to channel:', `chat.${userId}`);
+        console.log('Pusher: Initializing for user ID:', userId);
+        console.log('Pusher: Subscribing to channel:', `chat.${userId}`);
         updatePusherStatus('connecting', 'Connecting...');
 
         // Listen for incoming messages on user's private channel
         window.Echo.private(`chat.${userId}`)
             .listen('.message.sent', (event) => {
-                // console.log('Pusher: Message received!', event);
+                console.log('Pusher: Message received!', event);
                 handleIncomingMessage(event);
             })
             .listen('.messages.read', (event) => {
-                // console.log('Pusher: Messages marked as read!', event);
+                console.log('Pusher: Messages marked as read!', event);
                 handleMessagesRead(event);
             })
             .listen('.conversation.suspended', (event) => {
-                // console.log('Pusher: Conversation suspended/unsuspended!', event);
+                console.log('Pusher: Conversation suspended/unsuspended!', event);
                 handleConversationSuspension(event);
             })
             .listen('client-typing', (event) => {
@@ -166,12 +166,12 @@ function initializePusher() {
                 handleTypingEvent(event);
             })
             .subscribed(() => {
-                // console.log('Pusher: Successfully subscribed to channel chat.' + userId);
+                console.log('Pusher: Successfully subscribed to channel chat.' + userId);
                 updatePusherStatus('connected', 'Real-time enabled');
             })
             .error((error) => {
                 console.error('Pusher channel subscription failed:', error);
-                // console.info('Tip: Make sure PUSHER credentials are set in .env and queue worker is running');
+                console.info('Tip: Make sure PUSHER credentials are set in .env and queue worker is running');
                 updatePusherStatus('error', 'Connection failed');
             });
 
@@ -599,41 +599,8 @@ function checkSuspensionState(conversation) {
             attachmentBtn.classList.add('opacity-50', 'cursor-not-allowed');
         }
 
-        // Show suspension notice
-        const notice = document.createElement('div');
-        notice.id = 'suspensionNotice';
-        notice.className = 'px-4 py-3 bg-red-50 border-l-4 border-red-500 text-sm text-red-800';
-
-        let suspensionMessage = 'This conversation has been suspended.';
-
-        // Check if there's a suspended_until date
-        if (conversation.suspended_until) {
-            const suspendedUntil = new Date(conversation.suspended_until);
-            const now = new Date();
-
-            if (suspendedUntil > now) {
-                const options = {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                };
-                suspensionMessage = `This conversation is suspended until ${suspendedUntil.toLocaleDateString('en-US', options)}. No messages can be sent during this period.`;
-            }
-        } else {
-            suspensionMessage = 'This conversation has been permanently suspended. No messages can be sent.';
-        }
-
-        if (conversation.reason) {
-            suspensionMessage += `<br><strong>Reason:</strong> ${conversation.reason}`;
-        }
-
-        notice.innerHTML = suspensionMessage;
-        const messagesDisplay = document.getElementById('messagesDisplay');
-        if (messagesDisplay && inputContainer) {
-            messagesDisplay.parentElement?.insertBefore(notice, inputContainer);
-        }
+        // Show suspension info modal
+        showSuspensionInfoModal(conversation);
 
         // Show unsuspend button only in flagged or suspended filter, hide suspend button
         // console.log('Conversation is suspended - showing unsuspend button');
@@ -669,6 +636,97 @@ function checkSuspensionState(conversation) {
         }
         document.getElementById('restoreConversationBtn')?.classList.add('hidden');
     }
+}
+
+/**
+ * Show suspension info modal when opening a suspended conversation
+ */
+function showSuspensionInfoModal(conversation) {
+    // Remove existing modal if any
+    const existingModal = document.getElementById('suspensionInfoModal');
+    if (existingModal) existingModal.remove();
+
+    // Parse the reason to extract offense level and violation details
+    const reasonText = conversation.reason || 'No reason provided';
+    let offenseLevel = '';
+    let violationReason = reasonText;
+
+    // Check if reason contains offense level (format: "1st offense - 7 days ban: violation")
+    const offenseMatch = reasonText.match(/^(\d+(?:st|nd|rd|th)\s+offense\s+-\s+[^:]+):\s*(.+)$/i);
+    if (offenseMatch) {
+        offenseLevel = offenseMatch[1].trim(); // "1st offense - 7 days ban"
+        violationReason = offenseMatch[2].trim(); // The actual violation reason
+    }
+
+    // Build suspension details
+    let suspendedUntilText = 'Permanently suspended';
+    if (conversation.suspended_until) {
+        const suspendedUntil = new Date(conversation.suspended_until);
+        const now = new Date();
+        if (suspendedUntil > now) {
+            const options = {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            };
+            suspendedUntilText = suspendedUntil.toLocaleDateString('en-US', options);
+        } else {
+            suspendedUntilText = 'Suspension period has ended';
+        }
+    }
+
+    // Create modal
+    const modal = document.createElement('div');
+    modal.id = 'suspensionInfoModal';
+    modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50';
+    modal.innerHTML = `
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full mx-4 overflow-hidden">
+            <div class="bg-red-500 px-6 py-4">
+                <div class="flex items-center gap-3">
+                    <i class="fi fi-sr-ban text-white text-2xl"></i>
+                    <h3 class="text-xl font-bold text-white">Conversation Suspended</h3>
+                </div>
+            </div>
+            <div class="p-6 space-y-4">
+                ${offenseLevel ? `
+                    <div class="bg-red-50 border-l-4 border-red-500 px-4 py-3 rounded">
+                        <p class="text-red-800 font-semibold">${escapeHtml(offenseLevel)}</p>
+                    </div>
+                ` : ''}
+                <div>
+                    <label class="text-sm font-medium text-gray-500 block mb-2">Violation Reason</label>
+                    <div class="text-gray-800 bg-gray-50 rounded-lg p-4 border border-gray-200">
+                        ${escapeHtml(violationReason)}
+                    </div>
+                </div>
+                <div>
+                    <label class="text-sm font-medium text-gray-500 block mb-1">Suspended Until</label>
+                    <p class="text-gray-800 bg-gray-50 rounded-lg p-3 flex items-center gap-2 border border-gray-200">
+                        <i class="fi fi-rr-calendar text-gray-400"></i>
+                        ${escapeHtml(suspendedUntilText)}
+                    </p>
+                </div>
+                <p class="text-sm text-gray-500 italic">Messages cannot be sent in this conversation while it is suspended.</p>
+            </div>
+            <div class="px-6 py-4 bg-gray-50 flex justify-end">
+                <button onclick="document.getElementById('suspensionInfoModal').remove()"
+                        class="px-4 py-2 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition font-medium">
+                    Close
+                </button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Close on backdrop click
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
 }
 
 /**
@@ -715,12 +773,11 @@ function renderMessages(messages, conversationData = null) {
         const isSent = msg.sender.id === alignmentUserId;
         const bubbleClass = isSent ? 'message-bubble-sent' : 'message-bubble-received';
         const alignClass = isSent ? 'justify-end' : 'justify-start';
+        const flaggedBubbleClass = msg.is_flagged ? 'flagged-message-bubble' : '';
 
-        // Flagged message styling and tooltip
-        let flaggedStyle = '';
+        // Flagged message tooltip
         let flaggedTooltip = '';
         if (msg.is_flagged) {
-            flaggedStyle = 'border-2 border-amber-500 bg-amber-50';
             flaggedTooltip = msg.flag_reason || 'Flagged';
         }
 
@@ -728,7 +785,7 @@ function renderMessages(messages, conversationData = null) {
             <div class="flex ${alignClass} mb-4" data-message-id="${msg.message_id}">
                 ${!isSent ? `<img src="${msg.sender.avatar}" class="w-8 h-8 rounded-full mr-2" alt="${msg.sender.name}">` : ''}
                 <div class="max-w-[70%]">
-                    <div class="${bubbleClass} ${flaggedStyle} relative" ${msg.is_flagged ? `title="🚩 ${flaggedTooltip}"` : ''}>
+                    <div class="${bubbleClass} ${flaggedBubbleClass} relative" ${msg.is_flagged ? `title="🚩 ${flaggedTooltip}"` : ''}>
                         <p class="text-sm">${escapeHtml(msg.content)}</p>
                         ${msg.attachments.length > 0 ? renderAttachments(msg.attachments) : ''}
                         ${msg.is_flagged && isAdmin() ? `
@@ -1216,12 +1273,11 @@ function appendMessage(messageData) {
     const isSent = messageData.sender.id === alignmentUserId;
     const bubbleClass = isSent ? 'message-bubble-sent' : 'message-bubble-received';
     const alignClass = isSent ? 'justify-end' : 'justify-start';
+    const flaggedBubbleClass = messageData.is_flagged ? 'flagged-message-bubble' : '';
 
-    // Flagged message styling
-    let flaggedStyle = '';
+    // Flagged message tooltip
     let flaggedTooltip = '';
     if (messageData.is_flagged) {
-        flaggedStyle = 'border-2 border-amber-500 bg-amber-50';
         flaggedTooltip = messageData.flag_reason || 'Flagged';
     }
 
@@ -1229,7 +1285,7 @@ function appendMessage(messageData) {
         <div class="flex ${alignClass} mb-4" data-message-id="${messageData.message_id}">
             ${!isSent ? `<img src="${messageData.sender.avatar}" class="w-8 h-8 rounded-full mr-2" alt="${messageData.sender.name}">` : ''}
             <div class="max-w-[70%]">
-                <div class="${bubbleClass} ${flaggedStyle} relative group" ${messageData.is_flagged ? `title="🚩 ${flaggedTooltip}"` : ''}>
+                <div class="${bubbleClass} ${flaggedBubbleClass} relative group" ${messageData.is_flagged ? `title="🚩 ${flaggedTooltip}"` : ''}>
                     <p class="text-sm">${escapeHtml(messageData.content)}</p>
                     ${messageData.attachments?.length > 0 ? renderAttachments(messageData.attachments) : ''}
                     ${messageData.is_flagged && isAdmin() ? `

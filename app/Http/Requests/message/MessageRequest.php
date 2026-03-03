@@ -105,7 +105,10 @@ class MessageRequest extends FormRequest
         if (!$userId) {
             $sessionUser = session('user');
             if ($sessionUser) {
-                $userId = $sessionUser->admin_id ?? $sessionUser->user_id ?? $sessionUser->id ?? null;
+                // admin_id is now VARCHAR ('ADMIN-1') — extract numeric part
+                $userId = isset($sessionUser->admin_id)
+                    ? (int) preg_replace('/[^0-9]/', '', $sessionUser->admin_id)
+                    : ($sessionUser->user_id ?? $sessionUser->id ?? null);
             }
         }
 

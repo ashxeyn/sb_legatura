@@ -59,8 +59,10 @@ class broadcastAuthController extends Controller
         if (!$currentUserId) {
             $sessionUser = session('user');
             if ($sessionUser) {
-                // Admin users: admin_id, Regular users: user_id or id
-                $currentUserId = $sessionUser->admin_id ?? $sessionUser->user_id ?? $sessionUser->id ?? null;
+                // Admin users: admin_id is VARCHAR ('ADMIN-1') — extract numeric part; Regular users: user_id or id
+                $currentUserId = isset($sessionUser->admin_id)
+                    ? (int) preg_replace('/[^0-9]/', '', $sessionUser->admin_id)
+                    : ($sessionUser->user_id ?? $sessionUser->id ?? null);
             }
         }
 
@@ -76,6 +78,12 @@ class broadcastAuthController extends Controller
             Log::warning('Broadcasting auth failed - No user found');
             return response()->json(['message' => 'Unauthorized'], 403);
         }
+
+        Log::info('Broadcasting auth attempt', [
+            'channel_name' => $channelName,
+            'socket_id' => $socketId,
+            'current_user_id' => $currentUserId
+        ]);
 
         // Parse channel name to get user ID (format: private-chat.{userId})
         if (preg_match('/private-chat\.(\d+)/', $channelName, $matches)) {
@@ -104,7 +112,7 @@ class broadcastAuthController extends Controller
 
                 $auth = $pusher->authorizeChannel($channelName, $socketId);
 
-                // Log::info('Broadcasting auth SUCCESS for user ' . $currentUserId);
+                Log::info('Broadcasting auth SUCCESS for user ' . $currentUserId);
 
                 return response()->json(json_decode($auth, true));
 

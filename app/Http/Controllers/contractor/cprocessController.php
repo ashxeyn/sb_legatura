@@ -136,7 +136,11 @@ class cprocessController extends Controller
 
     public function showMessages(Request $request)
     {
-        return view('both.messages');
+        // Pass user ID for real-time Pusher subscription
+        $sessionUser = session('user');
+        $userId = $sessionUser->user_id ?? $sessionUser->id ?? null;
+
+        return view('both.messages', ['userId' => $userId]);
     }
 
     public function showProfile(Request $request)

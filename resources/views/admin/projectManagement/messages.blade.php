@@ -7,8 +7,14 @@
   <meta name="csrf-token" content="{{ csrf_token() }}">
   @php
     $currentUser = session('user') ?? auth()->user();
-    // Admin users: admin_id, Regular users: user_id or id
-    $userId = $currentUser->admin_id ?? ($currentUser->user_id ?? ($currentUser->id ?? null));
+    // Admin users: admin_id is VARCHAR 'ADMIN-1' - extract numeric part for Pusher subscription
+    // Regular users: user_id or id
+    $userId = null;
+    if ($currentUser && isset($currentUser->admin_id)) {
+        $userId = (int) preg_replace('/[^0-9]/', '', $currentUser->admin_id);
+    } else {
+        $userId = $currentUser->user_id ?? ($currentUser->id ?? null);
+    }
     $apiToken = '';
     if ($currentUser && method_exists($currentUser, 'currentAccessToken')) {
         $token = $currentUser->currentAccessToken();
@@ -371,6 +377,15 @@
           <div class="flex h-full">
             <!-- Conversations List -->
             <div class="w-full lg:w-1/3 border-r border-gray-200 flex flex-col">
+              <!-- Pusher Connection Status -->
+              <div class="px-4 pt-3">
+                <div id="pusherStatus" class="mb-3 px-3 py-2 rounded-lg text-xs font-medium hidden">
+                  <span class="flex items-center gap-2">
+                    <span class="status-dot w-2 h-2 rounded-full"></span>
+                    <span class="status-text"></span>
+                  </span>
+                </div>
+              </div>
               <!-- Filter Tabs -->
               <div class="px-4 py-4 border-b border-gray-200 bg-gradient-to-r from-indigo-50 to-purple-50">
                 <div class="flex items-center gap-2 bg-white rounded-xl p-1 shadow-sm">

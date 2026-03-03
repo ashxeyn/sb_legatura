@@ -989,7 +989,7 @@ class projectsController extends Controller
         // If in testing mode and no user, allow access anyway
         if ($isLocalOrTesting && !$user) {
             // Allow access without authentication for testing
-            return view('both.messages');
+            return view('both.messages', ['userId' => null]);
         }
 
         // Normal authentication flow for logged-in users
@@ -1006,7 +1006,10 @@ class projectsController extends Controller
             }
         }
 
-        return view('both.messages');
+        // Pass user ID for real-time Pusher subscription
+        $userId = $user->user_id ?? $user->id ?? null;
+
+        return view('both.messages', ['userId' => $userId]);
     }
 
     public function showCreatePostPage(Request $request)

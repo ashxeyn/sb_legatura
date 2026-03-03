@@ -200,8 +200,17 @@ class projectAdminController extends Controller
         // messages table has no project_id column; return an empty paginator
         $messages = new \Illuminate\Pagination\LengthAwarePaginator([], 0, 20, 1, ['path' => request()->url()]);
 
+        // Admin user ID for real-time Pusher subscription
+        // admin_id is VARCHAR 'ADMIN-1' - extract numeric part for channel subscription
+        $sessionUser = session('user');
+        $userId = null;
+        if ($sessionUser && isset($sessionUser->admin_id)) {
+            $userId = (int) preg_replace('/[^0-9]/', '', $sessionUser->admin_id);
+        }
+
         return view('admin.projectManagement.messages', [
-            'messages' => $messages
+            'messages' => $messages,
+            'userId' => $userId
         ]);
     }
 
