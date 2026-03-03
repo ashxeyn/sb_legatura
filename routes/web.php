@@ -32,16 +32,16 @@ Route::prefix('admin/settings/security')
     })->name('admin.settings.security');
 
     // ── JSON ENDPOINTS ────────────────────────────────────────────────────────
-    Route::get( '/data',            [\App\Http\Controllers\Admin\AccountController::class, 'data'])
+    Route::get( '/data',            [\App\Http\Controllers\Admin\accountController::class, 'data'])
          ->name('admin.settings.security.data');
 
-    Route::post('/update',          [\App\Http\Controllers\Admin\AccountController::class, 'update'])
+    Route::post('/update',          [\App\Http\Controllers\Admin\accountController::class, 'update'])
          ->name('admin.settings.security.update');
 
-    Route::post('/change-password', [\App\Http\Controllers\Admin\AccountController::class, 'changePassword'])
+    Route::post('/change-password', [\App\Http\Controllers\Admin\accountController::class, 'changePassword'])
          ->name('admin.settings.security.changePassword');
 
-    Route::post('/delete',          [\App\Http\Controllers\Admin\AccountController::class, 'delete'])
+    Route::post('/delete',          [\App\Http\Controllers\Admin\accountController::class, 'delete'])
          ->name('admin.settings.security.delete');
 });
 
