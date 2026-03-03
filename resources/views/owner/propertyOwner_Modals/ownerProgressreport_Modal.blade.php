@@ -94,9 +94,44 @@
 
         {{-- Footer --}}
         <div class="opr-modal-footer">
-            <button class="opr-btn opr-btn-secondary" id="oprCloseFooterBtn">
+            {{-- Action buttons (shown for "submitted" reports, hidden otherwise) --}}
+            <div class="opr-action-buttons" id="oprActionButtons" style="display:none;">
+                <button class="opr-btn opr-btn-reject" id="oprRejectBtn" type="button">
+                    <i class="fi fi-rr-cross-small"></i>
+                    <span>Reject</span>
+                </button>
+                <button class="opr-btn opr-btn-approve" id="oprApproveBtn" type="button">
+                    <i class="fi fi-rr-check"></i>
+                    <span>Approve</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- Rejection Reason Modal --}}
+<div id="oprRejectModal" class="opr-reject-modal" style="display:none;">
+    <div class="opr-reject-overlay" id="oprRejectOverlay"></div>
+    <div class="opr-reject-content">
+        <div class="opr-reject-header">
+            <div class="opr-reject-icon-wrap">
+                <i class="fi fi-rr-exclamation" style="color:#EF4444; font-size:1.25rem;"></i>
+            </div>
+            <h4 class="opr-reject-title">Reject Progress Report</h4>
+            <p class="opr-reject-subtitle">Please provide a reason for rejecting this report. This will be sent to the contractor.</p>
+        </div>
+        <div class="opr-reject-body">
+            <label class="opr-reject-label" for="oprRejectReason">Rejection Reason</label>
+            <textarea id="oprRejectReason" class="opr-reject-textarea" placeholder="Explain what needs to be revised..." maxlength="500" rows="4"></textarea>
+            <span class="opr-reject-char-count"><span id="oprRejectCharCount">0</span>/500</span>
+        </div>
+        <div class="opr-reject-actions">
+            <button class="opr-btn opr-btn-secondary" id="oprRejectCancelBtn" type="button">
+                Cancel
+            </button>
+            <button class="opr-btn opr-btn-reject-confirm" id="oprRejectConfirmBtn" type="button">
                 <i class="fi fi-rr-cross-small"></i>
-                <span>Close</span>
+                <span>Reject Report</span>
             </button>
         </div>
     </div>

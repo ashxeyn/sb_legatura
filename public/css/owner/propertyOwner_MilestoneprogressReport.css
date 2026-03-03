@@ -385,6 +385,20 @@
 }
 .mdp-modal-submit-green:hover { box-shadow: 0 4px 12px rgba(16,185,129,.35); }
 
+/* Payment modal form layout fix (enables internal scrolling) */
+#paymentReceiptForm {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+
+#paymentReceiptModal .mdp-modal-body {
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
 /* ══════════════════════════════════════
    MDP – Forms (Payment Modal)
    ══════════════════════════════════════ */

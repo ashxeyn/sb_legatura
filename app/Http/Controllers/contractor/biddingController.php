@@ -576,8 +576,8 @@ class biddingController extends Controller
                         $extension = $file->getClientOriginalExtension();
                         $uniqueName = time() . '_' . uniqid() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '_', $originalName);
 
-                        // Store file in bid_attachments folder
-                        $path = $file->storeAs('bid_attachments', $uniqueName, 'public');
+                        // Store file in bid_files folder (consistent with other upload methods)
+                        $path = $file->storeAs('bid_files', $uniqueName, 'public');
 
                         // Insert into bid_files table
                         $fileId = DB::table('bid_files')->insertGetId([

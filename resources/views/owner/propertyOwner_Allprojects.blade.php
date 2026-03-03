@@ -28,6 +28,7 @@
                     $countActive     = $projects->filter(fn($p) => $p->project_post_status === 'approved' && $p->project_status === 'open')->count();
                     $countInProgress = $projects->filter(fn($p) => in_array($p->project_status, ['bidding_closed', 'in_progress', 'waiting_milestone_setup']))->count();
                     $countCompleted  = $projects->where('project_status', 'completed')->count();
+                    $countHalted     = $projects->filter(fn($p) => in_array($p->project_status, ['halt', 'on_hold', 'halted']))->count();
                 @endphp
 
                 <!-- Title and Sort -->
@@ -72,6 +73,11 @@
                         <button type="button" class="filter-chip" data-filter="completed">
                             Completed <span class="chip-count">{{ $countCompleted }}</span>
                         </button>
+                        @if($countHalted > 0)
+                        <button type="button" class="filter-chip" data-filter="halted">
+                            Halted <span class="chip-count">{{ $countHalted }}</span>
+                        </button>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -86,16 +92,20 @@
                         $ps  = $project->project_status       ?? '';
                         $pps = $project->project_post_status  ?? '';
 
-                        if ($pps === 'under_review') {
+                        $isHalted    = in_array($ps, ['halt', 'on_hold', 'halted']);
+                        $isCompleted = $ps === 'completed';
+
+                        // Halted is highest priority (matching mobile app)
+                        if ($isHalted) {
+                            $sLabel = 'Project Halted';    $sIcon = 'fi fi-rr-ban';          $sBg = '#FEE2E2'; $sCol = '#EF4444';
+                        } elseif ($isCompleted) {
+                            $sLabel = 'Completed';         $sIcon = 'fi fi-rr-badge-check';  $sBg = '#D1FAE5'; $sCol = '#059669';
+                        } elseif ($pps === 'under_review') {
                             $sLabel = 'Under Review';     $sIcon = 'fi fi-rr-clock';        $sBg = '#FEF3C7'; $sCol = '#D97706';
                         } elseif ($ps === 'open') {
                             $sLabel = 'Open for Bidding';  $sIcon = 'fi fi-rr-check-circle'; $sBg = '#D1FAE5'; $sCol = '#059669';
-                        } elseif ($ps === 'bidding_closed') {
-                            $sLabel = 'Bidding Closed';    $sIcon = 'fi fi-rr-lock';         $sBg = '#DBEAFE'; $sCol = '#2563EB';
-                        } elseif (in_array($ps, ['in_progress', 'waiting_milestone_setup'])) {
-                            $sLabel = 'In Progress';       $sIcon = 'fi fi-rr-hammer';       $sBg = '#DBEAFE'; $sCol = '#2563EB';
-                        } elseif ($ps === 'completed') {
-                            $sLabel = 'Completed';         $sIcon = 'fi fi-rr-badge-check';  $sBg = '#D1FAE5'; $sCol = '#059669';
+                        } elseif (in_array($ps, ['bidding_closed', 'in_progress', 'waiting_milestone_setup'])) {
+                            $sLabel = 'In Progress';       $sIcon = 'fi fi-rr-hammer';       $sBg = 'rgba(245, 158, 11, 0.15)'; $sCol = '#D97706';
                         } else {
                             $sLabel = $ps ?: 'Pending';    $sIcon = 'fi fi-rr-circle';       $sBg = '#F1F5F9'; $sCol = '#94A3B8';
                         }
@@ -105,7 +115,7 @@
                         $budget = "$bMin – $bMax";
                     @endphp
 
-                    <div class="project-card"
+                    <div class="project-card{{ $isHalted ? ' project-card--halted' : '' }}{{ $isCompleted ? ' project-card--completed' : '' }}"
                          data-project-id="{{ $project->project_id }}"
                          data-title="{{ $project->project_title }}"
                          data-type="{{ $project->type_name }}"
@@ -119,6 +129,22 @@
                          data-budget-min="{{ $project->budget_range_min ?? 0 }}"
                          data-budget-max="{{ $project->budget_range_max ?? 0 }}"
                          data-project="{{ htmlspecialchars(json_encode($project), ENT_QUOTES, 'UTF-8') }}">
+
+                        @if($isHalted)
+                        <!-- Halted Banner -->
+                        <div class="halted-banner">
+                            <i class="fi fi-rr-ban"></i>
+                            <span>Project Halted</span>
+                        </div>
+                        @endif
+
+                        @if($isCompleted && !$isHalted)
+                        <!-- Completed Banner -->
+                        <div class="completed-banner">
+                            <i class="fi fi-rr-badge-check"></i>
+                            <span>Project Completed</span>
+                        </div>
+                        @endif
 
                         <!-- Left accent bar -->
                         <div class="project-card-accent"></div>

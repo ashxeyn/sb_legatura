@@ -199,13 +199,21 @@ class projectsController extends Controller
                         $project->milestones_count = $milestones->count();
 
                         // ── display_status (matching API logic) ───────────────────
-                        if ($milestones->isEmpty()) {
-                            $project->display_status = 'waiting_milestone_setup';
+                        // Preserve halted status — never overwrite it
+                        // Preserve completed status — project_status is the authority
+                        if (in_array($project->project_status, ['halt', 'on_hold', 'halted'])) {
+                            // Keep display_status = project_status for halted
+                        } elseif ($project->project_status === 'completed') {
+                            $project->display_status = 'completed';
                         } else {
-                            $allDone = $milestones->every(
-                                fn($m) => in_array($m->milestone_status, ['completed', 'approved'])
-                            );
-                            $project->display_status = $allDone ? 'completed' : 'in_progress';
+                            if ($milestones->isEmpty()) {
+                                $project->display_status = 'waiting_milestone_setup';
+                            } else {
+                                $allDone = $milestones->every(
+                                    fn($m) => in_array($m->milestone_status, ['completed', 'approved'])
+                                );
+                                $project->display_status = $allDone ? 'completed' : 'in_progress';
+                            }
                         }
                     }
                 }
@@ -898,8 +906,7 @@ class projectsController extends Controller
 
         // If in testing mode and no user, allow access anyway
         if ($isLocalOrTesting && !$user) {
-            // Allow access without authentication for testing
-            return view('owner.propertyOwner_Finishedprojects');
+            return view('owner.propertyOwner_Finishedprojects', ['projects' => collect()]);
         }
 
         // Normal authentication flow for logged-in users
@@ -916,7 +923,103 @@ class projectsController extends Controller
             }
         }
 
-        return view('owner.propertyOwner_Finishedprojects');
+        // Fetch only completed projects server-side
+        $projects = collect();
+        $owner = DB::table('property_owners')->where('user_id', $user->user_id)->first();
+
+        if ($owner) {
+            $rawProjects = DB::table('projects as p')
+                ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
+                ->join('contractor_types as ct', 'p.type_id', '=', 'ct.type_id')
+                ->select(
+                    'p.project_id',
+                    'p.project_title',
+                    'p.project_description',
+                    'p.project_location',
+                    'p.budget_range_min',
+                    'p.budget_range_max',
+                    'p.lot_size',
+                    'p.floor_area',
+                    'p.property_type',
+                    'p.project_status',
+                    'p.selected_contractor_id',
+                    'ct.type_name',
+                    'pr.project_post_status',
+                    'pr.bidding_due',
+                    DB::raw('DATE(pr.created_at) as created_at')
+                )
+                ->where('pr.owner_id', $owner->owner_id)
+                ->where('p.project_status', 'completed')
+                ->whereNotIn('pr.project_post_status', ['deleted'])
+                ->orderBy('pr.created_at', 'desc')
+                ->get();
+
+            foreach ($rawProjects as $project) {
+                $project->bids_count = DB::table('bids')
+                    ->where('project_id', $project->project_id)
+                    ->whereNotIn('bid_status', ['cancelled'])
+                    ->count();
+
+                $project->files = DB::table('project_files')
+                    ->where('project_id', $project->project_id)
+                    ->orderBy('uploaded_at', 'asc')
+                    ->get();
+
+                $project->contractor_info = null;
+                $project->accepted_bid    = null;
+                $project->milestones_count = 0;
+                $project->display_status  = 'completed';
+
+                $effectiveContractorId = $project->selected_contractor_id;
+                if (!$effectiveContractorId) {
+                    $effectiveContractorId = DB::table('bids')
+                        ->where('project_id', $project->project_id)
+                        ->where('bid_status', 'accepted')
+                        ->value('contractor_id');
+                }
+
+                if ($effectiveContractorId) {
+                    $project->selected_contractor_id = $effectiveContractorId;
+
+                    $acceptedBid = DB::table('bids as b')
+                        ->join('contractors as c', 'b.contractor_id', '=', 'c.contractor_id')
+                        ->join('users as u', 'c.user_id', '=', 'u.user_id')
+                        ->select(
+                            'b.bid_id',
+                            'b.proposed_cost',
+                            'b.estimated_timeline',
+                            'c.company_name',
+                            'u.username',
+                            'u.profile_pic'
+                        )
+                        ->where('b.project_id', $project->project_id)
+                        ->where('b.contractor_id', $effectiveContractorId)
+                        ->where('b.bid_status', 'accepted')
+                        ->first();
+
+                    if ($acceptedBid) {
+                        $project->accepted_bid    = $acceptedBid;
+                        $project->contractor_info = (object) [
+                            'company_name' => $acceptedBid->company_name,
+                            'username'     => $acceptedBid->username,
+                            'profile_pic'  => $acceptedBid->profile_pic,
+                        ];
+
+                        $project->milestones_count = DB::table('milestones')
+                            ->where('project_id', $project->project_id)
+                            ->where('contractor_id', $effectiveContractorId)
+                            ->where(function ($q) {
+                                $q->whereNull('is_deleted')->orWhere('is_deleted', 0);
+                            })
+                            ->count();
+                    }
+                }
+            }
+
+            $projects = $rawProjects;
+        }
+
+        return view('owner.propertyOwner_Finishedprojects', compact('projects'));
     }
 
     public function showMessages(Request $request)
@@ -1777,16 +1880,24 @@ class projectsController extends Controller
                         $project->milestones_count = $milestones->count();
 
                         // Determine display_status based on milestone states
-                        if ($milestones->isEmpty()) {
-                            $project->display_status = 'waiting_milestone_setup';
+                        // Preserve halted status — never overwrite it
+                        // Preserve completed status — project_status is the authority
+                        if (in_array($project->project_status, ['halt', 'on_hold', 'halted'])) {
+                            // Keep display_status = project_status for halted
+                        } elseif ($project->project_status === 'completed') {
+                            $project->display_status = 'completed';
                         } else {
-                            $allCompleted = $milestones->every(fn($m) => $m->milestone_status === 'completed' || $m->milestone_status === 'approved');
-
-                            if ($allCompleted) {
-                                $project->display_status = 'completed';
+                            if ($milestones->isEmpty()) {
+                                $project->display_status = 'waiting_milestone_setup';
                             } else {
-                                // If milestones exist (submitted or approved), project is in progress
-                                $project->display_status = 'in_progress';
+                                $allCompleted = $milestones->every(fn($m) => $m->milestone_status === 'completed' || $m->milestone_status === 'approved');
+
+                                if ($allCompleted) {
+                                    $project->display_status = 'completed';
+                                } else {
+                                    // If milestones exist (submitted or approved), project is in progress
+                                    $project->display_status = 'in_progress';
+                                }
                             }
                         }
                     }

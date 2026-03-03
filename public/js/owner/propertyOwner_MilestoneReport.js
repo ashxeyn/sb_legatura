@@ -62,7 +62,13 @@ class PropertyOwnerMilestoneReport {
             if (!this.project) throw new Error('Project not found in your projects list.');
 
             this.milestones = this.project.milestones || [];
-            this.projectStatus = (this.project.display_status || this.project.project_status || '').toLowerCase();
+            // Check project_status first for halted state (highest priority),
+            // then fall back to display_status for normal flow
+            const rawStatus = (this.project.project_status || '').toLowerCase();
+            const isHaltedRaw = ['halt', 'on_hold', 'halted'].includes(rawStatus);
+            this.projectStatus = isHaltedRaw
+                ? rawStatus
+                : (this.project.display_status || this.project.project_status || '').toLowerCase();
             this.isProjectCompleted = this.projectStatus === 'completed';
 
             // Flatten items
@@ -186,9 +192,9 @@ class PropertyOwnerMilestoneReport {
 
     async completeProject() {
         try {
-            const res = await fetch(`/api/owner/projects/${this.projectId}/complete`, {
+            const res = await fetch(`/owner/projects/${this.projectId}/complete`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': this.csrfToken, 'X-User-Id': String(this.userId) },
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': this.csrfToken },
                 body: JSON.stringify({}),
             });
             const json = await res.json();
@@ -196,6 +202,11 @@ class PropertyOwnerMilestoneReport {
                 this.isProjectCompleted = true;
                 this.showToast('🎉 Project completed successfully!', 'success');
                 await this.loadProjectData();
+                // Scroll to the completed banner so user sees it
+                setTimeout(() => {
+                    const banner = document.querySelector('.project-completed-banner');
+                    if (banner) banner.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 200);
             } else {
                 this.showToast(json.message || 'Failed to complete project', 'error');
             }
@@ -330,7 +341,13 @@ class PropertyOwnerMilestoneReport {
                 <div class="milestone-summary-title-row">
                     <div class="milestone-summary-title-info">
                         <span class="milestone-summary-title-label">PROJECT TITLE</span>
-                        <span class="milestone-summary-title-text">${this.escapeHtml(first.milestone_name)}</span>
+                        <div style="display:flex; align-items:center; gap:12px; margin-top:4px;">
+                            <span class="milestone-summary-title-text">${this.escapeHtml(first.milestone_name)}</span>
+                            <span class="milestone-status-badge in-progress">
+                                <span class="badge-dot"></span>
+                                In progress
+                            </span>
+                        </div>
                     </div>
                     <button class="milestone-summary-btn" id="viewProjectSummaryBtn" title="View project summary">
                         <i class="fi fi-rr-chart-histogram"></i> Summary
@@ -340,7 +357,7 @@ class PropertyOwnerMilestoneReport {
 
         // Progress section
         html += `
-            <div class="milestone-progress-section">
+            <div class="milestone-progress-section ${progressPercentage === 100 ? 'completed' : ''}">
                 <div class="milestone-progress-header">
                     <span class="milestone-progress-label"><i class="fi fi-rr-flag-alt"></i> ${completedCount} of ${totalCount} milestones completed</span>
                     <span class="milestone-progress-percent">${progressPercentage}%</span>
@@ -418,6 +435,98 @@ class PropertyOwnerMilestoneReport {
 
         html += `</div>`; // end summary card
 
+        // ── Project Completion Banner / Button ──
+        if (this.isProjectCompleted) {
+            const completionDate = this.project?.updated_at || this.project?.created_at || new Date().toISOString();
+            const startDate = first?.start_date;
+            const endDate = first?.end_date;
+            let durationText = '';
+            if (startDate) {
+                const start = new Date(startDate);
+                const end = new Date(completionDate);
+                const diffMs = end - start;
+                const diffDays = Math.max(1, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+                if (diffDays >= 30) {
+                    const months = Math.floor(diffDays / 30);
+                    const days = diffDays % 30;
+                    durationText = `${months} month${months > 1 ? 's' : ''}${days > 0 ? ` ${days} day${days > 1 ? 's' : ''}` : ''}`;
+                } else {
+                    durationText = `${diffDays} day${diffDays > 1 ? 's' : ''}`;
+                }
+            }
+
+            html += `
+                <div class="project-completed-banner">
+                    <div class="project-completed-confetti" id="completedConfetti"></div>
+                    <div class="project-completed-inner">
+                        <div class="project-completed-icon-container">
+                            <div class="project-completed-icon-pulse"></div>
+                            <div class="project-completed-icon-circle">
+                                <i class="fi fi-rr-check-circle"></i>
+                            </div>
+                        </div>
+                        <div class="project-completed-body">
+                            <div class="project-completed-header-row">
+                                <span class="project-completed-title">Project Completed!</span>
+                                <span class="project-completed-badge">DONE</span>
+                            </div>
+                            <p class="project-completed-subtitle">
+                                Congratulations! This project has been successfully completed. All milestones have been finished and approved.
+                            </p>
+                            <div class="project-completed-stats">
+                                <div class="project-completed-stat">
+                                    <i class="fi fi-rr-flag-alt"></i>
+                                    <span>${totalCount} milestone${totalCount !== 1 ? 's' : ''} completed</span>
+                                </div>
+                                <div class="project-completed-stat">
+                                    <i class="fi fi-rr-coins"></i>
+                                    <span>${this.formatCurrency(totalCost)} total cost</span>
+                                </div>
+                                ${durationText ? `
+                                <div class="project-completed-stat">
+                                    <i class="fi fi-rr-hourglass-end"></i>
+                                    <span>${durationText} duration</span>
+                                </div>` : ''}
+                                <div class="project-completed-stat">
+                                    <i class="fi fi-rr-calendar-check"></i>
+                                    <span>Completed ${this.formatDate(completionDate)}</span>
+                                </div>
+                            </div>
+                            <button class="project-completed-details-toggle" id="completedDetailsToggle" type="button">
+                                <span>View recap</span>
+                                <i class="fi fi-rr-angle-small-down completed-chevron"></i>
+                            </button>
+                            <div class="project-completed-details" id="completedDetails" style="display:none;">
+                                <div class="project-completed-detail-item">
+                                    <i class="fi fi-rr-check"></i>
+                                    <span>All ${totalCount} milestones have been marked as finished.</span>
+                                </div>
+                                <div class="project-completed-detail-item">
+                                    <i class="fi fi-rr-check"></i>
+                                    <span>Project timeline has been closed.</span>
+                                </div>
+                                <div class="project-completed-detail-item">
+                                    <i class="fi fi-rr-check"></i>
+                                    <span>All project data has been archived.</span>
+                                </div>
+                                <div class="project-completed-detail-item">
+                                    <i class="fi fi-rr-info"></i>
+                                    <span>You can still view milestones, progress reports, and payment history.</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+        } else if (!isHalted && allDone) {
+            html += `
+                <div class="complete-project-section">
+                    <button class="complete-project-button" id="completeProjectBtn">
+                        <i class="fi fi-rr-check-circle"></i>
+                        <span>Complete Project</span>
+                    </button>
+                </div>`;
+        }
+
         // ── Pending Update Banner (owner) ──
         if (this.pendingUpdate) {
             const isPendingRevision = this.pendingUpdate.status === 'revision_requested';
@@ -441,12 +550,36 @@ class PropertyOwnerMilestoneReport {
         // ── Project Halted Banner ──
         if (isHalted) {
             html += `
-                <div class="halted-banner">
+                <div class="halted-banner" id="haltedBanner">
                     <div class="halted-banner-inner">
-                        <div class="halted-icon"><i class="fi fi-rr-pause-circle"></i></div>
-                        <div class="halted-text">
-                            <span class="halted-title">Project Halted</span>
-                            <span class="halted-message">This project has been halted due to a pending dispute or administrative action. Milestone progress is temporarily paused.</span>
+                        <div class="halted-icon-container">
+                            <div class="halted-icon-pulse"></div>
+                            <div class="halted-icon"><i class="fi fi-rr-pause-circle"></i></div>
+                        </div>
+                        <div class="halted-content">
+                            <div class="halted-header-row">
+                                <span class="halted-title">Project Halted</span>
+                                <span class="halted-badge">PAUSED</span>
+                            </div>
+                            <p class="halted-message">All milestone actions are suspended until the project is resumed.</p>
+                            <button class="halted-details-toggle" id="haltedDetailsToggle" type="button">
+                                <span>View details</span>
+                                <i class="fi fi-rr-angle-small-down halted-chevron"></i>
+                            </button>
+                            <div class="halted-details" id="haltedDetails" style="display:none;">
+                                <div class="halted-detail-item">
+                                    <i class="fi fi-rr-shield-exclamation"></i>
+                                    <span>This project has been halted due to a pending dispute or administrative action.</span>
+                                </div>
+                                <div class="halted-detail-item">
+                                    <i class="fi fi-rr-ban"></i>
+                                    <span>Progress reports, payment submissions, and milestone approvals are temporarily disabled.</span>
+                                </div>
+                                <div class="halted-detail-item">
+                                    <i class="fi fi-rr-info"></i>
+                                    <span>Contact support or check your report history for more information.</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>`;
@@ -540,29 +673,6 @@ class PropertyOwnerMilestoneReport {
 
         html += `</div></div>`; // end timeline
 
-        // ── Project Completion Banner / Button ──
-        if (this.isProjectCompleted) {
-            html += `
-                <div class="project-completed-banner">
-                    <div class="project-completed-content">
-                        <div class="project-completed-icon"><i class="fi fi-rr-check-circle"></i></div>
-                        <div class="project-completed-text">
-                            <span class="project-completed-title">🎉 Project Completed!</span>
-                            <span class="project-completed-message">This project has been successfully completed. Feel free to review the milestones, progress reports, and payment history at any time.</span>
-                        </div>
-                    </div>
-                </div>`;
-        } else if (!isHalted && allDone) {
-            html += `
-                <div class="complete-project-section">
-                    <button class="complete-project-button" id="completeProjectBtn">
-                        <i class="fi fi-rr-check-circle"></i>
-                        <span>Complete Project</span>
-                        <i class="fi fi-rr-angle-small-right"></i>
-                    </button>
-                </div>`;
-        }
-
         // ── Rejection Indicators (owner sees rejected milestones) ──
         if (!isHalted) {
             const rejectedMilestones = this.milestones.filter(m => m.setup_status === 'rejected' && m.setup_rej_reason);
@@ -601,7 +711,6 @@ class PropertyOwnerMilestoneReport {
                 <button class="payment-history-btn" id="paymentHistoryBtn">
                     <i class="fi fi-rr-credit-card"></i>
                     View Payment History
-                    <i class="fi fi-rr-angle-small-right"></i>
                 </button>
             </div>`;
 
@@ -700,6 +809,25 @@ class PropertyOwnerMilestoneReport {
 
         // Extension indicator toggle
         const extToggle = document.getElementById('extensionIndicatorToggle');
+
+        // Completed banner details toggle + confetti
+        const completedToggle = document.getElementById('completedDetailsToggle');
+        if (completedToggle) {
+            completedToggle.addEventListener('click', () => {
+                const details = document.getElementById('completedDetails');
+                const chevron = completedToggle.querySelector('.completed-chevron');
+                const label = completedToggle.querySelector('span');
+                if (details) {
+                    const visible = details.style.display !== 'none';
+                    details.style.display = visible ? 'none' : 'flex';
+                    if (chevron) chevron.classList.toggle('rotated', !visible);
+                    if (label) label.textContent = visible ? 'View recap' : 'Hide recap';
+                }
+            });
+            // Spawn confetti particles on first render
+            this.spawnCompletedConfetti();
+        }
+
         if (extToggle) {
             extToggle.addEventListener('click', () => {
                 const panel = document.getElementById('extensionHistoryPanel');
@@ -708,6 +836,22 @@ class PropertyOwnerMilestoneReport {
                     const visible = panel.style.display !== 'none';
                     panel.style.display = visible ? 'none' : 'block';
                     if (chevron) chevron.classList.toggle('rotated', !visible);
+                }
+            });
+        }
+
+        // Halted banner details toggle
+        const haltedToggle = document.getElementById('haltedDetailsToggle');
+        if (haltedToggle) {
+            haltedToggle.addEventListener('click', () => {
+                const details = document.getElementById('haltedDetails');
+                const chevron = haltedToggle.querySelector('.halted-chevron');
+                const label = haltedToggle.querySelector('span');
+                if (details) {
+                    const visible = details.style.display !== 'none';
+                    details.style.display = visible ? 'none' : 'flex';
+                    if (chevron) chevron.classList.toggle('rotated', !visible);
+                    if (label) label.textContent = visible ? 'View details' : 'Hide details';
                 }
             });
         }
@@ -1294,6 +1438,36 @@ class PropertyOwnerMilestoneReport {
             toast.style.animation = 'slideDown 0.3s ease-out';
             setTimeout(() => { if (document.body.contains(toast)) document.body.removeChild(toast); }, 300);
         }, 3000);
+    }
+
+    // ── Confetti particles for completed banner ─────────────────────────
+    spawnCompletedConfetti() {
+        const container = document.getElementById('completedConfetti');
+        if (!container) return;
+        const colors = ['#10B981', '#34D399', '#6EE7B7', '#A7F3D0', '#059669', '#F59E0B', '#3B82F6', '#EC7E00'];
+        const shapes = ['circle', 'square', 'triangle'];
+        for (let i = 0; i < 40; i++) {
+            const particle = document.createElement('div');
+            const color = colors[Math.floor(Math.random() * colors.length)];
+            const shape = shapes[Math.floor(Math.random() * shapes.length)];
+            const size = 4 + Math.random() * 6;
+            const left = Math.random() * 100;
+            const delay = Math.random() * 2;
+            const duration = 2.5 + Math.random() * 2;
+
+            particle.className = 'confetti-particle confetti-' + shape;
+            particle.style.cssText = `
+                position: absolute;
+                width: ${size}px; height: ${size}px;
+                left: ${left}%; top: -10px;
+                background: ${color};
+                animation: confettiFall ${duration}s ${delay}s ease-out forwards;
+                opacity: 0;
+            `;
+            container.appendChild(particle);
+        }
+        // Remove particles after animation
+        setTimeout(() => { container.innerHTML = ''; }, 6000);
     }
 }
 

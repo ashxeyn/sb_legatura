@@ -574,7 +574,7 @@
 @endsection
 
 @section('extra_css')
-    <link rel="stylesheet" href="{{ asset('css/owner/propertyOwner_MilestoneReport.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/owner/propertyOwner_MilestoneReport.css') }}?v={{ time() }}">
     <link rel="stylesheet" href="{{ asset('css/owner/propertyOwner_Allprojects.css') }}">
     <link rel="stylesheet" href="{{ asset('css/owner/propertyOwner_Modals/ownerPaymenthistory_Modal.css') }}">
     <link rel="stylesheet" href="{{ asset('css/owner/propertyOwner_Modals/ownerSendReport_Modal.css') }}">
@@ -597,7 +597,7 @@
             }
         };
     </script>
-    <script src="{{ asset('js/owner/propertyOwner_MilestoneReport.js') }}"></script>
+    <script src="{{ asset('js/owner/propertyOwner_MilestoneReport.js') }}?v={{ time() }}"></script>
     <script src="{{ asset('js/owner/propertyOwner_Modals/ownerPaymenthistory_Modal.js') }}"></script>
     <script src="{{ asset('js/owner/propertyOwner_Modals/ownerSendReport_Modal.js') }}"></script>
     <script src="{{ asset('js/owner/propertyOwner_Modals/ownerReportHistory_Modal.js') }}"></script>

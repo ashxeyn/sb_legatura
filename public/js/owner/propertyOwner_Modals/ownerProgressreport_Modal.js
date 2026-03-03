@@ -229,6 +229,19 @@ class OwnerProgressReportModal {
 
         // ── Show modal ──
         this.modal.style.display = '';
+
+        // ── Approve/Reject action buttons visibility ──
+        const actionBtns = document.getElementById('oprActionButtons');
+        if (actionBtns) {
+            const isProjectHalted = config.isProjectHalted || false;
+            const isItemCompleted = config.isItemCompleted || false;
+            if (status === 'submitted' && !isProjectHalted && !isItemCompleted) {
+                actionBtns.style.display = '';
+            } else {
+                actionBtns.style.display = 'none';
+            }
+        }
+
         // Scroll body to top
         const body = document.getElementById('oprModalBody');
         if (body) body.scrollTop = 0;
@@ -328,6 +341,35 @@ class OwnerProgressReportModal {
         d.textContent = str || '';
         return d.innerHTML;
     }
+
+    showToast(message, type = 'info') {
+        const colors = { success: '#10B981', error: '#EF4444', info: '#3B82F6' };
+        const icons = { success: '✓', error: '✕', info: 'ℹ' };
+        const toast = document.createElement('div');
+        toast.style.cssText = `
+            position: fixed; bottom: 24px; right: 24px;
+            background: ${colors[type] || colors.info}; color: #fff;
+            padding: 14px 24px; border-radius: 12px;
+            font-size: 0.875rem; font-weight: 600;
+            display: flex; align-items: center; gap: 8px;
+            box-shadow: 0 8px 24px rgba(0,0,0,.15);
+            z-index: 10003;
+            transform: translateY(20px); opacity: 0;
+            transition: all 0.3s cubic-bezier(.22,.61,.36,1);
+            font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+        `;
+        toast.innerHTML = `<span>${icons[type] || ''}</span> ${this.escapeHtml(message)}`;
+        document.body.appendChild(toast);
+        requestAnimationFrame(() => {
+            toast.style.transform = 'translateY(0)';
+            toast.style.opacity = '1';
+        });
+        setTimeout(() => {
+            toast.style.transform = 'translateY(20px)';
+            toast.style.opacity = '0';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
 }
 
 // Init and expose global opener
@@ -337,4 +379,127 @@ document.addEventListener('DOMContentLoaded', () => {
     window.openOwnerProgressReportModal = (report, context) => {
         instance.open(report, context);
     };
+
+    // ── Approve / Reject handlers ──
+    const approveBtn = document.getElementById('oprApproveBtn');
+    const rejectBtn = document.getElementById('oprRejectBtn');
+    const rejectModal = document.getElementById('oprRejectModal');
+    const rejectOverlay = document.getElementById('oprRejectOverlay');
+    const rejectCancelBtn = document.getElementById('oprRejectCancelBtn');
+    const rejectConfirmBtn = document.getElementById('oprRejectConfirmBtn');
+    const rejectReasonInput = document.getElementById('oprRejectReason');
+    const rejectCharCount = document.getElementById('oprRejectCharCount');
+
+    // Character count
+    if (rejectReasonInput && rejectCharCount) {
+        rejectReasonInput.addEventListener('input', () => {
+            rejectCharCount.textContent = rejectReasonInput.value.length;
+        });
+    }
+
+    // Approve
+    if (approveBtn) {
+        approveBtn.addEventListener('click', async () => {
+            const report = instance.currentReport;
+            if (!report || !report.progress_id) return;
+
+            approveBtn.disabled = true;
+            approveBtn.innerHTML = '<i class="fi fi-rr-spinner" style="animation:spin 1s linear infinite;"></i> <span>Approving…</span>';
+
+            try {
+                const config = window.__milestoneProgressConfig || {};
+                const res = await fetch(`/owner/progress/${report.progress_id}/approve`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': config.csrfToken || document.querySelector('meta[name="csrf-token"]')?.content || '',
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                    },
+                });
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    instance.showToast('Progress report approved successfully', 'success');
+                    instance.close();
+                    setTimeout(() => location.reload(), 800);
+                } else {
+                    instance.showToast(data.message || 'Failed to approve report', 'error');
+                    approveBtn.disabled = false;
+                    approveBtn.innerHTML = '<i class="fi fi-rr-check"></i> <span>Approve</span>';
+                }
+            } catch (err) {
+                console.error('Approve error:', err);
+                instance.showToast('An error occurred while approving', 'error');
+                approveBtn.disabled = false;
+                approveBtn.innerHTML = '<i class="fi fi-rr-check"></i> <span>Approve</span>';
+            }
+        });
+    }
+
+    // Reject — open reason modal
+    if (rejectBtn && rejectModal) {
+        rejectBtn.addEventListener('click', () => {
+            if (rejectReasonInput) rejectReasonInput.value = '';
+            if (rejectCharCount) rejectCharCount.textContent = '0';
+            rejectModal.style.display = '';
+            requestAnimationFrame(() => rejectModal.classList.add('opr-reject-active'));
+        });
+    }
+
+    // Reject — close reason modal
+    function closeRejectModal() {
+        if (!rejectModal) return;
+        rejectModal.classList.remove('opr-reject-active');
+        setTimeout(() => { rejectModal.style.display = 'none'; }, 300);
+    }
+    if (rejectOverlay) rejectOverlay.addEventListener('click', closeRejectModal);
+    if (rejectCancelBtn) rejectCancelBtn.addEventListener('click', closeRejectModal);
+
+    // Reject — confirm
+    if (rejectConfirmBtn) {
+        rejectConfirmBtn.addEventListener('click', async () => {
+            const report = instance.currentReport;
+            if (!report || !report.progress_id) return;
+
+            const reason = rejectReasonInput ? rejectReasonInput.value.trim() : '';
+
+            rejectConfirmBtn.disabled = true;
+            rejectConfirmBtn.innerHTML = '<i class="fi fi-rr-spinner" style="animation:spin 1s linear infinite;"></i> <span>Rejecting…</span>';
+
+            try {
+                const config = window.__milestoneProgressConfig || {};
+                const res = await fetch(`/owner/progress/${report.progress_id}/reject`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': config.csrfToken || document.querySelector('meta[name="csrf-token"]')?.content || '',
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({ reason }),
+                });
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    closeRejectModal();
+                    instance.showToast('Progress report rejected', 'success');
+                    instance.close();
+                    setTimeout(() => location.reload(), 800);
+                } else {
+                    instance.showToast(data.message || 'Failed to reject report', 'error');
+                    rejectConfirmBtn.disabled = false;
+                    rejectConfirmBtn.innerHTML = '<i class="fi fi-rr-cross-small"></i> <span>Reject Report</span>';
+                }
+            } catch (err) {
+                console.error('Reject error:', err);
+                instance.showToast('An error occurred while rejecting', 'error');
+                rejectConfirmBtn.disabled = false;
+                rejectConfirmBtn.innerHTML = '<i class="fi fi-rr-cross-small"></i> <span>Reject Report</span>';
+            }
+        });
+    }
+
+    // Keyboard: close reject modal on Escape
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && rejectModal && rejectModal.classList.contains('opr-reject-active')) {
+            closeRejectModal();
+        }
+    });
 });

@@ -299,6 +299,9 @@ Route::post('/owner/milestone-items/{itemId}/complete', [\App\Http\Controllers\b
 Route::post('/owner/milestone-items/{itemId}/settlement-due-date', [\App\Http\Controllers\both\milestoneController::class, 'setSettlementDueDateOwner']);
 Route::post('/contractor/progress/approve/{progressId}', [\App\Http\Controllers\contractor\progressUploadController::class, 'approveProgress']);
 Route::post('/contractor/progress/reject/{progressId}', [\App\Http\Controllers\contractor\progressUploadController::class, 'rejectProgress']);
+// Owner-prefixed aliases for the same approve/reject methods (used by web modal)
+Route::post('/owner/progress/{progressId}/approve', [\App\Http\Controllers\contractor\progressUploadController::class, 'approveProgress']);
+Route::post('/owner/progress/{progressId}/reject', [\App\Http\Controllers\contractor\progressUploadController::class, 'rejectProgress']);
 
 // Owner Project Posting Routes
 Route::get('/owner/projects/create', [\App\Http\Controllers\owner\projectsController::class, 'showCreatePostPage']);
@@ -310,6 +313,7 @@ Route::post('/owner/projects/{projectId}/bids/{bidId}/accept', [\App\Http\Contro
 Route::post('/owner/projects/{projectId}/bids/{bidId}/reject', [\App\Http\Controllers\owner\projectsController::class , 'rejectBid'])->name('owner.projects.bids.reject');
 Route::post('/owner/milestones/{milestoneId}/approve', [milestoneController::class, 'webApproveMilestone']);
 Route::post('/owner/milestones/{milestoneId}/reject', [milestoneController::class, 'webRejectMilestone']);
+Route::post('/owner/projects/{projectId}/complete', [\App\Http\Controllers\owner\projectsController::class, 'completeProject']);
 Route::post('/contractor/payments/{paymentId}/approve', [milestoneController::class, 'apiApprovePayment']);
 
 // Protected Document Viewer (for important documents with watermark)
@@ -526,29 +530,4 @@ Route::prefix('/api/admin')->group(function () {
     Route::apiResource('payments', App\Http\Controllers\Admin\paymentController::class);
 });
 
-// Windows/XAMPP storage fallback route - serves files from storage/app/public/
-Route::get('/storage/{path}', function ($path) {
-    // Remove query parameters from path (e.g., ?t=timestamp)
-    $cleanPath = strtok($path, '?');
-    $fullPath = storage_path('app/public/' . $cleanPath);
 
-    \Log::info('Storage serve request', [
-        'raw_path' => $path,
-        'clean_path' => $cleanPath,
-        'full_path' => $fullPath,
-        'exists' => file_exists($fullPath),
-        'is_readable' => file_exists($fullPath) ? is_readable($fullPath) : false
-    ]);
-
-    if (!file_exists($fullPath)) {
-        \Log::warning('File not found in storage', ['path' => $fullPath]);
-        abort(404, 'File not found');
-    }
-
-    $mimeType = mime_content_type($fullPath);
-
-    return response()->file($fullPath, [
-        'Content-Type' => $mimeType,
-        'Cache-Control' => 'public, max-age=31536000',
-    ]);
-})->where('path', '.*')->name('storage.serve');

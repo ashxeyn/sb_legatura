@@ -1156,17 +1156,17 @@
     white-space: nowrap;
 }
 .pdm-bdr-accept-btn, .pdm-bid-accept-btn {
-    background: #EEA24B; color: #fff;
-    box-shadow: 0 2px 8px rgba(238,162,75,.30);
+    background: #10B981; color: #fff;
+    box-shadow: 0 2px 8px rgba(16,185,129,.30);
 }
 .pdm-bdr-reject-btn {
     background: #fff5f5; color: #dc2626;
     border: 1.5px solid #fca5a5 !important;
 }
 .pdm-bdr-accept-btn:hover, .pdm-bid-accept-btn:hover {
-    background: #d97706;
+    background: #059669;
     transform: translateY(-1px);
-    box-shadow: 0 4px 14px rgba(238,162,75,.40);
+    box-shadow: 0 4px 14px rgba(16,185,129,.40);
 }
 .pdm-bdr-reject-btn:hover {
     background: #FEE2E2;
@@ -1411,20 +1411,20 @@
     display: flex; flex-direction: column; gap: 10px;
     padding: 4px 0 0;
 }
-/* Accept = primary orange, matches .view-details-btn exactly */
+/* Accept = primary green */
 .pdm-bd-accept-btn {
     width: 100%; border: none;
-    background: #EEA24B;
+    background: #10B981;
     border-radius: 9px;
     padding: 13px 20px;
     font-size: 14px; font-weight: 700; color: #fff;
     cursor: pointer;
     display: flex; align-items: center; justify-content: center; gap: 8px;
-    box-shadow: 0 2px 8px rgba(238,162,75,.30);
+    box-shadow: 0 2px 8px rgba(16,185,129,.30);
     transition: background .2s ease, transform .2s ease, box-shadow .2s ease;
 }
-.pdm-bd-accept-btn:hover  { background: #d97706; transform: translateY(-1px); box-shadow: 0 4px 14px rgba(238,162,75,.40); }
-.pdm-bd-accept-btn:active { transform: translateY(0); box-shadow: 0 1px 4px rgba(238,162,75,.25); }
+.pdm-bd-accept-btn:hover  { background: #059669; transform: translateY(-1px); box-shadow: 0 4px 14px rgba(16,185,129,.40); }
+.pdm-bd-accept-btn:active { transform: translateY(0); box-shadow: 0 1px 4px rgba(16,185,129,.25); }
 
 /* Decline = secondary danger, matches .back-button structure in red tone */
 .pdm-bd-decline-btn {

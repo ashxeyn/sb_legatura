@@ -103,20 +103,21 @@ class PropertyOwnerAllProjects {
      * Returns { label, icon (flaticon class), bg, color }
      */
     getStatusConfig(projectStatus, postStatus) {
+        // Halted is highest priority (matching mobile app)
+        if (['halt', 'on_hold', 'halted'].includes(projectStatus)) {
+            return { label: 'Project Halted', icon: 'fi fi-rr-ban', bg: '#FEE2E2', color: '#EF4444' };
+        }
+        if (projectStatus === 'completed') {
+            return { label: 'Completed', icon: 'fi fi-rr-badge-check', bg: '#D1FAE5', color: '#059669' };
+        }
         if (postStatus === 'under_review') {
             return { label: 'Under Review', icon: 'fi fi-rr-clock', bg: '#FEF3C7', color: '#D97706' };
         }
         if (projectStatus === 'open') {
             return { label: 'Open for Bidding', icon: 'fi fi-rr-check-circle', bg: '#D1FAE5', color: '#059669' };
         }
-        if (projectStatus === 'bidding_closed') {
-            return { label: 'Bidding Closed', icon: 'fi fi-rr-lock', bg: '#DBEAFE', color: '#2563EB' };
-        }
-        if (projectStatus === 'in_progress' || projectStatus === 'waiting_milestone_setup') {
-            return { label: 'In Progress', icon: 'fi fi-rr-hammer', bg: '#DBEAFE', color: '#2563EB' };
-        }
-        if (projectStatus === 'completed') {
-            return { label: 'Completed', icon: 'fi fi-rr-badge-check', bg: '#D1FAE5', color: '#059669' };
+        if (['bidding_closed', 'in_progress', 'waiting_milestone_setup'].includes(projectStatus)) {
+            return { label: 'In Progress', icon: 'fi fi-rr-hammer', bg: 'rgba(245, 158, 11, 0.15)', color: '#D97706' };
         }
         return { label: projectStatus || 'Pending', icon: 'fi fi-rr-circle', bg: '#F1F5F9', color: '#94A3B8' };
     }
@@ -335,6 +336,7 @@ class PropertyOwnerAllProjects {
             if (status === 'active'      && !(pps === 'approved' && ps === 'open')) return false;
             if (status === 'in_progress' && !['bidding_closed','in_progress','waiting_milestone_setup'].includes(ps)) return false;
             if (status === 'completed'   && ps !== 'completed') return false;
+            if (status === 'halted'      && !['halt','on_hold','halted'].includes(ps)) return false;
 
             return true;
         });

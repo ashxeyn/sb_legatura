@@ -69,7 +69,7 @@ class milestoneController extends Controller
             return redirect('/accounts/login')->with('error', 'Please log in.');
         }
 
-        $owner = $this->milestoneService->resolveOwner((int) $user['id']);
+        $owner = $this->milestoneService->resolveOwner((int) $user->user_id);
         if (!$owner) {
             return back()->with('error', 'Property owner record not found.');
         }
@@ -114,7 +114,7 @@ class milestoneController extends Controller
             return redirect('/accounts/login')->with('error', 'Please log in.');
         }
 
-        $owner = $this->milestoneService->resolveOwner((int) $user['id']);
+        $owner = $this->milestoneService->resolveOwner((int) $user->user_id);
         if (!$owner) {
             return back()->with('error', 'Property owner record not found.');
         }

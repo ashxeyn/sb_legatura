@@ -1360,6 +1360,8 @@
             remainingBalance: @json($remainingBalance),
             showPaymentBtn: @json($showPaymentBtn),
             showCompleteBtn: @json($showCompleteBtn),
+            isProjectHalted: @json($isProjectHalted),
+            isItemCompleted: @json($isItemCompleted),
             settlementDueDate: @json($settlementDueDate ?? null),
             extensionDate: @json($extensionDate ?? null),
             routes: {
