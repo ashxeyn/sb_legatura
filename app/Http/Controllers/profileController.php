@@ -117,11 +117,23 @@ class profileController extends Controller
                 DB::table('users')->where('user_id', $userId)->update($userPayload + ['updated_at' => now()]);
             }
 
+            // Resolve active role from request so bio (and future role-specific fields) only go to the right table.
+            // The frontend always sends active_role (e.g. 'owner' or 'contractor') via query param or request body.
+            $activeRole = strtolower(trim((string)(
+                $request->query('role') ??
+                $request->input('active_role') ??
+                session('preferred_role') ??
+                ''
+            )));
+            $isContractorRole = str_contains($activeRole, 'contractor');
+            $isOwnerRole = !$isContractorRole; // default to owner when role is unknown
+
             // Personal/profile fields that belong to property_owners table
             $owner = DB::table('property_owners')->where('user_id', $userId)->first();
             $ownerKeys = [
-                'first_name','middle_name','last_name','phone','date_of_birth','occupation_id','occupation_other',
+                'first_name','middle_name','last_name','phone','date_of_birth','occupation_id','occupation_other','occupation',
                 'address_street','address_barangay','address_city','address_province','address_postal'
+                // 'bio' is handled separately below (role-gated)
             ];
 
             $ownerPayload = [];
@@ -147,7 +159,11 @@ class profileController extends Controller
                 if (!empty($ownerPayload['phone'])) $updateOwner['phone_number'] = $ownerPayload['phone'];
                 if (!empty($ownerPayload['date_of_birth'])) $updateOwner['date_of_birth'] = $ownerPayload['date_of_birth'];
                 if (isset($ownerPayload['occupation_id'])) $updateOwner['occupation_id'] = $ownerPayload['occupation_id'];
+                // Map 'occupation' (text from frontend) to 'occupation_other'
+                if (!empty($ownerPayload['occupation'])) $updateOwner['occupation_other'] = $ownerPayload['occupation'];
                 if (!empty($ownerPayload['occupation_other'])) $updateOwner['occupation_other'] = $ownerPayload['occupation_other'];
+                // Only write bio to property_owners when the active role is owner
+                if ($isOwnerRole && $request->has('bio')) $updateOwner['bio'] = $request->input('bio');
                 if (!empty($addressParts)) $updateOwner['address'] = implode(', ', $addressParts);
 
                 if (!empty($updateOwner)) {
@@ -162,10 +178,11 @@ class profileController extends Controller
             $contractor = DB::table('contractors')->where('user_id', $userId)->first();
             $contractorKeys = [
                 'company_name','company_phone','company_email','years_of_experience','type_id','contractor_type_other',
-                'bio','company_description','company_start_date',
+                'company_description','company_start_date',
                 'services_offered','business_address','company_website','company_social_media',
                 'picab_number','picab_category','picab_expiration_date','business_permit_number',
                 'business_permit_city','business_permit_expiration','tin_business_reg_number'
+                // 'bio' is handled separately below (role-gated)
             ];
 
             $hasContractorPayload = false;
@@ -177,10 +194,30 @@ class profileController extends Controller
                 }
             }
 
+            // Build combined business_address from individual address fields (similar to owner)
+            if ($request->has('address_street') || $request->has('address_barangay') || $request->has('address_city') || $request->has('address_province')) {
+                $addressParts = [];
+                if (!empty($request->input('address_street'))) $addressParts[] = $request->input('address_street');
+                if (!empty($request->input('address_barangay'))) $addressParts[] = $request->input('address_barangay');
+                if (!empty($request->input('address_city'))) $addressParts[] = $request->input('address_city');
+                if (!empty($request->input('address_province'))) $addressParts[] = $request->input('address_province');
+                if (!empty($request->input('address_postal'))) $addressParts[] = $request->input('address_postal');
+
+                if (!empty($addressParts)) {
+                    $contractorPayload['business_address'] = implode(', ', $addressParts);
+                    $hasContractorPayload = true;
+                }
+            }
+
             if ($hasContractorPayload && $contractor) {
+                // Only write bio to contractors when the active role is contractor
+                if ($isContractorRole && $request->has('bio')) $contractorPayload['bio'] = $request->input('bio');
                 // Apply contractor updates immediately; do not force verification status changes here.
                 $contractorPayload['updated_at'] = now();
                 DB::table('contractors')->where('user_id', $userId)->update($contractorPayload);
+            } elseif ($isContractorRole && $request->has('bio') && $contractor) {
+                // bio-only update for contractor (no other contractor fields were sent)
+                DB::table('contractors')->where('user_id', $userId)->update(['bio' => $request->input('bio'), 'updated_at' => now()]);
             }
 
             DB::commit();
@@ -392,12 +429,21 @@ class profileController extends Controller
                 $projects = DB::table('projects as p')
                     ->leftJoin(DB::raw($pfSub), 'p.project_id', '=', 'pfagg.project_id')
                     ->leftJoin('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
+                    ->leftJoin('contractor_types as ct', 'p.type_id', '=', 'ct.type_id')
                     ->join('property_owners as o', 'o.owner_id', '=', 'pr.owner_id')
                     ->join('users as u', 'u.user_id', '=', 'o.user_id')
                     ->where('u.user_id', $userId)
-                    ->select('p.*', 'pfagg.files', 'pr.created_at as post_created_at')
+                    ->select('p.*', 'pfagg.files', 'pr.created_at as post_created_at', 'pr.bidding_due', 'ct.type_name as contractor_type_name')
                     ->orderBy('pr.created_at', 'desc')
                     ->get();
+
+                // Add bids count for each project
+                foreach ($projects as $project) {
+                    $project->bids_count = DB::table('bids')
+                        ->where('project_id', $project->project_id)
+                        ->whereNotIn('bid_status', ['cancelled'])
+                        ->count();
+                }
 
                 $finished = DB::table('projects as p')
                     ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
@@ -416,17 +462,23 @@ class profileController extends Controller
                     ->count();
             }
 
-            // Normalize concatenated files into arrays (GROUP_CONCAT uses '||' separator)
+            // Fetch files with file_type from project_files table for each project
             if ($projects && $projects->count()) {
                 $projects = $projects->map(function ($p) {
-                    $filesArr = [];
-                    if (!empty($p->files)) {
-                        $parts = explode('||', $p->files);
-                        $parts = array_map('trim', $parts);
-                        $parts = array_filter($parts, function ($v) { return $v !== '' && $v !== null; });
-                        $filesArr = array_values($parts);
-                    }
-                    $p->files = $filesArr;
+                    $projectFiles = DB::table('project_files')
+                        ->where('project_id', $p->project_id)
+                        ->orderBy('uploaded_at', 'asc')
+                        ->get();
+
+                    $p->files = $projectFiles->map(function ($f) {
+                        return [
+                            'file_id' => $f->file_id,
+                            'file_type' => $f->file_type,
+                            'file_path' => $f->file_path,
+                            'uploaded_at' => $f->uploaded_at
+                        ];
+                    })->toArray();
+
                     return $p;
                 });
             }

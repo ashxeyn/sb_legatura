@@ -111,9 +111,16 @@
                             </div>
                         </div>
                     </div>
-                    <button class="navbar-menu-toggle" id="userMenuToggle" aria-label="User menu">
-                        <i class="fi fi-rr-menu-dots-vertical"></i>
-                    </button>
+                    <div class="navbar-menu-toggle-wrapper">
+                        <button class="navbar-menu-toggle" id="userMenuToggle" aria-label="User menu">
+                            <i class="fi fi-rr-menu-dots-vertical"></i>
+                        </button>
+                        <!-- User Menu Dropdown -->
+                        <div class="navbar-user-menu hidden" id="userMenuDropdown">
+                            <a href="#" class="navbar-menu-item" id="accountLink">Account</a>
+                            <a href="#" class="navbar-menu-item" id="logoutLink">Logout</a>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -128,12 +135,6 @@
             <a href="{{ route('contractor.ai-analytics') }}" class="navbar-link">AI Analytics</a>
         @endif
         <a href="{{ route('contractor.profile') }}" class="navbar-link">Profile</a>
-    </div>
-
-    <!-- User Menu Dropdown (Hidden by default) -->
-    <div class="navbar-user-menu hidden" id="userMenuDropdown">
-        <a href="#" class="navbar-menu-item" id="accountLink">Account</a>
-        <a href="#" class="navbar-menu-item" id="logoutLink">Logout</a>
     </div>
 
 </nav>
@@ -168,34 +169,7 @@
                     <i class="fi fi-rr-angle-right account-settings-arrow"></i>
                 </a>
 
-                <a href="#" class="account-settings-item" id="editProfileLink">
-                    <div class="account-settings-item-left">
-                        <div class="account-settings-icon edit-icon">
-                            <i class="fi fi-rr-edit"></i>
-                        </div>
-                        <div class="account-settings-item-content">
-                            <span class="account-settings-item-title">Edit profile information</span>
-                            <span class="account-settings-item-subtitle">Update your personal details</span>
-                        </div>
-                    </div>
-                    <i class="fi fi-rr-angle-right account-settings-arrow"></i>
-                </a>
 
-                <div class="account-settings-item account-settings-item-toggle">
-                    <div class="account-settings-item-left">
-                        <div class="account-settings-icon notification-icon">
-                            <i class="fi fi-rr-bell"></i>
-                        </div>
-                        <div class="account-settings-item-content">
-                            <span class="account-settings-item-title">Notifications</span>
-                            <span class="account-settings-item-subtitle">Enable or disable notifications</span>
-                        </div>
-                    </div>
-                    <label class="toggle-switch">
-                        <input type="checkbox" id="notificationsToggle" checked>
-                        <span class="toggle-slider"></span>
-                    </label>
-                </div>
 
                 <a href="#" class="account-settings-item" id="switchAccountLink">
                     <div class="account-settings-item-left">

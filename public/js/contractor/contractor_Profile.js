@@ -140,6 +140,7 @@ class ContractorProfile {
                 userId: user.user_id,
                 name: contractor.company_name || user.username || 'Contractor',
                 username: user.username ? `@${user.username}` : '',
+                rawUsername: user.username || '',
                 rating: data.rating ?? null,
                 totalReviews: data.total_reviews ?? 0,
                 location: contractor.business_address || '',
@@ -669,9 +670,6 @@ class ContractorProfile {
         this.setText('aboutExperience', d.yearsOfExperience ? `${d.yearsOfExperience} Years` : '—');
         this.setText('aboutLocation', d.location || '—');
         this.setText('aboutProjectsDone', d.projectsDone || 0);
-        this.setText('aboutPhone', d.contactNumber || '—');
-        this.setText('aboutEmail', d.email || '—');
-        this.setText('aboutTelephone', d.telephone || '—');
 
         // Website & social media
         const websiteEl = document.getElementById('aboutWebsite');

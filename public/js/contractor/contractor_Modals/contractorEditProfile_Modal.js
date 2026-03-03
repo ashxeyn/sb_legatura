@@ -16,11 +16,17 @@
         cityInput:    '#ecpPermitCityInput',
         cityHidden:   '#ecpPermitCity',
         cityDropdown: '#ecpCityDropdown',
-        cityCombobox: '#ecpCityCombobox'
+        cityCombobox: '#ecpCityCombobox',
+        // Address dropdowns
+        addressStreet:   '#ecpAddressStreet',
+        addressProvince: '#ecpAddressProvince',
+        addressCity:     '#ecpAddressCity',
+        addressBarangay: '#ecpAddressBarangay'
     };
 
     // Field map: form input id → profileData key
     const FIELD_MAP = {
+        ecpUsername:         'rawUsername',
         ecpCompanyName:      'name',
         ecpCompanyEmail:     'email',
         ecpCompanyPhone:     'contactNumber',
@@ -28,7 +34,6 @@
         ecpServicesOffered:  'servicesOffered',
         ecpBio:              'bio',
         ecpCompanyDescription: 'companyDescription',
-        ecpBusinessAddress:  'location',
         ecpWebsite:          'companyWebsite',
         ecpSocialMedia:      'companySocialMedia',
         ecpPicabNumber:      'picabNumber',
@@ -40,10 +45,13 @@
 
     let modalEl, overlayEl, closeBtn, cancelBtn, saveBtn, formEl;
     let cityInput, cityHidden, cityDropdown, cityCombobox;
+    let addressStreetEl, addressProvinceEl, addressCityEl, addressBarangayEl;
     let allCities = null;       // cached city list [{name, code, ...}]
     let psgcCitiesUrl = '/api/psgc/cities'; // fallback, overridden from data attribute
+    let psgcProvincesUrl = '/api/psgc/provinces';
     let cityDropdownOpen = false;
     let highlightIndex = -1;
+    let savedAddressData = { street: '', province: '', city: '', barangay: '' };
 
     function init() {
         modalEl   = document.querySelector(SELECTORS.modal);
@@ -58,10 +66,19 @@
         cityDropdown = document.querySelector(SELECTORS.cityDropdown);
         cityCombobox = document.querySelector(SELECTORS.cityCombobox);
 
+        // Address dropdown elements
+        addressStreetEl   = document.querySelector(SELECTORS.addressStreet);
+        addressProvinceEl = document.querySelector(SELECTORS.addressProvince);
+        addressCityEl     = document.querySelector(SELECTORS.addressCity);
+        addressBarangayEl = document.querySelector(SELECTORS.addressBarangay);
+
         // Read dynamic PSGC base URL from Blade data attribute
         const rootEl = document.getElementById('contractorProfileRoot');
         if (rootEl && rootEl.dataset.psgcCitiesUrl) {
             psgcCitiesUrl = rootEl.dataset.psgcCitiesUrl;
+        }
+        if (rootEl && rootEl.dataset.psgcProvincesUrl) {
+            psgcProvincesUrl = rootEl.dataset.psgcProvincesUrl;
         }
 
         if (!modalEl || !formEl) return;
@@ -70,6 +87,10 @@
         cancelBtn?.addEventListener('click', closeModal);
         overlayEl?.addEventListener('click', closeModal);
         saveBtn?.addEventListener('click', handleSave);
+
+        // Address cascading dropdowns
+        addressProvinceEl?.addEventListener('change', onProvinceChange);
+        addressCityEl?.addEventListener('change', onCityChange);
 
         // City combobox events
         if (cityInput) {
@@ -208,6 +229,187 @@
         });
     }
 
+    // ── Address cascading dropdowns ──────────────────────────────────
+
+    /**
+     * Parse address string format: "Street, Barangay, City, Province [PostalCode]"
+     */
+    function parseAddress(addressString) {
+        if (!addressString) return { street: '', barangay: '', city: '', province: '' };
+
+        const parts = addressString.split(',').map(p => p.trim());
+        if (parts.length < 4) {
+            return { street: addressString, barangay: '', city: '', province: '' };
+        }
+
+        // Last part may have postal code like "Province 1234"
+        let province = parts[parts.length - 1];
+        province = province.replace(/\s+\d{4,5}$/, '').trim();
+
+        return {
+            street: parts[0] || '',
+            barangay: parts[1] || '',
+            city: parts[2] || '',
+            province: province
+        };
+    }
+
+    async function loadProvinces() {
+        if (!addressProvinceEl) return;
+
+        try {
+            const res = await fetch(psgcProvincesUrl, {
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            const json = await res.json();
+            const provinces = json.data || json || [];
+
+            addressProvinceEl.innerHTML = '<option value="">Select province</option>';
+            provinces.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.code;
+                opt.textContent = p.name;
+                opt.dataset.name = p.name;
+                addressProvinceEl.appendChild(opt);
+            });
+
+            // If we have a saved province, try to select it
+            if (savedAddressData.province) {
+                selectProvinceByName(savedAddressData.province);
+            }
+        } catch (err) {
+            console.error('Failed to load provinces:', err);
+        }
+    }
+
+    function selectProvinceByName(provinceName) {
+        if (!addressProvinceEl || !provinceName) return;
+
+        const normalizedName = provinceName.toLowerCase().trim();
+        const options = addressProvinceEl.options;
+
+        for (let i = 0; i < options.length; i++) {
+            const optName = (options[i].dataset.name || options[i].textContent || '').toLowerCase().trim();
+            if (optName === normalizedName || optName.includes(normalizedName) || normalizedName.includes(optName)) {
+                addressProvinceEl.selectedIndex = i;
+                // Trigger change to load cities
+                addressProvinceEl.dispatchEvent(new Event('change'));
+                break;
+            }
+        }
+    }
+
+    async function onProvinceChange() {
+        const provinceCode = addressProvinceEl?.value;
+
+        // Reset city and barangay
+        if (addressCityEl) {
+            addressCityEl.innerHTML = '<option value="">Select city</option>';
+            addressCityEl.disabled = true;
+        }
+        if (addressBarangayEl) {
+            addressBarangayEl.innerHTML = '<option value="">Select barangay</option>';
+            addressBarangayEl.disabled = true;
+        }
+
+        if (!provinceCode) return;
+
+        try {
+            const res = await fetch(`/api/psgc/provinces/${provinceCode}/cities`, {
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            const json = await res.json();
+            const cities = json.data || json || [];
+
+            if (addressCityEl) {
+                cities.forEach(c => {
+                    const opt = document.createElement('option');
+                    opt.value = c.code;
+                    opt.textContent = c.name;
+                    opt.dataset.name = c.name;
+                    addressCityEl.appendChild(opt);
+                });
+                addressCityEl.disabled = false;
+
+                // If we have a saved city, try to select it
+                if (savedAddressData.city) {
+                    selectCityByName(savedAddressData.city);
+                }
+            }
+        } catch (err) {
+            console.error('Failed to load cities:', err);
+        }
+    }
+
+    function selectCityByName(cityName) {
+        if (!addressCityEl || !cityName) return;
+
+        const normalizedName = cityName.toLowerCase().trim();
+        const options = addressCityEl.options;
+
+        for (let i = 0; i < options.length; i++) {
+            const optName = (options[i].dataset.name || options[i].textContent || '').toLowerCase().trim();
+            if (optName === normalizedName || optName.includes(normalizedName) || normalizedName.includes(optName)) {
+                addressCityEl.selectedIndex = i;
+                addressCityEl.dispatchEvent(new Event('change'));
+                break;
+            }
+        }
+    }
+
+    async function onCityChange() {
+        const cityCode = addressCityEl?.value;
+
+        // Reset barangay
+        if (addressBarangayEl) {
+            addressBarangayEl.innerHTML = '<option value="">Select barangay</option>';
+            addressBarangayEl.disabled = true;
+        }
+
+        if (!cityCode) return;
+
+        try {
+            const res = await fetch(`/api/psgc/cities/${cityCode}/barangays`, {
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            const json = await res.json();
+            const barangays = json.data || json || [];
+
+            if (addressBarangayEl) {
+                barangays.forEach(b => {
+                    const opt = document.createElement('option');
+                    opt.value = b.code;
+                    opt.textContent = b.name;
+                    opt.dataset.name = b.name;
+                    addressBarangayEl.appendChild(opt);
+                });
+                addressBarangayEl.disabled = false;
+
+                // If we have a saved barangay, try to select it
+                if (savedAddressData.barangay) {
+                    selectBarangayByName(savedAddressData.barangay);
+                }
+            }
+        } catch (err) {
+            console.error('Failed to load barangays:', err);
+        }
+    }
+
+    function selectBarangayByName(barangayName) {
+        if (!addressBarangayEl || !barangayName) return;
+
+        const normalizedName = barangayName.toLowerCase().trim();
+        const options = addressBarangayEl.options;
+
+        for (let i = 0; i < options.length; i++) {
+            const optName = (options[i].dataset.name || options[i].textContent || '').toLowerCase().trim();
+            if (optName === normalizedName || optName.includes(normalizedName) || normalizedName.includes(optName)) {
+                addressBarangayEl.selectedIndex = i;
+                break;
+            }
+        }
+    }
+
     // ── Modal open / close ───────────────────────────────────────────
 
     /**
@@ -237,6 +439,23 @@
         const savedCity = d.businessPermitCity || '';
         if (cityInput) cityInput.value = savedCity;
         if (cityHidden) cityHidden.value = savedCity;
+
+        // Parse and populate address fields
+        savedAddressData = parseAddress(d.location || d.businessAddress || '');
+        if (addressStreetEl) addressStreetEl.value = savedAddressData.street;
+
+        // Reset address dropdowns
+        if (addressCityEl) {
+            addressCityEl.innerHTML = '<option value="">Select city</option>';
+            addressCityEl.disabled = true;
+        }
+        if (addressBarangayEl) {
+            addressBarangayEl.innerHTML = '<option value="">Select barangay</option>';
+            addressBarangayEl.disabled = true;
+        }
+
+        // Load provinces (will cascade to cities and barangays if saved values exist)
+        loadProvinces();
 
         // Pre-load cities in background
         ensureCitiesLoaded();
@@ -287,6 +506,20 @@
 
             // Build form data from the HTML form inputs (use their `name` attribute which matches backend keys)
             const formData = new FormData(formEl);
+
+            // Override address fields to use names instead of codes
+            if (addressProvinceEl && addressProvinceEl.selectedIndex > 0) {
+                const selectedOption = addressProvinceEl.options[addressProvinceEl.selectedIndex];
+                formData.set('address_province', selectedOption.dataset.name || selectedOption.textContent);
+            }
+            if (addressCityEl && addressCityEl.selectedIndex > 0) {
+                const selectedOption = addressCityEl.options[addressCityEl.selectedIndex];
+                formData.set('address_city', selectedOption.dataset.name || selectedOption.textContent);
+            }
+            if (addressBarangayEl && addressBarangayEl.selectedIndex > 0) {
+                const selectedOption = addressBarangayEl.options[addressBarangayEl.selectedIndex];
+                formData.set('address_barangay', selectedOption.dataset.name || selectedOption.textContent);
+            }
 
             const response = await fetch(updateUrl, {
                 method: 'POST',

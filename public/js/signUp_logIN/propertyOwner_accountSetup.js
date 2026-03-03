@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
 	const psgcBaseUrl = (window.psgcBaseUrl || `${fallbackBase}/api/psgc`).replace(/\/$/, '');
 
 	// Modal functions
-	window.openModal = function(modalId) {
+	window.openModal = function (modalId) {
 		const modal = document.getElementById(modalId);
 		if (!modal) return;
 
@@ -46,7 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		} else if (modalId === 'cityModal') {
 			const provinceCode = document.getElementById('provinceValue').value;
 			if (!provinceCode) {
-				alert('Please select a province first');
+				showToast('Please select a province first', 'warning');
 				return;
 			}
 			// If cities already loaded, show them; otherwise fetch
@@ -60,7 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		} else if (modalId === 'barangayModal') {
 			const cityCode = document.getElementById('cityValue').value;
 			if (!cityCode) {
-				alert('Please select a city first');
+				showToast('Please select a city first', 'warning');
 				return;
 			}
 			// If barangays already loaded, show them; otherwise fetch
@@ -76,7 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		modal.style.display = 'flex';
 	};
 
-	window.closeModal = function(modalId) {
+	window.closeModal = function (modalId) {
 		const modal = document.getElementById(modalId);
 		if (modal) {
 			modal.style.display = 'none';
@@ -96,13 +96,20 @@ document.addEventListener('DOMContentLoaded', () => {
 	function selectValidId(id, name) {
 		const valueEl = document.getElementById('validIdValue');
 		const displayEl = document.getElementById('validIdDisplay');
-		if (valueEl) valueEl.value = id;
+		if (valueEl) {
+			valueEl.value = id;
+			valueEl.dispatchEvent(new Event('change', { bubbles: true }));
+		}
 		if (displayEl) displayEl.textContent = name || 'Select ID type';
 		closeModal('validIdModal');
 	}
 
 	function selectOccupation(id, name) {
-		document.getElementById('occupationValue').value = id;
+		const occEl = document.getElementById('occupationValue');
+		if (occEl) {
+			occEl.value = id;
+			occEl.dispatchEvent(new Event('change', { bubbles: true }));
+		}
 		document.getElementById('occupationDisplay').textContent = name;
 		closeModal('occupationModal');
 
@@ -122,40 +129,52 @@ document.addEventListener('DOMContentLoaded', () => {
 	}
 
 	function selectProvince(code, name) {
-		document.getElementById('provinceValue').value = code;
+		const provEl = document.getElementById('provinceValue');
+		if (provEl) {
+			provEl.value = code;
+			provEl.dispatchEvent(new Event('change', { bubbles: true }));
+		}
 		document.getElementById('provinceDisplay').textContent = name;
-		
+
 		// Reset dependent fields
 		document.getElementById('cityValue').value = '';
 		document.getElementById('cityDisplay').textContent = 'Select city/municipality';
 		document.getElementById('barangayValue').value = '';
 		document.getElementById('barangayDisplay').textContent = 'Select city first';
-		
+
 		// Load cities for this province
 		modalData.cities = [];
 		modalData.barangays = [];
 		loadCitiesForModal(code);
-		
+
 		closeModal('provinceModal');
 	}
 
 	function selectCity(code, name) {
-		document.getElementById('cityValue').value = code;
+		const cityEl = document.getElementById('cityValue');
+		if (cityEl) {
+			cityEl.value = code;
+			cityEl.dispatchEvent(new Event('change', { bubbles: true }));
+		}
 		document.getElementById('cityDisplay').textContent = name;
-		
+
 		// Reset barangay
 		document.getElementById('barangayValue').value = '';
 		document.getElementById('barangayDisplay').textContent = 'Select barangay';
-		
+
 		// Load barangays for this city
 		modalData.barangays = [];
 		loadBarangaysForModal(code);
-		
+
 		closeModal('cityModal');
 	}
 
 	function selectBarangay(code, name) {
-		document.getElementById('barangayValue').value = code;
+		const brgyEl = document.getElementById('barangayValue');
+		if (brgyEl) {
+			brgyEl.value = code;
+			brgyEl.dispatchEvent(new Event('change', { bubbles: true }));
+		}
 		document.getElementById('barangayDisplay').textContent = name;
 		closeModal('barangayModal');
 	}
@@ -164,7 +183,7 @@ document.addEventListener('DOMContentLoaded', () => {
 	function populateModalList(listId, items, searchId, onSelect) {
 		const listEl = document.getElementById(listId);
 		const searchInput = document.getElementById(searchId);
-		
+
 		if (!listEl) return;
 
 		// Detect property name (occupation_name, valid_id_name, name)
@@ -201,7 +220,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 	function renderModalItems(listEl, items, onSelect, displayProp = 'name') {
 		listEl.innerHTML = '';
-		
+
 		if (items.length === 0) {
 			listEl.innerHTML = '<div style="padding: 20px; text-align: center; color: #9ca3af;">No items found</div>';
 			return;
@@ -231,7 +250,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			}
 			const payload = await response.json();
 			const cities = Array.isArray(payload) ? payload : (payload.data || []);
-			
+
 			modalData.cities = cities;
 			populateModalList('cityList', cities, 'citySearch', (item) => {
 				selectCity(item.code, item.name);
@@ -256,7 +275,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			}
 			const payload = await response.json();
 			const barangays = Array.isArray(payload) ? payload : (payload.data || []);
-			
+
 			modalData.barangays = barangays;
 			populateModalList('barangayList', barangays, 'barangaySearch', (item) => {
 				selectBarangay(item.code, item.name);
@@ -273,7 +292,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		document.querySelectorAll('.form-step').forEach(el => {
 			el.classList.remove('active');
 		});
-		
+
 		// Show current step
 		document.getElementById(`step-${step}`).classList.add('active');
 
@@ -316,79 +335,130 @@ document.addEventListener('DOMContentLoaded', () => {
 		}
 	};
 
+	const showInlineError = (input, message) => {
+		let container = input.closest('.field-block') || input.closest('.form-group') || input.parentNode;
+		// For upload areas, we might need a different container
+		if (input.type === 'file') {
+			container = input.closest('.upload-area')?.parentNode || container;
+		}
+
+		// Clear any existing error first
+		let errorSpan = container.querySelector(':scope > .inline-error-msg') || container.querySelector('.inline-error-msg');
+		if (!errorSpan) {
+			errorSpan = document.createElement('span');
+			errorSpan.className = 'inline-error-msg field-error-message';
+			errorSpan.style.color = '#d32f2f';
+			errorSpan.style.fontSize = '12px';
+			errorSpan.style.marginTop = '4px';
+			errorSpan.style.display = 'block';
+			container.appendChild(errorSpan);
+		}
+		errorSpan.textContent = message;
+		errorSpan.style.display = 'block';
+		input.classList.add('field-error');
+
+		const clearError = () => {
+			if (errorSpan) {
+				errorSpan.style.display = 'none';
+				errorSpan.textContent = '';
+			}
+			input.classList.remove('field-error');
+		};
+
+		// Remove existing listeners to prevent duplicates
+		input.removeEventListener('focus', clearError);
+		input.removeEventListener('input', clearError);
+		input.removeEventListener('change', clearError);
+
+		// Add fresh listeners
+		input.addEventListener('focus', clearError, { once: true });
+		input.addEventListener('input', clearError, { once: true });
+		input.addEventListener('change', clearError, { once: true });
+	};
+
 	const validateStep = (step) => {
 		const stepElement = document.getElementById(`step-${step}`);
 		const inputs = stepElement.querySelectorAll('input[required]');
-		
+		let isValid = true;
+
 		// Check hidden inputs for modal selections
 		const hiddenInputs = stepElement.querySelectorAll('input[type="hidden"][required]');
 		for (let input of hiddenInputs) {
 			if (!input.value.trim()) {
-				alert(`Please complete all required fields.`);
-				return false;
+				// Find the visible trigger button for this hidden input to show error
+				let targetEl = input;
+				if (input.id === 'provinceValue') targetEl = document.getElementById('provinceBtn');
+				else if (input.id === 'cityValue') targetEl = document.getElementById('cityBtn');
+				else if (input.id === 'barangayValue') targetEl = document.getElementById('barangayBtn');
+
+				showInlineError(targetEl || input, 'Please select an option.');
+				isValid = false;
 			}
 		}
-		
+
 		for (let input of inputs) {
 			// Special validation for file inputs - check files.length instead of value
 			if (input.type === 'file') {
 				if (!input.files || input.files.length === 0) {
-					alert(`Please select ${input.name === 'valid_id_photo' ? 'Valid ID - Front Side' : input.name === 'valid_id_back_photo' ? 'Valid ID - Back Side' : 'Police Clearance'} image.`);
-					return false;
+					const docName = input.name === 'valid_id_photo' ? 'Valid ID - Front' : input.name === 'valid_id_back_photo' ? 'Valid ID - Back' : 'Police Clearance';
+					showInlineError(input, `Please upload your ${docName}.`);
+					isValid = false;
 				}
 			} else if (input.type !== 'hidden' && !input.value.trim()) {
-				input.focus();
-				alert(`Please fill in all required fields.`);
-				return false;
+				showInlineError(input, 'This field is required.');
+				isValid = false;
 			}
 
 			// Additional validations for specific fields
-			if (input.name === 'date_of_birth') {
+			if (input.name === 'date_of_birth' && input.value.trim()) {
 				const dob = new Date(input.value);
 				const today = new Date();
 				const age = today.getFullYear() - dob.getFullYear();
 				const monthDiff = today.getMonth() - dob.getMonth();
 				const dayDiff = today.getDate() - dob.getDate();
-				
+
 				// Check if user is at least 18 years old
 				const actualAge = (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) ? age - 1 : age;
-				
+
 				if (actualAge < 18) {
-					input.focus();
-					alert('You must be at least 18 years old to register.');
-					return false;
+					showInlineError(input, 'You must be at least 18 years old to register.');
+					isValid = false;
 				}
 			}
 
 			// Phone number validation
-			if (input.name === 'phone_number') {
+			if (input.name === 'phone_number' && input.value.trim()) {
 				const phonePattern = /^09[0-9]{9}$/;
 				if (!phonePattern.test(input.value.trim())) {
-					input.focus();
-					alert('Phone number must be in format: 09XXXXXXXXX (11 digits starting with 09)');
-					return false;
+					showInlineError(input, 'Format: 09XXXXXXXXX (11 digits)');
+					isValid = false;
 				}
 			}
 
 			// Postal code validation
-			if (input.name === 'owner_address_postal') {
+			if (input.name === 'owner_address_postal' && input.value.trim()) {
 				const postalPattern = /^[0-9]{4}$/;
 				if (!postalPattern.test(input.value.trim())) {
-					input.focus();
-					alert('Postal code must be exactly 4 digits.');
-					return false;
+					showInlineError(input, 'Postal code must be exactly 4 digits.');
+					isValid = false;
 				}
 			}
+		}
+
+		if (!isValid) {
+			const firstInvalid = stepElement.querySelector('.field-error');
+			if (firstInvalid && firstInvalid.focus) firstInvalid.focus();
+			return false;
 		}
 
 		// Check password match in step 2
 		if (step === 2) {
 			const password = stepElement.querySelector('input[name="password"]');
 			const confirmPassword = stepElement.querySelector('input[name="password_confirmation"]');
-			
+
 			if (password && confirmPassword && password.value !== confirmPassword.value) {
+				showInlineError(confirmPassword, 'Passwords do not match.');
 				confirmPassword.focus();
-				alert('Passwords do not match.');
 				return false;
 			}
 		}
@@ -453,7 +523,7 @@ document.addEventListener('DOMContentLoaded', () => {
 					nextBtn.disabled = false;
 					nextBtn.classList.remove('loading');
 					nextBtn.innerHTML = originalText;
-					alert('Unexpected error: ' + error.message);
+					showToast('Unexpected error: ' + error.message, 'error');
 				}
 			}
 		});
@@ -469,15 +539,18 @@ document.addEventListener('DOMContentLoaded', () => {
 	}
 
 	// Show Toast Notification
-	const showToast = (message) => {
+	const showToast = (message, type = 'info', duration = 4000) => {
 		const toast = document.getElementById('toast');
 		if (toast) {
 			toast.textContent = message;
-			toast.classList.add('show');
-			// Auto hide after 4 seconds
+			toast.className = 'toast-notification toast-' + type;
+			toast.style.display = 'block';
+			toast.style.whiteSpace = 'pre-wrap';
+			toast.style.maxHeight = '200px';
+			toast.style.overflowY = 'auto';
 			setTimeout(() => {
-				toast.classList.remove('show');
-			}, 4000);
+				toast.style.display = 'none';
+			}, duration);
 		}
 	};
 
@@ -488,13 +561,13 @@ document.addEventListener('DOMContentLoaded', () => {
 			// Get email from the input field
 			const emailInput = document.querySelector('input[name="email"]');
 			const userEmail = emailInput ? emailInput.value : '';
-			
+
 			// Update subtitle to show where OTP was sent
 			const otpSubtitle = otpModalBackdrop.querySelector('.otp-subtitle');
 			if (otpSubtitle && userEmail) {
 				otpSubtitle.innerHTML = `Please input the code we sent to <strong>${userEmail}</strong>`;
 			}
-			
+
 			otpModalBackdrop.style.display = 'flex';
 			// Reset and focus first OTP input
 			const otpInputs = otpModalBackdrop.querySelectorAll('.otp-input');
@@ -518,7 +591,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				input.classList.remove('otp-input-success');
 			});
 		}
-		
+
 		// Re-enable Next button
 		if (nextBtn) {
 			nextBtn.disabled = false;
@@ -561,12 +634,12 @@ document.addEventListener('DOMContentLoaded', () => {
 		try {
 			const formData = new FormData(form);
 			// Get CSRF token from form input or meta tag
-			const csrfToken = document.querySelector('input[name="_token"]')?.value || 
-			                  document.querySelector('meta[name="csrf-token"]')?.content;
+			const csrfToken = document.querySelector('input[name="_token"]')?.value ||
+				document.querySelector('meta[name="csrf-token"]')?.content;
 
 			if (!csrfToken) {
 				console.error('CSRF token not found!');
-				alert('Security error: CSRF token not found. Please refresh and try again.');
+				showToast('Security error: CSRF token not found. Please refresh and try again.', 'error');
 				return false;
 			}
 
@@ -602,12 +675,12 @@ document.addEventListener('DOMContentLoaded', () => {
 			} else if (step === 3) {
 				endpoint = '/accounts/signup/owner/step4';
 				data = new FormData();
-				
+
 				// Get file inputs
 				const validIdInput = document.querySelector('input[name="valid_id_photo"]');
 				const validIdBackInput = document.querySelector('input[name="valid_id_back_photo"]');
 				const policeClearanceInput = document.querySelector('input[name="police_clearance"]');
-				
+
 				// Validate files exist
 				if (!validIdInput?.files[0]) {
 					throw new Error('Valid ID - Front Side image is missing');
@@ -618,14 +691,14 @@ document.addEventListener('DOMContentLoaded', () => {
 				if (!policeClearanceInput?.files[0]) {
 					throw new Error('Police Clearance image is missing');
 				}
-				
+
 				// Append data to FormData
 				data.append('valid_id_id', document.querySelector('input[name="valid_id_id"]')?.value || '');
 				data.append('valid_id_photo', validIdInput.files[0]);
 				data.append('valid_id_back_photo', validIdBackInput.files[0]);
 				data.append('police_clearance', policeClearanceInput.files[0]);
 				data.append('_token', csrfToken);
-				
+
 				console.log('Submitting Step 3 with files:');
 				console.log('  - CSRF Token:', csrfToken ? '✓ Present' : '✗ MISSING!');
 				console.log('  - Valid ID ID:', document.querySelector('input[name="valid_id_id"]')?.value || 'EMPTY');
@@ -652,9 +725,9 @@ document.addEventListener('DOMContentLoaded', () => {
 			} catch (e) {
 				console.error('Response is not valid JSON:', responseText.substring(0, 500));
 				if (!response.ok) {
-					alert('Server Error (Status ' + response.status + '):\n\n' + (responseText.substring(0, 200) || 'The server returned an invalid response. Please try again.'));
+					showToast('Server Error (Status ' + response.status + '): ' + (responseText.substring(0, 200) || 'The server returned an invalid response. Please try again.'), 'error', 6000);
 				} else {
-					alert('Unexpected Response: Server returned invalid data. Please try again.');
+					showToast('Unexpected Response: Server returned invalid data. Please try again.', 'error', 5000);
 				}
 				return false;
 			}
@@ -671,21 +744,24 @@ document.addEventListener('DOMContentLoaded', () => {
 						console.log('  valid_id_id value:', document.querySelector('input[name="valid_id_id"]')?.value || 'NOT FOUND');
 					}
 					const errorMessages = result.errors;
-					let errorText = 'Validation Errors:\n';
-					if (Array.isArray(errorMessages)) {
-						errorText += errorMessages.join('\n');
-					} else if (typeof errorMessages === 'object') {
+					if (typeof errorMessages === 'object' && !Array.isArray(errorMessages)) {
+						const stepElement = document.getElementById(`step-${step}`);
 						for (const [field, msgs] of Object.entries(errorMessages)) {
-							if (Array.isArray(msgs)) {
-								errorText += `${field}: ${msgs.join(', ')}\n`;
+							const input = stepElement.querySelector(`[name="${field}"]`);
+							const msgText = Array.isArray(msgs) ? msgs[0] : msgs;
+							if (input) {
+								showInlineError(input, msgText);
 							} else {
-								errorText += `${field}: ${msgs}\n`;
+								showToast(msgText, 'error', 5000);
 							}
 						}
+					} else if (Array.isArray(errorMessages)) {
+						showToast('Validation Errors:\n' + errorMessages.join('\n'), 'error', 6000);
+					} else {
+						showToast('Validation Error', 'error', 6000);
 					}
-					alert(errorText);
 				} else {
-					alert(result.message || 'Error submitting form');
+					showToast(result.message || 'Error submitting form', 'error');
 				}
 				console.error('Server response error:', result);
 				return false;
@@ -695,19 +771,64 @@ document.addEventListener('DOMContentLoaded', () => {
 			if (step === 2 && result.message?.includes('OTP')) {
 				console.log('OTP sent to email:', result.message);
 			}
-			
+
 			console.log('Step ' + step + ' submitted successfully:', result);
 			return true;
 		} catch (error) {
 			console.error('Error submitting step ' + step + ':', error);
 			if (error.name === 'AbortError') {
-				alert('Request timeout: The server took too long to respond. Please try again.');
+				showToast('Request timeout: The server took too long to respond. Please try again.', 'error');
 			} else {
-				alert('Error: ' + error.message);
+				showToast('Error: ' + error.message, 'error');
 			}
 			return false;
 		}
 	};
+
+	// Real-time password mismatch validation for Step 2
+	const passwordInput = document.getElementById('passwordInput');
+	const confirmPasswordInput = document.getElementById('confirmPasswordInput');
+
+	if (confirmPasswordInput && passwordInput) {
+		confirmPasswordInput.addEventListener('input', () => {
+			// Clear existing error first
+			const container = confirmPasswordInput.closest('.field-block') || confirmPasswordInput.closest('.form-group') || confirmPasswordInput.parentNode;
+			const existingError = container?.querySelector('.inline-error-msg');
+			if (existingError) {
+				existingError.style.display = 'none';
+				existingError.textContent = '';
+			}
+			confirmPasswordInput.classList.remove('field-error');
+
+			if (confirmPasswordInput.value && passwordInput.value !== confirmPasswordInput.value) {
+				showInlineError(confirmPasswordInput, 'Passwords do not match.');
+			}
+		});
+
+		// Also add validation to password input to check when typing in the main password field
+		passwordInput.addEventListener('input', () => {
+			if (confirmPasswordInput.value && passwordInput.value !== confirmPasswordInput.value) {
+				showInlineError(confirmPasswordInput, 'Passwords do not match.');
+			} else if (confirmPasswordInput.value && passwordInput.value === confirmPasswordInput.value) {
+				// Clear error if passwords now match
+				const container = confirmPasswordInput.closest('.field-block') || confirmPasswordInput.closest('.form-group') || confirmPasswordInput.parentNode;
+				const existingError = container?.querySelector('.inline-error-msg');
+				if (existingError) {
+					existingError.style.display = 'none';
+					existingError.textContent = '';
+				}
+				confirmPasswordInput.classList.remove('field-error');
+			}
+		});
+	}
+
+	// Phone Number only allows digits
+	const phoneInputs = document.querySelectorAll('input[name="phone_number"], input[name="company_phone"]');
+	phoneInputs.forEach(input => {
+		input.addEventListener('input', function () {
+			this.value = this.value.replace(/[^0-9]/g, '');
+		});
+	});
 
 	// Password visibility toggles
 	const setupPasswordToggles = () => {
@@ -809,13 +930,13 @@ document.addEventListener('DOMContentLoaded', () => {
 			const removeBtn = document.getElementById(removeId);
 			const icon = area.querySelector('.upload-icon');
 			const text = area.querySelector('.upload-text');
-			
+
 			area.addEventListener('click', (e) => {
 				// Don't trigger file input if clicking on remove button
 				if (e.target.closest('.upload-remove')) return;
 				input.click();
 			});
-			
+
 			area.addEventListener('dragover', (e) => {
 				e.preventDefault();
 				e.stopPropagation();
@@ -823,7 +944,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				area.style.borderColor = 'var(--accent-end)';
 				area.style.background = 'rgba(245, 124, 0, 0.05)';
 			});
-			
+
 			area.addEventListener('dragleave', (e) => {
 				if (e.target !== area) return;
 				dragoverTimeout = setTimeout(() => {
@@ -831,42 +952,42 @@ document.addEventListener('DOMContentLoaded', () => {
 					area.style.background = 'var(--input-bg)';
 				}, 50);
 			});
-			
+
 			area.addEventListener('drop', (e) => {
 				e.preventDefault();
 				e.stopPropagation();
 				area.style.borderColor = 'var(--border-color)';
 				area.style.background = 'var(--input-bg)';
-				
+
 				if (e.dataTransfer.files.length) {
 					input.files = e.dataTransfer.files;
 					const event = new Event('change', { bubbles: true });
 					input.dispatchEvent(event);
 				}
 			});
-			
+
 			input.addEventListener('change', () => {
 				if (input.files && input.files[0]) {
 					const file = input.files[0];
-					
+
 					// Validate file type - allow images and PDF
 					const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
 					if (!allowedTypes.includes(file.type)) {
-						alert('Please select a valid image file (JPG, PNG, PDF)');
+						showToast('Please select a valid image file (JPG, PNG, PDF)', 'error');
 						input.value = '';
 						return;
 					}
-					
+
 					// Validate file size upfront
 					if (file.size > MAX_FILE_SIZE) {
-						alert('File size must be less than 5MB');
+						showToast('File size must be less than 5MB', 'error');
 						input.value = '';
 						return;
 					}
-					
+
 					// Use URL.createObjectURL instead of FileReader for instant preview
 					const blobUrl = URL.createObjectURL(file);
-					
+
 					if (preview) {
 						// Create new image to load preview
 						const img = new Image();
@@ -888,7 +1009,7 @@ document.addEventListener('DOMContentLoaded', () => {
 								}
 								if (removeBtn) removeBtn.style.display = 'flex';
 							} else {
-								alert('Failed to load image preview');
+								showToast('Failed to load image preview', 'error');
 								URL.revokeObjectURL(blobUrl);
 								input.value = '';
 							}
@@ -897,7 +1018,7 @@ document.addEventListener('DOMContentLoaded', () => {
 					}
 				}
 			});
-			
+
 			// Remove button functionality
 			if (removeBtn) {
 				removeBtn.addEventListener('click', (e) => {

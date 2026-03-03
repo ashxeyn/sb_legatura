@@ -25,6 +25,9 @@ export const api_config = {
             login: '/api/login',
             signup_form: '/api/signup-form',
             force_change_password: '/api/force-change-password',
+            forgot_password_send_otp: '/api/forgot-password/send-otp',
+            forgot_password_verify_otp: '/api/forgot-password/verify-otp',
+            forgot_password_reset: '/api/forgot-password/reset',
         },
         contractor: {
             step1: '/api/signup/contractor/step1',

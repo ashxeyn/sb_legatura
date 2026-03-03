@@ -8,7 +8,6 @@ import {
     SafeAreaView,
     StatusBar,
     Alert,
-    Linking,
     ActivityIndicator,
     Modal,
     ScrollView,
@@ -18,6 +17,8 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import * as Linking from 'expo-linking';
+import * as WebBrowser from 'expo-web-browser';
 import { api_request } from '../../config/api';
 
 const { width } = Dimensions.get('window');
@@ -120,7 +121,8 @@ export default function SubscriptionScreen({ onBack }: Props) {
     const handleSubscribe = async () => {
         setLoading(true);
         try {
-            const returnUrl = `exp://192.168.100.27:8081/--/payment-callback?subscription=1`;
+            const returnUrl = Linking.createURL('payment-callback', { queryParams: { subscription: '1' } });
+            console.log('Subscription return URL:', returnUrl);
 
             const response = await api_request('/api/subscribe/checkout', {
                 method: 'POST',
@@ -133,8 +135,20 @@ export default function SubscriptionScreen({ onBack }: Props) {
             });
 
             if (response.success && response.data?.checkout_url) {
-                await Linking.openURL(response.data.checkout_url);
-                pollForSubscriptionUpdate();
+                // openAuthSessionAsync watches for the returnUrl redirect and auto-closes the browser
+                const result = await WebBrowser.openAuthSessionAsync(
+                    response.data.checkout_url,
+                    returnUrl
+                );
+                console.log('WebBrowser result:', result);
+
+                if (result.type === 'cancel' || result.type === 'dismiss') {
+                    // User closed the browser without completing
+                    Alert.alert('Payment Pending', 'Subscription payment was not completed. You can try again anytime.');
+                } else {
+                    // Browser returned with redirect — start polling
+                    pollForSubscriptionUpdate();
+                }
             } else {
                 Alert.alert('Checkout Error', response.message || 'Unable to create checkout session');
             }
@@ -337,72 +351,82 @@ export default function SubscriptionScreen({ onBack }: Props) {
         <View style={styles.tabContent}>
             <View style={styles.plansHeader}>
                 <Text style={styles.plansTitle}>Choose Your Plan</Text>
+                <Text style={styles.plansSubtitle}>Select the best plan for your business</Text>
             </View>
 
             <View style={styles.plansList}>
                 {plans.map((plan) => {
                     const planStyle = getPlanStyle(plan.plan_key);
                     const isSelected = selectedPlan === plan.plan_key;
-                    const isExpanded = expandedPlan === plan.plan_key;
-                    const isActive = isSelected || isExpanded;
 
                     return (
-                        <View
+                        <TouchableOpacity
                             key={plan.plan_key}
                             style={[
                                 styles.planCard,
-                                isSelected && styles.selectedPlanCard,
+                                isSelected && [styles.selectedPlanCard, { borderColor: planStyle.color, backgroundColor: planStyle.color }],
                             ]}
+                            onPress={() => {
+                                setSelectedPlan(plan.plan_key);
+                                setExpandedPlan(prev => (prev === plan.plan_key ? null : plan.plan_key));
+                            }}
+                            activeOpacity={0.8}
                         >
-                            {/* overlapping icon outside the pill - only show when card is selected (clicked) */}
-                            {isSelected && (
-                                <View style={[styles.tierIconOverlap, { backgroundColor: planStyle.color + '20' }]}>
-                                    <Ionicons name={planStyle.icon} size={36} color={planStyle.color} />
-                                </View>
-                            )}
+                            {/* Left: Icon */}
+                            <View style={[styles.planIconContainer, { backgroundColor: isSelected ? '#FFFFFF20' : planStyle.color + '15' }]}>
+                                <Ionicons name={planStyle.icon} size={24} color={isSelected ? '#FFFFFF' : planStyle.color} />
+                            </View>
 
-                            <TouchableOpacity
-                                style={styles.planHeaderRow}
-                                onPress={() => {
-                                    setSelectedPlan(plan.plan_key);
-                                    setExpandedPlan(prev => (prev === plan.plan_key ? null : plan.plan_key));
-                                }}
-                                activeOpacity={0.85}
-                            >
-                                <View style={[styles.planContentCompactRow, isActive && styles.planContentCompactRowActive]}>
-                                    <Text style={[styles.planNamePill, isActive && styles.planNameCentered, isSelected && styles.planNamePillSelected]}>{plan.name.toUpperCase()}</Text>
+                            {/* Center: Name + Cycle */}
+                            <View style={styles.planTextContainer}>
+                                <Text style={[styles.planCardName, isSelected && styles.planCardNameSelected]}>
+                                    {plan.name}
+                                </Text>
+                                <Text style={[styles.planCardCycle, isSelected && styles.planCardCycleSelected]}>
+                                    {plan.billing_cycle === 'one-time'
+                                        ? `${plan.duration_days} days`
+                                        : plan.billing_cycle}
+                                </Text>
+                            </View>
 
-                                    <View style={[styles.priceRight, isActive && styles.priceRightAbsolute]}>
-                                        <Text style={[styles.planPricePill, isSelected && styles.planPricePillSelected]}>₱ {plan.amount.toLocaleString()}</Text>
+                            {/* Right: Price + Check */}
+                            <View style={styles.planPriceContainer}>
+                                <Text style={[styles.planCardPrice, isSelected && styles.planCardPriceSelected]}>
+                                    ₱{(plan.amount / 100).toLocaleString()}
+                                </Text>
+                                {isSelected && (
+                                    <View style={styles.planCheckBadge}>
+                                        <Ionicons name="checkmark" size={14} color="#FFFFFF" />
                                     </View>
-                                </View>
-                            </TouchableOpacity>
+                                )}
+                            </View>
 
-                            {isGoldTier(plan.plan_key) && (
-                                <View style={styles.starBadge}>
-                                    <Ionicons name="star" size={14} color="#FFFFFF" />
+                            {/* Gold star badge */}
+                            {isGoldTier(plan.plan_key) && !isSelected && (
+                                <View style={[styles.starBadge, { backgroundColor: planStyle.color }]}>
+                                    <Ionicons name="star" size={12} color="#FFFFFF" />
                                 </View>
                             )}
-                        </View>
+                        </TouchableOpacity>
                     );
                 })}
             </View>
 
             {expandedPlan && expandedPlanData && (
                 <View style={styles.benefitsPanel}>
-                    <Text style={styles.benefitsTitle}>You'll get:</Text>
+                    <Text style={styles.benefitsTitle}>What's included:</Text>
                     <View style={styles.benefitsListCompact}>
                         {(expandedPlanData.benefits || []).map((benefit, index) => (
                             <View key={index} style={styles.planFeatureItem}>
-                                <Ionicons name="checkmark" size={16} color="#10B981" />
+                                <View style={styles.featureCheckCircle}>
+                                    <Ionicons name="checkmark" size={12} color="#FFFFFF" />
+                                </View>
                                 <Text style={styles.planFeatureText}>{benefit}</Text>
                             </View>
                         ))}
                     </View>
                 </View>
             )}
-
-
         </View>
     );
     };
@@ -906,176 +930,117 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
     },
 
-    // Tier text content (center)
-    planHeader: {
-        flex: 1,
-        justifyContent: 'center',
+    // --- Plan Cards (redesigned) ---
+    plansHeader: {
+        marginBottom: 20,
     },
-
     plansTitle: {
-        fontSize: 24,
+        fontSize: 22,
         fontWeight: '800',
         color: '#1F2937',
         marginBottom: 4,
     },
     plansSubtitle: {
         fontSize: 14,
-        color: '#10B981',
-        fontWeight: '600',
-    },
-    plansList: {
-        marginBottom: 20,
-    },
-    planCard: {
-        backgroundColor: '#EEF6FF',
-        borderRadius: 20,
-        paddingVertical: 16,
-        paddingHorizontal: 20,
-        marginBottom: 16,
-        borderWidth: 0,
-        shadowColor: 'transparent',
-        elevation: 0,
-        flexDirection: 'row',
-        alignItems: 'center',
-        position: 'relative',
-    },
-    selectedPlanCard: {
-        backgroundColor: '#F59E0B',
-        borderColor: 'transparent',
-    },
-    // Tier icon (left side)
-    planGradient: {
-        width: 64,
-        height: 64,
-        borderRadius: 16,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 16,
-    },
-    tierImageCompact: {
-        width: 60,
-        height: 60,
-        resizeMode: 'contain',
-    },
-    tierImageOverlap: {
-        width: 90,
-        height: 90,
-        resizeMode: 'contain',
-        position: 'absolute',
-        left: 12,
-        top: -12,
-        zIndex: 4,
-    },
-    tierImageOverlapSelected: {
-        opacity: 1,
-    },
-    planHeaderRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        position: 'relative',
-    },
-    planContentCompactRow: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-    },
-    planContentCompactRowActive: {
-        justifyContent: 'center',
-    },
-    // Tier text content (center)
-    planHeader: {
-        flex: 1,
-        justifyContent: 'center',
-    },
-
-    planName: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: '#1F2937',
-        textAlign: 'left', // default left aligned
-    },
-    planNameCentered: {
-        textAlign: 'center', // center aligned when icon is shown or card is clicked
-        flex: 1,
-    },
-
-    priceRight: {
-        alignItems: 'flex-end',
-        justifyContent: 'center',
-        minWidth: 100,
-    },
-
-
-    planNamePill: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: '#0F172A',
-    },
-    planNamePillSelected: {
-        color: '#FFFFFF',
-    },
-    planPricePill: {
-        fontSize: 18,
-        fontWeight: '800',
-        color: '#0F172A',
-    },
-
-    planPricePillSelected: {
-        color: '#FFFFFF',
-    },
-    priceRight: {
-        alignItems: 'flex-end',
-        minWidth: 140,
-    },
-    priceRightAbsolute: {
-        position: 'absolute',
-        right: 20,
-    },
-    planPeriod: {
-        fontSize: 14,
-        fontWeight: '400',
         color: '#6B7280',
     },
-    selectedBadge: {
-        marginLeft: 12,
+    plansList: {
+        marginBottom: 16,
     },
-    headerRightCompact: {
+    planCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        paddingVertical: 16,
+        paddingHorizontal: 16,
+        marginBottom: 12,
+        borderWidth: 2,
+        borderColor: '#E5E7EB',
         flexDirection: 'row',
         alignItems: 'center',
-        marginLeft: 8,
+        position: 'relative',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.04,
+        shadowRadius: 4,
+        elevation: 1,
     },
-    planGradientSelected: {
-        opacity: 0.95,
+    selectedPlanCard: {
+        borderWidth: 2,
+        elevation: 4,
+        shadowOpacity: 0.12,
+        shadowRadius: 8,
     },
-    // Adjust star badge so it doesn’t overlap price
+    planIconContainer: {
+        width: 48,
+        height: 48,
+        borderRadius: 14,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 14,
+    },
+    planTextContainer: {
+        flex: 1,
+        marginRight: 12,
+    },
+    planCardName: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#1F2937',
+        marginBottom: 2,
+    },
+    planCardNameSelected: {
+        color: '#FFFFFF',
+    },
+    planCardCycle: {
+        fontSize: 13,
+        color: '#9CA3AF',
+        fontWeight: '500',
+    },
+    planCardCycleSelected: {
+        color: '#FFFFFF99',
+    },
+
+    planPriceContainer: {
+        alignItems: 'flex-end',
+    },
+    planCardPrice: {
+        fontSize: 18,
+        fontWeight: '800',
+        color: '#1F2937',
+    },
+    planCardPriceSelected: {
+        color: '#FFFFFF',
+    },
+    planCheckBadge: {
+        width: 22,
+        height: 22,
+        borderRadius: 11,
+        backgroundColor: '#FFFFFF30',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: 4,
+    },
     starBadge: {
         position: 'absolute',
-        right: 8,
-        top: 8,
-        backgroundColor: '#D97706',
-        width: 28,
-        height: 28,
-        borderRadius: 14,
+        right: -4,
+        top: -4,
+        width: 24,
+        height: 24,
+        borderRadius: 12,
         alignItems: 'center',
         justifyContent: 'center',
         elevation: 3,
         zIndex: 2,
     },
-    planFeaturesExpanded: {
-        marginTop: 12,
-        paddingTop: 8,
-        borderTopWidth: 1,
-        borderTopColor: '#F3F4F6',
-    },
     benefitsPanel: {
         backgroundColor: '#FFFFFF',
-        borderRadius: 12,
-        padding: 16,
-        marginTop: 12,
+        borderRadius: 16,
+        padding: 20,
+        marginTop: 4,
+        marginBottom: 16,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.03,
+        shadowOpacity: 0.04,
         shadowRadius: 6,
         elevation: 2,
         borderWidth: 1,
@@ -1087,12 +1052,21 @@ const styles = StyleSheet.create({
     planFeatureItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 8,
+        marginBottom: 10,
+    },
+    featureCheckCircle: {
+        width: 22,
+        height: 22,
+        borderRadius: 11,
+        backgroundColor: '#10B981',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     planFeatureText: {
         fontSize: 14,
         color: '#374151',
-        marginLeft: 8,
+        marginLeft: 10,
+        flex: 1,
     },
     /* New styles matching HTML design */
     tierIconLarge: {

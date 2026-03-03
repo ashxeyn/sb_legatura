@@ -181,7 +181,20 @@ class userVerificationClass
 
             // Update users.user_type to reflect available profiles
             if ($hasContractor && $hasOwner) {
-                DB::table('users')->where('user_id', $userId)->update(['user_type' => 'both']);
+                $updateData = ['user_type' => 'both'];
+
+                // Preserve the user's current active role so they are NOT auto-switched
+                if (empty($user->preferred_role)) {
+                    $preservedRole = $user->user_type;
+                    if ($preservedRole === 'property_owner') {
+                        $preservedRole = 'owner';
+                    }
+                    if (in_array($preservedRole, ['contractor', 'owner'])) {
+                        $updateData['preferred_role'] = $preservedRole;
+                    }
+                }
+
+                DB::table('users')->where('user_id', $userId)->update($updateData);
             } elseif ($hasContractor) {
                 DB::table('users')->where('user_id', $userId)->update(['user_type' => 'contractor']);
             } elseif ($hasOwner) {

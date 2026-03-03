@@ -20,6 +20,30 @@ use App\Http\Controllers\Admin\globalManagementController;
 use App\Http\Controllers\Admin\ProjectAdminController;
 use App\Http\Controllers\Admin\projectManagementController;
 use App\Http\Controllers\message\broadcastAuthController;
+use App\Http\Controllers\passwordController;
+
+Route::prefix('admin/settings/security')
+     ->middleware([\App\Http\Middleware\AdminAuthMiddleware::class])
+     ->group(function () {
+
+    // ── VIEW ──────────────────────────────────────────────────────────────────
+    Route::get('/', function () {
+        return view('admin.settings.security');
+    })->name('admin.settings.security');
+
+    // ── JSON ENDPOINTS ────────────────────────────────────────────────────────
+    Route::get( '/data',            [\App\Http\Controllers\Admin\AccountController::class, 'data'])
+         ->name('admin.settings.security.data');
+
+    Route::post('/update',          [\App\Http\Controllers\Admin\AccountController::class, 'update'])
+         ->name('admin.settings.security.update');
+
+    Route::post('/change-password', [\App\Http\Controllers\Admin\AccountController::class, 'changePassword'])
+         ->name('admin.settings.security.changePassword');
+
+    Route::post('/delete',          [\App\Http\Controllers\Admin\AccountController::class, 'delete'])
+         ->name('admin.settings.security.delete');
+});
 
 Route::post('/admin/global-management/ai-management/analyze/{id}', [globalManagementController::class, 'analyzeProject']);
 
@@ -91,6 +115,14 @@ Route::get('/owner/projects', [\App\Http\Controllers\owner\projectsController::c
 
 // Property Owner Profile
 Route::get('/owner/profile', [\App\Http\Controllers\owner\projectsController::class, 'showProfile'])->name('owner.profile');
+
+// Property Owner Project Details (individual project)
+Route::get('/owner/projects/{projectId}', [\App\Http\Controllers\owner\projectsController::class, 'showProjectDetails'])->name('owner.projects.show');
+
+// Property Owner Profile API (web session-based routes)
+Route::get('/owner/profile/fetch', [\App\Http\Controllers\profileController::class, 'apiGetProfile'])->name('owner.profile.fetch');
+Route::get('/owner/profile/reviews', [\App\Http\Controllers\profileController::class, 'apiGetReviews'])->name('owner.profile.reviews');
+Route::post('/owner/profile/update', [\App\Http\Controllers\profileController::class, 'update'])->name('owner.profile.update');
 
 // Property Owner Finished Projects
 Route::get('/owner/projects/finished', [\App\Http\Controllers\owner\projectsController::class, 'showFinishedProjects'])->name('owner.projects.finished');
@@ -196,6 +228,12 @@ Route::get('/owner/signup', function () {
 Route::post('/accounts/signup/select-role', [authController::class, 'selectRole']);
 Route::post('/accounts/logout', [authController::class, 'logout']);
 Route::get('/accounts/logout', [authController::class, 'logout']);
+
+// Forgot Password Routes
+Route::get('/accounts/forgot-password', [passwordController::class, 'showForgotForm'])->name('password.forgot');
+Route::post('/accounts/password/send-otp', [passwordController::class, 'sendResetOtp'])->name('password.send-otp');
+Route::post('/accounts/password/verify-otp', [passwordController::class, 'verifyResetOtp'])->name('password.verify-otp');
+Route::post('/accounts/password/reset', [passwordController::class, 'resetPassword'])->name('password.reset');
 
 // Admin Authentication Routes
 Route::get('/admin/login', function () {
@@ -310,7 +348,7 @@ Route::get('/owner/projects/{projectId}/edit', [\App\Http\Controllers\owner\proj
 Route::put('/owner/projects/{projectId}', [\App\Http\Controllers\owner\projectsController::class, 'update']);
 Route::delete('/owner/projects/{projectId}', [\App\Http\Controllers\owner\projectsController::class, 'delete']);
 Route::post('/owner/projects/{projectId}/bids/{bidId}/accept', [\App\Http\Controllers\owner\projectsController::class, 'acceptBid']);
-Route::post('/owner/projects/{projectId}/bids/{bidId}/reject', [\App\Http\Controllers\owner\projectsController::class , 'rejectBid'])->name('owner.projects.bids.reject');
+Route::post('/owner/projects/{projectId}/bids/{bidId}/reject', [\App\Http\Controllers\owner\projectsController::class, 'rejectBid'])->name('owner.projects.bids.reject');
 Route::post('/owner/milestones/{milestoneId}/approve', [milestoneController::class, 'webApproveMilestone']);
 Route::post('/owner/milestones/{milestoneId}/reject', [milestoneController::class, 'webRejectMilestone']);
 Route::post('/owner/projects/{projectId}/complete', [\App\Http\Controllers\owner\projectsController::class, 'completeProject']);
@@ -367,7 +405,20 @@ Route::post('/admin/user-management/suspended-accounts/reactivate', [userManagem
 
 // Global Management Routes
 Route::get('/admin/global-management/bid-management', [globalManagementController::class, 'bidManagement'])->name('admin.globalManagement.bidManagement');
+Route::get('/admin/global-management/bid-management/files/{id}',[globalManagementController::class, 'getBidFiles'])->name('admin.globalManagement.bidFiles');
+Route::put('/admin/global-management/bid-management/{id}',[globalManagementController::class, 'updateBid'])->name('admin.globalManagement.updateBid');
+Route::delete('/admin/global-management/bid-management/{id}',[globalManagementController::class, 'deleteBid'])->name('admin.globalManagement.deleteBid');
 Route::get('/admin/global-management/proof-of-payments', [globalManagementController::class, 'proofOfPayments'])->name('admin.globalManagement.proofOfpayments');
+// Get single payment detail (AJAX – used by view modal)
+Route::get('/admin/global-management/proof-of-payments/{id}', [globalManagementController::class, 'getPaymentDetail'])->name('admin.globalManagement.proofOfpayments.detail');
+// Approve a payment
+Route::post('/admin/global-management/proof-of-payments/{id}/verify', [globalManagementController::class, 'verifyPayment'])->name('admin.globalManagement.proofOfpayments.verify');
+// Reject a payment (with reason)
+Route::post('/admin/global-management/proof-of-payments/{id}/reject', [globalManagementController::class, 'rejectPayment'])->name('admin.globalManagement.proofOfpayments.reject');
+// Soft-delete a payment (sets status = 'deleted')
+Route::delete('/admin/global-management/proof-of-payments/{id}', [globalManagementController::class, 'deletePayment'])->name('admin.globalManagement.proofOfpayments.delete');
+Route::put('/{id}',     [GlobalManagementController::class, 'updatePayment']);
+
 Route::get('/admin/global-management/ai-management', [globalManagementController::class, 'aiManagement'])->name('admin.globalManagement.aiManagement');
 Route::get('/admin/global-management/posting-management', [globalManagementController::class, 'postingManagement'])->name('admin.globalManagement.postingManagement');
 
@@ -446,9 +497,12 @@ Route::get('/admin/settings/notifications', function () {
     return view('admin.settings.notifications');
 })->name('admin.settings.notifications');
 
-Route::get('/admin/settings/security', function () {
-    return view('admin.settings.security');
-})->name('admin.settings.security');
+// NOTE: The main admin/settings/security routes are defined earlier with AdminAuthMiddleware
+// This is a fallback route - but we should NOT have it without the middleware
+// Commenting this out to avoid duplicate route definitions without middleware
+// Route::get('/admin/settings/security', function () {
+//     return view('admin.settings.security');
+// })->name('admin.settings.security');
 
 // =============================================
 // ADMIN API ROUTES
@@ -493,6 +547,8 @@ Route::prefix('/api/admin/management')->group(function () {
     Route::get('/payments', [globalManagementController::class, 'getPaymentsApi'])->name('api.admin.payments');
     Route::post('/payments/{id}/verify', [globalManagementController::class, 'verifyPayment'])->name('api.admin.payment.verify');
     Route::post('/payments/{id}/reject', [globalManagementController::class, 'rejectPayment'])->name('api.admin.payment.reject');
+    Route::get('/api/admin/management/payments/{id}', [globalManagementController::class, 'getPaymentDetail'])->name('api.admin.payment.detail');
+    Route::delete('/api/admin/management/payments/{id}', [globalManagementController::class, 'deletePayment'])->name('api.admin.payment.delete');
 
     Route::get('/postings', [globalManagementController::class, 'getPostingsApi'])->name('api.admin.postings');
     Route::get('/postings/{id}', [globalManagementController::class, 'getPostDetails'])->name('api.admin.posting.details');
@@ -508,6 +564,8 @@ Route::prefix('/api/admin/analytics')->group(function () {
     Route::get('/subscription', [analyticsController::class, 'subscriptionAnalytics'])->name('api.admin.analytics.subscription');
     Route::get('/subscription/revenue', [analyticsController::class, 'subscriptionRevenue'])->name('api.admin.analytics.subscriptionRevenue');
     Route::get('/user-activity', [analyticsController::class, 'userActivityAnalytics'])->name('api.admin.analytics.userActivity');
+    Route::get('admin/analytics/user-activity/feed', [analyticsController::class, 'getUserActivityFeed'])
+     ->name('admin.analytics.userActivity.feed');
     Route::get('/project-performance', [analyticsController::class, 'projectPerformanceAnalytics'])->name('api.admin.analytics.projectPerformance');
     Route::get('/bid-completion', [analyticsController::class, 'bidCompletionAnalytics'])->name('api.admin.analytics.bidCompletion');
 });

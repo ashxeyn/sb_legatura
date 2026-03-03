@@ -20,9 +20,15 @@
                 <div class="ecp-section">
                     <h3 class="ecp-section-title"><i class="fi fi-rr-building"></i> Company Information</h3>
 
-                    <div class="ecp-field full">
-                        <label for="ecpCompanyName" class="ecp-label">Company Name <span class="ecp-req">*</span></label>
-                        <input type="text" id="ecpCompanyName" name="company_name" class="ecp-input" placeholder="Enter company name" required>
+                    <div class="ecp-row">
+                        <div class="ecp-field">
+                            <label for="ecpUsername" class="ecp-label">Username</label>
+                            <input type="text" id="ecpUsername" name="username" class="ecp-input" placeholder="Enter username">
+                        </div>
+                        <div class="ecp-field">
+                            <label for="ecpCompanyName" class="ecp-label">Company Name <span class="ecp-req">*</span></label>
+                            <input type="text" id="ecpCompanyName" name="company_name" class="ecp-input" placeholder="Enter company name" required>
+                        </div>
                     </div>
 
                     <div class="ecp-row">
@@ -70,8 +76,32 @@
                     <h3 class="ecp-section-title"><i class="fi fi-rr-marker"></i> Address & Online Presence</h3>
 
                     <div class="ecp-field full">
-                        <label for="ecpBusinessAddress" class="ecp-label">Business Address</label>
-                        <textarea id="ecpBusinessAddress" name="business_address" class="ecp-textarea" rows="2" placeholder="Complete business address"></textarea>
+                        <label for="ecpAddressStreet" class="ecp-label">Street Address</label>
+                        <input type="text" id="ecpAddressStreet" name="address_street" class="ecp-input" placeholder="Enter street/building number">
+                    </div>
+
+                    <div class="ecp-row">
+                        <div class="ecp-field">
+                            <label for="ecpAddressProvince" class="ecp-label">Province</label>
+                            <select id="ecpAddressProvince" name="address_province" class="ecp-input">
+                                <option value="">Select province</option>
+                            </select>
+                        </div>
+                        <div class="ecp-field">
+                            <label for="ecpAddressCity" class="ecp-label">City/Municipality</label>
+                            <select id="ecpAddressCity" name="address_city" class="ecp-input" disabled>
+                                <option value="">Select city</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="ecp-row">
+                        <div class="ecp-field">
+                            <label for="ecpAddressBarangay" class="ecp-label">Barangay</label>
+                            <select id="ecpAddressBarangay" name="address_barangay" class="ecp-input" disabled>
+                                <option value="">Select barangay</option>
+                            </select>
+                        </div>
                     </div>
 
                     <div class="ecp-row">

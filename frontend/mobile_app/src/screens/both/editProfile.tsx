@@ -64,8 +64,8 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
         if (sType) setEffectiveUserType(sType);
         if (sPref) setEffectivePreferredRole(sPref);
         // refresh profile immediately for the new role
-        try { await fetchFullProfile(); } catch (e) {}
-      } catch (e) {}
+        try { await fetchFullProfile(); } catch (e) { }
+      } catch (e) { }
     });
 
     return () => { sub.remove(); };
@@ -85,6 +85,10 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
   const [dateOfBirth, setDateOfBirth] = useState(userData?.date_of_birth || '');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [dobDate, setDobDate] = useState<Date | null>(dateOfBirth ? new Date(dateOfBirth) : null);
+
+  // Bio fields — owners and contractors each have their own `bio` column
+  const [ownerBio, setOwnerBio] = useState('');
+  const [contractorBio, setContractorBio] = useState('');
 
   // Contractor Business Details
   const [companyName, setCompanyName] = useState(userData?.contractor?.company_name || '');
@@ -130,7 +134,7 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
       }
 
       // Load verification status (non-blocking but keep order predictable)
-      try { await loadVerificationStatus(); } catch (e) {}
+      try { await loadVerificationStatus(); } catch (e) { }
 
       // Now fetch full profile after provinces are populated so address resolution can match
       console.log('EditProfile: forcing full profile fetch from /api/profile/fetch (after provinces)');
@@ -164,7 +168,7 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
     (async () => {
       try {
         await loadCities(addressProvince);
-      } catch {}
+      } catch { }
     })();
   }, [addressProvince]);
 
@@ -227,6 +231,10 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
           setOccupationOtherText(occOther || '');
           setDateOfBirth(merged.date_of_birth || '');
 
+          // Bio: populate per-role state so both tabs show the correct value
+          setOwnerBio((owner && owner.bio) || '');
+          setContractorBio((c && c.bio) || '');
+
           // Address: user row may store address_* or owner.address; parse combined address when separate fields missing
           let street = (u && (u.address_street || u.address)) || owner.address_street || '';
           let barangay = (u && u.address_barangay) || owner.address_barangay || '';
@@ -248,7 +256,7 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
             postal = parts[4] || '';
           }
 
-            // Map resolved address names to PSGC codes where possible, preserving numeric codes
+          // Map resolved address names to PSGC codes where possible, preserving numeric codes
           try {
             const resolved = await resolveAddressParts([street, barangay, city, province, postal]);
             setAddressStreet(resolved.street || '');
@@ -327,6 +335,7 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
               setPicabNumber(c.picab_number || '');
               setBusinessPermitNumber(c.business_permit_number || '');
               setTinNumber(c.picab_number || c.tin_business_reg_number || '');
+              setContractorBio(c.bio || '');
             }
 
             // If the fetched role is contractor, prefer contractor business_address for Addresses tab
@@ -432,7 +441,7 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
     } finally {
       try {
         setLoadingProfile(false);
-      } catch (ignored) {}
+      } catch (ignored) { }
     }
   };
 
@@ -504,14 +513,14 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
         setAddressCity('');
         setAddressBarangay('');
       }
-    } catch {}
+    } catch { }
   };
 
   const loadBarangays = async (cityCode: string) => {
     try {
       const res = await auth_service.get_barangays_by_city(cityCode);
       if (res?.success && res.data) setBarangays(res.data);
-    } catch {}
+    } catch { }
   };
 
   // Helper: resolve arbitrary address parts (names or numeric codes) to PSGC codes and street/postal
@@ -549,7 +558,7 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
       try {
         const provRes = await auth_service.get_provinces();
         if (provRes?.success && provRes.data) setProvinces(provRes.data);
-      } catch (_) {}
+      } catch (_) { }
     }
 
     // Attempt to find province by checking any part (prefer later parts)
@@ -613,7 +622,7 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
           const foundB = (brList || []).find((bObj: any) => normalize(bObj.name || '') === tgt || normalize(bObj.name || '').includes(tgt) || tgt.includes(normalize(bObj.name || '')));
           if (foundB) { out.barangayCode = String(foundB.code); arr.splice(i, 1); break; }
         }
-      } catch (_) {}
+      } catch (_) { }
     }
 
     // Remaining parts: treat first element as the street; remaining parts are likely barangay/city/province names
@@ -686,7 +695,7 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
     const c = String(code);
     let list = provinces || [];
     if ((!list || !list.length)) {
-      try { const provRes = await auth_service.get_provinces(); if (provRes?.success && provRes.data) { setProvinces(provRes.data); list = provRes.data; } } catch (_) {}
+      try { const provRes = await auth_service.get_provinces(); if (provRes?.success && provRes.data) { setProvinces(provRes.data); list = provRes.data; } } catch (_) { }
     }
     const found = (list || []).find((p: any) => String(p.code) === c);
     return found ? (found.name || null) : null;
@@ -697,7 +706,7 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
     const c = String(code);
     let list = cities || [];
     if ((!list || !list.length) && provCode) {
-      try { const res = await auth_service.get_cities_by_province(String(provCode)); if (res?.success && res.data) { setCities(res.data); list = res.data; } } catch (_) {}
+      try { const res = await auth_service.get_cities_by_province(String(provCode)); if (res?.success && res.data) { setCities(res.data); list = res.data; } } catch (_) { }
     }
     // fallback: try to find in currently loaded cities
     const found = (list || []).find((ct: any) => String(ct.code) === c);
@@ -712,9 +721,9 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
           const l = r?.success && r.data ? r.data : (r?.data || []);
           const f = (l || []).find((ct: any) => String(ct.code) === c);
           if (f) return f.name || null;
-        } catch (e) {}
+        } catch (e) { }
       }
-    } catch (e) {}
+    } catch (e) { }
     return null;
   };
 
@@ -723,7 +732,7 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
     const c = String(code);
     let list = barangays || [];
     if ((!list || !list.length) && cityCode) {
-      try { const res = await auth_service.get_barangays_by_city(String(cityCode)); if (res?.success && res.data) { setBarangays(res.data); list = res.data; } } catch (_) {}
+      try { const res = await auth_service.get_barangays_by_city(String(cityCode)); if (res?.success && res.data) { setBarangays(res.data); list = res.data; } } catch (_) { }
     }
     const found = (list || []).find((b: any) => String(b.code) === c);
     if (found) return found.name || null;
@@ -761,6 +770,10 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
       } else if (occupation) {
         formData.append('occupation', occupation);
       }
+
+      // Bio: send the bio for whichever role is active
+      const isContractorRole = activeRole && String(activeRole).toLowerCase().includes('contractor');
+      formData.append('bio', isContractorRole ? contractorBio : ownerBio);
 
       // Contractor Business Details
       // Always editable fields
@@ -812,7 +825,7 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
           if (num) provinceToSend = num;
           else {
             if (!provinces || provinces.length === 0) {
-              try { const provRes = await auth_service.get_provinces(); if (provRes?.success && provRes.data) setProvinces(provRes.data); } catch (_) {}
+              try { const provRes = await auth_service.get_provinces(); if (provRes?.success && provRes.data) setProvinces(provRes.data); } catch (_) { }
             }
             const target = (provinceToSend || '').toString().toLowerCase().trim();
             const found = (provinces || []).find((p: any) => (p.name || '').toString().toLowerCase().trim() === target || (p.name || '').toString().toLowerCase().includes(target));
@@ -832,7 +845,7 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
               const target = (cityToSend || '').toString().toLowerCase().trim();
               const foundC = (citiesList || []).find((cObj: any) => (cObj.name || '').toString().toLowerCase().trim() === target || (cObj.name || '').toString().toLowerCase().includes(target));
               if (foundC) cityToSend = String(foundC.code);
-            } catch (_) {}
+            } catch (_) { }
           }
         }
 
@@ -848,7 +861,7 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
               const target = (barangayToSend || '').toString().toLowerCase().trim();
               const foundB = (brList || []).find((bObj: any) => (bObj.name || '').toString().toLowerCase().trim() === target || (bObj.name || '').toString().toLowerCase().includes(target));
               if (foundB) barangayToSend = String(foundB.code);
-            } catch (_) {}
+            } catch (_) { }
           }
         }
 
@@ -949,7 +962,7 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
                 // Stay on this screen; refresh the displayed profile data
                 try {
                   fetchFullProfile();
-                } catch (e) {}
+                } catch (e) { }
               },
             },
           ]
@@ -990,432 +1003,454 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
           contentContainerStyle={styles.scrollContent}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         >
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => {
-            try {
-              if (navigation && typeof navigation.goBack === 'function') return navigation.goBack();
-              if (typeof onBackPress === 'function') return onBackPress();
-              console.warn('EditProfile: no navigation or onBackPress available to go back');
-            } catch (e) { console.warn('Back navigation failed', e); }
-          }} style={styles.backButton}>
-            <Ionicons name="chevron-back" size={28} color="#333" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Edit Profile</Text>
-        </View>
+          {/* Header */}
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => {
+              try {
+                if (navigation && typeof navigation.goBack === 'function') return navigation.goBack();
+                if (typeof onBackPress === 'function') return onBackPress();
+                console.warn('EditProfile: no navigation or onBackPress available to go back');
+              } catch (e) { console.warn('Back navigation failed', e); }
+            }} style={styles.backButton}>
+              <Ionicons name="chevron-back" size={28} color="#333" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Edit Profile</Text>
+          </View>
 
-        {/* Tabs */}
-        <View style={styles.tabContainer}>
-          <TouchableOpacity
-            style={[styles.tabButton, currentTab === 'personal' && styles.tabButtonActive]}
-            onPress={() => setCurrentTab('personal')}
-          >
-            <Text style={[styles.tabButtonText, currentTab === 'personal' && styles.tabButtonTextActive]}>
-              Personal Information
-            </Text>
-          </TouchableOpacity>
-          {(viewOwner || viewContractor || (!viewOwner && !viewContractor)) && (
+          {/* Tabs */}
+          <View style={styles.tabContainer}>
             <TouchableOpacity
-              style={[styles.tabButton, currentTab === 'addresses' && styles.tabButtonActive]}
-              onPress={() => setCurrentTab('addresses')}
+              style={[styles.tabButton, currentTab === 'personal' && styles.tabButtonActive]}
+              onPress={() => setCurrentTab('personal')}
             >
-              <Text style={[styles.tabButtonText, currentTab === 'addresses' && styles.tabButtonTextActive]}>
-                Addresses
+              <Text style={[styles.tabButtonText, currentTab === 'personal' && styles.tabButtonTextActive]}>
+                Personal Information
               </Text>
             </TouchableOpacity>
-          )}
-
-        </View>
-
-        {/* Personal Information Tab */}
-        {currentTab === 'personal' && (
-          <View style={styles.formContainer}>
-            {/* Basic Info */}
-            <Text style={styles.sectionTitle}>Basic Information</Text>
-
-            <Text style={styles.label}>Username</Text>
-            <TextInput
-              style={styles.input}
-              value={username}
-              onChangeText={setUsername}
-              placeholder="Enter username"
-              placeholderTextColor="#999"
-            />
-
-            {/* Email removed from edit form */}
-
-            {!viewContractor && (
-              <>
-                <Text style={styles.label}>First Name</Text>
-                <TextInput
-                  style={styles.input}
-                  value={firstName}
-                  onChangeText={setFirstName}
-                  placeholder="Enter first name"
-                  placeholderTextColor="#999"
-                />
-
-                <Text style={styles.label}>Last Name</Text>
-                <TextInput
-                  style={styles.input}
-                  value={lastName}
-                  onChangeText={setLastName}
-                  placeholder="Enter last name"
-                  placeholderTextColor="#999"
-                />
-              </>
+            {(viewOwner || viewContractor || (!viewOwner && !viewContractor)) && (
+              <TouchableOpacity
+                style={[styles.tabButton, currentTab === 'addresses' && styles.tabButtonActive]}
+                onPress={() => setCurrentTab('addresses')}
+              >
+                <Text style={[styles.tabButtonText, currentTab === 'addresses' && styles.tabButtonTextActive]}>
+                  Addresses
+                </Text>
+              </TouchableOpacity>
             )}
 
-            {/* Phone removed from edit form */}
+          </View>
 
-            {viewOwner && (
-              <>
-                <Text style={styles.label}>Occupation</Text>
-                <TouchableOpacity
-                  style={styles.input}
-                  onPress={() => setShowOccupationModal(true)}
-                >
-                  <Text style={{ color: occupation ? '#000' : '#999' }}>{occupation || 'Select occupation'}</Text>
-                </TouchableOpacity>
+          {/* Personal Information Tab */}
+          {currentTab === 'personal' && (
+            <View style={styles.formContainer}>
+              {/* Basic Info */}
+              <Text style={styles.sectionTitle}>Basic Information</Text>
 
-                <Modal
-                  visible={showOccupationModal}
-                  animationType="slide"
-                  transparent
-                  onRequestClose={() => setShowOccupationModal(false)}
-                >
-                  <View style={styles.modalOverlay}>
-                    <View style={[styles.modalContainer, { maxHeight: '80%' }]}>
-                      <View style={styles.modalHeader}>
-                        <Text style={styles.modalTitle}>Select Occupation</Text>
-                        <TouchableOpacity onPress={() => setShowOccupationModal(false)}>
-                          <Ionicons name="close" size={24} color="#333" />
-                        </TouchableOpacity>
+              <Text style={styles.label}>Username</Text>
+              <TextInput
+                style={styles.input}
+                value={username}
+                onChangeText={setUsername}
+                placeholder="Enter username"
+                placeholderTextColor="#999"
+              />
+
+              {/* Email removed from edit form */}
+
+              {!viewContractor && (
+                <>
+                  <Text style={styles.label}>First Name</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={firstName}
+                    onChangeText={setFirstName}
+                    placeholder="Enter first name"
+                    placeholderTextColor="#999"
+                  />
+
+                  <Text style={styles.label}>Last Name</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={lastName}
+                    onChangeText={setLastName}
+                    placeholder="Enter last name"
+                    placeholderTextColor="#999"
+                  />
+                </>
+              )}
+
+              {/* Phone removed from edit form */}
+
+              {viewOwner && (
+                <>
+                  <Text style={styles.label}>Occupation</Text>
+                  <TouchableOpacity
+                    style={styles.input}
+                    onPress={() => setShowOccupationModal(true)}
+                  >
+                    <Text style={{ color: occupation ? '#000' : '#999' }}>{occupation || 'Select occupation'}</Text>
+                  </TouchableOpacity>
+
+                  <Modal
+                    visible={showOccupationModal}
+                    animationType="slide"
+                    transparent
+                    onRequestClose={() => setShowOccupationModal(false)}
+                  >
+                    <View style={styles.modalOverlay}>
+                      <View style={[styles.modalContainer, { maxHeight: '80%' }]}>
+                        <View style={styles.modalHeader}>
+                          <Text style={styles.modalTitle}>Select Occupation</Text>
+                          <TouchableOpacity onPress={() => setShowOccupationModal(false)}>
+                            <Ionicons name="close" size={24} color="#333" />
+                          </TouchableOpacity>
+                        </View>
+                        <TextInput
+                          style={[styles.input, { marginBottom: 12 }]}
+                          value={occupationQuery}
+                          onChangeText={setOccupationQuery}
+                          placeholder="Search occupations"
+                          placeholderTextColor="#999"
+                        />
+
+                        {occupationsList.length === 0 ? (
+                          <View style={{ padding: 12 }}>
+                            <Text style={{ color: '#666' }}>No occupations available</Text>
+                          </View>
+                        ) : (
+                          <FlatList
+                            data={[...occupationsList].filter((o: any) => !occupationQuery || (o.name || '').toLowerCase().includes(occupationQuery.toLowerCase()))}
+                            keyExtractor={(item, index) => `${item.id ?? index}`}
+                            renderItem={({ item }) => (
+                              <TouchableOpacity
+                                style={styles.pickerItem}
+                                onPress={() => {
+                                  setOccupation(item.name);
+                                  setOccupationId(item.id?.toString ? item.id.toString() : `${item.id}`);
+                                  setShowOccupationModal(false);
+                                }}
+                              >
+                                <Text style={styles.pickerItemText}>{item.name}</Text>
+                              </TouchableOpacity>
+                            )}
+                          />
+                        )}
+
+                        {occupationId === '26' && (
+                          <View style={{ marginTop: 12 }}>
+                            <Text style={styles.label}>Please specify</Text>
+                            <TextInput
+                              style={styles.input}
+                              value={occupationOtherText}
+                              onChangeText={setOccupationOtherText}
+                              placeholder="Enter occupation"
+                              placeholderTextColor="#999"
+                            />
+                          </View>
+                        )}
                       </View>
+                    </View>
+                  </Modal>
+
+                  {/* If 'Others' selected, show the specify field on the main form */}
+                  {(occupationId === '26' || (occupation || '').toLowerCase().includes('other')) && (
+                    <View style={{ marginTop: 12 }}>
+                      <Text style={styles.label}>Please specify occupation</Text>
                       <TextInput
-                        style={[styles.input, { marginBottom: 12 }]}
-                        value={occupationQuery}
-                        onChangeText={setOccupationQuery}
-                        placeholder="Search occupations"
+                        style={styles.input}
+                        value={occupationOtherText}
+                        onChangeText={setOccupationOtherText}
+                        placeholder="Enter occupation"
                         placeholderTextColor="#999"
                       />
-
-                      {occupationsList.length === 0 ? (
-                        <View style={{ padding: 12 }}>
-                          <Text style={{ color: '#666' }}>No occupations available</Text>
-                        </View>
-                      ) : (
-                        <FlatList
-                          data={[...occupationsList].filter((o: any) => !occupationQuery || (o.name || '').toLowerCase().includes(occupationQuery.toLowerCase()))}
-                          keyExtractor={(item, index) => `${item.id ?? index}`}
-                          renderItem={({ item }) => (
-                            <TouchableOpacity
-                              style={styles.pickerItem}
-                              onPress={() => {
-                                setOccupation(item.name);
-                                setOccupationId(item.id?.toString ? item.id.toString() : `${item.id}`);
-                                setShowOccupationModal(false);
-                              }}
-                            >
-                              <Text style={styles.pickerItemText}>{item.name}</Text>
-                            </TouchableOpacity>
-                          )}
-                        />
-                      )}
-
-                      {occupationId === '26' && (
-                        <View style={{ marginTop: 12 }}>
-                          <Text style={styles.label}>Please specify</Text>
-                          <TextInput
-                            style={styles.input}
-                            value={occupationOtherText}
-                            onChangeText={setOccupationOtherText}
-                            placeholder="Enter occupation"
-                            placeholderTextColor="#999"
-                          />
-                        </View>
-                      )}
                     </View>
-                  </View>
-                </Modal>
+                  )}
 
-                {/* If 'Others' selected, show the specify field on the main form */}
-                {(occupationId === '26' || (occupation || '').toLowerCase().includes('other')) && (
-                  <View style={{ marginTop: 12 }}>
-                    <Text style={styles.label}>Please specify occupation</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={occupationOtherText}
-                      onChangeText={setOccupationOtherText}
-                      placeholder="Enter occupation"
-                      placeholderTextColor="#999"
+                  <Text style={styles.label}>Date of Birth</Text>
+                  <TouchableOpacity
+                    style={[styles.input, { justifyContent: 'center' }]}
+                    onPress={() => setShowDatePicker(true)}
+                  >
+                    <Text style={{ color: dateOfBirth ? '#000' : '#999' }}>
+                      {dateOfBirth || 'YYYY-MM-DD'}
+                    </Text>
+                  </TouchableOpacity>
+                  {showDatePicker && (
+                    <DateTimePicker
+                      value={dobDate || new Date(1990, 0, 1)}
+                      mode="date"
+                      display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                      maximumDate={new Date()}
+                      onChange={(_, selected) => {
+                        setShowDatePicker(Platform.OS === 'ios');
+                        if (selected) {
+                          setDobDate(selected);
+                          const formatted = formatDate(selected);
+                          setDateOfBirth(formatted);
+                        }
+                      }}
                     />
-                  </View>
-                )}
+                  )}
 
-                <Text style={styles.label}>Date of Birth</Text>
-                <TouchableOpacity
-                  style={[styles.input, { justifyContent: 'center' }]}
-                  onPress={() => setShowDatePicker(true)}
-                >
-                  <Text style={{ color: dateOfBirth ? '#000' : '#999' }}>
-                    {dateOfBirth || 'YYYY-MM-DD'}
-                  </Text>
-                </TouchableOpacity>
-                {showDatePicker && (
-                  <DateTimePicker
-                    value={dobDate || new Date(1990, 0, 1)}
-                    mode="date"
-                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                    maximumDate={new Date()}
-                    onChange={(_, selected) => {
-                      setShowDatePicker(Platform.OS === 'ios');
-                      if (selected) {
-                        setDobDate(selected);
-                        const formatted = formatDate(selected);
-                        setDateOfBirth(formatted);
-                      }
-                    }}
+                  <Text style={styles.label}>Bio</Text>
+                  <TextInput
+                    style={[styles.input, styles.textArea]}
+                    value={ownerBio}
+                    onChangeText={setOwnerBio}
+                    placeholder="Write a short description about yourself..."
+                    placeholderTextColor="#999"
+                    multiline
+                    numberOfLines={4}
                   />
-                )}
-              </>
-            )}
+                </>
+              )}
 
 
 
-            {/* Contractor Business Details */}
-            {viewContractor && (
-              <>
-                <Text style={styles.sectionTitle}>Contractor Business Details</Text>
+              {/* Contractor Business Details */}
+              {viewContractor && (
+                <>
+                  <Text style={styles.sectionTitle}>Contractor Business Details</Text>
 
-                <Text style={styles.label}>
-                  Company Name {renderVerificationBadge('company_name')}
-                </Text>
-                <TextInput
-                  style={[styles.input, pendingVerifications.company_name && styles.pendingInput]}
-                  value={companyName}
-                  onChangeText={setCompanyName}
-                  placeholder="Enter company name"
-                  placeholderTextColor="#999"
-                />
+                  <Text style={styles.label}>
+                    Company Name {renderVerificationBadge('company_name')}
+                  </Text>
+                  <TextInput
+                    style={[styles.input, pendingVerifications.company_name && styles.pendingInput]}
+                    value={companyName}
+                    onChangeText={setCompanyName}
+                    placeholder="Enter company name"
+                    placeholderTextColor="#999"
+                  />
 
-                <Text style={styles.label}>Company Website</Text>
-                <TextInput
-                  style={styles.input}
-                  value={companyWebsite}
-                  onChangeText={setCompanyWebsite}
-                  placeholder="https://example.com"
-                  placeholderTextColor="#999"
-                  keyboardType="url"
-                />
+                  <Text style={styles.label}>Company Website</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={companyWebsite}
+                    onChangeText={setCompanyWebsite}
+                    placeholder="https://example.com"
+                    placeholderTextColor="#999"
+                    keyboardType="url"
+                  />
 
-                <Text style={styles.label}>Social Media</Text>
-                <TextInput
-                  style={styles.input}
-                  value={companySocialMedia}
-                  onChangeText={setCompanySocialMedia}
-                  placeholder="Social media links"
-                  placeholderTextColor="#999"
-                />
+                  <Text style={styles.label}>Social Media</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={companySocialMedia}
+                    onChangeText={setCompanySocialMedia}
+                    placeholder="Social media links"
+                    placeholderTextColor="#999"
+                  />
 
-                <Text style={styles.label}>Company Description</Text>
-                <TextInput
-                  style={[styles.input, styles.textArea]}
-                  value={companyDescription}
-                  onChangeText={setCompanyDescription}
-                  placeholder="Describe your company"
-                  placeholderTextColor="#999"
-                  multiline
-                  numberOfLines={4}
-                />
+                  <Text style={styles.label}>Company Description</Text>
+                  <TextInput
+                    style={[styles.input, styles.textArea]}
+                    value={companyDescription}
+                    onChangeText={setCompanyDescription}
+                    placeholder="Describe your company"
+                    placeholderTextColor="#999"
+                    multiline
+                    numberOfLines={4}
+                  />
 
-                <Text style={styles.label}>Services Offered</Text>
-                <TextInput
-                  style={[styles.input, styles.textArea]}
-                  value={servicesOffered}
-                  onChangeText={setServicesOffered}
-                  placeholder="List your services"
-                  placeholderTextColor="#999"
-                  multiline
-                  numberOfLines={3}
-                />
+                  <Text style={styles.label}>Services Offered</Text>
+                  <TextInput
+                    style={[styles.input, styles.textArea]}
+                    value={servicesOffered}
+                    onChangeText={setServicesOffered}
+                    placeholder="List your services"
+                    placeholderTextColor="#999"
+                    multiline
+                    numberOfLines={3}
+                  />
 
-                <Text style={styles.label}>
-                  PICAB Number {renderVerificationBadge('picab_number')}
-                </Text>
-                <TextInput
-                  style={[styles.input, pendingVerifications.picab_number && styles.pendingInput]}
-                  value={picabNumber}
-                  onChangeText={setPicabNumber}
-                  placeholder="Enter PICAB number"
-                  placeholderTextColor="#999"
-                />
+                  <Text style={styles.label}>
+                    PICAB Number {renderVerificationBadge('picab_number')}
+                  </Text>
+                  <TextInput
+                    style={[styles.input, pendingVerifications.picab_number && styles.pendingInput]}
+                    value={picabNumber}
+                    onChangeText={setPicabNumber}
+                    placeholder="Enter PICAB number"
+                    placeholderTextColor="#999"
+                  />
 
-                <Text style={styles.label}>
-                  Business Permit Number {renderVerificationBadge('business_permit_number')}
-                </Text>
-                <TextInput
-                  style={[styles.input, pendingVerifications.business_permit_number && styles.pendingInput]}
-                  value={businessPermitNumber}
-                  onChangeText={setBusinessPermitNumber}
-                  placeholder="Enter business permit number"
-                  placeholderTextColor="#999"
-                />
+                  <Text style={styles.label}>
+                    Business Permit Number {renderVerificationBadge('business_permit_number')}
+                  </Text>
+                  <TextInput
+                    style={[styles.input, pendingVerifications.business_permit_number && styles.pendingInput]}
+                    value={businessPermitNumber}
+                    onChangeText={setBusinessPermitNumber}
+                    placeholder="Enter business permit number"
+                    placeholderTextColor="#999"
+                  />
 
-                <Text style={styles.label}>
-                  TIN Number {renderVerificationBadge('tin_business_reg_number')}
-                </Text>
-                <TextInput
-                  style={[styles.input, pendingVerifications.tin_business_reg_number && styles.pendingInput]}
-                  value={tinNumber}
-                  onChangeText={setTinNumber}
-                  placeholder="Enter TIN number"
-                  placeholderTextColor="#999"
-                />
-              </>
-            )}
-          </View>
-        )}
+                  <Text style={styles.label}>
+                    TIN Number {renderVerificationBadge('tin_business_reg_number')}
+                  </Text>
+                  <TextInput
+                    style={[styles.input, pendingVerifications.tin_business_reg_number && styles.pendingInput]}
+                    value={tinNumber}
+                    onChangeText={setTinNumber}
+                    placeholder="Enter TIN number"
+                    placeholderTextColor="#999"
+                  />
 
-        {/* Addresses Tab */}
-        {currentTab === 'addresses' && (
-          <View style={styles.formContainer}>
-            <Text style={styles.sectionTitle}>
-              Address Information {renderVerificationBadge('address')}
-            </Text>
-
-            <Text style={styles.label}>Street Address</Text>
-            <TextInput
-              style={[styles.input, pendingVerifications.address && styles.pendingInput]}
-              value={addressStreet}
-              onChangeText={setAddressStreet}
-              onBlur={handleAddressChange}
-              placeholder="Enter street address"
-              placeholderTextColor="#999"
-            />
-            <Text style={styles.label}>Province</Text>
-            <TouchableOpacity
-              style={[styles.input, pendingVerifications.address && styles.pendingInput]}
-              onPress={() => setShowProvinceModal(true)}
-            >
-              <Text style={{ color: addressProvince ? '#000' : '#999' }}>{provinces.find(p => `${p.code}` === `${addressProvince}`)?.name || 'Select Province'}</Text>
-            </TouchableOpacity>
-
-            <Text style={styles.label}>City/Municipality</Text>
-            <TouchableOpacity
-              style={[styles.input, pendingVerifications.address && styles.pendingInput]}
-              onPress={() => setShowCityModal(true)}
-              disabled={!addressProvince}
-            >
-              <Text style={{ color: addressCity ? '#000' : '#999' }}>{cities.find(c => `${c.code}` === `${addressCity}`)?.name || (addressProvince ? 'Select City/Municipality' : 'Select Province First')}</Text>
-            </TouchableOpacity>
-
-            <Text style={styles.label}>Barangay</Text>
-            <TouchableOpacity
-              style={[styles.input, pendingVerifications.address && styles.pendingInput]}
-              onPress={() => setShowBarangayModal(true)}
-              disabled={!addressCity}
-            >
-              <Text style={{ color: addressBarangay ? '#000' : '#999' }}>{barangays.find(b => `${b.code}` === `${addressBarangay}`)?.name || (addressCity ? 'Select Barangay' : 'Select City First')}</Text>
-            </TouchableOpacity>
-
-            <Text style={styles.label}>Postal Code</Text>
-            <TextInput
-              style={[styles.input, pendingVerifications.address && styles.pendingInput]}
-              value={addressPostal}
-              onChangeText={setAddressPostal}
-              onBlur={handleAddressChange}
-              placeholder="Enter postal code"
-              placeholderTextColor="#999"
-              keyboardType="number-pad"
-            />
-
-            {pendingVerifications.address && (
-              <View style={styles.verificationMessage}>
-                <Ionicons name="information-circle-outline" size={20} color="#F39C12" />
-                <Text style={styles.verificationMessageText}>
-                  Your address changes will be reviewed by our team.
-                </Text>
-              </View>
-            )}
-          </View>
-        )}
-
-        {/* Save Button */}
-        {/* Province / City / Barangay Modals */}
-        <Modal visible={showProvinceModal} animationType="slide" transparent onRequestClose={() => setShowProvinceModal(false)}>
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContainer}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Select Province</Text>
-                <TouchableOpacity onPress={() => setShowProvinceModal(false)}><Ionicons name="close" size={22} color="#333" /></TouchableOpacity>
-              </View>
-              <FlatList
-                data={provinces}
-                keyExtractor={(item, index) => `${item.code}-${index}`}
-                renderItem={({ item }) => (
-                  <TouchableOpacity style={styles.pickerItem} onPress={async () => { setAddressProvince(item.code); setShowProvinceModal(false); try { await loadCities(item.code); } catch {} }}>
-                    <Text style={styles.pickerItemText}>{item.name}</Text>
-                  </TouchableOpacity>
-                )}
-              />
+                  <Text style={styles.label}>Bio</Text>
+                  <TextInput
+                    style={[styles.input, styles.textArea]}
+                    value={contractorBio}
+                    onChangeText={setContractorBio}
+                    placeholder="Write a short description about yourself..."
+                    placeholderTextColor="#999"
+                    multiline
+                    numberOfLines={4}
+                  />
+                </>
+              )}
             </View>
-          </View>
-        </Modal>
-
-        <Modal visible={showCityModal} animationType="slide" transparent onRequestClose={() => setShowCityModal(false)}>
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContainer}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Select City/Municipality</Text>
-                <TouchableOpacity onPress={() => setShowCityModal(false)}><Ionicons name="close" size={22} color="#333" /></TouchableOpacity>
-              </View>
-              <FlatList
-                data={cities}
-                keyExtractor={(item, index) => `${item.code}-${index}`}
-                renderItem={({ item }) => (
-                  <TouchableOpacity style={styles.pickerItem} onPress={async () => { setAddressCity(item.code); setShowCityModal(false); try { await loadBarangays(item.code); } catch {} }}>
-                    <Text style={styles.pickerItemText}>{item.name}</Text>
-                  </TouchableOpacity>
-                )}
-              />
-            </View>
-          </View>
-        </Modal>
-
-        <Modal visible={showBarangayModal} animationType="slide" transparent onRequestClose={() => setShowBarangayModal(false)}>
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContainer}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Select Barangay</Text>
-                <TouchableOpacity onPress={() => setShowBarangayModal(false)}><Ionicons name="close" size={22} color="#333" /></TouchableOpacity>
-              </View>
-              <FlatList
-                data={barangays}
-                keyExtractor={(item, index) => `${item.code}-${index}`}
-                renderItem={({ item }) => (
-                  <TouchableOpacity style={styles.pickerItem} onPress={() => { setAddressBarangay(item.code); setShowBarangayModal(false); }}>
-                    <Text style={styles.pickerItemText}>{item.name}</Text>
-                  </TouchableOpacity>
-                )}
-              />
-            </View>
-          </View>
-        </Modal>
-
-        {/* Save Button */}
-          <TouchableOpacity
-          style={[styles.saveButton, isSaving && styles.buttonDisabled]}
-          onPress={handleSave}
-          disabled={isSaving}
-        >
-          {isSaving ? (
-            <ActivityIndicator color="#FFF" />
-          ) : (
-            <Text style={styles.saveButtonText}>Save Changes</Text>
           )}
-        </TouchableOpacity>
-      </ScrollView>
+
+          {/* Addresses Tab */}
+          {currentTab === 'addresses' && (
+            <View style={styles.formContainer}>
+              <Text style={styles.sectionTitle}>
+                Address Information {renderVerificationBadge('address')}
+              </Text>
+
+              <Text style={styles.label}>Street Address</Text>
+              <TextInput
+                style={[styles.input, pendingVerifications.address && styles.pendingInput]}
+                value={addressStreet}
+                onChangeText={setAddressStreet}
+                onBlur={handleAddressChange}
+                placeholder="Enter street address"
+                placeholderTextColor="#999"
+              />
+              <Text style={styles.label}>Province</Text>
+              <TouchableOpacity
+                style={[styles.input, pendingVerifications.address && styles.pendingInput]}
+                onPress={() => setShowProvinceModal(true)}
+              >
+                <Text style={{ color: addressProvince ? '#000' : '#999' }}>{provinces.find(p => `${p.code}` === `${addressProvince}`)?.name || 'Select Province'}</Text>
+              </TouchableOpacity>
+
+              <Text style={styles.label}>City/Municipality</Text>
+              <TouchableOpacity
+                style={[styles.input, pendingVerifications.address && styles.pendingInput]}
+                onPress={() => setShowCityModal(true)}
+                disabled={!addressProvince}
+              >
+                <Text style={{ color: addressCity ? '#000' : '#999' }}>{cities.find(c => `${c.code}` === `${addressCity}`)?.name || (addressProvince ? 'Select City/Municipality' : 'Select Province First')}</Text>
+              </TouchableOpacity>
+
+              <Text style={styles.label}>Barangay</Text>
+              <TouchableOpacity
+                style={[styles.input, pendingVerifications.address && styles.pendingInput]}
+                onPress={() => setShowBarangayModal(true)}
+                disabled={!addressCity}
+              >
+                <Text style={{ color: addressBarangay ? '#000' : '#999' }}>{barangays.find(b => `${b.code}` === `${addressBarangay}`)?.name || (addressCity ? 'Select Barangay' : 'Select City First')}</Text>
+              </TouchableOpacity>
+
+              <Text style={styles.label}>Postal Code</Text>
+              <TextInput
+                style={[styles.input, pendingVerifications.address && styles.pendingInput]}
+                value={addressPostal}
+                onChangeText={setAddressPostal}
+                onBlur={handleAddressChange}
+                placeholder="Enter postal code"
+                placeholderTextColor="#999"
+                keyboardType="number-pad"
+              />
+
+              {pendingVerifications.address && (
+                <View style={styles.verificationMessage}>
+                  <Ionicons name="information-circle-outline" size={20} color="#F39C12" />
+                  <Text style={styles.verificationMessageText}>
+                    Your address changes will be reviewed by our team.
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* Save Button */}
+          {/* Province / City / Barangay Modals */}
+          <Modal visible={showProvinceModal} animationType="slide" transparent onRequestClose={() => setShowProvinceModal(false)}>
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContainer}>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>Select Province</Text>
+                  <TouchableOpacity onPress={() => setShowProvinceModal(false)}><Ionicons name="close" size={22} color="#333" /></TouchableOpacity>
+                </View>
+                <FlatList
+                  data={provinces}
+                  keyExtractor={(item, index) => `${item.code}-${index}`}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity style={styles.pickerItem} onPress={async () => { setAddressProvince(item.code); setShowProvinceModal(false); try { await loadCities(item.code); } catch { } }}>
+                      <Text style={styles.pickerItemText}>{item.name}</Text>
+                    </TouchableOpacity>
+                  )}
+                />
+              </View>
+            </View>
+          </Modal>
+
+          <Modal visible={showCityModal} animationType="slide" transparent onRequestClose={() => setShowCityModal(false)}>
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContainer}>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>Select City/Municipality</Text>
+                  <TouchableOpacity onPress={() => setShowCityModal(false)}><Ionicons name="close" size={22} color="#333" /></TouchableOpacity>
+                </View>
+                <FlatList
+                  data={cities}
+                  keyExtractor={(item, index) => `${item.code}-${index}`}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity style={styles.pickerItem} onPress={async () => { setAddressCity(item.code); setShowCityModal(false); try { await loadBarangays(item.code); } catch { } }}>
+                      <Text style={styles.pickerItemText}>{item.name}</Text>
+                    </TouchableOpacity>
+                  )}
+                />
+              </View>
+            </View>
+          </Modal>
+
+          <Modal visible={showBarangayModal} animationType="slide" transparent onRequestClose={() => setShowBarangayModal(false)}>
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContainer}>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>Select Barangay</Text>
+                  <TouchableOpacity onPress={() => setShowBarangayModal(false)}><Ionicons name="close" size={22} color="#333" /></TouchableOpacity>
+                </View>
+                <FlatList
+                  data={barangays}
+                  keyExtractor={(item, index) => `${item.code}-${index}`}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity style={styles.pickerItem} onPress={() => { setAddressBarangay(item.code); setShowBarangayModal(false); }}>
+                      <Text style={styles.pickerItemText}>{item.name}</Text>
+                    </TouchableOpacity>
+                  )}
+                />
+              </View>
+            </View>
+          </Modal>
+
+          {/* Save Button */}
+          <TouchableOpacity
+            style={[styles.saveButton, isSaving && styles.buttonDisabled]}
+            onPress={handleSave}
+            disabled={isSaving}
+          >
+            {isSaving ? (
+              <ActivityIndicator color="#FFF" />
+            ) : (
+              <Text style={styles.saveButtonText}>Save Changes</Text>
+            )}
+          </TouchableOpacity>
+        </ScrollView>
       )}
 
       {/* Email and phone removed from this edit form */}

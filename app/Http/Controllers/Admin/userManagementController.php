@@ -1033,8 +1033,27 @@ class userManagementController extends authController
         try {
             $hasContractor = DB::table('contractors')->where('user_id', $id)->exists();
             $hasOwner = DB::table('property_owners')->where('user_id', $id)->exists();
+            $currentUser = DB::table('users')->where('user_id', $id)->first();
+            $oldUserType = $currentUser->user_type ?? null;
+
             if ($hasContractor && $hasOwner) {
-                DB::table('users')->where('user_id', $id)->update(['user_type' => 'both']);
+                $updateData = ['user_type' => 'both'];
+
+                // Preserve the user's current active role so they are NOT auto-switched
+                // when user_type transitions to 'both'. Only set preferred_role if it
+                // hasn't been explicitly chosen yet.
+                if (empty($currentUser->preferred_role)) {
+                    $preservedRole = $oldUserType;
+                    // Normalize 'property_owner' → 'owner' for the preferred_role column
+                    if ($preservedRole === 'property_owner') {
+                        $preservedRole = 'owner';
+                    }
+                    if (in_array($preservedRole, ['contractor', 'owner'])) {
+                        $updateData['preferred_role'] = $preservedRole;
+                    }
+                }
+
+                DB::table('users')->where('user_id', $id)->update($updateData);
             } elseif ($hasContractor) {
                 DB::table('users')->where('user_id', $id)->update(['user_type' => 'contractor']);
             } elseif ($hasOwner) {
@@ -1457,7 +1476,19 @@ class userManagementController extends authController
             try {
                 $hasOwner = DB::table('property_owners')->where('user_id', $id)->exists();
                 if ($hasOwner) {
-                    DB::table('users')->where('user_id', $id)->update(['user_type' => 'both']);
+                    $currentUser = DB::table('users')->where('user_id', $id)->first();
+                    $updateData = ['user_type' => 'both'];
+                    // Preserve the user's current active role so approval doesn't auto-switch
+                    if ($currentUser && empty($currentUser->preferred_role)) {
+                        $preservedRole = $currentUser->user_type;
+                        if ($preservedRole === 'property_owner') {
+                            $preservedRole = 'owner';
+                        }
+                        if (in_array($preservedRole, ['contractor', 'owner'])) {
+                            $updateData['preferred_role'] = $preservedRole;
+                        }
+                    }
+                    DB::table('users')->where('user_id', $id)->update($updateData);
                 } else {
                     // Only contractor profile exists; set to contractor unless already both
                     $currentType = DB::table('users')->where('user_id', $id)->value('user_type');

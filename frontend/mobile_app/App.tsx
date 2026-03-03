@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { StatusBar, View, Text, Alert, Linking } from 'react-native';
+import { StatusBar, View, Text, Alert } from 'react-native';
+import * as Linking from 'expo-linking';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import LoadingScreen from './src/screens/loadingScreen';
 import OnboardingScreen from './src/screens/onboardingScreen';
@@ -32,6 +33,9 @@ import HomepageScreen from './src/screens/both/homepage';
 import SubscriptionScreen from './src/screens/contractor/subscriptionScreen';
 import ChangePasswordScreen from './src/screens/both/changePassword';
 import ChangeOtpScreen from './src/screens/both/changeOtpScreen';
+import ForgotPasswordScreen from './src/screens/auth/forgotPasswordScreen';
+import ResetOtpScreen from './src/screens/auth/resetOtpScreen';
+import ResetPasswordScreen from './src/screens/auth/resetPasswordScreen';
 import { auth_service } from './src/services/auth_service';
 import { storage_service } from './src/utils/storage';
 
@@ -40,7 +44,8 @@ type AppState = 'loading' | 'onboarding' | 'auth_choice' | 'login' | 'signup' | 
     'contractor_company_info' | 'contractor_account_setup' | 'contractor_email_verification' | 'contractor_business_documents' | 'contractor_profile_picture' |
     // Property Owner Flow
     'po_personal_info' | 'po_account_setup' | 'po_email_verification' | 'po_role_verification' | 'po_profile_picture' |
-    'force_change_password' | 'change_otp' | 'subscription' |
+    'force_change_password' | 'change_otp' | 'change_otp_verify' | 'subscription' |
+    'forgot_password' | 'reset_otp' | 'reset_password' |
     'main' | 'edit_profile' | 'owner_profile' | 'contractor_profile' | 'view_profile' | 'help_center' | 'switch_role' | 'add_role_registration';
 
 
@@ -143,6 +148,10 @@ export default function App() {
     const [contractor_account_info, set_contractor_account_info] = useState<any>(null);
     const [contractor_documents_info, set_contractor_documents_info] = useState<any>(null);
 
+    // Forgot password flow data
+    const [reset_email, set_reset_email] = useState('');
+    const [reset_token, set_reset_token] = useState('');
+
     const handle_loading_complete = () => {
         // Only show onboarding if we're not already authenticated
         if (!checking_auth && app_state !== 'main') {
@@ -163,6 +172,29 @@ export default function App() {
     };
 
     const handle_login = () => {
+        set_app_state('login');
+    };
+
+    const handle_forgot_password = () => {
+        set_reset_email('');
+        set_reset_token('');
+        set_app_state('forgot_password');
+    };
+
+    const handle_otp_sent = (email: string) => {
+        set_reset_email(email);
+        set_app_state('reset_otp');
+    };
+
+    const handle_otp_verified = (email: string, token: string) => {
+        set_reset_email(email);
+        set_reset_token(token);
+        set_app_state('reset_password');
+    };
+
+    const handle_password_reset_success = () => {
+        set_reset_email('');
+        set_reset_token('');
         set_app_state('login');
     };
 
@@ -201,6 +233,10 @@ export default function App() {
                 set_po_personal_info(personalInfo);
                 set_app_state('po_account_setup');
             } else {
+                // Return field-level validation errors for inline display
+                if (response.data?.errors) {
+                    return response.data.errors;
+                }
                 Alert.alert('Error', response.message || 'Failed to save personal information. Please try again.');
             }
         } catch (error) {
@@ -215,11 +251,15 @@ export default function App() {
 
             if (response.success) {
                 // Preserve otp_token returned by backend so we can include it in verification
-                const otpToken = response.data?.otp_token || response.otp_token || null;
+                const otpToken = response.data?.otp_token || null;
                 set_po_account_setup({ ...accountSetup, otpToken });
                 set_app_state('po_email_verification');
                 Alert.alert('Success', 'OTP has been sent to your email. Please check your inbox.');
             } else {
+                // Return field-level validation errors for inline display
+                if (response.data?.errors) {
+                    return response.data.errors;
+                }
                 Alert.alert('Error', response.message || 'Failed to create account. Please try again.');
             }
         } catch (error) {
@@ -315,40 +355,82 @@ export default function App() {
         };
     }, [set_app_state]);
 
-    // Deep link handler: catch Expo return from payment checkout and show confirmation
+    // Deep link handler: catch return from payment checkout and show confirmation
     useEffect(() => {
         const handleUrl = async (event: { url: string }) => {
             try {
                 const url = event.url || '';
-                // Look for payment-callback and project_id in query
-                if (url.includes('/--/payment-callback')) {
-                    const match = url.match(/[?&]project_id=([^&]+)/);
-                    const projectId = match ? decodeURIComponent(match[1]) : null;
-                    if (projectId) {
-                        // Check status param in deep-link (if provided by server)
-                        const statusMatch = url.match(/[?&]status=([^&]+)/);
-                        const status = statusMatch ? decodeURIComponent(statusMatch[1]) : null;
+                console.log('Deep link received:', url);
 
-                        // If status explicitly indicates cancel/back, treat as pending immediately
-                        if (status === 'cancel') {
-                            // @ts-ignore
-                            global.pendingPaymentProjectId = projectId;
-                            console.log('Deep link returned with status=cancel for', projectId);
-                            Alert.alert('Payment Pending', 'Payment was not completed. Complete the payment in the checkout to activate the boost.', [{ text: 'OK' }]);
-                            return;
-                        }
+                // Parse the URL using expo-linking for reliable extraction
+                const parsed = Linking.parse(url);
+                const path = parsed.path || '';
+                const params = parsed.queryParams || {};
 
-                        // For status=success or when no explicit status, first ask server to verify
-                        // the PayMongo checkout session directly. This speeds up detection when
-                        // webhooks are delayed.
+                // Match payment-callback in the path (works for both exp:// and legatura:// schemes)
+                const isPaymentCallback = path.includes('payment-callback') || url.includes('payment-callback');
+                if (!isPaymentCallback) return;
+
+                const projectId = params.project_id ? String(params.project_id) : null;
+                const isSubscription = params.subscription === '1' || params.subscription === 'true';
+                const status = params.status ? String(params.status) : null;
+
+                // --- SUBSCRIPTION CALLBACK ---
+                if (isSubscription) {
+                    console.log('Subscription payment callback received');
+                    if (status === 'cancel') {
+                        Alert.alert('Payment Pending', 'Subscription payment was not completed.');
+                        return;
+                    }
+                    // Poll for subscription activation
+                    let attempts = 0;
+                    const maxAttempts = 10;
+                    const pollInterval = setInterval(async () => {
+                        attempts++;
                         try {
-                            const verify = await api_request('/api/boost/verify', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ project_id: projectId })
-                            });
+                            const check = await api_request('/subs/modal-data', { method: 'GET' });
+                            if (check.success && check.data?.subscription) {
+                                clearInterval(pollInterval);
+                                // @ts-ignore
+                                if (global.handleSubscriptionCallback) {
+                                    // @ts-ignore
+                                    await global.handleSubscriptionCallback(check.data.subscription);
+                                }
+                                Alert.alert('Success!', 'Your subscription is now active.');
+                                return;
+                            }
+                        } catch (e) {
+                            console.warn('Subscription poll error:', e);
+                        }
+                        if (attempts >= maxAttempts) {
+                            clearInterval(pollInterval);
+                            Alert.alert('Payment Pending', 'Subscription not detected yet. Please check your payments or pull to refresh.');
+                        }
+                    }, 4000);
+                    return;
+                }
 
-                            if (verify.success && verify.approved) {
+                // --- BOOST CALLBACK ---
+                if (projectId) {
+                    // If status explicitly indicates cancel/back, treat as pending immediately
+                    if (status === 'cancel') {
+                        // @ts-ignore
+                        global.pendingPaymentProjectId = projectId;
+                        console.log('Deep link returned with status=cancel for', projectId);
+                        Alert.alert('Payment Pending', 'Payment was not completed. Complete the payment in the checkout to activate the boost.', [{ text: 'OK' }]);
+                        return;
+                    }
+
+                    // For status=success or when no explicit status, first ask server to verify
+                    // the PayMongo checkout session directly.
+                    try {
+                        const verify = await api_request('/api/boost/verify', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ project_id: projectId })
+                        });
+
+                            if (verify.success && (verify as any).approved) {
                                 try {
                                     // @ts-ignore
                                     if (global.handlePaymentCallback) {
@@ -363,54 +445,51 @@ export default function App() {
                                 return;
                             }
 
-                            // Not yet approved — fall back to queue + polling as before
-                            // @ts-ignore
-                            global.pendingPaymentProjectId = projectId;
-                            console.log('Queued pendingPaymentProjectId (not approved yet):', projectId);
+                        // Not yet approved — fall back to queue + polling
+                        // @ts-ignore
+                        global.pendingPaymentProjectId = projectId;
+                        console.log('Queued pendingPaymentProjectId (not approved yet):', projectId);
 
-                            // Poll server for a short window to auto-detect approval (e.g., ~32s)
-                            let attempts = 0;
-                            const maxAttempts = 8;
-                            const pollIntervalMs = 4000;
-                            const pollInterval = setInterval(async () => {
-                                attempts++;
-                                try {
-                                    const check = await api_request('/subs/modal-data', { method: 'GET' });
-                                    const found2 = check.data?.boostedPosts?.find((b: any) => String(b.id) === String(projectId) || String(b.project_id) === String(projectId));
-                                    if (found2) {
-                                        clearInterval(pollInterval);
-                                        try {
-                                            // @ts-ignore
-                                            if (global.handlePaymentCallback) {
-                                                // @ts-ignore
-                                                await global.handlePaymentCallback(projectId);
-                                                return;
-                                            }
-                                        } catch (e) {
-                                            console.warn('Error calling global.handlePaymentCallback during poll:', e);
-                                        }
-                                        Alert.alert('Payment Complete', `Boost activated for project ${projectId}!`, [{ text: 'OK' }]);
-                                        return;
-                                    }
-                                } catch (e) {
-                                    console.warn('Polling error for payment status:', e);
-                                }
-
-                                if (attempts >= maxAttempts) {
+                        let attempts = 0;
+                        const maxAttempts = 8;
+                        const pollIntervalMs = 4000;
+                        const pollInterval = setInterval(async () => {
+                            attempts++;
+                            try {
+                                const check = await api_request('/subs/modal-data', { method: 'GET' });
+                                const found2 = check.data?.boostedPosts?.find((b: any) => String(b.id) === String(projectId) || String(b.project_id) === String(projectId));
+                                if (found2) {
                                     clearInterval(pollInterval);
-                                    Alert.alert('Payment Pending', 'No completed payment was detected yet. Complete the payment in the checkout to activate the boost.', [{ text: 'OK' }]);
+                                    try {
+                                        // @ts-ignore
+                                        if (global.handlePaymentCallback) {
+                                            // @ts-ignore
+                                            await global.handlePaymentCallback(projectId);
+                                            return;
+                                        }
+                                    } catch (e) {
+                                        console.warn('Error calling global.handlePaymentCallback during poll:', e);
+                                    }
+                                    Alert.alert('Payment Complete', `Boost activated for project ${projectId}!`, [{ text: 'OK' }]);
+                                    return;
                                 }
-                            }, pollIntervalMs);
+                            } catch (e) {
+                                console.warn('Polling error for payment status:', e);
+                            }
 
-                            return;
-                        } catch (e) {
-                            console.warn('Deep link verification error:', e);
-                        }
+                            if (attempts >= maxAttempts) {
+                                clearInterval(pollInterval);
+                                Alert.alert('Payment Pending', 'No completed payment was detected yet. Complete the payment in the checkout to activate the boost.', [{ text: 'OK' }]);
+                            }
+                        }, pollIntervalMs);
+
+                        return;
+                    } catch (e) {
+                        console.warn('Deep link verification error:', e);
                     }
-                    // Do not show a blind success message here — only show success when
-                    // the server confirms the boost/payment. Log the event for debugging.
-                    console.log('Deep link received but no verification performed or project_id missing.');
                 }
+
+                console.log('Deep link received but no verification performed or project_id missing.');
             } catch (e) {
                 console.warn('Deep link handling error:', e);
             }
@@ -429,9 +508,7 @@ export default function App() {
         // Subscribe to deep link events
         const sub = Linking.addEventListener('url', handleUrl as any);
         return () => {
-            // @ts-ignore - removeEventListener for older RN versions
-            if (sub && (sub as any).remove) (sub as any).remove();
-            else Linking.removeEventListener('url', handleUrl as any);
+            if (sub && typeof (sub as any).remove === 'function') (sub as any).remove();
         };
     }, []);
 
@@ -482,6 +559,43 @@ export default function App() {
                     on_back={handle_back_to_auth_choice}
                     on_login_success={handle_login_success}
                     on_signup={handle_register}
+                    on_forgot_password={handle_forgot_password}
+                />
+            </SafeAreaProvider>
+        );
+    }
+
+    if (app_state === 'forgot_password') {
+        return (
+            <SafeAreaProvider>
+                <ForgotPasswordScreen
+                    on_back={() => set_app_state('login')}
+                    on_otp_sent={handle_otp_sent}
+                />
+            </SafeAreaProvider>
+        );
+    }
+
+    if (app_state === 'reset_otp') {
+        return (
+            <SafeAreaProvider>
+                <ResetOtpScreen
+                    email={reset_email}
+                    on_back={() => set_app_state('forgot_password')}
+                    on_verified={handle_otp_verified}
+                />
+            </SafeAreaProvider>
+        );
+    }
+
+    if (app_state === 'reset_password') {
+        return (
+            <SafeAreaProvider>
+                <ResetPasswordScreen
+                    email={reset_email}
+                    reset_token={reset_token}
+                    on_back={() => set_app_state('forgot_password')}
+                    on_success={handle_password_reset_success}
                 />
             </SafeAreaProvider>
         );
@@ -625,7 +739,10 @@ export default function App() {
                                 po_account_setup?.email
                             );
                             if (response.success) {
-                                set_app_state('po_role_verification');
+                                // Brief delay so the success animation is visible
+                                setTimeout(() => {
+                                    set_app_state('po_role_verification');
+                                }, 1500);
                             } else {
                                 Alert.alert('Verification Failed', response.message || 'Invalid OTP. Please try again.');
                             }
@@ -981,6 +1098,10 @@ export default function App() {
                                 set_contractor_company_info(companyInfo);
                                 set_app_state('contractor_account_setup');
                             } else {
+                                // Return field-level validation errors for inline display
+                                if (response.data?.errors) {
+                                    return response.data.errors;
+                                }
                                 Alert.alert('Error', response.message || 'Failed to save company information. Please try again.');
                             }
                         } catch (error) {
@@ -1005,11 +1126,15 @@ export default function App() {
 
                             if (response.success) {
                                 // Preserve otp_token returned by backend so we can include it in final request
-                                const otpToken = response.data?.otp_token || response.otp_token || null;
+                                const otpToken = response.data?.otp_token || null;
                                 set_contractor_account_info({ ...accountInfo, otpToken });
                                 set_app_state('contractor_email_verification');
                                 Alert.alert('Success', 'OTP has been sent to your email. Please check your inbox.');
                             } else {
+                                // Return field-level validation errors for inline display
+                                if (response.data?.errors) {
+                                    return response.data.errors;
+                                }
                                 Alert.alert('Error', response.message || 'Failed to create account. Please try again.');
                             }
                         } catch (error) {
@@ -1030,14 +1155,36 @@ export default function App() {
                     email={contractor_account_info?.companyEmail || ''}
                     onBackPress={() => set_app_state('contractor_account_setup')}
                     onComplete={async (verificationCode: string) => {
-                        // Child `EmailVerificationScreen` already verifies the OTP and
-                        // only calls this callback on success — just advance the flow.
-                        set_app_state('contractor_business_documents');
+                        try {
+                            console.log('Verifying contractor OTP with token:', contractor_account_info?.otpToken);
+                            const response = await auth_service.contractor_verify_otp(
+                                verificationCode,
+                                contractor_account_info?.companyEmail,
+                                contractor_account_info?.otpToken
+                            );
+                            if (response.success) {
+                                // Brief delay so the success animation is visible
+                                setTimeout(() => {
+                                    set_app_state('contractor_business_documents');
+                                }, 1500);
+                            } else {
+                                Alert.alert('Verification Failed', response.message || 'Invalid OTP. Please try again.');
+                            }
+                            return response;
+                        } catch (error) {
+                            console.error('Contractor OTP verification error:', error);
+                            Alert.alert('Error', 'Network error. Please check your connection and try again.');
+                            return { success: false, message: 'Network error' };
+                        }
                     }}
                     onResendOtp={async () => {
                         try {
                             const response = await auth_service.contractor_step2(contractor_account_info);
                             if (response.success) {
+                                const newOtpToken = response.data?.otp_token || null;
+                                if (newOtpToken) {
+                                    set_contractor_account_info({ ...contractor_account_info, otpToken: newOtpToken });
+                                }
                                 Alert.alert('Success', 'New OTP has been sent to your email.');
                             } else {
                                 Alert.alert('Error', response.message || 'Failed to resend OTP. Please try again.');
@@ -1063,6 +1210,10 @@ export default function App() {
                                 set_contractor_documents_info(documentsInfo);
                                 set_app_state('contractor_profile_picture');
                             } else {
+                                // Return field-level validation errors for inline display
+                                if (response.data?.errors) {
+                                    return response.data.errors;
+                                }
                                 Alert.alert('Error', response.message || 'Failed to save business documents. Please try again.');
                             }
                         } catch (error) {

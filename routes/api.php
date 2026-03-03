@@ -111,6 +111,11 @@ Route::post('/login', [authController::class, 'apiLogin']);
 Route::post('/register', [authController::class, 'apiRegister']);
 Route::post('/force-change-password', [passwordController::class, 'apiForceChangePassword']);
 
+// Forgot Password API routes (stateless, for mobile)
+Route::post('/forgot-password/send-otp', [passwordController::class, 'sendResetOtp']);
+Route::post('/forgot-password/verify-otp', [passwordController::class, 'verifyResetOtp']);
+Route::post('/forgot-password/reset', [passwordController::class, 'resetPassword']);
+
 // Change OTP endpoints (public; controller will resolve user via bearer token if provided)
 Route::post('/change-otp/send', [\App\Http\Controllers\OTPChangeController::class, 'sendOtp']);
 Route::post('/change-otp/verify', [\App\Http\Controllers\OTPChangeController::class, 'verifyOtp']);
@@ -198,6 +203,11 @@ Route::put('/contractor/projects/{projectId}/milestones/{milestoneId}', [milesto
 
 // Contractor — settlement due date management
 Route::post('/contractor/milestone-items/{itemId}/settlement-due-date', [milestoneController::class, 'setSettlementDueDate']);
+
+// Contractor AI Analytics endpoints (mobile) — controller handles auth via X-User-Id / Bearer token
+Route::get('/contractor/ai-analytics', [\App\Http\Controllers\contractor\AiController::class, 'apiGetAnalytics']);
+Route::post('/contractor/ai-analytics/analyze/{id}', [\App\Http\Controllers\contractor\AiController::class, 'apiAnalyzeProject']);
+Route::get('/contractor/ai-analytics/stats', [\App\Http\Controllers\contractor\AiController::class, 'apiGetStats']);
 
 // Notification endpoints - controller handles both session and token auth
 Route::get('/notifications', [NotificationController::class , 'index']);

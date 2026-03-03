@@ -467,6 +467,135 @@ class ProjectDetailsModal {
         if (editCard) {
             editCard.style.display = '';
         }
+
+        /* ── Populate two-column layout: files & information ── */
+        this._populateProjectFiles(raw);
+        this._populateProjectInfo(raw, p, ps, pps, deadline, bidsCount);
+    }
+
+    /* ── Two-Column Layout: Files & Information ───────────────── */
+
+    _populateProjectFiles(raw) {
+        const files = raw.files || raw.project_files || [];
+
+        // Separate files into design and legal categories
+        const designFiles = [];
+        const legalFiles = [];
+
+        files.forEach(file => {
+            const fileType = (file.file_type || '').toLowerCase();
+            if (fileType === 'building permit' || fileType === 'title') {
+                legalFiles.push(file);
+            } else {
+                // blueprint, desired design, others
+                designFiles.push(file);
+            }
+        });
+
+        // Render design files grid
+        this._renderFileGrid('projectDesignFiles', designFiles, {
+            emptyIcon: 'fi-rr-image',
+            emptyText: 'No design files uploaded'
+        });
+
+        // Render legal files grid
+        this._renderFileGrid('projectLegalFiles', legalFiles, {
+            emptyIcon: 'fi-rr-file',
+            emptyText: 'No legal documents uploaded'
+        });
+    }
+
+    _renderFileGrid(gridId, files, emptyConfig) {
+        const grid = document.getElementById(gridId);
+        if (!grid) return;
+
+        if (files.length === 0) {
+            grid.innerHTML = `
+                <div class="pdm-files-empty">
+                    <i class="fi ${emptyConfig.emptyIcon}"></i>
+                    <span>${emptyConfig.emptyText}</span>
+                </div>
+            `;
+            return;
+        }
+
+        grid.innerHTML = files.map(file => {
+            const filePath = file.file_path || file.path || '';
+            const fileName = filePath.split('/').pop() || 'Document';
+            const fileType = file.file_type || '';
+
+            // Determine if it's an image
+            const isImage = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(filePath);
+            const fullPath = filePath.startsWith('/') ? filePath : '/' + filePath;
+            const url = `/storage${fullPath}`;
+
+            if (isImage) {
+                return `
+                    <div class="pdm-file-preview" onclick="window.open('${url}', '_blank')">
+                        <img src="${url}" alt="${fileName}" class="pdm-file-preview-image" onerror="this.parentElement.innerHTML='<div class=pdm-file-preview-icon><i class=\\'fi fi-rr-file-pdf\\'></i><span class=pdm-file-name>${fileName}</span></div>'">
+                        ${fileType ? `<span class="pdm-file-type-badge">${fileType}</span>` : ''}
+                    </div>
+                `;
+            } else {
+                return `
+                    <div class="pdm-file-preview" onclick="window.open('${url}', '_blank')">
+                        <div class="pdm-file-preview-icon">
+                            <i class="fi fi-rr-file-pdf"></i>
+                            <span class="pdm-file-name">${fileName}</span>
+                        </div>
+                        ${fileType ? `<span class="pdm-file-type-badge">${fileType}</span>` : ''}
+                    </div>
+                `;
+            }
+        }).join('');
+    }
+
+    _populateProjectInfo(raw, p, ps, pps, deadline, bidsCount) {
+        // Status
+        const sc = this._statusConfig(ps, pps);
+        const infoStatus = document.getElementById('infoStatus');
+        if (infoStatus) infoStatus.innerHTML = `<i class="${sc.icon}" style="color:${sc.color}"></i> ${sc.label}`;
+
+        // Posted
+        this._setEl('infoPosted', this._formatDate(raw.created_at || p.created_at || p.rawDate));
+
+        // Deadline
+        const deadlineRow = document.getElementById('infoDeadlineRow');
+        if (deadline && deadlineRow) {
+            deadlineRow.style.display = '';
+            this._setEl('infoDeadline', this._formatDate(deadline));
+        } else if (deadlineRow) {
+            deadlineRow.style.display = 'none';
+        }
+
+        // Bids
+        this._setEl('infoBids', `${bidsCount} ${bidsCount === 1 ? 'bid' : 'bids'}`);
+
+        // Budget
+        const bMin = raw.budget_range_min ?? p.budget_range_min;
+        const bMax = raw.budget_range_max ?? p.budget_range_max;
+        this._setEl('infoBudget', `${this._formatCurrencyFull(bMin)} — ${this._formatCurrencyFull(bMax)}`);
+
+        // Description
+        this._setEl('infoDescription', p.description || raw.project_description || '—');
+
+        // Specifications
+        const infoSpecs = document.getElementById('infoSpecs');
+        if (infoSpecs) {
+            const specs = [
+                { label: 'Property Type', value: raw.property_type || p.property_type },
+                { label: 'Contractor Type', value: raw.type_name || p.type },
+                { label: 'Lot Size', value: (raw.lot_size || p.lotSize) ? `${raw.lot_size || p.lotSize} sqm` : null },
+                { label: 'Floor Area', value: (raw.floor_area || p.floorArea) ? `${raw.floor_area || p.floorArea} sqm` : null },
+            ].filter(s => s.value);
+
+            infoSpecs.innerHTML = specs.map(s => `
+                <div class="pdm-info-spec-item">
+                    <span class="pdm-info-spec-label">${s.label}</span>
+                    <span class="pdm-info-spec-value">${s.value}</span>
+                </div>
+            `).join('');
+        }
     }
 
     /* ── Bids Panel ──────────────────────────────────────────── */

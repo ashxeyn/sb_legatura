@@ -8,12 +8,12 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
- * DashboardService — Business logic for assembling dashboard data.
+ * dashboardService — Business logic for assembling dashboard data.
  *
  * Keeps controllers thin. Both the web (Blade) and API (mobile) dashboard
  * actions funnel through this service so dashboard rules are in one place.
  */
-class DashboardService
+class dashboardService
 {
     protected dashboardClass $dashboard;
 

@@ -198,6 +198,24 @@
     font-size: 0.875rem;
 }
 
+/* Form Section Title */
+.form-section-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #374151;
+    padding: 1rem 0 0.5rem;
+    border-top: 1px solid #e5e7eb;
+    margin-top: 0.5rem;
+}
+
+.form-section-title i {
+    color: #EEA24B;
+    font-size: 1rem;
+}
+
 .form-input,
 .form-select {
     width: 100%;

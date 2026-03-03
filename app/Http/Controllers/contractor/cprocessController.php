@@ -136,7 +136,11 @@ class cprocessController extends Controller
 
     public function showMessages(Request $request)
     {
-        return view('both.messages');
+        // Pass user ID for real-time Pusher subscription
+        $sessionUser = session('user');
+        $userId = $sessionUser->user_id ?? $sessionUser->id ?? null;
+
+        return view('both.messages', ['userId' => $userId]);
     }
 
     public function showProfile(Request $request)
@@ -645,10 +649,33 @@ class cprocessController extends Controller
                     }
                 }
 
-                // Fallback: if user_type is 'both', default to contractor, otherwise use their user_type
+                // Fallback: if user_type is 'both', determine original role from
+                // profile verification dates instead of blindly defaulting to 'contractor'.
+                // This prevents an automatic role switch when an admin approves a dual-role
+                // application and preferred_role hasn't been set yet.
                 if (!$currentRole) {
                     $userType = is_object($user) ? $user->user_type : ($user['user_type'] ?? null);
-                    $currentRole = $userType === 'both' ? 'contractor' : $userType;
+                    if ($userType === 'both') {
+                        // Pick the role that was approved first (i.e. the user's original role)
+                        try {
+                            $cDate = DB::table('contractors')->where('user_id', $userId)->value('verification_date');
+                            $oDate = DB::table('property_owners')->where('user_id', $userId)->value('verification_date');
+                            if ($cDate && $oDate) {
+                                $currentRole = (strtotime($cDate) <= strtotime($oDate)) ? 'contractor' : 'owner';
+                            } elseif ($cDate) {
+                                $currentRole = 'contractor';
+                            } elseif ($oDate) {
+                                $currentRole = 'owner';
+                            } else {
+                                $currentRole = 'contractor'; // final fallback
+                            }
+                        } catch (\Throwable $e) {
+                            Log::warning('getCurrentRole: failed to compare verification dates: ' . $e->getMessage());
+                            $currentRole = 'contractor';
+                        }
+                    } else {
+                        $currentRole = $userType;
+                    }
                 }
             }
 

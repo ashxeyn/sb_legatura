@@ -26,8 +26,8 @@
 
     // Helper to check file type (inline logic for Blade)
     foreach($files as $file) {
-        $path = is_string($file) ? $file : ($file->file_path ?? '');
-        $type = is_object($file) ? ($file->file_type ?? '') : '';
+        $path = is_string($file) ? $file : (is_array($file) ? ($file['file_path'] ?? '') : ($file->file_path ?? ''));
+        $type = is_object($file) ? ($file->file_type ?? '') : (is_array($file) ? ($file['file_type'] ?? '') : '');
         $lowerType = strtolower($type);
         $lowerPath = strtolower($path);
         

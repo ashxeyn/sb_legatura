@@ -1,6 +1,7 @@
 /**
  * Security Modal JavaScript
- * Handles password changes, email/contact updates with OTP verification.
+ * Tabbed UI matching mobile changeOtpScreen.tsx flow.
+ * Handles password, email, and contact changes with OTP verification.
  * Connected to OTPChangeController backend endpoints.
  */
 
@@ -15,20 +16,24 @@ class SecurityModal {
         this.verifyOtpUrl = this.modal?.dataset.verifyOtpUrl || '';
         this.csrfToken = this.modal?.dataset.csrfToken || '';
 
-        // Forms
-        this.passwordForm = document.getElementById('changePasswordForm');
-        this.contactForm = document.getElementById('changeContactForm');
+        // Unified form
+        this.form = document.getElementById('securityChangeForm');
 
-        // Password fields
-        this.currentPassword = document.getElementById('currentPassword');
+        // Field groups
+        this.emailFields = document.getElementById('emailChangeFields');
+        this.contactFields = document.getElementById('contactChangeFields');
+        this.passwordFields = document.getElementById('passwordChangeFields');
+
+        // Email change fields
+        this.emailCurrentPassword = document.getElementById('emailCurrentPassword');
+        this.newEmail = document.getElementById('newEmail');
+
+        // Contact change fields
+        this.newContact = document.getElementById('newContact');
+
+        // Password change fields
         this.newPassword = document.getElementById('newPassword');
         this.confirmPassword = document.getElementById('confirmPassword');
-
-        // Contact fields
-        this.newEmail = document.getElementById('newEmail');
-        this.confirmEmail = document.getElementById('confirmEmail');
-        this.newContact = document.getElementById('newContact');
-        this.contactPasswordConfirm = document.getElementById('contactPasswordConfirm');
 
         // Password strength
         this.strengthBar = document.getElementById('strengthBarFill');
@@ -36,13 +41,22 @@ class SecurityModal {
 
         // Messages
         this.passwordMatchMessage = document.getElementById('passwordMatchMessage');
-        this.emailMatchMessage = document.getElementById('emailMatchMessage');
+
+        // Section header elements
+        this.sectionIcon = document.getElementById('securitySectionIcon');
+        this.sectionIconI = document.getElementById('securitySectionIconI');
+        this.sectionTitle = document.getElementById('securitySectionTitle');
+        this.sectionSubtitle = document.getElementById('securitySectionSubtitle');
+        this.verificationNoticeText = document.getElementById('verificationNoticeText');
+        this.submitBtn = document.getElementById('securitySubmitBtn');
 
         // OTP state (mirrors mobile changeOtpScreen.tsx flow)
         this.otpToken = null;
         this.maskedDest = null;
-        this.activePurpose = null;       // 'change_password' | 'change_email' | 'change_contact'
-        this.pendingNewValue = null;      // the value to update after OTP verification
+        this.activePurpose = 'change_email';   // default tab
+        this.pendingNewValue = null;
+        this.pendingNewPassword = null;  // separate storage for password (mobile sends email as new_value in send, password in verify)
+        this.ttlSeconds = 900;  // default, overridden by server response
         this.countdownTimer = null;
         this.secondsLeft = 0;
 
@@ -58,6 +72,7 @@ class SecurityModal {
     init() {
         this.setupEventListeners();
         this.loadCurrentUserData();
+        this.switchPurpose('change_email');
     }
 
     // ─── Event Listeners ──────────────────────────────────────────────
@@ -88,6 +103,14 @@ class SecurityModal {
             if (e.key === 'Escape' && this.isOpen()) this.close();
         });
 
+        // Purpose tab switching
+        document.querySelectorAll('.security-purpose-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                const purpose = tab.dataset.purpose;
+                if (purpose) this.switchPurpose(purpose);
+            });
+        });
+
         // Toggle password visibility
         document.querySelectorAll('.toggle-password-btn').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -114,28 +137,97 @@ class SecurityModal {
             this.confirmPassword.addEventListener('input', () => this.checkPasswordMatch());
         }
 
-        // Email match checker
-        if (this.newEmail && this.confirmEmail) {
-            this.newEmail.addEventListener('input', () => this.checkEmailMatch());
-            this.confirmEmail.addEventListener('input', () => this.checkEmailMatch());
-        }
-
-        // Form submissions
-        if (this.passwordForm) {
-            this.passwordForm.addEventListener('submit', (e) => {
+        // Form submission
+        if (this.form) {
+            this.form.addEventListener('submit', (e) => {
                 e.preventDefault();
-                this.handlePasswordChange();
-            });
-        }
-        if (this.contactForm) {
-            this.contactForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                this.handleContactChange();
+                this.handleSubmit();
             });
         }
 
         // Verification modal
         this.setupVerificationModal();
+    }
+
+    // ─── Tab Switching ────────────────────────────────────────────────
+
+    switchPurpose(purpose) {
+        this.activePurpose = purpose;
+
+        // Update tab active state
+        document.querySelectorAll('.security-purpose-tab').forEach(tab => {
+            tab.classList.toggle('active', tab.dataset.purpose === purpose);
+        });
+
+        // Show/hide field groups
+        if (this.emailFields) this.emailFields.style.display = purpose === 'change_email' ? '' : 'none';
+        if (this.contactFields) this.contactFields.style.display = purpose === 'change_contact' ? '' : 'none';
+        if (this.passwordFields) this.passwordFields.style.display = purpose === 'change_password' ? '' : 'none';
+
+        // Update section header
+        const configs = {
+            change_email: {
+                iconClass: 'contact-icon',
+                iconI: 'fi fi-rr-envelope',
+                title: 'Change Email',
+                subtitle: 'We will send an OTP to your new email to confirm the change.',
+                notice: 'After submitting, you\'ll receive a verification code at your new email address.',
+            },
+            change_contact: {
+                iconClass: 'contact-icon',
+                iconI: 'fi fi-rr-phone-call',
+                title: 'Change Contact Number',
+                subtitle: 'We will send an OTP to your email to confirm the contact change.',
+                notice: 'After submitting, you\'ll receive a verification code at your registered email.',
+            },
+            change_password: {
+                iconClass: 'password-icon',
+                iconI: 'fi fi-rr-lock',
+                title: 'Change Password',
+                subtitle: 'We will send an OTP to your email to confirm the password change.',
+                notice: 'After submitting, you\'ll receive a verification code at your registered email.',
+            }
+        };
+
+        const cfg = configs[purpose] || configs.change_email;
+
+        if (this.sectionIcon) {
+            this.sectionIcon.className = 'security-section-icon ' + cfg.iconClass;
+        }
+        if (this.sectionIconI) {
+            this.sectionIconI.className = cfg.iconI;
+        }
+        if (this.sectionTitle) this.sectionTitle.textContent = cfg.title;
+        if (this.sectionSubtitle) this.sectionSubtitle.textContent = cfg.subtitle;
+        if (this.verificationNoticeText) this.verificationNoticeText.textContent = cfg.notice;
+
+        // Reset form fields when switching tabs
+        this.resetFormFields();
+    }
+
+    resetFormFields() {
+        // Reset email fields
+        if (this.emailCurrentPassword) this.emailCurrentPassword.value = '';
+        if (this.newEmail) this.newEmail.value = '';
+
+        // Reset contact fields
+        if (this.newContact) this.newContact.value = '';
+
+        // Reset password fields
+        if (this.newPassword) this.newPassword.value = '';
+        if (this.confirmPassword) this.confirmPassword.value = '';
+        if (this.passwordMatchMessage) {
+            this.passwordMatchMessage.textContent = '';
+            this.passwordMatchMessage.className = 'password-match-message';
+        }
+
+        // Reset password strength
+        if (this.strengthBar) this.strengthBar.className = 'strength-bar-fill';
+        if (this.strengthText) {
+            this.strengthText.textContent = 'Enter a password';
+            this.strengthText.className = 'strength-text';
+        }
+        this.resetPasswordRequirements();
     }
 
     setupVerificationModal() {
@@ -153,7 +245,6 @@ class SecurityModal {
         const codeInputs = document.querySelectorAll('.code-input');
         codeInputs.forEach((input, index) => {
             input.addEventListener('input', (e) => {
-                // Allow only digits
                 e.target.value = e.target.value.replace(/[^0-9]/g, '');
                 if (e.target.value.length === 1 && index < codeInputs.length - 1) {
                     codeInputs[index + 1].focus();
@@ -164,7 +255,6 @@ class SecurityModal {
                     codeInputs[index - 1].focus();
                 }
             });
-            // Handle paste: distribute digits across inputs
             input.addEventListener('paste', (e) => {
                 e.preventDefault();
                 const pasted = (e.clipboardData.getData('text') || '').replace(/[^0-9]/g, '');
@@ -180,14 +270,14 @@ class SecurityModal {
     // ─── Current User Data ────────────────────────────────────────────
 
     loadCurrentUserData() {
-        const currentEmailDisplay = document.getElementById('currentEmailDisplay');
         const currentContactDisplay = document.getElementById('currentContactDisplay');
+        const registeredEmailDisplay = document.getElementById('registeredEmailDisplay');
 
-        if (currentEmailDisplay) {
-            currentEmailDisplay.textContent = this.currentUserData.email || 'Not set';
-        }
         if (currentContactDisplay) {
             currentContactDisplay.textContent = this.currentUserData.contact || 'Not set';
+        }
+        if (registeredEmailDisplay) {
+            registeredEmailDisplay.textContent = this.currentUserData.email || 'Not set';
         }
     }
 
@@ -204,10 +294,10 @@ class SecurityModal {
             return;
         }
 
+        // Match mobile rules: length, uppercase, number, special (no lowercase)
         const requirements = {
             length: password.length >= 8,
             uppercase: /[A-Z]/.test(password),
-            lowercase: /[a-z]/.test(password),
             number: /[0-9]/.test(password),
             special: /[!@#$%^&*(),.?":{}|<>]/.test(password)
         };
@@ -225,17 +315,17 @@ class SecurityModal {
         });
 
         const metCount = Object.values(requirements).filter(Boolean).length;
-        if (metCount <= 2) {
+        if (metCount <= 1) {
             this.strengthBar.className = 'strength-bar-fill weak';
-            this.strengthText.textContent = 'Weak password';
+            this.strengthText.textContent = 'Weak';
             this.strengthText.className = 'strength-text weak';
-        } else if (metCount <= 4) {
+        } else if (metCount <= 3) {
             this.strengthBar.className = 'strength-bar-fill medium';
-            this.strengthText.textContent = 'Medium password';
+            this.strengthText.textContent = 'Medium';
             this.strengthText.className = 'strength-text medium';
         } else {
             this.strengthBar.className = 'strength-bar-fill strong';
-            this.strengthText.textContent = 'Strong password';
+            this.strengthText.textContent = 'Strong';
             this.strengthText.className = 'strength-text strong';
         }
     }
@@ -269,24 +359,6 @@ class SecurityModal {
         }
     }
 
-    checkEmailMatch() {
-        const newVal = this.newEmail.value;
-        const confirmVal = this.confirmEmail.value;
-
-        if (!confirmVal) {
-            this.emailMatchMessage.textContent = '';
-            this.emailMatchMessage.className = 'email-match-message';
-            return;
-        }
-        if (newVal === confirmVal) {
-            this.emailMatchMessage.textContent = '✓ Email addresses match';
-            this.emailMatchMessage.className = 'email-match-message match';
-        } else {
-            this.emailMatchMessage.textContent = '✗ Email addresses do not match';
-            this.emailMatchMessage.className = 'email-match-message no-match';
-        }
-    }
-
     // ─── API Helper ───────────────────────────────────────────────────
 
     async postJson(url, body) {
@@ -300,31 +372,144 @@ class SecurityModal {
             credentials: 'same-origin',
             body: JSON.stringify(body)
         });
+
+        // Handle non-JSON responses (CSRF 419, session timeout redirect, 500 error page)
+        const contentType = res.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) {
+            // 419 = CSRF token mismatch (session expired)
+            if (res.status === 419) {
+                return { status: 419, success: false, message: 'Session expired. Please refresh the page and try again.' };
+            }
+            return { status: res.status, success: false, message: 'Server error. Please refresh the page and try again.' };
+        }
+
         const json = await res.json();
         return { status: res.status, ...json };
     }
 
-    // ─── Password Change Flow ─────────────────────────────────────────
+    // ─── Unified Form Submit ──────────────────────────────────────────
+
+    async handleSubmit() {
+        switch (this.activePurpose) {
+            case 'change_email':
+                return this.handleEmailChange();
+            case 'change_contact':
+                return this.handleContactChange();
+            case 'change_password':
+                return this.handlePasswordChange();
+        }
+    }
+
+    // ─── Email Change Flow (matches mobile: current password + new email) ──
+
+    async handleEmailChange() {
+        const currentPwd = this.emailCurrentPassword?.value?.trim();
+        const newEmailVal = this.newEmail?.value?.trim();
+
+        if (!currentPwd) {
+            this.showNotification('Please enter your current password', 'error');
+            return;
+        }
+        if (!newEmailVal) {
+            this.showNotification('Please enter your new email address', 'error');
+            return;
+        }
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(newEmailVal)) {
+            this.showNotification('Please enter a valid email address', 'error');
+            return;
+        }
+
+        this.pendingNewValue = newEmailVal;
+        this.setFormLoading(true);
+
+        try {
+            const data = await this.postJson(this.sendOtpUrl, {
+                purpose: 'change_email',
+                new_value: newEmailVal,
+                current_password: currentPwd
+            });
+
+            if (!data.success) {
+                this.showNotification(data.message || 'Failed to send verification code', 'error');
+                this.setFormLoading(false);
+                return;
+            }
+
+            this.otpToken = data.otp_token;
+            this.maskedDest = data.masked;
+            if (data.ttl_seconds) this.ttlSeconds = data.ttl_seconds;
+            this.setFormLoading(false);
+            this.openVerificationModal();
+        } catch (err) {
+            console.error('Email change send OTP error:', err);
+            this.showNotification('Network error. Please try again.', 'error');
+            this.setFormLoading(false);
+        }
+    }
+
+    // ─── Contact Change Flow (matches mobile: current contact disabled + new contact) ──
+
+    async handleContactChange() {
+        const newContactVal = this.newContact?.value?.trim();
+
+        if (!newContactVal) {
+            this.showNotification('Please enter your new contact number', 'error');
+            return;
+        }
+        if (!/^[0-9]{11}$/.test(newContactVal)) {
+            this.showNotification('Please enter a valid 11-digit contact number', 'error');
+            return;
+        }
+
+        this.pendingNewValue = newContactVal;
+        this.setFormLoading(true);
+
+        try {
+            // OTP is sent to the user's registered email (not the phone)
+            const data = await this.postJson(this.sendOtpUrl, {
+                purpose: 'change_contact',
+                new_value: newContactVal,
+                destination: this.currentUserData.email
+            });
+
+            if (!data.success) {
+                this.showNotification(data.message || 'Failed to send verification code', 'error');
+                this.setFormLoading(false);
+                return;
+            }
+
+            this.otpToken = data.otp_token;
+            this.maskedDest = data.masked;
+            if (data.ttl_seconds) this.ttlSeconds = data.ttl_seconds;
+            this.setFormLoading(false);
+            this.openVerificationModal();
+        } catch (err) {
+            console.error('Contact change send OTP error:', err);
+            this.showNotification('Network error. Please try again.', 'error');
+            this.setFormLoading(false);
+        }
+    }
+
+    // ─── Password Change Flow (matches mobile: registered email disabled + new/confirm pw) ──
 
     async handlePasswordChange() {
-        const currentPwd = this.currentPassword.value;
-        const newPwd = this.newPassword.value;
-        const confirmPwd = this.confirmPassword.value;
+        const newPwd = this.newPassword?.value;
+        const confirmPwd = this.confirmPassword?.value;
 
-        if (!currentPwd || !newPwd || !confirmPwd) {
-            this.showNotification('Please fill in all password fields', 'error');
+        if (!newPwd || !confirmPwd) {
+            this.showNotification('Please enter and confirm your new password', 'error');
             return;
         }
         if (newPwd !== confirmPwd) {
-            this.showNotification('New passwords do not match', 'error');
+            this.showNotification('Passwords do not match', 'error');
             return;
         }
 
-        // Check all password requirements before sending
+        // Check password requirements (matching mobile: length, uppercase, number, special)
         const reqs = {
             length: newPwd.length >= 8,
             uppercase: /[A-Z]/.test(newPwd),
-            lowercase: /[a-z]/.test(newPwd),
             number: /[0-9]/.test(newPwd),
             special: /[!@#$%^&*(),.?":{}|<>]/.test(newPwd)
         };
@@ -333,137 +518,39 @@ class SecurityModal {
             return;
         }
 
-        // Send OTP to user's email for password change verification
-        this.activePurpose = 'change_password';
-        this.pendingNewValue = newPwd;
+        // Match mobile: send user's email as new_value (destination), store password separately for verify
+        const userEmail = this.currentUserData.email;
+        if (!userEmail) {
+            this.showNotification('Registered email not available', 'error');
+            return;
+        }
 
-        this.setFormLoading(this.passwordForm, true);
+        this.pendingNewValue = userEmail;
+        this.pendingNewPassword = newPwd;
+        this.setFormLoading(true);
 
         try {
+            // Match mobile: { purpose: 'change_password', new_value: userEmail }
             const data = await this.postJson(this.sendOtpUrl, {
                 purpose: 'change_password',
-                new_value: newPwd,
-                current_password: currentPwd
+                new_value: userEmail
             });
 
             if (!data.success) {
                 this.showNotification(data.message || 'Failed to send verification code', 'error');
-                this.setFormLoading(this.passwordForm, false);
+                this.setFormLoading(false);
                 return;
             }
 
             this.otpToken = data.otp_token;
             this.maskedDest = data.masked;
-            this.setFormLoading(this.passwordForm, false);
+            if (data.ttl_seconds) this.ttlSeconds = data.ttl_seconds;
+            this.setFormLoading(false);
             this.openVerificationModal();
         } catch (err) {
             console.error('Password change send OTP error:', err);
             this.showNotification('Network error. Please try again.', 'error');
-            this.setFormLoading(this.passwordForm, false);
-        }
-    }
-
-    // ─── Contact / Email Change Flow ──────────────────────────────────
-
-    async handleContactChange() {
-        const newEmailVal = this.newEmail.value.trim();
-        const confirmEmailVal = this.confirmEmail.value.trim();
-        const newContactVal = this.newContact.value.trim();
-        const password = this.contactPasswordConfirm.value;
-
-        if (!password) {
-            this.showNotification('Please enter your password to confirm changes', 'error');
-            return;
-        }
-        if (!newEmailVal && !newContactVal) {
-            this.showNotification('Please enter at least one field to update', 'error');
-            return;
-        }
-
-        // If both email and contact are provided, handle email first, then contact
-        // (sequential OTP flow — one at a time)
-        if (newEmailVal) {
-            if (newEmailVal !== confirmEmailVal) {
-                this.showNotification('Email addresses do not match', 'error');
-                return;
-            }
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!emailRegex.test(newEmailVal)) {
-                this.showNotification('Please enter a valid email address', 'error');
-                return;
-            }
-            await this.sendChangeEmailOtp(newEmailVal, password);
-            return;
-        }
-
-        if (newContactVal) {
-            if (!/^[0-9]{11}$/.test(newContactVal)) {
-                this.showNotification('Please enter a valid 11-digit contact number', 'error');
-                return;
-            }
-            await this.sendChangeContactOtp(newContactVal, password);
-        }
-    }
-
-    async sendChangeEmailOtp(newEmail, currentPassword) {
-        this.activePurpose = 'change_email';
-        this.pendingNewValue = newEmail;
-
-        this.setFormLoading(this.contactForm, true);
-
-        try {
-            const data = await this.postJson(this.sendOtpUrl, {
-                purpose: 'change_email',
-                new_value: newEmail,
-                current_password: currentPassword
-            });
-
-            if (!data.success) {
-                this.showNotification(data.message || 'Failed to send verification code', 'error');
-                this.setFormLoading(this.contactForm, false);
-                return;
-            }
-
-            this.otpToken = data.otp_token;
-            this.maskedDest = data.masked;
-            this.setFormLoading(this.contactForm, false);
-            this.openVerificationModal();
-        } catch (err) {
-            console.error('Email change send OTP error:', err);
-            this.showNotification('Network error. Please try again.', 'error');
-            this.setFormLoading(this.contactForm, false);
-        }
-    }
-
-    async sendChangeContactOtp(newContact, currentPassword) {
-        this.activePurpose = 'change_contact';
-        this.pendingNewValue = newContact;
-
-        this.setFormLoading(this.contactForm, true);
-
-        try {
-            // For contact change, OTP is sent to the user's email (destination override)
-            const data = await this.postJson(this.sendOtpUrl, {
-                purpose: 'change_contact',
-                new_value: newContact,
-                current_password: currentPassword,
-                destination: this.currentUserData.email   // send OTP to email, not new phone
-            });
-
-            if (!data.success) {
-                this.showNotification(data.message || 'Failed to send verification code', 'error');
-                this.setFormLoading(this.contactForm, false);
-                return;
-            }
-
-            this.otpToken = data.otp_token;
-            this.maskedDest = data.masked;
-            this.setFormLoading(this.contactForm, false);
-            this.openVerificationModal();
-        } catch (err) {
-            console.error('Contact change send OTP error:', err);
-            this.showNotification('Network error. Please try again.', 'error');
-            this.setFormLoading(this.contactForm, false);
+            this.setFormLoading(false);
         }
     }
 
@@ -493,8 +580,8 @@ class SecurityModal {
         const firstInput = this.verificationModal.querySelector('.code-input');
         if (firstInput) setTimeout(() => firstInput.focus(), 100);
 
-        // Start countdown
-        this.startCountdown(300); // 5 min default
+        // Start countdown using server-provided TTL
+        this.startCountdown(this.ttlSeconds || 900);
     }
 
     closeVerificationModal() {
@@ -554,7 +641,9 @@ class SecurityModal {
                 purpose: this.activePurpose,
                 otp: otp,
                 otp_token: this.otpToken,
-                new_value: this.pendingNewValue
+                // Match mobile: for password change, send the actual new password as new_value
+                // For email/contact, send the new email/contact
+                new_value: this.activePurpose === 'change_password' ? this.pendingNewPassword : this.pendingNewValue
             });
 
             if (!data.success) {
@@ -576,24 +665,8 @@ class SecurityModal {
             }
             this.loadCurrentUserData();
 
-            // Reset forms
-            if (this.activePurpose === 'change_password') {
-                this.passwordForm.reset();
-                this.resetPasswordRequirements();
-                this.strengthBar.className = 'strength-bar-fill';
-                this.strengthText.textContent = 'Enter a password';
-                this.strengthText.className = 'strength-text';
-                if (this.passwordMatchMessage) {
-                    this.passwordMatchMessage.textContent = '';
-                    this.passwordMatchMessage.className = 'password-match-message';
-                }
-            } else {
-                this.contactForm.reset();
-                if (this.emailMatchMessage) {
-                    this.emailMatchMessage.textContent = '';
-                    this.emailMatchMessage.className = 'email-match-message';
-                }
-            }
+            // Reset form fields
+            this.resetFormFields();
 
             // Close modals
             this.closeVerificationModal();
@@ -619,23 +692,18 @@ class SecurityModal {
         if (resendBtn) resendBtn.disabled = true;
 
         try {
-            // Re-send OTP using the same purpose & value
             const body = {
                 purpose: this.activePurpose,
                 new_value: this.pendingNewValue
             };
 
             // Include current_password for email changes
-            if (this.activePurpose === 'change_email' && this.contactPasswordConfirm) {
-                body.current_password = this.contactPasswordConfirm.value;
+            if (this.activePurpose === 'change_email' && this.emailCurrentPassword) {
+                body.current_password = this.emailCurrentPassword.value;
             }
             // For contact change, include destination override
             if (this.activePurpose === 'change_contact') {
                 body.destination = this.currentUserData.email;
-            }
-            // For password change, include current password
-            if (this.activePurpose === 'change_password' && this.currentPassword) {
-                body.current_password = this.currentPassword.value;
             }
 
             const data = await this.postJson(this.sendOtpUrl, body);
@@ -648,6 +716,7 @@ class SecurityModal {
 
             this.otpToken = data.otp_token;
             this.maskedDest = data.masked;
+            if (data.ttl_seconds) this.ttlSeconds = data.ttl_seconds;
             this.showNotification('Verification code resent!', 'success');
 
             // Clear existing OTP inputs
@@ -656,7 +725,7 @@ class SecurityModal {
             if (firstInput) firstInput.focus();
 
             // Restart countdown
-            this.startCountdown(300);
+            this.startCountdown(this.ttlSeconds || 900);
         } catch (err) {
             console.error('Resend OTP error:', err);
             this.showNotification('Failed to resend code. Please try again.', 'error');
@@ -666,20 +735,19 @@ class SecurityModal {
 
     // ─── UI Helpers ──────────────────────────────────────────────────
 
-    setFormLoading(form, loading) {
-        if (!form) return;
-        const submitBtn = form.querySelector('button[type="submit"]');
-        if (submitBtn) {
-            submitBtn.disabled = loading;
-            if (loading) {
-                submitBtn.dataset.originalText = submitBtn.innerHTML;
-                submitBtn.innerHTML = '<i class="fi fi-rr-spinner"></i> Sending code...';
-            } else {
-                submitBtn.innerHTML = submitBtn.dataset.originalText || submitBtn.innerHTML;
-            }
+    setFormLoading(loading) {
+        if (!this.submitBtn) return;
+        this.submitBtn.disabled = loading;
+        if (loading) {
+            this.submitBtn.dataset.originalText = this.submitBtn.innerHTML;
+            this.submitBtn.innerHTML = '<i class="fi fi-rr-spinner"></i> Sending code...';
+        } else {
+            this.submitBtn.innerHTML = this.submitBtn.dataset.originalText || '<i class="fi fi-rr-check"></i> Send OTP';
         }
-        // Disable all inputs while loading
-        form.querySelectorAll('input').forEach(input => { input.disabled = loading; });
+        // Disable all inputs in the active field group while loading
+        if (this.form) {
+            this.form.querySelectorAll('input').forEach(input => { input.disabled = loading; });
+        }
     }
 
     open() {

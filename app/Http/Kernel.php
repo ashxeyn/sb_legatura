@@ -36,6 +36,7 @@ class Kernel extends HttpKernel
         'auth' => \App\Http\Middleware\Authenticate::class,
         'guest' => \App\Http\Middleware\RedirectIfAuthenticated::class,
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
+        'admin.session' => \App\Http\Middleware\AdminSessionGuard::class,
 
         // IMPORTANT → your admin middleware
         'admin.auth' => \App\Http\Middleware\AdminAuthMiddleware::class,

@@ -16,12 +16,12 @@ class PropertyOwnerProfile {
             search: ''
         };
         this.reviews = [];
-        
+
         this.init();
     }
 
-    init() {
-        this.loadProfileData();
+    async init() {
+        await this.loadProfileData();
         this.setupEventListeners();
     }
 
@@ -36,14 +36,17 @@ class PropertyOwnerProfile {
             });
         });
 
-        // Send message button
-        const sendMessageBtn = document.getElementById('sendMessageBtn');
-        if (sendMessageBtn) {
-            sendMessageBtn.addEventListener('click', (e) => {
+        // Edit profile button
+        const editProfileBtn = document.getElementById('editProfileBtn');
+        if (editProfileBtn) {
+            editProfileBtn.addEventListener('click', (e) => {
                 this.createRippleEffect(e.target, e);
-                this.handleSendMessage();
+                this.openEditProfileModal();
             });
         }
+
+        // Edit profile modal event listeners
+        this.setupEditProfileModal();
 
         // Cover photo edit button
         const editCoverPhotoBtn = document.getElementById('editCoverPhotoBtn');
@@ -58,11 +61,24 @@ class PropertyOwnerProfile {
             });
         }
 
-        // Profile picture click handler
+        // Profile picture edit button
+        const editProfilePicBtn = document.getElementById('editProfilePicBtn');
+        const profilePicInput = document.getElementById('profilePicInput');
+        if (editProfilePicBtn && profilePicInput) {
+            editProfilePicBtn.addEventListener('click', (e) => {
+                this.createRippleEffect(e.target, e);
+                profilePicInput.click();
+            });
+            profilePicInput.addEventListener('change', (e) => {
+                this.handleProfilePictureChange(e);
+            });
+        }
+
+        // Profile picture click handler (also triggers file input)
         const profilePicture = document.getElementById('profilePicture');
-        if (profilePicture) {
+        if (profilePicture && profilePicInput) {
             profilePicture.addEventListener('click', (e) => {
-                this.handleProfilePictureClick();
+                profilePicInput.click();
             });
         }
 
@@ -73,74 +89,241 @@ class PropertyOwnerProfile {
         this.setupProjectsFilter();
     }
 
-    loadProfileData() {
-        // Read data from HTML first (if exists), otherwise use sample data
-        const profileNameEl = document.getElementById('profileName');
-        const profileRatingEl = document.getElementById('profileRating');
-        const profileLocationEl = document.getElementById('profileLocation');
-        const infoCardBioEl = document.getElementById('infoCardBio');
-        const occupationValueEl = document.getElementById('occupationValue');
-        const projectsDoneEl = document.getElementById('projectsDone');
-        const ongoingProjectsEl = document.getElementById('ongoingProjects');
-        const contactNumberEl = document.getElementById('contactNumber');
-        const contactEmailEl = document.getElementById('contactEmail');
-        const telephoneEl = document.getElementById('telephone');
-        const profilePictureInitialsEl = document.querySelector('.profile-picture-initials');
+    async loadProfileData() {
+        // Fetch profile data from backend API
+        try {
+            const response = await fetch('/owner/profile/fetch?role=owner', {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                credentials: 'same-origin'
+            });
 
-        // Get values from HTML or use defaults
-        const name = profileNameEl ? profileNameEl.textContent.trim() : "Emmanuelle Santos";
-        const rating = profileRatingEl ? parseFloat(profileRatingEl.textContent.trim()) : 4.7;
-        const location = profileLocationEl ? profileLocationEl.textContent.trim() : "Zamboanga City";
-        const bio = infoCardBioEl ? infoCardBioEl.textContent.trim() : "Emmanuelle Santos is an active property owner and client on the Legatura platform, managing multiple residential and commercial construction projects within Zamboanga City.";
-        const occupation = occupationValueEl ? occupationValueEl.textContent.trim() : "Airbnb Host";
-        const projectsDone = projectsDoneEl ? parseInt(projectsDoneEl.textContent.trim()) : 45;
-        const ongoingProjects = ongoingProjectsEl ? parseInt(ongoingProjectsEl.textContent.trim()) : 3;
-        const contactNumber = contactNumberEl ? contactNumberEl.textContent.trim() : "+63 924 681 24098";
-        const email = contactEmailEl ? contactEmailEl.textContent.trim() : "emmanuelleSantos@gmail.com";
-        const telephone = telephoneEl ? telephoneEl.textContent.trim() : "061 234 5878";
-        const initials = profilePictureInitialsEl ? profilePictureInitialsEl.textContent.trim() : this.getInitials(name);
-
-        // Sample profile data - Replace with actual API call
-        this.profileData = {
-            userId: 1,
-            name: name,
-            username: `@${name.toLowerCase().replace(/\s+/g, '')}`,
-            rating: rating,
-            location: location,
-            bio: bio,
-            occupation: occupation,
-            projectsDone: projectsDone,
-            ongoingProjects: ongoingProjects,
-            contactNumber: contactNumber,
-            email: email,
-            telephone: telephone,
-            profilePicture: null, // URL to profile picture
-            coverImage: null // URL to cover image
-        };
-
-        this.projectPosts = [
-            {
-                id: 1,
-                userId: 1,
-                userName: name,
-                userHandle: `@${name.toLowerCase().replace(/\s+/g, '')}`,
-                userInitials: initials,
-                projectTitle: "Modern Two-Storey House Project",
-                projectImage: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800",
-                timestamp: "1:12 PM · June 3, 2021",
-                description: "A beautiful modern two-storey house with contemporary design..."
+            if (!response.ok) {
+                throw new Error('Failed to fetch profile data');
             }
-        ];
 
-        // Load all projects data
-        this.loadAllProjects();
+            const result = await response.json();
+            console.log('Profile API response:', result);
 
-        // Load reviews data
-        this.loadReviews();
+            // API returns { success: true, data: {...} }
+            if (!result.success || !result.data || !result.data.user) {
+                console.warn('No profile data received, using defaults');
+                this.setDefaultProfileData();
+                return;
+            }
 
+            const data = result.data;
+            const user = data.user;
+            const owner = data.owner || {};
+
+            // Name comes from property_owners table (first_name, middle_name, last_name)
+            const firstName = owner.first_name || '';
+            const middleName = owner.middle_name || '';
+            const lastName = owner.last_name || '';
+            const name = `${firstName} ${middleName} ${lastName}`.replace(/\s+/g, ' ').trim() || 'Property Owner';
+            const location = data.address_display || owner.address || 'Location not set';
+
+            // Parse address into parts (format: "Street, Barangay, City, Province [PostalCode]")
+            const addressParts = this.parseAddress(owner.address || '');
+
+            console.log('Owner data:', owner);
+            console.log('Parsed name:', name);
+            console.log('Parsed address:', addressParts);
+
+            this.profileData = {
+                userId: user.user_id,
+                name: name,
+                username: `@${user.username || name.toLowerCase().replace(/\s+/g, '')}`,
+                rawUsername: user.username || '',
+                rating: data.rating || null,
+                totalReviews: data.total_reviews || 0,
+                location: location,
+                bio: 'Property owner on Legatura platform', // No bio field in database
+                occupation: data.occupation_name || 'Not specified',
+                occupationId: owner.occupation_id || null,
+                occupationOther: owner.occupation_other || null,
+                projectsDone: data.projects_done || 0,
+                ongoingProjects: data.ongoing_projects || 0,
+                profilePicture: user.profile_pic ? `/storage/${user.profile_pic}` : null,
+                coverImage: user.cover_photo ? `/storage/${user.cover_photo}` : null,
+                dateOfBirth: owner.date_of_birth || null,
+                // Address parts
+                addressStreet: addressParts.street || '',
+                addressBarangay: addressParts.barangay || '',
+                addressCity: addressParts.city || '',
+                addressProvince: addressParts.province || ''
+            };
+
+            // Transform projects to posts
+            const projects = data.projects || [];
+            this.projectPosts = projects.map((project, index) => {
+                // Get first image from files array (handle both old string format and new object format)
+                let firstImage = null;
+                if (project.files && project.files.length > 0) {
+                    const firstFile = project.files[0];
+                    if (typeof firstFile === 'string') {
+                        firstImage = `/storage/${firstFile}`;
+                    } else if (firstFile.file_path) {
+                        firstImage = `/storage/${firstFile.file_path}`;
+                    }
+                }
+                const postDate = project.post_created_at || project.created_at;
+                return {
+                    id: project.project_id,
+                    userId: user.user_id,
+                    userName: name,
+                    userHandle: `@${user.username || name.toLowerCase().replace(/\s+/g, '')}`,
+                    userInitials: this.getInitials(name),
+                    userProfilePicture: this.profileData.profilePicture,
+                    projectTitle: project.project_title || 'Untitled Project',
+                    projectImage: firstImage,
+                    timestamp: postDate ? this.formatTimestamp(postDate) : '',
+                    description: project.project_description || ''
+                };
+            });
+
+            // Store projects for Projects tab
+            this.allProjects = projects.map(project => {
+                // Get first image from files array (handle both old string format and new object format)
+                let firstImage = null;
+                if (project.files && project.files.length > 0) {
+                    const firstFile = project.files[0];
+                    if (typeof firstFile === 'string') {
+                        firstImage = `/storage/${firstFile}`;
+                    } else if (firstFile.file_path) {
+                        firstImage = `/storage/${firstFile.file_path}`;
+                    }
+                }
+                return {
+                    id: project.project_id,
+                    title: project.project_title || 'Untitled Project',
+                    description: project.project_description || '',
+                    location: project.project_location || this.profileData.location,
+                    budgetMin: project.budget_range_min || 0,
+                    budgetMax: project.budget_range_max || 0,
+                    lotSize: project.lot_size || 0,
+                    floorArea: project.floor_area || 0,
+                    propertyType: project.property_type || 'Residential',
+                    contractorType: project.contractor_type_name || 'General Contractor',
+                    contractorTypeOther: project.if_others_ctype || null,
+                    status: project.project_status || 'open',
+                    biddingDeadline: project.bidding_due || null,
+                    bidsCount: project.bids_count || 0,
+                    date: project.post_created_at || project.created_at || '',
+                    image: firstImage,
+                    files: project.files || [],
+                    selectedContractorId: project.selected_contractor_id || null
+                };
+            });
+            this.filteredProjects = [...this.allProjects];
+
+            // Update the DOM with profile data
+            this.updateProfileDOM();
+
+            // Load reviews data
+            await this.loadReviews();
+
+            this.updateCalculatedFields();
+            this.renderProjectPosts();
+            this.updateCoverPhoto();
+
+        } catch (error) {
+            console.error('Error loading profile data:', error);
+            this.setDefaultProfileData();
+        }
+    }
+
+    formatTimestamp(dateStr) {
+        try {
+            const date = new Date(dateStr);
+            const options = { hour: 'numeric', minute: '2-digit', hour12: true };
+            const timeStr = date.toLocaleTimeString('en-US', options);
+            const dateOptions = { month: 'long', day: 'numeric', year: 'numeric' };
+            const dateFormatted = date.toLocaleDateString('en-US', dateOptions);
+            return `${timeStr} · ${dateFormatted}`;
+        } catch (e) {
+            return dateStr;
+        }
+    }
+
+    setDefaultProfileData() {
+        this.profileData = {
+            userId: null,
+            name: 'Property Owner',
+            username: '@propertyowner',
+            rating: null,
+            totalReviews: 0,
+            location: 'Location not set',
+            bio: 'No bio available',
+            occupation: 'Not specified',
+            projectsDone: 0,
+            ongoingProjects: 0,
+            profilePicture: null,
+            coverImage: null
+        };
+        this.projectPosts = [];
+        this.allProjects = [];
+        this.filteredProjects = [];
+        this.reviews = [];
+
+        this.updateProfileDOM();
         this.updateCalculatedFields();
         this.renderProjectPosts();
-        this.updateCoverPhoto();
+    }
+
+    updateProfileDOM() {
+        if (!this.profileData) return;
+
+        // Update profile header
+        const profileName = document.getElementById('profileName');
+        const profileRating = document.getElementById('profileRating');
+        const profileLocation = document.getElementById('profileLocation');
+        const infoCardName = document.getElementById('infoCardName');
+        const infoCardRating = document.getElementById('infoCardRating');
+        const infoCardLocation = document.getElementById('infoCardLocation');
+        const infoCardBio = document.getElementById('infoCardBio');
+        const occupationValue = document.getElementById('occupationValue');
+        const projectsDone = document.getElementById('projectsDone');
+        const ongoingProjects = document.getElementById('ongoingProjects');
+
+        // About section elements
+        const aboutBioText = document.getElementById('aboutBioText');
+        const aboutOccupation = document.getElementById('aboutOccupation');
+        const aboutLocation = document.getElementById('aboutLocation');
+        const aboutProjectsDone = document.getElementById('aboutProjectsDone');
+        const aboutActiveProjects = document.getElementById('aboutActiveProjects');
+
+        // Update values
+        if (profileName) profileName.textContent = this.profileData.name;
+        if (profileRating) profileRating.textContent = this.profileData.rating !== null ? this.profileData.rating.toFixed(1) : '—';
+        if (profileLocation) profileLocation.textContent = this.profileData.location;
+        if (infoCardName) infoCardName.textContent = this.profileData.name;
+        if (infoCardRating) infoCardRating.textContent = this.profileData.rating !== null ? this.profileData.rating.toFixed(1) : '—';
+        if (infoCardLocation) infoCardLocation.textContent = this.profileData.location;
+        if (infoCardBio) infoCardBio.textContent = this.profileData.bio;
+        if (occupationValue) occupationValue.textContent = this.profileData.occupation;
+        if (projectsDone) projectsDone.textContent = this.profileData.projectsDone;
+        if (ongoingProjects) ongoingProjects.textContent = this.profileData.ongoingProjects;
+
+        // Update about section
+        if (aboutBioText) aboutBioText.textContent = this.profileData.bio;
+        if (aboutOccupation) aboutOccupation.textContent = this.profileData.occupation;
+        if (aboutLocation) aboutLocation.textContent = this.profileData.location;
+        if (aboutProjectsDone) aboutProjectsDone.textContent = this.profileData.projectsDone;
+        if (aboutActiveProjects) aboutActiveProjects.textContent = this.profileData.ongoingProjects;
+
+        // Update profile picture
+        const profilePicture = document.getElementById('profilePicture');
+        if (profilePicture) {
+            if (this.profileData.profilePicture) {
+                profilePicture.innerHTML = `<img src="${this.profileData.profilePicture}" alt="${this.profileData.name}" class="profile-picture-img" onerror="this.parentElement.innerHTML='<span class=\\'profile-picture-initials\\'>${this.getInitials(this.profileData.name)}</span>'">`;
+            } else {
+                profilePicture.innerHTML = `<span class="profile-picture-initials">${this.getInitials(this.profileData.name)}</span>`;
+            }
+        }
     }
 
     updateCoverPhoto() {
@@ -151,80 +334,21 @@ class PropertyOwnerProfile {
     }
 
     loadAllProjects() {
-        // Sample projects data - Replace with actual API call
-        this.allProjects = [
-            {
-                id: 1,
-                title: "Modern Residential House Construction",
-                type: "General Contractor",
-                description: "A beautiful 3-bedroom, 2-bathroom modern house with open floor plan.",
-                image: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=400&h=300&fit=crop",
-                status: "in_progress",
-                date: "2024-03-15",
-                location: "Zamboanga City"
-            },
-            {
-                id: 2,
-                title: "Commercial Building Renovation",
-                type: "Construction",
-                description: "Complete renovation of a 5-story commercial building.",
-                image: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=400&h=300&fit=crop",
-                status: "active",
-                date: "2024-02-20",
-                location: "Zamboanga City"
-            },
-            {
-                id: 3,
-                title: "Luxury Villa Construction",
-                type: "General Contractor",
-                description: "High-end villa with modern amenities and sustainable design.",
-                image: "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=400&h=300&fit=crop",
-                status: "completed",
-                date: "2024-01-10",
-                location: "Zamboanga City"
-            },
-            {
-                id: 4,
-                title: "Apartment Complex Development",
-                type: "Construction",
-                description: "Multi-unit apartment complex with modern facilities.",
-                image: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=400&h=300&fit=crop",
-                status: "pending",
-                date: "2024-04-01",
-                location: "Zamboanga City"
-            },
-            {
-                id: 5,
-                title: "Office Building Construction",
-                type: "General Contractor",
-                description: "Modern office building with smart technology integration.",
-                image: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=400&h=300&fit=crop",
-                status: "in_progress",
-                date: "2024-03-25",
-                location: "Zamboanga City"
-            },
-            {
-                id: 6,
-                title: "Residential Complex",
-                type: "Construction",
-                description: "Large-scale residential development project.",
-                image: "https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=400&h=300&fit=crop",
-                status: "active",
-                date: "2024-02-15",
-                location: "Zamboanga City"
-            }
-        ];
-
+        // Projects already loaded in loadProfileData from API
+        // This is a fallback that will use already loaded data
+        if (!this.allProjects || this.allProjects.length === 0) {
+            this.allProjects = [];
+        }
         this.filteredProjects = [...this.allProjects];
     }
 
     updateCalculatedFields() {
         // Only update calculated fields like initials based on current HTML content
         // This preserves all HTML content and only updates what needs to be calculated
-        
+
         const profileNameCurrent = document.getElementById('profileName');
         const currentName = profileNameCurrent ? profileNameCurrent.textContent.trim() : this.profileData.name;
-        
+
         // Update profile picture initials based on current name
         const profilePictureInitials = document.querySelector('.profile-picture-initials');
         if (profilePictureInitials && currentName) {
@@ -282,7 +406,7 @@ class PropertyOwnerProfile {
         card.innerHTML = `
             <div class="post-card-header">
                 <div class="post-card-avatar">
-                    ${post.userProfilePicture 
+                    ${post.userProfilePicture
                         ? `<img src="${post.userProfilePicture}" alt="${post.userName}">`
                         : `<span class="post-card-avatar-initials">${initials}</span>`
                     }
@@ -369,7 +493,7 @@ class PropertyOwnerProfile {
 
         // Fade out current content
         if (postFeed && !postFeed.classList.contains('hidden')) return;
-        
+
         [projectsContainer, reviewsContainer, aboutSection].forEach(container => {
             if (container && !container.classList.contains('hidden')) {
                 container.style.opacity = '0';
@@ -386,13 +510,13 @@ class PropertyOwnerProfile {
             postFeed.style.opacity = '0';
             postFeed.style.transform = 'translateY(10px)';
             postFeed.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-            
+
             setTimeout(() => {
                 postFeed.style.opacity = '1';
                 postFeed.style.transform = 'translateY(0)';
             }, 50);
         }
-        
+
         if (filterSection) filterSection.classList.add('hidden');
 
         this.renderProjectPosts();
@@ -407,7 +531,7 @@ class PropertyOwnerProfile {
 
         // Fade out current content
         if (projectsContainer && !projectsContainer.classList.contains('hidden')) return;
-        
+
         [postFeed, reviewsContainer, aboutSection].forEach(container => {
             if (container && !container.classList.contains('hidden')) {
                 container.style.opacity = '0';
@@ -424,13 +548,13 @@ class PropertyOwnerProfile {
             projectsContainer.style.opacity = '0';
             projectsContainer.style.transform = 'translateY(10px)';
             projectsContainer.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-            
+
             setTimeout(() => {
                 projectsContainer.style.opacity = '1';
                 projectsContainer.style.transform = 'translateY(0)';
             }, 50);
         }
-        
+
         if (filterSection) {
             filterSection.classList.remove('hidden');
             filterSection.style.opacity = '0';
@@ -453,7 +577,7 @@ class PropertyOwnerProfile {
 
         // Fade out current content
         if (reviewsContainer && !reviewsContainer.classList.contains('hidden')) return;
-        
+
         [postFeed, projectsContainer, aboutSection].forEach(container => {
             if (container && !container.classList.contains('hidden')) {
                 container.style.opacity = '0';
@@ -470,13 +594,13 @@ class PropertyOwnerProfile {
             reviewsContainer.style.opacity = '0';
             reviewsContainer.style.transform = 'translateY(10px)';
             reviewsContainer.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-            
+
             setTimeout(() => {
                 reviewsContainer.style.opacity = '1';
                 reviewsContainer.style.transform = 'translateY(0)';
             }, 50);
         }
-        
+
         if (filterSection) filterSection.classList.add('hidden');
 
         this.renderReviews();
@@ -517,54 +641,62 @@ class PropertyOwnerProfile {
         if (filterSection) filterSection.classList.add('hidden');
     }
 
-    loadReviews() {
-        // Sample reviews data - Replace with actual API call
-        this.reviews = [
-            {
-                id: 1,
-                reviewerName: "Panda Construction Company",
-                reviewerType: "Contractor",
-                rating: 5.0,
-                reviewText: "Working with Mr. Carl Wayne Saludo was an outstanding experience. He communicated clearly, responded promptly to milestone updates, and ensured all payments were validated on time through Legatura.",
-                timestamp: "1:12 PM · June 3, 2021",
-                projectTitle: "Modern Residential House Construction",
-                projectDate: "June 1, 2021",
-                projectStatus: "Completed"
-            },
-            {
-                id: 2,
-                reviewerName: "Elite Builders Inc.",
-                reviewerType: "General Contractor",
-                rating: 4.8,
-                reviewText: "Excellent collaboration throughout the project. The property owner was very responsive and made timely decisions. The project was completed ahead of schedule.",
-                timestamp: "2:30 PM · May 15, 2021",
-                projectTitle: "Commercial Building Renovation",
-                projectDate: "May 10, 2021",
-                projectStatus: "Completed"
-            },
-            {
-                id: 3,
-                reviewerName: "Premier Construction Services",
-                reviewerType: "Construction Company",
-                rating: 5.0,
-                reviewText: "One of the best clients we've worked with. Clear communication, fair expectations, and prompt payment processing. Highly recommend working with this property owner.",
-                timestamp: "10:45 AM · April 20, 2021",
-                projectTitle: "Luxury Villa Construction",
-                projectDate: "April 15, 2021",
-                projectStatus: "Completed"
-            },
-            {
-                id: 4,
-                reviewerName: "Quality Builders Group",
-                reviewerType: "General Contractor",
-                rating: 4.5,
-                reviewText: "Professional and organized property owner. The project management through Legatura made everything smooth and transparent. Would work with again.",
-                timestamp: "3:20 PM · March 28, 2021",
-                projectTitle: "Apartment Complex Development",
-                projectDate: "March 25, 2021",
-                projectStatus: "Completed"
+    async loadReviews() {
+        // Fetch reviews from backend API
+        try {
+            // Need to pass user_id for the reviews endpoint
+            if (!this.profileData || !this.profileData.userId) {
+                console.warn('No user ID available for loading reviews');
+                this.reviews = [];
+                return;
             }
-        ];
+
+            const response = await fetch(`/owner/profile/reviews?role=owner&user_id=${this.profileData.userId}`, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                credentials: 'same-origin'
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch reviews');
+            }
+
+            const result = await response.json();
+            console.log('Reviews API response:', result);
+
+            // API returns { success: true, data: { reviews: [...], stats: {...} } }
+            if (!result.success || !result.data || !result.data.reviews) {
+                this.reviews = [];
+                return;
+            }
+
+            this.reviews = result.data.reviews.map(review => ({
+                id: review.review_id,
+                reviewerName: review.reviewer_company_name || review.reviewer_name || review.reviewer_username || 'Anonymous',
+                reviewerType: 'Contractor',
+                reviewerProfilePic: review.reviewer_profile_pic ? `/storage/${review.reviewer_profile_pic}` : null,
+                rating: parseFloat(review.rating) || 0,
+                reviewText: review.comment || '',
+                timestamp: review.created_at ? this.formatTimestamp(review.created_at) : '',
+                projectTitle: review.project_title || 'Project',
+                projectDate: review.project_date || '',
+                projectStatus: 'Completed'
+            }));
+
+            // Update rating from reviews stats if available
+            if (result.data.stats && result.data.stats.avg_rating !== null) {
+                this.profileData.rating = result.data.stats.avg_rating;
+                this.profileData.totalReviews = result.data.stats.total_reviews || 0;
+                this.updateProfileDOM();
+            }
+
+        } catch (error) {
+            console.error('Error loading reviews:', error);
+            this.reviews = [];
+        }
     }
 
     getReviewAvatarColor(reviewerName) {
@@ -579,13 +711,13 @@ class PropertyOwnerProfile {
             { bg: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', class: 'avatar-color-7' },
             { bg: 'linear-gradient(135deg, #14b8a6 0%, #0d9488 100%)', class: 'avatar-color-8' }
         ];
-        
+
         // Use hash of company name to get consistent color
         let hash = 0;
         for (let i = 0; i < reviewerName.length; i++) {
             hash = reviewerName.charCodeAt(i) + ((hash << 5) - hash);
         }
-        
+
         const index = Math.abs(hash) % colors.length;
         return colors[index];
     }
@@ -593,7 +725,7 @@ class PropertyOwnerProfile {
     renderReviews() {
         const reviewsList = document.getElementById('reviewsList');
         const emptyState = document.getElementById('reviewsEmptyState');
-        
+
         if (!reviewsList) return;
 
         reviewsList.innerHTML = '';
@@ -611,13 +743,13 @@ class PropertyOwnerProfile {
         this.reviews.forEach((review, index) => {
             const reviewCard = this.createReviewCard(review);
             reviewsList.appendChild(reviewCard);
-            
+
             // Add staggered animation
             setTimeout(() => {
                 reviewCard.style.opacity = '0';
                 reviewCard.style.transform = 'translateY(20px)';
                 reviewCard.style.transition = 'all 0.4s ease';
-                
+
                 requestAnimationFrame(() => {
                     reviewCard.style.opacity = '1';
                     reviewCard.style.transform = 'translateY(0)';
@@ -661,7 +793,7 @@ class PropertyOwnerProfile {
 
         // Generate star rating HTML
         const starsHTML = this.generateStarsHTML(review.rating);
-        
+
         // Get avatar color for this company
         const avatarColor = this.getReviewAvatarColor(review.reviewerName);
         const initials = this.getInitials(review.reviewerName);
@@ -823,9 +955,9 @@ class PropertyOwnerProfile {
 
         // Close dropdown when clicking outside
         document.addEventListener('click', (e) => {
-            if (filterDropdown && 
-                !filterDropdown.contains(e.target) && 
-                filterIconBtn && 
+            if (filterDropdown &&
+                !filterDropdown.contains(e.target) &&
+                filterIconBtn &&
                 !filterIconBtn.contains(e.target)) {
                 this.closeProjectsFilterDropdown();
             }
@@ -835,7 +967,7 @@ class PropertyOwnerProfile {
     toggleProjectsFilterDropdown() {
         const filterDropdown = document.getElementById('projectsFilterDropdown');
         const filterIconBtn = document.getElementById('projectsFilterIconBtn');
-        
+
         if (filterDropdown && filterIconBtn) {
             filterDropdown.classList.toggle('active');
             filterIconBtn.classList.toggle('active');
@@ -845,7 +977,7 @@ class PropertyOwnerProfile {
     closeProjectsFilterDropdown() {
         const filterDropdown = document.getElementById('projectsFilterDropdown');
         const filterIconBtn = document.getElementById('projectsFilterIconBtn');
-        
+
         if (filterDropdown) filterDropdown.classList.remove('active');
         if (filterIconBtn) filterIconBtn.classList.remove('active');
     }
@@ -853,14 +985,14 @@ class PropertyOwnerProfile {
     applyProjectsFiltersFromUI() {
         const statusFilter = document.getElementById('projectsStatusFilter');
         const sortFilter = document.getElementById('projectsSortFilter');
-        
+
         if (statusFilter) {
             this.currentFilters.status = statusFilter.value;
         }
         if (sortFilter) {
             this.currentFilters.sort = sortFilter.value;
         }
-        
+
         this.applyProjectsFilters();
         this.updateProjectsFilterBadge();
         this.closeProjectsFilterDropdown();
@@ -869,11 +1001,11 @@ class PropertyOwnerProfile {
     updateProjectsFilterBadge() {
         const filterBadge = document.getElementById('projectsFilterBadge');
         const filterIconBtn = document.getElementById('projectsFilterIconBtn');
-        
+
         if (!filterBadge || !filterIconBtn) return;
-        
+
         const activeFilterCount = this.getActiveFiltersCount();
-        
+
         if (activeFilterCount > 0) {
             filterBadge.textContent = activeFilterCount;
             filterBadge.classList.remove('hidden');
@@ -968,7 +1100,7 @@ class PropertyOwnerProfile {
         card.innerHTML = `
             <div class="post-card-header">
                 <div class="post-card-avatar">
-                    ${this.profileData?.profilePicture 
+                    ${this.profileData?.profilePicture
                         ? `<img src="${this.profileData.profilePicture}" alt="${userName}">`
                         : `<span class="post-card-avatar-initials">${userInitials}</span>`
                     }
@@ -1037,25 +1169,512 @@ class PropertyOwnerProfile {
     }
 
     handleSendMessage() {
-        console.log('Send message clicked');
-        // In a real implementation, open a message modal or navigate to messages
-        this.showNotification('Message feature coming soon!', 'info');
+        // Deprecated - replaced with openEditProfileModal
+        this.openEditProfileModal();
+    }
+
+    setupEditProfileModal() {
+        const modal = document.getElementById('editProfileModal');
+        const modalOverlay = document.getElementById('editProfileModalOverlay');
+        const modalClose = document.getElementById('editProfileModalClose');
+        const cancelBtn = document.getElementById('editProfileCancelBtn');
+        const saveBtn = document.getElementById('editProfileSaveBtn');
+        const editForm = document.getElementById('editProfileForm');
+
+        // Close modal handlers
+        if (modalClose) {
+            modalClose.addEventListener('click', () => this.closeEditProfileModal());
+        }
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', () => this.closeEditProfileModal());
+        }
+        if (modalOverlay) {
+            modalOverlay.addEventListener('click', () => this.closeEditProfileModal());
+        }
+
+        // Save button click
+        if (saveBtn) {
+            saveBtn.addEventListener('click', () => this.saveProfileChanges());
+        }
+
+        // Form submission
+        if (editForm) {
+            editForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.saveProfileChanges();
+            });
+        }
+
+        // ESC key to close
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && this.isEditModalOpen()) {
+                this.closeEditProfileModal();
+            }
+        });
+
+        // Occupation dropdown change handler - show/hide "Other" field
+        const occupationSelect = document.getElementById('editOccupation');
+        if (occupationSelect) {
+            occupationSelect.addEventListener('change', (e) => {
+                this.toggleOccupationOtherField(e.target.value);
+            });
+        }
+
+        // Address cascading dropdowns
+        const provinceSelect = document.getElementById('editAddressProvince');
+        const citySelect = document.getElementById('editAddressCity');
+        const barangaySelect = document.getElementById('editAddressBarangay');
+
+        if (provinceSelect) {
+            provinceSelect.addEventListener('change', (e) => {
+                this.loadCitiesByProvince(e.target.value);
+            });
+        }
+
+        if (citySelect) {
+            citySelect.addEventListener('change', (e) => {
+                this.loadBarangaysByCity(e.target.value);
+            });
+        }
+
+        // Input validation on blur
+        const inputs = editForm?.querySelectorAll('input, select');
+        if (inputs) {
+            inputs.forEach(input => {
+                input.addEventListener('blur', () => this.validateField(input));
+                input.addEventListener('input', () => {
+                    if (input.classList.contains('error')) {
+                        this.validateField(input);
+                    }
+                });
+            });
+        }
+    }
+
+    toggleOccupationOtherField(occupationId) {
+        const otherRow = document.getElementById('editOccupationOtherRow');
+        const otherInput = document.getElementById('editOccupationOther');
+
+        if (occupationId === '26') { // "Others" option
+            if (otherRow) otherRow.style.display = 'flex';
+            if (otherInput) otherInput.required = true;
+        } else {
+            if (otherRow) otherRow.style.display = 'none';
+            if (otherInput) {
+                otherInput.required = false;
+                otherInput.value = '';
+            }
+        }
+    }
+    isEditModalOpen() {
+        const modal = document.getElementById('editProfileModal');
+        return modal && modal.classList.contains('active');
+    }
+
+    validateField(field) {
+        const isValid = field.checkValidity();
+        if (field.required && !isValid) {
+            field.classList.add('error');
+            return false;
+        } else {
+            field.classList.remove('error');
+            return true;
+        }
+    }
+
+    validateEditForm() {
+        const editForm = document.getElementById('editProfileForm');
+        if (!editForm) return false;
+
+        const requiredFields = editForm.querySelectorAll('[required]');
+        let isValid = true;
+
+        requiredFields.forEach(field => {
+            if (!this.validateField(field)) {
+                isValid = false;
+            }
+        });
+
+        return isValid;
+    }
+
+    openEditProfileModal() {
+        const modal = document.getElementById('editProfileModal');
+        if (!modal) return;
+
+        // Populate form with current data
+        this.populateEditForm();
+
+        // Load provinces for address dropdown
+        this.loadProvinces();
+
+        // Show modal
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    async loadProvinces() {
+        const provinceSelect = document.getElementById('editAddressProvince');
+        if (!provinceSelect) return;
+
+        try {
+            const response = await fetch('/api/psgc/provinces', {
+                method: 'GET',
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            const data = await response.json();
+
+            // Reset and populate provinces
+            provinceSelect.innerHTML = '<option value="">Select province</option>';
+            (data.data || data || []).forEach(province => {
+                const option = document.createElement('option');
+                option.value = province.code;
+                option.textContent = province.name;
+                option.dataset.name = province.name;
+                provinceSelect.appendChild(option);
+            });
+
+            // If we have saved province, try to select it
+            if (this.profileData && this.profileData.addressProvince) {
+                this.selectProvinceByName(this.profileData.addressProvince);
+            }
+        } catch (error) {
+            console.error('Error loading provinces:', error);
+        }
+    }
+
+    selectProvinceByName(provinceName) {
+        const provinceSelect = document.getElementById('editAddressProvince');
+        if (!provinceSelect || !provinceName) return;
+
+        const options = provinceSelect.querySelectorAll('option');
+        for (const option of options) {
+            if (option.dataset.name && option.dataset.name.toLowerCase() === provinceName.toLowerCase()) {
+                provinceSelect.value = option.value;
+                // Trigger change to load cities
+                this.loadCitiesByProvince(option.value);
+                return;
+            }
+        }
+    }
+
+    async loadCitiesByProvince(provinceCode) {
+        const citySelect = document.getElementById('editAddressCity');
+        const barangaySelect = document.getElementById('editAddressBarangay');
+
+        if (!citySelect) return;
+
+        // Reset city and barangay
+        citySelect.innerHTML = '<option value="">Select city</option>';
+        citySelect.disabled = !provinceCode;
+
+        if (barangaySelect) {
+            barangaySelect.innerHTML = '<option value="">Select barangay</option>';
+            barangaySelect.disabled = true;
+        }
+
+        if (!provinceCode) return;
+
+        try {
+            const response = await fetch(`/api/psgc/provinces/${provinceCode}/cities`, {
+                method: 'GET',
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            const data = await response.json();
+
+            (data.data || data || []).forEach(city => {
+                const option = document.createElement('option');
+                option.value = city.code;
+                option.textContent = city.name;
+                option.dataset.name = city.name;
+                citySelect.appendChild(option);
+            });
+
+            citySelect.disabled = false;
+
+            // If we have saved city, try to select it
+            if (this.profileData && this.profileData.addressCity) {
+                this.selectCityByName(this.profileData.addressCity);
+            }
+        } catch (error) {
+            console.error('Error loading cities:', error);
+        }
+    }
+
+    selectCityByName(cityName) {
+        const citySelect = document.getElementById('editAddressCity');
+        if (!citySelect || !cityName) return;
+
+        const options = citySelect.querySelectorAll('option');
+        for (const option of options) {
+            if (option.dataset.name && option.dataset.name.toLowerCase() === cityName.toLowerCase()) {
+                citySelect.value = option.value;
+                // Trigger change to load barangays
+                this.loadBarangaysByCity(option.value);
+                return;
+            }
+        }
+    }
+
+    async loadBarangaysByCity(cityCode) {
+        const barangaySelect = document.getElementById('editAddressBarangay');
+        if (!barangaySelect) return;
+
+        // Reset barangay
+        barangaySelect.innerHTML = '<option value="">Select barangay</option>';
+        barangaySelect.disabled = !cityCode;
+
+        if (!cityCode) return;
+
+        try {
+            const response = await fetch(`/api/psgc/cities/${cityCode}/barangays`, {
+                method: 'GET',
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            const data = await response.json();
+
+            (data.data || data || []).forEach(barangay => {
+                const option = document.createElement('option');
+                option.value = barangay.code;
+                option.textContent = barangay.name;
+                option.dataset.name = barangay.name;
+                barangaySelect.appendChild(option);
+            });
+
+            barangaySelect.disabled = false;
+
+            // If we have saved barangay, try to select it
+            if (this.profileData && this.profileData.addressBarangay) {
+                this.selectBarangayByName(this.profileData.addressBarangay);
+            }
+        } catch (error) {
+            console.error('Error loading barangays:', error);
+        }
+    }
+
+    selectBarangayByName(barangayName) {
+        const barangaySelect = document.getElementById('editAddressBarangay');
+        if (!barangaySelect || !barangayName) return;
+
+        const options = barangaySelect.querySelectorAll('option');
+        for (const option of options) {
+            if (option.dataset.name && option.dataset.name.toLowerCase() === barangayName.toLowerCase()) {
+                barangaySelect.value = option.value;
+                return;
+            }
+        }
+    }
+
+    closeEditProfileModal() {
+        const modal = document.getElementById('editProfileModal');
+        if (modal) {
+            modal.classList.remove('active');
+            document.body.style.overflow = '';
+            // Reset form validation states
+            const editForm = document.getElementById('editProfileForm');
+            if (editForm) {
+                const errorFields = editForm.querySelectorAll('.error');
+                errorFields.forEach(field => field.classList.remove('error'));
+            }
+        }
+    }
+
+    populateEditForm() {
+        if (!this.profileData) return;
+
+        // Parse name into parts
+        const nameParts = this.profileData.name.split(' ');
+        let firstName = '';
+        let middleName = '';
+        let lastName = '';
+
+        if (nameParts.length === 1) {
+            firstName = nameParts[0];
+        } else if (nameParts.length === 2) {
+            firstName = nameParts[0];
+            lastName = nameParts[1];
+        } else if (nameParts.length >= 3) {
+            firstName = nameParts[0];
+            middleName = nameParts.slice(1, -1).join(' ');
+            lastName = nameParts[nameParts.length - 1];
+        }
+
+        // Populate form fields
+        const firstNameInput = document.getElementById('editFirstName');
+        const middleNameInput = document.getElementById('editMiddleName');
+        const lastNameInput = document.getElementById('editLastName');
+        const usernameInput = document.getElementById('editUsername');
+        const occupationSelect = document.getElementById('editOccupation');
+        const occupationOtherInput = document.getElementById('editOccupationOther');
+        const dobInput = document.getElementById('editDateOfBirth');
+
+        if (firstNameInput) firstNameInput.value = firstName;
+        if (middleNameInput) middleNameInput.value = middleName;
+        if (lastNameInput) lastNameInput.value = lastName;
+        if (usernameInput && this.profileData.rawUsername) usernameInput.value = this.profileData.rawUsername;
+
+        // Set occupation dropdown and Other field
+        if (occupationSelect && this.profileData.occupationId) {
+            occupationSelect.value = this.profileData.occupationId;
+            this.toggleOccupationOtherField(this.profileData.occupationId.toString());
+
+            // If "Others" is selected, populate the other field
+            if (this.profileData.occupationId == 26 && occupationOtherInput && this.profileData.occupationOther) {
+                occupationOtherInput.value = this.profileData.occupationOther;
+            }
+        }
+
+        if (dobInput && this.profileData.dateOfBirth) dobInput.value = this.profileData.dateOfBirth;
+
+        // Populate street address (province/city/barangay are handled by cascading loads)
+        const streetInput = document.getElementById('editAddressStreet');
+        if (streetInput && this.profileData.addressStreet) {
+            streetInput.value = this.profileData.addressStreet;
+        }
+    }
+
+    async saveProfileChanges() {
+        if (!this.validateEditForm()) {
+            this.showNotification('Please fill in all required fields', 'error');
+            return;
+        }
+
+        const saveBtn = document.getElementById('editProfileSaveBtn');
+        const originalBtnHtml = saveBtn?.innerHTML;
+
+        if (saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<i class="fi fi-rr-spinner animate-spin"></i> Saving...';
+        }
+
+        try {
+            const formData = new FormData();
+
+            // Get form values
+            const firstName = document.getElementById('editFirstName')?.value;
+            const middleName = document.getElementById('editMiddleName')?.value;
+            const lastName = document.getElementById('editLastName')?.value;
+            const username = document.getElementById('editUsername')?.value;
+            const occupationId = document.getElementById('editOccupation')?.value;
+            const occupationOther = document.getElementById('editOccupationOther')?.value;
+            const dateOfBirth = document.getElementById('editDateOfBirth')?.value;
+
+            // Address fields - get the selected text (name), not the code value
+            const addressStreet = document.getElementById('editAddressStreet')?.value;
+            const provinceSelect = document.getElementById('editAddressProvince');
+            const citySelect = document.getElementById('editAddressCity');
+            const barangaySelect = document.getElementById('editAddressBarangay');
+            const addressProvince = provinceSelect?.selectedOptions[0]?.dataset?.name || '';
+            const addressCity = citySelect?.selectedOptions[0]?.dataset?.name || '';
+            const addressBarangay = barangaySelect?.selectedOptions[0]?.dataset?.name || '';
+
+            if (firstName) formData.append('first_name', firstName);
+            if (middleName) formData.append('middle_name', middleName);
+            if (lastName) formData.append('last_name', lastName);
+            if (username) formData.append('username', username);
+            if (occupationId) formData.append('occupation_id', occupationId);
+            // Only send occupation_other if "Others" is selected
+            if (occupationId === '26' && occupationOther) {
+                formData.append('occupation_other', occupationOther);
+            }
+            if (dateOfBirth) formData.append('date_of_birth', dateOfBirth);
+
+            // Address fields
+            if (addressStreet) formData.append('address_street', addressStreet);
+            if (addressProvince) formData.append('address_province', addressProvince);
+            if (addressCity) formData.append('address_city', addressCity);
+            if (addressBarangay) formData.append('address_barangay', addressBarangay);
+
+            const response = await fetch('/owner/profile/update', {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                },
+                credentials: 'same-origin',
+                body: formData
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                // Update the UI with new data
+                this.updateProfileDisplay({
+                    firstName,
+                    middleName,
+                    lastName,
+                    occupationId,
+                    occupationOther,
+                    dateOfBirth
+                });
+                this.showNotification('Profile updated successfully!', 'success');
+                this.closeEditProfileModal();
+                // Reload profile data
+                await this.loadProfileData();
+            } else {
+                this.showNotification(result.message || 'Failed to update profile', 'error');
+            }
+        } catch (error) {
+            console.error('Error saving profile:', error);
+            this.showNotification('An error occurred while saving', 'error');
+        } finally {
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = originalBtnHtml || '<i class="fi fi-rr-check"></i> Save Changes';
+            }
+        }
+    }
+
+    updateProfileDisplay(formData) {
+        // Update profile name
+        const profileName = document.getElementById('profileName');
+        const infoCardName = document.getElementById('infoCardName');
+
+        let fullName = formData.firstName;
+        if (formData.middleName) {
+            fullName += ' ' + formData.middleName;
+        }
+        fullName += ' ' + formData.lastName;
+
+        if (profileName) {
+            profileName.textContent = fullName.trim();
+        }
+        if (infoCardName) {
+            infoCardName.textContent = fullName.trim();
+        }
+
+        // Update occupation - will be refreshed from backend after loadProfileData()
+        // For immediate feedback, map occupationId to name
+        const occupationValue = document.getElementById('occupationValue');
+        if (occupationValue && formData.occupationId) {
+            const occupationMap = {
+                '1': 'Teacher', '2': 'Engineer', '3': 'Doctor', '4': 'Nurse',
+                '5': 'Police Officer', '6': 'Firefighter', '7': 'Lawyer', '8': 'Architect',
+                '9': 'Driver', '10': 'Construction Worker', '11': 'Electrician', '12': 'Plumber',
+                '13': 'Farmer', '14': 'Fisherman', '15': 'Office Clerk', '16': 'Salesperson',
+                '17': 'Cashier', '18': 'Security Guard', '19': 'IT Specialist', '20': 'Call Center Agent',
+                '21': 'Chef', '22': 'Accountant', '23': 'Businessman', '24': 'Student',
+                '25': 'Unemployed', '26': 'Others'
+            };
+            let occupationText = occupationMap[formData.occupationId] || 'Not specified';
+            if (formData.occupationId === '26' && formData.occupationOther) {
+                occupationText = formData.occupationOther;
+            }
+            occupationValue.textContent = occupationText;
+        }
+
+        // Update initials if needed
+        const initials = this.getInitials(fullName);
+        const profilePictureInitials = document.querySelector('.profile-picture-initials');
+        if (profilePictureInitials) {
+            profilePictureInitials.textContent = initials;
+        }
     }
 
     handleViewProjectDetails(projectId) {
         console.log('View project details:', projectId);
-        // In a real implementation, open project details modal or navigate to project page
-        // For now, navigate to project details or show modal
-        const project = this.allProjects.find(p => p.id === projectId) || 
-                       this.projectPosts.find(p => p.id === projectId);
-        
-        if (project) {
-            // In a real implementation, open project details modal
-            // For now, show notification
-            this.showNotification(`Viewing ${project.title || project.projectTitle}`, 'info');
-        } else {
-            this.showNotification(`Viewing project ${projectId}`, 'info');
-        }
+        // Navigate to dedicated project details page
+        window.location.href = `/owner/projects/${projectId}`;
     }
 
     showNotification(message, type = 'info') {
@@ -1066,7 +1685,7 @@ class PropertyOwnerProfile {
         } else if (type === 'error') {
             bgColor = '#dc2626';
         }
-        
+
         toast.className = 'fixed bottom-4 right-4 text-white px-6 py-3 rounded-lg shadow-lg z-50';
         toast.style.backgroundColor = bgColor;
         toast.textContent = message;
@@ -1149,9 +1768,67 @@ class PropertyOwnerProfile {
         }, 600);
     }
 
-    handleProfilePictureClick() {
-        // In a real implementation, open profile picture upload modal
-        this.showNotification('Profile picture upload coming soon!', 'info');
+    handleProfilePictureChange(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+            this.showNotification('Please select a valid image file', 'error');
+            return;
+        }
+
+        // Validate file size (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            this.showNotification('Image size should be less than 5MB', 'error');
+            return;
+        }
+
+        // Create preview
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const profilePicture = document.getElementById('profilePicture');
+            if (profilePicture) {
+                profilePicture.innerHTML = `<img src="${e.target.result}" alt="Profile" class="profile-picture-img" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+            }
+
+            // Update profile data
+            if (this.profileData) {
+                this.profileData.profilePicture = e.target.result;
+            }
+        };
+        reader.readAsDataURL(file);
+
+        // Upload to server
+        this.uploadProfilePicture(file);
+    }
+
+    async uploadProfilePicture(file) {
+        const formData = new FormData();
+        formData.append('profile_pic', file);
+
+        try {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+            const response = await fetch('/owner/profile/update', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                this.showNotification('Profile picture updated successfully!', 'success');
+            } else {
+                this.showNotification(data.message || 'Failed to update profile picture', 'error');
+            }
+        } catch (error) {
+            console.error('Error uploading profile picture:', error);
+            this.showNotification('Error uploading profile picture', 'error');
+        }
     }
 
     handleCoverPhotoChange(event) {
@@ -1178,7 +1855,7 @@ class PropertyOwnerProfile {
                 coverPhotoImg.src = e.target.result;
                 coverPhotoImg.style.opacity = '0';
                 coverPhotoImg.style.transition = 'opacity 0.3s ease';
-                
+
                 setTimeout(() => {
                     coverPhotoImg.style.opacity = '1';
                 }, 10);
@@ -1190,9 +1867,9 @@ class PropertyOwnerProfile {
             }
 
             this.showNotification('Cover photo updated successfully!', 'success');
-            
-            // In a real implementation, upload the file to the server
-            // this.uploadCoverPhoto(file);
+
+            // Upload to server
+            this.uploadCoverPhoto(file);
         };
 
         reader.onerror = () => {
@@ -1203,25 +1880,78 @@ class PropertyOwnerProfile {
     }
 
     async uploadCoverPhoto(file) {
-        // In a real implementation, upload to server
         const formData = new FormData();
         formData.append('cover_photo', file);
-        
+
         try {
-            // const response = await fetch('/api/profile/cover-photo', {
-            //     method: 'POST',
-            //     body: formData,
-            //     headers: {
-            //         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-            //     }
-            // });
-            // const data = await response.json();
-            // if (data.success) {
-            //     this.showNotification('Cover photo uploaded successfully!', 'success');
-            // }
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+            const response = await fetch('/owner/profile/update', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            });
+
+            const data = await response.json();
+            if (!data.success) {
+                this.showNotification(data.message || 'Failed to upload cover photo', 'error');
+            }
         } catch (error) {
             console.error('Error uploading cover photo:', error);
             this.showNotification('Error uploading cover photo', 'error');
+        }
+    }
+
+    /**
+     * Parse address string into parts
+     * Format: "Street, Barangay, City, Province [PostalCode]"
+     */
+    parseAddress(addressString) {
+        if (!addressString) return { street: '', barangay: '', city: '', province: '' };
+
+        // Split by comma
+        const parts = addressString.split(',').map(p => p.trim());
+
+        // Typical format: "Street, Barangay, City, Province PostalCode"
+        // We need at least 4 parts
+        if (parts.length >= 4) {
+            // Last part may have postal code, extract province name
+            let provincePart = parts[parts.length - 1];
+            // Remove postal code (digits at the end)
+            provincePart = provincePart.replace(/\s*\d+\s*$/, '').trim();
+
+            return {
+                street: parts[0] || '',
+                barangay: parts[1] || '',
+                city: parts[2] || '',
+                province: provincePart || ''
+            };
+        } else if (parts.length === 3) {
+            // Only 3 parts: might be "Street, City, Province"
+            let provincePart = parts[2].replace(/\s*\d+\s*$/, '').trim();
+            return {
+                street: parts[0] || '',
+                barangay: '',
+                city: parts[1] || '',
+                province: provincePart || ''
+            };
+        } else if (parts.length === 2) {
+            return {
+                street: parts[0] || '',
+                barangay: '',
+                city: '',
+                province: parts[1].replace(/\s*\d+\s*$/, '').trim() || ''
+            };
+        } else {
+            return {
+                street: addressString,
+                barangay: '',
+                city: '',
+                province: ''
+            };
         }
     }
 }

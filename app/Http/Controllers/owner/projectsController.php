@@ -261,6 +261,61 @@ class projectsController extends Controller
     }
 
     /**
+     * GET /owner/projects/{projectId}
+     * Display individual project details page
+     */
+    public function showProjectDetails(Request $request, $projectId)
+    {
+        // Allow access without login in local/testing environments
+        $isLocalOrTesting = App::environment(['local', 'testing', 'development']);
+
+        $user = Session::get('user');
+
+        // Only require login in production/staging environments
+        if (!$isLocalOrTesting && !$user) {
+            return redirect('/accounts/login');
+        }
+
+        // Fetch project with all related data
+        $project = DB::table('projects')
+            ->leftJoin('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
+            ->leftJoin('property_owners', 'project_relationships.owner_id', '=', 'property_owners.owner_id')
+            ->leftJoin('users', 'property_owners.user_id', '=', 'users.user_id')
+            ->leftJoin('contractor_types', 'projects.type_id', '=', 'contractor_types.type_id')
+            ->where('projects.project_id', $projectId)
+            ->select(
+                'projects.*',
+                'contractor_types.type_name',
+                'users.username as owner_username',
+                'project_relationships.bidding_due',
+                DB::raw('DATE(project_relationships.created_at) as created_at'),
+                DB::raw("CONCAT(property_owners.first_name, ' ', property_owners.last_name) as owner_name")
+            )
+            ->first();
+
+        if (!$project) {
+            abort(404, 'Project not found');
+        }
+
+        // Fetch project files
+        $files = DB::table('project_files')
+            ->where('project_id', $projectId)
+            ->get();
+
+        // Fetch bids count
+        $bidsCount = DB::table('bids')
+            ->where('project_id', $projectId)
+            ->count();
+
+        // Pass data to view
+        return view('owner.propertyOwner_ProjectDetails', [
+            'project' => $project,
+            'files' => $files,
+            'bidsCount' => $bidsCount
+        ]);
+    }
+
+    /**
      * GET /owner/projects/{projectId}/bids
      * Returns JSON list of bids with full contractor info, files, and ranking scores.
      */
@@ -1037,7 +1092,7 @@ class projectsController extends Controller
         // If in testing mode and no user, allow access anyway
         if ($isLocalOrTesting && !$user) {
             // Allow access without authentication for testing
-            return view('both.messages');
+            return view('both.messages', ['userId' => null]);
         }
 
         // Normal authentication flow for logged-in users
@@ -1054,7 +1109,10 @@ class projectsController extends Controller
             }
         }
 
-        return view('both.messages');
+        // Pass user ID for real-time Pusher subscription
+        $userId = $user->user_id ?? $user->id ?? null;
+
+        return view('both.messages', ['userId' => $userId]);
     }
 
     public function showCreatePostPage(Request $request)

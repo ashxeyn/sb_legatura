@@ -8,6 +8,10 @@ use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Cache;
+
 class passwordController extends Controller
 {
     protected $authService;
@@ -15,6 +19,192 @@ class passwordController extends Controller
     public function __construct()
     {
         $this->authService = new authService();
+    }
+
+    /**
+     * Show the forgot password form.
+     */
+    public function showForgotForm()
+    {
+        return view('signUp_logIN.forgot_password');
+    }
+
+    /**
+     * Send OTP for password reset.
+     */
+    public function sendResetOtp(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email'
+        ]);
+
+        $email = $request->input('email');
+
+        // Check if user exists
+        $user = DB::table('users')->where('email', $email)->first();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No account found with that email address.'
+            ], 422);
+        }
+
+        // Check if user has been verified (has approved contractor or property owner record)
+        $hasApprovedContractor = DB::table('contractors')
+            ->where('user_id', $user->user_id)
+            ->where('verification_status', 'approved')
+            ->exists();
+
+        $hasApprovedPropertyOwner = DB::table('property_owners')
+            ->where('user_id', $user->user_id)
+            ->where('verification_status', 'approved')
+            ->exists();
+
+        if (!$hasApprovedContractor && !$hasApprovedPropertyOwner) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This account has not been verified yet. Please contact an administrator.'
+            ], 422);
+        }
+
+        // Generate 6-digit OTP
+        $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $hashedOtp = Hash::make($otp);
+
+        // Store OTP in cache (15 min expiry)
+        Cache::put('password_reset_otp_' . $email, $hashedOtp, now()->addMinutes(15));
+
+        // Send OTP email
+        try {
+            Mail::raw(
+                "Your password reset code is: {$otp}\n\nThis code will expire in 15 minutes. If you did not request a password reset, please ignore this email.",
+                function ($message) use ($email) {
+                    $message->to($email)
+                        ->subject('Legatura - Password Reset Code');
+                }
+            );
+        } catch (\Exception $e) {
+            Log::error('Failed to send password reset OTP', [
+                'email' => $email,
+                'error' => $e->getMessage()
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to send reset code. Please try again later.'
+            ], 500);
+        }
+
+        Log::info("Password reset OTP sent to {$email}");
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Reset code sent to your email.'
+        ]);
+    }
+
+    /**
+     * Verify the password reset OTP.
+     */
+    public function verifyResetOtp(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'otp' => 'required|string|size:6'
+        ]);
+
+        $email = $request->input('email');
+        $otp = $request->input('otp');
+
+        $hashedOtp = Cache::get('password_reset_otp_' . $email);
+
+        if (!$hashedOtp) {
+            return response()->json([
+                'success' => false,
+                'message' => 'OTP has expired. Please request a new one.'
+            ], 422);
+        }
+
+        if (!Hash::check($otp, $hashedOtp)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid OTP. Please try again.'
+            ], 422);
+        }
+
+        // OTP verified — set a short-lived token allowing password reset
+        $resetToken = bin2hex(random_bytes(32));
+        Cache::put('password_reset_token_' . $email, $resetToken, now()->addMinutes(10));
+
+        // Clear the OTP so it can't be reused
+        Cache::forget('password_reset_otp_' . $email);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'OTP verified successfully.',
+            'reset_token' => $resetToken
+        ]);
+    }
+
+    /**
+     * Reset the password.
+     */
+    public function resetPassword(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'reset_token' => 'required|string',
+            'password' => [
+                'required',
+                'string',
+                'min:8',
+                'regex:/[A-Z]/',
+                'regex:/[0-9]/',
+                'regex:/[!@#$%^&*(),.?":{}|<>]/',
+                'confirmed'
+            ]
+        ], [
+            'password.min' => 'Password must be at least 8 characters.',
+            'password.regex' => 'Password must contain at least one uppercase letter, one number, and one special character.',
+            'password.confirmed' => 'Passwords do not match.'
+        ]);
+
+        $email = $request->input('email');
+        $resetToken = $request->input('reset_token');
+
+        // Validate the reset token
+        $storedToken = Cache::get('password_reset_token_' . $email);
+
+        if (!$storedToken || $storedToken !== $resetToken) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid or expired reset session. Please start over.'
+            ], 422);
+        }
+
+        // Update password
+        $passwordHash = Hash::make($request->input('password'));
+
+        $updated = DB::table('users')
+            ->where('email', $email)
+            ->update(['password_hash' => $passwordHash]);
+
+        if (!$updated) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update password. Please try again.'
+            ], 500);
+        }
+
+        // Cleanup
+        Cache::forget('password_reset_token_' . $email);
+
+        Log::info("Password reset successful for {$email}");
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Password updated successfully!'
+        ]);
     }
 
     /**
@@ -92,3 +282,4 @@ class passwordController extends Controller
         }
     }
 }
+

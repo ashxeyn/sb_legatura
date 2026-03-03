@@ -283,10 +283,14 @@ class authController extends Controller
     // Handle Contractor Step 1
     public function contractorStep1(accountRequest $request)
     {
+        // Resolve PSGC codes to actual place names for address
+        $provinceName = $this->psgcService->resolveCodeToName($request->business_address_province ?? '', 'province');
+        $cityName = $this->psgcService->resolveCodeToName($request->business_address_city ?? '', 'city');
+        $barangayName = $this->psgcService->resolveCodeToName($request->business_address_barangay ?? '', 'barangay');
         $businessAddress = $request->business_address_street . ', ' .
-            $request->business_address_barangay . ', ' .
-            $request->business_address_city . ', ' .
-            $request->business_address_province . ' ' .
+            $barangayName . ', ' .
+            $cityName . ', ' .
+            $provinceName . ' ' .
             $request->business_address_postal;
 
         // Calculate years of experience from founded_date
@@ -379,9 +383,9 @@ class authController extends Controller
 
         // Store in session (include issued timestamp for reliable verification)
         Session::put('contractor_step2', [
-            'first_name' => $request->first_name,
-            'middle_name' => $request->middle_name,
-            'last_name' => $request->last_name,
+            'first_name' => ucwords(strtolower($request->first_name)),
+            'middle_name' => $request->middle_name ? ucwords(strtolower($request->middle_name)) : null,
+            'last_name' => ucwords(strtolower($request->last_name)),
             'username' => $request->username,
             'company_email' => $request->company_email,
             'password' => $request->password,
@@ -477,71 +481,250 @@ class authController extends Controller
 
         $inputOtp = $request->input('otp');
 
-        // Get contractor OTP data from session
+        // Get contractor OTP data from session (web flow)
         $contractorOtp = Session::get('contractor_otp');
         $contractorOtpExpiry = Session::get('contractor_otp_expiry');
         $contractorOtpEmail = Session::get('contractor_otp_email');
-        $attempts = Session::get('contractor_otp_attempts', 0);
+        $step2Data = Session::get('contractor_step2');
+        $sessionAttempts = Session::get('contractor_otp_attempts', 0);
 
-        // Check if OTP session exists
-        if (!$contractorOtp || !$contractorOtpEmail) {
-            return response()->json([
-                'success' => false,
-                'message' => 'OTP session not found. Please request a new OTP.'
-            ], 422);
-        }
+        // For mobile/stateless clients, also accept otp_token or company_email in request
+        $otpToken = $request->input('otp_token') ?? null;
+        $companyEmail = $request->input('company_email') ?? $request->input('email') ?? null;
+        $clientIp = $request->ip();
 
-        // Check if OTP has expired
-        if ($contractorOtpExpiry && now()->isAfter($contractorOtpExpiry)) {
-            Session::forget(['contractor_otp', 'contractor_otp_expiry', 'contractor_otp_email', 'contractor_otp_attempts']);
-            return response()->json([
-                'success' => false,
-                'message' => 'OTP has expired. Please request a new one.'
-            ], 422);
-        }
+        $otpMeta = null;
+        $normalizedEmail = null;
+        $useSessionFlow = false;
 
-        // Check attempt limit
-        if ($attempts >= 3) {
-            Session::forget(['contractor_otp', 'contractor_otp_expiry', 'contractor_otp_email', 'contractor_otp_attempts']);
-            return response()->json([
-                'success' => false,
-                'message' => 'Too many failed attempts. Please request a new OTP.'
-            ], 429);
-        }
+        // 1) Try session-based verification first (web flow with raw OTP)
+        if ($contractorOtp && $contractorOtpEmail) {
+            $useSessionFlow = true;
 
-        // Verify OTP
-        if ($inputOtp === $contractorOtp) {
-            // Clear OTP session data (but keep hash in contractor_step2 for final step)
-            Session::forget(['contractor_otp', 'contractor_otp_expiry', 'contractor_otp_email', 'contractor_otp_attempts']);
-
-            // Set verified flag and advance to step 3
-            try {
-                $s = Session::get('contractor_step2', []);
-                if (is_array($s)) {
-                    $s['otp_verified'] = true;
-                    Session::put('contractor_step2', $s);
-                }
-            } catch (\Exception $e) {
-                \Log::warning('Failed to update contractor session after OTP verify: ' . $e->getMessage());
+            // Check if OTP has expired
+            if ($contractorOtpExpiry && now()->isAfter($contractorOtpExpiry)) {
+                Session::forget(['contractor_otp', 'contractor_otp_expiry', 'contractor_otp_email', 'contractor_otp_attempts']);
+                return response()->json([
+                    'success' => false,
+                    'error_code' => 'otp_expired',
+                    'message' => 'OTP has expired. Please request a new one.'
+                ], 422);
             }
 
-            Session::put('contractor_otp_verified', true);
-            Session::put('signup_step', 3);
+            // Check attempt limit
+            if ($sessionAttempts >= 5) {
+                Session::forget(['contractor_otp', 'contractor_otp_expiry', 'contractor_otp_email', 'contractor_otp_attempts']);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Too many failed attempts. Please request a new OTP.'
+                ], 429);
+            }
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Email verified successfully!'
-            ], 200);
-        } else {
-            // Increment failed attempts
-            Session::put('contractor_otp_attempts', $attempts + 1);
+            // Verify OTP (raw comparison for session-based flow)
+            if ($inputOtp === $contractorOtp) {
+                // Clear OTP session data (but keep hash in contractor_step2 for final step)
+                Session::forget(['contractor_otp', 'contractor_otp_expiry', 'contractor_otp_email', 'contractor_otp_attempts']);
 
+                // Set verified flag and advance to step 3
+                try {
+                    $s = Session::get('contractor_step2', []);
+                    if (is_array($s)) {
+                        $s['otp_verified'] = true;
+                        Session::put('contractor_step2', $s);
+                    }
+                } catch (\Exception $e) {
+                    \Log::warning('Failed to update contractor session after OTP verify: ' . $e->getMessage());
+                }
+
+                Session::put('contractor_otp_verified', true);
+                Session::put('signup_step', 3);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Email verified successfully!',
+                    'step' => 3,
+                    'next_step' => 'contractor_step4'
+                ], 200);
+            } else {
+                // Increment failed attempts
+                Session::put('contractor_otp_attempts', $sessionAttempts + 1);
+
+                 return response()->json([
+                    'success' => false,
+                    'error_code' => 'invalid_otp',
+                    'message' => 'Invalid OTP. Please try again.',
+                    'attempts_remaining' => 5 - ($sessionAttempts + 1)
+                ], 422);
+            }
+        }
+
+        // 2) Mobile/stateless flow: use cached OTP hash
+        // Try to find OTP meta from cache using token, email, or IP
+
+        // 2a) Token lookup
+        if (!$otpMeta && !empty($otpToken)) {
+            $meta = Cache::get('signup_otp_token_' . $otpToken);
+            if ($meta) {
+                $otpMeta = $meta;
+                \Log::info('Contractor OTP lookup by token HIT');
+            } else {
+                \Log::info('Contractor OTP lookup by token MISS');
+            }
+        }
+
+        // 2b) Email lookup
+        if (!$otpMeta && !empty($companyEmail)) {
+            $normalizedEmail = strtolower(trim($companyEmail));
+            $meta = Cache::get('signup_otp_' . $normalizedEmail);
+            if ($meta) {
+                $otpMeta = $meta;
+                \Log::info('Contractor OTP lookup by email HIT for ' . $normalizedEmail);
+            } else {
+                \Log::info('Contractor OTP lookup by email MISS for ' . $normalizedEmail);
+            }
+        }
+
+        // 2c) IP fallback
+        if (!$otpMeta && $clientIp) {
+            try {
+                $mapped = Cache::get('signup_otp_ip_' . $clientIp);
+                if ($mapped) {
+                    $normalizedEmail = $mapped;
+                    $meta = Cache::get('signup_otp_' . $mapped);
+                    if ($meta) {
+                        $otpMeta = $meta;
+                        \Log::info('Contractor IP fallback OTP HIT for ' . $clientIp);
+                    }
+                }
+            } catch (\Exception $e) {
+                \Log::warning('Failed IP fallback lookup (contractor): ' . $e->getMessage());
+            }
+        }
+
+        // If no OTP meta found anywhere, return error
+        if (!$otpMeta || !isset($otpMeta['hash'])) {
             return response()->json([
                 'success' => false,
-                'message' => 'Invalid OTP. Please try again.',
-                'attempts_remaining' => 3 - ($attempts + 1)
+                'error_code' => 'otp_not_found',
+                'message' => 'OTP not found or expired. Please request a new code.'
             ], 422);
         }
+
+        // TTL check
+        $otpTtlSeconds = (int) config('otp.ttl_seconds', 900);
+        $graceSeconds = 30;
+        if (!empty($otpMeta['issued_at'])) {
+            $issued = (int) $otpMeta['issued_at'];
+            if (now()->timestamp > ($issued + $otpTtlSeconds + $graceSeconds)) {
+                // Clean up expired entries
+                try {
+                    if (!empty($normalizedEmail))
+                        Cache::forget('signup_otp_' . $normalizedEmail);
+                    if (!empty($otpToken))
+                        Cache::forget('signup_otp_token_' . $otpToken);
+                    if (!empty($clientIp))
+                        Cache::forget('signup_otp_ip_' . $clientIp);
+                } catch (\Exception $e) {
+                    \Log::warning('Failed to cleanup expired contractor OTP cache: ' . $e->getMessage());
+                }
+                return response()->json([
+                    'success' => false,
+                    'error_code' => 'otp_expired',
+                    'message' => 'OTP has expired. Please request a new code.'
+                ], 422);
+            }
+        }
+
+        // Rate limit check for cache-based verification
+        $attemptKeyBase = null;
+        try {
+            if (!empty($normalizedEmail))
+                $attemptKeyBase = 'otp_verify_attempts_contractor_' . $normalizedEmail;
+            elseif (!empty($otpToken))
+                $attemptKeyBase = 'otp_verify_attempts_contractor_token_' . $otpToken;
+            else
+                $attemptKeyBase = 'otp_verify_attempts_contractor_ip_' . $clientIp;
+            $attemptLimit = (int) config('otp.verify_attempts_limit', 5);
+            $attempts = Cache::get($attemptKeyBase, 0);
+            if ($attempts >= $attemptLimit) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Too many failed OTP attempts. Please try again later.'
+                ], 429);
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('OTP verify rate-limit check failed (contractor): ' . $e->getMessage());
+        }
+
+        $blockSeconds = (int) config('otp.verify_block_seconds', 900);
+
+        // Verify OTP using hash comparison
+        if (!$this->authService->verifyOtp($inputOtp, $otpMeta['hash'])) {
+            // Increment failed attempts
+            try {
+                if (!empty($attemptKeyBase)) {
+                    Cache::increment($attemptKeyBase);
+                    Cache::put($attemptKeyBase, Cache::get($attemptKeyBase), now()->addSeconds($blockSeconds));
+                }
+            } catch (\Throwable $e) {
+                \Log::warning('Failed to increment contractor OTP verify attempts: ' . $e->getMessage());
+            }
+            return response()->json([
+                'success' => false,
+                'error_code' => 'invalid_otp',
+                'message' => 'Invalid OTP. Please try again.'
+            ], 422);
+        }
+
+        // OTP verified successfully - clear attempt counter
+        try {
+            if (!empty($attemptKeyBase))
+                Cache::forget($attemptKeyBase);
+        } catch (\Throwable $e) {
+            \Log::warning('Failed to clear contractor OTP attempts: ' . $e->getMessage());
+        }
+
+        // Mark OTP entries as verified (don't delete yet - final step needs hash)
+        try {
+            $verifiedTtl = max((int) config('otp.ttl_seconds', 900), 1800); // at least 30 minutes
+            if (!empty($normalizedEmail)) {
+                $existing = Cache::get('signup_otp_' . $normalizedEmail);
+                if (is_array($existing)) {
+                    $existing['verified'] = true;
+                    Cache::put('signup_otp_' . $normalizedEmail, $existing, now()->addSeconds($verifiedTtl));
+                }
+            }
+            if (!empty($otpToken)) {
+                $existing = Cache::get('signup_otp_token_' . $otpToken);
+                if (is_array($existing)) {
+                    $existing['verified'] = true;
+                    Cache::put('signup_otp_token_' . $otpToken, $existing, now()->addSeconds($verifiedTtl));
+                }
+            }
+        } catch (\Exception $e) {
+            \Log::warning('Failed to update contractor OTP cache after verify: ' . $e->getMessage());
+        }
+
+        // Update session if available
+        try {
+            $s = Session::get('contractor_step2', []);
+            if (is_array($s)) {
+                $s['otp_verified'] = true;
+                Session::put('contractor_step2', $s);
+            }
+        } catch (\Exception $e) {
+            \Log::warning('Failed to update contractor session after OTP verify (cache flow): ' . $e->getMessage());
+        }
+
+        Session::put('contractor_otp_verified', true);
+        Session::put('signup_step', 3);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Email verified successfully!',
+            'step' => 3,
+            'next_step' => 'contractor_step4'
+        ], 200);
     }
 
     // Contractor Step 4
@@ -658,16 +841,17 @@ class authController extends Controller
 
         // Build business_address from components if it's empty (mobile/stateless clients
         // send individual address parts instead of the pre-concatenated string)
+        // Also resolve PSGC codes to actual place names
         if (empty($step1['business_address'])) {
             $addressParts = [];
             if (!empty($step1['business_address_street']))
                 $addressParts[] = $step1['business_address_street'];
             if (!empty($step1['business_address_barangay']))
-                $addressParts[] = $step1['business_address_barangay'];
+                $addressParts[] = $this->psgcService->resolveCodeToName($step1['business_address_barangay'], 'barangay');
             if (!empty($step1['business_address_city']))
-                $addressParts[] = $step1['business_address_city'];
+                $addressParts[] = $this->psgcService->resolveCodeToName($step1['business_address_city'], 'city');
             if (!empty($step1['business_address_province']))
-                $addressParts[] = $step1['business_address_province'];
+                $addressParts[] = $this->psgcService->resolveCodeToName($step1['business_address_province'], 'province');
             if (!empty($step1['business_address_postal']))
                 $addressParts[] = $step1['business_address_postal'];
             if (count($addressParts) > 0) {
@@ -676,7 +860,10 @@ class authController extends Controller
             }
         }
 
-        // Ensure step2 defaults
+        // Ensure step2 defaults — and ensure names are Title Case (mobile fallback sends raw data)
+        $step2['first_name'] = !empty($step2['first_name']) ? ucwords(strtolower($step2['first_name'])) : null;
+        $step2['middle_name'] = !empty($step2['middle_name']) ? ucwords(strtolower($step2['middle_name'])) : null;
+        $step2['last_name'] = !empty($step2['last_name']) ? ucwords(strtolower($step2['last_name'])) : null;
         $step2['username'] = $step2['username'] ?? null;
         $step2['company_email'] = $step2['company_email'] ?? ($step2['email'] ?? null);
         $step2['password'] = $step2['password'] ?? null;
@@ -974,19 +1161,22 @@ class authController extends Controller
         // Age
         $age = $this->authService->calculateAge($request->date_of_birth);
 
-        // Combine address
+        // Combine address — resolve PSGC codes to actual place names
+        $provinceName = $this->psgcService->resolveCodeToName($request->owner_address_province ?? '', 'province');
+        $cityName = $this->psgcService->resolveCodeToName($request->owner_address_city ?? '', 'city');
+        $barangayName = $this->psgcService->resolveCodeToName($request->owner_address_barangay ?? '', 'barangay');
         $address = $request->owner_address_street . ', ' .
-            $request->owner_address_barangay . ', ' .
-            $request->owner_address_city . ', ' .
-            $request->owner_address_province . ', ' .
+            $barangayName . ', ' .
+            $cityName . ', ' .
+            $provinceName . ', ' .
             $request->owner_address_postal;
 
         $step1Data = [
-            'first_name' => $request->first_name,
-            'middle_name' => $request->middle_name,
-            'last_name' => $request->last_name,
+            'first_name' => ucwords(strtolower($request->first_name)),
+            'middle_name' => $request->middle_name ? ucwords(strtolower($request->middle_name)) : null,
+            'last_name' => ucwords(strtolower($request->last_name)),
             'occupation_id' => $request->occupation_id,
-            'occupation_other' => $request->occupation_other_text,
+            'occupation_other' => $request->occupation_other_text ?? $request->occupation_other,
             'date_of_birth' => $request->date_of_birth,
             'phone_number' => $request->phone_number,
             'age' => $age,
@@ -1556,10 +1746,10 @@ class authController extends Controller
         $step2 = is_array($step2) ? $step2 : (is_object($step2) ? (array) $step2 : []);
         $step4 = is_array($step4) ? $step4 : (is_object($step4) ? (array) $step4 : []);
 
-        // Provide defaults
-        $step1['first_name'] = $step1['first_name'] ?? '';
-        $step1['last_name'] = $step1['last_name'] ?? '';
-        $step1['middle_name'] = $step1['middle_name'] ?? null;
+        // Provide defaults — and ensure names are Title Case (mobile fallback sends raw data)
+        $step1['first_name'] = !empty($step1['first_name'] ?? '') ? ucwords(strtolower($step1['first_name'])) : '';
+        $step1['last_name'] = !empty($step1['last_name'] ?? '') ? ucwords(strtolower($step1['last_name'])) : '';
+        $step1['middle_name'] = !empty($step1['middle_name']) ? ucwords(strtolower($step1['middle_name'])) : null;
         $step1['phone_number'] = $step1['phone_number'] ?? '';
         $step1['date_of_birth'] = $step1['date_of_birth'] ?? null;
         $step1['age'] = $step1['age'] ?? null;
@@ -1586,16 +1776,17 @@ class authController extends Controller
         }
 
         // Build address from components if address is empty but components exist
+        // Also resolve PSGC codes to actual place names
         if (empty($step1['address'])) {
             $addressParts = [];
             if (!empty($step1['owner_address_street']))
                 $addressParts[] = $step1['owner_address_street'];
             if (!empty($step1['owner_address_barangay']))
-                $addressParts[] = $step1['owner_address_barangay'];
+                $addressParts[] = $this->psgcService->resolveCodeToName($step1['owner_address_barangay'], 'barangay');
             if (!empty($step1['owner_address_city']))
-                $addressParts[] = $step1['owner_address_city'];
+                $addressParts[] = $this->psgcService->resolveCodeToName($step1['owner_address_city'], 'city');
             if (!empty($step1['owner_address_province']))
-                $addressParts[] = $step1['owner_address_province'];
+                $addressParts[] = $this->psgcService->resolveCodeToName($step1['owner_address_province'], 'province');
             if (!empty($step1['owner_address_postal']))
                 $addressParts[] = $step1['owner_address_postal'];
             if (count($addressParts) > 0) {
@@ -2727,7 +2918,7 @@ class authController extends Controller
                 'date_of_birth' => $validated['date_of_birth'] ?? ($ownerStep1['date_of_birth'] ?? null),
                 'age' => $ownerStep1['age'] ?? null,
                 'occupation_id' => $validated['occupation_id'] ?? ($ownerStep1['occupation_id'] ?? null),
-                'occupation_other' => $validated['occupation_other_text'] ?? ($ownerStep1['occupation_other_text'] ?? null),
+                'occupation_other' => $validated['occupation_other_text'] ?? ($validated['occupation_other'] ?? ($ownerStep1['occupation_other'] ?? null)),
                 'address' => $validated['address'] ?? ($ownerStep1['address'] ?? null),
                 'verification_status' => 'pending',
                 'verification_date' => null,
@@ -3284,9 +3475,19 @@ class authController extends Controller
 
                 return response()->json($responseData, 200);
             } else {
+                // Build a user-friendly message from field-level errors if present
+                $message = $result['message'] ?? null;
+                $errors = $result['errors'] ?? null;
+                if (!$message && $errors) {
+                    $message = implode(' ', array_map(function ($v) {
+                        return is_array($v) ? implode(' ', $v) : $v;
+                    }, $errors));
+                }
+
                 return response()->json([
                     'success' => false,
-                    'message' => $result['message'],
+                    'message' => $message ?? 'Invalid credentials',
+                    'errors' => $errors,
                     'data' => [
                         'user' => $result['user'] ?? null
                     ]

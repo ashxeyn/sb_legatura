@@ -141,21 +141,72 @@ async function loadDashboardStats() {
 }
 
 /**
- * Load user's inbox/conversations
+ * Load user's inbox/conversations (including flagged and suspended for admin)
  */
 async function loadInbox() {
     try {
-        const response = await fetch('/admin/messages/', {
-            headers: getAuthHeaders()
+        // Fetch admin's own conversations, flagged, and suspended in parallel
+        const [inboxRes, flaggedRes, suspendedRes] = await Promise.all([
+            fetch('/admin/messages/', { headers: getAuthHeaders() }),
+            fetch('/admin/messages/flagged', { headers: getAuthHeaders() }),
+            fetch('/admin/messages/suspended', { headers: getAuthHeaders() })
+        ]);
+
+        const inboxData = inboxRes.ok ? (await inboxRes.json()).data || [] : [];
+        const flaggedData = flaggedRes.ok ? (await flaggedRes.json()).data || [] : [];
+        const suspendedData = suspendedRes.ok ? (await suspendedRes.json()).data || [] : [];
+
+        // Merge all conversations, avoiding duplicates by conversation_id
+        const allConversations = new Map();
+
+        // Add inbox conversations first
+        inboxData.forEach(conv => {
+            allConversations.set(conv.conversation_id, conv);
         });
 
-        if (!response.ok) throw new Error('Failed to load inbox');
+        // Add flagged conversations (mark as flagged)
+        flaggedData.forEach(conv => {
+            if (allConversations.has(conv.conversation_id)) {
+                // Merge flags if already exists
+                const existing = allConversations.get(conv.conversation_id);
+                existing.is_flagged = true;
+                existing.flagged_count = conv.flagged_count;
+            } else {
+                conv.is_flagged = true;
+                allConversations.set(conv.conversation_id, conv);
+            }
+        });
 
-        const { data } = await response.json();
-        renderConversations(data);
+        // Add suspended conversations (mark as suspended)
+        suspendedData.forEach(conv => {
+            if (allConversations.has(conv.conversation_id)) {
+                // Merge suspension info if already exists
+                const existing = allConversations.get(conv.conversation_id);
+                existing.is_suspended = true;
+                existing.status = 'suspended';
+                existing.suspended_until = conv.suspended_until;
+                existing.reason = conv.reason;
+            } else {
+                conv.is_suspended = true;
+                conv.status = 'suspended';
+                allConversations.set(conv.conversation_id, conv);
+            }
+        });
+
+        // Convert to array and sort by last message time
+        const mergedConversations = Array.from(allConversations.values()).sort((a, b) => {
+            const timeA = new Date(a.last_message?.sent_at_timestamp || 0);
+            const timeB = new Date(b.last_message?.sent_at_timestamp || 0);
+            return timeB - timeA;
+        });
+
+        // Store for later lookup
+        window.adminConversationsCache = mergedConversations;
+
+        renderConversations(mergedConversations);
 
         // Update "All" filter badge with total count
-        updateFilterBadge('all', data.length);
+        updateFilterBadge('all', mergedConversations.length);
 
     } catch (error) {
         console.error('Error loading inbox:', error);
@@ -272,14 +323,52 @@ async function loadConversationHistory(conversationId) {
  */
 async function checkAndHandleSuspension(conversationId) {
     try {
-        // Get conversation details from inbox to check suspension
-        const inbox = await fetch('/admin/messages/', {
-            headers: getAuthHeaders()
-        }).then(r => r.json());
+        // First try to find in cached conversations
+        let conversation = window.adminConversationsCache?.find(c => c.conversation_id == conversationId);
 
-        const conversation = inbox.data?.find(c => c.conversation_id == conversationId);
+        // If not found in cache, fetch from suspended endpoint directly
+        if (!conversation) {
+            console.log('Conversation not in cache, fetching from suspended endpoint...');
+            try {
+                const suspendedRes = await fetch('/admin/messages/suspended', { headers: getAuthHeaders() });
+                if (suspendedRes.ok) {
+                    const suspendedData = (await suspendedRes.json()).data || [];
+                    conversation = suspendedData.find(c => c.conversation_id == conversationId);
 
-        if (!conversation) return;
+                    // Add to cache if found
+                    if (conversation && window.adminConversationsCache) {
+                        window.adminConversationsCache.push(conversation);
+                    }
+                }
+            } catch (e) {
+                console.error('Error fetching suspended conversations:', e);
+            }
+        }
+
+        // Still not found? Check flagged endpoint
+        if (!conversation) {
+            try {
+                const flaggedRes = await fetch('/admin/messages/flagged', { headers: getAuthHeaders() });
+                if (flaggedRes.ok) {
+                    const flaggedData = (await flaggedRes.json()).data || [];
+                    conversation = flaggedData.find(c => c.conversation_id == conversationId);
+
+                    // Add to cache if found
+                    if (conversation && window.adminConversationsCache) {
+                        window.adminConversationsCache.push(conversation);
+                    }
+                }
+            } catch (e) {
+                console.error('Error fetching flagged conversations:', e);
+            }
+        }
+
+        if (!conversation) {
+            console.log('Conversation not found in any source');
+            return;
+        }
+
+        console.log('Found conversation:', conversation);
 
         const messageInput = document.getElementById('messageInput');
         const sendBtn = document.getElementById('sendMessageBtn');
@@ -291,6 +380,8 @@ async function checkAndHandleSuspension(conversationId) {
 
         // Check if suspended
         if (conversation.status === 'suspended' || conversation.is_suspended) {
+            console.log('Conversation is suspended, showing modal. Reason:', conversation.reason, 'Until:', conversation.suspended_until);
+
             // Disable input
             if (messageInput) {
                 messageInput.disabled = true;
@@ -302,38 +393,8 @@ async function checkAndHandleSuspension(conversationId) {
                 sendBtn.classList.add('opacity-50', 'cursor-not-allowed');
             }
 
-            // Show suspension notice
-            const notice = document.createElement('div');
-            notice.id = 'suspensionNotice';
-            notice.className = 'px-4 py-3 bg-red-50 border-l-4 border-red-500 text-sm text-red-800';
-
-            let suspensionMessage = '⚠️ This conversation has been suspended.';
-
-            // Check if there's a suspended_until date
-            if (conversation.suspended_until) {
-                const suspendedUntil = new Date(conversation.suspended_until);
-                const now = new Date();
-
-                if (suspendedUntil > now) {
-                    const options = {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                    };
-                    suspensionMessage = `⚠️ This conversation is suspended until ${suspendedUntil.toLocaleDateString('en-US', options)}. No messages can be sent during this period.`;
-                }
-            } else {
-                suspensionMessage = '⚠️ This conversation has been permanently suspended. No messages can be sent.';
-            }
-
-            if (conversation.reason) {
-                suspensionMessage += `<br><strong>Reason:</strong> ${conversation.reason}`;
-            }
-
-            notice.innerHTML = suspensionMessage;
-            inputContainer?.parentElement?.insertBefore(notice, inputContainer);
+            // Show suspension info modal
+            showSuspensionInfoModal(conversation);
 
             // Show restore button, hide suspend button
             document.getElementById('suspendConversationBtn')?.classList.add('hidden');
@@ -379,6 +440,111 @@ async function checkAndHandleSuspension(conversationId) {
 }
 
 /**
+ * Show suspension info modal when opening a suspended conversation
+ */
+function showSuspensionInfoModal(conversation) {
+    // Remove existing modal if any
+    const existingModal = document.getElementById('suspensionInfoModal');
+    if (existingModal) existingModal.remove();
+
+    // Parse the reason to extract offense level and violation details
+    const reasonText = conversation.reason || 'No reason provided';
+    let offenseLevel = '';
+    let violationReason = reasonText;
+
+    // Check if reason contains offense level (format: "1st offense - 7 days ban: violation")
+    const offenseMatch = reasonText.match(/^(\d+(?:st|nd|rd|th)\s+offense\s+-\s+[^:]+):\s*(.+)$/i);
+    if (offenseMatch) {
+        offenseLevel = offenseMatch[1].trim(); // "1st offense - 7 days ban"
+        violationReason = offenseMatch[2].trim(); // The actual violation reason
+    }
+
+    // Build suspension details
+    let suspendedUntilText = 'Permanently suspended';
+    if (conversation.suspended_until) {
+        const suspendedUntil = new Date(conversation.suspended_until);
+        const now = new Date();
+        if (suspendedUntil > now) {
+            const options = {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            };
+            suspendedUntilText = suspendedUntil.toLocaleDateString('en-US', options);
+        } else {
+            suspendedUntilText = 'Suspension period has ended';
+        }
+    }
+
+    // Create modal
+    const modal = document.createElement('div');
+    modal.id = 'suspensionInfoModal';
+    modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50';
+    modal.innerHTML = `
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full mx-4 overflow-hidden">
+            <div class="bg-red-500 px-6 py-4">
+                <div class="flex items-center gap-3">
+                    <i class="fi fi-sr-ban text-white text-2xl"></i>
+                    <h3 class="text-xl font-bold text-white">Conversation Suspended</h3>
+                </div>
+            </div>
+            <div class="p-6 space-y-4">
+                ${offenseLevel ? `
+                    <div class="bg-red-50 border-l-4 border-red-500 px-4 py-3 rounded">
+                        <p class="text-red-800 font-semibold">${escapeHtml(offenseLevel)}</p>
+                    </div>
+                ` : ''}
+                <div>
+                    <label class="text-sm font-medium text-gray-500 block mb-2">Violation Reason</label>
+                    <div class="text-gray-800 bg-gray-50 rounded-lg p-4 border border-gray-200">
+                        ${escapeHtml(violationReason)}
+                    </div>
+                </div>
+                <div>
+                    <label class="text-sm font-medium text-gray-500 block mb-1">Suspended Until</label>
+                    <p class="text-gray-800 bg-gray-50 rounded-lg p-3 flex items-center gap-2 border border-gray-200">
+                        <i class="fi fi-rr-calendar text-gray-400"></i>
+                        ${escapeHtml(suspendedUntilText)}
+                    </p>
+                </div>
+                <p class="text-sm text-gray-500 italic">Messages cannot be sent in this conversation while it is suspended.</p>
+            </div>
+            <div class="px-6 py-4 bg-gray-50 flex justify-end gap-3">
+                <button onclick="document.getElementById('suspensionInfoModal').remove()"
+                        class="px-4 py-2 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition font-medium">
+                    Close
+                </button>
+                <button onclick="document.getElementById('suspensionInfoModal').remove(); openRestoreModal();"
+                        class="px-4 py-2 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition font-medium flex items-center gap-2">
+                    <i class="fi fi-rr-check-circle"></i>
+                    Restore Conversation
+                </button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Close on backdrop click
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
+}
+
+/**
+ * Helper function to escape HTML
+ */
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+/**
  * Mark a conversation as read (helper function for real-time updates)
  */
 async function markConversationAsRead(conversationId) {
@@ -407,13 +573,14 @@ function renderMessages(messages) {
     container.innerHTML = messages.map(msg => {
         const isSent = msg.sender.id === userId;
         const bubbleClass = isSent ? 'message-bubble-sent' : 'message-bubble-received';
+        const flaggedBubbleClass = msg.is_flagged ? 'flagged-message-bubble' : '';
         const alignClass = isSent ? 'justify-end' : 'justify-start';
 
         return `
             <div class="flex ${alignClass} mb-4" data-message-id="${msg.message_id}">
                 ${!isSent ? `<img src="${msg.sender.avatar}" class="w-8 h-8 rounded-full mr-2" alt="${msg.sender.name}">` : ''}
                 <div class="max-w-[70%]">
-                    <div class="${bubbleClass} ${msg.is_flagged ? 'border-2 border-amber-500' : ''}">
+                    <div class="${bubbleClass} ${flaggedBubbleClass}">
                         <p class="text-sm">${escapeHtml(msg.content)}</p>
                         ${msg.attachments.length > 0 ? renderAttachments(msg.attachments) : ''}
                     </div>

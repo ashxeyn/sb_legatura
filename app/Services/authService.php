@@ -178,8 +178,10 @@ class authService
     {
         try {
             $user = DB::table('users')
-                ->where('username', $username)
-                ->orWhere('email', $username)
+                ->where(function ($query) use ($username) {
+                    $query->whereRaw('BINARY username = ?', [$username])
+                          ->orWhere('email', $username);
+                })
                 ->first();
         } catch (\Exception $e) {
             \Log::warning('attemptUserLogin DB lookup failed: ' . $e->getMessage());
@@ -412,8 +414,10 @@ class authService
     {
         try {
             $admin = DB::table('admin_users')
-                ->where('username', $username)
-                ->orWhere('email', $username)
+                ->where(function ($query) use ($username) {
+                    $query->whereRaw('BINARY username = ?', [$username])
+                          ->orWhere('email', $username);
+                })
                 ->first();
         } catch (\Exception $e) {
             \Log::warning('attemptAdminLogin DB lookup failed: ' . $e->getMessage());
@@ -466,8 +470,10 @@ class authService
 
         try {
             $user = DB::table('users')
-                ->where('username', $username)
-                ->orWhere('email', $username)
+                ->where(function ($query) use ($username) {
+                    $query->whereRaw('BINARY username = ?', [$username])
+                          ->orWhere('email', $username);
+                })
                 ->first();
 
             if ($user) {

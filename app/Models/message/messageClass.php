@@ -134,36 +134,11 @@ class messageClass extends Model
     {
         // Total suspended conversations (exclude admin conversations)
         $totalSuspended = DB::table('conversations')
-            ->where(function($query) {
+            ->where(function ($query) {
                 $query->where('status', 'suspended')
-                      ->orWhere('is_suspended', 1);
+                    ->orWhere('is_suspended', 1);
             })
-            ->whereNotExists(function($query) {
-                // Exclude conversations where sender is admin
-                $query->select(DB::raw(1))
-                    ->from('admin_users')
-                    ->whereColumn('admin_users.admin_id', 'conversations.sender_id');
-            })
-            ->whereNotExists(function($query) {
-                // Exclude conversations where receiver is admin
-                $query->select(DB::raw(1))
-                    ->from('admin_users')
-                    ->whereColumn('admin_users.admin_id', 'conversations.receiver_id');
-            })
-            ->whereNotExists(function($query) {
-                // Exclude conversations where sender has user_type='admin'
-                $query->select(DB::raw(1))
-                    ->from('users')
-                    ->whereColumn('users.user_id', 'conversations.sender_id')
-                    ->where('users.user_type', 'admin');
-            })
-            ->whereNotExists(function($query) {
-                // Exclude conversations where receiver has user_type='admin'
-                $query->select(DB::raw(1))
-                    ->from('users')
-                    ->whereColumn('users.user_id', 'conversations.receiver_id')
-                    ->where('users.user_type', 'admin');
-            })
+            ->where('is_admin_conversation', 0) // Exclude admin-initiated conversations
             ->count();
 
         // Active conversations (last 7 days, exclude admin conversations)
@@ -171,28 +146,7 @@ class messageClass extends Model
             ->join('messages as m', 'c.conversation_id', '=', 'm.conversation_id')
             ->where('m.created_at', '>=', Carbon::now()->subDays(7))
             ->where('c.status', '!=', 'suspended')
-            ->whereNotExists(function($query) {
-                $query->select(DB::raw(1))
-                    ->from('admin_users')
-                    ->whereColumn('admin_users.admin_id', 'c.sender_id');
-            })
-            ->whereNotExists(function($query) {
-                $query->select(DB::raw(1))
-                    ->from('admin_users')
-                    ->whereColumn('admin_users.admin_id', 'c.receiver_id');
-            })
-            ->whereNotExists(function($query) {
-                $query->select(DB::raw(1))
-                    ->from('users')
-                    ->whereColumn('users.user_id', 'c.sender_id')
-                    ->where('users.user_type', 'admin');
-            })
-            ->whereNotExists(function($query) {
-                $query->select(DB::raw(1))
-                    ->from('users')
-                    ->whereColumn('users.user_id', 'c.receiver_id')
-                    ->where('users.user_type', 'admin');
-            })
+            ->where('c.is_admin_conversation', 0) // Exclude admin-initiated conversations
             ->distinct()
             ->count('c.conversation_id');
 
@@ -200,28 +154,7 @@ class messageClass extends Model
         $flaggedMessages = DB::table('messages as m')
             ->join('conversations as c', 'm.conversation_id', '=', 'c.conversation_id')
             ->where('m.is_flagged', 1)
-            ->whereNotExists(function($query) {
-                $query->select(DB::raw(1))
-                    ->from('admin_users')
-                    ->whereColumn('admin_users.admin_id', 'c.sender_id');
-            })
-            ->whereNotExists(function($query) {
-                $query->select(DB::raw(1))
-                    ->from('admin_users')
-                    ->whereColumn('admin_users.admin_id', 'c.receiver_id');
-            })
-            ->whereNotExists(function($query) {
-                $query->select(DB::raw(1))
-                    ->from('users')
-                    ->whereColumn('users.user_id', 'c.sender_id')
-                    ->where('users.user_type', 'admin');
-            })
-            ->whereNotExists(function($query) {
-                $query->select(DB::raw(1))
-                    ->from('users')
-                    ->whereColumn('users.user_id', 'c.receiver_id')
-                    ->where('users.user_type', 'admin');
-            })
+            ->where('c.is_admin_conversation', 0) // Exclude admin-initiated conversations
             ->distinct()
             ->count('c.conversation_id');
 
@@ -250,13 +183,14 @@ class messageClass extends Model
                 'c.is_suspended',
                 'c.suspended_until',
                 'c.reason',
+                'c.is_admin_conversation',
                 'm.content as last_content',
                 'm.created_at as last_sent_at'
             )
             ->whereRaw('m.message_id = (SELECT message_id FROM messages WHERE conversation_id = c.conversation_id ORDER BY created_at DESC LIMIT 1)')
             ->where(function ($query) use ($userId) {
                 $query->where('c.sender_id', $userId)
-                      ->orWhere('c.receiver_id', $userId);
+                    ->orWhere('c.receiver_id', $userId);
             })
             ->orderBy('m.created_at', 'desc')
             ->get();
@@ -264,9 +198,11 @@ class messageClass extends Model
         $result = [];
         foreach ($conversations as $conv) {
             $otherUserId = ($conv->sender_id == $userId) ? $conv->receiver_id : $conv->sender_id;
-            $otherUser = self::getUserDetails($otherUserId);
+            $isAdminConv = (bool) ($conv->is_admin_conversation ?? false);
+            $otherUser = self::getUserDetails($otherUserId, $isAdminConv);
 
-            if (!$otherUser) continue;
+            if (!$otherUser)
+                continue;
 
             // Calculate unread count: only count messages sent TO this user
             $isSender = ($userId == $conv->sender_id);
@@ -391,7 +327,10 @@ class messageClass extends Model
             ->where('conversation_id', $conversationId)
             ->first();
 
-        if (!$conversation) return [];
+        if (!$conversation)
+            return [];
+
+        $isAdminConv = (bool) ($conversation->is_admin_conversation ?? false);
 
         $query = self::where('conversation_id', $conversationId)
             ->orderBy('created_at', 'asc');
@@ -406,7 +345,7 @@ class messageClass extends Model
         foreach ($messages as $msg) {
             // Determine actual sender based on from_sender boolean
             $senderId = $msg->from_sender ? $conversation->sender_id : $conversation->receiver_id;
-            $sender = self::getUserDetails($senderId);
+            $sender = self::getUserDetails($senderId, $isAdminConv);
 
             $result[] = [
                 'message_id' => $msg->message_id,
@@ -439,34 +378,69 @@ class messageClass extends Model
      * @param int $userId
      * @return array|null
      */
-    public static function getUserDetails(int $userId): ?array
+    /**
+     * Get user details for display
+     *
+     * @param int $userId The numeric user/admin ID
+     * @param bool|null $isAdminConversation Context hint: true=admin conversation (ID is admin),
+     *                                        false=user conversation (ID is user), null=auto-detect (legacy)
+     */
+    public static function getUserDetails(int $userId, ?bool $isAdminConversation = null): ?array
     {
-        // Check if this is an admin user first (admin_users table uses admin_id, not user_id)
-        $admin = DB::table('admin_users')->where('admin_id', $userId)->first();
+        // If explicitly told this is an admin conversation, look up admin first
+        // If explicitly told this is NOT an admin conversation, skip admin lookup
+        // If null (auto-detect), use legacy behavior (check admin first) - but this can cause ID collision issues
 
-        if ($admin) {
-            $name = $admin->username ?? $admin->email ?? 'Admin';
-            $fullName = trim(($admin->first_name ?? '') . ' ' . ($admin->middle_name ?? '') . ' ' . ($admin->last_name ?? ''));
-            if (!empty($fullName)) {
-                $name = $fullName;
+        if ($isAdminConversation === true) {
+            // This is an admin conversation - the ID refers to admin_users
+            $admin = DB::table('admin_users')->where('admin_id', 'ADMIN-' . $userId)->first();
+            if ($admin) {
+                $name = $admin->username ?? $admin->email ?? 'Admin';
+                $fullName = trim(($admin->first_name ?? '') . ' ' . ($admin->middle_name ?? '') . ' ' . ($admin->last_name ?? ''));
+                if (!empty($fullName)) {
+                    $name = $fullName;
+                }
+                $avatar = 'https://ui-avatars.com/api/?name=' . urlencode($name) . '&background=dc2626&color=fff&bold=true';
+                return [
+                    'id' => $userId,
+                    'name' => $name,
+                    'type' => 'Admin',
+                    'avatar' => $avatar,
+                    'online' => false
+                ];
             }
+        }
 
-            // Admin users don't have profile_pic in admin_users table yet
-            $avatar = 'https://ui-avatars.com/api/?name=' . urlencode($name) . '&background=dc2626&color=fff&bold=true';
+        if ($isAdminConversation === false) {
+            // This is a user conversation - skip admin lookup entirely
+            // Fall through to user lookup below
+        }
 
-            return [
-                'id' => $userId,
-                'name' => $name,
-                'type' => 'Admin',
-                'avatar' => $avatar,
-                'online' => false
-            ];
+        if ($isAdminConversation === null) {
+            // Legacy auto-detect behavior (can cause ID collision - use sparingly)
+            $admin = DB::table('admin_users')->where('admin_id', 'ADMIN-' . $userId)->first();
+            if ($admin) {
+                $name = $admin->username ?? $admin->email ?? 'Admin';
+                $fullName = trim(($admin->first_name ?? '') . ' ' . ($admin->middle_name ?? '') . ' ' . ($admin->last_name ?? ''));
+                if (!empty($fullName)) {
+                    $name = $fullName;
+                }
+                $avatar = 'https://ui-avatars.com/api/?name=' . urlencode($name) . '&background=dc2626&color=fff&bold=true';
+                return [
+                    'id' => $userId,
+                    'name' => $name,
+                    'type' => 'Admin',
+                    'avatar' => $avatar,
+                    'online' => false
+                ];
+            }
         }
 
         // Get base user from users table
         $user = DB::table('users')->where('user_id', $userId)->first();
 
-        if (!$user) return null;
+        if (!$user)
+            return null;
 
         $name = $user->username ?? $user->email;
         $type = $user->user_type ?? 'user';
@@ -672,34 +646,62 @@ class messageClass extends Model
 
     /**
      * SECURITY: Detect contact information (emails and Philippine phone numbers)
+     * Also catches spaced-out evasion like "e x a m p l e @ g m a i l . c o m"
      *
      * @param string $content
      * @return bool
      */
     private static function detectContactInfo(string $content): bool
     {
+        // ── 1. Check the ORIGINAL content first ──────────────────────────
+
         // Email pattern
         $emailPattern = '/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/';
 
         // Philippine phone patterns:
-        // +63XXXXXXXXXX, 09XXXXXXXXX, (02) XXX-XXXX, etc.
         $phonePatterns = [
-            '/\+63\s*\d{10}/',           // +63 9XX XXX XXXX
-            '/\b09\d{9}\b/',             // 09XXXXXXXXX
-            '/\(0?2\)\s*\d{3,4}[\s-]?\d{4}/', // (02) XXX-XXXX
-            '/\b0\d{2,3}[\s-]?\d{3,4}[\s-]?\d{4}\b/' // 0XX XXX XXXX
+            '/\+63\s*\d{10}/',                          // +63 9XX XXX XXXX
+            '/\b09\d{9}\b/',                             // 09XXXXXXXXX
+            '/\(0?2\)\s*\d{3,4}[\s-]?\d{4}/',           // (02) XXX-XXXX
+            '/\b0\d{2,3}[\s-]?\d{3,4}[\s-]?\d{4}\b/'   // 0XX XXX XXXX
         ];
 
-        // Check email
         if (preg_match($emailPattern, $content)) {
             return true;
         }
-
-        // Check phone patterns
         foreach ($phonePatterns as $pattern) {
             if (preg_match($pattern, $content)) {
                 return true;
             }
+        }
+
+        // ── 2. Strip spaces / common separators and re-check ─────────────
+        //    Catches evasion like "e x a m p l e @ g m a i l . c o m"
+        //    or "0 9 1 7 - 1 2 3 - 4 5 6 7"
+        $normalized = preg_replace('/[\s\-_.]+/', '', $content);
+
+        // Re-check email on normalized string (@ is kept because we only strip spaces/dashes/dots/underscores)
+        // We need a slightly relaxed pattern since dots were stripped
+        if (preg_match('/[A-Za-z0-9]+@[A-Za-z0-9]+[A-Za-z]{2,}/i', $normalized)) {
+            return true;
+        }
+
+        // Re-check phone patterns on normalized string
+        $phoneNormalized = [
+            '/\+63\d{10}/',   // +639XXXXXXXXX
+            '/09\d{9}/',      // 09XXXXXXXXX
+        ];
+        foreach ($phoneNormalized as $pattern) {
+            if (preg_match($pattern, $normalized)) {
+                return true;
+            }
+        }
+
+        // ── 3. Detect digits-only sequences (strip ALL non-digits) ───────
+        //    Catches "0 9 1 7 1 2 3 4 5 6 7" → "09171234567"
+        $digitsOnly = preg_replace('/\D/', '', $content);
+        if (preg_match('/^63\d{10}$/', $digitsOnly) || preg_match('/^09\d{9}$/', $digitsOnly)) {
+            return true;
         }
 
         return false;
@@ -712,75 +714,109 @@ class messageClass extends Model
      * @return bool
      */
     private static function detectSuspiciousKeywords(string $content): bool
-{
-    $path = storage_path('app/profanity_dataset.csv');
+    {
+        $path = storage_path('app/profanity_dataset.csv');
 
-    $exclude = [
-        'gcash',
-        'viber',
-        'facebook',
-        'instagram',
-        'twitter',
-        'tiktok',
-        'youtube',
-        'linkedin',
-        'pinterest'
-    ];
+        $keywords = [];
 
-    $keywords = [];
-
-    try {
-        if (file_exists($path) && is_readable($path)) {
-            if (($handle = fopen($path, 'r')) !== false) {
-                while (($row = fgetcsv($handle)) !== false) {
-                    foreach ($row as $cell) {
-                        $w = trim((string) $cell);
-                        if ($w === '') continue;
-                        $lw = strtolower($w);
-                        if (in_array($lw, $exclude, true)) continue;
-                        $keywords[] = $lw;
+        try {
+            if (file_exists($path) && is_readable($path)) {
+                if (($handle = fopen($path, 'r')) !== false) {
+                    while (($row = fgetcsv($handle)) !== false) {
+                        foreach ($row as $cell) {
+                            $w = trim((string) $cell);
+                            if ($w === '')
+                                continue;
+                            $lw = strtolower($w);
+                            // No exclusions - all keywords from dataset will be flagged
+                            $keywords[] = $lw;
+                        }
                     }
+                    fclose($handle);
                 }
-                fclose($handle);
+            }
+        } catch (\Exception $e) {
+            \Log::error('Failed to load profanity dataset', ['error' => $e->getMessage()]);
+        }
+
+        // Fallback keywords if CSV not loaded
+        if (empty($keywords)) {
+            $keywords = [
+                'sex',
+                'vagina',
+                'penis',
+                'fuck',
+                'bitch',
+                'whore',
+                'slut',
+                'dick',
+                'cock',
+                'pussy',
+                'ass',
+                'bastard',
+                'damn',
+                'harassment',
+                'assault',
+                'rape',
+                'molest',
+                'abuse',
+                'porn'
+            ];
+        }
+
+        // ALWAYS add platform keywords (users trying to move conversations off-platform)
+        // These will be flagged regardless of CSV content
+        $platformKeywords = [
+            'gcash',
+            'viber',
+            'facebook',
+            'instagram',
+            'twitter',
+            'tiktok',
+            'youtube',
+            'linkedin',
+            'pinterest',
+            'whatsapp',
+            'telegram',
+            'messenger',
+            'snapchat',
+            'discord',
+            'wechat',
+            'line',
+            'skype'
+        ];
+
+        $keywords = array_merge($keywords, $platformKeywords);
+
+        $contentLower = strtolower($content);
+
+        // Also create a version that strips non-alphanumeric characters
+        // to catch spaced-out or punctuation-separated characters (e.g., f  u c k or f.u.c.k)
+        $normalized = preg_replace('/[^a-z0-9]+/i', '', $contentLower);
+
+        foreach ($keywords as $keyword) {
+            if ($keyword === '')
+                continue;
+
+            // Direct substring match first
+            if (stripos($contentLower, $keyword) !== false || stripos($normalized, $keyword) !== false) {
+                return true;
+            }
+
+            // Build a regex that allows any non-alphanumeric characters between letters
+            // e.g., 'fuck' -> /f[^A-Za-z0-9]*u[^A-Za-z0-9]*c[^A-Za-z0-9]*k/i
+            $letters = preg_split('//u', preg_quote($keyword, '/'), -1, PREG_SPLIT_NO_EMPTY);
+            if (empty($letters))
+                continue;
+            $pattern = '/' . implode('[^A-Za-z0-9]*', $letters) . '/i';
+
+            if (preg_match($pattern, $content)) {
+                return true;
             }
         }
-    } catch (\Exception $e) {
-        \Log::error('Failed to load profanity dataset', ['error' => $e->getMessage()]);
+
+        return false;
     }
-
-    if (empty($keywords)) {
-        $keywords = [
-            'sex', 'vagina', 'penis', 'fuck', 'bitch', 'whore', 'slut', 'dick', 'cock', 'pussy', 'ass', 'bastard', 'damn', 'harassment', 'assault', 'rape', 'molest', 'abuse', 'porn'
-        ];
-    }
-
-    $contentLower = strtolower($content);
-
-    // Also create a version that strips non-alphanumeric characters
-    // to catch spaced-out or punctuation-separated characters (e.g., f  u c k or f.u.c.k)
-    $normalized = preg_replace('/[^a-z0-9]+/i', '', $contentLower);
-
-    foreach ($keywords as $keyword) {
-        if ($keyword === '') continue;
-
-        // Direct substring match first
-        if (stripos($contentLower, $keyword) !== false || stripos($normalized, $keyword) !== false) {
-            return true;
-        }
-
-        // Build a regex that allows any non-alphanumeric characters between letters
-        // e.g., 'fuck' -> /f[^A-Za-z0-9]*u[^A-Za-z0-9]*c[^A-Za-z0-9]*k/i
-        $letters = preg_split('//u', preg_quote($keyword, '/'), -1, PREG_SPLIT_NO_EMPTY);
-        if (empty($letters)) continue;
-        $pattern = '/'.implode('[^A-Za-z0-9]*', $letters).'/i';
-
-        if (preg_match($pattern, $content)) {
-            return true;
-        }
-    }
-
-    return false;
-}
 
     /**
      * SECURITY: Validate message content against all rules
@@ -828,9 +864,10 @@ class messageClass extends Model
      */
     private static function isAdminUser(int $userId): bool
     {
-        // Check admin_users table
-        $isAdminUser = DB::table('admin_users')->where('admin_id', $userId)->exists();
-        if ($isAdminUser) return true;
+        // admin_id is now VARCHAR 'ADMIN-{n}' — query with prefix
+        $isAdminUser = DB::table('admin_users')->where('admin_id', 'ADMIN-' . $userId)->exists();
+        if ($isAdminUser)
+            return true;
 
         // Check users table for user_type='admin'
         $user = DB::table('users')->where('user_id', $userId)->first();
@@ -853,7 +890,10 @@ class messageClass extends Model
                 'c.receiver_id',
                 'c.status',
                 'c.is_suspended',
+                'c.suspended_until',
+                'c.reason',
                 'c.no_suspends',
+                'c.is_admin_conversation',
                 'm.content as last_content',
                 'm.created_at as last_sent_at',
                 DB::raw('(SELECT COUNT(*) FROM messages WHERE conversation_id = c.conversation_id AND is_flagged = 1) as flagged_count')
@@ -864,21 +904,20 @@ class messageClass extends Model
                     ->whereColumn('messages.conversation_id', 'c.conversation_id')
                     ->where('messages.is_flagged', 1);
             })
+            // Only show user-to-user conversations (exclude admin conversations)
+            ->where('c.is_admin_conversation', 0)
             ->whereRaw('m.message_id = (SELECT message_id FROM messages WHERE conversation_id = c.conversation_id ORDER BY created_at DESC LIMIT 1)')
             ->orderBy('m.created_at', 'desc')
             ->get();
 
         $result = [];
         foreach ($conversations as $conv) {
-            // Skip conversations involving admin users
-            if (self::isAdminUser($conv->sender_id) || self::isAdminUser($conv->receiver_id)) {
+            // Use is_admin_conversation=0; these are user-to-user conversations
+            $senderUser = self::getUserDetails($conv->sender_id, false);
+            $receiverUser = self::getUserDetails($conv->receiver_id, false);
+
+            if (!$senderUser || !$receiverUser)
                 continue;
-            }
-
-            $senderUser = self::getUserDetails($conv->sender_id);
-            $receiverUser = self::getUserDetails($conv->receiver_id);
-
-            if (!$senderUser || !$receiverUser) continue;
 
             $result[] = [
                 'conversation_id' => $conv->conversation_id,
@@ -895,6 +934,8 @@ class messageClass extends Model
                 'is_flagged' => true,
                 'status' => $conv->status,
                 'is_suspended' => (bool) $conv->is_suspended,
+                'suspended_until' => $conv->suspended_until,
+                'reason' => $conv->reason,
                 'no_suspends' => $conv->no_suspends ?? 0
             ];
         }
@@ -920,25 +961,25 @@ class messageClass extends Model
                 'c.suspended_until',
                 'c.reason as suspension_reason',
                 'c.no_suspends',
+                'c.is_admin_conversation',
                 'm.content as last_content',
                 'm.created_at as last_sent_at'
             )
             ->where('c.status', 'suspended')
+            // Only show user-to-user conversations (exclude admin conversations)
+            ->where('c.is_admin_conversation', 0)
             ->whereRaw('m.message_id = (SELECT message_id FROM messages WHERE conversation_id = c.conversation_id ORDER BY created_at DESC LIMIT 1)')
             ->orderBy('m.created_at', 'desc')
             ->get();
 
         $result = [];
         foreach ($conversations as $conv) {
-            // Skip conversations involving admin users
-            if (self::isAdminUser($conv->sender_id) || self::isAdminUser($conv->receiver_id)) {
+            // Use is_admin_conversation=0; these are user-to-user conversations
+            $senderUser = self::getUserDetails($conv->sender_id, false);
+            $receiverUser = self::getUserDetails($conv->receiver_id, false);
+
+            if (!$senderUser || !$receiverUser)
                 continue;
-            }
-
-            $senderUser = self::getUserDetails($conv->sender_id);
-            $receiverUser = self::getUserDetails($conv->receiver_id);
-
-            if (!$senderUser || !$receiverUser) continue;
 
             // Check if conversation has any flagged messages
             $isFlagged = DB::table('messages')
@@ -960,7 +1001,7 @@ class messageClass extends Model
                 'status' => $conv->status,
                 'is_suspended' => true,
                 'suspended_until' => $conv->suspended_until,
-                'suspension_reason' => $conv->suspension_reason,
+                'reason' => $conv->suspension_reason,
                 'no_suspends' => $conv->no_suspends ?? 0
             ];
         }

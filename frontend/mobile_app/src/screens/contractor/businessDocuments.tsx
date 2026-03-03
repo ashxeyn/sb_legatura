@@ -32,7 +32,7 @@ export interface BusinessDocuments {
 
 interface BusinessDocumentsScreenProps {
     onBackPress: () => void;
-    onNext: (documentsInfo: BusinessDocuments) => void;
+    onNext: (documentsInfo: BusinessDocuments) => Promise<Record<string, string[]> | void>;
     companyInfo: any;
     accountInfo: any;
     formData: any;
@@ -72,7 +72,7 @@ function CustomDatePicker({ currentDate, onDateChange, minimumDate }: CustomDate
 
     useEffect(() => {
         // Ensure selected date is not before minimum date
-        if (selectedYear < minYear || 
+        if (selectedYear < minYear ||
             (selectedYear === minYear && selectedMonth < minMonth) ||
             (selectedYear === minYear && selectedMonth === minMonth && selectedDay < minDay)) {
             setSelectedYear(minYear);
@@ -144,8 +144,8 @@ function CustomDatePicker({ currentDate, onDateChange, minimumDate }: CustomDate
                     <Text style={styles.datePickerLabel}>Day</Text>
                     <ScrollView style={styles.datePickerScroll} showsVerticalScrollIndicator={false}>
                         {getDays(selectedYear, selectedMonth).map((day) => {
-                            const isDisabled = selectedYear === minYear && 
-                                             selectedMonth === minMonth && 
+                            const isDisabled = selectedYear === minYear &&
+                                             selectedMonth === minMonth &&
                                              day < minDay;
                             return (
                                 <TouchableOpacity
@@ -216,6 +216,7 @@ function getDays(year: number, month: number): number[] {
 
 export default function BusinessDocumentsScreen({ onBackPress, onNext, companyInfo, accountInfo, formData, initialData }: BusinessDocumentsScreenProps) {
     const [isLoading, setIsLoading] = useState(false);
+    const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
     const [picabNumber, setPicabNumber] = useState(initialData?.picabNumber || '');
     const [picabCategory, setPicabCategory] = useState(initialData?.picabCategory || '');
     const [picabExpirationDate, setPicabExpirationDate] = useState(initialData?.picabExpirationDate || '');
@@ -235,7 +236,7 @@ export default function BusinessDocumentsScreen({ onBackPress, onNext, companyIn
     const [allCities, setAllCities] = useState<{code: string; name: string}[]>([]);
     const [citySearchText, setCitySearchText] = useState('');
     const [loadingCities, setLoadingCities] = useState(false);
-    
+
     // Date objects for pickers
     const [picabDate, setPicabDate] = useState(() => {
         if (initialData?.picabExpirationDate) {
@@ -279,7 +280,7 @@ export default function BusinessDocumentsScreen({ onBackPress, onNext, companyIn
             setBusinessPermitExpiration(initialData.businessPermitExpiration || '');
             setTinBusinessRegNumber(initialData.tinBusinessRegNumber || '');
             setDtiSecRegistrationPhoto(initialData.dtiSecRegistrationPhoto || '');
-            
+
             // Update date objects
             if (initialData.picabExpirationDate) {
                 setPicabDate(new Date(initialData.picabExpirationDate));
@@ -289,7 +290,7 @@ export default function BusinessDocumentsScreen({ onBackPress, onNext, companyIn
             }
         }
     }, [initialData]);
-    
+
     // Format date to YYYY-MM-DD string (for backend)
     const formatDate = (date: Date): string => {
         const year = date.getFullYear();
@@ -297,7 +298,7 @@ export default function BusinessDocumentsScreen({ onBackPress, onNext, companyIn
         const day = String(date.getDate()).padStart(2, '0');
         return `${year}-${month}-${day}`;
     };
-    
+
     // Format date for display (e.g., "January 15, 2025")
     const formatDateForDisplay = (dateString: string): string => {
         if (!dateString) return '';
@@ -309,7 +310,7 @@ export default function BusinessDocumentsScreen({ onBackPress, onNext, companyIn
             return dateString; // Return as-is if parsing fails
         }
     };
-    
+
     // Handle PICAB date picker - custom implementation
     const handlePicabDateChange = (year: number, month: number, day: number) => {
         const newDate = new Date(year, month - 1, day);
@@ -317,7 +318,7 @@ export default function BusinessDocumentsScreen({ onBackPress, onNext, companyIn
         setPicabExpirationDate(formatDate(newDate));
         setShowPicabDatePicker(false);
     };
-    
+
     // Handle Business Permit date picker - custom implementation
     const handlePermitDateChange = (year: number, month: number, day: number) => {
         const newDate = new Date(year, month - 1, day);
@@ -334,9 +335,8 @@ export default function BusinessDocumentsScreen({ onBackPress, onNext, companyIn
                 return;
             }
 
-            const MEDIA_IMAGES = (ImagePicker.MediaType && ImagePicker.MediaType.Images)
-                || (ImagePicker.MediaTypeOptions && ImagePicker.MediaTypeOptions.Images)
-                || 'Images';
+            const MEDIA_IMAGES = (ImagePicker.MediaTypeOptions && ImagePicker.MediaTypeOptions.Images)
+                || 'images' as any;
 
             const result = await ImagePicker.launchImageLibraryAsync({
                 mediaTypes: MEDIA_IMAGES,
@@ -354,37 +354,24 @@ export default function BusinessDocumentsScreen({ onBackPress, onNext, companyIn
     };
 
     const handleNext = async () => {
-        // Validation
-        if (!picabNumber.trim()) {
-            Alert.alert('Error', 'Please enter PICAB number');
-            return;
-        }
-        if (!picabCategory) {
-            Alert.alert('Error', 'Please select PICAB category');
-            return;
-        }
-        if (!picabExpirationDate.trim()) {
-            Alert.alert('Error', 'Please enter PICAB expiration date');
-            return;
-        }
-        if (!businessPermitNumber.trim()) {
-            Alert.alert('Error', 'Please enter business permit number');
-            return;
-        }
-        if (!businessPermitCity.trim()) {
-            Alert.alert('Error', 'Please select business permit city');
-            return;
-        }
-        if (!businessPermitExpiration.trim()) {
-            Alert.alert('Error', 'Please enter business permit expiration date');
-            return;
-        }
-        if (!tinBusinessRegNumber.trim()) {
-            Alert.alert('Error', 'Please enter TIN/Business registration number');
-            return;
-        }
-        if (!dtiSecRegistrationPhoto) {
-            Alert.alert('Error', 'Please upload DTI/SEC registration photo');
+        if (isLoading) return;
+
+        // Clear previous errors
+        setFieldErrors({});
+
+        // Local validation — build inline errors
+        const errors: Record<string, string[]> = {};
+        if (!picabNumber.trim()) errors.picab_number = ['PICAB number is required.'];
+        if (!picabCategory) errors.picab_category = ['Please select a PICAB category.'];
+        if (!picabExpirationDate.trim()) errors.picab_expiration_date = ['PICAB expiration date is required.'];
+        if (!businessPermitNumber.trim()) errors.business_permit_number = ['Business permit number is required.'];
+        if (!businessPermitCity.trim()) errors.business_permit_city = ['Please select a business permit city.'];
+        if (!businessPermitExpiration.trim()) errors.business_permit_expiration = ['Business permit expiration date is required.'];
+        if (!tinBusinessRegNumber.trim()) errors.tin_business_reg_number = ['TIN/Business registration number is required.'];
+        if (!dtiSecRegistrationPhoto) errors.dti_sec_registration_photo = ['Please upload DTI/SEC registration photo.'];
+
+        if (Object.keys(errors).length > 0) {
+            setFieldErrors(errors);
             return;
         }
 
@@ -402,7 +389,10 @@ export default function BusinessDocumentsScreen({ onBackPress, onNext, companyIn
         };
 
         try {
-            await onNext(documentsInfo);
+            const serverErrors = await onNext(documentsInfo);
+            if (serverErrors) {
+                setFieldErrors(serverErrors);
+            }
         } finally {
             setIsLoading(false);
         }
@@ -451,16 +441,17 @@ export default function BusinessDocumentsScreen({ onBackPress, onNext, companyIn
 
                     <View style={styles.inputContainer}>
                         <TextInput
-                            style={styles.input}
+                            style={[styles.input, fieldErrors.picab_number && styles.inputError]}
                             value={picabNumber}
-                            onChangeText={setPicabNumber}
+                            onChangeText={(text) => { setPicabNumber(text); setFieldErrors(prev => { const { picab_number, ...rest } = prev; return rest; }); }}
                             placeholder="PICAB Number *"
                             placeholderTextColor="#999"
                         />
+                        {fieldErrors.picab_number && <Text style={styles.fieldErrorText}>{fieldErrors.picab_number[0]}</Text>}
                     </View>
 
                     <View style={styles.inputContainer}>
-                        <TouchableOpacity style={styles.dropdownContainer} onPress={() => setShowPicabCategoryModal(true)}>
+                        <TouchableOpacity style={[styles.dropdownContainer, fieldErrors.picab_category && styles.dropdownError]} onPress={() => { setShowPicabCategoryModal(true); setFieldErrors(prev => { const { picab_category, ...rest } = prev; return rest; }); }}>
                             <View style={styles.dropdownInputWrapper}>
                                 <Text style={[styles.dropdownInputText, !picabCategory && styles.placeholderText]}>
                                     {picabCategory || 'PICAB Category *'}
@@ -468,12 +459,13 @@ export default function BusinessDocumentsScreen({ onBackPress, onNext, companyIn
                                 <MaterialIcons name="keyboard-arrow-down" size={24} color="#666666" style={styles.dropdownIcon} />
                             </View>
                         </TouchableOpacity>
+                        {fieldErrors.picab_category && <Text style={styles.fieldErrorText}>{fieldErrors.picab_category[0]}</Text>}
                     </View>
 
                     <View style={styles.inputContainer}>
                         <TouchableOpacity
-                            style={styles.dropdownContainer}
-                            onPress={() => setShowPicabDatePicker(true)}
+                            style={[styles.dropdownContainer, fieldErrors.picab_expiration_date && styles.dropdownError]}
+                            onPress={() => { setShowPicabDatePicker(true); setFieldErrors(prev => { const { picab_expiration_date, ...rest } = prev; return rest; }); }}
                         >
                             <View style={styles.dropdownInputWrapper}>
                                 <Text style={[styles.dropdownInputText, !picabExpirationDate && styles.placeholderText]}>
@@ -482,6 +474,7 @@ export default function BusinessDocumentsScreen({ onBackPress, onNext, companyIn
                                 <MaterialIcons name="keyboard-arrow-down" size={24} color="#666666" style={styles.dropdownIcon} />
                             </View>
                         </TouchableOpacity>
+                        {fieldErrors.picab_expiration_date && <Text style={styles.fieldErrorText}>{fieldErrors.picab_expiration_date[0]}</Text>}
                     </View>
 
                     {/* Business Permit Section */}
@@ -489,18 +482,19 @@ export default function BusinessDocumentsScreen({ onBackPress, onNext, companyIn
 
                     <View style={styles.inputContainer}>
                         <TextInput
-                            style={styles.input}
+                            style={[styles.input, fieldErrors.business_permit_number && styles.inputError]}
                             value={businessPermitNumber}
-                            onChangeText={setBusinessPermitNumber}
+                            onChangeText={(text) => { setBusinessPermitNumber(text); setFieldErrors(prev => { const { business_permit_number, ...rest } = prev; return rest; }); }}
                             placeholder="Business Permit Number *"
                             placeholderTextColor="#999"
                         />
+                        {fieldErrors.business_permit_number && <Text style={styles.fieldErrorText}>{fieldErrors.business_permit_number[0]}</Text>}
                     </View>
 
                     <View style={styles.inputContainer}>
                         <TouchableOpacity
-                            style={[styles.dropdownContainer, loadingCities && { opacity: 0.6 }]}
-                            onPress={() => !loadingCities && setShowPermitCityModal(true)}
+                            style={[styles.dropdownContainer, loadingCities && { opacity: 0.6 }, fieldErrors.business_permit_city && styles.dropdownError]}
+                            onPress={() => { if (!loadingCities) { setShowPermitCityModal(true); setFieldErrors(prev => { const { business_permit_city, ...rest } = prev; return rest; }); } }}
                             disabled={loadingCities}
                         >
                             <View style={styles.dropdownInputWrapper}>
@@ -510,12 +504,13 @@ export default function BusinessDocumentsScreen({ onBackPress, onNext, companyIn
                                 <MaterialIcons name="keyboard-arrow-down" size={24} color="#666666" style={styles.dropdownIcon} />
                             </View>
                         </TouchableOpacity>
+                        {fieldErrors.business_permit_city && <Text style={styles.fieldErrorText}>{fieldErrors.business_permit_city[0]}</Text>}
                     </View>
 
                     <View style={styles.inputContainer}>
                         <TouchableOpacity
-                            style={styles.dropdownContainer}
-                            onPress={() => setShowPermitDatePicker(true)}
+                            style={[styles.dropdownContainer, fieldErrors.business_permit_expiration && styles.dropdownError]}
+                            onPress={() => { setShowPermitDatePicker(true); setFieldErrors(prev => { const { business_permit_expiration, ...rest } = prev; return rest; }); }}
                         >
                             <View style={styles.dropdownInputWrapper}>
                                 <Text style={[styles.dropdownInputText, !businessPermitExpiration && styles.placeholderText]}>
@@ -524,6 +519,7 @@ export default function BusinessDocumentsScreen({ onBackPress, onNext, companyIn
                                 <MaterialIcons name="keyboard-arrow-down" size={24} color="#666666" style={styles.dropdownIcon} />
                             </View>
                         </TouchableOpacity>
+                        {fieldErrors.business_permit_expiration && <Text style={styles.fieldErrorText}>{fieldErrors.business_permit_expiration[0]}</Text>}
                     </View>
 
                     {/* Business Registration Section */}
@@ -531,17 +527,18 @@ export default function BusinessDocumentsScreen({ onBackPress, onNext, companyIn
 
                     <View style={styles.inputContainer}>
                         <TextInput
-                            style={styles.input}
+                            style={[styles.input, fieldErrors.tin_business_reg_number && styles.inputError]}
                             value={tinBusinessRegNumber}
-                            onChangeText={setTinBusinessRegNumber}
+                            onChangeText={(text) => { setTinBusinessRegNumber(text); setFieldErrors(prev => { const { tin_business_reg_number, ...rest } = prev; return rest; }); }}
                             placeholder="TIN/Business Registration Number *"
                             placeholderTextColor="#999"
                         />
+                        {fieldErrors.tin_business_reg_number && <Text style={styles.fieldErrorText}>{fieldErrors.tin_business_reg_number[0]}</Text>}
                     </View>
 
                     <View style={styles.inputContainer}>
                         <Text style={styles.label}>DTI/SEC Registration Photo *</Text>
-                        <TouchableOpacity style={styles.uploadButton} onPress={handleImagePicker}>
+                        <TouchableOpacity style={[styles.uploadButton, fieldErrors.dti_sec_registration_photo && styles.uploadButtonError]} onPress={() => { handleImagePicker(); setFieldErrors(prev => { const { dti_sec_registration_photo, ...rest } = prev; return rest; }); }}>
                             <View style={styles.uploadButtonContent}>
                                 <MaterialIcons name="cloud-upload" size={24} color="#EC7E00" />
                                 <Text style={styles.uploadButtonText}>
@@ -549,6 +546,7 @@ export default function BusinessDocumentsScreen({ onBackPress, onNext, companyIn
                                 </Text>
                             </View>
                         </TouchableOpacity>
+                        {fieldErrors.dti_sec_registration_photo && <Text style={styles.fieldErrorText}>{fieldErrors.dti_sec_registration_photo[0]}</Text>}
                         {dtiSecRegistrationPhoto && (
                             <View style={styles.imagePreview}>
                                 <Image source={{ uri: dtiSecRegistrationPhoto }} style={styles.previewImage} />
@@ -566,17 +564,17 @@ export default function BusinessDocumentsScreen({ onBackPress, onNext, companyIn
                     <TouchableOpacity
                         style={[
                             styles.nextButton,
-                            (!isFormValid() || isLoading) && styles.nextButtonDisabled
+                            isLoading && styles.nextButtonDisabled
                         ]}
                         onPress={handleNext}
-                        disabled={!isFormValid() || isLoading}
+                        disabled={isLoading}
                     >
                         {isLoading ? (
                             <ActivityIndicator color="#FFFFFF" size="small" />
                         ) : (
                             <Text style={[
                                 styles.nextButtonText,
-                                (!isFormValid() || isLoading) && styles.nextButtonTextDisabled
+                                isLoading && styles.nextButtonTextDisabled
                             ]}>
                                 Next
                             </Text>
@@ -844,6 +842,21 @@ const styles = StyleSheet.create({
         color: '#666666',
         marginTop: 5,
         marginLeft: 4,
+    },
+    fieldErrorText: {
+        color: '#DC3545',
+        fontSize: 12,
+        marginTop: 4,
+        marginLeft: 4,
+    },
+    inputError: {
+        borderColor: '#DC3545',
+    },
+    dropdownError: {
+        borderColor: '#DC3545',
+    },
+    uploadButtonError: {
+        borderColor: '#DC3545',
     },
     uploadButton: {
         borderWidth: 2,

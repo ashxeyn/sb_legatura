@@ -20,7 +20,7 @@ import { auth_service } from '../../services/auth_service';
 
 interface PersonalInfoScreenProps {
   onBackPress: () => void;
-  onNext: (personalInfo: PropertyOwnerPersonalInfo) => void;
+  onNext: (personalInfo: PropertyOwnerPersonalInfo) => Promise<Record<string, string[]> | void>;
   formData: any; // Pre-loaded form data from Laravel backend
   initialData?: PropertyOwnerPersonalInfo | null;
 }
@@ -60,6 +60,7 @@ export default function PersonalInfoScreen({ onBackPress, onNext, formData, init
 
   // UI states
   const [isLoading, setIsLoading] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
   const [showOccupationModal, setShowOccupationModal] = useState(false);
   const [showProvinceModal, setShowProvinceModal] = useState(false);
   const [showCityModal, setShowCityModal] = useState(false);
@@ -72,6 +73,13 @@ export default function PersonalInfoScreen({ onBackPress, onNext, formData, init
   // Data arrays from backend
   const [occupations, setOccupations] = useState(formData?.occupations || []);
   const [provinces, setProvinces] = useState(formData?.provinces || []);
+
+  // Helper: check if the currently selected occupation is "Others"
+  const isOthersOccupation = () => {
+    const selected = occupations.find((o: any) => o.id.toString() === occupationId);
+    const name = selected?.occupation_name?.toLowerCase() || '';
+    return name === 'others' || name === 'other';
+  };
   const [cities, setCities] = useState([]);
   const [barangays, setBarangays] = useState([]);
 
@@ -238,7 +246,7 @@ export default function PersonalInfoScreen({ onBackPress, onNext, formData, init
     return firstName.trim() !== '' &&
       lastName.trim() !== '' &&
       occupationId.trim() !== '' &&
-      (occupationId !== 'other' || occupationOther.trim() !== '') &&
+      (!isOthersOccupation() || occupationOther.trim() !== '') &&
       dateOfBirth.trim() !== '' &&
       phoneNumber.trim() !== '' &&
       addressStreet.trim() !== '' &&
@@ -250,8 +258,31 @@ export default function PersonalInfoScreen({ onBackPress, onNext, formData, init
   };
 
   const handleNext = async () => {
-    if (!isFormValid() || isLoading) {
-      Alert.alert('Validation Error', 'Please fill in all required fields correctly.');
+    if (isLoading) return;
+
+    // Clear previous errors
+    setFieldErrors({});
+
+    // Local validation — build inline errors
+    const errors: Record<string, string[]> = {};
+    if (!firstName.trim()) errors.first_name = ['First name is required.'];
+    if (!lastName.trim()) errors.last_name = ['Last name is required.'];
+    if (!occupationId.trim()) errors.occupation_id = ['Please select an occupation.'];
+    if (isOthersOccupation() && !occupationOther.trim()) errors.occupation_other_text = ['Please specify your occupation.'];
+    if (!dateOfBirth.trim()) errors.date_of_birth = ['Date of birth is required.'];
+    if (!phoneNumber.trim()) {
+      errors.phone_number = ['Phone number is required.'];
+    } else if (!/^09[0-9]{9}$/.test(phoneNumber)) {
+      errors.phone_number = ['Phone number must be 11 digits starting with 09.'];
+    }
+    if (!addressStreet.trim()) errors.owner_address_street = ['Street address is required.'];
+    if (!addressProvince.trim()) errors.owner_address_province = ['Please select a province.'];
+    if (!addressCity.trim()) errors.owner_address_city = ['Please select a city.'];
+    if (!addressBarangay.trim()) errors.owner_address_barangay = ['Please select a barangay.'];
+    if (!addressPostal.trim()) errors.owner_address_postal = ['Postal code is required.'];
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
       return;
     }
 
@@ -262,7 +293,7 @@ export default function PersonalInfoScreen({ onBackPress, onNext, formData, init
       middle_name: middleName.trim() || undefined,
       last_name: lastName.trim(),
       occupation_id: occupationId,
-      occupation_other: occupationId === 'other' ? occupationOther.trim() : undefined,
+      occupation_other: isOthersOccupation() ? occupationOther.trim() : undefined,
       date_of_birth: dateOfBirth, // YYYY-MM-DD format
       phone_number: phoneNumber.trim(),
       // Address fields
@@ -274,7 +305,10 @@ export default function PersonalInfoScreen({ onBackPress, onNext, formData, init
     };
 
     try {
-      await onNext(personalInfo);
+      const serverErrors = await onNext(personalInfo);
+      if (serverErrors) {
+        setFieldErrors(serverErrors);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -312,39 +346,42 @@ export default function PersonalInfoScreen({ onBackPress, onNext, formData, init
 
           <View style={styles.inputContainer}>
             <TextInput
-              style={styles.input}
+              style={[styles.input, fieldErrors.first_name && styles.inputError]}
               value={firstName}
-              onChangeText={setFirstName}
+              onChangeText={(text) => { setFirstName(text); setFieldErrors(prev => { const { first_name, ...rest } = prev; return rest; }); }}
               placeholder="First Name *"
               placeholderTextColor="#999"
               maxLength={100}
             />
+            {fieldErrors.first_name && <Text style={styles.fieldErrorText}>{fieldErrors.first_name[0]}</Text>}
           </View>
 
           <View style={styles.inputContainer}>
             <TextInput
-              style={styles.input}
+              style={[styles.input, fieldErrors.middle_name && styles.inputError]}
               value={middleName}
-              onChangeText={setMiddleName}
+              onChangeText={(text) => { setMiddleName(text); setFieldErrors(prev => { const { middle_name, ...rest } = prev; return rest; }); }}
               placeholder="Middle Name (Optional)"
               placeholderTextColor="#999"
               maxLength={100}
             />
+            {fieldErrors.middle_name && <Text style={styles.fieldErrorText}>{fieldErrors.middle_name[0]}</Text>}
           </View>
 
           <View style={styles.inputContainer}>
             <TextInput
-              style={styles.input}
+              style={[styles.input, fieldErrors.last_name && styles.inputError]}
               value={lastName}
-              onChangeText={setLastName}
+              onChangeText={(text) => { setLastName(text); setFieldErrors(prev => { const { last_name, ...rest } = prev; return rest; }); }}
               placeholder="Last Name *"
               placeholderTextColor="#999"
               maxLength={100}
             />
+            {fieldErrors.last_name && <Text style={styles.fieldErrorText}>{fieldErrors.last_name[0]}</Text>}
           </View>
 
           <View style={styles.inputContainer}>
-            <TouchableOpacity style={styles.dropdownContainer} onPress={() => setShowOccupationModal(true)}>
+            <TouchableOpacity style={[styles.dropdownContainer, fieldErrors.occupation_id && styles.dropdownError]} onPress={() => { setShowOccupationModal(true); setFieldErrors(prev => { const { occupation_id, ...rest } = prev; return rest; }); }}>
               <View style={styles.dropdownInputWrapper}>
                 <Text style={[styles.dropdownInputText, !occupationId && styles.placeholderText]}>
                   {occupations.find(o => o.id.toString() === occupationId)?.occupation_name || 'Occupation *'}
@@ -352,24 +389,26 @@ export default function PersonalInfoScreen({ onBackPress, onNext, formData, init
                 <MaterialIcons name="keyboard-arrow-down" size={24} color="#666666" style={styles.dropdownIcon} />
               </View>
             </TouchableOpacity>
+            {fieldErrors.occupation_id && <Text style={styles.fieldErrorText}>{fieldErrors.occupation_id[0]}</Text>}
           </View>
 
-          {occupationId === 'other' && (
+          {isOthersOccupation() && (
             <View style={styles.inputContainer}>
               <TextInput
-                style={styles.input}
+                style={[styles.input, fieldErrors.occupation_other_text && styles.inputError]}
                 value={occupationOther}
-                onChangeText={setOccupationOther}
+                onChangeText={(text) => { setOccupationOther(text); setFieldErrors(prev => { const { occupation_other_text, ...rest } = prev; return rest; }); }}
                 placeholder="Specify Occupation *"
                 placeholderTextColor="#999"
               />
+              {fieldErrors.occupation_other_text && <Text style={styles.fieldErrorText}>{fieldErrors.occupation_other_text[0]}</Text>}
             </View>
           )}
 
           <View style={styles.inputContainer}>
             <TouchableOpacity
-              style={styles.dropdownContainer}
-              onPress={() => setShowDatePicker(true)}
+              style={[styles.dropdownContainer, fieldErrors.date_of_birth && styles.dropdownError]}
+              onPress={() => { setShowDatePicker(true); setFieldErrors(prev => { const { date_of_birth, ...rest } = prev; return rest; }); }}
             >
               <View style={styles.dropdownInputWrapper}>
                 <Text style={[styles.dropdownInputText, !dateOfBirth && styles.placeholderText]}>
@@ -378,7 +417,7 @@ export default function PersonalInfoScreen({ onBackPress, onNext, formData, init
                 <MaterialIcons name="calendar-today" size={24} color="#666666" style={styles.dropdownIcon} />
               </View>
             </TouchableOpacity>
-            <Text style={styles.fieldHint}>Must be 18+ years old</Text>
+            {fieldErrors.date_of_birth ? <Text style={styles.fieldErrorText}>{fieldErrors.date_of_birth[0]}</Text> : <Text style={styles.fieldHint}>Must be 18+ years old</Text>}
 
             {showDatePicker && (
               <DateTimePicker
@@ -394,15 +433,15 @@ export default function PersonalInfoScreen({ onBackPress, onNext, formData, init
 
           <View style={styles.inputContainer}>
             <TextInput
-              style={styles.input}
+              style={[styles.input, fieldErrors.phone_number && styles.inputError]}
               value={phoneNumber}
-              onChangeText={setPhoneNumber}
+              onChangeText={(text) => { setPhoneNumber(text); setFieldErrors(prev => { const { phone_number, ...rest } = prev; return rest; }); }}
               placeholder="Phone Number * (e.g., 09171234567)"
               placeholderTextColor="#999"
               keyboardType="phone-pad"
               maxLength={11}
             />
-            <Text style={styles.fieldHint}>11 digits starting with 09</Text>
+            {fieldErrors.phone_number ? <Text style={styles.fieldErrorText}>{fieldErrors.phone_number[0]}</Text> : <Text style={styles.fieldHint}>11 digits starting with 09</Text>}
           </View>
 
           {/* Address Section */}
@@ -410,16 +449,17 @@ export default function PersonalInfoScreen({ onBackPress, onNext, formData, init
 
           <View style={styles.inputContainer}>
             <TextInput
-              style={styles.input}
+              style={[styles.input, fieldErrors.owner_address_street && styles.inputError]}
               value={addressStreet}
-              onChangeText={setAddressStreet}
+              onChangeText={(text) => { setAddressStreet(text); setFieldErrors(prev => { const { owner_address_street, ...rest } = prev; return rest; }); }}
               placeholder="Street/Building No. * (e.g., 456 Oak Avenue)"
               placeholderTextColor="#999"
             />
+            {fieldErrors.owner_address_street && <Text style={styles.fieldErrorText}>{fieldErrors.owner_address_street[0]}</Text>}
           </View>
 
           <View style={styles.inputContainer}>
-            <TouchableOpacity style={styles.dropdownContainer} onPress={() => setShowProvinceModal(true)}>
+            <TouchableOpacity style={[styles.dropdownContainer, fieldErrors.owner_address_province && styles.dropdownError]} onPress={() => { setShowProvinceModal(true); setFieldErrors(prev => { const { owner_address_province, ...rest } = prev; return rest; }); }}>
               <View style={styles.dropdownInputWrapper}>
                 <Text style={[styles.dropdownInputText, !addressProvince && styles.placeholderText]}>
                   {provinces.find(p => p.code === addressProvince)?.name || 'Province *'}
@@ -427,12 +467,13 @@ export default function PersonalInfoScreen({ onBackPress, onNext, formData, init
                 <MaterialIcons name="keyboard-arrow-down" size={24} color="#666666" style={styles.dropdownIcon} />
               </View>
             </TouchableOpacity>
+            {fieldErrors.owner_address_province && <Text style={styles.fieldErrorText}>{fieldErrors.owner_address_province[0]}</Text>}
           </View>
 
           <View style={styles.inputContainer}>
             <TouchableOpacity
-              style={[styles.dropdownContainer, !addressProvince && styles.dropdownDisabled]}
-              onPress={() => addressProvince && setShowCityModal(true)}
+              style={[styles.dropdownContainer, !addressProvince && styles.dropdownDisabled, fieldErrors.owner_address_city && styles.dropdownError]}
+              onPress={() => { if (addressProvince) { setShowCityModal(true); setFieldErrors(prev => { const { owner_address_city, ...rest } = prev; return rest; }); } }}
               disabled={!addressProvince}
             >
               <View style={styles.dropdownInputWrapper}>
@@ -442,12 +483,13 @@ export default function PersonalInfoScreen({ onBackPress, onNext, formData, init
                 <MaterialIcons name="keyboard-arrow-down" size={24} color="#666666" style={styles.dropdownIcon} />
               </View>
             </TouchableOpacity>
+            {fieldErrors.owner_address_city && <Text style={styles.fieldErrorText}>{fieldErrors.owner_address_city[0]}</Text>}
           </View>
 
           <View style={styles.inputContainer}>
             <TouchableOpacity
-              style={[styles.dropdownContainer, !addressCity && styles.dropdownDisabled]}
-              onPress={() => addressCity && setShowBarangayModal(true)}
+              style={[styles.dropdownContainer, !addressCity && styles.dropdownDisabled, fieldErrors.owner_address_barangay && styles.dropdownError]}
+              onPress={() => { if (addressCity) { setShowBarangayModal(true); setFieldErrors(prev => { const { owner_address_barangay, ...rest } = prev; return rest; }); } }}
               disabled={!addressCity}
             >
               <View style={styles.dropdownInputWrapper}>
@@ -457,17 +499,19 @@ export default function PersonalInfoScreen({ onBackPress, onNext, formData, init
                 <MaterialIcons name="keyboard-arrow-down" size={24} color="#666666" style={styles.dropdownIcon} />
               </View>
             </TouchableOpacity>
+            {fieldErrors.owner_address_barangay && <Text style={styles.fieldErrorText}>{fieldErrors.owner_address_barangay[0]}</Text>}
           </View>
 
           <View style={styles.inputContainer}>
             <TextInput
-              style={styles.input}
+              style={[styles.input, fieldErrors.owner_address_postal && styles.inputError]}
               value={addressPostal}
-              onChangeText={setAddressPostal}
+              onChangeText={(text) => { setAddressPostal(text); setFieldErrors(prev => { const { owner_address_postal, ...rest } = prev; return rest; }); }}
               placeholder="Postal Code * (e.g., 1000)"
               placeholderTextColor="#999"
               keyboardType="numeric"
             />
+            {fieldErrors.owner_address_postal && <Text style={styles.fieldErrorText}>{fieldErrors.owner_address_postal[0]}</Text>}
           </View>
         </View>
 
@@ -482,10 +526,10 @@ export default function PersonalInfoScreen({ onBackPress, onNext, formData, init
           <TouchableOpacity
             style={[
               styles.nextButton,
-              (!isFormValid() || isLoading) && styles.nextButtonDisabled
+              isLoading && styles.nextButtonDisabled
             ]}
             onPress={handleNext}
-            disabled={!isFormValid() || isLoading}
+            disabled={isLoading}
           >
             {isLoading ? (
               <ActivityIndicator color="#FFFFFF" size="small" />
@@ -517,8 +561,10 @@ export default function PersonalInfoScreen({ onBackPress, onNext, formData, init
 
             <FlatList
               data={[...occupations].sort((a, b) => {
-                if (a.occupation_name.toLowerCase() === 'other') return 1;
-                if (b.occupation_name.toLowerCase() === 'other') return -1;
+                const aIsOther = a.occupation_name.toLowerCase() === 'other' || a.occupation_name.toLowerCase() === 'others';
+                const bIsOther = b.occupation_name.toLowerCase() === 'other' || b.occupation_name.toLowerCase() === 'others';
+                if (aIsOther) return 1;
+                if (bIsOther) return -1;
                 return a.occupation_name.localeCompare(b.occupation_name);
               })}
               keyExtractor={(item) => item.id.toString()}
@@ -784,6 +830,18 @@ const styles = StyleSheet.create({
     color: '#666666',
     marginTop: 5,
     marginLeft: 4,
+  },
+  fieldErrorText: {
+    color: '#DC3545',
+    fontSize: 12,
+    marginTop: 4,
+    marginLeft: 4,
+  },
+  inputError: {
+    borderColor: '#DC3545',
+  },
+  dropdownError: {
+    borderColor: '#DC3545',
   },
   buttonContainer: {
     flexDirection: 'row',

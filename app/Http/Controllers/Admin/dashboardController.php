@@ -790,14 +790,15 @@ class dashboardController extends authController
     {
         // Get daily earnings from platform_payments (approved only)
         $dailyEarnings = DB::table('platform_payments')
+            ->leftJoin('subscription_plans', 'platform_payments.subscriptionPlanId', '=', 'subscription_plans.id')
             ->select(
                 DB::raw('DAY(transaction_date) as day'),
-                DB::raw('SUM(CASE WHEN payment_for = "commission" THEN amount ELSE 0 END) as subscription_amount'),
-                DB::raw('SUM(CASE WHEN payment_for = "boosted_post" THEN amount ELSE 0 END) as boost_amount'),
-                DB::raw('SUM(amount) as total_amount')
+                DB::raw('SUM(CASE WHEN subscription_plans.plan_key != "boost" THEN platform_payments.amount ELSE 0 END) as subscription_amount'),
+                DB::raw('SUM(CASE WHEN subscription_plans.plan_key = "boost" THEN platform_payments.amount ELSE 0 END) as boost_amount'),
+                DB::raw('SUM(platform_payments.amount) as total_amount')
             )
-            ->where('is_approved', 1)
-            ->whereBetween('transaction_date', [$startDate, $endDate])
+            ->where('platform_payments.is_approved', 1)
+            ->whereBetween('platform_payments.transaction_date', [$startDate, $endDate])
             ->groupBy(DB::raw('DAY(transaction_date)'))
             ->orderBy(DB::raw('DAY(transaction_date)'))
             ->get();

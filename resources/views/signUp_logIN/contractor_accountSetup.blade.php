@@ -62,6 +62,13 @@
 				opacity: 1;
 			}
 		}
+
+		/* Inline field error adjustments */
+		.inline-error-msg {
+			display: block;
+			width: 100%;
+			margin-top: 6px !important;
+		}
 	</style>
 </head>
 
@@ -101,6 +108,9 @@
 				<div class="form-step active" id="step-1">
 					<div class="field-stack">
 						<div class="field-block">
+							<label class="field-label"
+								style="display:block; margin-bottom:6px; font-weight:500;">Company name <span
+									style="color: #ef4444;">*</span></label>
 							<label class="field">
 								<span class="field-icon" aria-hidden="true"><i class="fi fi-rr-briefcase"></i></span>
 								<input type="text" name="company_name" placeholder="Company name" required>
@@ -108,6 +118,9 @@
 						</div>
 
 						<div class="field-block">
+							<label class="field-label"
+								style="display:block; margin-bottom:6px; font-weight:500;">Company Phone <span
+									style="color: #ef4444;">*</span></label>
 							<label class="field">
 								<span class="field-icon" aria-hidden="true"><i class="fi fi-rr-phone-call"></i></span>
 								<input type="tel" name="company_phone" placeholder="Company Phone (e.g., 09171234567)"
@@ -118,22 +131,29 @@
 						</div>
 
 						<div class="field-block">
+							<label class="field-label"
+								style="display:block; margin-bottom:6px; font-weight:500;">Founding Date <span
+									style="color: #ef4444;">*</span></label>
 							<label class="field">
 								<span class="field-icon" aria-hidden="true"><i class="fi fi-rr-calendar"></i></span>
 								<input type="date" name="founded_date" id="founded_date" placeholder="Founding Date"
-									required>
+									max="{{ date('Y-m-d', strtotime('-1 day')) }}" required>
 							</label>
 						</div>
 
 						<div class="field-block">
 							<label class="field">
 								<span class="field-icon" aria-hidden="true"><i class="fi fi-rr-history"></i></span>
-								<input type="text" id="years_of_experience" placeholder="Years of Experience" readonly
+								<input type="text" id="years_of_experience" placeholder="Total years of experience" readonly
 									style="background-color: #f5f5f5; cursor: not-allowed;">
 							</label>
+							<small style="font-size: 12px; color: var(--muted-color); margin-top: 4px; display: block;">Automatically calculated based on founding date</small>
 						</div>
 
 						<div class="field-block">
+							<label class="field-label"
+								style="display:block; margin-bottom:6px; font-weight:500;">Contractor Type <span
+									style="color: #ef4444;">*</span></label>
 							<input type="hidden" name="contractor_type_id" id="contractorTypeValue"
 								value="{{ old('contractor_type_id') }}" required>
 							<label class="field">
@@ -188,8 +208,11 @@
 						</div>
 
 						<div class="field-block">
+							<label class="field-label"
+								style="display:block; margin-bottom:6px; font-weight:500;">Province <span
+									style="color: #ef4444;">*</span></label>
 							<input type="hidden" name="business_address_province" id="provinceValue"
-								value="{{ old('business_address_province') }}" required>
+								value="{{ old('business_address_province') }}" required />
 							<label class="field">
 								<span class="field-icon" aria-hidden="true"><i class="fi fi-rr-marker"></i></span>
 								<button type="button" class="select-button" onclick="openModal('provinceModal')">
@@ -213,8 +236,11 @@
 						</div>
 
 						<div class="field-block">
+							<label class="field-label"
+								style="display:block; margin-bottom:6px; font-weight:500;">City/Municipality <span
+									style="color: #ef4444;">*</span></label>
 							<input type="hidden" name="business_address_city" id="cityValue"
-								value="{{ old('business_address_city') }}" required>
+								value="{{ old('business_address_city') }}" required />
 							<label class="field">
 								<span class="field-icon" aria-hidden="true"><i class="fi fi-rr-marker"></i></span>
 								<button type="button" class="select-button" onclick="openModal('cityModal')"
@@ -240,8 +266,11 @@
 						</div>
 
 						<div class="field-block">
+							<label class="field-label"
+								style="display:block; margin-bottom:6px; font-weight:500;">Barangay <span
+									style="color: #ef4444;">*</span></label>
 							<input type="hidden" name="business_address_barangay" id="barangayValue"
-								value="{{ old('business_address_barangay') }}" required>
+								value="{{ old('business_address_barangay') }}" required />
 							<label class="field">
 								<span class="field-icon" aria-hidden="true"><i class="fi fi-rr-marker"></i></span>
 								<button type="button" class="select-button" onclick="openModal('barangayModal')"
@@ -267,6 +296,8 @@
 						</div>
 
 						<div class="field-block">
+							<label class="field-label" style="display:block; margin-bottom:6px; font-weight:500;">Postal
+								code <span style="color: #ef4444;">*</span></label>
 							<label class="field">
 								<span class="field-icon" aria-hidden="true"><i class="fi fi-rr-mailbox"></i></span>
 								<input type="text" name="business_address_postal" placeholder="Postal code" required>
@@ -341,10 +372,14 @@
 						</div>
 
 						<div class="field-block">
-							<label class="field">
+							<label class="field password-field">
 								<span class="field-icon" aria-hidden="true"><i class="fi fi-rr-lock"></i></span>
 								<input type="password" name="password" id="passwordInput"
 									placeholder="Password (min 8 characters)" required>
+								<button type="button" class="password-toggle" id="passwordToggle"
+									aria-label="Show/hide password">
+									<i class="fi fi-rr-eye"></i>
+								</button>
 							</label>
 							<!-- Password requirements helper -->
 							<div class="password-requirements" id="passwordRequirements"
@@ -372,14 +407,15 @@
 						</div>
 
 						<div class="field-block">
-							<label class="field">
+							<label class="field password-field">
 								<span class="field-icon" aria-hidden="true"><i class="fi fi-rr-lock"></i></span>
 								<input type="password" name="password_confirmation" id="confirmPasswordInput"
 									placeholder="Confirm Password" required>
+								<button type="button" class="password-toggle" id="confirmPasswordToggle"
+									aria-label="Show/hide password">
+									<i class="fi fi-rr-eye"></i>
+								</button>
 							</label>
-							<p id="passwordMismatchError"
-								style="font-size: 12px; color: #d32f2f; margin: 4px 0 0; display: none;">Passwords do
-								not match</p>
 						</div>
 					</div>
 				</div>
@@ -392,7 +428,7 @@
 							PICAB Certification</p>
 
 						<div class="field-block">
-							<label class="field-label">PCAB Number</label>
+							<label class="field-label">PCAB Number <span style="color: #d32f2f;">*</span></label>
 							<label class="field">
 								<span class="field-icon" aria-hidden="true"><i class="fi fi-rr-id-badge"></i></span>
 								<input type="text" name="pcab_number" placeholder="PCAB Number" required>
@@ -400,7 +436,7 @@
 						</div>
 
 						<div class="field-block">
-							<label class="field-label">PCAB Category</label>
+							<label class="field-label">PCAB Category <span style="color: #d32f2f;">*</span></label>
 							<label class="field">
 								<span class="field-icon" aria-hidden="true"><i class="fi fi-rr-layers"></i></span>
 								<input type="hidden" name="pcab_category" id="pcabCategoryValue"
@@ -414,7 +450,7 @@
 						</div>
 
 						<div class="field-block">
-							<label class="field-label">PCAB Expiration Date</label>
+							<label class="field-label">PCAB Expiration Date <span style="color: #d32f2f;">*</span></label>
 							<label class="field">
 								<span class="field-icon" aria-hidden="true"><i class="fi fi-rr-calendar"></i></span>
 								<input type="date" name="pcab_expiration" required>
@@ -426,7 +462,7 @@
 							Business Permit</p>
 
 						<div class="field-block">
-							<label class="field-label">Business Permit Number</label>
+							<label class="field-label">Business Permit Number <span style="color: #d32f2f;">*</span></label>
 							<label class="field">
 								<span class="field-icon" aria-hidden="true"><i class="fi fi-rr-file-check"></i></span>
 								<input type="text" name="business_permit_number" placeholder="Business Permit Number"
@@ -435,16 +471,20 @@
 						</div>
 
 						<div class="field-block">
-							<label class="field-label">Business Permit City</label>
+							<label class="field-label">Business Permit City <span style="color: #d32f2f;">*</span></label>
 							<label class="field">
 								<span class="field-icon" aria-hidden="true"><i class="fi fi-rr-marker"></i></span>
-								<input type="text" name="business_permit_city" placeholder="Business Permit City"
-									required>
+								<input type="hidden" name="business_permit_city" id="businessPermitCityValue"
+									value="{{ old('business_permit_city') }}" required>
+								<button type="button" class="select-button" onclick="openModal('businessPermitCityModal')">
+									<span id="businessPermitCityDisplay">{{ old('business_permit_city') ?: 'Select City/Municipality' }}</span>
+									<i class="fi fi-rr-angle-small-down"></i>
+								</button>
 							</label>
 						</div>
 
 						<div class="field-block">
-							<label class="field-label">Business Permit Expiration</label>
+							<label class="field-label">Business Permit Expiration <span style="color: #d32f2f;">*</span></label>
 							<label class="field">
 								<span class="field-icon" aria-hidden="true"><i class="fi fi-rr-calendar"></i></span>
 								<input type="date" name="business_permit_expiration" required>
@@ -456,7 +496,7 @@
 							Business Registration</p>
 
 						<div class="field-block">
-							<label class="field-label">TIN/Business Registration Number</label>
+							<label class="field-label">TIN/Business Registration Number <span style="color: #d32f2f;">*</span></label>
 							<label class="field">
 								<span class="field-icon" aria-hidden="true"><i class="fi fi-rr-hash"></i></span>
 								<input type="text" name="tin_registration_number"
@@ -465,7 +505,7 @@
 						</div>
 
 						<div class="field-block">
-							<label class="field-label">DTI / SEC Registration Photo</label>
+							<label class="field-label">DTI / SEC Registration Photo <span style="color: #d32f2f;">*</span></label>
 							<div class="upload-area upload-accent" id="uploadAreaDti" data-input="dtiSecInput">
 								<div class="upload-icon"><i class="fi fi-rr-cloud-upload"></i></div>
 								<div class="upload-text">Upload image or file</div>
@@ -656,6 +696,25 @@
 					<input type="text" id="barangaySearch" placeholder="Search barangay..." />
 				</div>
 				<div class="modal-list" id="barangayList"></div>
+			</div>
+		</div>
+	</div>
+
+	<!-- Business Permit City Modal -->
+	<div id="businessPermitCityModal" class="modal-overlay" style="display: none;">
+		<div class="modal-container">
+			<div class="modal-header">
+				<h3 class="modal-title">Select Business Permit City</h3>
+				<button type="button" class="modal-close" onclick="closeModal('businessPermitCityModal')">
+					<i class="fi fi-rr-cross"></i>
+				</button>
+			</div>
+			<div class="modal-body">
+				<div class="modal-search">
+					<i class="fi fi-rr-search"></i>
+					<input type="text" id="businessPermitCitySearch" placeholder="Search city..." />
+				</div>
+				<div class="modal-list" id="businessPermitCityList"></div>
 			</div>
 		</div>
 	</div>

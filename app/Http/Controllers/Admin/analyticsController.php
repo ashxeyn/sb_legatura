@@ -74,24 +74,28 @@ class analyticsController extends authController
 
         // Query current year
         $curQuery = DB::table('platform_payments')
-            ->select(DB::raw('MONTH(transaction_date) as m'), DB::raw('IFNULL(SUM(amount),0) as sum'))
-            ->where('payment_for', 'commission')
-            ->where('is_approved', 1)
-            ->whereYear('transaction_date', $currentYear);
+            ->leftJoin('subscription_plans', 'platform_payments.subscriptionPlanId', '=', 'subscription_plans.id')
+            ->select(DB::raw('MONTH(platform_payments.transaction_date) as m'), DB::raw('IFNULL(SUM(platform_payments.amount),0) as sum'))
+            ->where('subscription_plans.for_contractor', 1)
+            ->where('subscription_plans.plan_key', '!=', 'boost')
+            ->where('platform_payments.is_approved', 1)
+            ->whereYear('platform_payments.transaction_date', $currentYear);
         $this->applyTierCondition($curQuery, $tier);
-        $curRows = $curQuery->groupBy(DB::raw('MONTH(transaction_date)'))->orderBy(DB::raw('MONTH(transaction_date)'))->get();
+        $curRows = $curQuery->groupBy(DB::raw('MONTH(platform_payments.transaction_date)'))->orderBy(DB::raw('MONTH(platform_payments.transaction_date)'))->get();
         foreach ($curRows as $r) {
             $currentYearData[$r->m - 1] = (float)$r->sum;
         }
 
         // Query previous year baseline
         $prevQuery = DB::table('platform_payments')
-            ->select(DB::raw('MONTH(transaction_date) as m'), DB::raw('IFNULL(SUM(amount),0) as sum'))
-            ->where('payment_for', 'commission')
-            ->where('is_approved', 1)
-            ->whereYear('transaction_date', $previousYear);
+            ->leftJoin('subscription_plans', 'platform_payments.subscriptionPlanId', '=', 'subscription_plans.id')
+            ->select(DB::raw('MONTH(platform_payments.transaction_date) as m'), DB::raw('IFNULL(SUM(platform_payments.amount),0) as sum'))
+            ->where('subscription_plans.for_contractor', 1)
+            ->where('subscription_plans.plan_key', '!=', 'boost')
+            ->where('platform_payments.is_approved', 1)
+            ->whereYear('platform_payments.transaction_date', $previousYear);
         $this->applyTierCondition($prevQuery, $tier);
-        $prevRows = $prevQuery->groupBy(DB::raw('MONTH(transaction_date)'))->orderBy(DB::raw('MONTH(transaction_date)'))->get();
+        $prevRows = $prevQuery->groupBy(DB::raw('MONTH(platform_payments.transaction_date)'))->orderBy(DB::raw('MONTH(platform_payments.transaction_date)'))->get();
         foreach ($prevRows as $r) {
             $previousYearData[$r->m - 1] = (float)$r->sum;
         }
@@ -129,26 +133,26 @@ class analyticsController extends authController
      */
     private function getSubscriptionTiers()
     {
-        // Assuming subscription tiers are based on amount ranges in platform_payments
-        // Gold Tier: amount >= 2000
+        // Count subscriptions by tier based on plan_key
+        // Gold Tier
         $goldTier = DB::table('platform_payments')
-            ->where('payment_for', 'commission')
-            ->where('is_approved', 1)
-            ->where('amount', '>=', 2000)
+            ->leftJoin('subscription_plans', 'platform_payments.subscriptionPlanId', '=', 'subscription_plans.id')
+            ->where('subscription_plans.plan_key', 'gold')
+            ->where('platform_payments.is_approved', 1)
             ->count();
 
-        // Silver Tier: amount between 1000 and 1999
+        // Silver Tier
         $silverTier = DB::table('platform_payments')
-            ->where('payment_for', 'commission')
-            ->where('is_approved', 1)
-            ->whereBetween('amount', [1000, 1999])
+            ->leftJoin('subscription_plans', 'platform_payments.subscriptionPlanId', '=', 'subscription_plans.id')
+            ->where('subscription_plans.plan_key', 'silver')
+            ->where('platform_payments.is_approved', 1)
             ->count();
 
-        // Bronze Tier: amount < 1000
+        // Bronze Tier
         $bronzeTier = DB::table('platform_payments')
-            ->where('payment_for', 'commission')
-            ->where('is_approved', 1)
-            ->where('amount', '<', 1000)
+            ->leftJoin('subscription_plans', 'platform_payments.subscriptionPlanId', '=', 'subscription_plans.id')
+            ->where('subscription_plans.plan_key', 'bronze')
+            ->where('platform_payments.is_approved', 1)
             ->count();
 
         return [
@@ -185,38 +189,52 @@ class analyticsController extends authController
      */
     private function getSubscriptionMetrics()
     {
-        // Total approved subscriptions (commission payments)
+        // Total approved subscriptions (contractor subscriptions, not boosts)
         $totalSubscriptions = DB::table('platform_payments')
-            ->where('payment_for', 'commission')
-            ->where('is_approved', 1)
+            ->leftJoin('subscription_plans', 'platform_payments.subscriptionPlanId', '=', 'subscription_plans.id')
+            ->where('subscription_plans.for_contractor', 1)
+            ->where('subscription_plans.plan_key', '!=', 'boost')
+            ->where('platform_payments.is_approved', 1)
             ->count();
 
         // Total revenue from subscriptions
         $totalRevenue = DB::table('platform_payments')
-            ->where('payment_for', 'commission')
-            ->where('is_approved', 1)
-            ->sum('amount');
+            ->leftJoin('subscription_plans', 'platform_payments.subscriptionPlanId', '=', 'subscription_plans.id')
+            ->where('subscription_plans.for_contractor', 1)
+            ->where('subscription_plans.plan_key', '!=', 'boost')
+            ->where('platform_payments.is_approved', 1)
+            ->sum('platform_payments.amount');
 
-        // For subscription duration, let's assume each subscription lasts 30 days from transaction_date
         // Expiring soon: subscriptions expiring in next 7 days
         $expiringSoon = DB::table('platform_payments')
-            ->where('payment_for', 'commission')
-            ->where('is_approved', 1)
-            ->whereRaw('DATE_ADD(transaction_date, INTERVAL 30 DAY) BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)')
+            ->leftJoin('subscription_plans', 'platform_payments.subscriptionPlanId', '=', 'subscription_plans.id')
+            ->where('subscription_plans.for_contractor', 1)
+            ->where('subscription_plans.plan_key', '!=', 'boost')
+            ->where('platform_payments.is_approved', 1)
+            ->whereNotNull('platform_payments.expiration_date')
+            ->whereRaw('platform_payments.expiration_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)')
             ->count();
 
-        // Expired: subscriptions past 30 days
+        // Expired: subscriptions past expiration date
         $expired = DB::table('platform_payments')
-            ->where('payment_for', 'commission')
-            ->where('is_approved', 1)
-            ->whereRaw('DATE_ADD(transaction_date, INTERVAL 30 DAY) < CURDATE()')
+            ->leftJoin('subscription_plans', 'platform_payments.subscriptionPlanId', '=', 'subscription_plans.id')
+            ->where('subscription_plans.for_contractor', 1)
+            ->where('subscription_plans.plan_key', '!=', 'boost')
+            ->where('platform_payments.is_approved', 1)
+            ->whereNotNull('platform_payments.expiration_date')
+            ->whereRaw('platform_payments.expiration_date < CURDATE()')
             ->count();
 
-        // Active subscriptions (within 30 days)
+        // Active subscriptions (not yet expired)
         $active = DB::table('platform_payments')
-            ->where('payment_for', 'commission')
-            ->where('is_approved', 1)
-            ->whereRaw('DATE_ADD(transaction_date, INTERVAL 30 DAY) >= CURDATE()')
+            ->leftJoin('subscription_plans', 'platform_payments.subscriptionPlanId', '=', 'subscription_plans.id')
+            ->where('subscription_plans.for_contractor', 1)
+            ->where('subscription_plans.plan_key', '!=', 'boost')
+            ->where('platform_payments.is_approved', 1)
+            ->where(function ($q) {
+                $q->whereNull('platform_payments.expiration_date')
+                  ->orWhereRaw('platform_payments.expiration_date >= CURDATE()');
+            })
             ->count();
 
         return [
@@ -471,9 +489,210 @@ class analyticsController extends authController
     /**
      * Show the user activity analytics page
      */
-    public function userActivityAnalytics()
+     public function userActivityAnalytics()
     {
-        return view('admin.home.userActivity_Analytics');
+        $userMetrics    = $this->getUserMetrics();
+        $userGrowth     = $this->getUserGrowthData();
+        $recentActivity = $this->getRecentUserActivity();
+
+        return view('admin.home.userActivity_Analytics', compact(
+            'userMetrics',
+            'userGrowth',
+            'recentActivity'
+        ));
+    }
+
+    private function getUserMetrics(): array
+    {
+        $totalUsers = DB::table('users')->count();
+
+        // Property owners registered in the platform
+        $propertyOwners = DB::table('property_owners')->count();
+
+        // Unique contractor companies
+        $contractors = DB::table('contractors')->count();
+
+        // Active (in_progress) projects
+        $activeProjects = DB::table('projects')
+            ->where('project_status', 'in_progress')
+            ->count();
+
+        // New users this month
+        $newThisMonth = DB::table('users')
+            ->whereYear('created_at', now()->year)
+            ->whereMonth('created_at', now()->month)
+            ->count();
+
+        // New users last month (for % change)
+        $newLastMonth = DB::table('users')
+            ->whereYear('created_at', now()->subMonth()->year)
+            ->whereMonth('created_at', now()->subMonth()->month)
+            ->count();
+
+        // Active users: property_owners OR contractor_users with is_active = 1
+        $activeUsers = DB::table('users')
+            ->where(function ($q) {
+                $q->whereExists(function ($sub) {
+                    $sub->select(DB::raw(1))
+                        ->from('property_owners')
+                        ->whereColumn('property_owners.user_id', 'users.user_id')
+                        ->where('property_owners.is_active', 1);
+                })->orWhereExists(function ($sub) {
+                    $sub->select(DB::raw(1))
+                        ->from('contractor_users')
+                        ->whereColumn('contractor_users.user_id', 'users.user_id')
+                        ->where('contractor_users.is_active', 1)
+                        ->where('contractor_users.is_deleted', 0);
+                });
+            })
+            ->count();
+
+        // Suspended users
+        $suspendedUsers = DB::table('users')
+            ->where(function ($q) {
+                $q->whereExists(function ($sub) {
+                    $sub->select(DB::raw(1))
+                        ->from('property_owners')
+                        ->whereColumn('property_owners.user_id', 'users.user_id')
+                        ->where('property_owners.is_active', 0);
+                })->orWhereExists(function ($sub) {
+                    $sub->select(DB::raw(1))
+                        ->from('contractor_users')
+                        ->whereColumn('contractor_users.user_id', 'users.user_id')
+                        ->where('contractor_users.is_active', 0)
+                        ->where('contractor_users.is_deleted', 0);
+                });
+            })
+            ->count();
+
+        // Month-over-month % change for total users
+        $prevTotal = DB::table('users')
+            ->where('created_at', '<', now()->startOfMonth())
+            ->count();
+        $momChange = $prevTotal > 0
+            ? round((($totalUsers - $prevTotal) / $prevTotal) * 100, 1)
+            : 0;
+
+        return [
+            'total_users'     => $totalUsers,
+            'property_owners' => $propertyOwners,
+            'contractors'     => $contractors,
+            'active_projects' => $activeProjects,
+            'new_this_month'  => $newThisMonth,
+            'new_last_month'  => $newLastMonth,
+            'active_users'    => $activeUsers,
+            'suspended_users' => $suspendedUsers,
+            'mom_change'      => $momChange,
+        ];
+    }
+
+    /**
+     * Monthly new-user registrations for the last 12 months,
+     * split by user_type (property_owner vs contractor).
+     */
+    private function getUserGrowthData(): array
+    {
+        $months        = [];
+        $ownersData    = [];
+        $contractorsData = [];
+        $totalData     = [];
+
+        for ($i = 11; $i >= 0; $i--) {
+            $date  = now()->subMonths($i)->startOfMonth();
+            $label = $date->format('M Y');
+            $months[] = $label;
+
+            $owners = DB::table('users')
+                ->whereIn('user_type', ['property_owner', 'both'])
+                ->whereYear('created_at', $date->year)
+                ->whereMonth('created_at', $date->month)
+                ->count();
+
+            $contrs = DB::table('users')
+                ->whereIn('user_type', ['contractor', 'both'])
+                ->whereYear('created_at', $date->year)
+                ->whereMonth('created_at', $date->month)
+                ->count();
+
+            $ownersData[]      = $owners;
+            $contractorsData[] = $contrs;
+            $totalData[]       = $owners + $contrs;
+        }
+
+        // User type distribution for doughnut chart
+        $ownerCount      = DB::table('users')->whereIn('user_type', ['property_owner'])->count();
+        $contractorCount = DB::table('users')->whereIn('user_type', ['contractor'])->count();
+        $bothCount       = DB::table('users')->where('user_type', 'both')->count();
+        $staffCount      = DB::table('users')->where('user_type', 'staff')->count();
+
+        return [
+            'months'       => $months,
+            'owners'       => $ownersData,
+            'contractors'  => $contractorsData,
+            'totals'       => $totalData,
+            'distribution' => [
+                'Property Owner' => $ownerCount,
+                'Contractor'     => $contractorCount,
+                'Both'           => $bothCount,
+                'Staff'          => $staffCount,
+            ],
+        ];
+    }
+
+    /**
+     * Latest 10 user-related activities stitched from bids,
+     * project_relationships, and disputes tables.
+     */
+     private function getRecentUserActivity(): array
+    {
+        // Recent bids — bids.contractor_id maps to contractors.contractor_id,
+        // then contractors.user_id links to users and contractor_users.
+        $recentBids = DB::table('bids')
+            ->join('contractors', 'contractors.contractor_id', '=', 'bids.contractor_id')
+            ->join('users', 'users.user_id', '=', 'contractors.user_id')
+            ->join('contractor_users as cu', function ($j) {
+                $j->on('cu.contractor_id', '=', 'bids.contractor_id')
+                  ->where('cu.is_deleted', 0);
+            })
+            ->select(
+                'users.user_id',
+                DB::raw("CONCAT(cu.authorized_rep_fname, ' ', cu.authorized_rep_lname) as full_name"),
+                'users.email',
+                'users.user_type',
+                DB::raw("'Submitted a bid' as action"),
+                'bids.submitted_at as activity_time',
+                'users.profile_pic',
+                'cu.is_active'
+            )
+            ->orderByDesc('bids.submitted_at')
+            ->limit(5)
+            ->get();
+
+        // Recent project posts (property owners)
+        $recentProjects = DB::table('project_relationships')
+            ->join('property_owners', 'property_owners.user_id', '=', 'project_relationships.owner_id')
+            ->join('users', 'users.user_id', '=', 'project_relationships.owner_id')
+            ->select(
+                'users.user_id',
+                DB::raw("CONCAT(property_owners.first_name, ' ', property_owners.last_name) as full_name"),
+                'users.email',
+                'users.user_type',
+                DB::raw("'Posted a project' as action"),
+                'project_relationships.created_at as activity_time',
+                'users.profile_pic',
+                'property_owners.is_active'
+            )
+            ->orderByDesc('project_relationships.created_at')
+            ->limit(5)
+            ->get();
+
+        // Merge, sort by most recent, take top 10
+        $all = collect($recentBids)->concat($recentProjects)
+            ->sortByDesc('activity_time')
+            ->take(10)
+            ->values();
+
+        return $all->toArray();
     }
 
     /**
@@ -518,46 +737,22 @@ class analyticsController extends authController
      */
     public function getUserActivityAnalyticsApi()
     {
-        $userActivity = [
-            'total_users' => DB::table('users')->count(),
-            'new_users_this_month' => DB::table('users')
-                ->whereBetween('created_at', [now()->startOfMonth(), now()->endOfMonth()])
-                ->count(),
-            'active_users' => DB::table('users')
-                ->where(function ($query) {
-                    $query->whereExists(function ($sub) {
-                        $sub->select(DB::raw(1))
-                            ->from('contractor_users')
-                            ->whereColumn('contractor_users.user_id', 'users.user_id')
-                            ->where('contractor_users.is_active', 1);
-                    })
-                    ->orWhereExists(function ($sub) {
-                        $sub->select(DB::raw(1))
-                            ->from('property_owners')
-                            ->whereColumn('property_owners.user_id', 'users.user_id')
-                            ->where('property_owners.is_active', 1);
-                    });
-                })
-                ->count(),
-            'suspended_users' => DB::table('users')
-                ->where(function ($query) {
-                    $query->whereExists(function ($sub) {
-                        $sub->select(DB::raw(1))
-                            ->from('contractor_users')
-                            ->whereColumn('contractor_users.user_id', 'users.user_id')
-                            ->where('contractor_users.is_active', 0);
-                    })
-                    ->orWhereExists(function ($sub) {
-                        $sub->select(DB::raw(1))
-                            ->from('property_owners')
-                            ->whereColumn('property_owners.user_id', 'users.user_id')
-                            ->where('property_owners.is_active', 0);
-                    });
-                })
-                ->count(),
-        ];
+        $metrics = $this->getUserMetrics();
+        $growth  = $this->getUserGrowthData();
 
-        return response()->json($userActivity);
+        return response()->json([
+            'metrics'      => $metrics,
+            'growth'       => $growth,
+        ]);
+    }
+
+    /**
+     * New AJAX endpoint: recent activity feed (for live-refresh).
+     * Register in routes: Route::get('admin/analytics/user-activity/feed', ...)
+     */
+    public function getUserActivityFeed()
+    {
+        return response()->json($this->getRecentUserActivity());
     }
 
     /**

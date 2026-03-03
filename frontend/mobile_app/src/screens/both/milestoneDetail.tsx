@@ -1260,6 +1260,35 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
         </ScrollView>
 
         {renderDueDateModal()}
+
+        {/* Payment Receipt Form Modal (full detail view) */}
+        <Modal
+          visible={showPaymentForm}
+          animationType="slide"
+          presentationStyle="fullScreen"
+          onRequestClose={() => setShowPaymentForm(false)}
+        >
+          <PaymentReceiptForm
+            milestoneItemId={milestoneItem.item_id}
+            projectId={projectId}
+            milestoneTitle={`Milestone ${milestoneNumber}: ${milestoneItem.milestone_item_title}`}
+            expectedAmount={expectedAmount}
+            originalCost={originalCost}
+            adjustedCost={adjustedCost}
+            carryForwardAmount={carryForwardAmount}
+            totalPaid={totalPaid}
+            totalSubmitted={totalSubmitted}
+            remainingBalance={remainingBalance}
+            overAmount={overAmount}
+            onClose={() => setShowPaymentForm(false)}
+            onSuccess={() => {
+              setShowPaymentForm(false);
+              Alert.alert('Success', 'Payment receipt submitted successfully!');
+              // Refresh payments list with updated summary
+              refreshPayments();
+            }}
+          />
+        </Modal>
       </View>
     );
   }

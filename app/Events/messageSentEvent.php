@@ -68,8 +68,11 @@ class messageSentEvent implements ShouldBroadcastNow
             ? $this->conversation->receiver_id
             : $this->conversation->sender_id;
 
-        $sender = messageClass::getUserDetails($senderId);
-        $receiver = messageClass::getUserDetails($receiverId);
+        // Get context for user lookup (admin conversation vs user conversation)
+        $isAdminConv = (bool) ($this->conversation->is_admin_conversation ?? false);
+
+        $sender = messageClass::getUserDetails($senderId, $isAdminConv);
+        $receiver = messageClass::getUserDetails($receiverId, $isAdminConv);
 
         return [
             'message_id' => $this->message->message_id,

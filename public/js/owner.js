@@ -401,30 +401,186 @@ function viewContractorProfile(contractorId) {
 // PROJECT POST FILE UPLOAD HANDLING
 // ============================================================================
 
+// Accumulated preview data per container: { containerId: [{ dataUrl, file }] }
+const _previewData = {};
+
+// Lightbox state
+let _lbImages = [];
+let _lbIndex = 0;
+
 function handleFileSelection(input, containerId) {
-    if (input.files && input.files.length > 0) {
-        const file = input.files[0];
-        const container = document.getElementById(containerId);
-        const fileGroup = input.closest('.file-input-group');
-        const removeBtn = fileGroup.querySelector('.remove-file-btn');
+    if (!input.files || input.files.length === 0) return;
 
-        input.classList.add('has-file');
+    const container = document.getElementById(containerId);
+    const fileGroup = input.closest('.file-input-group');
+    const removeBtn = fileGroup.querySelector('.remove-file-btn');
 
-        let fileNameDisplay = fileGroup.querySelector('.file-name-display');
-        if (!fileNameDisplay) {
-            fileNameDisplay = document.createElement('div');
-            fileNameDisplay.className = 'file-name-display visible';
-            fileGroup.insertBefore(fileNameDisplay, removeBtn);
+    input.classList.add('has-file');
+
+    // Show basic filename text
+    let fileNameDisplay = fileGroup.querySelector('.file-name-display');
+    if (!fileNameDisplay) {
+        fileNameDisplay = document.createElement('div');
+        fileNameDisplay.className = 'file-name-display visible';
+        fileGroup.insertBefore(fileNameDisplay, removeBtn);
+    }
+    if (input.files.length === 1) {
+        fileNameDisplay.textContent = '📄 ' + input.files[0].name;
+    } else {
+        fileNameDisplay.textContent = '📄 ' + input.files.length + ' files selected';
+    }
+    fileNameDisplay.classList.add('visible');
+
+    if (removeBtn) removeBtn.style.display = 'inline-block';
+
+    if (!input.hasAttribute('required')) {
+        const addMoreBtn = container.parentElement.querySelector('.add-more-files-btn');
+        if (addMoreBtn) addMoreBtn.classList.add('visible');
+    }
+
+    // Build image preview grid
+    buildPreviewGrid(containerId);
+}
+
+/**
+ * Collect all images from all file inputs in this container, read them, and render a FB-style grid.
+ */
+function buildPreviewGrid(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    // Derive the preview grid ID from the container ID
+    const gridId = containerId.replace('-upload-container', '-preview-grid');
+    const gridEl = document.getElementById(gridId);
+    if (!gridEl) return;
+
+    // Collect all image files from all inputs in this container
+    const imageFiles = [];
+    const allInputs = container.querySelectorAll('.evidence-file-input');
+    allInputs.forEach(inp => {
+        if (inp.files) {
+            for (let i = 0; i < inp.files.length; i++) {
+                const f = inp.files[i];
+                if (f.type.startsWith('image/')) {
+                    imageFiles.push(f);
+                }
+            }
         }
-        fileNameDisplay.textContent = '📄 ' + file.name;
-        fileNameDisplay.classList.add('visible');
+    });
 
-        if (removeBtn) removeBtn.style.display = 'inline-block';
+    if (imageFiles.length === 0) {
+        gridEl.innerHTML = '';
+        gridEl.className = 'image-preview-grid';
+        return;
+    }
 
-        if (!input.hasAttribute('required')) {
-            const addMoreBtn = container.parentElement.querySelector('.add-more-files-btn');
-            if (addMoreBtn) addMoreBtn.classList.add('visible');
+    // Read all files as data URLs then render grid
+    const dataUrls = [];
+    let loaded = 0;
+    imageFiles.forEach((file, idx) => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            dataUrls[idx] = e.target.result;
+            loaded++;
+            if (loaded === imageFiles.length) {
+                renderPreviewGrid(gridEl, dataUrls, containerId);
+            }
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+function renderPreviewGrid(gridEl, dataUrls, containerId) {
+    // Store for lightbox
+    _previewData[containerId] = dataUrls;
+
+    const count = dataUrls.length;
+    let gridClass = 'image-preview-grid';
+    if (count === 1) gridClass += ' grid-1';
+    else if (count === 2) gridClass += ' grid-2';
+    else if (count === 3) gridClass += ' grid-3';
+    else if (count >= 4) gridClass += ' grid-4';
+
+    gridEl.className = gridClass;
+    gridEl.innerHTML = '';
+
+    const showCount = Math.min(count, 4);
+    for (let i = 0; i < showCount; i++) {
+        const tile = document.createElement('div');
+        tile.className = 'preview-tile';
+        tile.onclick = (function(idx) {
+            return function() { openLightbox(containerId, idx); };
+        })(i);
+
+        const img = document.createElement('img');
+        img.src = dataUrls[i];
+        img.alt = 'Preview ' + (i + 1);
+        tile.appendChild(img);
+
+        // +N overlay on 4th tile
+        if (i === 3 && count > 4) {
+            const overlay = document.createElement('div');
+            overlay.className = 'more-overlay';
+            overlay.textContent = '+' + (count - 4);
+            tile.appendChild(overlay);
         }
+
+        gridEl.appendChild(tile);
+    }
+}
+
+// ---- Lightbox ----
+function openLightbox(containerId, index) {
+    _lbImages = _previewData[containerId] || [];
+    _lbIndex = index;
+    if (_lbImages.length === 0) return;
+
+    const overlay = document.getElementById('cpLightbox');
+    const img = document.getElementById('cpLbImg');
+    if (!overlay || !img) return;
+
+    img.src = _lbImages[_lbIndex];
+    renderLbDots();
+    overlay.classList.add('active');
+}
+
+function closeLightbox() {
+    const overlay = document.getElementById('cpLightbox');
+    if (overlay) overlay.classList.remove('active');
+}
+
+function navLightbox(dir) {
+    if (_lbImages.length === 0) return;
+    _lbIndex = (_lbIndex + dir + _lbImages.length) % _lbImages.length;
+    document.getElementById('cpLbImg').src = _lbImages[_lbIndex];
+    renderLbDots();
+}
+
+function goToLbSlide(i) {
+    _lbIndex = i;
+    document.getElementById('cpLbImg').src = _lbImages[_lbIndex];
+    renderLbDots();
+}
+
+function renderLbDots() {
+    const dotsEl = document.getElementById('cpLbDots');
+    if (!dotsEl) return;
+    dotsEl.innerHTML = '';
+    if (_lbImages.length <= 1) return;
+
+    // Use dots for <=12 images, text counter otherwise
+    if (_lbImages.length <= 12) {
+        _lbImages.forEach((_, i) => {
+            const dot = document.createElement('button');
+            dot.className = 'lb-dot' + (i === _lbIndex ? ' active' : '');
+            dot.onclick = function() { goToLbSlide(i); };
+            dotsEl.appendChild(dot);
+        });
+    } else {
+        const span = document.createElement('span');
+        span.style.cssText = 'color:#fff;font-size:14px;font-weight:600';
+        span.textContent = (_lbIndex + 1) + ' / ' + _lbImages.length;
+        dotsEl.appendChild(span);
     }
 }
 
@@ -451,6 +607,9 @@ function removeFileInput(btn, containerId) {
         const addMoreBtn = container.parentElement.querySelector('.add-more-files-btn');
         if (addMoreBtn) addMoreBtn.classList.remove('visible');
     }
+
+    // Rebuild preview grid after removal
+    buildPreviewGrid(containerId);
 }
 
 function addMoreFiles(containerId, fieldName) {
@@ -464,7 +623,6 @@ function addMoreFiles(containerId, fieldName) {
 
     const existingInput = container.querySelector('.evidence-file-input');
     const acceptAttr = existingInput ? existingInput.getAttribute('accept') : '';
-    const isMultiple = fieldName === 'others';
 
     const newFileGroup = document.createElement('div');
     newFileGroup.className = 'file-input-group';
@@ -473,11 +631,8 @@ function addMoreFiles(containerId, fieldName) {
     newInput.type = 'file';
     newInput.className = 'evidence-file-input';
     newInput.accept = acceptAttr;
-    if (isMultiple) {
-        newInput.name = 'others[]';
-    } else {
-        newInput.name = fieldName;
-    }
+    newInput.multiple = true;
+    newInput.name = fieldName + '[]';
     newInput.addEventListener('change', function() {
         handleFileSelection(this, containerId);
     });
@@ -529,6 +684,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 updateRemoveButtons(containerId);
             });
         }
+    });
+
+    // Lightbox keyboard navigation
+    document.addEventListener('keydown', function(e) {
+        const overlay = document.getElementById('cpLightbox');
+        if (!overlay || !overlay.classList.contains('active')) return;
+        if (e.key === 'Escape') closeLightbox();
+        else if (e.key === 'ArrowLeft') navLightbox(-1);
+        else if (e.key === 'ArrowRight') navLightbox(1);
     });
 
     // Form validation for project post

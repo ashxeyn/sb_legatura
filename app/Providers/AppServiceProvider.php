@@ -27,8 +27,9 @@ class AppServiceProvider extends ServiceProvider
 
         // DO NOT register default Broadcast::routes() - using custom implementation
         // Share subscription modal data with the subscription partial so it can render server-side
+        // Also share with contractor navbar to control AI Analytics visibility
         try {
-            View::composer(['partials.subscription_Modal', 'partials.boost_Modal'], function ($view) {
+            View::composer(['partials.subscription_Modal', 'partials.boost_Modal', 'partials.navbar_Contractor'], function ($view) {
                 $data = platformPaymentController::shareModalData();
                 $view->with($data);
             });

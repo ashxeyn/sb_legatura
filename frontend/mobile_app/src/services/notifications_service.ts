@@ -18,6 +18,7 @@ export interface Notification {
   reference_id: number | null;
   action_url: string | null;
   redirect_url: string | null;
+  notification_role: 'contractor' | 'owner' | 'both';
   created_at: string;
 }
 
@@ -30,6 +31,7 @@ export interface PaginatedNotifications {
     has_more: boolean;
   };
   unread_count: number;
+  active_role: 'contractor' | 'owner' | null;
 }
 
 export const notifications_service = {
