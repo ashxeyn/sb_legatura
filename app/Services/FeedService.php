@@ -51,6 +51,7 @@ class FeedService
                 'contractor_type_name' => $c->type_name ?? 'Contractor',
                 'city'                 => $c->business_permit_city ?? '',
                 'province'             => '',
+                'business_address'     => $c->business_address ?? '',
                 'average_rating'       => 4.5,
                 'total_reviews'        => 0,
                 'completed_projects'   => $c->completed_projects ?? 0,

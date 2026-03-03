@@ -1792,7 +1792,7 @@ class projectClass
                 ->where('dispute_id', $data['dispute_id'])
                 ->where('project_id', $id)
                 ->where('dispute_type', 'Halt')
-                ->where('dispute_status', 'open')
+                ->whereIn('dispute_status', ['open', 'under_review'])
                 ->first();
 
             if (!$dispute) {

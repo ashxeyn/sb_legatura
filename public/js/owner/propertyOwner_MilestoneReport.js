@@ -517,14 +517,6 @@ class PropertyOwnerMilestoneReport {
                         </div>
                     </div>
                 </div>`;
-        } else if (!isHalted && allDone) {
-            html += `
-                <div class="complete-project-section">
-                    <button class="complete-project-button" id="completeProjectBtn">
-                        <i class="fi fi-rr-check-circle"></i>
-                        <span>Complete Project</span>
-                    </button>
-                </div>`;
         }
 
         // ── Pending Update Banner (owner) ──
@@ -713,6 +705,17 @@ class PropertyOwnerMilestoneReport {
                     View Payment History
                 </button>
             </div>`;
+
+        // ── Complete Project Button ──
+        if (!isHalted && allDone && !this.isProjectCompleted) {
+            html += `
+                <div class="complete-project-section">
+                    <button class="complete-project-button" id="completeProjectBtn">
+                        <i class="fi fi-rr-check-circle"></i>
+                        <span>Complete Project</span>
+                    </button>
+                </div>`;
+        }
 
         // ── Action Buttons (Approve / Request Changes) ──
         if (!isHalted && submittedMilestone) {

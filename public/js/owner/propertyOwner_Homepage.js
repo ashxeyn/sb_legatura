@@ -92,6 +92,7 @@ class PropertyOwnerHomepage {
                 // map location fields from server payload (FeedService/jsContractors)
                 city: c.city ?? c.business_permit_city ?? '',
                 province: c.province ?? '',
+                business_address: c.business_address ?? '',
                 rating: c.average_rating ?? c.rating ?? 5.0,
                 reviews_count: c.total_reviews ?? c.reviews_count ?? 0,
                 completed_projects: c.completed_projects ?? c.projects_completed ?? 0,
@@ -475,6 +476,11 @@ class PropertyOwnerHomepage {
     }
 
     formatLocation(contractor) {
+        // Prefer the full business_address (matches mobile app behaviour)
+        if (contractor.business_address && contractor.business_address.trim()) {
+            return contractor.business_address.trim();
+        }
+
         const parts = [];
 
         if (contractor.street_address || contractor.address) {

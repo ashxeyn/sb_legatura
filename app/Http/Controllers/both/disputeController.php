@@ -62,8 +62,26 @@ class disputeController extends Controller
             \Log::info('checkAuthentication: Using session user', ['user_id' => $user->user_id ?? null]);
         }
 
-        if (!$user) {
-            \Log::warning('checkAuthentication: No user found, returning 401');
+        // Validate user has a usable user_id (session can hold a partial/corrupt object)
+        $hasValidId = false;
+        if ($user) {
+            if (is_object($user) && !empty($user->user_id)) {
+                $hasValidId = true;
+            } elseif (is_array($user) && !empty($user['user_id'])) {
+                $hasValidId = true;
+                // Normalise array to object so downstream code can use ->user_id
+                $user = (object) $user;
+                Session::put('user', $user);
+            }
+        }
+
+        if (!$user || !$hasValidId) {
+            \Log::warning('checkAuthentication: No valid user / user_id found, returning 401', [
+                'user_type' => gettype($user),
+                'user_keys' => $user ? array_keys((array) $user) : null
+            ]);
+            // Clear the bad session value so the next attempt starts fresh
+            Session::forget('user');
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => false,
@@ -151,15 +169,27 @@ class disputeController extends Controller
             }
 
             $user = Session::get('user');
-            if (!$user) {
-                \Log::error('fileDispute: No user found after checkAuthentication');
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Authentication failed'
-                ], 401);
+
+            // Robust user_id extraction: handle both object and array session shapes
+            $userId = null;
+            if ($user) {
+                if (is_object($user) && isset($user->user_id)) {
+                    $userId = $user->user_id;
+                } elseif (is_array($user) && isset($user['user_id'])) {
+                    $userId = $user['user_id'];
+                }
             }
 
-            $userId = $user->user_id;
+            if (!$userId) {
+                \Log::error('fileDispute: No valid user / user_id after checkAuthentication', [
+                    'user_type' => gettype($user),
+                    'user_keys' => is_object($user) ? array_keys((array)$user) : (is_array($user) ? array_keys($user) : null)
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Authentication failed. Please log in again.'
+                ], 401);
+            }
             \Log::info('fileDispute: User authenticated', ['user_id' => $userId]);
             \Log::info('fileDispute: Request validated', [
                 'project_id' => $validated['project_id'] ?? null,
@@ -169,10 +199,12 @@ class disputeController extends Controller
                 'has_files' => $request->hasFile('evidence_files') || $request->hasFile('evidence_file')
             ]);
 
-            // Check for existing open dispute for this milestone item
+            // Check for existing open dispute of the SAME TYPE for this milestone item
+            // (different types are allowed simultaneously, e.g. a Quality dispute should not block a Halt dispute)
             $existingDispute = DB::table('disputes')
                 ->where('milestone_item_id', $validated['milestone_item_id'])
                 ->where('raised_by_user_id', $userId)
+                ->where('dispute_type', $validated['dispute_type'])
                 ->whereIn('dispute_status', ['open', 'under_review'])
                 ->first();
 
@@ -180,8 +212,25 @@ class disputeController extends Controller
                 \Log::warning('fileDispute: Existing open dispute found', ['dispute_id' => $existingDispute->dispute_id ?? null]);
                 return response()->json([
                     'success' => false,
-                    'message' => 'You already have an open dispute for this milestone item. Please wait for it to be resolved or closed before filing another dispute.'
+                    'message' => 'You already have an open ' . $validated['dispute_type'] . ' dispute for this milestone item. Please wait for it to be resolved or closed before filing another.'
                 ], 400);
+            }
+
+            // For Halt disputes, also check at project level (only one open Halt dispute per project)
+            if ($validated['dispute_type'] === 'Halt') {
+                $existingHalt = DB::table('disputes')
+                    ->where('project_id', $validated['project_id'])
+                    ->where('dispute_type', 'Halt')
+                    ->whereIn('dispute_status', ['open', 'under_review'])
+                    ->first();
+
+                if ($existingHalt) {
+                    \Log::warning('fileDispute: Existing open Halt dispute found for project', ['dispute_id' => $existingHalt->dispute_id ?? null]);
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'There is already an open Halt dispute for this project. Please wait for it to be resolved before filing another.'
+                    ], 400);
+                }
             }
 
             // Validate project and its users

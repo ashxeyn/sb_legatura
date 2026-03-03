@@ -174,7 +174,7 @@
 
                 {{-- Progress Bar --}}
                 <div class="mdp-progress-track">
-                    <div class="mdp-progress-fill" style="width:{{ $paymentPct }}%;"></div>
+                    <div class="mdp-progress-fill" style="width:{{ $paymentPct }}%;{{ $derivedStatus === 'Fully Paid' ? ' background:linear-gradient(90deg,#10B981,#22c55e);' : '' }}"></div>
                 </div>
 
                 {{-- Footer: Payment Status + Due Date --}}
@@ -450,7 +450,7 @@
                                 <span class="fdm-status-pill" style="background:{{ $paymentStatusColor }}18; color:{{ $paymentStatusColor }}; border:1px solid {{ $paymentStatusColor }}30;">{{ $derivedStatus }}</span>
                             </div>
                             <div class="mdp-progress-track" style="height:5px;">
-                                <div class="mdp-progress-fill" style="width:{{ $paymentPct }}%;"></div>
+                                <div class="mdp-progress-fill" style="width:{{ $paymentPct }}%;{{ $derivedStatus === 'Fully Paid' ? ' background:linear-gradient(90deg,#10B981,#22c55e);' : '' }}"></div>
                             </div>
                             <div class="text-center mt-3">
                                 <span class="fdm-link-btn">
@@ -480,7 +480,7 @@
                                 </div>
                             </div>
                             <div class="mdp-progress-track mx-4 mb-1" style="height:3px;">
-                                <div class="mdp-progress-fill" style="width:{{ $paymentPct }}%;"></div>
+                                <div class="mdp-progress-fill" style="width:{{ $paymentPct }}%;{{ $derivedStatus === 'Fully Paid' ? ' background:linear-gradient(90deg,#10B981,#22c55e);' : '' }}"></div>
                             </div>
                             <div class="fdm-accordion-body" id="fdmFinAccordionBody" style="display:none;">
                                 @if($adjustedCost !== null && $carryForward > 0)
@@ -1387,4 +1387,16 @@
     <script src="{{ asset('js/owner/propertyOwner_Modals/ownerProgressreport_Modal.js') }}"></script>
     <script src="{{ asset('js/owner/propertyOwner_Modals/ownerSendReport_Modal.js') }}"></script>
     <script src="{{ asset('js/owner/propertyOwner_Modals/ownerReportHistory_Modal.js') }}"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const navbarLinks = document.querySelectorAll('.navbar-link');
+            navbarLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.textContent.trim() === 'Dashboard' || link.getAttribute('href') === '{{ route("owner.dashboard") }}') {
+                    link.classList.add('active');
+                }
+            });
+        });
+    </script>
 @endsection

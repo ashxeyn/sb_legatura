@@ -117,8 +117,6 @@ Route::get('/owner/projects', [\App\Http\Controllers\owner\projectsController::c
 Route::get('/owner/profile', [\App\Http\Controllers\owner\projectsController::class, 'showProfile'])->name('owner.profile');
 
 // Property Owner Project Details (individual project)
-Route::get('/owner/projects/{projectId}', [\App\Http\Controllers\owner\projectsController::class, 'showProjectDetails'])->name('owner.projects.show');
-
 // Property Owner Profile API (web session-based routes)
 Route::get('/owner/profile/fetch', [\App\Http\Controllers\profileController::class, 'apiGetProfile'])->name('owner.profile.fetch');
 Route::get('/owner/profile/reviews', [\App\Http\Controllers\profileController::class, 'apiGetReviews'])->name('owner.profile.reviews');
@@ -139,6 +137,9 @@ Route::get('/owner/projects/milestone-report', [\App\Http\Controllers\owner\proj
 
 // Property Owner Milestone Progress Report
 Route::get('/owner/projects/milestone-progress-report', [\App\Http\Controllers\owner\projectsController::class, 'showMilestoneProgressReport'])->name('owner.projects.milestone-progress-report');
+
+// Property Owner Project Details (keep after static /owner/projects/* routes)
+Route::get('/owner/projects/{projectId}', [\App\Http\Controllers\owner\projectsController::class, 'showProjectDetails'])->name('owner.projects.show');
 
 // Property Owner Messages
 Route::get('/owner/messages', [\App\Http\Controllers\owner\projectsController::class, 'showMessages'])->name('owner.messages');

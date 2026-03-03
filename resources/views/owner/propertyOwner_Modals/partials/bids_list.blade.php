@@ -11,7 +11,7 @@
     $initials     = strtoupper(substr($name, 0, 2));
     $cost         = $bid->proposed_cost ? '₱' . number_format((float)$bid->proposed_cost, 2) : '—';
     $timeline     = ($bid->estimated_timeline !== null && $bid->estimated_timeline !== '')
-                        ? $bid->estimated_timeline . ' mo.'
+                        ? $bid->estimated_timeline . ' ' . ((float)$bid->estimated_timeline === 1.0 ? 'Month' : 'Months')
                         : '—';
     $isTop        = $index === 0;
     $rankEmoji    = $index === 0 ? '🥇' : ($index === 1 ? '🥈' : ($index === 2 ? '🥉' : null));

@@ -118,7 +118,7 @@ class disputeClass
             )
             ->where('disputes.project_id', $projectId)
             ->where('disputes.dispute_type', 'Halt')
-            ->where('disputes.dispute_status', 'open')
+            ->whereIn('disputes.dispute_status', ['open', 'under_review'])
             ->orderBy('disputes.created_at', 'desc')
             ->get();
     }

@@ -191,7 +191,7 @@
                                 <div class="contractor-details-container">
                                     <div class="detail-item">
                                         <i class="fi fi-rr-marker"></i>
-                                        <span class="detail-text">{{ $contractor->business_permit_city ?? '—' }}</span>
+                                        <span class="detail-text">{{ $contractor->business_address ?? $contractor->business_permit_city ?? '—' }}</span>
                                     </div>
                                     <div class="detail-item">
                                         <i class="fi fi-rr-star"></i>
