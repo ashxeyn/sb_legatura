@@ -383,9 +383,9 @@ class authController extends Controller
 
         // Store in session (include issued timestamp for reliable verification)
         Session::put('contractor_step2', [
-            'first_name' => strtoupper($request->first_name),
-            'middle_name' => $request->middle_name ? strtoupper($request->middle_name) : null,
-            'last_name' => strtoupper($request->last_name),
+            'first_name' => ucwords(strtolower($request->first_name)),
+            'middle_name' => $request->middle_name ? ucwords(strtolower($request->middle_name)) : null,
+            'last_name' => ucwords(strtolower($request->last_name)),
             'username' => $request->username,
             'company_email' => $request->company_email,
             'password' => $request->password,
@@ -860,10 +860,10 @@ class authController extends Controller
             }
         }
 
-        // Ensure step2 defaults — and ensure names are uppercase (mobile fallback sends raw data)
-        $step2['first_name'] = !empty($step2['first_name']) ? strtoupper($step2['first_name']) : null;
-        $step2['middle_name'] = !empty($step2['middle_name']) ? strtoupper($step2['middle_name']) : null;
-        $step2['last_name'] = !empty($step2['last_name']) ? strtoupper($step2['last_name']) : null;
+        // Ensure step2 defaults — and ensure names are Title Case (mobile fallback sends raw data)
+        $step2['first_name'] = !empty($step2['first_name']) ? ucwords(strtolower($step2['first_name'])) : null;
+        $step2['middle_name'] = !empty($step2['middle_name']) ? ucwords(strtolower($step2['middle_name'])) : null;
+        $step2['last_name'] = !empty($step2['last_name']) ? ucwords(strtolower($step2['last_name'])) : null;
         $step2['username'] = $step2['username'] ?? null;
         $step2['company_email'] = $step2['company_email'] ?? ($step2['email'] ?? null);
         $step2['password'] = $step2['password'] ?? null;
@@ -1172,9 +1172,9 @@ class authController extends Controller
             $request->owner_address_postal;
 
         $step1Data = [
-            'first_name' => strtoupper($request->first_name),
-            'middle_name' => $request->middle_name ? strtoupper($request->middle_name) : null,
-            'last_name' => strtoupper($request->last_name),
+            'first_name' => ucwords(strtolower($request->first_name)),
+            'middle_name' => $request->middle_name ? ucwords(strtolower($request->middle_name)) : null,
+            'last_name' => ucwords(strtolower($request->last_name)),
             'occupation_id' => $request->occupation_id,
             'occupation_other' => $request->occupation_other_text ?? $request->occupation_other,
             'date_of_birth' => $request->date_of_birth,
@@ -1746,10 +1746,10 @@ class authController extends Controller
         $step2 = is_array($step2) ? $step2 : (is_object($step2) ? (array) $step2 : []);
         $step4 = is_array($step4) ? $step4 : (is_object($step4) ? (array) $step4 : []);
 
-        // Provide defaults — and ensure names are uppercase (mobile fallback sends raw data)
-        $step1['first_name'] = strtoupper($step1['first_name'] ?? '');
-        $step1['last_name'] = strtoupper($step1['last_name'] ?? '');
-        $step1['middle_name'] = !empty($step1['middle_name']) ? strtoupper($step1['middle_name']) : null;
+        // Provide defaults — and ensure names are Title Case (mobile fallback sends raw data)
+        $step1['first_name'] = !empty($step1['first_name'] ?? '') ? ucwords(strtolower($step1['first_name'])) : '';
+        $step1['last_name'] = !empty($step1['last_name'] ?? '') ? ucwords(strtolower($step1['last_name'])) : '';
+        $step1['middle_name'] = !empty($step1['middle_name']) ? ucwords(strtolower($step1['middle_name'])) : null;
         $step1['phone_number'] = $step1['phone_number'] ?? '';
         $step1['date_of_birth'] = $step1['date_of_birth'] ?? null;
         $step1['age'] = $step1['age'] ?? null;

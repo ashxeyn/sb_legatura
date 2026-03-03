@@ -117,11 +117,23 @@ class profileController extends Controller
                 DB::table('users')->where('user_id', $userId)->update($userPayload + ['updated_at' => now()]);
             }
 
+            // Resolve active role from request so bio (and future role-specific fields) only go to the right table.
+            // The frontend always sends active_role (e.g. 'owner' or 'contractor') via query param or request body.
+            $activeRole = strtolower(trim((string)(
+                $request->query('role') ??
+                $request->input('active_role') ??
+                session('preferred_role') ??
+                ''
+            )));
+            $isContractorRole = str_contains($activeRole, 'contractor');
+            $isOwnerRole = !$isContractorRole; // default to owner when role is unknown
+
             // Personal/profile fields that belong to property_owners table
             $owner = DB::table('property_owners')->where('user_id', $userId)->first();
             $ownerKeys = [
                 'first_name','middle_name','last_name','phone','date_of_birth','occupation_id','occupation_other','occupation',
                 'address_street','address_barangay','address_city','address_province','address_postal'
+                // 'bio' is handled separately below (role-gated)
             ];
 
             $ownerPayload = [];
@@ -150,6 +162,8 @@ class profileController extends Controller
                 // Map 'occupation' (text from frontend) to 'occupation_other'
                 if (!empty($ownerPayload['occupation'])) $updateOwner['occupation_other'] = $ownerPayload['occupation'];
                 if (!empty($ownerPayload['occupation_other'])) $updateOwner['occupation_other'] = $ownerPayload['occupation_other'];
+                // Only write bio to property_owners when the active role is owner
+                if ($isOwnerRole && $request->has('bio')) $updateOwner['bio'] = $request->input('bio');
                 if (!empty($addressParts)) $updateOwner['address'] = implode(', ', $addressParts);
 
                 if (!empty($updateOwner)) {
@@ -164,10 +178,11 @@ class profileController extends Controller
             $contractor = DB::table('contractors')->where('user_id', $userId)->first();
             $contractorKeys = [
                 'company_name','company_phone','company_email','years_of_experience','type_id','contractor_type_other',
-                'bio','company_description','company_start_date',
+                'company_description','company_start_date',
                 'services_offered','business_address','company_website','company_social_media',
                 'picab_number','picab_category','picab_expiration_date','business_permit_number',
                 'business_permit_city','business_permit_expiration','tin_business_reg_number'
+                // 'bio' is handled separately below (role-gated)
             ];
 
             $hasContractorPayload = false;
@@ -195,9 +210,14 @@ class profileController extends Controller
             }
 
             if ($hasContractorPayload && $contractor) {
+                // Only write bio to contractors when the active role is contractor
+                if ($isContractorRole && $request->has('bio')) $contractorPayload['bio'] = $request->input('bio');
                 // Apply contractor updates immediately; do not force verification status changes here.
                 $contractorPayload['updated_at'] = now();
                 DB::table('contractors')->where('user_id', $userId)->update($contractorPayload);
+            } elseif ($isContractorRole && $request->has('bio') && $contractor) {
+                // bio-only update for contractor (no other contractor fields were sent)
+                DB::table('contractors')->where('user_id', $userId)->update(['bio' => $request->input('bio'), 'updated_at' => now()]);
             }
 
             DB::commit();

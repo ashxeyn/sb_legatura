@@ -508,10 +508,14 @@ export default function ViewProfileScreen({ onBack, userData, userToken = null }
     return userState?.username || 'Member';
   }, [activeRoleState, contractorInfo, ownerInfo, userState]);
 
-  const userBio = useMemo(() =>
-    ownerInfo?.bio || userState?.bio,
-    [ownerInfo?.bio, userState?.bio]
-  );
+  // Role-aware bio: read from the table that corresponds to the user's current preferred role.
+  // Contractor role → contractors.bio, Owner role (or unknown) → property_owners.bio
+  const userBio = useMemo(() => {
+    if (activeRoleState === 'contractor') {
+      return contractorInfo?.bio || '';
+    }
+    return ownerInfo?.bio || userState?.bio || '';
+  }, [activeRoleState, contractorInfo?.bio, ownerInfo?.bio, userState?.bio]);
 
   const filteredProjects = useMemo(() => projects.filter(p => (p.project_status || '').toLowerCase() !== 'pending'), [projects]);
 
@@ -671,7 +675,7 @@ export default function ViewProfileScreen({ onBack, userData, userToken = null }
         try {
           const roleArg = data.role ? String(data.role) : undefined;
           fetchReviews(roleArg);
-        } catch (e) {}
+        } catch (e) { }
         // Ensure profile and cover images are populated from available fields.
         // If the response includes a role (preferred_role/current role), respect it:
         // - when role === 'contractor' prefer `contractor.company_logo`/`company_banner`
