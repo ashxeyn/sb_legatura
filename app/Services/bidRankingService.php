@@ -393,22 +393,19 @@ class BidRankingService
         }
 
         $payments = DB::table('platform_payments')
-            ->whereIn('contractor_id', $contractorIds)
-            ->where('is_approved', 1)
-            ->where(function ($q) {
-                $q->where('payment_for', 'subscription')
-                  ->orWhere('payment_for', 'boosted_post');
-            })
+            ->leftJoin('subscription_plans', 'platform_payments.subscriptionPlanId', '=', 'subscription_plans.id')
+            ->whereIn('platform_payments.contractor_id', $contractorIds)
+            ->where('platform_payments.is_approved', 1)
             ->where(function ($q) {
                 // Active: future expiration_date, or paid in last 30 days if no expiration
-                $q->where('expiration_date', '>=', now())
+                $q->where('platform_payments.expiration_date', '>=', now())
                   ->orWhere(function ($q2) {
-                      $q2->whereNull('expiration_date')
-                         ->whereRaw('DATE_ADD(transaction_date, INTERVAL 30 DAY) >= NOW()');
+                      $q2->whereNull('platform_payments.expiration_date')
+                         ->whereRaw('DATE_ADD(platform_payments.transaction_date, INTERVAL 30 DAY) >= NOW()');
                   });
             })
-            ->select('contractor_id', 'subscription_tier', 'amount', 'payment_for')
-            ->orderByDesc('transaction_date')
+            ->select('platform_payments.contractor_id', 'platform_payments.amount', 'subscription_plans.plan_key')
+            ->orderByDesc('platform_payments.transaction_date')
             ->get();
 
         $result = [];
@@ -419,16 +416,19 @@ class BidRankingService
         // Take the best active tier per contractor
         foreach ($payments->groupBy('contractor_id') as $cid => $rows) {
             foreach ($rows as $row) {
-                $tier = strtolower(trim($row->subscription_tier ?? ''));
-                if ($tier === 'gold') {
+                $planKey = strtolower(trim($row->plan_key ?? ''));
+                if ($planKey === 'gold') {
                     $result[$cid] = 'gold';
                     break;
                 }
-                if ($tier === 'silver' && $result[$cid] !== 'gold') {
+                if ($planKey === 'silver' && $result[$cid] !== 'gold') {
                     $result[$cid] = 'silver';
                 }
-                // Fallback: infer from amount when subscription_tier is empty
-                if (!$tier && $row->payment_for === 'boosted_post') {
+                if ($planKey === 'bronze' && $result[$cid] === 'free') {
+                    $result[$cid] = 'bronze';
+                }
+                // Fallback for undefined plan keys
+                if (!$planKey) {
                     if ($row->amount >= 5000 && $result[$cid] !== 'gold') {
                         $result[$cid] = 'gold';
                     } elseif ($row->amount >= 2000 && $result[$cid] === 'free') {

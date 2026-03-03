@@ -74,24 +74,28 @@ class analyticsController extends authController
 
         // Query current year
         $curQuery = DB::table('platform_payments')
-            ->select(DB::raw('MONTH(transaction_date) as m'), DB::raw('IFNULL(SUM(amount),0) as sum'))
-            ->where('payment_for', 'commission')
-            ->where('is_approved', 1)
-            ->whereYear('transaction_date', $currentYear);
+            ->leftJoin('subscription_plans', 'platform_payments.subscriptionPlanId', '=', 'subscription_plans.id')
+            ->select(DB::raw('MONTH(platform_payments.transaction_date) as m'), DB::raw('IFNULL(SUM(platform_payments.amount),0) as sum'))
+            ->where('subscription_plans.for_contractor', 1)
+            ->where('subscription_plans.plan_key', '!=', 'boost')
+            ->where('platform_payments.is_approved', 1)
+            ->whereYear('platform_payments.transaction_date', $currentYear);
         $this->applyTierCondition($curQuery, $tier);
-        $curRows = $curQuery->groupBy(DB::raw('MONTH(transaction_date)'))->orderBy(DB::raw('MONTH(transaction_date)'))->get();
+        $curRows = $curQuery->groupBy(DB::raw('MONTH(platform_payments.transaction_date)'))->orderBy(DB::raw('MONTH(platform_payments.transaction_date)'))->get();
         foreach ($curRows as $r) {
             $currentYearData[$r->m - 1] = (float)$r->sum;
         }
 
         // Query previous year baseline
         $prevQuery = DB::table('platform_payments')
-            ->select(DB::raw('MONTH(transaction_date) as m'), DB::raw('IFNULL(SUM(amount),0) as sum'))
-            ->where('payment_for', 'commission')
-            ->where('is_approved', 1)
-            ->whereYear('transaction_date', $previousYear);
+            ->leftJoin('subscription_plans', 'platform_payments.subscriptionPlanId', '=', 'subscription_plans.id')
+            ->select(DB::raw('MONTH(platform_payments.transaction_date) as m'), DB::raw('IFNULL(SUM(platform_payments.amount),0) as sum'))
+            ->where('subscription_plans.for_contractor', 1)
+            ->where('subscription_plans.plan_key', '!=', 'boost')
+            ->where('platform_payments.is_approved', 1)
+            ->whereYear('platform_payments.transaction_date', $previousYear);
         $this->applyTierCondition($prevQuery, $tier);
-        $prevRows = $prevQuery->groupBy(DB::raw('MONTH(transaction_date)'))->orderBy(DB::raw('MONTH(transaction_date)'))->get();
+        $prevRows = $prevQuery->groupBy(DB::raw('MONTH(platform_payments.transaction_date)'))->orderBy(DB::raw('MONTH(platform_payments.transaction_date)'))->get();
         foreach ($prevRows as $r) {
             $previousYearData[$r->m - 1] = (float)$r->sum;
         }
@@ -129,26 +133,26 @@ class analyticsController extends authController
      */
     private function getSubscriptionTiers()
     {
-        // Assuming subscription tiers are based on amount ranges in platform_payments
-        // Gold Tier: amount >= 2000
+        // Count subscriptions by tier based on plan_key
+        // Gold Tier
         $goldTier = DB::table('platform_payments')
-            ->where('payment_for', 'commission')
-            ->where('is_approved', 1)
-            ->where('amount', '>=', 2000)
+            ->leftJoin('subscription_plans', 'platform_payments.subscriptionPlanId', '=', 'subscription_plans.id')
+            ->where('subscription_plans.plan_key', 'gold')
+            ->where('platform_payments.is_approved', 1)
             ->count();
 
-        // Silver Tier: amount between 1000 and 1999
+        // Silver Tier
         $silverTier = DB::table('platform_payments')
-            ->where('payment_for', 'commission')
-            ->where('is_approved', 1)
-            ->whereBetween('amount', [1000, 1999])
+            ->leftJoin('subscription_plans', 'platform_payments.subscriptionPlanId', '=', 'subscription_plans.id')
+            ->where('subscription_plans.plan_key', 'silver')
+            ->where('platform_payments.is_approved', 1)
             ->count();
 
-        // Bronze Tier: amount < 1000
+        // Bronze Tier
         $bronzeTier = DB::table('platform_payments')
-            ->where('payment_for', 'commission')
-            ->where('is_approved', 1)
-            ->where('amount', '<', 1000)
+            ->leftJoin('subscription_plans', 'platform_payments.subscriptionPlanId', '=', 'subscription_plans.id')
+            ->where('subscription_plans.plan_key', 'bronze')
+            ->where('platform_payments.is_approved', 1)
             ->count();
 
         return [
@@ -185,38 +189,52 @@ class analyticsController extends authController
      */
     private function getSubscriptionMetrics()
     {
-        // Total approved subscriptions (commission payments)
+        // Total approved subscriptions (contractor subscriptions, not boosts)
         $totalSubscriptions = DB::table('platform_payments')
-            ->where('payment_for', 'commission')
-            ->where('is_approved', 1)
+            ->leftJoin('subscription_plans', 'platform_payments.subscriptionPlanId', '=', 'subscription_plans.id')
+            ->where('subscription_plans.for_contractor', 1)
+            ->where('subscription_plans.plan_key', '!=', 'boost')
+            ->where('platform_payments.is_approved', 1)
             ->count();
 
         // Total revenue from subscriptions
         $totalRevenue = DB::table('platform_payments')
-            ->where('payment_for', 'commission')
-            ->where('is_approved', 1)
-            ->sum('amount');
+            ->leftJoin('subscription_plans', 'platform_payments.subscriptionPlanId', '=', 'subscription_plans.id')
+            ->where('subscription_plans.for_contractor', 1)
+            ->where('subscription_plans.plan_key', '!=', 'boost')
+            ->where('platform_payments.is_approved', 1)
+            ->sum('platform_payments.amount');
 
-        // For subscription duration, let's assume each subscription lasts 30 days from transaction_date
         // Expiring soon: subscriptions expiring in next 7 days
         $expiringSoon = DB::table('platform_payments')
-            ->where('payment_for', 'commission')
-            ->where('is_approved', 1)
-            ->whereRaw('DATE_ADD(transaction_date, INTERVAL 30 DAY) BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)')
+            ->leftJoin('subscription_plans', 'platform_payments.subscriptionPlanId', '=', 'subscription_plans.id')
+            ->where('subscription_plans.for_contractor', 1)
+            ->where('subscription_plans.plan_key', '!=', 'boost')
+            ->where('platform_payments.is_approved', 1)
+            ->whereNotNull('platform_payments.expiration_date')
+            ->whereRaw('platform_payments.expiration_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)')
             ->count();
 
-        // Expired: subscriptions past 30 days
+        // Expired: subscriptions past expiration date
         $expired = DB::table('platform_payments')
-            ->where('payment_for', 'commission')
-            ->where('is_approved', 1)
-            ->whereRaw('DATE_ADD(transaction_date, INTERVAL 30 DAY) < CURDATE()')
+            ->leftJoin('subscription_plans', 'platform_payments.subscriptionPlanId', '=', 'subscription_plans.id')
+            ->where('subscription_plans.for_contractor', 1)
+            ->where('subscription_plans.plan_key', '!=', 'boost')
+            ->where('platform_payments.is_approved', 1)
+            ->whereNotNull('platform_payments.expiration_date')
+            ->whereRaw('platform_payments.expiration_date < CURDATE()')
             ->count();
 
-        // Active subscriptions (within 30 days)
+        // Active subscriptions (not yet expired)
         $active = DB::table('platform_payments')
-            ->where('payment_for', 'commission')
-            ->where('is_approved', 1)
-            ->whereRaw('DATE_ADD(transaction_date, INTERVAL 30 DAY) >= CURDATE()')
+            ->leftJoin('subscription_plans', 'platform_payments.subscriptionPlanId', '=', 'subscription_plans.id')
+            ->where('subscription_plans.for_contractor', 1)
+            ->where('subscription_plans.plan_key', '!=', 'boost')
+            ->where('platform_payments.is_approved', 1)
+            ->where(function ($q) {
+                $q->whereNull('platform_payments.expiration_date')
+                  ->orWhereRaw('platform_payments.expiration_date >= CURDATE()');
+            })
             ->count();
 
         return [

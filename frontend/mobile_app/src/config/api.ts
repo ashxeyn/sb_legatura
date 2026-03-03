@@ -1,5 +1,5 @@
 // API configuration for connecting to Laravel backend
-const API_BASE_URL = 'http://192.168.100.27:8000'; //'https://legaturaph.com'
+const API_BASE_URL = 'http://192.168.254.109:8086'; //'https://legaturaph.com'
 
 import { storage_service } from '../utils/storage';
 
@@ -25,6 +25,9 @@ export const api_config = {
             login: '/api/login',
             signup_form: '/api/signup-form',
             force_change_password: '/api/force-change-password',
+            forgot_password_send_otp: '/api/forgot-password/send-otp',
+            forgot_password_verify_otp: '/api/forgot-password/verify-otp',
+            forgot_password_reset: '/api/forgot-password/reset',
         },
         contractor: {
             step1: '/api/signup/contractor/step1',

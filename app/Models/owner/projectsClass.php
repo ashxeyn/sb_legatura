@@ -123,10 +123,11 @@ class projectsClass
             DB::raw("CONCAT(property_owners.first_name, ' ', COALESCE(property_owners.middle_name, ''), ' ', property_owners.last_name) as owner_name"),
             'users.profile_pic as owner_profile_pic',
             'users.user_id as owner_user_id',
-            DB::raw('(SELECT COUNT(*) FROM platform_payments 
-                      WHERE platform_payments.project_id = projects.project_id 
-                      AND platform_payments.payment_for = "boosted_post" 
-                      AND platform_payments.is_approved = 1 
+            DB::raw('(SELECT COUNT(*) FROM platform_payments
+                      LEFT JOIN subscription_plans ON platform_payments.subscriptionPlanId = subscription_plans.id
+                      WHERE platform_payments.project_id = projects.project_id
+                      AND subscription_plans.plan_key = "boost"
+                      AND platform_payments.is_approved = 1
                       AND platform_payments.expiration_date > "' . now() . '") as is_boosted')
         )
             ->orderBy('is_boosted', 'desc')
