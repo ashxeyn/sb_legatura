@@ -45,7 +45,6 @@ class postController extends Controller
         $request->validate([
             'content'            => 'required|string|min:10|max:5000',
             'title'              => 'nullable|string|max:255',
-            'tagged_user_id'     => 'nullable|integer',
             'linked_project_id'  => 'nullable|integer',
             'location'           => 'nullable|string|max:500',
             'images'             => 'nullable|array|max:10',
@@ -71,7 +70,6 @@ class postController extends Controller
         $request->validate([
             'content'            => 'nullable|string|min:10|max:5000',
             'title'              => 'nullable|string|max:255',
-            'tagged_user_id'     => 'nullable|integer',
             'location'           => 'nullable|string|max:500',
             'status'             => 'nullable|string|in:open,closed',
         ]);

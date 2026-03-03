@@ -41,6 +41,7 @@ class postService
 
             $postId = DB::table('project_posts')->insertGetId([
                 'user_id'            => $userId,
+                'post_type'          => 'showcase',
                 'title'              => $data['title'] ?? null,
                 'content'            => $content,
                 'linked_project_id'  => $data['linked_project_id'] ?? null,
@@ -92,7 +93,7 @@ class postService
         if ((int) $post->user_id !== $userId) return ['success' => false, 'message' => 'Unauthorized.'];
 
         $updatePayload = [];
-        $allowedKeys = ['title', 'content', 'tagged_user_id', 'location', 'status'];
+        $allowedKeys = ['title', 'content', 'location', 'status'];
         foreach ($allowedKeys as $key) {
             if (array_key_exists($key, $data)) {
                 $updatePayload[$key] = $data[$key];
@@ -132,9 +133,6 @@ class postService
             ->leftJoin('contractors as c', 'u.user_id', '=', 'c.user_id')
             ->leftJoin('property_owners as po', 'u.user_id', '=', 'po.user_id')
             ->leftJoin('projects as lp', 'pp.linked_project_id', '=', 'lp.project_id')
-            ->leftJoin('users as tu', 'pp.tagged_user_id', '=', 'tu.user_id')
-            ->leftJoin('contractors as tc', 'tu.user_id', '=', 'tc.user_id')
-            ->leftJoin('property_owners as tpo', 'tu.user_id', '=', 'tpo.user_id')
             ->where('pp.post_id', $postId)
             ->select(
                 'pp.*',
@@ -142,10 +140,7 @@ class postService
                 'c.company_name', 'c.company_logo',
                 'po.first_name as owner_first_name', 'po.last_name as owner_last_name',
                 'lp.project_title as linked_project_title',
-                'lp.project_status as linked_project_status',
-                'tu.username as tagged_username',
-                'tc.company_name as tagged_company_name',
-                DB::raw("CONCAT(tpo.first_name, ' ', tpo.last_name) as tagged_owner_name")
+                'lp.project_status as linked_project_status'
             )
             ->first();
 
@@ -168,11 +163,7 @@ class postService
             // Avatar
             $post->avatar = $post->company_logo ?? $post->profile_pic ?? null;
 
-            // Tagged user display name
-            $post->tagged_display_name = $post->tagged_company_name
-                ?? $post->tagged_owner_name
-                ?? $post->tagged_username
-                ?? null;
+
         }
 
         return $post;
