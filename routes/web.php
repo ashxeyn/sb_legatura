@@ -23,13 +23,13 @@ use App\Http\Controllers\message\broadcastAuthController;
 use App\Http\Controllers\passwordController;
 
 Route::prefix('admin/settings/security')
-     ->middleware([\App\Http\Middleware\AdminAuthMiddleware::class])
-     ->group(function () {
+    ->middleware([\App\Http\Middleware\AdminAuthMiddleware::class])
+    ->group(function () {
 
-    // ── VIEW ──────────────────────────────────────────────────────────────────
-    Route::get('/', function () {
-        return view('admin.settings.security');
-    })->name('admin.settings.security');
+        // ── VIEW ──────────────────────────────────────────────────────────────────
+        Route::get('/', function () {
+            return view('admin.settings.security');
+        })->name('admin.settings.security');
 
     // ── JSON ENDPOINTS ────────────────────────────────────────────────────────
     Route::get( '/data',            [\App\Http\Controllers\Admin\accountController::class, 'data'])
@@ -406,9 +406,9 @@ Route::post('/admin/user-management/suspended-accounts/reactivate', [userManagem
 
 // Global Management Routes
 Route::get('/admin/global-management/bid-management', [globalManagementController::class, 'bidManagement'])->name('admin.globalManagement.bidManagement');
-Route::get('/admin/global-management/bid-management/files/{id}',[globalManagementController::class, 'getBidFiles'])->name('admin.globalManagement.bidFiles');
-Route::put('/admin/global-management/bid-management/{id}',[globalManagementController::class, 'updateBid'])->name('admin.globalManagement.updateBid');
-Route::delete('/admin/global-management/bid-management/{id}',[globalManagementController::class, 'deleteBid'])->name('admin.globalManagement.deleteBid');
+Route::get('/admin/global-management/bid-management/files/{id}', [globalManagementController::class, 'getBidFiles'])->name('admin.globalManagement.bidFiles');
+Route::put('/admin/global-management/bid-management/{id}', [globalManagementController::class, 'updateBid'])->name('admin.globalManagement.updateBid');
+Route::delete('/admin/global-management/bid-management/{id}', [globalManagementController::class, 'deleteBid'])->name('admin.globalManagement.deleteBid');
 Route::get('/admin/global-management/proof-of-payments', [globalManagementController::class, 'proofOfPayments'])->name('admin.globalManagement.proofOfpayments');
 // Get single payment detail (AJAX – used by view modal)
 Route::get('/admin/global-management/proof-of-payments/{id}', [globalManagementController::class, 'getPaymentDetail'])->name('admin.globalManagement.proofOfpayments.detail');
@@ -418,7 +418,7 @@ Route::post('/admin/global-management/proof-of-payments/{id}/verify', [globalMan
 Route::post('/admin/global-management/proof-of-payments/{id}/reject', [globalManagementController::class, 'rejectPayment'])->name('admin.globalManagement.proofOfpayments.reject');
 // Soft-delete a payment (sets status = 'deleted')
 Route::delete('/admin/global-management/proof-of-payments/{id}', [globalManagementController::class, 'deletePayment'])->name('admin.globalManagement.proofOfpayments.delete');
-Route::put('/{id}',     [GlobalManagementController::class, 'updatePayment']);
+Route::put('/{id}', [GlobalManagementController::class, 'updatePayment']);
 
 Route::get('/admin/global-management/ai-management', [globalManagementController::class, 'aiManagement'])->name('admin.globalManagement.aiManagement');
 Route::get('/admin/global-management/posting-management', [globalManagementController::class, 'postingManagement'])->name('admin.globalManagement.postingManagement');
@@ -489,6 +489,12 @@ Route::put('/admin/project-management/{id}', [projectManagementController::class
 Route::delete('/admin/project-management/{id}', [projectManagementController::class, 'deleteProject'])->name('admin.projectManagement.deleteProject');
 Route::post('/admin/project-management/{id}/restore', [projectManagementController::class, 'restoreProject'])->name('admin.projectManagement.restoreProject');
 Route::put('/admin/project-management/milestone-item/{itemId}', [projectManagementController::class, 'updateMilestoneItem'])->name('admin.projectManagement.updateMilestoneItem');
+
+// Notification JSON endpoints (session-authenticated, for web dropdowns)
+Route::get('/notifications/json', [\App\Http\Controllers\both\NotificationController::class, 'index'])->name('notifications.json');
+Route::get('/notifications/unread-count', [\App\Http\Controllers\both\NotificationController::class, 'unreadCount'])->name('notifications.unreadCount');
+Route::post('/notifications/{id}/read', [\App\Http\Controllers\both\NotificationController::class, 'markAsRead'])->name('notifications.markAsRead');
+Route::post('/notifications/read-all', [\App\Http\Controllers\both\NotificationController::class, 'markAllAsRead'])->name('notifications.markAllAsRead');
 
 // Notification redirect — marks as read and 302s to the contextual page
 Route::get('/notifications/{id}/redirect', [\App\Http\Controllers\both\notificationController::class, 'redirect'])->name('notifications.redirect');
@@ -566,7 +572,7 @@ Route::prefix('/api/admin/analytics')->group(function () {
     Route::get('/subscription/revenue', [analyticsController::class, 'subscriptionRevenue'])->name('api.admin.analytics.subscriptionRevenue');
     Route::get('/user-activity', [analyticsController::class, 'userActivityAnalytics'])->name('api.admin.analytics.userActivity');
     Route::get('admin/analytics/user-activity/feed', [analyticsController::class, 'getUserActivityFeed'])
-     ->name('admin.analytics.userActivity.feed');
+        ->name('admin.analytics.userActivity.feed');
     Route::get('/project-performance', [analyticsController::class, 'projectPerformanceAnalytics'])->name('api.admin.analytics.projectPerformance');
     Route::get('/bid-completion', [analyticsController::class, 'bidCompletionAnalytics'])->name('api.admin.analytics.bidCompletion');
 });

@@ -41,10 +41,20 @@
                             $subscription = null;
                         }
 
+                        // Fetch fresh company_logo from contractors table (contractors don't use users.profile_pic)
+                        $userId = $user->user_id ?? ($user->id ?? null);
+                        $contractor = null;
+                        if ($userId) {
+                            $contractor = \DB::table('contractors')
+                                ->where('user_id', $userId)
+                                ->first();
+                        }
+
                         $displayName = $user->company_name ?? $user->name ?? $user->username ?? 'Contractor';
                         $rawHandle = $user->username ?? $user->user_name ?? null;
                         $usernameHandle = $rawHandle ? ('@' . ltrim($rawHandle, '@')) : '@contractor';
-                        $profilePic = $user->profile_pic ?? null;
+                        // Contractors store their logo in contractors.company_logo, not users.profile_pic
+                        $profilePic = $contractor->company_logo ?? null;
 
                         $initials = 'C';
                         if (is_string($displayName) && trim($displayName) !== '') {
@@ -56,7 +66,8 @@
                         @if($profilePic)
                             <div class="navbar-avatar">
                                 <img src="{{ asset('storage/' . $profilePic) }}" alt="{{ $displayName }}"
-                                    class="navbar-avatar-img">
+                                    class="navbar-avatar-img"
+                                    onerror="var p=this.parentElement; p.innerHTML='{{ $initials }}'; p.classList.add('navbar-avatar-initials');">
                             </div>
                         @else
                             <div class="navbar-avatar navbar-avatar-initials">{{ $initials }}</div>
@@ -82,13 +93,19 @@
                                 </div>
                                 <div class="notification-tabs">
                                     <button class="notification-tab active" data-tab="all" id="notificationTabAll">
-                                        All notification
+                                        All
                                     </button>
                                     <button class="notification-tab" data-tab="projects" id="notificationTabProjects">
                                         Projects
                                     </button>
                                     <button class="notification-tab" data-tab="bids" id="notificationTabBids">
                                         Bids
+                                    </button>
+                                    <button class="notification-tab" data-tab="payments" id="notificationTabPayments">
+                                        Payments
+                                    </button>
+                                    <button class="notification-tab" data-tab="messages" id="notificationTabMessages">
+                                        Messages
                                     </button>
                                 </div>
                                 <div class="notification-dropdown-body">
@@ -100,6 +117,12 @@
                                     </div>
                                     <div class="notification-list hidden" id="notificationListBids">
                                         <!-- Bid notifications will be inserted here -->
+                                    </div>
+                                    <div class="notification-list hidden" id="notificationListPayments">
+                                        <!-- Payment notifications will be inserted here -->
+                                    </div>
+                                    <div class="notification-list hidden" id="notificationListMessages">
+                                        <!-- Messages notifications will be inserted here -->
                                     </div>
                                 </div>
                                 <div class="notification-dropdown-footer">
@@ -210,7 +233,7 @@
                     <i class="fi fi-rr-angle-right account-settings-arrow"></i>
                 </a>
 
-                <a href="#" class="account-settings-item" id="settingsLink">
+                {{-- <a href="#" class="account-settings-item" id="settingsLink">
                     <div class="account-settings-item-left">
                         <div class="account-settings-icon settings-icon">
                             <i class="fi fi-rr-settings"></i>
@@ -221,7 +244,7 @@
                         </div>
                     </div>
                     <i class="fi fi-rr-angle-right account-settings-arrow"></i>
-                </a>
+                </a> --}}
 
                 <a href="#" class="account-settings-item" id="helpSupportLink">
                     <div class="account-settings-item-left">

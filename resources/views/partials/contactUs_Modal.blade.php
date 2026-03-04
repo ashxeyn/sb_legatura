@@ -37,7 +37,7 @@
                         <p class="contact-brand-subtitle">Development Platform</p>
                     </div>
                 </div>
-                
+
                 <div class="contact-details-grid">
                     <div class="contact-detail-item">
                         <div class="contact-detail-icon">
@@ -45,8 +45,8 @@
                         </div>
                         <div class="contact-detail-content">
                             <h4 class="contact-detail-label">Website</h4>
-                            <a href="https://sandboxbuilds.org/sandbox/sandbox.html" target="_blank" class="contact-detail-value link">
-                                sandboxbuilds.org/sandbox/sandbox.html
+                            <a href="https://sandboxbuilds.org/sandbox/sandbox" target="_blank" class="contact-detail-value link">
+                                sandboxbuilds.org/sandbox/sandbox
                             </a>
                         </div>
                     </div>
@@ -70,9 +70,9 @@
                         <div class="contact-detail-content">
                             <h4 class="contact-detail-label">Find Us On</h4>
                             <div class="social-links">
-                                <a href="https://facebook.com/LegaturaSandbox" target="_blank" class="social-link facebook">
+                                <a href="https://www.facebook.com/people/Legatura/61581815672869/" target="_blank" class="social-link facebook">
                                     <i class="fi fi-brands-facebook"></i>
-                                    <span>Legatura Official Page</span>
+                                    <span>Legatura Official Facebook Page</span>
                                 </a>
                             </div>
                         </div>
@@ -98,7 +98,7 @@
                         <p class="contact-brand-subtitle">Construction Management Platform</p>
                     </div>
                 </div>
-                
+
                 <div class="contact-details-grid">
                     <div class="contact-detail-item">
                         <div class="contact-detail-icon">

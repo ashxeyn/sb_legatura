@@ -81,13 +81,19 @@
                                 </div>
                                 <div class="notification-tabs">
                                     <button class="notification-tab active" data-tab="all" id="notificationTabAll">
-                                        All notification
+                                        All
                                     </button>
                                     <button class="notification-tab" data-tab="projects" id="notificationTabProjects">
                                         Projects
                                     </button>
                                     <button class="notification-tab" data-tab="bids" id="notificationTabBids">
                                         Bids
+                                    </button>
+                                    <button class="notification-tab" data-tab="payments" id="notificationTabPayments">
+                                        Payments
+                                    </button>
+                                    <button class="notification-tab" data-tab="messages" id="notificationTabMessages">
+                                        Messages
                                     </button>
                                 </div>
                                 <div class="notification-dropdown-body">
@@ -99,6 +105,12 @@
                                     </div>
                                     <div class="notification-list hidden" id="notificationListBids">
                                         <!-- Bid notifications will be inserted here -->
+                                    </div>
+                                    <div class="notification-list hidden" id="notificationListPayments">
+                                        <!-- Payment notifications will be inserted here -->
+                                    </div>
+                                    <div class="notification-list hidden" id="notificationListMessages">
+                                        <!-- Messages notifications will be inserted here -->
                                     </div>
                                 </div>
                                 <div class="notification-dropdown-footer">
@@ -206,7 +218,7 @@
                     <i class="fi fi-rr-angle-right account-settings-arrow"></i>
                 </a>
 
-                <a href="#" class="account-settings-item" id="settingsLink">
+                {{-- <a href="#" class="account-settings-item" id="settingsLink">
                     <div class="account-settings-item-left">
                         <div class="account-settings-icon settings-icon">
                             <i class="fi fi-rr-settings"></i>
@@ -217,7 +229,7 @@
                         </div>
                     </div>
                     <i class="fi fi-rr-angle-right account-settings-arrow"></i>
-                </a>
+                </a> --}}
 
                 <a href="#" class="account-settings-item" id="helpSupportLink">
                     <div class="account-settings-item-left">

@@ -10,6 +10,8 @@
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
     <!-- Navbar CSS -->
     <link rel="stylesheet" href="{{ asset('css/partials/navbar.css') }}">
+    <!-- Notification Dropdown CSS -->
+    <link rel="stylesheet" href="{{ asset('css/partials/notification_dropdown.css') }}?v={{ time() }}">
     <!-- Footer CSS -->
     <link rel="stylesheet" href="{{ asset('css/partials/footer.css') }}">
     <!-- Edit Profile Modal CSS -->
@@ -87,6 +89,8 @@
 
     <!-- Navbar JS -->
     <script src="{{ asset('js/partials/navbar.js') }}"></script>
+    <!-- Notification Dropdown JS -->
+    <script src="{{ asset('js/partials/notification_dropdown.js') }}?v={{ time() }}"></script>
     <!-- Edit Profile Modal JS -->
     <script src="{{ asset('js/owner/propertyOwner_Modals/ownerAccountsettings_Modal.js') }}"></script>
     <!-- Help & Support Modal JS -->

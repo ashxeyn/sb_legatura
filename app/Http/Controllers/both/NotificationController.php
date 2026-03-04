@@ -77,12 +77,12 @@ class notificationController extends Controller
             'success' => true,
             'data' => [
                 'notifications' => $formatted,
-                'unread_count'  => $this->notificationClass->getUnreadCount($user->user_id, $role),
-                'current_page'  => $result['current_page'],
-                'last_page'     => $result['last_page'],
-                'per_page'      => $result['per_page'],
-                'total'         => $result['total'],
-                'active_role'   => $role,
+                'unread_count' => $this->notificationClass->getUnreadCount($user->user_id, $role),
+                'current_page' => $result['current_page'],
+                'last_page' => $result['last_page'],
+                'per_page' => $result['per_page'],
+                'total' => $result['total'],
+                'active_role' => $role,
             ],
         ]);
     }
@@ -103,7 +103,7 @@ class notificationController extends Controller
             'success' => true,
             'data' => [
                 'unread_count' => $this->notificationClass->getUnreadCount($user->user_id, $role),
-                'active_role'  => $role,
+                'active_role' => $role,
             ],
         ]);
     }
@@ -226,7 +226,7 @@ class notificationController extends Controller
 
         return response()->json([
             'success' => true,
-            'data'    => $payload,
+            'data' => $payload,
         ]);
     }
 
@@ -333,8 +333,8 @@ class notificationController extends Controller
         $role = $this->resolveRole($user);
         return match ($role) {
             'contractor' => '/contractor/dashboard',
-            'admin'      => '/admin/dashboard',
-            default      => '/owner/dashboard',
+            'admin' => '/admin/dashboard',
+            default => '/owner/dashboard',
         };
     }
 }

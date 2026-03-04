@@ -7,6 +7,7 @@ use App\Http\Requests\message\messageRequest;
 use App\Models\message\messageClass;
 use App\Events\messageSentEvent;
 use App\Events\conversationSuspendedEvent;
+use App\Services\NotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -423,6 +424,52 @@ class messageController extends Controller
             $conversation = DB::table('conversations')
                 ->where('conversation_id', $message->conversation_id)
                 ->first();
+
+            // Create notification for receiver
+            try {
+                $senderDetails = messageClass::getUserDetails($userId, $isAdminSession);
+                $senderName = $senderDetails['name'] ?? 'Someone';
+
+                // Truncate message content for notification preview
+                $messagePreview = strlen($message->content) > 50
+                    ? substr($message->content, 0, 50) . '...'
+                    : $message->content;
+
+                Log::info('Creating message notification', [
+                    'receiver_id' => $validated['receiver_id'],
+                    'sender_id' => $userId,
+                    'sender_name' => $senderName,
+                    'conversation_id' => $message->conversation_id
+                ]);
+
+                $notificationId = NotificationService::create(
+                    userId: (int) $validated['receiver_id'],
+                    subType: 'message_received',
+                    title: 'New Message 💬',
+                    message: "{$senderName}: {$messagePreview}",
+                    priority: 'normal',
+                    referenceType: 'conversation',
+                    referenceId: (int) $message->conversation_id,
+                    actionData: [
+                        'screen' => 'messages',
+                        'params' => [
+                            'conversationId' => (int) $message->conversation_id
+                        ]
+                    ]
+                );
+
+                Log::info('Message notification created', [
+                    'notification_id' => $notificationId,
+                    'receiver_id' => $validated['receiver_id']
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Failed to create message notification', [
+                    'error' => $e->getMessage(),
+                    'receiver_id' => $validated['receiver_id'],
+                    'conversation_id' => $message->conversation_id
+                ]);
+                // Don't fail the message send if notification creation fails
+            }
 
             return response()->json([
                 'success' => true,

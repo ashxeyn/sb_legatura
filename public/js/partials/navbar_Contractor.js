@@ -7,12 +7,28 @@ class Navbar {
     constructor() {
         this.notifications = [];
         this.currentTab = 'all';
+        this.pollingInterval = null;
         this.init();
     }
 
     init() {
         this.loadNotifications();
         this.setupEventListeners();
+        this.startPolling();
+    }
+
+    startPolling() {
+        // Poll for new notifications every 5 seconds
+        this.pollingInterval = setInterval(() => {
+            this.loadNotifications(true); // true = silent load (no UI flickering)
+        }, 5000);
+    }
+
+    stopPolling() {
+        if (this.pollingInterval) {
+            clearInterval(this.pollingInterval);
+            this.pollingInterval = null;
+        }
     }
 
     setupEventListeners() {
@@ -403,61 +419,83 @@ class Navbar {
         }
     }
 
-    loadNotifications() {
-        // Sample notifications data - Replace with actual API call
-        this.notifications = [
-            {
-                id: 1,
-                type: 'project',
-                title: 'New Project Update',
-                message: 'Milestone 2 has been completed for "Modern Residential House Construction"',
-                time: '5 minutes ago',
-                read: false
-            },
-            {
-                id: 2,
-                type: 'bid',
-                title: 'New Bid Received',
-                message: 'You received a new bid from Panda Construction Company for "Commercial Building Renovation"',
-                time: '1 hour ago',
-                read: false
-            },
-            {
-                id: 3,
-                type: 'project',
-                title: 'Payment Received',
-                message: 'Payment for Milestone 1 of "Luxury Villa Construction" has been received',
-                time: '2 hours ago',
-                read: true
-            },
-            {
-                id: 4,
-                type: 'bid',
-                title: 'Bid Accepted',
-                message: 'Your bid for "Apartment Complex Development" has been accepted',
-                time: '3 hours ago',
-                read: false
-            },
-            {
-                id: 5,
-                type: 'project',
-                title: 'Project Started',
-                message: 'Construction has started for "Office Building Construction"',
-                time: '1 day ago',
-                read: true
-            },
-            {
-                id: 6,
-                type: 'bid',
-                title: 'Bid Rejected',
-                message: 'Your bid for "Residential Complex" was not selected',
-                time: '2 days ago',
-                read: true
-            }
-        ];
+    async loadNotifications(silent = false) {
+        try {
+            const response = await fetch('/notifications/json', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                },
+                credentials: 'same-origin'
+            });
 
-        this.updateNotificationBadge();
-        this.renderNotifications();
+            if (!response.ok) {
+                throw new Error('Failed to load notifications');
+            }
+
+            const data = await response.json();
+
+            // Format notifications for frontend
+            this.notifications = ((data.data && data.data.notifications) || []).map(notif => {
+                return {
+                    id: notif.id,
+                    type: this.mapNotificationTypeToCategory(notif.type, notif.title, notif.reference_type),
+                    title: notif.title || 'Notification',
+                    message: notif.message,
+                    time: this.formatTime(notif.created_at),
+                    read: notif.is_read,
+                    priority: notif.priority || 'normal'
+                };
+            });
+
+            this.updateNotificationBadge();
+            if (!silent) {
+                this.renderNotifications();
+            }
+        } catch (error) {
+            console.error('Error loading notifications:', error);
+            if (!silent) {
+                this.showToast('Failed to load notifications', 'error');
+            }
+        }
+    }
+
+    mapNotificationTypeToCategory(type, title = '', referenceType = '') {
+        // Check if it's a message notification by title or reference type
+        if (title.includes('💬') || title.includes('Message') || referenceType === 'conversation') {
+            return 'message';
+        }
+
+        // Map backend notification types to frontend categories for filtering
+        const typeMap = {
+            'Bid Status': 'bid',
+            'Project Alert': 'project',
+            'Milestone Update': 'project',
+            'Progress Update': 'project',
+            'Payment Status': 'payment',
+            'Payment Reminder': 'payment',
+            'Dispute Update': 'project'
+        };
+        return typeMap[type] || 'project';
+    }
+
+    formatTime(timestamp) {
+        if (!timestamp) return 'Just now';
+
+        const now = new Date();
+        const notifDate = new Date(timestamp);
+        const diffMs = now - notifDate;
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMs / 3600000);
+        const diffDays = Math.floor(diffMs / 86400000);
+
+        if (diffMins < 1) return 'Just now';
+        if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
+        if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+        if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+
+        return notifDate.toLocaleDateString();
     }
 
     toggleNotificationDropdown() {
@@ -492,10 +530,14 @@ class Navbar {
         const allList = document.getElementById('notificationListAll');
         const projectsList = document.getElementById('notificationListProjects');
         const bidsList = document.getElementById('notificationListBids');
+        const paymentsList = document.getElementById('notificationListPayments');
+        const messagesList = document.getElementById('notificationListMessages');
 
         if (allList) allList.classList.add('hidden');
         if (projectsList) projectsList.classList.add('hidden');
         if (bidsList) bidsList.classList.add('hidden');
+        if (paymentsList) paymentsList.classList.add('hidden');
+        if (messagesList) messagesList.classList.add('hidden');
 
         switch(tabName) {
             case 'all':
@@ -506,6 +548,12 @@ class Navbar {
                 break;
             case 'bids':
                 if (bidsList) bidsList.classList.remove('hidden');
+                break;
+            case 'payments':
+                if (paymentsList) paymentsList.classList.remove('hidden');
+                break;
+            case 'messages':
+                if (messagesList) messagesList.classList.remove('hidden');
                 break;
         }
 
@@ -525,6 +573,12 @@ class Navbar {
             case 'bids':
                 filteredNotifications = this.notifications.filter(n => n.type === 'bid');
                 break;
+            case 'payments':
+                filteredNotifications = this.notifications.filter(n => n.type === 'payment');
+                break;
+            case 'messages':
+                filteredNotifications = this.notifications.filter(n => n.type === 'message');
+                break;
         }
 
         // Render for current tab
@@ -538,6 +592,12 @@ class Navbar {
                 break;
             case 'bids':
                 list = document.getElementById('notificationListBids');
+                break;
+            case 'payments':
+                list = document.getElementById('notificationListPayments');
+                break;
+            case 'messages':
+                list = document.getElementById('notificationListMessages');
                 break;
         }
 
@@ -577,47 +637,114 @@ class Navbar {
         const item = document.createElement('div');
         item.className = `notification-item ${notification.read ? '' : 'unread'}`;
         item.setAttribute('data-notification-id', notification.id);
+        item.style.cursor = 'pointer';
 
         const iconClass = notification.type === 'project' ? 'project' :
-                         notification.type === 'bid' ? 'bid' : 'general';
+                         notification.type === 'bid' ? 'bid' :
+                         notification.type === 'payment' ? 'payment' :
+                         notification.type === 'message' ? 'message' : 'general';
         const icon = notification.type === 'project' ? 'fi-rr-briefcase' :
-                    notification.type === 'bid' ? 'fi-rr-handshake' : 'fi-rr-bell';
+                    notification.type === 'bid' ? 'fi-rr-handshake' :
+                    notification.type === 'payment' ? 'fi-rr-wallet' :
+                    notification.type === 'message' ? 'fi-rr-comment' : 'fi-rr-bell';
+
+        // Priority indicator
+        const priorityClass = notification.priority === 'critical' ? 'notification-critical' :
+                             notification.priority === 'high' ? 'notification-high' : '';
 
         item.innerHTML = `
             <div class="notification-icon ${iconClass}">
                 <i class="fi ${icon}"></i>
             </div>
             <div class="notification-content">
-                <h4 class="notification-title">${notification.title}</h4>
+                <h4 class="notification-title ${priorityClass}">${notification.title}</h4>
                 <p class="notification-message">${notification.message}</p>
                 <span class="notification-time">${notification.time}</span>
             </div>
         `;
 
-        // Add click handler
+        // Add click handler to redirect
         item.addEventListener('click', () => {
-            this.markAsRead(notification.id);
+            this.handleNotificationClick(notification.id);
         });
 
         return item;
     }
 
-    markAsRead(notificationId) {
-        const notification = this.notifications.find(n => n.id === notificationId);
-        if (notification && !notification.read) {
-            notification.read = true;
-            this.updateNotificationBadge();
-            this.renderNotifications();
+    async handleNotificationClick(notificationId) {
+        try {
+            // Close dropdown immediately for better UX
+            this.closeNotificationDropdown();
+
+            // Redirect via backend endpoint which marks as read and returns proper URL
+            window.location.href = `/notifications/${notificationId}/redirect`;
+        } catch (error) {
+            console.error('Error handling notification click:', error);
+            this.showToast('Failed to open notification', 'error');
         }
     }
 
-    markAllAsRead() {
-        this.notifications.forEach(notification => {
-            notification.read = true;
-        });
-        this.updateNotificationBadge();
-        this.renderNotifications();
-        this.showNotification('All notifications marked as read', 'success');
+    async markAsRead(notificationId) {
+        try {
+            const tokenMeta = document.querySelector('meta[name="csrf-token"]');
+            const token = tokenMeta ? tokenMeta.getAttribute('content') : '';
+
+            const response = await fetch(`/notifications/${notificationId}/read`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': token
+                },
+                credentials: 'same-origin'
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to mark as read');
+            }
+
+            // Update local state
+            const notification = this.notifications.find(n => n.id === notificationId);
+            if (notification) {
+                notification.read = true;
+                this.updateNotificationBadge();
+                this.renderNotifications();
+            }
+        } catch (error) {
+            console.error('Error marking notification as read:', error);
+        }
+    }
+
+    async markAllAsRead() {
+        try {
+            const tokenMeta = document.querySelector('meta[name="csrf-token"]');
+            const token = tokenMeta ? tokenMeta.getAttribute('content') : '';
+
+            const response = await fetch('/notifications/read-all', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': token
+                },
+                credentials: 'same-origin'
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to mark all as read');
+            }
+
+            // Update local state
+            this.notifications.forEach(notification => {
+                notification.read = true;
+            });
+            this.updateNotificationBadge();
+            this.renderNotifications();
+            this.showToast('All notifications marked as read', 'success');
+        } catch (error) {
+            console.error('Error marking all as read:', error);
+            this.showToast('Failed to mark notifications as read', 'error');
+        }
     }
 
     updateNotificationBadge() {

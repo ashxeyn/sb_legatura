@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,10 +10,13 @@
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
     <!-- Navbar CSS -->
     <link rel="stylesheet" href="{{ asset('css/partials/navbar_Contractor.css') }}">
+    <!-- Notification Dropdown CSS -->
+    <link rel="stylesheet" href="{{ asset('css/partials/notification_dropdown.css') }}?v={{ time() }}">
     <!-- Footer CSS -->
     <link rel="stylesheet" href="{{ asset('css/partials/footer.css') }}">
     <!-- Edit Profile Modal CSS -->
-    <link rel="stylesheet" href="{{ asset('css/contractor/contractor_Modals/contractorAccountsettings_Modal.css') }}?v={{ time() }}">
+    <link rel="stylesheet"
+        href="{{ asset('css/contractor/contractor_Modals/contractorAccountsettings_Modal.css') }}?v={{ time() }}">
     <!-- Help & Support Modal CSS -->
     <link rel="stylesheet" href="{{ asset('css/partials/helpSupport_Modal.css') }}?v={{ time() }}">
     <!-- Contact Us Modal CSS -->
@@ -32,12 +36,16 @@
     <!-- Subscription Modal CSS -->
     <link rel="stylesheet" href="{{ asset('css/partials/subscription_Modal.css') }}?v={{ time() }}">
     <!-- Flaticon Icons -->
-    <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-solid-straight/css/uicons-solid-straight.css'>
-    <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-solid-rounded/css/uicons-solid-rounded.css'>
+    <link rel='stylesheet'
+        href='https://cdn-uicons.flaticon.com/3.0.0/uicons-solid-straight/css/uicons-solid-straight.css'>
+    <link rel='stylesheet'
+        href='https://cdn-uicons.flaticon.com/3.0.0/uicons-solid-rounded/css/uicons-solid-rounded.css'>
     <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-bold-rounded/css/uicons-bold-rounded.css'>
-    <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-regular-rounded/css/uicons-regular-rounded.css'>
+    <link rel='stylesheet'
+        href='https://cdn-uicons.flaticon.com/3.0.0/uicons-regular-rounded/css/uicons-regular-rounded.css'>
     @yield('extra_css')
 </head>
+
 <body class="min-h-screen flex flex-col">
 
     @include('partials.navbar_Contractor')
@@ -82,8 +90,11 @@
 
     <!-- Navbar JS -->
     <script src="{{ asset('js/partials/navbar_Contractor.js') }}"></script>
+    <!-- Notification Dropdown JS -->
+    <script src="{{ asset('js/partials/notification_dropdown.js') }}?v={{ time() }}"></script>
     <!-- Edit Profile Modal JS -->
-    <script src="{{ asset('js/contractor/contractor_Modals/contractorAccountsettings_Modal.js') }}?v={{ time() }}"></script>
+    <script
+        src="{{ asset('js/contractor/contractor_Modals/contractorAccountsettings_Modal.js') }}?v={{ time() }}"></script>
     <!-- Help & Support Modal JS -->
     <script src="{{ asset('js/partials/helpSupport_Modal.js') }}?v={{ time() }}"></script>
     <!-- Contact Us Modal JS -->
@@ -104,4 +115,5 @@
     <script src="{{ asset('js/partials/subscription_Modal.js') }}?v={{ time() }}"></script>
     @yield('extra_js')
 </body>
+
 </html>

@@ -69,14 +69,14 @@ class notificationRedirectService
     public static function resolveForApi(object $notification, string $userRole): array
     {
         $resolved = self::resolve($notification, $userRole);
-        $subType  = self::extractSubType($notification);
+        $subType = self::extractSubType($notification);
 
         return [
-            'redirect_url'   => $resolved['url'],
-            'flash_message'  => $resolved['flash'],
+            'redirect_url' => $resolved['url'],
+            'flash_message' => $resolved['flash'],
             'reference_type' => $notification->reference_type,
-            'reference_id'   => $notification->reference_id,
-            'mobile'         => self::resolveForMobile($resolved['url'], $subType, $notification, $userRole),
+            'reference_id' => $notification->reference_id,
+            'mobile' => self::resolveForMobile($resolved['url'], $subType, $notification, $userRole),
         ];
     }
 
@@ -125,9 +125,9 @@ class notificationRedirectService
                 return [
                     'screen' => 'dashboard',
                     'params' => [
-                        'sub_screen'      => 'project_detail',
-                        'project_id'      => $projectId,
-                        'initial_action'  => 'project_timeline',
+                        'sub_screen' => 'project_detail',
+                        'project_id' => $projectId,
+                        'initial_action' => 'project_timeline',
                         'initial_section' => 'milestones',
                     ],
                 ];
@@ -152,9 +152,9 @@ class notificationRedirectService
                 return [
                     'screen' => 'dashboard',
                     'params' => [
-                        'sub_screen'      => 'project_detail',
-                        'project_id'      => $projectId,
-                        'initial_action'  => 'project_timeline',
+                        'sub_screen' => 'project_detail',
+                        'project_id' => $projectId,
+                        'initial_action' => 'project_timeline',
                         'initial_section' => 'milestones',
                         'initial_item_id' => $itemId,
                         'initial_item_tab' => 'payments',
@@ -172,9 +172,9 @@ class notificationRedirectService
                 return [
                     'screen' => 'dashboard',
                     'params' => [
-                        'sub_screen'      => 'project_detail',
-                        'project_id'      => $projectId,
-                        'initial_action'  => 'project_timeline',
+                        'sub_screen' => 'project_detail',
+                        'project_id' => $projectId,
+                        'initial_action' => 'project_timeline',
                         'initial_section' => 'milestones',
                     ],
                 ];
@@ -187,8 +187,8 @@ class notificationRedirectService
                 return [
                     'screen' => 'dashboard',
                     'params' => [
-                        'sub_screen'      => 'project_detail',
-                        'project_id'      => $projectId,
+                        'sub_screen' => 'project_detail',
+                        'project_id' => $projectId,
                         'initial_section' => 'bids',
                     ],
                 ];
@@ -231,9 +231,9 @@ class notificationRedirectService
                 return [
                     'screen' => 'dashboard',
                     'params' => [
-                        'sub_screen'      => 'project_detail',
-                        'project_id'      => $pid,
-                        'initial_action'  => 'project_timeline',
+                        'sub_screen' => 'project_detail',
+                        'project_id' => $pid,
+                        'initial_action' => 'project_timeline',
                         'initial_section' => 'milestones',
                     ],
                 ];
@@ -272,6 +272,17 @@ class notificationRedirectService
                     ],
                 ];
 
+            // ── Message notifications → messages screen ──
+            case 'message_received':
+            case 'message_reply':
+                $conversationId = $actionData['params']['conversationId'] ?? $notification->reference_id;
+                return [
+                    'screen' => 'messages',
+                    'params' => [
+                        'conversation_id' => $conversationId,
+                    ],
+                ];
+
             default:
                 return [
                     'screen' => 'dashboard',
@@ -287,7 +298,7 @@ class notificationRedirectService
     private static function resolveProjectIdFromRef(object $notification): ?int
     {
         $refType = $notification->reference_type;
-        $refId   = $notification->reference_id;
+        $refId = $notification->reference_id;
 
         if (!$refType || !$refId) {
             return null;
@@ -311,7 +322,7 @@ class notificationRedirectService
 
             case 'payment':
                 $pay = DB::table('milestone_payments as mp')
-                    ->join('milestone_items as mi', 'mp.milestone_item_id', '=', 'mi.item_id')
+                    ->join('milestone_items as mi', 'mp.item_id', '=', 'mi.item_id')
                     ->join('milestones as m', 'mi.milestone_id', '=', 'm.milestone_id')
                     ->where('mp.payment_id', $refId)
                     ->select('m.project_id')
@@ -348,12 +359,12 @@ class notificationRedirectService
      * reference_type routing).
      */
     private static function resolveBySubType(
-        string  $subType,
-        object  $notification,
-        string  $userRole
+        string $subType,
+        object $notification,
+        string $userRole
     ): ?array {
         $refType = $notification->reference_type;
-        $refId   = $notification->reference_id;
+        $refId = $notification->reference_id;
 
         switch ($subType) {
             // ── Milestone lifecycle → project page scrolled to milestone ──
@@ -421,6 +432,11 @@ class notificationRedirectService
             case 'team_access_changed':
                 return self::resolveProjectRedirect($refId, $userRole);
 
+            // ── Message notifications → messages page ──
+            case 'message_received':
+            case 'message_reply':
+                return self::resolveConversationRedirect($refId, $userRole);
+
             default:
                 return null; // fall through to reference_type routing
         }
@@ -433,8 +449,8 @@ class notificationRedirectService
      */
     private static function resolveByReferenceType(
         ?string $referenceType,
-        ?int    $referenceId,
-        string  $userRole
+        ?int $referenceId,
+        string $userRole
     ): ?array {
         if (!$referenceType || !$referenceId) {
             return null;
@@ -471,7 +487,7 @@ class notificationRedirectService
             default:
                 Log::warning('NotificationRedirectService: unknown reference_type', [
                     'reference_type' => $referenceType,
-                    'reference_id'   => $referenceId,
+                    'reference_id' => $referenceId,
                 ]);
                 return null;
         }
@@ -484,8 +500,8 @@ class notificationRedirectService
      */
     private static function resolveMilestoneRedirect(
         ?string $refType,
-        ?int    $refId,
-        string  $userRole
+        ?int $refId,
+        string $userRole
     ): array {
         if (!$refId) {
             return self::dashboardFallback($userRole, 'Milestone reference is missing.');
@@ -505,7 +521,7 @@ class notificationRedirectService
             $projectId = $milestone->project_id;
             $prefix = self::rolePrefix($userRole);
             return [
-                'url'   => "/{$prefix}/projects/milestone-report?project_id={$projectId}&milestone_id={$refId}",
+                'url' => "/{$prefix}/projects/milestone-report?project_id={$projectId}&milestone_id={$refId}",
                 'flash' => null,
             ];
         }
@@ -519,7 +535,7 @@ class notificationRedirectService
             }
             $prefix = self::rolePrefix($userRole);
             return [
-                'url'   => "/{$prefix}/projects/milestone-report?project_id={$refId}",
+                'url' => "/{$prefix}/projects/milestone-report?project_id={$refId}",
                 'flash' => null,
             ];
         }
@@ -536,7 +552,7 @@ class notificationRedirectService
 
         $prefix = self::rolePrefix($userRole);
         return [
-            'url'   => "/{$prefix}/projects/milestone-report?project_id={$milestone->project_id}&milestone_id={$refId}",
+            'url' => "/{$prefix}/projects/milestone-report?project_id={$milestone->project_id}&milestone_id={$refId}",
             'flash' => null,
         ];
     }
@@ -566,7 +582,7 @@ class notificationRedirectService
 
         $prefix = self::rolePrefix($userRole);
         return [
-            'url'   => "/{$prefix}/projects/milestone-report?project_id={$milestone->project_id}&milestone_id={$item->milestone_id}&item_id={$itemId}",
+            'url' => "/{$prefix}/projects/milestone-report?project_id={$milestone->project_id}&milestone_id={$item->milestone_id}&item_id={$itemId}",
             'flash' => null,
         ];
     }
@@ -599,14 +615,14 @@ class notificationRedirectService
         if ($refType === 'payment') {
             $payment = DB::table('milestone_payments')
                 ->where('payment_id', $refId)
-                ->select('milestone_item_id')
+                ->select('item_id')
                 ->first();
 
-            if (!$payment || !$payment->milestone_item_id) {
+            if (!$payment || !$payment->item_id) {
                 return self::dashboardFallback($userRole, 'The payment record no longer exists.');
             }
 
-            return self::resolveMilestoneItemRedirect($payment->milestone_item_id, $userRole);
+            return self::resolveMilestoneItemRedirect($payment->item_id, $userRole);
         }
 
         return self::dashboardFallback($userRole, 'Could not resolve payment location.');
@@ -633,7 +649,7 @@ class notificationRedirectService
         if ($refType === 'project') {
             $prefix = self::rolePrefix($userRole);
             return [
-                'url'   => "/{$prefix}/projects/milestone-progress-report?project_id={$refId}",
+                'url' => "/{$prefix}/projects/milestone-progress-report?project_id={$refId}",
                 'flash' => null,
             ];
         }
@@ -664,13 +680,13 @@ class notificationRedirectService
         if ($refType === 'project') {
             if ($userRole === 'property_owner') {
                 return [
-                    'url'   => "/owner/projects/{$refId}/bids",
+                    'url' => "/owner/projects/{$refId}/bids",
                     'flash' => null,
                 ];
             }
             // Contractor sees their bids list
             return [
-                'url'   => '/contractor/mybids',
+                'url' => '/contractor/mybids',
                 'flash' => null,
             ];
         }
@@ -688,12 +704,12 @@ class notificationRedirectService
 
             if ($userRole === 'property_owner') {
                 return [
-                    'url'   => "/owner/projects/{$bid->project_id}/bids",
+                    'url' => "/owner/projects/{$bid->project_id}/bids",
                     'flash' => null,
                 ];
             }
             return [
-                'url'   => '/contractor/mybids',
+                'url' => '/contractor/mybids',
                 'flash' => null,
             ];
         }
@@ -719,7 +735,7 @@ class notificationRedirectService
         }
 
         return [
-            'url'   => "/both/disputes/{$refId}",
+            'url' => "/both/disputes/{$refId}",
             'flash' => null,
         ];
     }
@@ -739,7 +755,7 @@ class notificationRedirectService
 
         $prefix = self::rolePrefix($userRole);
         return [
-            'url'   => "/{$prefix}/messages?conversation={$conversationId}",
+            'url' => "/{$prefix}/messages?conversation={$conversationId}",
             'flash' => null,
         ];
     }
@@ -751,7 +767,7 @@ class notificationRedirectService
     {
         $prefix = self::rolePrefix($userRole);
         return [
-            'url'   => "/{$prefix}/profile?tab=reviews",
+            'url' => "/{$prefix}/profile?tab=reviews",
             'flash' => null,
         ];
     }
@@ -784,7 +800,7 @@ class notificationRedirectService
 
         $prefix = self::rolePrefix($userRole);
         return [
-            'url'   => "/{$prefix}/projects/milestone-report?project_id={$projectId}",
+            'url' => "/{$prefix}/projects/milestone-report?project_id={$projectId}",
             'flash' => null,
         ];
     }
@@ -796,7 +812,7 @@ class notificationRedirectService
     {
         $prefix = self::rolePrefix($userRole);
         return [
-            'url'   => "/{$prefix}/profile",
+            'url' => "/{$prefix}/profile",
             'flash' => null,
         ];
     }
@@ -824,8 +840,8 @@ class notificationRedirectService
     {
         return match ($userRole) {
             'contractor' => 'contractor',
-            'admin'      => 'admin',
-            default      => 'owner',   // property_owner and fallback
+            'admin' => 'admin',
+            default => 'owner',   // property_owner and fallback
         };
     }
 
@@ -836,7 +852,7 @@ class notificationRedirectService
     {
         $prefix = self::rolePrefix($userRole);
         return [
-            'url'   => "/{$prefix}/dashboard",
+            'url' => "/{$prefix}/dashboard",
             'flash' => $message,
         ];
     }
@@ -848,7 +864,7 @@ class notificationRedirectService
     {
         $prefix = self::rolePrefix($userRole);
         return [
-            'url'   => "/{$prefix}/projects",
+            'url' => "/{$prefix}/projects",
             'flash' => $message,
         ];
     }

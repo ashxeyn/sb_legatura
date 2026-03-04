@@ -111,7 +111,7 @@ class PropertyOwnerMilestoneReport {
             if (json.success && json.data?.pending_extension) {
                 this.pendingUpdate = json.data.pending_extension;
             }
-        } catch (_) {}
+        } catch (_) { }
     }
 
     async fetchApprovedUpdates() {
@@ -122,7 +122,7 @@ class PropertyOwnerMilestoneReport {
                 this.approvedUpdates = (Array.isArray(json.data) ? json.data : [])
                     .filter(u => u.status === 'approved');
             }
-        } catch (_) {}
+        } catch (_) { }
     }
 
     async fetchPaymentHistory() {
@@ -531,8 +531,8 @@ class PropertyOwnerMilestoneReport {
                         <div class="pending-update-text">
                             <span class="pending-update-title">${isPendingRevision ? 'Revision Requested' : 'Pending Update Request'}</span>
                             <span class="pending-update-desc">${isPendingRevision
-                                ? 'You requested changes. Waiting for the contractor to revise.'
-                                : 'The contractor has submitted a proposal for review.'}</span>
+                    ? 'You requested changes. Waiting for the contractor to revise.'
+                    : 'The contractor has submitted a proposal for review.'}</span>
                         </div>
                         <i class="fi fi-rr-angle-small-right"></i>
                     </div>
@@ -627,9 +627,9 @@ class PropertyOwnerMilestoneReport {
                         <div class="milestone-circle-wrapper ${ringClass}">
                             <div class="milestone-node ${isItemCompleted ? 'completed' : 'pending'}">
                                 ${isItemCompleted
-                                    ? '<i class="fi fi-rr-check" style="color:#fff; font-size:1.25rem;"></i>'
-                                    : `<span class="milestone-progress-number">${displayPercentage}</span>`
-                                }
+                    ? '<i class="fi fi-rr-check" style="color:#fff; font-size:1.25rem;"></i>'
+                    : `<span class="milestone-progress-number">${displayPercentage}</span>`
+                }
                             </div>
                         </div>
                     </div>
@@ -653,13 +653,13 @@ class PropertyOwnerMilestoneReport {
                 <div class="start-label">
                     <div class="start-text">Start</div>
                     ${isDP
-                        ? `<div class="start-percentage start-dp-amount">
+                ? `<div class="start-percentage start-dp-amount">
                                <i class="fi fi-rr-hand-holding-usd" style="font-size:11px;"></i>
                                ${this.formatCurrency(dpAmount)}
                            </div>
                            <div class="start-dp-hint">Tap to view downpayment</div>`
-                        : `<div class="start-percentage">0%</div>`
-                    }
+                : `<div class="start-percentage">0%</div>`
+            }
                 </div>
             </div>`;
 
@@ -942,7 +942,7 @@ class PropertyOwnerMilestoneReport {
             const tsEl = document.getElementById('psmGeneratedAt');
             if (tsEl && data.generated_at) {
                 const d = new Date(data.generated_at);
-                tsEl.textContent = 'Report generated ' + d.toLocaleDateString('en-US', {month:'2-digit',day:'2-digit',year:'numeric'}) + ' ' + d.toLocaleTimeString('en-US', {hour:'2-digit',minute:'2-digit',hour12:true});
+                tsEl.textContent = 'Report generated ' + d.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) + ' ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
             }
 
             // Re-init accordion
@@ -966,22 +966,22 @@ class PropertyOwnerMilestoneReport {
         const milestones = data.milestones || [];
         const budgetHistory = data.budget_history || [];
         const changeHistory = data.change_history || [];
-        const payments = data.payments || {records:[], total_approved:0, total_pending:0, total_rejected:0};
+        const payments = data.payments || { records: [], total_approved: 0, total_pending: 0, total_rejected: 0 };
         const reports = data.progress_reports || [];
 
-        const fmt = (v) => '₱' + Number(v || 0).toLocaleString('en-PH', {minimumFractionDigits:0});
-        const fmt2 = (v) => '₱' + Number(v || 0).toLocaleString('en-PH', {minimumFractionDigits:2});
-        const fmtDate = (d) => { if (!d) return '—'; const dt = new Date(d); return dt.toLocaleDateString('en-US', {year:'numeric', month:'short', day:'numeric'}); };
-        const fmtDateTime = (d) => { if (!d) return ''; const dt = new Date(d); return dt.toLocaleDateString('en-US', {month:'2-digit',day:'2-digit',year:'numeric'}) + ' ' + dt.toLocaleTimeString('en-US', {hour:'2-digit',minute:'2-digit',hour12:true}); };
+        const fmt = (v) => '₱' + Number(v || 0).toLocaleString('en-PH', { minimumFractionDigits: 0 });
+        const fmt2 = (v) => '₱' + Number(v || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 });
+        const fmtDate = (d) => { if (!d) return '—'; const dt = new Date(d); return dt.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }); };
+        const fmtDateTime = (d) => { if (!d) return ''; const dt = new Date(d); return dt.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) + ' ' + dt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }); };
         const sc = (s) => {
-            const m = {completed:['#D1FAE5','#10B981'],approved:['#D1FAE5','#10B981'],pending:['#FEF3C7','#F59E0B'],submitted:['#FEF3C7','#F59E0B'],active:['#DBEAFE','#3B82F6'],in_progress:['#DBEAFE','#3B82F6'],rejected:['#FEE2E2','#EF4444'],revision_requested:['#FFF3E6','#EC7E00']};
-            return m[(s||'').toLowerCase()] || ['#F1F5F9','#64748B'];
+            const m = { completed: ['#D1FAE5', '#10B981'], approved: ['#D1FAE5', '#10B981'], pending: ['#FEF3C7', '#F59E0B'], submitted: ['#FEF3C7', '#F59E0B'], active: ['#DBEAFE', '#3B82F6'], in_progress: ['#DBEAFE', '#3B82F6'], rejected: ['#FEE2E2', '#EF4444'], revision_requested: ['#FFF3E6', '#EC7E00'] };
+            return m[(s || '').toLowerCase()] || ['#F1F5F9', '#64748B'];
         };
-        const badge = (s, extra='') => { const c=sc(s); return `<span class="psm-badge${extra?' '+extra:''}" style="background:${c[0]};color:${c[1]};">${(s||'').replace(/_/g,' ')}</span>`; };
+        const badge = (s, extra = '') => { const c = sc(s); return `<span class="psm-badge${extra ? ' ' + extra : ''}" style="background:${c[0]};color:${c[1]};">${(s || '').replace(/_/g, ' ')}</span>`; };
         const esc = (s) => { const el = document.createElement('span'); el.textContent = s || ''; return el.innerHTML; };
 
-        const progressPct = o.total_milestones > 0 ? Math.round((o.completed_milestones||0)/o.total_milestones*100) : 0;
-        const budgetUtil = o.current_budget > 0 ? Math.round((o.total_paid||0)/o.current_budget*100) : 0;
+        const progressPct = o.total_milestones > 0 ? Math.round((o.completed_milestones || 0) / o.total_milestones * 100) : 0;
+        const budgetUtil = o.current_budget > 0 ? Math.round((o.total_paid || 0) / o.current_budget * 100) : 0;
 
         let html = '';
 
@@ -992,28 +992,28 @@ class PropertyOwnerMilestoneReport {
             <div class="flex items-center justify-between flex-wrap gap-2 mt-3">
                 <div class="flex items-center gap-1.5">
                     <i class="fi fi-rr-marker text-xs text-gray-400"></i>
-                    <span class="text-xs text-gray-500">${esc(h.project_location||'—')}</span>
+                    <span class="text-xs text-gray-500">${esc(h.project_location || '—')}</span>
                 </div>
-                ${badge((h.status||'').toUpperCase())}
+                ${badge((h.status || '').toUpperCase())}
             </div>
             <div class="psm-divider"></div>
             <div class="grid grid-cols-2 gap-3">
                 <div>
                     <p class="psm-meta-label">PROPERTY OWNER</p>
-                    <p class="text-sm font-semibold text-gray-900" style="font-family:ui-sans-serif,system-ui,sans-serif;">${esc(h.owner_name||'—')}</p>
-                    ${h.owner_email?`<p class="text-xs text-gray-400 mt-0.5">${esc(h.owner_email)}</p>`:''}
+                    <p class="text-sm font-semibold text-gray-900" style="font-family:ui-sans-serif,system-ui,sans-serif;">${esc(h.owner_name || '—')}</p>
+                    ${h.owner_email ? `<p class="text-xs text-gray-400 mt-0.5">${esc(h.owner_email)}</p>` : ''}
                 </div>
                 <div>
                     <p class="psm-meta-label">CONTRACTOR</p>
-                    <p class="text-sm font-semibold text-gray-900" style="font-family:ui-sans-serif,system-ui,sans-serif;">${esc(h.contractor_name||'—')}</p>
-                    ${h.contractor_company?`<p class="text-xs text-gray-400 mt-0.5">${esc(h.contractor_company)}</p>`:''}
+                    <p class="text-sm font-semibold text-gray-900" style="font-family:ui-sans-serif,system-ui,sans-serif;">${esc(h.contractor_name || '—')}</p>
+                    ${h.contractor_company ? `<p class="text-xs text-gray-400 mt-0.5">${esc(h.contractor_company)}</p>` : ''}
                 </div>
             </div>
             <div class="psm-divider"></div>
             <div class="flex items-center gap-3 flex-wrap">
                 <div><p class="psm-meta-label">START</p><p class="text-sm font-semibold text-gray-900" style="font-family:ui-sans-serif,system-ui,sans-serif;">${fmtDate(h.original_start_date)}</p></div>
                 <i class="fi fi-rr-arrow-right text-xs text-gray-300"></i>
-                <div><p class="psm-meta-label">${h.was_extended?'CURRENT END':'END'}</p><p class="text-sm font-semibold text-gray-900" style="font-family:ui-sans-serif,system-ui,sans-serif;">${fmtDate(h.current_end_date)}</p></div>
+                <div><p class="psm-meta-label">${h.was_extended ? 'CURRENT END' : 'END'}</p><p class="text-sm font-semibold text-gray-900" style="font-family:ui-sans-serif,system-ui,sans-serif;">${fmtDate(h.current_end_date)}</p></div>
                 ${h.was_extended && h.original_end_date !== h.current_end_date ? '<span class="psm-badge" style="background:#FEF3C7;color:#F59E0B;"><i class="fi fi-rr-clock" style="font-size:0.5rem;"></i> Extended</span>' : ''}
             </div>
         </div>`;
@@ -1026,22 +1026,22 @@ class PropertyOwnerMilestoneReport {
                     <span class="text-xs font-bold text-gray-900">${progressPct}%</span>
                 </div>
                 <div class="psm-progress-track"><div class="psm-progress-fill" style="width:${progressPct}%;background:#10B981;"></div></div>
-                <p class="text-[0.6875rem] text-gray-400 mt-1">${o.completed_milestones||0} of ${o.total_milestones||0} milestones completed</p>
+                <p class="text-[0.6875rem] text-gray-400 mt-1">${o.completed_milestones || 0} of ${o.total_milestones || 0} milestones completed</p>
             </div>
             <div class="mb-4">
                 <div class="flex justify-between mb-1">
                     <span class="text-xs font-semibold text-gray-700" style="font-family:ui-sans-serif,system-ui,sans-serif;">Budget Utilization</span>
                     <span class="text-xs font-bold text-gray-900">${budgetUtil}%</span>
                 </div>
-                <div class="psm-progress-track"><div class="psm-progress-fill" style="width:${Math.min(budgetUtil,100)}%;background:${budgetUtil>100?'#EF4444':'#3B82F6'};"></div></div>
+                <div class="psm-progress-track"><div class="psm-progress-fill" style="width:${Math.min(budgetUtil, 100)}%;background:${budgetUtil > 100 ? '#EF4444' : '#3B82F6'};"></div></div>
             </div>
             <div class="psm-fin-grid">
                 <div class="psm-fin-cell"><span class="psm-fin-label">ORIGINAL BUDGET</span><span class="psm-fin-value">${fmt(o.original_budget)}</span></div>
-                <div class="psm-fin-cell ${o.current_budget!==o.original_budget?'psm-fin-highlight':''}"><span class="psm-fin-label">CURRENT BUDGET</span><span class="psm-fin-value">${fmt(o.current_budget)}</span></div>
+                <div class="psm-fin-cell ${o.current_budget !== o.original_budget ? 'psm-fin-highlight' : ''}"><span class="psm-fin-label">CURRENT BUDGET</span><span class="psm-fin-value">${fmt(o.current_budget)}</span></div>
                 <div class="psm-fin-cell"><span class="psm-fin-label">TOTAL PAID</span><span class="psm-fin-value" style="color:#10B981;">${fmt(o.total_paid)}</span></div>
                 <div class="psm-fin-cell"><span class="psm-fin-label">PENDING</span><span class="psm-fin-value" style="color:#F59E0B;">${fmt(o.total_pending)}</span></div>
                 <div class="psm-fin-cell"><span class="psm-fin-label">REMAINING</span><span class="psm-fin-value">${fmt(o.remaining_balance)}</span></div>
-                <div class="psm-fin-cell"><span class="psm-fin-label">PAYMENT MODE</span><span class="psm-fin-value-text">${esc((o.payment_mode||'—').replace(/_/g,' '))}</span></div>
+                <div class="psm-fin-cell"><span class="psm-fin-label">PAYMENT MODE</span><span class="psm-fin-value-text">${esc((o.payment_mode || '—').replace(/_/g, ' '))}</span></div>
             </div>
         `);
 
@@ -1051,20 +1051,20 @@ class PropertyOwnerMilestoneReport {
                 const mc = sc(m.status);
                 return `<div class="psm-milestone-card">
                     <div class="flex items-center gap-2.5 mb-2">
-                        <div class="psm-milestone-seq">${m.sequence_order||''}</div>
+                        <div class="psm-milestone-seq">${m.sequence_order || ''}</div>
                         <div class="flex-1 min-w-0">
                             <p class="text-sm font-semibold text-gray-900 leading-tight" style="font-family:ui-sans-serif,system-ui,sans-serif;">${esc(m.title)}</p>
                             <p class="text-[0.6875rem] text-gray-400 mt-0.5">${esc(m.milestone_name)}</p>
                         </div>
-                        <span class="psm-badge" style="background:${mc[0]};color:${mc[1]};">${(m.status||'').replace(/_/g,' ')}</span>
+                        <span class="psm-badge" style="background:${mc[0]};color:${mc[1]};">${(m.status || '').replace(/_/g, ' ')}</span>
                     </div>
                     <div class="grid grid-cols-3 gap-2 mb-2">
                         <div><p class="psm-meta-label">BUDGET</p><p class="text-xs font-semibold text-gray-900">${fmt(m.current_allocation)}</p></div>
                         <div><p class="psm-meta-label">PAID</p><p class="text-xs font-semibold" style="color:#10B981;">${fmt(m.total_paid)}</p></div>
                         <div><p class="psm-meta-label">DUE</p><p class="text-xs font-semibold text-gray-900">${fmtDate(m.current_due_date)}</p></div>
                     </div>
-                    ${m.was_extended?`<div class="flex items-center gap-1.5 mb-2"><i class="fi fi-rr-clock text-xs text-amber-500"></i><span class="text-[0.6875rem] text-amber-500 font-medium">Extended ${m.extension_count||0}× (was ${fmtDate(m.original_due_date)})</span></div>`:''}
-                    <div class="psm-progress-track" style="height:4px;"><div class="psm-progress-fill" style="width:${m.percentage_progress||0}%;background:#3B82F6;"></div></div>
+                    ${m.was_extended ? `<div class="flex items-center gap-1.5 mb-2"><i class="fi fi-rr-clock text-xs text-amber-500"></i><span class="text-[0.6875rem] text-amber-500 font-medium">Extended ${m.extension_count || 0}× (was ${fmtDate(m.original_due_date)})</span></div>` : ''}
+                    <div class="psm-progress-track" style="height:4px;"><div class="psm-progress-fill" style="width:${m.percentage_progress || 0}%;background:#3B82F6;"></div></div>
                 </div>`;
             }).join('')
         );
@@ -1078,12 +1078,12 @@ class PropertyOwnerMilestoneReport {
                         <div class="psm-history-dot"></div>
                         <div class="flex-1">
                             <div class="flex items-center justify-between gap-2 mb-1">
-                                <span class="text-sm font-semibold text-gray-900" style="font-family:ui-sans-serif,system-ui,sans-serif;">${bh.change_type?'Budget '+bh.change_type.charAt(0).toUpperCase()+bh.change_type.slice(1):'Timeline Update'}</span>
-                                <span class="psm-badge" style="background:${bhc[0]};color:${bhc[1]};">${bh.status||''}</span>
+                                <span class="text-sm font-semibold text-gray-900" style="font-family:ui-sans-serif,system-ui,sans-serif;">${bh.change_type ? 'Budget ' + bh.change_type.charAt(0).toUpperCase() + bh.change_type.slice(1) : 'Timeline Update'}</span>
+                                <span class="psm-badge" style="background:${bhc[0]};color:${bhc[1]};">${bh.status || ''}</span>
                             </div>
-                            ${bh.previous_budget!=null&&bh.updated_budget!=null?`<p class="text-xs text-gray-500">${fmt(bh.previous_budget)} → ${fmt(bh.updated_budget)}</p>`:''}
-                            ${bh.previous_end_date&&bh.proposed_end_date?`<p class="text-xs text-gray-500">${fmtDate(bh.previous_end_date)} → ${fmtDate(bh.proposed_end_date)}</p>`:''}
-                            ${bh.reason?`<p class="text-[0.6875rem] text-gray-400 italic mt-1">"${esc(bh.reason)}"</p>`:''}
+                            ${bh.previous_budget != null && bh.updated_budget != null ? `<p class="text-xs text-gray-500">${fmt(bh.previous_budget)} → ${fmt(bh.updated_budget)}</p>` : ''}
+                            ${bh.previous_end_date && bh.proposed_end_date ? `<p class="text-xs text-gray-500">${fmtDate(bh.previous_end_date)} → ${fmtDate(bh.proposed_end_date)}</p>` : ''}
+                            ${bh.reason ? `<p class="text-[0.6875rem] text-gray-400 italic mt-1">"${esc(bh.reason)}"</p>` : ''}
                             <p class="text-[0.625rem] text-gray-300 mt-1">${fmtDate(bh.date_proposed)}</p>
                         </div>
                     </div>`;
@@ -1098,9 +1098,9 @@ class PropertyOwnerMilestoneReport {
                     <div class="psm-history-dot" style="background:#3B82F6;"></div>
                     <div class="flex-1">
                         <p class="text-sm font-semibold text-gray-900" style="font-family:ui-sans-serif,system-ui,sans-serif;">${esc(evt.action)}</p>
-                        ${evt.performed_by?`<p class="text-xs text-gray-500 mt-0.5">by ${esc(evt.performed_by)}</p>`:''}
-                        ${evt.notes?`<p class="text-[0.6875rem] text-gray-400 italic mt-1">"${esc(evt.notes)}"</p>`:''}
-                        ${evt.reference?`<p class="text-[0.625rem] text-blue-500 mt-0.5">${esc(evt.reference)}</p>`:''}
+                        ${evt.performed_by ? `<p class="text-xs text-gray-500 mt-0.5">by ${esc(evt.performed_by)}</p>` : ''}
+                        ${evt.notes ? `<p class="text-[0.6875rem] text-gray-400 italic mt-1">"${esc(evt.notes)}"</p>` : ''}
+                        ${evt.reference ? `<p class="text-[0.625rem] text-blue-500 mt-0.5">${esc(evt.reference)}</p>` : ''}
                         <p class="text-[0.625rem] text-gray-300 mt-1">${fmtDateTime(evt.date)}</p>
                     </div>
                 </div>`).join('')
@@ -1115,38 +1115,42 @@ class PropertyOwnerMilestoneReport {
                 <div class="psm-payment-pill" style="border-color:#F59E0B;"><span class="psm-meta-label" style="color:#F59E0B;">PENDING</span><span class="text-sm font-bold" style="color:#F59E0B;">${fmt(payments.total_pending)}</span></div>
                 <div class="psm-payment-pill" style="border-color:#EF4444;"><span class="psm-meta-label" style="color:#EF4444;">REJECTED</span><span class="text-sm font-bold" style="color:#EF4444;">${fmt(payments.total_rejected)}</span></div>
             </div>
-            ${recs.length===0?'<p class="text-xs text-gray-400 italic py-3">No payment records yet.</p>':
-            recs.map(p => { const pc=sc(p.status); return `<div class="psm-payment-row">
+            ${recs.length === 0 ? '<p class="text-xs text-gray-400 italic py-3">No payment records yet.</p>' :
+                recs.map(p => {
+                    const pc = sc(p.status); return `<div class="psm-payment-row">
                 <div class="flex items-start justify-between gap-2 mb-1">
                     <div class="flex-1 min-w-0">
                         <p class="text-sm font-semibold text-gray-900" style="font-family:ui-sans-serif,system-ui,sans-serif;">${esc(p.milestone)}</p>
-                        <p class="text-[0.6875rem] text-gray-400 capitalize">${(p.payment_type||'').replace(/_/g,' ')}</p>
+                        <p class="text-[0.6875rem] text-gray-400 capitalize">${(p.payment_type || '').replace(/_/g, ' ')}</p>
                     </div>
                     <div class="text-right flex-shrink-0">
                         <p class="text-sm font-bold text-gray-900">${fmt2(p.amount)}</p>
-                        <span class="psm-badge mt-0.5" style="background:${pc[0]};color:${pc[1]};">${p.status||''}</span>
+                        <span class="psm-badge mt-0.5" style="background:${pc[0]};color:${pc[1]};">${p.status || ''}</span>
                     </div>
                 </div>
                 <div class="flex items-center justify-between">
-                    ${p.transaction_number?`<span class="text-[0.625rem] text-gray-400">Ref: ${esc(p.transaction_number)}</span>`:'<span></span>'}
+                    ${p.transaction_number ? `<span class="text-[0.625rem] text-gray-400">Ref: ${esc(p.transaction_number)}</span>` : '<span></span>'}
                     <span class="text-[0.625rem] text-gray-300">${fmtDate(p.transaction_date)}</span>
                 </div>
-            </div>`; }).join('')}
+            </div>`;
+                }).join('')}
         `);
 
         // G. Progress Reports
         if (reports.length > 0) {
             html += this.buildPsmSection('progress', 'fi-rr-document', `Progress Reports (${reports.length})`, true,
-                reports.map(rp => { const rc=sc(rp.status); return `<div class="psm-report-row">
+                reports.map(rp => {
+                    const rc = sc(rp.status); return `<div class="psm-report-row">
                     <div class="flex-1 min-w-0">
-                        <p class="text-sm font-semibold text-gray-900" style="font-family:ui-sans-serif,system-ui,sans-serif;">${esc(rp.report_title||'Progress Report')}</p>
-                        <p class="text-[0.6875rem] text-gray-400 mt-0.5">${esc(rp.milestone||'')}</p>
+                        <p class="text-sm font-semibold text-gray-900" style="font-family:ui-sans-serif,system-ui,sans-serif;">${esc(rp.report_title || 'Progress Report')}</p>
+                        <p class="text-[0.6875rem] text-gray-400 mt-0.5">${esc(rp.milestone || '')}</p>
                     </div>
                     <div class="text-right flex-shrink-0">
-                        <span class="psm-badge" style="background:${rc[0]};color:${rc[1]};">${(rp.status||'').replace(/_/g,' ')}</span>
+                        <span class="psm-badge" style="background:${rc[0]};color:${rc[1]};">${(rp.status || '').replace(/_/g, ' ')}</span>
                         <p class="text-[0.625rem] text-gray-300 mt-1">${fmtDate(rp.submitted_at)}</p>
                     </div>
-                </div>`; }).join('')
+                </div>`;
+                }).join('')
             );
         }
 
@@ -1163,9 +1167,9 @@ class PropertyOwnerMilestoneReport {
                     <i class="fi ${icon} text-sm" style="color:#EEA24B;"></i>
                     <span class="psm-section-title">${title}</span>
                 </div>
-                <i class="fi fi-rr-angle-small-down psm-chevron" style="${collapsed?'transform:rotate(-90deg)':''}"></i>
+                <i class="fi fi-rr-angle-small-down psm-chevron" style="${collapsed ? 'transform:rotate(-90deg)' : ''}"></i>
             </button>
-            <div class="psm-section-body${collapsed?' psm-collapsed':''}" data-psm-body="${key}">${content}</div>
+            <div class="psm-section-body${collapsed ? ' psm-collapsed' : ''}" data-psm-body="${key}">${content}</div>
         </div>`;
     }
 
