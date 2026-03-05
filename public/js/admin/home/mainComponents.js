@@ -60,58 +60,88 @@
         applyWidth(defaultWidth);
     });
 
-    document.querySelectorAll('.nav-btn').forEach(button => {
-        button.addEventListener('click', () => {
-            const group = button.closest('.nav-group');
-            const submenu = group?.querySelector('.nav-submenu');
-            const arrow = button.querySelector('.arrow');
+    // ================= Sidebar Nav State Persistence =================
+    const STORAGE_KEY_NAV = 'legatura_sidebar_nav_state';
+    const STORAGE_KEY_NESTED = 'legatura_sidebar_nested_state';
 
-            document.querySelectorAll('.nav-group').forEach(otherGroup => {
-                if (otherGroup !== group) {
-                    otherGroup.querySelector('.nav-submenu')?.classList.remove('block');
-                    otherGroup.querySelector('.nav-btn')?.classList.remove('active');
-                    otherGroup.querySelector('.arrow')?.classList.remove('rotate-180');
-                }
-            });
+    function getNavState() {
+        try { return JSON.parse(localStorage.getItem(STORAGE_KEY_NAV)) || {}; } catch { return {}; }
+    }
+    function getNestedState() {
+        try { return JSON.parse(localStorage.getItem(STORAGE_KEY_NESTED)) || {}; } catch { return {}; }
+    }
+    function saveNavState(state) {
+        localStorage.setItem(STORAGE_KEY_NAV, JSON.stringify(state));
+    }
+    function saveNestedState(state) {
+        localStorage.setItem(STORAGE_KEY_NESTED, JSON.stringify(state));
+    }
 
-            button.classList.toggle('active');
+    const navGroups = document.querySelectorAll('.nav-group');
+    const navState = getNavState();
+    const nestedState = getNestedState();
 
-            if (submenu) {
-                submenu.classList.toggle('block');
-            }
+    // Restore nav group open/closed state on page load
+    navGroups.forEach((group, index) => {
+        const submenu = group.querySelector('.nav-submenu');
+        const btn = group.querySelector('.nav-btn');
+        const arrow = btn?.querySelector('.arrow');
 
-            if (arrow) {
-                arrow.classList.toggle('rotate-180');
-            }
+        if (navState[index]) {
+            btn?.classList.add('active');
+            submenu?.classList.add('block');
+            arrow?.classList.add('rotate-180');
+        }
+    });
+
+    // Restore nested submenu state on page load
+    document.querySelectorAll('.submenu-nested-btn').forEach((button, index) => {
+        if (nestedState[index]) {
+            const nestedContent = button.nextElementSibling;
+            const arrow = button.querySelector('.arrow-small');
+            button.classList.add('active');
+            nestedContent?.classList.add('block');
+            arrow?.classList.add('rotate-180');
+        }
+    });
+
+    // Nav group toggle — persists state, no auto-close of other groups
+    navGroups.forEach((group, index) => {
+        const btn = group.querySelector('.nav-btn');
+        if (!btn) return;
+
+        btn.addEventListener('click', () => {
+            const submenu = group.querySelector('.nav-submenu');
+            const arrow = btn.querySelector('.arrow');
+
+            btn.classList.toggle('active');
+            submenu?.classList.toggle('block');
+            arrow?.classList.toggle('rotate-180');
+
+            // Persist
+            const state = getNavState();
+            state[index] = btn.classList.contains('active');
+            saveNavState(state);
         });
     });
 
-    // Nested submenu toggle
-    document.querySelectorAll('.submenu-nested-btn').forEach(button => {
+    // Nested submenu toggle — persists state, no auto-close of other nested items
+    document.querySelectorAll('.submenu-nested-btn').forEach((button, index) => {
         button.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            
+
             const nestedContent = button.nextElementSibling;
             const arrow = button.querySelector('.arrow-small');
 
-            // Close all other nested items
-            document.querySelectorAll('.submenu-nested-btn').forEach(btn => {
-                if (btn !== button) {
-                    btn.classList.remove('active');
-                    btn.nextElementSibling?.classList.remove('block');
-                    btn.querySelector('.arrow-small')?.classList.remove('rotate-180');
-                }
-            });
-
-            // Toggle current nested item
             button.classList.toggle('active');
-            if (nestedContent) {
-                nestedContent.classList.toggle('block');
-            }
-            if (arrow) {
-                arrow.classList.toggle('rotate-180');
-            }
+            nestedContent?.classList.toggle('block');
+            arrow?.classList.toggle('rotate-180');
+
+            // Persist
+            const state = getNestedState();
+            state[index] = button.classList.contains('active');
+            saveNestedState(state);
         });
     });
 
@@ -175,16 +205,60 @@
     }
     // =============== End User Menu Dropdown ===============
 
-    // ================= Logout Confirmation =================
+    // ================= Logout Confirmation Modal =================
     const logoutBtn = document.getElementById('logoutBtn');
+    const logoutModal = document.getElementById('logoutModal');
+    const logoutModalContent = document.getElementById('logoutModalContent');
+    const logoutModalClose = document.getElementById('logoutModalClose');
+    const logoutModalCancel = document.getElementById('logoutModalCancel');
+    const logoutModalConfirm = document.getElementById('logoutModalConfirm');
+    const logoutForm = document.getElementById('logoutForm');
+
+    function openLogoutModal() {
+        if (!logoutModal) return;
+        logoutModal.classList.remove('hidden');
+        logoutModal.classList.add('flex');
+        setTimeout(() => {
+            if (logoutModalContent) logoutModalContent.classList.remove('scale-95');
+        }, 10);
+    }
+
+    function closeLogoutModal() {
+        if (!logoutModal || !logoutModalContent) return;
+        logoutModalContent.classList.add('scale-95');
+        setTimeout(() => {
+            logoutModal.classList.add('hidden');
+            logoutModal.classList.remove('flex');
+        }, 150);
+    }
+
     if (logoutBtn) {
         logoutBtn.addEventListener('click', function (e) {
             e.preventDefault();
-            if (confirm('Are you sure you want to logout?')) {
-                // Redirect to login page or perform logout
+            openLogoutModal();
+        });
+    }
+
+    if (logoutModalClose) logoutModalClose.addEventListener('click', closeLogoutModal);
+    if (logoutModalCancel) logoutModalCancel.addEventListener('click', closeLogoutModal);
+
+    if (logoutModal) {
+        logoutModal.addEventListener('click', function (e) {
+            if (e.target === logoutModal) closeLogoutModal();
+        });
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && !logoutModal.classList.contains('hidden')) closeLogoutModal();
+        });
+    }
+
+    if (logoutModalConfirm) {
+        logoutModalConfirm.addEventListener('click', function () {
+            if (logoutForm) {
+                logoutForm.submit();
+            } else {
                 window.location.href = '/';
             }
         });
     }
-    // =============== End Logout Confirmation ===============
+    // =============== End Logout Confirmation Modal ===============
  })();

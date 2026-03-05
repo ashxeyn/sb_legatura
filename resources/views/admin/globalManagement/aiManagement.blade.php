@@ -39,190 +39,25 @@
 <div class="flex min-h-screen">
 
     {{-- ===================== SIDEBAR — identical structure to bidManagement.blade.php ===================== --}}
-    <aside class="bg-white shadow-xl flex flex-col">
-
-        <div class="flex justify-center items-center">
-            <img src="{{ asset('img/logo.svg') }}" alt="Legatura Logo" class="logo-img">
-        </div>
-
-        <nav class="flex-1 px-3 py-4 space-y-1">
-
-            <div class="nav-group">
-                <button class="nav-btn">
-                    <div class="flex items-center gap-3">
-                        <i class="fi fi-ss-home" style="font-size: 20px;"></i>
-                        <span>Home</span>
-                    </div>
-                    <span class="arrow">▼</span>
-                </button>
-                <div class="nav-submenu">
-                    <a href="{{ route('admin.dashboard') }}" class="submenu-link">Dashboard</a>
-                    <div class="submenu-nested">
-                        <button class="submenu-link submenu-nested-btn">
-                            <span>Analytics</span>
-                            <span class="arrow-small">▼</span>
-                        </button>
-                        <div class="submenu-nested-content">
-                            <a href="{{ route('admin.analytics') }}" class="submenu-nested-link">Project Analytics</a>
-                            <a href="{{ route('admin.analytics.subscription') }}" class="submenu-nested-link">Subscription Analytics</a>
-                            <a href="{{ route('admin.analytics.userActivity') }}" class="submenu-nested-link">User Activity Analytics</a>
-                            <a href="{{ route('admin.analytics.projectPerformance') }}" class="submenu-nested-link">Project Performance Analytics</a>
-                            <a href="{{ route('admin.analytics.bidCompletion') }}" class="submenu-nested-link">Bid Completion Analytics</a>
-                            <a href="{{ route('admin.analytics.reports') }}" class="submenu-nested-link">Reports and Analytics</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="nav-group">
-                <button class="nav-btn">
-                    <div class="flex items-center gap-3">
-                        <i class="fi fi-ss-users-alt" style="font-size: 20px;"></i>
-                        <span>User Management</span>
-                    </div>
-                    <span class="arrow">▼</span>
-                </button>
-                <div class="nav-submenu">
-                    <a href="{{ route('admin.userManagement.propertyOwner') }}" class="submenu-link">Property Owner</a>
-                    <a href="{{ route('admin.userManagement.contractor') }}" class="submenu-link">Contractor</a>
-                    <a href="{{ route('admin.userManagement.verificationRequest') }}" class="submenu-link">Verification Request</a>
-                    <a href="{{ route('admin.userManagement.suspendedAccounts') }}" class="submenu-link">Suspended Accounts</a>
-                </div>
-            </div>
-
-            {{-- Global Management — "AI Management" marked active --}}
-            <div class="nav-group">
-                <button class="nav-btn">
-                    <div class="flex items-center gap-3">
-                        <i class="fi fi-ss-globe" style="font-size: 20px;"></i>
-                        <span>Global Management</span>
-                    </div>
-                    <span class="arrow">▼</span>
-                </button>
-                <div class="nav-submenu">
-                    <a href="{{ route('admin.globalManagement.bidManagement') }}" class="submenu-link">Bid Management</a>
-                    <a href="{{ route('admin.globalManagement.proofOfpayments') }}" class="submenu-link">Proof of Payments</a>
-                    <a href="{{ route('admin.globalManagement.aiManagement') }}" class="submenu-link active">AI Management</a>
-                    <a href="{{ route('admin.globalManagement.postingManagement') }}" class="submenu-link">Posting Management</a>
-                </div>
-            </div>
-
-            <div class="nav-group">
-                <button class="nav-btn">
-                    <div class="flex items-center gap-3">
-                        <i class="fi fi-sr-master-plan" style="font-size: 20px;"></i>
-                        <span>Project Management</span>
-                    </div>
-                    <span class="arrow">▼</span>
-                </button>
-                <div class="nav-submenu">
-                    <a href="{{ route('admin.projectManagement.listOfProjects') }}" class="submenu-link">List of Projects</a>
-                    <a href="{{ route('admin.projectManagement.disputesReports') }}" class="submenu-link">Disputes/Reports</a>
-                    <a href="{{ route('admin.projectManagement.messages') }}" class="submenu-link">Messages</a>
-                    <a href="{{ route('admin.projectManagement.subscriptions') }}" class="submenu-link">Subscriptions & Boosts</a>
-                </div>
-            </div>
-
-            <div class="nav-group">
-                <button class="nav-btn">
-                    <div class="flex items-center gap-3">
-                        <i class="fi fi-br-settings-sliders" style="font-size: 20px;"></i>
-                        <span>Settings</span>
-                    </div>
-                    <span class="arrow">▼</span>
-                </button>
-                <div class="nav-submenu">
-                    <a href="{{ route('admin.settings.notifications') }}" class="submenu-link">Notifications</a>
-                    <a href="{{ route('admin.settings.security') }}" class="submenu-link">Security</a>
-                </div>
-            </div>
-
-        </nav>
-
-        <div class="mt-auto p-4">
-            <div class="user-card flex items-center gap-3 p-3 rounded-lg shadow-md text-white">
-                <div class="w-10 h-10 rounded-full bg-white text-indigo-900 flex items-center justify-center font-bold shadow flex-shrink-0">
-                    ES
-                </div>
-                <div class="flex-1 min-w-0">
-                    <div class="font-semibold text-sm truncate">Emmanuelle Santos</div>
-                    <div class="text-xs opacity-80 truncate">santos@Legatura.com</div>
-                </div>
-                <div class="relative">
-                    <button id="userMenuBtn" class="text-white opacity-80 hover:opacity-100 transition text-2xl w-8 h-8 flex items-center justify-center rounded-full">⋮</button>
-                    <div id="userMenuDropdown" class="absolute right-0 bottom-full mb-2 w-44 bg-white text-gray-800 rounded-xl shadow-2xl border border-gray-200 hidden">
-                        <div class="px-4 py-3 border-b border-gray-100">
-                            <div class="text-sm font-semibold truncate">Emmanuelle Santos</div>
-                            <div class="text-xs text-gray-500 truncate">santos@Legatura.com</div>
-                        </div>
-                        <ul class="py-1">
-                            <li>
-                                <a href="{{ route('admin.settings.security') }}" class="flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-50">
-                                    <i class="fi fi-br-settings-sliders"></i>
-                                    <span>Account settings</span>
-                                </a>
-                            </li>
-                            <li>
-                                <button id="logoutBtn" class="w-full text-left flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-50 text-red-600">
-                                    <i class="fi fi-ss-exit"></i>
-                                    <span>Logout</span>
-                                </button>
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-    </aside>
+        @include('admin.layouts.sidebar')
     {{-- ===================== END SIDEBAR ===================== --}}
 
     {{-- ===================== MAIN CONTENT ===================== --}}
     <main class="flex-1">
 
-        <header class="bg-white shadow-sm border-b border-gray-200 flex items-center justify-between px-8 py-4 sticky top-0 z-30">
-            <div>
-                <h1 class="text-2xl font-semibold text-gray-800">AI Management</h1>
-                <p class="text-gray-400 text-sm">Predictive Analytics & Risk Assessment Console</p>
-            </div>
-            <div class="flex items-center gap-4">
-                <div class="px-4 py-2 rounded-full flex items-center gap-2
-                    {{ ($aiUsage['status'] ?? 'Offline') === 'Online' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700' }}">
-                    <span class="w-3 h-3 rounded-full animate-pulse
-                        {{ ($aiUsage['status'] ?? 'Offline') === 'Online' ? 'bg-green-500' : 'bg-red-500' }}"></span>
-                    <span class="font-bold text-sm">System: {{ $aiUsage['status'] ?? 'Offline' }}</span>
-                </div>
-
-                <div class="relative">
-                    <button id="notificationBell" class="cursor-pointer w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition">
-                        <i class="fi fi-ss-bell-notification-social-media" style="font-size: 20px;"></i>
-                    </button>
-                    <span class="absolute -top-1 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">3</span>
-                    <div id="notificationDropdown" class="absolute right-0 mt-3 w-80 bg-white rounded-xl shadow-2xl border border-gray-200 hidden">
-                        <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-                            <span class="text-sm font-semibold text-gray-800">Notifications</span>
-                            <button id="clearNotifications" class="text-xs text-indigo-600 hover:text-indigo-700">Clear all</button>
-                        </div>
-                        <ul class="max-h-80 overflow-y-auto" id="notificationList">
-                            <li class="px-4 py-3 hover:bg-gray-50 transition">
-                                <div class="flex items-start gap-3">
-                                    <div class="w-8 h-8 rounded-full bg-red-100 text-red-700 flex items-center justify-center">
-                                        <i class="fi fi-ss-exclamation"></i>
-                                    </div>
-                                    <div class="flex-1 min-w-0">
-                                        <p class="text-sm text-gray-800 truncate">High-risk flag: Duplex Housing requires review.</p>
-                                        <p class="text-xs text-gray-500">Yesterday</p>
-                                    </div>
-                                </div>
-                            </li>
-                        </ul>
-                        <div class="px-4 py-3 border-t border-gray-100">
-                            <a href="{{ route('admin.settings.notifications') }}" class="text-sm text-indigo-600 hover:text-indigo-700">Notification settings</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </header>
+              @php
+        $aiStatusBadge = '<div class="px-4 py-2 rounded-full flex items-center gap-2 '
+            . (($aiUsage['status'] ?? 'Offline') === 'Online' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700')
+            . '"><span class="w-3 h-3 rounded-full animate-pulse '
+            . (($aiUsage['status'] ?? 'Offline') === 'Online' ? 'bg-green-500' : 'bg-red-500')
+            . '"></span><span class="font-bold text-sm">System: ' . e($aiUsage['status'] ?? 'Offline') . '</span></div>';
+      @endphp
+      @include('admin.layouts.topnav', [
+          'pageTitle' => 'AI Management',
+          'pageSubtitle' => 'Predictive Analytics & Risk Assessment Console',
+          'hideSearch' => true,
+          'beforeNotifications' => $aiStatusBadge,
+      ])
 
         <div class="p-8 space-y-8">
 
