@@ -62,6 +62,40 @@ class payMongoController extends Controller
             return response()->json(['success' => false, 'message' => 'Invalid or inactive plan tier'], 400);
         }
 
+        // Check for existing active subscription and cancel it if upgrading
+        $existingSubscription = DB::table('platform_payments')
+            ->join('subscription_plans', 'platform_payments.subscriptionPlanId', '=', 'subscription_plans.id')
+            ->where('platform_payments.contractor_id', $contractor->contractor_id)
+            ->where('platform_payments.is_approved', 1)
+            ->where('platform_payments.is_cancelled', 0)
+            ->where(function ($q) {
+                $q->whereNull('platform_payments.expiration_date')
+                    ->orWhere('platform_payments.expiration_date', '>', now());
+            })
+            ->select('platform_payments.*', 'subscription_plans.plan_key as current_plan_key')
+            ->first();
+
+        if ($existingSubscription) {
+            // Get tier ranks (gold=3, silver=2, bronze=1)
+            $tierRanks = ['gold' => 3, 'silver' => 2, 'bronze' => 1];
+            $currentRank = $tierRanks[strtolower($existingSubscription->current_plan_key)] ?? 0;
+            $newRank = $tierRanks[strtolower($planKey)] ?? 0;
+
+            if ($newRank <= $currentRank) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You can only upgrade to a higher tier plan. Current: ' . ucfirst($existingSubscription->current_plan_key) . ', Selected: ' . ucfirst($planKey)
+                ], 400);
+            }
+
+            // Cancel existing subscription (set is_approved = 0, is_cancelled = 1)
+            DB::table('platform_payments')
+                ->where('platform_payment_id', $existingSubscription->platform_payment_id)
+                ->update(['is_approved' => 0, 'is_cancelled' => 1]);
+
+            Log::info('createSubscriptionCheckout: Cancelled existing ' . $existingSubscription->current_plan_key . ' subscription (platform_payment_id: ' . $existingSubscription->platform_payment_id . ') for upgrade to ' . $planKey);
+        }
+
         $checkoutAmount = $plan['amount'];
         if ($checkoutAmount < 2000) {
             Log::error('createSubscriptionCheckout: Plan amount is less than PayMongo minimum 20 PHP (2000 centavos). Plan: ' . $planKey . ' Amount: ' . $checkoutAmount);

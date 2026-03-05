@@ -161,11 +161,11 @@ export default function MyBids({ userData, onClose }: MyBidsProps) {
     try {
       setIsLoadingProject(true);
       console.log('handleAcceptedBidClick - Fetching project for bid:', bid.bid_id, 'project_id:', bid.project_id);
-      
+
       // Fetch contractor projects to get the full project data
       const response = await projects_service.get_contractor_projects(userData?.user_id || 0);
       console.log('handleAcceptedBidClick - Response:', response);
-      
+
       if (response.success) {
         // Handle nested response structure
         let projectsData = response.data;
@@ -174,19 +174,19 @@ export default function MyBids({ userData, onClose }: MyBidsProps) {
         } else if (!Array.isArray(projectsData)) {
           projectsData = [];
         }
-        
+
         console.log('handleAcceptedBidClick - Projects data:', projectsData);
         console.log('handleAcceptedBidClick - Projects count:', projectsData.length);
         console.log('handleAcceptedBidClick - Looking for project_id:', bid.project_id);
         console.log('handleAcceptedBidClick - Available project IDs:', projectsData.map((p: any) => ({ id: p.project_id, title: p.project_title })));
-        
+
         // Try to find project by project_id (convert to number for comparison)
         const projectIdToFind = Number(bid.project_id);
         const project = projectsData.find((p: any) => Number(p.project_id) === projectIdToFind);
-        
+
         console.log('handleAcceptedBidClick - Found project:', project);
         console.log('handleAcceptedBidClick - Project ID match:', project ? `Match: ${project.project_id} === ${bid.project_id}` : 'No match');
-        
+
         if (project) {
           // Ensure project has the right structure for milestone setup
           const projectForSetup = {
@@ -198,7 +198,7 @@ export default function MyBids({ userData, onClose }: MyBidsProps) {
           console.log('handleAcceptedBidClick - Setting project for milestone setup:', projectForSetup);
           console.log('handleAcceptedBidClick - Project display_status:', projectForSetup.display_status);
           console.log('handleAcceptedBidClick - Project milestones:', projectForSetup.milestones);
-          
+
           // Set state directly - this should trigger re-render with MilestoneSetup
           setSelectedProject(projectForSetup);
           setShowMilestoneSetup(true);
@@ -326,6 +326,9 @@ export default function MyBids({ userData, onClose }: MyBidsProps) {
           setEditBidProject(null);
           fetchBids(); // Refresh the bids list
         }}
+        onOpenSubscription={() => {
+          if (global.set_app_state) global.set_app_state('subscription');
+        }}
       />
     );
   }
@@ -336,7 +339,7 @@ export default function MyBids({ userData, onClose }: MyBidsProps) {
     console.log('MyBids - Project ID:', selectedProject.project_id);
     console.log('MyBids - Project title:', selectedProject.project_title);
     console.log('MyBids - Project display_status:', selectedProject.display_status);
-    
+
     return (
       <MilestoneSetup
         project={selectedProject}

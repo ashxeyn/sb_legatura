@@ -1997,6 +1997,9 @@ const renderProfileContent = () => {
           // Refresh the projects list after submitting a bid
           refreshProjects();
         }}
+        onOpenSubscription={() => {
+          if (global.set_app_state) global.set_app_state('subscription');
+        }}
       />
     );
   }

@@ -453,7 +453,7 @@ export class projects_service {
   /**
    * Get approved projects for contractor feed with pagination support
    * These are projects open for bidding
-   * 
+   *
    * @param page - Page number (default: 1)
    * @param perPage - Items per page (default: 15)
    * @returns Promise with API response containing projects and pagination metadata
@@ -466,7 +466,7 @@ export class projects_service {
       const params = new URLSearchParams();
       params.append('page', page.toString());
       params.append('per_page', perPage.toString());
-      
+
       const response = await api_request(`/api/contractor/projects?${params.toString()}`, {
         method: 'GET',
         headers: {
@@ -677,6 +677,31 @@ export class projects_service {
       return {
         success: false,
         message: error instanceof Error ? error.message : 'Failed to fetch bids',
+        status: 500,
+      };
+    }
+  }
+
+  /**
+   * Check bid eligibility based on subscription tier
+   * Returns information about remaining bids and subscription status
+   */
+  static async check_bid_eligibility(userId: number): Promise<ApiResponse> {
+    try {
+      const response = await api_request(`/api/contractor/bid-eligibility?user_id=${userId}`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      });
+
+      return response;
+    } catch (error) {
+      console.error('Error checking bid eligibility:', error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to check bid eligibility',
         status: 500,
       };
     }

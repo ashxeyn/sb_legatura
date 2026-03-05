@@ -68,9 +68,20 @@ interface PlaceBidProps {
   onClose: () => void;
   onBidSubmitted?: () => void;
   initialEditMode?: boolean;
+  onOpenSubscription?: () => void;
 }
 
-export default function PlaceBid({ project, userId, onClose, onBidSubmitted, initialEditMode = false }: PlaceBidProps) {
+interface BidEligibility {
+  can_bid: boolean;
+  bids_used: number;
+  bids_limit: number | null;
+  bids_remaining: number | null;
+  plan_key: string | null;
+  plan_name: string | null;
+  message: string;
+}
+
+export default function PlaceBid({ project, userId, onClose, onBidSubmitted, initialEditMode = false, onOpenSubscription }: PlaceBidProps) {
   const insets = useSafeAreaInsets();
   const [proposedCost, setProposedCost] = useState('');
   const [estimatedTimeline, setEstimatedTimeline] = useState('');
@@ -86,25 +97,39 @@ export default function PlaceBid({ project, userId, onClose, onBidSubmitted, ini
   const [budgetWarningMessage, setBudgetWarningMessage] = useState<{type: 'high' | 'low', message: string} | null>(null);
   const [pendingSubmission, setPendingSubmission] = useState(false);
   const [previewFile, setPreviewFile] = useState<{ url: string; name: string } | null>(null);
+  const [bidEligibility, setBidEligibility] = useState<BidEligibility | null>(null);
 
   const statusBarHeight = insets.top || (Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 44);
 
-  // Check for existing bid
+  // Check for existing bid and bid eligibility
   useEffect(() => {
-    checkExistingBid();
+    checkExistingBidAndEligibility();
   }, []);
 
-  const checkExistingBid = async () => {
+  const checkExistingBidAndEligibility = async () => {
     try {
       setIsLoading(true);
-      const response = await projects_service.get_my_bid(project.project_id, userId);
+
+      // Run both checks in parallel
+      const [bidResponse, eligibilityResponse] = await Promise.all([
+        projects_service.get_my_bid(project.project_id, userId),
+        projects_service.check_bid_eligibility(userId)
+      ]);
+
+      // Handle bid eligibility
+      if (eligibilityResponse.success && eligibilityResponse.data?.data) {
+        setBidEligibility(eligibilityResponse.data.data);
+      } else if (eligibilityResponse.success && eligibilityResponse.data) {
+        // Sometimes the data is directly in response.data
+        setBidEligibility(eligibilityResponse.data);
+      }
 
       // The API response is wrapped: response.data contains the backend response
       // Backend returns { success: true, data: null } when no bid exists
       // Backend returns { success: true, data: {bid object} } when bid exists
-      const backendResponse = response.data;
+      const backendResponse = bidResponse.data;
 
-      if (response.success && backendResponse?.data) {
+      if (bidResponse.success && backendResponse?.data) {
         // Only set existing bid if the data is not null
         setExistingBid(backendResponse.data);
         // Pre-fill form with existing bid data
@@ -378,6 +403,140 @@ export default function PlaceBid({ project, userId, onClose, onBidSubmitted, ini
     );
   }
 
+  // Show bid limit reached view (only for new bids, not when editing existing)
+  if (!existingBid && bidEligibility && !bidEligibility.can_bid) {
+    const getPlanColor = (planKey: string | null) => {
+      if (!planKey) return '#6B7280';
+      switch (planKey.toLowerCase()) {
+        case 'gold': return '#F59E0B';
+        case 'silver': return '#6B7280';
+        case 'bronze': return '#B45309';
+        default: return '#6B7280';
+      }
+    };
+
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar hidden={true} />
+
+        {/* Header */}
+        <View style={[styles.header, { paddingTop: statusBarHeight + 8 }]}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={onClose}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Feather name="arrow-left" size={24} color={COLORS.text} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Place Bid</Text>
+          <View style={{ width: 40 }} />
+        </View>
+
+        <ScrollView contentContainerStyle={styles.limitReachedContainer}>
+          {/* Warning Icon */}
+          <View style={[styles.limitReachedIconContainer, { backgroundColor: COLORS.warningLight }]}>
+            <MaterialIcons name="block" size={48} color={COLORS.warning} />
+          </View>
+
+          <Text style={styles.limitReachedTitle}>Bid Limit Reached</Text>
+          <Text style={styles.limitReachedMessage}>{bidEligibility.message}</Text>
+
+          {/* Current Plan Info */}
+          <View style={styles.planInfoCard}>
+            <View style={styles.planInfoRow}>
+              <Text style={styles.planInfoLabel}>Current Plan</Text>
+              <View style={[styles.planBadge, { backgroundColor: getPlanColor(bidEligibility.plan_key) + '20' }]}>
+                <Text style={[styles.planBadgeText, { color: getPlanColor(bidEligibility.plan_key) }]}>
+                  {bidEligibility.plan_name || 'Free'}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.planInfoRow}>
+              <Text style={styles.planInfoLabel}>Bids Used This Month</Text>
+              <Text style={styles.planInfoValue}>{bidEligibility.bids_used} / {bidEligibility.bids_limit}</Text>
+            </View>
+            <View style={styles.planInfoRow}>
+              <Text style={styles.planInfoLabel}>Remaining Bids</Text>
+              <Text style={[styles.planInfoValue, { color: COLORS.error }]}>0</Text>
+            </View>
+          </View>
+
+          {/* Upgrade CTA */}
+          <View style={styles.upgradeSection}>
+            <Text style={styles.upgradeSectionTitle}>Want more bids?</Text>
+            <View style={styles.upgradeOptions}>
+              {/* Gold option - always shown (except for Gold users who won't see this screen) */}
+              <TouchableOpacity
+                style={styles.upgradeOption}
+                onPress={() => {
+                  if (onOpenSubscription) {
+                    onOpenSubscription();
+                  } else {
+                    Alert.alert('Upgrade', 'Visit the subscription page from your profile to upgrade to Gold for unlimited bids!');
+                  }
+                }}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.upgradeOptionBadge, { backgroundColor: '#F59E0B20' }]}>
+                  <Ionicons name="trophy" size={20} color="#F59E0B" />
+                </View>
+                <Text style={styles.upgradeOptionTitle}>Gold</Text>
+                <Text style={styles.upgradeOptionDesc}>Unlimited bids</Text>
+              </TouchableOpacity>
+              {/* Silver option - shown for Bronze and Free users only */}
+              {(!bidEligibility.plan_key || bidEligibility.plan_key.toLowerCase() === 'bronze' || bidEligibility.plan_key.toLowerCase() === 'free') && (
+                <TouchableOpacity
+                  style={styles.upgradeOption}
+                  onPress={() => {
+                    if (onOpenSubscription) {
+                      onOpenSubscription();
+                    } else {
+                      Alert.alert('Upgrade', 'Visit the subscription page from your profile to upgrade to Silver for 25 bids/month!');
+                    }
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.upgradeOptionBadge, { backgroundColor: '#6B728020' }]}>
+                    <Ionicons name="star" size={20} color="#6B7280" />
+                  </View>
+                  <Text style={styles.upgradeOptionTitle}>Silver</Text>
+                  <Text style={styles.upgradeOptionDesc}>25 bids/month</Text>
+                </TouchableOpacity>
+              )}
+              {/* Bronze option - shown for Free users only */}
+              {(!bidEligibility.plan_key || bidEligibility.plan_key.toLowerCase() === 'free') && (
+                <TouchableOpacity
+                  style={styles.upgradeOption}
+                  onPress={() => {
+                    if (onOpenSubscription) {
+                      onOpenSubscription();
+                    } else {
+                      Alert.alert('Upgrade', 'Visit the subscription page from your profile to upgrade to Bronze for 10 bids/month!');
+                    }
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.upgradeOptionBadge, { backgroundColor: '#B4530920' }]}>
+                    <Ionicons name="leaf" size={20} color="#B45309" />
+                  </View>
+                  <Text style={styles.upgradeOptionTitle}>Bronze</Text>
+                  <Text style={styles.upgradeOptionDesc}>10 bids/month</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+
+          <TouchableOpacity
+            style={styles.upgradeButton}
+            onPress={onClose}
+          >
+            <Text style={styles.upgradeButtonText}>Go Back</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar hidden={true} />
@@ -392,25 +551,25 @@ export default function PlaceBid({ project, userId, onClose, onBidSubmitted, ini
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={[styles.modalIconContainer, { backgroundColor: budgetWarningMessage?.type === 'high' ? COLORS.warningLight : COLORS.infoLight }]}>
-              <MaterialIcons 
-                name={budgetWarningMessage?.type === 'high' ? 'trending-up' : 'trending-down'} 
-                size={32} 
-                color={budgetWarningMessage?.type === 'high' ? COLORS.warning : COLORS.info} 
+              <MaterialIcons
+                name={budgetWarningMessage?.type === 'high' ? 'trending-up' : 'trending-down'}
+                size={32}
+                color={budgetWarningMessage?.type === 'high' ? COLORS.warning : COLORS.info}
               />
             </View>
-            
+
             <Text style={styles.modalTitle}>
               {budgetWarningMessage?.type === 'high' ? 'Bid Above Budget Range' : 'Bid Below Budget Range'}
             </Text>
-            
+
             <Text style={styles.modalMessage}>
               {budgetWarningMessage?.message}
             </Text>
-            
+
             <Text style={styles.modalHint}>
               Would you like to continue with this bid amount or go back to edit it?
             </Text>
-            
+
             <View style={styles.modalButtonsRow}>
               <TouchableOpacity
                 style={[styles.modalButton, styles.modalButtonSecondary]}
@@ -419,7 +578,7 @@ export default function PlaceBid({ project, userId, onClose, onBidSubmitted, ini
               >
                 <Text style={[styles.modalButtonText, styles.modalButtonTextSecondary]}>Edit</Text>
               </TouchableOpacity>
-              
+
               <TouchableOpacity
                 style={[styles.modalButton, styles.modalButtonPrimary]}
                 onPress={handleContinueSubmission}
@@ -669,6 +828,32 @@ export default function PlaceBid({ project, userId, onClose, onBidSubmitted, ini
 
         {/* Submit / Edit Button */}
         <View style={styles.submitContainer}>
+          {/* Bid Count Indicator - Only show for new bids with limited subscription */}
+          {(!existingBid || existingBid.bid_status === 'cancelled') && bidEligibility && bidEligibility.bids_limit !== null && (
+            <View style={styles.bidCountIndicator}>
+              <Ionicons
+                name={bidEligibility.bids_remaining && bidEligibility.bids_remaining <= 3 ? "warning" : "information-circle"}
+                size={16}
+                color={bidEligibility.bids_remaining && bidEligibility.bids_remaining <= 3 ? COLORS.warning : COLORS.info}
+              />
+              <Text style={[
+                styles.bidCountText,
+                bidEligibility.bids_remaining && bidEligibility.bids_remaining <= 3 && { color: COLORS.warning }
+              ]}>
+                {bidEligibility.bids_remaining} of {bidEligibility.bids_limit} bids remaining this month
+                {bidEligibility.plan_name ? ` (${bidEligibility.plan_name})` : ''}
+              </Text>
+            </View>
+          )}
+          {/* Unlimited indicator for Gold users */}
+          {(!existingBid || existingBid.bid_status === 'cancelled') && bidEligibility && bidEligibility.bids_limit === null && (
+            <View style={styles.bidCountIndicator}>
+              <Ionicons name="infinite" size={16} color="#F59E0B" />
+              <Text style={[styles.bidCountText, { color: '#F59E0B' }]}>
+                Unlimited bids (Gold)
+              </Text>
+            </View>
+          )}
           {(!existingBid || existingBid.bid_status === 'cancelled') ? (
             /* New bid submission */
             <TouchableOpacity
@@ -1186,5 +1371,140 @@ const styles = StyleSheet.create({
   previewImage: {
     width: Dimensions.get('window').width,
     height: Dimensions.get('window').height * 0.75,
+  },
+  // Bid limit reached styles
+  limitReachedContainer: {
+    flexGrow: 1,
+    padding: 24,
+    alignItems: 'center',
+  },
+  limitReachedIconContainer: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+    marginTop: 40,
+  },
+  limitReachedTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  limitReachedMessage: {
+    fontSize: 16,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    marginBottom: 32,
+    lineHeight: 24,
+  },
+  planInfoCard: {
+    width: '100%',
+    backgroundColor: COLORS.surface,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  planInfoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.borderLight,
+  },
+  planInfoLabel: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+  },
+  planInfoValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  planBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  planBadgeText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  upgradeSection: {
+    width: '100%',
+    marginBottom: 24,
+  },
+  upgradeSectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  upgradeOptions: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  upgradeOption: {
+    alignItems: 'center',
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+  },
+  upgradeOptionBadge: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  upgradeOptionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginBottom: 4,
+  },
+  upgradeOptionDesc: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+  },
+  upgradeButton: {
+    backgroundColor: COLORS.primary,
+    paddingVertical: 16,
+    paddingHorizontal: 48,
+    borderRadius: 12,
+    marginTop: 8,
+  },
+  upgradeButtonText: {
+    color: COLORS.surface,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  bidCountIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginBottom: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: COLORS.background,
+    borderRadius: 20,
+  },
+  bidCountText: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    fontWeight: '500',
   },
 });

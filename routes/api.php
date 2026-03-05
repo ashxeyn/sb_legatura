@@ -199,6 +199,7 @@ Route::post('/contractor/progress/upload', [progressUploadController::class, 'up
 Route::get('/contractor/projects', [\App\Http\Controllers\both\homepageController::class, 'apiGetApprovedProjects']);
 
 // Contractor bidding endpoints
+Route::get('/contractor/bid-eligibility', [\App\Http\Controllers\contractor\biddingController::class, 'apiBidEligibility']);
 Route::post('/contractor/projects/{projectId}/bid', [\App\Http\Controllers\contractor\biddingController::class, 'apiSubmitBid']);
 Route::get('/contractor/projects/{projectId}/my-bid', [\App\Http\Controllers\contractor\biddingController::class, 'apiGetMyBid']);
 Route::get('/contractor/my-bids', [\App\Http\Controllers\contractor\biddingController::class, 'apiGetMyBids']);

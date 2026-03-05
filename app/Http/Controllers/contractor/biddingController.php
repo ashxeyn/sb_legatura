@@ -451,6 +451,41 @@ class biddingController extends Controller
     }
 
     /**
+     * API endpoint to check bid eligibility based on subscription
+     * GET /api/contractor/bid-eligibility
+     */
+    public function apiBidEligibility(Request $request)
+    {
+        try {
+            // Resolve user ID from various sources
+            $userId = $request->input('user_id')
+                ?? $request->header('X-User-Id')
+                ?? (auth()->user()?->user_id);
+
+            if (!$userId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User ID is required'
+                ], 400);
+            }
+
+            $eligibility = \App\Models\subs\platformPaymentClass::checkBidEligibility((int) $userId);
+
+            return response()->json([
+                'success' => true,
+                'data' => $eligibility
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::error('Bid eligibility check error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error checking bid eligibility: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * API endpoint for mobile app to submit a bid
      */
     public function apiSubmitBid(Request $request, $projectId)
@@ -524,6 +559,17 @@ class biddingController extends Controller
                         'message' => 'You cannot bid on your own project.'
                     ], 403);
                 }
+            }
+
+            // Check bid eligibility based on subscription tier
+            $eligibility = \App\Models\subs\platformPaymentClass::checkBidEligibility((int) $userId);
+            if (!$eligibility['can_bid']) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $eligibility['message'],
+                    'error_code' => 'BID_LIMIT_REACHED',
+                    'eligibility' => $eligibility
+                ], 403);
             }
 
             // Validate input

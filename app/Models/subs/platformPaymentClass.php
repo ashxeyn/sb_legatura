@@ -280,4 +280,241 @@ class platformPaymentClass
             return [];
         }
     }
+
+    /**
+     * Get bid limit based on subscription tier.
+     * Returns null for unlimited (Gold), or the numeric limit for Silver/Bronze.
+     * Note: This returns the SUBSCRIPTION limit only, not including the free tier bonus.
+     *
+     * @param string|null $planKey The subscription plan key
+     * @return int|null Number of bids allowed (null = unlimited)
+     */
+    public static function getBidLimitForTier(?string $planKey): ?int
+    {
+        if (!$planKey) {
+            return 3; // Non-subscribers get 3 bids per month (free tier)
+        }
+
+        $tier = strtolower($planKey);
+        switch ($tier) {
+            case 'gold':
+            case 'premium':
+                return null; // Unlimited
+            case 'silver':
+            case 'standard':
+                return 25;
+            case 'bronze':
+                return 10;
+            default:
+                return 3; // Default to non-subscriber limit
+        }
+    }
+
+    /**
+     * Get the free tier bid allowance.
+     * Users who used the free tier before subscribing get 3 free bids that don't count against their subscription limit.
+     */
+    public static function getFreeTierAllowance(): int
+    {
+        return 3;
+    }
+
+    /**
+     * Check if a contractor used the free tier before subscribing.
+     * Returns true if they placed any bids before their first subscription started.
+     * Direct subscribers (no bids before subscribing) don't get the free tier bonus.
+     *
+     * @param int $contractorId The contractor ID
+     * @return bool True if user used free tier before subscribing
+     */
+    public static function usedFreeTierBeforeSubscription(int $contractorId): bool
+    {
+        try {
+            // Get the contractor's first ever subscription start date
+            $firstSubscription = DB::table('platform_payments')
+                ->join('subscription_plans', 'platform_payments.subscriptionPlanId', '=', 'subscription_plans.id')
+                ->where('platform_payments.contractor_id', $contractorId)
+                ->where('subscription_plans.plan_key', '!=', 'boost')
+                ->where('platform_payments.is_approved', 1)
+                ->orderBy('platform_payments.transaction_date', 'asc')
+                ->orderBy('platform_payments.created_at', 'asc')
+                ->first();
+
+            // If no subscription ever, user is on free tier
+            if (!$firstSubscription) {
+                return true; // Free tier user gets the free allowance
+            }
+
+            // Get the subscription start date
+            $subscriptionStartDate = $firstSubscription->transaction_date
+                ?? $firstSubscription->created_at
+                ?? now();
+
+            // Check if they placed ANY bids before that subscription started
+            $bidsBeforeSubscription = DB::table('bids')
+                ->where('contractor_id', $contractorId)
+                ->where('submitted_at', '<', $subscriptionStartDate)
+                ->whereNotIn('bid_status', ['cancelled'])
+                ->exists();
+
+            return $bidsBeforeSubscription;
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('usedFreeTierBeforeSubscription Error: ' . $e->getMessage());
+            // Default to true to be generous in case of errors
+            return true;
+        }
+    }
+
+    /**
+     * Count how many bids a contractor has made in the current billing period.
+     * For simplicity, we count bids submitted in the current calendar month.
+     *
+     * @param int $contractorId The contractor ID
+     * @return int Number of bids made this month
+     */
+    public static function getMonthlyBidCount(int $contractorId): int
+    {
+        try {
+            $startOfMonth = Carbon::now()->startOfMonth();
+            $endOfMonth = Carbon::now()->endOfMonth();
+
+            return DB::table('bids')
+                ->where('contractor_id', $contractorId)
+                ->whereBetween('submitted_at', [$startOfMonth, $endOfMonth])
+                ->whereNotIn('bid_status', ['cancelled']) // Don't count cancelled bids
+                ->count();
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('getMonthlyBidCount Error: ' . $e->getMessage());
+            return 0;
+        }
+    }
+
+    /**
+     * Check if a contractor can submit a new bid based on their subscription.
+     * Free tier bids (3) are separate from subscription bids - they don't count against subscription limits.
+     *
+     * @param int $userId The user ID
+     * @return array Contains 'can_bid', 'bids_used', 'bids_limit', 'plan_key', 'message'
+     */
+    public static function checkBidEligibility(int $userId): array
+    {
+        try {
+            // Get contractor info
+            $contractor = DB::table('contractors')->where('user_id', $userId)->first();
+
+            // Also check staff membership (representatives)
+            if (!$contractor) {
+                $contractorUser = DB::table('contractor_users')
+                    ->where('user_id', $userId)
+                    ->where('is_active', 1)
+                    ->where('is_deleted', 0)
+                    ->first();
+
+                if ($contractorUser) {
+                    $contractor = DB::table('contractors')
+                        ->where('contractor_id', $contractorUser->contractor_id)
+                        ->first();
+                }
+            }
+
+            if (!$contractor) {
+                return [
+                    'can_bid' => false,
+                    'bids_used' => 0,
+                    'bids_limit' => 0,
+                    'plan_key' => null,
+                    'plan_name' => null,
+                    'message' => 'Contractor profile not found'
+                ];
+            }
+
+            // Get subscription
+            $subscription = self::getSubscriptionForUser($userId);
+            $planKey = $subscription['plan_key'] ?? null;
+            $planName = $subscription['name'] ?? ($planKey ? ucfirst($planKey) : 'Free');
+
+            // Get total bids made this month
+            $totalBidsUsed = self::getMonthlyBidCount($contractor->contractor_id);
+            $freeAllowance = self::getFreeTierAllowance();
+
+            // For free users (no subscription)
+            if (!$planKey) {
+                $bidsRemaining = max(0, $freeAllowance - $totalBidsUsed);
+                $canBid = $bidsRemaining > 0;
+
+                return [
+                    'can_bid' => $canBid,
+                    'bids_used' => $totalBidsUsed,
+                    'bids_limit' => $freeAllowance,
+                    'bids_remaining' => $bidsRemaining,
+                    'plan_key' => null,
+                    'plan_name' => 'Free',
+                    'message' => $canBid
+                        ? "You have {$bidsRemaining} free bid(s) remaining this month"
+                        : "You have used all your free bids. Subscribe to get more bids."
+                ];
+            }
+
+            // Get subscription bid limit
+            $subscriptionLimit = self::getBidLimitForTier($planKey);
+
+            // Unlimited bids for Gold
+            if ($subscriptionLimit === null) {
+                return [
+                    'can_bid' => true,
+                    'bids_used' => $totalBidsUsed,
+                    'bids_limit' => null, // null means unlimited
+                    'bids_remaining' => null, // null means unlimited
+                    'plan_key' => $planKey,
+                    'plan_name' => $planName,
+                    'message' => 'You have unlimited bids with your Gold subscription'
+                ];
+            }
+
+            // Check if user used free tier before subscribing
+            $usedFreeTierFirst = self::usedFreeTierBeforeSubscription($contractor->contractor_id);
+
+            // For paid subscriptions (Bronze/Silver):
+            // - If they used free tier first: free bids don't count against subscription (3 + limit)
+            // - If they subscribed directly: they only get the subscription limit
+            if ($usedFreeTierFirst) {
+                // User used free tier before subscribing - they get free allowance + subscription limit
+                $bidsUsedAgainstSubscription = max(0, $totalBidsUsed - $freeAllowance);
+                $bidsRemaining = max(0, $subscriptionLimit - $bidsUsedAgainstSubscription);
+                $totalCapacity = $freeAllowance + $subscriptionLimit;
+            } else {
+                // Direct subscriber - they only get subscription limit
+                $bidsUsedAgainstSubscription = $totalBidsUsed;
+                $bidsRemaining = max(0, $subscriptionLimit - $totalBidsUsed);
+                $totalCapacity = $subscriptionLimit;
+            }
+
+            $canBid = $totalBidsUsed < $totalCapacity;
+
+            return [
+                'can_bid' => $canBid,
+                'bids_used' => $bidsUsedAgainstSubscription, // Show usage against subscription only
+                'bids_limit' => $subscriptionLimit,
+                'bids_remaining' => $bidsRemaining,
+                'plan_key' => $planKey,
+                'plan_name' => $planName,
+                'total_bids_this_month' => $totalBidsUsed, // Include total for reference
+                'has_free_bonus' => $usedFreeTierFirst, // True if user gets +3 free bids bonus
+                'total_capacity' => $totalCapacity, // Actual total bids allowed this month
+                'message' => $canBid
+                    ? "You have {$bidsRemaining} bid(s) remaining this month"
+                    : "You have reached your monthly bid limit of {$subscriptionLimit}. Upgrade your subscription for more bids."
+            ];
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('checkBidEligibility Error: ' . $e->getMessage());
+            return [
+                'can_bid' => false,
+                'bids_used' => 0,
+                'bids_limit' => 0,
+                'plan_key' => null,
+                'plan_name' => null,
+                'message' => 'Unable to check bid eligibility'
+            ];
+        }
+    }
 }
