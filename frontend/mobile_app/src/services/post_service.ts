@@ -185,7 +185,6 @@ export const post_service = {
         method: 'POST',
         headers: {
           Accept: 'application/json',
-          'Content-Type': 'multipart/form-data',
         },
         body: formData,
       });

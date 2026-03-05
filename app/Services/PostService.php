@@ -41,7 +41,6 @@ class postService
 
             $postId = DB::table('project_posts')->insertGetId([
                 'user_id'            => $userId,
-                'post_type'          => 'showcase',
                 'title'              => $data['title'] ?? null,
                 'content'            => $content,
                 'linked_project_id'  => $data['linked_project_id'] ?? null,

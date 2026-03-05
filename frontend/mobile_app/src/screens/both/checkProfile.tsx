@@ -19,6 +19,8 @@ import { api_config } from '../../config/api';
 import ImageFallback from '../../components/ImageFallbackFixed';
 import { storage_service } from '../../utils/storage';
 import CreateShowcase from './createShowcase';
+import ShowcasePostDetail from './showcasePostDetail';
+import { highlightService } from '../../services/highlightService';
 import {
   profile_service,
   ProfileData,
@@ -118,7 +120,9 @@ export default function CheckProfile({ contractor, onClose, onSendMessage }: Che
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showCreateShowcase, setShowCreateShowcase] = useState(false);
+  const [selectedShowcasePost, setSelectedShowcasePost] = useState<any>(null);
   const [isOwnProfile, setIsOwnProfile] = useState(false);
+  const [highlightingPostId, setHighlightingPostId] = useState<number | null>(null);
 
   // ── Check if viewing own profile ──
   useEffect(() => {
@@ -170,8 +174,8 @@ export default function CheckProfile({ contractor, onClose, onSendMessage }: Che
   const completedProjects = header?.completed_projects ?? contractor.completed_projects ?? 0;
   const coverPhotoUrl = resolveImageUrl(header?.cover_photo) || resolveImageUrl(contractor.cover_photo);
   const logoUrl       = resolveImageUrl(header?.profile_pic) || resolveImageUrl(contractor.logo_url);
-  const description   = profile?.about?.contractor?.company_description
-    || profile?.about?.contractor?.bio
+  const description   = profile?.about?.contractor?.bio
+    || profile?.about?.contractor?.company_description
     || contractor.company_description;
 
   // Reviews
@@ -182,6 +186,39 @@ export default function CheckProfile({ contractor, onClose, onSendMessage }: Che
   // Posts (showcase only — no automatic project listing)
   const showcasePosts       = profile?.posts?.showcase_posts ?? [];
   const totalPortfolioItems = showcasePosts.length;
+
+  // Handle highlight toggle
+  const handleToggleHighlight = useCallback(async (postId: number, currentlyHighlighted: boolean) => {
+    if (highlightingPostId) return;
+    setHighlightingPostId(postId);
+    try {
+      const res = currentlyHighlighted
+        ? await highlightService.unhighlightPost(postId)
+        : await highlightService.highlightPost(postId);
+      if (res.success) {
+        // Optimistic update
+        setProfile(prev => {
+          if (!prev) return prev;
+          const updatedPosts = (prev.posts?.showcase_posts ?? []).map((p: any) => {
+            if (p.post_id === postId) {
+              return { ...p, is_highlighted: currentlyHighlighted ? 0 : 1 };
+            }
+            return p;
+          });
+          return {
+            ...prev,
+            posts: { ...prev.posts, showcase_posts: updatedPosts },
+          };
+        });
+      } else {
+        Alert.alert('Highlight', res.message || 'Could not update highlight.');
+      }
+    } catch {
+      Alert.alert('Error', 'Something went wrong.');
+    } finally {
+      setHighlightingPostId(null);
+    }
+  }, [highlightingPostId]);
 
   // About
   const contractorAbout = profile?.about?.contractor;
@@ -228,49 +265,81 @@ export default function CheckProfile({ contractor, onClose, onSendMessage }: Che
 
         {/* Showcase Posts */}
         {showcasePosts.length > 0 ? (
-          showcasePosts.map((post) => (
-            <View key={`sp-${post.post_id}`} style={styles.socialPostCard}>
-              {post.images && post.images.length > 0 ? (
-                <ImageFallback
-                  uri={resolveImageUrl(post.images[0]?.file_path)}
-                  style={styles.socialPostImg}
-                  resizeMode="cover"
-                />
-              ) : (
-                <View style={styles.portfolioCardImg}>
-                  <MaterialIcons name="image" size={28} color="#c8cbd0" />
-                </View>
-              )}
-              <View style={styles.socialPostBody}>
-                <Text style={styles.portfolioCardTitle} numberOfLines={1}>
-                  {post.title || 'Untitled Post'}
-                </Text>
-
-                {/* Linked project badge */}
-                {post.linked_project_id && (
-                  <View style={styles.linkedBadge}>
-                    <MaterialIcons name="verified" size={13} color="#16a34a" />
-                    <Text style={styles.linkedBadgeText}>
-                      {post.linked_project_title || 'Linked to completed project'}
-                    </Text>
+          showcasePosts.map((post) => {
+            const isHighlighted = !!post.is_highlighted;
+            return (
+              <TouchableOpacity
+                key={`sp-${post.post_id}`}
+                style={styles.socialPostCard}
+                activeOpacity={0.85}
+                onPress={() => setSelectedShowcasePost(post)}
+              >
+                {/* Highlight pin icon — only visible to the post owner */}
+                {isOwnProfile && (
+                  <TouchableOpacity
+                    onPress={() => handleToggleHighlight(post.post_id, isHighlighted)}
+                    activeOpacity={0.7}
+                    disabled={highlightingPostId === post.post_id}
+                    style={{
+                      position: 'absolute',
+                      top: 8,
+                      right: 8,
+                      zIndex: 10,
+                      padding: 6,
+                      borderRadius: 20,
+                      backgroundColor: isHighlighted ? '#FFF8EE' : 'rgba(255,255,255,0.85)',
+                    }}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <MaterialIcons
+                      name="push-pin"
+                      size={18}
+                      color={isHighlighted ? '#EEA24B' : '#b0b0b0'}
+                    />
+                  </TouchableOpacity>
+                )}
+                {post.images && post.images.length > 0 ? (
+                  <ImageFallback
+                    uri={resolveImageUrl(post.images[0]?.file_path)}
+                    style={styles.socialPostImg}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <View style={styles.portfolioCardImg}>
+                    <MaterialIcons name="image" size={28} color="#c8cbd0" />
                   </View>
                 )}
+                <View style={styles.socialPostBody}>
+                  <Text style={styles.portfolioCardTitle} numberOfLines={1}>
+                    {post.title || 'Untitled Post'}
+                  </Text>
 
-                <Text style={styles.portfolioCardDesc} numberOfLines={3}>
-                  {post.content}
-                </Text>
-                <View style={styles.socialPostMeta}>
-                  {post.images && post.images.length > 1 && (
-                    <View style={styles.metaChip}>
-                      <Ionicons name="images-outline" size={12} color={T2} />
-                      <Text style={styles.metaChipText}>{post.images.length} photos</Text>
+                  {/* Linked project badge */}
+                  {post.linked_project_id && (
+                    <View style={styles.linkedBadge}>
+                      <MaterialIcons name="verified" size={13} color="#16a34a" />
+                      <Text style={styles.linkedBadgeText}>
+                        {post.linked_project_title || 'Linked to completed project'}
+                      </Text>
                     </View>
                   )}
+
+                  <Text style={styles.portfolioCardDesc} numberOfLines={3}>
+                    {post.content}
+                  </Text>
+                  <View style={styles.socialPostMeta}>
+                    {post.images && post.images.length > 1 && (
+                      <View style={styles.metaChip}>
+                        <Ionicons name="images-outline" size={12} color={T2} />
+                        <Text style={styles.metaChipText}>{post.images.length} photos</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={styles.portfolioCardDate}>{formatDate(post.created_at)}</Text>
                 </View>
-                <Text style={styles.portfolioCardDate}>{formatDate(post.created_at)}</Text>
-              </View>
-            </View>
-          ))
+              </TouchableOpacity>
+            );
+          })
         ) : !loading ? (
           <View style={styles.emptyState}>
             <MaterialIcons name="photo-library" size={48} color="#d1d5db" />
@@ -387,6 +456,16 @@ export default function CheckProfile({ contractor, onClose, onSendMessage }: Che
           {description || 'No description available.'}
         </Text>
       </View>
+
+      {/* Services Offered */}
+      {(contractorAbout?.services_offered || contractor.services_offered) ? (
+        <View style={styles.aboutSection}>
+          <Text style={styles.aboutSectionTitle}>Services Offered</Text>
+          <Text style={styles.aboutText}>
+            {contractorAbout?.services_offered || contractor.services_offered}
+          </Text>
+        </View>
+      ) : null}
 
       {/* Contact Info */}
       <View style={styles.aboutSection}>
@@ -526,8 +605,23 @@ export default function CheckProfile({ contractor, onClose, onSendMessage }: Che
     </View>
   );
 
+  if (selectedShowcasePost) {
+    const isOwn = selectedShowcasePost.user_id === contractor.user_id;
+    return (
+      <ShowcasePostDetail
+        post={selectedShowcasePost}
+        onClose={() => setSelectedShowcasePost(null)}
+        onViewProfile={(!isOwn && selectedShowcasePost.user_id) ? () => {
+          const sp = selectedShowcasePost;
+          setSelectedShowcasePost(null);
+          // Only contractor profiles are supported here
+          setIsOwnProfile(false);
+        } : undefined}
+      />
+    );
+  }
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top }]}> 
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.surface} />
 
       {/* Header */}

@@ -78,6 +78,10 @@ import ProjectPostDetail from './projectPostDetail';
 // Import create showcase modal and post service for unified feed
 import CreateShowcase from './createShowcase';
 import { post_service } from '../../services/post_service';
+import { highlightService } from '../../services/highlightService';
+
+// Import showcase post detail screen
+import ShowcasePostDetail from './showcasePostDetail';
 
 // Import notifications screen
 import Notifications from './notifications';
@@ -179,6 +183,9 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
 
   // View project state (for contractors viewing projects)
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+
+  // View showcase post detail state
+  const [selectedShowcasePost, setSelectedShowcasePost] = useState<any>(null);
 
   // Place bid screen state
   const [showPlaceBid, setShowPlaceBid] = useState(false);
@@ -1394,6 +1401,37 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
     );
   };
 
+  // ── Highlight toggling for showcase posts ──
+  const [highlightingPostId, setHighlightingPostId] = useState<number | null>(null);
+
+  const handleToggleHighlight = useCallback(async (postId: number, currentlyHighlighted: boolean) => {
+    if (highlightingPostId) return; // debounce
+    setHighlightingPostId(postId);
+    try {
+      const res = currentlyHighlighted
+        ? await highlightService.unhighlightPost(postId)
+        : await highlightService.highlightPost(postId);
+      if (res.success) {
+        // Optimistic update in the feed
+        setFeedItems(prev => prev.map(item => {
+          if (item.data?.post_id === postId) {
+            return {
+              ...item,
+              data: { ...item.data, is_highlighted: currentlyHighlighted ? 0 : 1 },
+            };
+          }
+          return item;
+        }));
+      } else {
+        Alert.alert('Highlight', res.message || 'Could not update highlight.');
+      }
+    } catch {
+      Alert.alert('Error', 'Something went wrong.');
+    } finally {
+      setHighlightingPostId(null);
+    }
+  }, [highlightingPostId]);
+
   const renderShowcaseCard = (post: any, index: number) => {
     const avatarUrl = post.avatar
       ? getStorageUrl(post.avatar)
@@ -1406,12 +1444,18 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
     }));
 
     const isOwn = post.user_id === userData?.user_id;
+    const isHighlighted = !!post.is_highlighted;
 
     // Prefer milestone name, then project title for linked project display
     const linkedName = post.linked_milestone_name || post.linked_project_title || null;
 
     return (
-      <View key={`showcase-${post.post_id}-${index}`} style={styles.projectCard}>
+      <TouchableOpacity
+        key={`showcase-${post.post_id}-${index}`}
+        style={styles.projectCard}
+        activeOpacity={0.8}
+        onPress={() => setSelectedShowcasePost(post)}
+      >
         {/* Header: Author info + linked project tag */}
         <View style={styles.projectHeader}>
           <TouchableOpacity
@@ -1469,6 +1513,29 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
               </Text>
             </View>
           </TouchableOpacity>
+
+          {/* Highlight pin icon — only visible to the post owner */}
+          {isOwn && (
+            <TouchableOpacity
+              onPress={() => handleToggleHighlight(post.post_id, isHighlighted)}
+              activeOpacity={0.7}
+              disabled={highlightingPostId === post.post_id}
+              style={{
+                padding: 6,
+                marginLeft: 4,
+                borderRadius: 20,
+                backgroundColor: isHighlighted ? '#FFF8EE' : 'transparent',
+              }}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <MaterialIcons
+                name="push-pin"
+                size={20}
+                color={isHighlighted ? '#EEA24B' : '#b0b0b0'}
+                style={isHighlighted ? undefined : { opacity: 0.6 }}
+              />
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Title */}
@@ -1489,7 +1556,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
             <Text style={styles.detailText}>{post.location}</Text>
           </View>
         )}
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -1793,6 +1860,40 @@ const renderProfileContent = () => {
         return renderHomeContent();
     }
   };
+
+  // If viewing a showcase post detail, show ShowcasePostDetail screen
+  if (selectedShowcasePost) {
+    const isOwn = selectedShowcasePost.user_id === userData?.user_id;
+    return (
+      <ShowcasePostDetail
+        post={selectedShowcasePost}
+        onClose={() => setSelectedShowcasePost(null)}
+        onViewProfile={(!isOwn && selectedShowcasePost.user_id) ? () => {
+          const sp = selectedShowcasePost;
+          setSelectedShowcasePost(null);
+          if (sp.user_type === 'contractor' || sp.company_name) {
+            setSelectedContractor({
+              contractor_id: 0,
+              company_name: sp.display_name || sp.company_name || sp.username,
+              user_id: sp.user_id,
+              logo_url: sp.avatar
+                ? getStorageUrl(sp.avatar)
+                : sp.company_logo
+                  ? getStorageUrl(sp.company_logo)
+                  : undefined,
+            });
+          } else {
+            setSelectedOwner({
+              owner_id: 0,
+              user_id: sp.user_id,
+              name: sp.display_name || sp.username || 'Property Owner',
+              profile_pic: sp.avatar || sp.profile_pic,
+            });
+          }
+        } : undefined}
+      />
+    );
+  }
 
   // If viewing a project detail, show ProjectPostDetail screen
   if (selectedProject) {
