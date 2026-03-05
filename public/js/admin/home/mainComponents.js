@@ -105,7 +105,6 @@
         }
     });
 
-    // Nav group toggle — persists state, no auto-close of other groups
     navGroups.forEach((group, index) => {
         const btn = group.querySelector('.nav-btn');
         if (!btn) return;
@@ -113,14 +112,39 @@
         btn.addEventListener('click', () => {
             const submenu = group.querySelector('.nav-submenu');
             const arrow = btn.querySelector('.arrow');
+            const isCurrentlyOpen = btn.classList.contains('active');
 
-            btn.classList.toggle('active');
-            submenu?.classList.toggle('block');
-            arrow?.classList.toggle('rotate-180');
+            if (isCurrentlyOpen) {
+                // Close the current group
+                btn.classList.remove('active');
+                submenu?.classList.remove('block');
+                arrow?.classList.remove('rotate-180');
+            } else {
+                // Close all other groups first
+                navGroups.forEach((otherGroup, otherIndex) => {
+                    if (otherIndex !== index) {
+                        const otherBtn = otherGroup.querySelector('.nav-btn');
+                        const otherSubmenu = otherGroup.querySelector('.nav-submenu');
+                        const otherArrow = otherBtn?.querySelector('.arrow');
 
-            // Persist
-            const state = getNavState();
-            state[index] = btn.classList.contains('active');
+                        otherBtn?.classList.remove('active');
+                        otherSubmenu?.classList.remove('block');
+                        otherArrow?.classList.remove('rotate-180');
+                    }
+                });
+
+                // Open the clicked group
+                btn.classList.add('active');
+                submenu?.classList.add('block');
+                arrow?.classList.add('rotate-180');
+            }
+
+            // Persist state - only store which group is open (if any)
+            const state = {};
+            navGroups.forEach((g, i) => {
+                const groupBtn = g.querySelector('.nav-btn');
+                state[i] = groupBtn?.classList.contains('active') || false;
+            });
             saveNavState(state);
         });
     });

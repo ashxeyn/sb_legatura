@@ -434,28 +434,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const a = data.data.admin;
 
-    // ── Sidebar ──
-    const fullName = [a.first_name, a.last_name].filter(Boolean).join(' ');
-    document.getElementById('sidebarName').textContent   = fullName || 'Admin';
-    document.getElementById('sidebarEmail').textContent  = a.email  || '–';
-    document.getElementById('dropdownName').textContent  = fullName || 'Admin';
-    document.getElementById('dropdownEmail').textContent = a.email  || '–';
-    if (a.profile_pic) {
-      const img = document.getElementById('sidebarAvatarImg');
-      img.onload = () => {
-        document.getElementById('sidebarInitials').classList.add('hidden');
-        img.classList.remove('hidden');
-      };
-      img.onerror = () => {
-        // Storage file missing — fall back to initials silently
-        img.classList.add('hidden');
-        document.getElementById('sidebarInitials').textContent = initials(a.first_name, a.last_name);
-        document.getElementById('sidebarInitials').classList.remove('hidden');
-      };
-      img.src = '/storage/' + a.profile_pic;
-    } else {
-      document.getElementById('sidebarInitials').textContent = initials(a.first_name, a.last_name);
-    }
+    // ── Sidebar handled by shared partial - no dynamic updates needed ──
 
     // ── Profile card ──
     // Set avatars — use initials placeholder if no profile pic (avoids broken-image loop)
@@ -640,30 +619,6 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       toast(data.message || 'Could not delete account.', 'error');
     }
-  });
-
-  // ── Sidebar user menu ─────────────────────────
-  const _menuBtn      = document.getElementById('secUserMenuBtn');
-  const _menuDropdown = document.getElementById('secUserMenuDropdown');
-
-  _menuBtn?.addEventListener('click', e => {
-    e.stopPropagation();
-    _menuDropdown.classList.toggle('hidden');
-  });
-
-  // Close when clicking OUTSIDE the dropdown — check target, not just any click
-  document.addEventListener('click', e => {
-    if (_menuDropdown && !_menuDropdown.classList.contains('hidden')) {
-      if (!_menuDropdown.contains(e.target) && !_menuBtn.contains(e.target)) {
-        _menuDropdown.classList.add('hidden');
-      }
-    }
-  });
-
-  // ── Logout ─────────────────────────────────────
-  document.getElementById('secLogoutBtn')?.addEventListener('click', e => {
-    e.stopPropagation();
-    document.getElementById('secLogoutForm').submit();
   });
 
   // ── Boot ───────────────────────────────────────
