@@ -1,254 +1,327 @@
 ﻿<!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Dashboard - Legatura</title>
+  <title>Subscription Analytics — Legatura Admin</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
   <link rel="stylesheet" href="{{ asset('css/admin/home/mainComponents.css') }}">
-  <link rel="stylesheet" href="{{ asset('css/admin/home/subscriptionAnalytics.css') }}">
-  
+
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-solid-straight/css/uicons-solid-straight.css'>
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-solid-rounded/css/uicons-solid-rounded.css'>
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-bold-rounded/css/uicons-bold-rounded.css'>
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/3.0.0/uicons-regular-rounded/css/uicons-regular-rounded.css'>
-  
 
   <script src="{{ asset('js/admin/home/mainComponents.js') }}" defer></script>
 
-  
+  <style>
+    /* Tier badges */
+    .tier-gold   { background:linear-gradient(135deg,#fef08a,#fbbf24); color:#78350f; }
+    .tier-silver { background:linear-gradient(135deg,#e0f2fe,#60a5fa); color:#1e3a5f; }
+    .tier-bronze { background:linear-gradient(135deg,#fed7aa,#f97316); color:#7c2d12; }
+    .tier-boost  { background:linear-gradient(135deg,#e9d5ff,#a855f7); color:#4c1d95; }
+    .tier-other  { background:linear-gradient(135deg,#f1f5f9,#94a3b8); color:#334155; }
+
+    /* Status badges */
+    .status-active    { background:#dcfce7; color:#166534; }
+    .status-expired   { background:#fee2e2; color:#991b1b; }
+    .status-pending   { background:#fef9c3; color:#854d0e; }
+    .status-cancelled { background:#f1f5f9; color:#475569; }
+
+    /* Table row hover */
+    .sub-row { transition: background 0.15s ease; }
+    .sub-row:hover { background: rgba(99,102,241,0.04); }
+
+    /* Skeleton pulse */
+    @keyframes shimmer {
+      0%   { background-position:-800px 0; }
+      100% { background-position: 800px 0; }
+    }
+    .skeleton {
+      background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+      background-size: 800px 100%;
+      animation: shimmer 1.4s infinite linear;
+      border-radius: 6px;
+    }
+
+    /* Revenue chart tier buttons */
+    .tier-btn { transition: all 0.2s ease; }
+    .tier-btn.active { box-shadow: 0 0 0 2px white, 0 0 0 4px currentColor; }
+  </style>
 </head>
 
 <body class="bg-gray-50 text-gray-800 font-sans">
-  <div class="flex min-h-screen">
+<div class="flex min-h-screen">
 
-    @include('admin.layouts.sidebar')
+  @include('admin.layouts.sidebar')
 
-    <main class="flex-1">
-      @include('admin.layouts.topnav', ['pageTitle' => 'Subscription Analytics'])
+  <main class="flex-1">
+    @include('admin.layouts.topnav', ['pageTitle' => 'Subscription Analytics'])
 
-      <div class="p-8">
-        <!-- Subscription Stats Cards -->
-        <div class="subscription-stats-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <!-- Total Subscriptions Card -->
-          <div class="stat-card group bg-gradient-to-br from-white to-blue-50 rounded-2xl shadow-md hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 relative overflow-hidden p-6">
-            <div class="absolute inset-0 bg-gradient-to-r from-blue-400/5 to-indigo-400/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-            <div class="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-2xl opacity-0 group-hover:opacity-20 blur transition duration-500"></div>
-            
-            <div class="relative">
-              <div class="stat-card-header flex items-start gap-4 mb-4">
-                <div class="stat-icon bg-gradient-to-br from-blue-500 to-blue-600 p-3 rounded-xl shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-all duration-300">
-                  <i class="fi fi-sr-users-alt text-white text-2xl"></i>
-                </div>
-                <div class="stat-info flex-1">
-                  <h3 class="stat-label text-sm font-semibold text-gray-600 uppercase tracking-wide mb-2">Total Subscriptions</h3>
-                  <div class="stat-value-row flex items-baseline gap-2">
-                    <p class="stat-value text-4xl font-bold text-gray-800 group-hover:text-blue-600 transition-colors">{{ $subscriptionMetrics['active'] }}</p>
-                    <span class="stat-total text-xl text-gray-500 font-semibold">/{{ $subscriptionMetrics['total'] }}</span>
-                  </div>
-                </div>
-              </div>
-              <div class="stat-progress-bar bg-blue-100 rounded-full h-2 overflow-hidden shadow-inner">
-                <div class="stat-progress-fill bg-gradient-to-r from-blue-500 to-indigo-500 h-full rounded-full transition-all duration-1000 ease-out shadow-md" 
-                  style="width: {{ $subscriptionMetrics['total'] > 0 ? round(($subscriptionMetrics['active'] / $subscriptionMetrics['total']) * 100) : 0 }}%"></div>
-              </div>
-              <div class="mt-2 text-xs text-gray-600 font-medium text-right">
-                {{ $subscriptionMetrics['total'] > 0 ? round(($subscriptionMetrics['active'] / $subscriptionMetrics['total']) * 100) : 0 }}% Active
-              </div>
+    <div class="p-8 space-y-8">
+
+      {{-- ── KPI HERO CARDS ───────────────────────────────────────────────── --}}
+      <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+
+        {{-- Total Subscriptions --}}
+        <div class="relative bg-gradient-to-br from-indigo-500 to-indigo-700 rounded-2xl p-6 shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 overflow-hidden">
+          <div class="absolute -top-4 -right-4 w-24 h-24 bg-white opacity-10 rounded-full pointer-events-none"></div>
+          <div class="relative">
+            <div class="bg-white/20 w-11 h-11 rounded-xl flex items-center justify-center mb-4">
+              <i class="fi fi-sr-users-alt text-white text-xl leading-none"></i>
             </div>
-          </div>
-
-          <!-- Total Revenue Card -->
-          <div class="stat-card group bg-gradient-to-br from-white to-emerald-50 rounded-2xl shadow-md hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 relative overflow-hidden p-6">
-            <div class="absolute inset-0 bg-gradient-to-r from-emerald-400/5 to-teal-400/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-            <div class="absolute -inset-0.5 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl opacity-0 group-hover:opacity-20 blur transition duration-500"></div>
-            
-            <div class="relative">
-              <div class="stat-card-header flex items-start gap-4 mb-4">
-                <div class="stat-icon bg-gradient-to-br from-emerald-500 to-emerald-600 p-3 rounded-xl shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-all duration-300">
-                  <i class="fi fi-sr-peso-sign text-white text-2xl"></i>
-                </div>
-                <div class="stat-info flex-1">
-                  <h3 class="stat-label text-sm font-semibold text-gray-600 uppercase tracking-wide mb-2">Total Revenue</h3>
-                  <p class="stat-value text-4xl font-bold text-gray-800 group-hover:text-emerald-600 transition-colors">₱{{ number_format($subscriptionMetrics['revenue'], 2) }}</p>
-                </div>
-              </div>
-              <div class="flex items-center gap-2 mt-3">
-                <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
-                </svg>
-                <p class="stat-description text-sm text-gray-600 font-medium">From commission payments</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Expiring Soon Card -->
-          <div class="stat-card group bg-gradient-to-br from-white to-orange-50 rounded-2xl shadow-md hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 relative overflow-hidden p-6">
-            <div class="absolute inset-0 bg-gradient-to-r from-orange-400/5 to-amber-400/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-            <div class="absolute -inset-0.5 bg-gradient-to-r from-orange-500 to-amber-500 rounded-2xl opacity-0 group-hover:opacity-20 blur transition duration-500"></div>
-            
-            <div class="relative">
-              <div class="stat-card-header flex items-start gap-4 mb-4">
-                <div class="stat-icon bg-gradient-to-br from-orange-500 to-orange-600 p-3 rounded-xl shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-all duration-300">
-                  <i class="fi fi-sr-alarm-clock text-white text-2xl"></i>
-                </div>
-                <div class="stat-info flex-1">
-                  <h3 class="stat-label text-sm font-semibold text-gray-600 uppercase tracking-wide mb-2">Expiring Soon</h3>
-                  <p class="stat-value text-4xl font-bold text-gray-800 group-hover:text-orange-600 transition-colors">{{ $subscriptionMetrics['expiring'] }}</p>
-                </div>
-              </div>
-              <div class="flex items-center gap-2 mt-3">
-                <svg class="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-                <p class="stat-description text-sm text-gray-600 font-medium">Next 7 days</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Expired Card -->
-          <div class="stat-card group bg-gradient-to-br from-white to-red-50 rounded-2xl shadow-md hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 relative overflow-hidden p-6">
-            <div class="absolute inset-0 bg-gradient-to-r from-red-400/5 to-pink-400/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-            <div class="absolute -inset-0.5 bg-gradient-to-r from-red-500 to-pink-500 rounded-2xl opacity-0 group-hover:opacity-20 blur transition duration-500"></div>
-            
-            <div class="relative">
-              <div class="stat-card-header flex items-start gap-4 mb-4">
-                <div class="stat-icon bg-gradient-to-br from-red-500 to-red-600 p-3 rounded-xl shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-all duration-300">
-                  <i class="fi fi-sr-time-past text-white text-2xl"></i>
-                </div>
-                <div class="stat-info flex-1">
-                  <h3 class="stat-label text-sm font-semibold text-gray-600 uppercase tracking-wide mb-2">Expired</h3>
-                  <p class="stat-value text-4xl font-bold text-gray-800 group-hover:text-red-600 transition-colors">{{ $subscriptionMetrics['expired'] }}</p>
-                </div>
-              </div>
-              <div class="flex items-center gap-2 mt-3">
-                <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                </svg>
-                <p class="stat-description text-sm text-gray-600 font-medium">Past subscription period</p>
-              </div>
+            <div class="text-white/80 text-sm font-medium mb-1">Total Subscriptions</div>
+            <div class="text-white text-4xl font-bold mb-2 stat-counter" data-target="{{ $subscriptionMetrics['total'] }}">0</div>
+            <div class="flex items-center gap-1 text-white/80 text-xs">
+              @if($subscriptionMetrics['mom_growth'] >= 0)
+                <svg class="w-3 h-3 text-emerald-300" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
+                <span class="text-emerald-300 font-semibold">+{{ $subscriptionMetrics['mom_growth'] }}%</span>
+              @else
+                <svg class="w-3 h-3 text-red-300" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                <span class="text-red-300 font-semibold">{{ $subscriptionMetrics['mom_growth'] }}%</span>
+              @endif
+              <span>vs last month</span>
             </div>
           </div>
         </div>
 
-        <!-- Total Subscriptions Chart -->
-        <div class="subscription-chart-card group bg-gradient-to-br from-white to-purple-50 rounded-2xl shadow-md hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-1 relative overflow-hidden p-8 mb-8">
-          <div class="absolute inset-0 bg-gradient-to-r from-purple-400/5 to-pink-400/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-          
+        {{-- Active --}}
+        <div class="relative bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-2xl p-6 shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 overflow-hidden">
+          <div class="absolute -top-4 -right-4 w-24 h-24 bg-white opacity-10 rounded-full pointer-events-none"></div>
           <div class="relative">
-            <div class="chart-header flex flex-wrap items-center justify-between gap-4 mb-8">
-              <div>
-                <div class="flex items-center gap-3 mb-2">
-                  <div class="bg-gradient-to-br from-purple-500 to-purple-600 p-2.5 rounded-xl shadow-lg group-hover:scale-110 transition-transform duration-300">
-                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                    </svg>
-                  </div>
-                  <h2 class="chart-title text-2xl font-bold text-gray-800">Total Subscriptions</h2>
-                </div>
-                <p class="chart-subtitle text-sm text-gray-600 ml-14 flex items-center gap-2">
-                  <span class="inline-block w-1.5 h-1.5 bg-purple-400 rounded-full"></span>
-                  Distribution by contractor tier
-                </p>
-              </div>
-              <div class="chart-legend flex flex-wrap gap-3">
-                @foreach($subscriptionTiers['tiers'] as $tier)
-                <div class="legend-item-inline group/legend cursor-pointer bg-white hover:bg-purple-50 px-4 py-2 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105 flex items-center gap-2">
-                  <span class="legend-dot-inline w-3 h-3 rounded-full shadow-md group-hover/legend:scale-125 transition-transform" style="background: {{ $tier['color'] }};"></span>
-                  <span class="legend-text text-sm font-semibold text-gray-700 group-hover/legend:text-purple-600 transition-colors">{{ $tier['label'] }}</span>
-                </div>
-                @endforeach
-              </div>
+            <div class="bg-white/20 w-11 h-11 rounded-xl flex items-center justify-center mb-4">
+              <i class="fi fi-sr-badge-check text-white text-xl leading-none"></i>
             </div>
-
-          <div class="chart-container relative bg-white rounded-xl p-6 shadow-inner">
-            <div class="bar-chart flex items-end justify-around gap-4 h-80 relative">
-              @foreach($subscriptionTiers['tiers'] as $index => $tier)
-              <div class="bar-item group/bar flex-1 flex flex-col items-center cursor-pointer" data-tier="{{ $index }}">
-                <div class="bar-wrapper relative w-full flex-1 flex items-end justify-center">
-                  <div class="bar-fill relative w-full max-w-20 rounded-t-lg shadow-lg group-hover/bar:shadow-2xl transition-all duration-700 ease-out group-hover/bar:scale-105" 
-                    data-count="{{ $tier['count'] }}" 
-                    data-max="{{ $subscriptionTiers['maxCount'] }}"
-                    style="background: {{ $tier['gradient'] }}; height: 0%;">
-                    <div class="bar-value absolute -top-10 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-3 py-1.5 rounded-lg text-sm font-bold shadow-lg opacity-0 group-hover/bar:opacity-100 transition-opacity duration-300 whitespace-nowrap">
-                      {{ number_format($tier['count']) }}K
-                      <div class="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
-                    </div>
-                  </div>
-                </div>
-                <div class="bar-label mt-4 text-sm font-semibold text-gray-700 group-hover/bar:text-purple-600 transition-colors text-center">{{ $tier['name'] }}</div>
-              </div>
-              @endforeach
+            <div class="text-white/80 text-sm font-medium mb-1">Active</div>
+            <div class="text-white text-4xl font-bold mb-2 stat-counter" data-target="{{ $subscriptionMetrics['active'] }}">0</div>
+            <div class="text-white/70 text-xs">
+              {{ $subscriptionMetrics['total'] > 0 ? round(($subscriptionMetrics['active'] / $subscriptionMetrics['total']) * 100, 1) : 0 }}% of total
             </div>
-
-            <!-- Y-axis labels -->
-            <div class="y-axis absolute left-0 top-0 h-full flex flex-col justify-between py-6 pr-4 text-xs font-medium text-gray-500">
-              <span class="y-label">30K</span>
-              <span class="y-label">20K</span>
-              <span class="y-label">10K</span>
-              <span class="y-label">0</span>
-            </div>
-          </div>
           </div>
         </div>
 
-        <!-- Total Revenue Chart -->
-        <div class="revenue-chart-card group bg-gradient-to-br from-white to-emerald-50 rounded-2xl shadow-md hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-1 relative overflow-hidden p-8">
-          <div class="absolute inset-0 bg-gradient-to-r from-emerald-400/5 to-teal-400/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-          
+        {{-- Revenue --}}
+        <div class="relative bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-6 shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 overflow-hidden">
+          <div class="absolute -top-4 -right-4 w-24 h-24 bg-white opacity-10 rounded-full pointer-events-none"></div>
           <div class="relative">
-            <div class="revenue-header flex flex-wrap items-center justify-between gap-4 mb-6">
-              <div class="revenue-titles">
-                <div class="flex items-center gap-3 mb-2">
-                  <div class="bg-gradient-to-br from-emerald-500 to-emerald-600 p-2.5 rounded-xl shadow-lg group-hover:scale-110 transition-transform duration-300">
-                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                  </div>
-                  <h2 class="revenue-title text-2xl font-bold text-gray-800">Total Revenue</h2>
-                </div>
-                <p class="revenue-subtitle text-sm text-gray-600 ml-14 flex items-center gap-2">
-                  <span class="inline-block w-1.5 h-1.5 bg-emerald-400 rounded-full"></span>
-                  Monthly revenue comparison (current vs previous year)
-                </p>
-              </div>
-              <div class="revenue-controls flex flex-wrap items-center gap-3 bg-white px-4 py-3 rounded-xl shadow-md">
-                <label class="revenue-tier-label text-sm font-semibold text-gray-700" for="revenueTierSelect">Tier:</label>
-                <select id="revenueTierSelect" class="revenue-tier-select px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-400 focus:outline-none text-sm font-medium text-gray-700 cursor-pointer hover:border-emerald-400 transition-colors">
-                  <option value="all" selected>All Tiers</option>
-                  <option value="gold">Gold</option>
-                  <option value="silver">Silver</option>
-                  <option value="bronze">Bronze</option>
-                </select>
-                <div class="flex items-center gap-2 px-3 py-2 bg-emerald-50 rounded-lg">
-                  <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                  </svg>
-                  <span class="revenue-date-range text-sm font-semibold text-emerald-700">{{ $subscriptionRevenue['dateRange'] ?? '' }}</span>
-                </div>
-              </div>
+            <div class="bg-white/20 w-11 h-11 rounded-xl flex items-center justify-center mb-4">
+              <i class="fi fi-sr-peso-sign text-white text-xl leading-none"></i>
             </div>
-            <div class="revenue-chart-wrapper bg-white rounded-xl p-6 shadow-inner relative">
-              <canvas id="subscriptionRevenueChart" height="140"></canvas>
-              <div id="revenueLoading" class="revenue-loading absolute inset-0 flex items-center justify-center bg-white bg-opacity-90 rounded-xl" hidden>
-                <div class="flex flex-col items-center gap-3">
-                  <div class="animate-spin rounded-full h-12 w-12 border-4 border-emerald-200 border-t-emerald-600"></div>
-                  <span class="text-sm font-medium text-gray-600">Loading...</span>
+            <div class="text-white/80 text-sm font-medium mb-1">Total Revenue</div>
+            <div class="text-white text-4xl font-bold mb-2">
+              ₱{{ number_format($subscriptionMetrics['revenue'], 2) }}
+            </div>
+            <div class="text-white/70 text-xs">All approved contractor subs</div>
+          </div>
+        </div>
+
+        {{-- Expiring / Expired --}}
+        <div class="relative bg-gradient-to-br from-rose-500 to-pink-700 rounded-2xl p-6 shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 overflow-hidden">
+          <div class="absolute -top-4 -right-4 w-24 h-24 bg-white opacity-10 rounded-full pointer-events-none"></div>
+          <div class="relative">
+            <div class="bg-white/20 w-11 h-11 rounded-xl flex items-center justify-center mb-4">
+              <i class="fi fi-sr-alarm-clock text-white text-xl leading-none"></i>
+            </div>
+            <div class="text-white/80 text-sm font-medium mb-1">Expiring in 7 Days</div>
+            <div class="text-white text-4xl font-bold mb-2 stat-counter" data-target="{{ $subscriptionMetrics['expiring'] }}">0</div>
+            <div class="text-white/70 text-xs">
+              {{ $subscriptionMetrics['expired'] }} already expired
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      {{-- ── REVENUE CHART + TIER BARS ────────────────────────────────────── --}}
+      <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+
+        {{-- Revenue Line Chart --}}
+        <div class="xl:col-span-2 bg-white rounded-2xl shadow-lg p-8 hover:shadow-xl transition-shadow">
+          <div class="flex flex-wrap items-start justify-between gap-4 mb-6">
+            <div>
+              <h3 class="text-xl font-bold text-gray-800">Subscription Revenue</h3>
+              <p class="text-sm text-gray-500 mt-0.5" id="revenueSubtitle">
+                {{ $subscriptionRevenue['dateRange'] }} &nbsp;·&nbsp; Current vs Previous Year
+              </p>
+            </div>
+            {{-- Tier toggle --}}
+            <div class="flex gap-2 flex-wrap">
+              <button data-tier="all"    class="tier-btn active px-3 py-1.5 rounded-lg text-sm font-semibold bg-gray-800 text-white">All</button>
+              <button data-tier="gold"   class="tier-btn px-3 py-1.5 rounded-lg text-sm font-semibold tier-gold">Gold</button>
+              <button data-tier="silver" class="tier-btn px-3 py-1.5 rounded-lg text-sm font-semibold tier-silver">Silver</button>
+              <button data-tier="bronze" class="tier-btn px-3 py-1.5 rounded-lg text-sm font-semibold tier-bronze">Bronze</button>
+            </div>
+          </div>
+
+          {{-- Loading overlay --}}
+          <div id="revenueSpinner" class="hidden absolute inset-0 bg-white/70 rounded-2xl flex items-center justify-center z-10">
+            <div class="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+          </div>
+
+          <div style="height:300px; position:relative;">
+            <canvas id="revenueChart"
+              data-months='@json($subscriptionRevenue["months"])'
+              data-current='@json($subscriptionRevenue["currentYearData"])'
+              data-previous='@json($subscriptionRevenue["previousYearData"])'
+              data-current-year="{{ $subscriptionRevenue['currentYear'] }}"
+              data-previous-year="{{ $subscriptionRevenue['previousYear'] }}">
+            </canvas>
+          </div>
+        </div>
+
+        {{-- Tier Breakdown --}}
+        <div class="bg-white rounded-2xl shadow-lg p-8 hover:shadow-xl transition-shadow">
+          <h3 class="text-xl font-bold text-gray-800 mb-1">Tier Breakdown</h3>
+          <p class="text-sm text-gray-500 mb-6">Approved subscriptions by plan</p>
+          <div class="space-y-5">
+            @php
+              $tierStyles = [
+                ['bg' => 'bg-yellow-50', 'bar' => 'bg-gradient-to-r from-yellow-300 to-yellow-500', 'text' => 'text-yellow-700'],
+                ['bg' => 'bg-blue-50',   'bar' => 'bg-gradient-to-r from-blue-300   to-blue-500',   'text' => 'text-blue-700'],
+                ['bg' => 'bg-orange-50', 'bar' => 'bg-gradient-to-r from-orange-300 to-orange-500', 'text' => 'text-orange-700'],
+              ];
+            @endphp
+            @foreach($subscriptionTiers['tiers'] as $i => $tier)
+              @php
+                $s = $tierStyles[$i];
+                $w = $subscriptionTiers['maxCount'] > 0
+                      ? round(($tier['count'] / $subscriptionTiers['maxCount']) * 100)
+                      : 0;
+                $pct = $subscriptionTiers['total'] > 0
+                        ? round(($tier['count'] / $subscriptionTiers['total']) * 100, 1)
+                        : 0;
+              @endphp
+              <div class="{{ $s['bg'] }} rounded-xl p-4">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-sm font-semibold {{ $s['text'] }}">{{ $tier['label'] }}</span>
+                  <span class="text-lg font-bold {{ $s['text'] }}">{{ $tier['count'] }}</span>
                 </div>
+                <div class="w-full bg-white/60 rounded-full h-2.5 overflow-hidden">
+                  <div class="{{ $s['bar'] }} h-2.5 rounded-full tier-bar"
+                       data-width="{{ $w }}" style="width:0%; transition:width 0.9s cubic-bezier(.34,1.56,.64,1)"></div>
+                </div>
+                <div class="text-xs {{ $s['text'] }} opacity-70 mt-1">{{ $pct }}% of all</div>
               </div>
+            @endforeach
+            <div class="pt-2 border-t border-gray-100 flex items-center justify-between">
+              <span class="text-sm text-gray-500">Total approved</span>
+              <span class="text-xl font-bold text-gray-800">{{ $subscriptionTiers['total'] }}</span>
             </div>
           </div>
         </div>
       </div>
 
-      </main>
-  </div>
-  <script id="initialRevenueData" type="application/json">{!! json_encode($subscriptionRevenue ?? []) !!}</script>
-  <script src="{{ asset('js/admin/home/subscriptionAnalytics.js') }}" defer></script>
+      {{-- ── SUBSCRIBER LIST ──────────────────────────────────────────────── --}}
+      <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
 
+        {{-- Header --}}
+        <div class="bg-gradient-to-r from-indigo-600 via-violet-600 to-purple-600 px-8 py-6">
+          <div class="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h3 class="text-2xl font-bold text-white">Subscribers</h3>
+              <p class="text-indigo-200 text-sm mt-0.5" id="subscriberMeta">
+                {{ $subscribers->total() }} total &nbsp;·&nbsp;
+                Showing {{ $subscribers->firstItem() ?? 0 }}–{{ $subscribers->lastItem() ?? 0 }}
+              </p>
+            </div>
+            <button id="exportCsvBtn" class="bg-white text-indigo-600 px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-indigo-50 transition-colors shadow flex items-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+              Export CSV
+            </button>
+          </div>
+        </div>
+
+        {{-- Filter/Search Bar
+             NOTE: No <form> submission — JS intercepts everything and does AJAX
+             BUG 4 FIX: preserves scroll position via history.pushState
+        --}}
+        <div class="px-8 py-5 border-b border-gray-100 bg-gray-50">
+          <div class="flex flex-wrap gap-3 items-end">
+
+            {{-- Search --}}
+            <div class="flex-1 min-w-[200px]">
+              <label class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5 block">Search</label>
+              <div class="relative">
+                <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+                <input id="searchInput" type="text"
+                  value="{{ $filters['search'] }}"
+                  placeholder="Name, email, plan, transaction…"
+                  class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 transition-all">
+              </div>
+            </div>
+
+            {{-- Plan --}}
+            <div class="min-w-[140px]">
+              <label class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5 block">Plan</label>
+              <select id="planFilter" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-all">
+                <option value=""       {{ $filters['plan'] === ''       ? 'selected' : '' }}>All Plans</option>
+                <option value="gold"   {{ $filters['plan'] === 'gold'   ? 'selected' : '' }}>Gold</option>
+                <option value="silver" {{ $filters['plan'] === 'silver' ? 'selected' : '' }}>Silver</option>
+                <option value="bronze" {{ $filters['plan'] === 'bronze' ? 'selected' : '' }}>Bronze</option>
+                <option value="boost"  {{ $filters['plan'] === 'boost'  ? 'selected' : '' }}>Boost</option>
+              </select>
+            </div>
+
+            {{-- Status --}}
+            <div class="min-w-[140px]">
+              <label class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5 block">Status</label>
+              <select id="statusFilter" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-all">
+                <option value=""         {{ $filters['status'] === ''         ? 'selected' : '' }}>All Statuses</option>
+                <option value="active"   {{ $filters['status'] === 'active'   ? 'selected' : '' }}>Active</option>
+                <option value="expired"  {{ $filters['status'] === 'expired'  ? 'selected' : '' }}>Expired</option>
+                <option value="pending"  {{ $filters['status'] === 'pending'  ? 'selected' : '' }}>Pending</option>
+                <option value="cancelled"{{ $filters['status'] === 'cancelled'? 'selected' : '' }}>Cancelled</option>
+              </select>
+            </div>
+
+            {{-- Sort --}}
+            <div class="min-w-[160px]">
+              <label class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5 block">Sort By</label>
+              <select id="sortFilter" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-all">
+                <option value="newest"      {{ $filters['sort'] === 'newest'      ? 'selected' : '' }}>Newest First</option>
+                <option value="oldest"      {{ $filters['sort'] === 'oldest'      ? 'selected' : '' }}>Oldest First</option>
+                <option value="amount_desc" {{ $filters['sort'] === 'amount_desc' ? 'selected' : '' }}>Amount ↓</option>
+                <option value="amount_asc"  {{ $filters['sort'] === 'amount_asc'  ? 'selected' : '' }}>Amount ↑</option>
+                <option value="name_asc"    {{ $filters['sort'] === 'name_asc'    ? 'selected' : '' }}>Name A–Z</option>
+              </select>
+            </div>
+
+            {{-- Clear --}}
+            <div>
+              <label class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5 block opacity-0">x</label>
+              <button id="clearFiltersBtn"
+                class="{{ ($filters['search'] || $filters['plan'] || $filters['status'] || $filters['sort'] !== 'newest') ? '' : 'invisible' }} px-4 py-2.5 bg-gray-100 text-gray-500 rounded-xl text-sm font-medium hover:bg-gray-200 transition-colors">
+                Clear
+              </button>
+            </div>
+
+          </div>
+        </div>
+
+        {{-- Subscriber Table (server-rendered first, AJAX-replaced on filter) --}}
+        <div class="p-6" id="subscriberPanel">
+          @include('admin.home.subscriberTable', ['subscribers' => $subscribers, 'filters' => $filters])
+        </div>
+
+      </div>
+
+    </div>
+  </main>
+</div>
+
+{{-- Pass AJAX URL and initial filter state to JS --}}
+<script>
+  window.SubConfig = {
+    ajaxUrl:  '{{ route("admin.analytics.subscription.subscribers") }}',
+    revenueUrl: '{{ route("admin.analytics.subscription.revenue") }}',
+    filters: @json($filters),
+    csrfToken: '{{ csrf_token() }}'
+  };
+</script>
+<script src="{{ asset('js/admin/home/subscriptionAnalytics.js') }}" defer></script>
 </body>
-
 </html>

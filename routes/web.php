@@ -22,6 +22,8 @@ use App\Http\Controllers\Admin\projectManagementController;
 use App\Http\Controllers\message\broadcastAuthController;
 use App\Http\Controllers\passwordController;
 
+Route::get('/admin/analytics/subscription',             [analyticsController::class, 'subscriptionAnalytics'])->name('admin.analytics.subscription'); Route::get('/admin/analytics/subscription/revenue',     [analyticsController::class, 'subscriptionRevenue'])->name('admin.analytics.subscription.revenue');
+Route::get('/admin/analytics/subscription/subscribers', [analyticsController::class, 'getSubscribersJson'])->name('admin.analytics.subscription.subscribers');
 Route::prefix('admin/settings/security')
      ->middleware([\App\Http\Middleware\AdminAuthMiddleware::class])
      ->group(function () {

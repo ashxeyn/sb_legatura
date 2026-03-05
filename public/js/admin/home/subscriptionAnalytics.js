@@ -1,365 +1,605 @@
-document.addEventListener('DOMContentLoaded', function() {
-  // Stat cards interactive effects
-  const statCards = document.querySelectorAll('.stat-card');
-  
-  statCards.forEach(card => {
-    // Add ripple effect on click
-    card.addEventListener('click', function(e) {
-      const ripple = document.createElement('span');
-      const rect = card.getBoundingClientRect();
-      const size = Math.max(rect.width, rect.height);
-      const x = e.clientX - rect.left - size / 2;
-      const y = e.clientY - rect.top - size / 2;
-      
-      ripple.style.width = ripple.style.height = size + 'px';
-      ripple.style.left = x + 'px';
-      ripple.style.top = y + 'px';
-      ripple.classList.add('ripple');
-      
-      card.appendChild(ripple);
-      
-      setTimeout(() => {
-        ripple.remove();
-      }, 600);
-    });
+/**
+ * subscriptionAnalytics.js
+ *
+ * BUG 4 FIX: All filter/search/pagination changes now use AJAX + history.pushState.
+ *            The subscriber panel is re-rendered in-place — the page never scrolls to top.
+ *
+ * BUG 2 FIX: Revenue chart reads keys 'currentYearData'/'previousYearData' to match
+ *            what the controller now returns.
+ */
 
-    // Animate progress bars on scroll into view
-    const progressBar = card.querySelector('.stat-progress-fill');
-    if (progressBar) {
-      const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            const width = progressBar.style.width;
-            progressBar.style.width = '0%';
-            setTimeout(() => {
-              progressBar.style.width = width;
-            }, 100);
-          }
-        });
-      }, { threshold: 0.5 });
+'use strict';
 
-      observer.observe(card);
-    }
+// ── Utilities ──────────────────────────────────────────────────────────────────
 
-    // Add tooltip functionality
-    card.addEventListener('mouseenter', function() {
-      const description = card.querySelector('.stat-description');
-      if (description) {
-        description.style.transition = 'all 0.3s ease';
-      }
-    });
-  });
+/** Eased counter animation */
+function animateCounter(el) {
+  const target   = parseFloat(el.dataset.target) || 0;
+  const isFloat  = !Number.isInteger(target);
+  const dur      = 1200;
+  const t0       = performance.now();
 
-  // Animate stat values counting up
-  const statValues = document.querySelectorAll('.stat-value');
-  
-  statValues.forEach(valueElement => {
-    const text = valueElement.textContent.trim();
-    
-    // Check if it's a number (not currency)
-    if (!text.includes('₱') && !text.includes(',')) {
-      const finalValue = parseInt(text);
-      if (!isNaN(finalValue)) {
-        animateValue(valueElement, 0, finalValue, 1000);
-      }
-    } else if (text.includes('₱')) {
-      // Animate currency values
-      const numericValue = parseFloat(text.replace('₱', '').replace(/,/g, ''));
-      if (!isNaN(numericValue)) {
-        animateCurrency(valueElement, 0, numericValue, 1000);
-      }
-    }
-  });
+  const tick = (now) => {
+    const p = Math.min((now - t0) / dur, 1);
+    const e = 1 - Math.pow(1 - p, 3); // easeOutCubic
+    const v = target * e;
+    el.textContent = isFloat ? v.toFixed(1) : Math.floor(v).toLocaleString();
+    if (p < 1) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
 
-  function animateValue(element, start, end, duration) {
-    const range = end - start;
-    const increment = range / (duration / 16);
-    let current = start;
+/** Animate tier progress bars on scroll into view */
+function initTierBars() {
+  const bars = document.querySelectorAll('.tier-bar');
+  if (!bars.length) return;
 
-    const timer = setInterval(() => {
-      current += increment;
-      if (current >= end) {
-        element.textContent = Math.round(end);
-        clearInterval(timer);
-      } else {
-        element.textContent = Math.round(current);
-      }
-    }, 16);
-  }
-
-  function animateCurrency(element, start, end, duration) {
-    const range = end - start;
-    const increment = range / (duration / 16);
-    let current = start;
-
-    const timer = setInterval(() => {
-      current += increment;
-      if (current >= end) {
-        element.textContent = '₱' + end.toLocaleString('en-US', {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2
-        });
-        clearInterval(timer);
-      } else {
-        element.textContent = '₱' + current.toLocaleString('en-US', {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2
-        });
-      }
-    }, 16);
-  }
-
-  // Add pulse animation to expiring soon card if count > 0
-  const expiringCard = document.querySelector('.stat-card-orange');
-  if (expiringCard) {
-    const expiringValue = expiringCard.querySelector('.stat-value');
-    const count = parseInt(expiringValue.textContent);
-    
-    if (count > 0) {
-      setInterval(() => {
-        expiringCard.style.transform = 'scale(1.02)';
-        setTimeout(() => {
-          expiringCard.style.transform = 'scale(1)';
-        }, 200);
-      }, 3000);
-    }
-  }
-
-  // Card click actions (optional - can be used to show detailed info)
-  statCards.forEach((card, index) => {
-    card.addEventListener('click', function() {
-      console.log('Card clicked:', card.querySelector('.stat-label').textContent);
-      // You can add modal or detailed view here
-    });
-  });
-
-  // Bar Chart Animation
-  const barItems = document.querySelectorAll('.bar-item');
-  const barFills = document.querySelectorAll('.bar-fill');
-
-  // Animate bars on scroll into view
-  const chartObserver = new IntersectionObserver((entries) => {
+  const obs = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        animateBars();
-        chartObserver.unobserve(entry.target);
-      }
+      if (!entry.isIntersecting) return;
+      const bar = entry.target;
+      setTimeout(() => { bar.style.width = bar.dataset.width + '%'; }, 100);
+      obs.unobserve(bar);
     });
-  }, { threshold: 0.3 });
+  }, { threshold: 0.4 });
 
-  const chartCard = document.querySelector('.subscription-chart-card');
-  if (chartCard) {
-    chartObserver.observe(chartCard);
-  }
+  bars.forEach(b => obs.observe(b));
+}
 
-  function animateBars() {
-    barFills.forEach((bar, index) => {
-      const count = parseFloat(bar.getAttribute('data-count'));
-      const maxCount = parseFloat(bar.getAttribute('data-max'));
-      const percentage = maxCount > 0 ? (count / maxCount) * 100 : 0;
-      
-      setTimeout(() => {
-        bar.style.height = percentage + '%';
-      }, index * 200);
-    });
-  }
+// ── Revenue Chart ───────────────────────────────────────────────────────────────
 
-  // Bar item interactions
-  barItems.forEach((item, index) => {
-    // Add click ripple effect
-    item.addEventListener('click', function(e) {
-      const ripple = document.createElement('span');
-      ripple.classList.add('bar-ripple');
-      
-      item.appendChild(ripple);
-      
-      setTimeout(() => {
-        ripple.remove();
-      }, 600);
+let revenueChart = null;
 
-      // Log tier information
-      const tierName = item.querySelector('.bar-label').textContent;
-      const count = item.querySelector('.bar-value').textContent;
-      console.log(`${tierName}: ${count} subscriptions`);
-    });
+function buildRevenueChart(months, currentData, previousData, currentYear, previousYear) {
+  const canvas = document.getElementById('revenueChart');
+  if (!canvas) return;
 
-    // Add hover effect to legend
-    item.addEventListener('mouseenter', function() {
-      const legendItems = document.querySelectorAll('.legend-item-inline');
-      if (legendItems[index]) {
-        legendItems[index].style.transform = 'scale(1.1)';
-        legendItems[index].style.transition = 'transform 0.3s ease';
-      }
-    });
+  const ctx = canvas.getContext('2d');
 
-    item.addEventListener('mouseleave', function() {
-      const legendItems = document.querySelectorAll('.legend-item-inline');
-      if (legendItems[index]) {
-        legendItems[index].style.transform = 'scale(1)';
-      }
-    });
-  });
+  // gradient fill for current year line
+  const grad = ctx.createLinearGradient(0, 0, 0, 300);
+  grad.addColorStop(0, 'rgba(99,102,241,0.3)');
+  grad.addColorStop(1, 'rgba(99,102,241,0)');
 
-  // Add tooltip on bar hover
-  barFills.forEach((bar) => {
-    bar.addEventListener('mouseenter', function() {
-      const value = bar.querySelector('.bar-value');
-      if (value) {
-        value.style.opacity = '1';
-      }
-    });
-  });
+  if (revenueChart) revenueChart.destroy();
 
-  // ---------------- Revenue Chart ----------------
-  const revenueDataEl = document.getElementById('initialRevenueData');
-  let revenueData = {};
-  try { revenueData = JSON.parse(revenueDataEl ? revenueDataEl.textContent : '{}'); } catch(e){ console.error('Revenue data parse error', e); }
-
-  const revenueCanvas = document.getElementById('subscriptionRevenueChart');
-  const loadingEl = document.getElementById('revenueLoading');
-  const tierSelect = document.getElementById('revenueTierSelect');
-  let revenueChart = null;
-
-  if (revenueCanvas && revenueData.months) {
-    const ctx = revenueCanvas.getContext('2d');
-    const gradient = ctx.createLinearGradient(0,0,0,revenueCanvas.height);
-    gradient.addColorStop(0,'rgba(59,130,246,0.45)');
-    gradient.addColorStop(1,'rgba(59,130,246,0)');
-
-    revenueChart = new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels: revenueData.months,
-        datasets: [
-          {
-            label: (revenueData.currentYear || 'This Year') + ' Revenue',
-            data: revenueData.currentYearData || [],
-            borderColor: '#3b82f6',
-            backgroundColor: gradient,
-            fill: true,
-            tension: 0.35,
-            pointRadius: 4,
-            pointHoverRadius: 6,
-            borderWidth: 2
-          },
-          {
-            label: (revenueData.previousYear || 'Prev Year') + ' Revenue',
-            data: revenueData.previousYearData || [],
-            borderColor: '#9ca3af',
-            backgroundColor: 'transparent',
-            fill: false,
-            tension: 0.35,
-            pointRadius: 0,
-            borderDash: [6,4],
-            borderWidth: 2
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        interaction: { mode: 'index', intersect: false },
-        maintainAspectRatio: false,
-        scales: {
-          y: {
-            ticks: {
-              callback: val => '₱' + Number(val).toLocaleString()
-            },
-            grid: { color: 'rgba(0,0,0,0.05)' }
-          },
-          x: { grid: { display: false } }
+  revenueChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: months,
+      datasets: [
+        {
+          label: String(currentYear),
+          data: currentData,
+          borderColor: 'rgb(99,102,241)',
+          backgroundColor: grad,
+          fill: true,
+          tension: 0.4,
+          borderWidth: 3,
+          pointRadius: 5,
+          pointHoverRadius: 7,
+          pointBackgroundColor: 'rgb(99,102,241)',
+          pointBorderColor: '#fff',
+          pointBorderWidth: 2,
         },
-        plugins: {
-          legend: { position: 'bottom' },
-          tooltip: {
-            callbacks: {
-              label: ctx => {
-                const v = ctx.raw || 0;
-                return ctx.dataset.label + ': ₱' + Number(v).toLocaleString(undefined,{ minimumFractionDigits: 2, maximumFractionDigits: 2 });
-              }
-            }
-          }
+        {
+          label: String(previousYear),
+          data: previousData,
+          borderColor: 'rgb(203,213,225)',
+          backgroundColor: 'transparent',
+          fill: false,
+          tension: 0.4,
+          borderWidth: 2,
+          borderDash: [6, 3],
+          pointRadius: 3,
+          pointHoverRadius: 5,
+          pointBackgroundColor: 'rgb(203,213,225)',
+          pointBorderColor: '#fff',
+          pointBorderWidth: 2,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { usePointStyle: true, padding: 20, font: { size: 13, weight: '600' } },
+        },
+        tooltip: {
+          backgroundColor: '#fff',
+          titleColor: '#1f2937',
+          bodyColor: '#374151',
+          borderColor: '#e5e7eb',
+          borderWidth: 1,
+          padding: 12,
+          cornerRadius: 10,
+          callbacks: {
+            label: ctx => `  ${ctx.dataset.label}: ₱${ctx.parsed.y.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`,
+          },
+        },
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          grid: { color: 'rgba(0,0,0,0.04)', drawBorder: false },
+          ticks: {
+            padding: 8,
+            font: { size: 11 },
+            callback: v => '₱' + (v >= 1000 ? (v / 1000).toFixed(0) + 'K' : v),
+          },
+        },
+        x: {
+          grid: { display: false, drawBorder: false },
+          ticks: { padding: 6, font: { size: 11 } },
+        },
+      },
+    },
+  });
+}
+
+function initRevenueChart() {
+  const canvas = document.getElementById('revenueChart');
+  if (!canvas) return;
+
+  buildRevenueChart(
+    JSON.parse(canvas.dataset.months   || '[]'),
+    JSON.parse(canvas.dataset.current  || '[]'),   // BUG 2 FIX: read data-current (set from currentYearData)
+    JSON.parse(canvas.dataset.previous || '[]'),   // data-previous (set from previousYearData)
+    canvas.dataset.currentYear,
+    canvas.dataset.previousYear
+  );
+}
+
+function initTierButtons() {
+  const btns    = document.querySelectorAll('.tier-btn');
+  const spinner = document.getElementById('revenueSpinner');
+  const subtitle = document.getElementById('revenueSubtitle');
+
+  btns.forEach(btn => {
+    btn.addEventListener('click', async function () {
+      // Visual state
+      btns.forEach(b => {
+        b.classList.remove('active', 'bg-gray-800', 'text-white', 'ring-2', 'ring-offset-1');
+        b.style.opacity = '0.6';
+      });
+      this.classList.add('active');
+      this.style.opacity = '1';
+      if (this.dataset.tier === 'all') {
+        this.classList.add('bg-gray-800', 'text-white');
+      }
+
+      // Fetch
+      if (spinner) spinner.classList.remove('hidden');
+      try {
+        const url = `${window.SubConfig.revenueUrl}?tier=${this.dataset.tier}`;
+        const res  = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+        if (!res.ok) throw new Error('Network error');
+        const data = await res.json();
+
+        buildRevenueChart(
+          data.months,
+          data.currentYearData,   // BUG 2 FIX: controller now returns this key
+          data.previousYearData,
+          data.currentYear,
+          data.previousYear
+        );
+
+        if (subtitle) {
+          subtitle.textContent = `${data.dateRange} · Current vs Previous Year`;
         }
+      } catch (err) {
+        console.error('Revenue fetch error:', err);
+      } finally {
+        if (spinner) spinner.classList.add('hidden');
       }
     });
+  });
+
+  // Restore opacity for non-active buttons
+  btns.forEach(b => {
+    if (!b.classList.contains('active')) b.style.opacity = '0.65';
+  });
+}
+
+// ── Subscriber Table AJAX ───────────────────────────────────────────────────────
+// BUG 4 FIX: all filter/search/page changes fetch JSON and re-render the panel
+//            in place, without ever reloading the page or scrolling to top.
+
+let currentPage    = 1;
+let isLoadingSubs  = false;
+
+/** Collect current filter values from the DOM controls */
+function getFilterParams(page = 1) {
+  return {
+    search: document.getElementById('searchInput')?.value.trim()   ?? '',
+    plan:   document.getElementById('planFilter')?.value           ?? '',
+    status: document.getElementById('statusFilter')?.value         ?? '',
+    sort:   document.getElementById('sortFilter')?.value           ?? 'newest',
+    page,
+  };
+}
+
+/** Build a query string from a plain object */
+function toQS(params) {
+  return Object.entries(params)
+    .filter(([, v]) => v !== '' && v !== null && v !== undefined)
+    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+    .join('&');
+}
+
+/** Show skeleton rows while loading */
+function showSkeleton() {
+  const panel = document.getElementById('subscriberPanel');
+  if (!panel) return;
+  panel.innerHTML = `
+    <div class="overflow-x-auto">
+      <table class="w-full">
+        <thead>
+          <tr class="border-b-2 border-gray-100">
+            ${['Subscriber','Plan','Amount','Status','Subscribed','Expires','TXN #']
+                .map(h => `<th class="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">${h}</th>`)
+                .join('')}
+          </tr>
+        </thead>
+        <tbody>
+          ${Array.from({ length: 8 }, (_, i) => `
+            <tr class="border-b border-gray-50" style="animation-delay:${i * 40}ms">
+              <td class="px-4 py-4"><div class="flex items-center gap-3">
+                <div class="skeleton w-10 h-10 rounded-full shrink-0"></div>
+                <div class="space-y-1.5 flex-1">
+                  <div class="skeleton h-3 w-32 rounded"></div>
+                  <div class="skeleton h-2 w-20 rounded"></div>
+                </div>
+              </div></td>
+              <td class="px-4 py-4"><div class="skeleton h-5 w-16 rounded-full"></div></td>
+              <td class="px-4 py-4"><div class="skeleton h-3 w-20 rounded"></div></td>
+              <td class="px-4 py-4"><div class="skeleton h-5 w-18 rounded-full"></div></td>
+              <td class="px-4 py-4"><div class="skeleton h-3 w-24 rounded"></div></td>
+              <td class="px-4 py-4"><div class="skeleton h-3 w-24 rounded"></div></td>
+              <td class="px-4 py-4"><div class="skeleton h-3 w-28 rounded"></div></td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+/** Render JSON subscriber data into the panel as an HTML table */
+function renderSubscribers(data) {
+  const panel = document.getElementById('subscriberPanel');
+  if (!panel) return;
+
+  // Update the header meta line
+  const meta = document.getElementById('subscriberMeta');
+  if (meta) {
+    meta.textContent = `${data.total} total · Showing ${data.from}–${data.to}`;
   }
 
-  async function fetchRevenue(tier){
-    if(!revenueChart) return;
-    try {
-      loadingEl.removeAttribute('hidden');
-      const url = tier === 'all' ? '/admin/analytics/subscription/revenue' : `/admin/analytics/subscription/revenue?tier=${tier}`;
-      const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
-      if(!res.ok) throw new Error('Network error');
-      const data = await res.json();
-      revenueChart.data.labels = data.months;
-      revenueChart.data.datasets[0].data = data.currentYearData;
-      revenueChart.data.datasets[0].label = data.currentYear + ' Revenue';
-      revenueChart.data.datasets[1].data = data.previousYearData;
-      revenueChart.data.datasets[1].label = data.previousYear + ' Revenue';
-      revenueChart.update();
-    } catch(err){
-      console.error('Fetch revenue failed', err);
-    } finally {
-      loadingEl.setAttribute('hidden','');
+  if (!data.data || data.data.length === 0) {
+    panel.innerHTML = `
+      <div class="py-20 text-center">
+        <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg class="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+              d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+          </svg>
+        </div>
+        <p class="text-gray-400 font-medium">No subscribers match your filters</p>
+        <p class="text-gray-300 text-sm mt-1">Try adjusting the search or clearing filters</p>
+      </div>`;
+    return;
+  }
+
+  const tierBadge = { gold: 'tier-gold', silver: 'tier-silver', bronze: 'tier-bronze', boost: 'tier-boost' };
+  const statusCfg = {
+    active:    { cls: 'status-active',    dot: 'bg-emerald-500', label: 'Active' },
+    expired:   { cls: 'status-expired',   dot: 'bg-red-500',     label: 'Expired' },
+    pending:   { cls: 'status-pending',   dot: 'bg-yellow-500',  label: 'Pending' },
+    cancelled: { cls: 'status-cancelled', dot: 'bg-gray-400',    label: 'Cancelled' },
+  };
+  const grads = [
+    'from-indigo-400 to-indigo-600','from-violet-400 to-violet-600',
+    'from-emerald-400 to-emerald-600','from-amber-400 to-amber-600',
+    'from-rose-400 to-rose-600','from-cyan-400 to-cyan-600','from-fuchsia-400 to-fuchsia-600',
+  ];
+
+  const escape = s => s ? String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') : '';
+
+  const rows = data.data.map((s, i) => {
+    const grad    = grads[i % grads.length];
+    const badge   = tierBadge[s.plan_key]              ?? 'tier-other';
+    const st      = statusCfg[s.subscription_status]   ?? statusCfg.cancelled;
+    const typeClr = s.subscriber_type === 'Contractor' ? 'bg-indigo-50 text-indigo-600' : 'bg-teal-50 text-teal-700';
+    const avatar  = s.avatar
+      ? `<img src="${escape(s.avatar)}" alt="${escape(s.subscriber_name)}" class="w-10 h-10 rounded-full object-cover ring-2 ring-white shadow shrink-0">`
+      : `<div class="w-10 h-10 rounded-full bg-gradient-to-br ${grad} flex items-center justify-center text-white text-sm font-bold shadow ring-2 ring-white shrink-0">${escape(s.initials)}</div>`;
+
+    const repLine   = s.rep_name   && s.rep_name.trim() !== ' '
+      ? `<div class="text-xs text-gray-400 leading-tight truncate max-w-[180px]">${escape(s.rep_name)}</div>` : '';
+    const emailLine = s.subscriber_email
+      ? `<div class="text-xs text-gray-300 truncate max-w-[180px]">${escape(s.subscriber_email)}</div>` : '';
+
+    const expiringSoonBadge = s.expiring_soon
+      ? `<div class="text-xs text-amber-600 font-medium mt-1 flex items-center gap-1"><span>⚠</span> Expiring soon</div>` : '';
+    const deactivationNote = s.deactivation_reason
+      ? `<div class="text-xs text-gray-400 mt-1 max-w-[130px] truncate" title="${escape(s.deactivation_reason)}">${escape(s.deactivation_reason.substring(0,25))}</div>` : '';
+
+    const expiryCell = s.expiration_fmt
+      ? `<div class="font-medium ${s.expiration_past ? 'text-red-500' : 'text-gray-800'}">${escape(s.expiration_fmt)}</div>
+         <div class="text-xs ${s.expiration_past ? 'text-red-400' : 'text-gray-400'}">${escape(s.expiration_rel)}</div>`
+      : `<span class="text-xs text-gray-300 italic">No expiry</span>`;
+
+    return `
+      <tr class="sub-row border-b border-gray-50" style="animation: fadeIn .25s ease both; animation-delay:${i * 20}ms">
+        <td class="px-4 py-4">
+          <div class="flex items-center gap-3">
+            ${avatar}
+            <div class="min-w-0">
+              <div class="font-semibold text-gray-800 leading-tight truncate max-w-[180px]">${escape(s.subscriber_name)}</div>
+              ${repLine}${emailLine}
+              <span class="inline-flex items-center mt-0.5 px-1.5 py-px rounded text-[10px] font-semibold ${typeClr}">${escape(s.subscriber_type)}</span>
+            </div>
+          </div>
+        </td>
+        <td class="px-4 py-4">
+          <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${badge}">${escape(s.plan_key.charAt(0).toUpperCase() + s.plan_key.slice(1))}</span>
+          <div class="text-xs text-gray-400 mt-1">${escape(s.plan_name)}</div>
+          <div class="text-xs text-gray-300 capitalize">${escape(s.billing_cycle)}</div>
+        </td>
+        <td class="px-4 py-4">
+          <div class="font-bold text-gray-800">${escape(s.amount_fmt)}</div>
+          <div class="text-xs text-gray-400">${escape(s.payment_type ?? '')}</div>
+        </td>
+        <td class="px-4 py-4">
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${st.cls}">
+            <span class="w-1.5 h-1.5 rounded-full ${st.dot} inline-block shrink-0"></span>${st.label}
+          </span>
+          ${expiringSoonBadge}${deactivationNote}
+        </td>
+        <td class="px-4 py-4">
+          <div class="text-gray-800 font-medium">${escape(s.transaction_date_fmt)}</div>
+          <div class="text-xs text-gray-400">${escape(s.transaction_date_rel)}</div>
+        </td>
+        <td class="px-4 py-4">${expiryCell}</td>
+        <td class="px-4 py-4">
+          <div class="text-xs font-mono text-gray-400 max-w-[130px] truncate" title="${escape(s.transaction_number ?? '')}">${escape(s.transaction_number ?? '—')}</div>
+        </td>
+      </tr>`;
+  }).join('');
+
+  // Pagination
+  let pagHtml = '';
+  if (data.last_page > 1) {
+    const cur   = data.current_page;
+    const last  = data.last_page;
+    const start = Math.max(1, cur - 2);
+    const end   = Math.min(last, cur + 2);
+
+    const prevBtn = cur === 1
+      ? `<span class="px-3 py-2 rounded-lg text-sm text-gray-300 select-none">← Prev</span>`
+      : `<button class="page-btn px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 transition-colors" data-page="${cur - 1}">← Prev</button>`;
+
+    let pages = '';
+    if (start > 1) {
+      pages += `<button class="page-btn px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 transition-colors" data-page="1">1</button>`;
+      if (start > 2) pages += `<span class="px-2 text-gray-300 text-sm">…</span>`;
     }
+    for (let p = start; p <= end; p++) {
+      pages += p === cur
+        ? `<span class="px-3 py-2 rounded-lg text-sm font-semibold bg-indigo-600 text-white">${p}</span>`
+        : `<button class="page-btn px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 transition-colors" data-page="${p}">${p}</button>`;
+    }
+    if (end < last) {
+      if (end < last - 1) pages += `<span class="px-2 text-gray-300 text-sm">…</span>`;
+      pages += `<button class="page-btn px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 transition-colors" data-page="${last}">${last}</button>`;
+    }
+
+    const nextBtn = cur < last
+      ? `<button class="page-btn px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 transition-colors" data-page="${cur + 1}">Next →</button>`
+      : `<span class="px-3 py-2 rounded-lg text-sm text-gray-300 select-none">Next →</span>`;
+
+    pagHtml = `
+      <div class="mt-6 flex items-center justify-between px-1">
+        <div class="text-sm text-gray-500">
+          Showing <span class="font-semibold text-gray-700">${data.from}</span>
+          – <span class="font-semibold text-gray-700">${data.to}</span>
+          of <span class="font-semibold text-gray-700">${data.total}</span>
+        </div>
+        <div class="flex items-center gap-1 flex-wrap">
+          ${prevBtn}${pages}${nextBtn}
+        </div>
+      </div>`;
   }
 
-  if(tierSelect){
-    tierSelect.addEventListener('change', () => fetchRevenue(tierSelect.value));
+  panel.innerHTML = `
+    <style>@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}</style>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b-2 border-gray-100">
+            ${['Subscriber','Plan','Amount','Status','Subscribed','Expires','TXN #']
+                .map(h => `<th class="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">${h}</th>`)
+                .join('')}
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-50">${rows}</tbody>
+      </table>
+    </div>
+    ${pagHtml}`;
+
+  // Re-attach pagination click handlers
+  attachPageBtnListeners();
+}
+
+/** Fetch subscribers from JSON endpoint, update panel + URL */
+async function fetchSubscribers(params) {
+  if (isLoadingSubs) return;
+  isLoadingSubs = true;
+
+  showSkeleton();
+
+  const qs  = toQS(params);
+  const url = `${window.SubConfig.ajaxUrl}?${qs}`;
+
+  // BUG 4 FIX: update browser URL without page reload
+  const browserUrl = `${window.location.pathname}?${qs}`;
+  history.pushState({ params }, '', browserUrl);
+
+  try {
+    const res  = await fetch(url, {
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRF-TOKEN': window.SubConfig.csrfToken,
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    renderSubscribers(data);
+    currentPage = data.current_page;
+  } catch (err) {
+    console.error('Subscriber fetch error:', err);
+    const panel = document.getElementById('subscriberPanel');
+    if (panel) {
+      panel.innerHTML = `<div class="py-16 text-center text-red-400 text-sm">
+        Failed to load subscribers. <button onclick="fetchSubscribers(getFilterParams(${currentPage}))" class="underline text-indigo-500 ml-1">Retry</button>
+      </div>`;
+    }
+  } finally {
+    isLoadingSubs = false;
   }
+}
+
+/** Wire up page buttons rendered inside the panel */
+function attachPageBtnListeners() {
+  document.querySelectorAll('.page-btn').forEach(btn => {
+    btn.addEventListener('click', function () {
+      const p = parseInt(this.dataset.page, 10);
+      if (!p) return;
+      fetchSubscribers(getFilterParams(p));
+    });
+  });
+}
+
+/** Wire up filter controls — debounce search, instant for dropdowns */
+function initFilterControls() {
+  let searchTimer;
+
+  document.getElementById('searchInput')?.addEventListener('input', function () {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => fetchSubscribers(getFilterParams(1)), 450);
+  });
+
+  ['planFilter', 'statusFilter', 'sortFilter'].forEach(id => {
+    document.getElementById(id)?.addEventListener('change', () => {
+      fetchSubscribers(getFilterParams(1));
+    });
+  });
+
+  document.getElementById('clearFiltersBtn')?.addEventListener('click', () => {
+    const search = document.getElementById('searchInput');
+    const plan   = document.getElementById('planFilter');
+    const status = document.getElementById('statusFilter');
+    const sort   = document.getElementById('sortFilter');
+    if (search) search.value = '';
+    if (plan)   plan.value   = '';
+    if (status) status.value = '';
+    if (sort)   sort.value   = 'newest';
+    fetchSubscribers({ search: '', plan: '', status: '', sort: 'newest', page: 1 });
+  });
+
+  // Handle browser back/forward
+  window.addEventListener('popstate', (e) => {
+    if (e.state?.params) {
+      const p = e.state.params;
+      const search = document.getElementById('searchInput');
+      const plan   = document.getElementById('planFilter');
+      const status = document.getElementById('statusFilter');
+      const sort   = document.getElementById('sortFilter');
+      if (search) search.value = p.search ?? '';
+      if (plan)   plan.value   = p.plan   ?? '';
+      if (status) status.value = p.status ?? '';
+      if (sort)   sort.value   = p.sort   ?? 'newest';
+      fetchSubscribers(p);
+    }
+  });
+}
+
+// ── CSV Export (from current visible AJAX data) ─────────────────────────────────
+
+let lastJsonData = null; // stores last AJAX response for export
+
+const _origRender = renderSubscribers;
+window.renderSubscribers = function (data) {
+  lastJsonData = data;
+  _origRender(data);
+};
+
+function initExport() {
+  document.getElementById('exportCsvBtn')?.addEventListener('click', () => {
+    const rows = lastJsonData?.data;
+    if (!rows?.length) {
+      // Fallback: scrape table DOM if no AJAX data cached yet
+      exportFromDom();
+      return;
+    }
+    const headers = ['Subscriber','Type','Rep','Email','Plan','Amount','Status','Subscribed','Expires','TXN'];
+    const lines = [
+      headers.join(','),
+      ...rows.map(s => [
+        `"${(s.subscriber_name ?? '').replace(/"/g,'""')}"`,
+        s.subscriber_type,
+        `"${(s.rep_name ?? '').replace(/"/g,'""')}"`,
+        s.subscriber_email ?? '',
+        s.plan_key,
+        s.amount_fmt,
+        s.subscription_status,
+        s.transaction_date_fmt,
+        s.expiration_fmt ?? '',
+        s.transaction_number ?? '',
+      ].join(','))
+    ];
+    downloadCsv(lines.join('\n'), `subscribers_${new Date().toISOString().slice(0,10)}.csv`);
+  });
+}
+
+function exportFromDom() {
+  const tbl = document.getElementById('subscriberTable');
+  if (!tbl) { alert('No data to export.'); return; }
+  const rows = [...tbl.querySelectorAll('tbody tr')].map(tr =>
+    [...tr.querySelectorAll('td')].map(td => `"${td.innerText.trim().replace(/\n+/g,' ').replace(/"/g,'""')}"`)
+        .join(',')
+  );
+  downloadCsv(['Subscriber,Plan,Amount,Status,Subscribed,Expires,TXN', ...rows].join('\n'),
+    `subscribers_${new Date().toISOString().slice(0,10)}.csv`);
+}
+
+function downloadCsv(content, filename) {
+  const a = Object.assign(document.createElement('a'), {
+    href: URL.createObjectURL(new Blob([content], { type: 'text/csv' })),
+    download: filename,
+  });
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+// ── Boot ────────────────────────────────────────────────────────────────────────
+
+document.addEventListener('DOMContentLoaded', () => {
+  // KPI counters
+  document.querySelectorAll('.stat-counter').forEach(animateCounter);
+
+  // Tier bars
+  initTierBars();
+
+  // Revenue chart (initial load from canvas data attrs)
+  initRevenueChart();
+  initTierButtons();
+
+  // Subscriber table
+  attachPageBtnListeners();
+  initFilterControls();
+  initExport();
 });
-
-// Add ripple effect styles dynamically
-const style = document.createElement('style');
-style.textContent = `
-  .stat-card {
-    position: relative;
-    overflow: hidden;
-  }
-
-  .ripple {
-    position: absolute;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.6);
-    transform: scale(0);
-    animation: ripple-animation 0.6s ease-out;
-    pointer-events: none;
-  }
-
-  @keyframes ripple-animation {
-    to {
-      transform: scale(4);
-      opacity: 0;
-    }
-  }
-
-  .stat-card:active .stat-icon {
-    transform: scale(0.95) rotate(5deg);
-  }
-
-  .bar-ripple {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.7);
-    transform: translate(-50%, -50%) scale(0);
-    animation: bar-ripple-animation 0.6s ease-out;
-    pointer-events: none;
-  }
-
-  @keyframes bar-ripple-animation {
-    to {
-      transform: translate(-50%, -50%) scale(6);
-      opacity: 0;
-    }
-  }
-
-  .bar-item {
-    position: relative;
-    overflow: visible;
-  }
-`;
-document.head.appendChild(style);

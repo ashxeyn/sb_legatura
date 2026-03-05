@@ -32,17 +32,17 @@
           </button>
           <div class="submenu-nested-content">
             <a href="{{ route('admin.analytics') }}"
-               class="submenu-nested-link {{ request()->routeIs('admin.analytics') && !request()->routeIs('admin.analytics.*') ? 'active' : '' }}">Project Analytics</a>
+               class="submenu-nested-link {{ request()->routeIs('admin.analytics') && !request()->routeIs('admin.analytics.*') ? 'active' : '' }}">Project Performance Analytics</a>
             <a href="{{ route('admin.analytics.subscription') }}"
                class="submenu-nested-link {{ request()->routeIs('admin.analytics.subscription') ? 'active' : '' }}">Subscription Analytics</a>
             <a href="{{ route('admin.analytics.userActivity') }}"
                class="submenu-nested-link {{ request()->routeIs('admin.analytics.userActivity') ? 'active' : '' }}">User Activity Analytics</a>
-            <a href="{{ route('admin.analytics.projectPerformance') }}"
-               class="submenu-nested-link {{ request()->routeIs('admin.analytics.projectPerformance') ? 'active' : '' }}">Project Performance Analytics</a>
+            <!--<a href="{{ route('admin.analytics.projectPerformance') }}"
+               class="submenu-nested-link {{ request()->routeIs('admin.analytics.projectPerformance') ? 'active' : '' }}">Project Performance Analytics</a>-->
             <a href="{{ route('admin.analytics.bidCompletion') }}"
                class="submenu-nested-link {{ request()->routeIs('admin.analytics.bidCompletion') ? 'active' : '' }}">Bid Completion Analytics</a>
-            <a href="{{ route('admin.analytics.reports') }}"
-               class="submenu-nested-link {{ request()->routeIs('admin.analytics.reports') ? 'active' : '' }}">Reports and Analytics</a>
+            <!--<a href="{{ route('admin.analytics.reports') }}"
+               class="submenu-nested-link {{ request()->routeIs('admin.analytics.reports') ? 'active' : '' }}">Reports and Analytics</a>-->
           </div>
         </div>
       </div>
