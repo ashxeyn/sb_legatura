@@ -19,6 +19,45 @@ use Illuminate\Support\Facades\Log;
 class milestoneService
 {
     // ─────────────────────────────────────────────────────────────────────────
+    // DOWNPAYMENT GATE — checks whether the downpayment has been fully paid
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Check if the downpayment for a project has been fully paid & approved.
+     *
+     * Returns TRUE when:
+     *  - The payment mode is NOT 'downpayment' (no gate needed), OR
+     *  - The total approved downpayment receipts in `downpayment_payments` >= downpayment_amount.
+     *
+     * This is a static helper so controllers/services can call it without
+     * instantiating the service class.
+     */
+    public static function isDownpaymentCleared(int $projectId): bool
+    {
+        $plan = DB::table('payment_plans')
+            ->where('project_id', $projectId)
+            ->orderByDesc('plan_id')
+            ->first();
+
+        // No plan yet, or not a downpayment plan → no gate
+        if (!$plan || $plan->payment_mode !== 'downpayment') {
+            return true;
+        }
+
+        $requiredAmount = (float) ($plan->downpayment_amount ?? 0);
+        if ($requiredAmount <= 0) {
+            return true;
+        }
+
+        $approvedAmount = (float) DB::table('downpayment_payments')
+            ->where('project_id', $projectId)
+            ->where('payment_status', 'approved')
+            ->sum('amount');
+
+        return $approvedAmount >= $requiredAmount;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     // OWNER — Approve milestone setup
     // ─────────────────────────────────────────────────────────────────────────
 

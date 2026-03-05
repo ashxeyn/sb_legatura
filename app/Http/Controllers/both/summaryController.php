@@ -58,19 +58,67 @@ class summaryController extends Controller
     }
 
     /**
-     * Check whether a user_id has access to the project (either as owner or contractor).
+     * Check whether a user_id has access to the project (either as owner or contractor/staff).
+     *
+     * Checks:
+     *  1. Owner via project_relationships.owner_id → property_owners.user_id
+     *  2. Contractor owner via selected_contractor_id (projects or project_relationships)
+     *  3. Contractor linked through an accepted bid
+     *  4. Staff member (contractor_users) whose contractor has an accepted bid
      */
     private function userCanAccessProject(int $userId, int $projectId): bool
     {
-        return DB::table('projects as p')
+        // 1. Owner check
+        $isOwner = DB::table('projects as p')
             ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
-            ->leftJoin('property_owners as po', 'pr.owner_id', '=', 'po.owner_id')
-            ->leftJoin('contractors as c', 'pr.selected_contractor_id', '=', 'c.contractor_id')
+            ->join('property_owners as po', 'pr.owner_id', '=', 'po.owner_id')
+            ->where('p.project_id', $projectId)
+            ->where('po.user_id', $userId)
+            ->exists();
+
+        if ($isOwner) return true;
+
+        // 2. Direct contractor owner (via selected_contractor_id)
+        $isContractorDirect = DB::table('projects as p')
+            ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
+            ->leftJoin('contractors as c1', 'p.selected_contractor_id', '=', 'c1.contractor_id')
+            ->leftJoin('contractors as c2', 'pr.selected_contractor_id', '=', 'c2.contractor_id')
             ->where('p.project_id', $projectId)
             ->where(function ($q) use ($userId) {
-                $q->where('po.user_id', $userId)
-                  ->orWhere('c.user_id', $userId);
+                $q->where('c1.user_id', $userId)
+                  ->orWhere('c2.user_id', $userId);
             })
             ->exists();
+
+        if ($isContractorDirect) return true;
+
+        // 3. Contractor linked through accepted bid
+        $contractorId = DB::table('contractors')->where('user_id', $userId)->value('contractor_id');
+        if ($contractorId) {
+            $hasAcceptedBid = DB::table('bids')
+                ->where('project_id', $projectId)
+                ->where('contractor_id', $contractorId)
+                ->where('bid_status', 'accepted')
+                ->exists();
+            if ($hasAcceptedBid) return true;
+        }
+
+        // 4. Staff member whose contractor has an accepted bid
+        $staffContractorId = DB::table('contractor_users')
+            ->where('user_id', $userId)
+            ->where('is_active', 1)
+            ->where('is_deleted', 0)
+            ->value('contractor_id');
+
+        if ($staffContractorId) {
+            $staffHasBid = DB::table('bids')
+                ->where('project_id', $projectId)
+                ->where('contractor_id', $staffContractorId)
+                ->where('bid_status', 'accepted')
+                ->exists();
+            if ($staffHasBid) return true;
+        }
+
+        return false;
     }
 }

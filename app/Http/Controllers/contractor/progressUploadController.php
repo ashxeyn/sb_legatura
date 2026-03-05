@@ -201,6 +201,16 @@ class progressUploadController extends Controller
                 ], 403);
             }
 
+            // ── Downpayment gate: block progress submissions if downpayment not yet cleared ──
+            if ($validated['item_id'] != -1) {
+                if (!\App\Services\milestoneService::isDownpaymentCleared($milestoneItem->project_id)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'The downpayment must be paid and confirmed before you can submit progress reports for milestone items.',
+                    ], 422);
+                }
+            }
+
             // ── Sequential enforcement: previous item must be completed first ──
             if (!$this->progressUploadClass->isItemUnlocked($milestoneItem->item_id, $contractor->contractor_id)) {
                 return response()->json([

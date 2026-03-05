@@ -73,6 +73,16 @@
     }
     $showPaymentBtn = !$isProjectHalted && $hasApprovedReport && !$isItemCompleted && $prevItemComplete;
     $showCompleteBtn = !$isProjectHalted && $hasApprovedReport && $hasApprovedPayment && !$isItemCompleted && $prevItemComplete;
+
+    // Downpayment gate: when payment_mode is 'downpayment' and not yet cleared, block actions
+    $downpaymentPending = false;
+    if (isset($milestone) && ($milestone->payment_mode ?? 'full_payment') === 'downpayment') {
+        $downpaymentPending = !\App\Services\milestoneService::isDownpaymentCleared($item->project_id ?? ($milestone->project_id ?? 0));
+    }
+    if ($downpaymentPending) {
+        $showPaymentBtn = false;
+        $showCompleteBtn = false;
+    }
     $hasRejectedOrSubmittedReports = collect($progressReports)->whereIn('progress_status', ['submitted','rejected'])->count() > 0;
 @endphp
 
@@ -118,6 +128,15 @@
         @if($item)
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
+            @if($downpaymentPending)
+            <div class="mb-6 p-4 rounded-lg border border-amber-300 bg-amber-50 flex items-start gap-3">
+                <i class="fi fi-rr-lock text-amber-600 text-xl mt-0.5"></i>
+                <div>
+                    <h4 class="font-semibold text-amber-800">Downpayment Required</h4>
+                    <p class="text-sm text-amber-700 mt-1">All milestone actions are locked until the downpayment is submitted and approved by the contractor. Please upload your downpayment receipt from the Milestone Report overview.</p>
+                </div>
+            </div>
+            @endif
             {{-- ═══ Title Card ═══ --}}
             <div class="mdp-title-card">
                 <div class="flex items-start justify-between gap-3 mb-5">

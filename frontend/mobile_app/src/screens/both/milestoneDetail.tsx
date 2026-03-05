@@ -66,6 +66,7 @@ interface MilestoneDetailProps {
       userRole: 'owner' | 'contractor';
       userId: number;
       isPreviousItemComplete?: boolean;
+      isDownpaymentCleared?: boolean;
       projectStatus?: string;
       initialTab?: 'payments';
     };
@@ -87,11 +88,14 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
     userRole,
     userId,
     isPreviousItemComplete = true,
+    isDownpaymentCleared = true,
     projectStatus,
     initialTab,
   } = route.params;
 
   const isProjectHalted = projectStatus === 'halt' || projectStatus === 'on_hold' || projectStatus === 'halted';
+  // Combined gate: previous item must be completed AND downpayment must be cleared
+  const canProceed = isPreviousItemComplete && isDownpaymentCleared;
 
   // Debug: log the milestone item to see its structure
   console.log('MilestoneDetail - milestoneItem:', JSON.stringify(milestoneItem));
@@ -1243,7 +1247,7 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
                 )}
 
                 {/* Owner: Send payment button */}
-                {!isProjectHalted && shouldShowPaymentButton && isPreviousItemComplete && (
+                {!isProjectHalted && shouldShowPaymentButton && canProceed && (
                   <TouchableOpacity 
                     style={styles.fdSendPaymentBtn}
                     onPress={() => setShowPaymentForm(true)}
@@ -1613,20 +1617,22 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
 
       {/* Unified Bottom Bar: stack multiple buttons to avoid overlap */}
       <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 16 }]}>
-        {/* Sequential lock banner — shown when previous milestone item is not yet completed */}
-        {!isPreviousItemComplete && itemStatus !== 'completed' && (
+        {/* Sequential / downpayment lock banner */}
+        {!canProceed && itemStatus !== 'completed' && (
           <View style={[styles.bottomRow, { marginBottom: 0 }]}>
             <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.warningLight, borderRadius: 12, padding: 14, width: '100%' }}>
               <Feather name="lock" size={18} color={COLORS.warning} style={{ marginRight: 10 }} />
               <Text style={{ color: COLORS.warning, fontSize: 13, fontWeight: '600', flex: 1 }}>
-                Complete the previous milestone item first to unlock this one.
+                {!isDownpaymentCleared
+                  ? 'Downpayment must be submitted and approved before milestones can proceed.'
+                  : 'Complete the previous milestone item first to unlock this one.'}
               </Text>
             </View>
           </View>
         )}
 
         {/* Owner: Send payment (show if any approved) */}
-        {!isProjectHalted && shouldShowPaymentButton && isPreviousItemComplete && (
+        {!isProjectHalted && shouldShowPaymentButton && canProceed && (
           <View style={styles.bottomRow}>
             <TouchableOpacity 
               style={styles.sendPaymentButton}
@@ -1639,7 +1645,7 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
         )}
 
         {/* Owner: Set as Complete (appears when at least one progress report is approved AND at least one payment is approved by contractor) */}
-        {!isProjectHalted && isOwner && isApproved && hasAnyApproved && hasApprovedPayment && itemStatus !== 'completed' && isPreviousItemComplete && (
+        {!isProjectHalted && isOwner && isApproved && hasAnyApproved && hasApprovedPayment && itemStatus !== 'completed' && canProceed && (
           <View style={styles.bottomRow}>
             <TouchableOpacity
               style={styles.completeButton}
@@ -1724,7 +1730,7 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
         )}
 
         {/* Contractor: Submit Progress Report */}
-        {!isProjectHalted && isContractor && isApproved && !isCompleted && itemStatus !== 'completed' && isPreviousItemComplete && (
+        {!isProjectHalted && isContractor && isApproved && !isCompleted && itemStatus !== 'completed' && canProceed && (
           <View style={styles.bottomRow}>
             <TouchableOpacity
               style={styles.submitReportButton}

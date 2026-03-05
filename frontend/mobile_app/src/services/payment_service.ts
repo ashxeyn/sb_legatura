@@ -239,11 +239,11 @@ export class payment_service {
   }
 
   /**
-   * Get downpayment receipts for a project
+   * Get downpayment receipts for a project (dedicated downpayment table)
    */
   static async get_downpayment_receipts(projectId: number): Promise<ApiResponse> {
     try {
-      const response = await api_request(`/api/projects/${projectId}/downpayment-receipts`, {
+      const response = await api_request(`/api/projects/${projectId}/downpayment-payments`, {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
@@ -256,6 +256,109 @@ export class payment_service {
       return {
         success: false,
         message: error instanceof Error ? error.message : 'Failed to fetch downpayment receipts',
+        status: 500,
+      };
+    }
+  }
+
+  /**
+   * Upload a downpayment receipt (Owner) — dedicated endpoint, no item_id
+   */
+  static async upload_downpayment(
+    projectId: number,
+    amount: number,
+    paymentType: string,
+    transactionNumber: string | null,
+    transactionDate: string,
+    receiptPhoto: { uri: string; name: string; type: string } | null
+  ): Promise<ApiResponse> {
+    try {
+      const formData = new FormData();
+      formData.append('project_id', projectId.toString());
+      formData.append('amount', amount.toString());
+      formData.append('payment_type', paymentType);
+      formData.append('transaction_date', transactionDate);
+
+      if (transactionNumber) {
+        formData.append('transaction_number', transactionNumber);
+      }
+
+      if (receiptPhoto) {
+        formData.append('receipt_photo', {
+          uri: receiptPhoto.uri,
+          name: receiptPhoto.name,
+          type: receiptPhoto.type,
+        } as any);
+      }
+
+      const response = await api_request('/api/downpayment/upload', {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'multipart/form-data',
+        },
+        body: formData,
+      });
+
+      return response;
+    } catch (error) {
+      console.error('Error uploading downpayment:', error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to upload downpayment',
+        status: 500,
+      };
+    }
+  }
+
+  /**
+   * Approve a downpayment receipt (Contractor) — dedicated endpoint
+   */
+  static async approve_downpayment(paymentId: number, userId?: number): Promise<ApiResponse> {
+    try {
+      const body: any = {};
+      if (userId) body.user_id = userId;
+
+      const response = await api_request(`/api/downpayment/${paymentId}/approve`, {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
+
+      return response;
+    } catch (error) {
+      console.error('Error approving downpayment:', error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to approve downpayment',
+        status: 500,
+      };
+    }
+  }
+
+  /**
+   * Reject a downpayment receipt (Contractor) — dedicated endpoint
+   */
+  static async reject_downpayment(paymentId: number, userId: number, reason: string): Promise<ApiResponse> {
+    try {
+      const response = await api_request(`/api/downpayment/${paymentId}/reject`, {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ user_id: userId, reason }),
+      });
+
+      return response;
+    } catch (error) {
+      console.error('Error rejecting downpayment:', error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to reject downpayment',
         status: 500,
       };
     }

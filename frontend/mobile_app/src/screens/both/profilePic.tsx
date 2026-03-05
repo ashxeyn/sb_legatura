@@ -20,21 +20,27 @@ interface ProfilePictureScreenProps {
   onBackPress: () => void;
   onComplete: (profileData: ProfileData) => void;
   onSkip: () => void;
+  userType?: 'contractor' | 'property_owner';
 }
 
 interface ProfileData {
   profileImageUri?: string;
+  coverImageUri?: string;
 }
 
 const { width } = Dimensions.get('window');
+const COVER_HEIGHT = 180;
 
 export default function ProfilePictureScreen({
   onBackPress,
   onComplete,
-  onSkip
+  onSkip,
+  userType = 'property_owner',
 }: ProfilePictureScreenProps) {
   const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [coverImage, setCoverImage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const isContractor = userType === 'contractor';
 
   // Animation values
   const scaleAnim = useRef(new Animated.Value(0.95)).current;
@@ -74,22 +80,26 @@ export default function ProfilePictureScreen({
     return true;
   }, []);
 
-  const selectImage = useCallback(async () => {
+  const selectImage = useCallback(async (target: 'profile' | 'cover') => {
     const hasPermissions = await requestPermissions();
     if (!hasPermissions) return;
 
+    const label = target === 'profile'
+      ? (isContractor ? 'Company Logo' : 'Profile Picture')
+      : (isContractor ? 'Cover Image' : 'Cover Photo');
+
     Alert.alert(
-      'Select Profile Picture',
-      'Choose how you want to add your profile picture',
+      `Select ${label}`,
+      `Choose how you want to add your ${label.toLowerCase()}`,
       [
         {
           text: 'Take Photo',
-          onPress: () => openCamera(),
+          onPress: () => openCamera(target),
           style: 'default'
         },
         {
           text: 'Choose from Library',
-          onPress: () => openGallery(),
+          onPress: () => openGallery(target),
           style: 'default'
         },
         {
@@ -99,25 +109,31 @@ export default function ProfilePictureScreen({
       ],
       { cancelable: true }
     );
-  }, []);
+  }, [isContractor]);
 
-  const openCamera = useCallback(async () => {
+  const openCamera = useCallback(async (target: 'profile' | 'cover') => {
     setIsLoading(true);
     try {
       const MEDIA_IMAGES = (ImagePicker.MediaType && ImagePicker.MediaType.Images)
         || (ImagePicker.MediaTypeOptions && ImagePicker.MediaTypeOptions.Images)
         || 'Images';
 
+      const aspect: [number, number] = target === 'cover' ? [16, 9] : [1, 1];
+
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: MEDIA_IMAGES,
         allowsEditing: true,
-        aspect: [1, 1],
+        aspect,
         quality: 0.8,
         exif: false,
       });
 
       if (!result.canceled && result.assets[0]) {
-        setProfileImage(result.assets[0].uri);
+        if (target === 'profile') {
+          setProfileImage(result.assets[0].uri);
+        } else {
+          setCoverImage(result.assets[0].uri);
+        }
 
         // Success animation
         Animated.sequence([
@@ -142,23 +158,29 @@ export default function ProfilePictureScreen({
     }
   }, [scaleAnim]);
 
-  const openGallery = useCallback(async () => {
+  const openGallery = useCallback(async (target: 'profile' | 'cover') => {
     setIsLoading(true);
     try {
       const MEDIA_IMAGES = (ImagePicker.MediaType && ImagePicker.MediaType.Images)
         || (ImagePicker.MediaTypeOptions && ImagePicker.MediaTypeOptions.Images)
         || 'Images';
 
+      const aspect: [number, number] = target === 'cover' ? [16, 9] : [1, 1];
+
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: MEDIA_IMAGES,
         allowsEditing: true,
-        aspect: [1, 1],
+        aspect,
         quality: 0.8,
         exif: false,
       });
 
       if (!result.canceled && result.assets[0]) {
-        setProfileImage(result.assets[0].uri);
+        if (target === 'profile') {
+          setProfileImage(result.assets[0].uri);
+        } else {
+          setCoverImage(result.assets[0].uri);
+        }
 
         // Success animation
         Animated.sequence([
@@ -187,9 +209,10 @@ export default function ProfilePictureScreen({
   const handleContinue = useCallback(() => {
     const profileData: ProfileData = {
       profileImageUri: profileImage || undefined,
+      coverImageUri: coverImage || undefined,
     };
     onComplete(profileData);
-  }, [profileImage, onComplete]);
+  }, [profileImage, coverImage, onComplete]);
 
   const handleSkip = useCallback(() => {
     Alert.alert(
@@ -206,6 +229,16 @@ export default function ProfilePictureScreen({
     );
   }, [onSkip]);
 
+
+  // Progress: 0 = nothing, 50 = one image, 100 = both
+  const progressPct = (profileImage ? 50 : 0) + (coverImage ? 50 : 0);
+  const progressLabel = profileImage && coverImage
+    ? 'Both images added'
+    : profileImage
+      ? (isContractor ? 'Logo added — add a cover image' : 'Profile picture added — add a cover photo')
+      : coverImage
+        ? (isContractor ? 'Cover added — add your company logo' : 'Cover photo added — add a profile picture')
+        : (isContractor ? 'Add your company logo and cover image (optional)' : 'Add a profile picture and cover photo (optional)');
 
   return (
     <SafeAreaView style={styles.container}>
@@ -236,13 +269,56 @@ export default function ProfilePictureScreen({
           <View style={styles.titleContainer}>
             <Text style={styles.title}>Complete Your Profile</Text>
             <Text style={styles.subtitle}>
-              Add a profile picture and your date of birth to personalize your account
+              {isContractor
+                ? 'Add your company logo and cover image to make your profile stand out'
+                : 'Add a profile picture and cover photo to personalise your account'}
             </Text>
           </View>
 
-          {/* Profile Picture Section */}
+          {/* ─── Cover Photo Section ─── */}
+          <View style={styles.coverSection}>
+            <Text style={styles.sectionTitle}>
+              {isContractor ? 'Cover Image' : 'Cover Photo'}
+            </Text>
+
+            <TouchableOpacity
+              style={styles.coverContainer}
+              onPress={() => selectImage('cover')}
+              disabled={isLoading}
+              activeOpacity={0.85}
+            >
+              {coverImage ? (
+                <Image source={{ uri: coverImage }} style={styles.coverImage} resizeMode="cover" />
+              ) : (
+                <View style={styles.coverPlaceholder}>
+                  <MaterialIcons name="panorama" size={40} color="#9CA3AF" />
+                  <Text style={styles.coverPlaceholderText}>
+                    Tap to add {isContractor ? 'cover image' : 'cover photo'}
+                  </Text>
+                </View>
+              )}
+
+              {/* Edit / Add icon */}
+              <TouchableOpacity
+                style={styles.coverEditButton}
+                onPress={() => selectImage('cover')}
+                disabled={isLoading}
+                activeOpacity={0.8}
+              >
+                <MaterialIcons
+                  name={coverImage ? 'edit' : 'add-a-photo'}
+                  size={18}
+                  color="#FFFFFF"
+                />
+              </TouchableOpacity>
+            </TouchableOpacity>
+          </View>
+
+          {/* ─── Profile Picture / Company Logo Section ─── */}
           <View style={styles.profileContainer}>
-            <Text style={styles.sectionTitle}>Profile Picture</Text>
+            <Text style={styles.sectionTitle}>
+              {isContractor ? 'Company Logo' : 'Profile Picture'}
+            </Text>
             <View style={styles.profileCircleContainer}>
               <Animated.View
                 style={[
@@ -254,19 +330,23 @@ export default function ProfilePictureScreen({
                   <Image source={{ uri: profileImage }} style={styles.profileImage} />
                 ) : (
                   <View style={styles.placeholderProfile}>
-                    <MaterialIcons name="person" size={80} color="#3B82F6" />
+                    <MaterialIcons
+                      name={isContractor ? 'business' : 'person'}
+                      size={80}
+                      color="#3B82F6"
+                    />
                   </View>
                 )}
 
                 {/* Edit Button */}
                 <TouchableOpacity
                   style={styles.editButton}
-                  onPress={selectImage}
+                  onPress={() => selectImage('profile')}
                   disabled={isLoading}
                   activeOpacity={0.8}
                 >
                   <MaterialIcons
-                    name={profileImage ? "edit" : "add-a-photo"}
+                    name={profileImage ? 'edit' : 'add-a-photo'}
                     size={20}
                     color="#FFFFFF"
                   />
@@ -274,7 +354,9 @@ export default function ProfilePictureScreen({
               </Animated.View>
 
               <Text style={styles.imageHint}>
-                {profileImage ? 'Tap the edit button to change' : 'Tap the camera icon to add a photo'}
+                {profileImage
+                  ? 'Tap the edit button to change'
+                  : `Tap the camera icon to add ${isContractor ? 'a logo' : 'a photo'}`}
               </Text>
             </View>
           </View>
@@ -287,13 +369,13 @@ export default function ProfilePictureScreen({
                 style={[
                   styles.progressFill,
                   {
-                    width: `${profileImage ? 100 : 0}%`
+                    width: `${progressPct}%`
                   }
                 ]}
               />
             </View>
             <Text style={styles.progressText}>
-              {profileImage ? 'Profile picture added' : 'Add a profile picture (optional)'}
+              {progressLabel}
             </Text>
           </View>
         </Animated.View>
@@ -305,7 +387,7 @@ export default function ProfilePictureScreen({
         <TouchableOpacity
           style={[
             styles.continueButton,
-            profileImage && styles.continueButtonActive
+            (profileImage || coverImage) && styles.continueButtonActive
           ]}
           onPress={handleContinue}
           disabled={isLoading}
@@ -313,7 +395,7 @@ export default function ProfilePictureScreen({
         >
           <Text style={[
             styles.continueButtonText,
-            profileImage && styles.continueButtonTextActive
+            (profileImage || coverImage) && styles.continueButtonTextActive
           ]}>
             Continue
           </Text>
@@ -375,6 +457,51 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#1F2937',
     marginBottom: 16,
+  },
+  coverSection: {
+    marginBottom: 32,
+  },
+  coverContainer: {
+    width: '100%',
+    height: COVER_HEIGHT,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    overflow: 'hidden',
+    backgroundColor: '#F9FAFB',
+    position: 'relative',
+  },
+  coverImage: {
+    width: '100%',
+    height: '100%',
+  },
+  coverPlaceholder: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+  },
+  coverPlaceholderText: {
+    marginTop: 8,
+    fontSize: 14,
+    color: '#9CA3AF',
+    fontWeight: '500',
+  },
+  coverEditButton: {
+    position: 'absolute',
+    bottom: 10,
+    right: 10,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#3B82F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#3B82F6',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 4,
+    elevation: 6,
   },
   profileContainer: {
     marginBottom: 40,

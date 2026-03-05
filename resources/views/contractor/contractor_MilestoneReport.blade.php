@@ -75,12 +75,20 @@
                             $milestoneStatus = $milestonePlan->milestone_status ?? 'pending';
                             $isMilestoneApproved = in_array($milestoneStatus, ['approved', 'active', 'completed', 'in_progress']);
 
+                            // Downpayment gate: when payment_mode is 'downpayment' and not yet cleared, lock ALL items
+                            $downpaymentPending = (($milestonePlan->payment_mode ?? 'full_payment') === 'downpayment')
+                                && !\App\Services\milestoneService::isDownpaymentCleared($project->project_id);
+
                             foreach ($milestonePlan->items as $item) {
                                 $seqIndex++;
                                 $itemStatus = $item->item_status ?? 'pending';
                                 $isCompleted = $itemStatus === 'completed';
                                 $isHalted = $itemStatus === 'halt';
                                 $isLocked = !$previousItemCompleted && !$isCompleted;
+                                // Override: lock everything when downpayment still pending
+                                if ($downpaymentPending && !$isCompleted) {
+                                    $isLocked = true;
+                                }
                                 $itemCostVal = floatval($item->milestone_item_cost ?? 0);
 
                                 // Compute payment summary for this item
@@ -173,6 +181,7 @@
                                         && !$isHalted
                                         && !$isProjectHalted
                                         && $previousItemCompleted
+                                        && !$downpaymentPending
                                         && !collect($item->progress_reports ?? [])->contains(fn($pr) => ($pr->progress_status ?? '') === 'submitted')
                                     ),
                                 ];
@@ -269,6 +278,15 @@
                         </div>
 
                         <!-- Milestone Timeline -->
+                        @if($downpaymentPending)
+                        <div class="mb-6 p-4 rounded-lg border border-amber-300 bg-amber-50 flex items-start gap-3">
+                            <i class="fi fi-rr-lock text-amber-600 text-xl mt-0.5"></i>
+                            <div>
+                                <h4 class="font-semibold text-amber-800">Downpayment Verification Pending</h4>
+                                <p class="text-sm text-amber-700 mt-1">All milestone items are locked until the property owner submits the downpayment receipt and you approve it. Once approved, milestones will unlock sequentially.</p>
+                            </div>
+                        </div>
+                        @endif
                         <div class="milestone-timeline-container">
                             <div class="milestone-timeline">
                                 @php $itemIndex = 0;
@@ -288,6 +306,10 @@
                                                     $prevComplete = true;
                                                 }
                                                 $isItemLocked = !$prevComplete && !$isItemCompleted;
+                                                // Override: lock everything when downpayment still pending
+                                                if ($downpaymentPending && !$isItemCompleted) {
+                                                    $isItemLocked = true;
+                                                }
 
                                                 // Node gradient based on state
                                                 if ($isItemCompleted) {

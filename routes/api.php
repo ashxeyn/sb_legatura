@@ -16,6 +16,7 @@ use App\Http\Controllers\profileController;
 use App\Http\Controllers\both\milestoneController;
 use App\Http\Controllers\both\projectUpdateController;
 use App\Http\Controllers\subs\payMongoController;
+use App\Http\Controllers\owner\downpaymentController;
 
 
 //role switch test endpoint moved outside middleware group
@@ -181,6 +182,12 @@ Route::delete('/owner/payment/{paymentId}', [paymentUploadController::class, 'de
 Route::get('/projects/{projectId}/payments', [paymentUploadController::class, 'getPaymentsByProject']);
 Route::get('/projects/{projectId}/downpayment-receipts', [paymentUploadController::class, 'getDownpaymentReceipts']);
 Route::get('/milestone-items/{itemId}/payments', [paymentUploadController::class, 'getPaymentsByItem']);
+
+// Dedicated downpayment routes — separate from milestone payment flow
+Route::post('/downpayment/upload', [downpaymentController::class, 'upload']);
+Route::get('/projects/{projectId}/downpayment-payments', [downpaymentController::class, 'list']);
+Route::post('/downpayment/{id}/approve', [downpaymentController::class, 'approve']);
+Route::post('/downpayment/{id}/reject', [downpaymentController::class, 'reject']);
 
 // Progress files retrieval for mobile app (owners and contractors)
 // These routes use optional Sanctum auth - controller handles both session and token auth

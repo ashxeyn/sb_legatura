@@ -318,6 +318,7 @@ class summaryService
             'current_budget'       => $currentBudget,
             'payment_mode'         => $paymentMode,
             'downpayment'          => $downpayment,
+            'downpayment_cleared'  => milestoneService::isDownpaymentCleared($projectId),
             'total_milestones'     => $totalMilestones,
             'completed_milestones' => $completedMilestones,
             'total_paid'           => $totalPaid,

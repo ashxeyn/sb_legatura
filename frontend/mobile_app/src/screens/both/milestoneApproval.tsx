@@ -295,6 +295,9 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
   const isDownpaymentMode = paymentPlan?.payment_mode === 'downpayment';
   const downpaymentAmount = paymentPlan?.downpayment_amount || 0;
   const downpaymentPercentage = totalCost > 0 ? (downpaymentAmount / totalCost) * 100 : 0;
+  const downpaymentCleared = isDownpaymentMode
+    ? (paymentPlan?.downpayment_cleared ?? false)
+    : true;
 
   // Sort by sequence order
   allMilestoneItems.sort((a, b) => a.sequence_order - b.sequence_order);
@@ -782,6 +785,7 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
             userRole,
             userId,
             isPreviousItemComplete,
+            isDownpaymentCleared: downpaymentCleared,
             projectStatus,
             initialTab: initialItemId === selectedMilestoneDetail.item.item_id ? initialItemTab : undefined,
           },
@@ -990,6 +994,48 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
           </View>
         )}
 
+        {/* Downpayment Pending Banner */}
+        {isDownpaymentMode && !downpaymentCleared && (
+          <TouchableOpacity
+            style={{
+              marginHorizontal: 16,
+              marginBottom: 12,
+              padding: 14,
+              backgroundColor: '#FFFBEB',
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: '#FCD34D',
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 12,
+            }}
+            onPress={() => setShowDownpaymentDetail(true)}
+            activeOpacity={0.7}
+          >
+            <View style={{
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              backgroundColor: '#FEF3C7',
+              justifyContent: 'center',
+              alignItems: 'center',
+            }}>
+              <Feather name="lock" size={20} color="#D97706" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: '#92400E' }}>
+                Downpayment Required
+              </Text>
+              <Text style={{ fontSize: 12, color: '#B45309', marginTop: 2 }}>
+                {userRole === 'owner'
+                  ? 'Upload your downpayment receipt to unlock milestones.'
+                  : 'Waiting for owner to submit and you to approve the downpayment.'}
+              </Text>
+            </View>
+            <Feather name="chevron-right" size={18} color="#D97706" />
+          </TouchableOpacity>
+        )}
+
         {/* Timeline Section */}
         <View style={styles.timelineSection}>
           {/* Milestones - displayed from top (highest %) to bottom (lowest %) */}
@@ -1016,7 +1062,11 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
             const prevItem = allMilestoneItems
               .filter(i => i.sequence_order < item.sequence_order)
               .sort((a, b) => b.sequence_order - a.sequence_order)[0];
-            const isLocked = prevItem && prevItem.item_status !== 'completed';
+            let isLocked = prevItem && prevItem.item_status !== 'completed';
+            // Downpayment gate: lock ALL items when downpayment is pending
+            if (isDownpaymentMode && !downpaymentCleared && item.item_status !== 'completed') {
+              isLocked = true;
+            }
 
             return (
               <TouchableOpacity
@@ -1160,20 +1210,40 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
             );
           })}
 
-          {/* Start Point */}
+          {/* Start Point — Downpayment */}
           <TouchableOpacity
-            style={styles.timelineItem}
+            style={[styles.timelineItem, isDownpaymentMode && !downpaymentCleared && { opacity: 1 }]}
             onPress={() => isDownpaymentMode && setShowDownpaymentDetail(true)}
             activeOpacity={0.7}
             disabled={!isDownpaymentMode}
           >
             <View style={[styles.timelineSide, styles.timelineLeft]}>
               <View style={styles.startContent}>
-                <Text style={styles.startLabel}>Start</Text>
+                <Text style={styles.startLabel}>
+                  {isDownpaymentMode ? 'Downpayment' : 'Start'}
+                </Text>
                 {isDownpaymentMode ? (
-                  <Text style={styles.startPercent}>
-                    {formatCurrency(downpaymentAmount)}
-                  </Text>
+                  <>
+                    <Text style={styles.startPercent}>
+                      {formatCurrency(downpaymentAmount)}
+                    </Text>
+                    <View style={{
+                      marginTop: 4,
+                      paddingHorizontal: 8,
+                      paddingVertical: 3,
+                      borderRadius: 6,
+                      backgroundColor: downpaymentCleared ? '#D1FAE5' : '#FEF3C7',
+                      alignSelf: 'flex-end',
+                    }}>
+                      <Text style={{
+                        fontSize: 10,
+                        fontWeight: '700',
+                        color: downpaymentCleared ? '#059669' : '#D97706',
+                      }}>
+                        {downpaymentCleared ? 'Verified' : 'Pending'}
+                      </Text>
+                    </View>
+                  </>
                 ) : (
                   <Text style={styles.startPercent}>0%</Text>
                 )}
@@ -1182,10 +1252,33 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
             <View style={styles.timelineCenter}>
               <View style={[
                 styles.startCircle,
-                isDownpaymentMode && styles.startCircleDownpayment
-              ]} />
+                isDownpaymentMode && {
+                  borderWidth: 3,
+                  borderColor: downpaymentCleared ? COLORS.success : COLORS.accent,
+                  backgroundColor: downpaymentCleared ? COLORS.success : COLORS.darkBlue,
+                },
+              ]}>
+                {isDownpaymentMode && (
+                  <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                    <Feather
+                      name={downpaymentCleared ? 'check' : 'dollar-sign'}
+                      size={14}
+                      color="#FFFFFF"
+                    />
+                  </View>
+                )}
+              </View>
             </View>
-            <View style={[styles.timelineSide, styles.timelineRight]} />
+            <View style={[styles.timelineSide, styles.timelineRight]}>
+              {isDownpaymentMode && !downpaymentCleared && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingLeft: 8 }}>
+                  <Feather name="chevron-right" size={14} color={COLORS.accent} />
+                  <Text style={{ fontSize: 11, color: COLORS.accent, fontWeight: '600' }}>
+                    View Details
+                  </Text>
+                </View>
+              )}
+            </View>
           </TouchableOpacity>
         </View>
 
@@ -1707,7 +1800,10 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
           visible={showDownpaymentDetail}
           animationType="slide"
           presentationStyle="fullScreen"
-          onRequestClose={() => setShowDownpaymentDetail(false)}
+          onRequestClose={() => {
+            setShowDownpaymentDetail(false);
+            fetchMilestones();
+          }}
         >
           <DownpaymentDetail
             projectId={projectId}
@@ -1716,7 +1812,10 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
             totalCost={totalCost}
             userRole={userRole}
             userId={userId}
-            onClose={() => setShowDownpaymentDetail(false)}
+            onClose={() => {
+              setShowDownpaymentDetail(false);
+              fetchMilestones();
+            }}
           />
         </Modal>
       )}

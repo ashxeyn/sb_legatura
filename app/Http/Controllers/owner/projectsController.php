@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\App;
 use Laravel\Sanctum\PersonalAccessToken;
 use App\Services\NotificationService;
+use App\Services\milestoneService;
 
 class projectsController extends Controller
 {
@@ -1932,6 +1933,12 @@ class projectsController extends Controller
                                 ->first();
 
                             $milestone->payment_plan = $paymentPlan;
+
+                            // Attach computed downpayment-cleared flag so front-ends can gate milestone items
+                            if ($milestone->payment_plan) {
+                                $milestone->payment_plan->downpayment_cleared =
+                                    milestoneService::isDownpaymentCleared($project->project_id);
+                            }
                         }
 
                         $project->milestones = $milestones->values()->toArray();
