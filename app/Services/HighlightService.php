@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Log;
  *   - Sort: is_highlighted DESC, highlighted_at DESC, created_at DESC
  *
  * Works with both:
- *   - project_posts (Facebook-style social posts)
+ *   - showcases (Facebook-style social posts)
  *   - projects (traditional project posts — via projects.is_highlighted)
  */
 class highlightService
@@ -23,7 +23,7 @@ class highlightService
     private const MAX_HIGHLIGHTS = 3;
 
     /* ──────────────────────────────────────────────────────────────────
-     * PROJECT POSTS (project_posts table)
+     * PROJECT POSTS (showcases table)
      * ────────────────────────────────────────────────────────────────── */
 
     /**
@@ -31,7 +31,7 @@ class highlightService
      */
     public function highlightPost(int $userId, int $postId): array
     {
-        $post = DB::table('project_posts')->where('post_id', $postId)->first();
+        $post = DB::table('showcases')->where('post_id', $postId)->first();
         if (!$post) {
             return ['success' => false, 'message' => 'Post not found.'];
         }
@@ -43,7 +43,7 @@ class highlightService
         }
 
         // Check limit
-        $currentCount = DB::table('project_posts')
+        $currentCount = DB::table('showcases')
             ->where('user_id', $userId)
             ->where('is_highlighted', true)
             ->count();
@@ -55,7 +55,7 @@ class highlightService
             ];
         }
 
-        DB::table('project_posts')->where('post_id', $postId)->update([
+        DB::table('showcases')->where('post_id', $postId)->update([
             'is_highlighted'  => true,
             'highlighted_at'  => now(),
             'updated_at'      => now(),
@@ -71,7 +71,7 @@ class highlightService
      */
     public function unhighlightPost(int $userId, int $postId): array
     {
-        $post = DB::table('project_posts')->where('post_id', $postId)->first();
+        $post = DB::table('showcases')->where('post_id', $postId)->first();
         if (!$post) {
             return ['success' => false, 'message' => 'Post not found.'];
         }
@@ -82,7 +82,7 @@ class highlightService
             return ['success' => false, 'message' => 'This post is not highlighted.'];
         }
 
-        DB::table('project_posts')->where('post_id', $postId)->update([
+        DB::table('showcases')->where('post_id', $postId)->update([
             'is_highlighted'  => false,
             'highlighted_at'  => null,
             'updated_at'      => now(),
@@ -96,7 +96,7 @@ class highlightService
      */
     public function getHighlightedPosts(int $userId): array
     {
-        $posts = DB::table('project_posts')
+        $posts = DB::table('showcases')
             ->where('user_id', $userId)
             ->where('is_highlighted', true)
             ->where('status', '!=', 'deleted')

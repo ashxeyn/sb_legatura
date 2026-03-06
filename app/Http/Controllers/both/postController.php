@@ -34,7 +34,7 @@ class postController extends Controller
      *
      * POST /api/posts
      * Body (multipart/form-data):
-     *   content (required), title, tagged_user_id, linked_project_id
+     *   content (required), title, linked_project_id
      *   images[] (files, optional)
      */
     public function store(Request $request)
@@ -71,7 +71,7 @@ class postController extends Controller
             'content'            => 'nullable|string|min:10|max:5000',
             'title'              => 'nullable|string|max:255',
             'location'           => 'nullable|string|max:500',
-            'status'             => 'nullable|string|in:open,closed',
+            'status'             => 'nullable|string|in:pending,closed',
         ]);
 
         $result = $this->postService->updatePost($userId, $id, $request->all());
@@ -154,6 +154,95 @@ class postController extends Controller
     }
 
     /**
+     * Admin list for showcase moderation.
+     *
+     * GET /api/admin/showcases?status=pending|approved|rejected|closed|deleted|all
+     */
+    public function adminShowcases(Request $request)
+    {
+        [$adminUserId, $error] = $this->requireAdmin($request);
+        if ($error) return $error;
+
+        $status = $request->query('status', 'pending');
+
+        $query = DB::table('showcases as s')
+            ->join('users as u', 's.user_id', '=', 'u.user_id')
+            ->leftJoin('contractors as c', 'u.user_id', '=', 'c.user_id')
+            ->leftJoin('property_owners as po', 'u.user_id', '=', 'po.user_id')
+            ->leftJoin('projects as lp', 's.linked_project_id', '=', 'lp.project_id')
+            ->select(
+                's.*',
+                'u.username',
+                'u.user_type',
+                'u.profile_pic',
+                'c.company_name',
+                'c.company_logo',
+                'po.first_name as owner_first_name',
+                'po.last_name as owner_last_name',
+                'lp.project_title as linked_project_title'
+            )
+            ->orderByDesc('s.created_at');
+
+        if ($status !== 'all') {
+            $query->where('s.status', $status);
+        }
+
+        $items = $query->get();
+
+        return response()->json(['success' => true, 'data' => $items]);
+    }
+
+    /**
+     * Admin approves a showcase post (becomes visible in feed).
+     *
+     * POST /api/admin/showcases/{id}/approve
+     */
+    public function adminApproveShowcase(Request $request, int $id)
+    {
+        [$adminUserId, $error] = $this->requireAdmin($request);
+        if ($error) return $error;
+
+        $post = DB::table('showcases')->where('post_id', $id)->first();
+        if (!$post) {
+            return response()->json(['success' => false, 'message' => 'Showcase post not found.'], 404);
+        }
+
+        DB::table('showcases')->where('post_id', $id)->update([
+            'status'     => 'approved',
+            'updated_at' => now(),
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'Showcase post approved.']);
+    }
+
+    /**
+     * Admin rejects a showcase post.
+     *
+     * POST /api/admin/showcases/{id}/reject
+     */
+    public function adminRejectShowcase(Request $request, int $id)
+    {
+        [$adminUserId, $error] = $this->requireAdmin($request);
+        if ($error) return $error;
+
+        $request->validate([
+            'reason' => 'required|string|max:1000',
+        ]);
+
+        $post = DB::table('showcases')->where('post_id', $id)->first();
+        if (!$post) {
+            return response()->json(['success' => false, 'message' => 'Showcase post not found.'], 404);
+        }
+
+        DB::table('showcases')->where('post_id', $id)->update([
+            'status'     => 'rejected',
+            'updated_at' => now(),
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'Showcase post rejected.']);
+    }
+
+    /**
      * Return the authenticated user's completed projects for showcase linking.
      *
      * GET /api/posts/completed-projects
@@ -164,7 +253,7 @@ class postController extends Controller
         if (!$userId) return response()->json(['success' => false, 'message' => 'Authentication required.'], 401);
 
         // Already showcased project IDs (to mark them)
-        $showcasedIds = DB::table('project_posts')
+        $showcasedIds = DB::table('showcases')
             ->where('user_id', $userId)
             ->whereNotNull('linked_project_id')
             ->where('status', '!=', 'deleted')
@@ -254,5 +343,28 @@ class postController extends Controller
         }
         if (!$user) return null;
         return is_object($user) ? ($user->user_id ?? $user->id ?? null) : ($user['user_id'] ?? null);
+    }
+
+    private function requireAdmin(Request $request): array
+    {
+        $sessionAdmin = Session::get('admin');
+        if ($sessionAdmin && isset($sessionAdmin->user_id)) {
+            return [(int) $sessionAdmin->user_id, null];
+        }
+
+        $userId = $this->resolveUserId($request);
+        if (!$userId) {
+            return [null, response()->json(['success' => false, 'message' => 'Authentication required.'], 401)];
+        }
+
+        $user = DB::table('users')->where('user_id', $userId)->first();
+        $isAdmin = ($user && (($user->user_type ?? null) === 'admin'))
+            || DB::table('admin_users')->where('user_id', $userId)->exists();
+
+        if (!$isAdmin) {
+            return [null, response()->json(['success' => false, 'message' => 'Admin access required.'], 403)];
+        }
+
+        return [$userId, null];
     }
 }

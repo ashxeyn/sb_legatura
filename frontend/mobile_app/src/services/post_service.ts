@@ -20,7 +20,6 @@ export interface CreateShowcasePayload {
   title: string;
   content: string;
   linked_project_id?: number;
-  tagged_user_id?: number;
   location?: string;
 }
 
@@ -103,6 +102,8 @@ export interface UnifiedFeedResponse {
   };
 }
 
+export type ReportPostType = 'project' | 'showcase';
+
 interface ApiResponse<T = any> {
   success: boolean;
   message?: string;
@@ -165,9 +166,6 @@ export const post_service = {
 
       if (payload.linked_project_id) {
         formData.append('linked_project_id', String(payload.linked_project_id));
-      }
-      if (payload.tagged_user_id) {
-        formData.append('tagged_user_id', String(payload.tagged_user_id));
       }
       if (payload.location) {
         formData.append('location', payload.location);
@@ -273,6 +271,45 @@ export const post_service = {
       };
     } catch (error) {
       console.error('[post_service] get_unified_feed error:', error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Network error',
+        status: 0,
+      };
+    }
+  },
+
+  /**
+   * Report a project post or showcase post.
+   *
+   * POST /api/reports
+   */
+  report_post: async (
+    postType: ReportPostType,
+    postId: number,
+    reason: string,
+    details?: string,
+  ): Promise<ApiResponse<any>> => {
+    try {
+      const response = await api_request('/api/reports', {
+        method: 'POST',
+        headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          post_type: postType,
+          post_id: postId,
+          reason,
+          details: details || null,
+        }),
+      });
+
+      return {
+        success: response.success ?? false,
+        message: response.data?.message || response.message,
+        data: response.data?.data || response.data,
+        status: response.status,
+      };
+    } catch (error) {
+      console.error('[post_service] report_post error:', error);
       return {
         success: false,
         message: error instanceof Error ? error.message : 'Network error',

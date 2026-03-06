@@ -16,11 +16,13 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { api_config } from '../../config/api';
-import ImageFallback from '../../components/ImageFallbackFixed';
+import ImageFallback from '../../components/imageFallback';
 import { storage_service } from '../../utils/storage';
 import CreateShowcase from './createShowcase';
 import ShowcasePostDetail from './showcasePostDetail';
 import { highlightService } from '../../services/highlightService';
+import { post_service } from '../../services/post_service';
+import ReportPostModal from '../../components/reportPostModal';
 import {
   profile_service,
   ProfileData,
@@ -49,8 +51,10 @@ const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }
   in_progress:    { label: 'In Progress',    color: '#d97706', bg: '#fef3c7' },
   active:         { label: 'Active',         color: '#2563eb', bg: '#dbeafe' },
   open:           { label: 'Open',           color: '#2563eb', bg: '#dbeafe' },
+  approved:       { label: 'Approved',       color: '#16a34a', bg: '#dcfce7' },
   closed:         { label: 'Closed',         color: '#6b7280', bg: '#f3f4f6' },
   pending:        { label: 'Pending',        color: '#6b7280', bg: '#f3f4f6' },
+  rejected:       { label: 'Rejected',       color: '#dc2626', bg: '#fef2f2' },
   bidding_closed: { label: 'Bidding Closed', color: '#9333ea', bg: '#f3e8ff' },
 };
 const COLORS = {
@@ -123,6 +127,9 @@ export default function CheckProfile({ contractor, onClose, onSendMessage }: Che
   const [selectedShowcasePost, setSelectedShowcasePost] = useState<any>(null);
   const [isOwnProfile, setIsOwnProfile] = useState(false);
   const [highlightingPostId, setHighlightingPostId] = useState<number | null>(null);
+  const [activePostMenuId, setActivePostMenuId] = useState<number | null>(null);
+  const [reportModalVisible, setReportModalVisible] = useState(false);
+  const [reportPostId, setReportPostId] = useState<number | null>(null);
 
   // ── Check if viewing own profile ──
   useEffect(() => {
@@ -220,6 +227,27 @@ export default function CheckProfile({ contractor, onClose, onSendMessage }: Che
     }
   }, [highlightingPostId]);
 
+  const submitPostReport = useCallback(async (reason: string, details?: string) => {
+    if (!reportPostId) {
+      return { success: false, message: 'No report target selected.' };
+    }
+
+    const res = await post_service.report_post('showcase', reportPostId, reason, details);
+    return {
+      success: !!res.success,
+      message: res.message || (res.success ? 'Report submitted.' : 'Unable to submit report right now.'),
+    };
+  }, [reportPostId]);
+
+  const openReportReasons = useCallback((postId: number) => {
+    setReportPostId(postId);
+    setReportModalVisible(true);
+  }, [submitPostReport]);
+
+  const openShowcaseCardMenu = useCallback((postId: number) => {
+    setActivePostMenuId(prev => (prev === postId ? null : postId));
+  }, []);
+
   // About
   const contractorAbout = profile?.about?.contractor;
 
@@ -272,32 +300,52 @@ export default function CheckProfile({ contractor, onClose, onSendMessage }: Che
                 key={`sp-${post.post_id}`}
                 style={styles.socialPostCard}
                 activeOpacity={0.85}
-                onPress={() => setSelectedShowcasePost(post)}
+                onPress={() => {
+                  setActivePostMenuId(null);
+                  setSelectedShowcasePost(post);
+                }}
               >
-                {/* Highlight pin icon — only visible to the post owner */}
-                {isOwnProfile && (
+                <View style={styles.postMenuWrap}>
                   <TouchableOpacity
-                    onPress={() => handleToggleHighlight(post.post_id, isHighlighted)}
+                    onPress={(e) => {
+                      e.stopPropagation?.();
+                      openShowcaseCardMenu(post.post_id);
+                    }}
                     activeOpacity={0.7}
                     disabled={highlightingPostId === post.post_id}
-                    style={{
-                      position: 'absolute',
-                      top: 8,
-                      right: 8,
-                      zIndex: 10,
-                      padding: 6,
-                      borderRadius: 20,
-                      backgroundColor: isHighlighted ? '#FFF8EE' : 'rgba(255,255,255,0.85)',
-                    }}
+                    style={styles.postMenuButton}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   >
-                    <MaterialIcons
-                      name="push-pin"
-                      size={18}
-                      color={isHighlighted ? '#EEA24B' : '#b0b0b0'}
-                    />
+                    <MaterialIcons name="more-vert" size={18} color="#4B5563" />
                   </TouchableOpacity>
-                )}
+
+                  {activePostMenuId === post.post_id && (
+                    <View style={styles.postMenuDropdown}>
+                      {isOwnProfile && (
+                        <TouchableOpacity
+                          style={styles.postMenuItem}
+                          onPress={(e) => {
+                            e.stopPropagation?.();
+                            setActivePostMenuId(null);
+                            handleToggleHighlight(post.post_id, isHighlighted);
+                          }}
+                        >
+                          <Text style={styles.postMenuItemText}>{isHighlighted ? 'Unhighlight' : 'Highlight'}</Text>
+                        </TouchableOpacity>
+                      )}
+                      <TouchableOpacity
+                        style={styles.postMenuItem}
+                        onPress={(e) => {
+                          e.stopPropagation?.();
+                          setActivePostMenuId(null);
+                          openReportReasons(post.post_id);
+                        }}
+                      >
+                        <Text style={styles.postMenuDangerText}>Report</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
                 {post.images && post.images.length > 0 ? (
                   <ImageFallback
                     uri={resolveImageUrl(post.images[0]?.file_path)}
@@ -606,10 +654,13 @@ export default function CheckProfile({ contractor, onClose, onSendMessage }: Che
   );
 
   if (selectedShowcasePost) {
-    const isOwn = selectedShowcasePost.user_id === contractor.user_id;
+    // Posts in this screen belong to the viewed profile, so ownership should
+    // be based on whether the viewer is on their own profile.
+    const isOwn = isOwnProfile;
     return (
       <ShowcasePostDetail
         post={selectedShowcasePost}
+        isOwner={isOwn}
         onClose={() => setSelectedShowcasePost(null)}
         onViewProfile={(!isOwn && selectedShowcasePost.user_id) ? () => {
           const sp = selectedShowcasePost;
@@ -757,6 +808,15 @@ export default function CheckProfile({ contractor, onClose, onSendMessage }: Che
         visible={showCreateShowcase}
         onClose={() => setShowCreateShowcase(false)}
         onCreated={() => fetchProfile(true)}
+      />
+
+      <ReportPostModal
+        visible={reportModalVisible}
+        onClose={() => {
+          setReportModalVisible(false);
+          setReportPostId(null);
+        }}
+        onSubmit={submitPostReport}
       />
     </View>
   );
@@ -1314,12 +1374,58 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: BORDER,
     marginBottom: 12,
-    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06,
     shadowRadius: 3,
     elevation: 1,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  postMenuWrap: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    zIndex: 20,
+  },
+  postMenuButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.92)',
+  },
+  postMenuDropdown: {
+    position: 'absolute',
+    top: 24,
+    right: 0,
+    minWidth: 108,
+    maxWidth: 132,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    paddingVertical: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.14,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  postMenuItem: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  postMenuItemText: {
+    fontSize: 13,
+    color: '#1F2937',
+    fontWeight: '500',
+  },
+  postMenuDangerText: {
+    fontSize: 13,
+    color: '#B91C1C',
+    fontWeight: '600',
   },
   socialPostImg: {
     width: '100%',

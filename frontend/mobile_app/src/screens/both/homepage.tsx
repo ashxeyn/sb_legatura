@@ -21,7 +21,7 @@ import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import Feather from 'react-native-vector-icons/Feather';
 import { Image } from 'expo-image';
-import ImageFallback from '../../components/ImageFallbackFixed';
+import ImageFallback from '../../components/imageFallback';
 import { projects_service, ContractorType as ContractorTypeOption } from '../../services/projects_service';
 import { api_config } from '../../config/api';
 import { contractors_service } from '../../services/contractors_service';
@@ -79,6 +79,7 @@ import ProjectPostDetail from './projectPostDetail';
 import CreateShowcase from './createShowcase';
 import { post_service } from '../../services/post_service';
 import { highlightService } from '../../services/highlightService';
+import ReportPostModal from '../../components/reportPostModal';
 
 // Import showcase post detail screen
 import ShowcasePostDetail from './showcasePostDetail';
@@ -202,6 +203,9 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
   const [loadingFeed, setLoadingFeed] = useState(true);
   const [showCreateChooser, setShowCreateChooser] = useState(false);
   const [showCreateShowcase, setShowCreateShowcase] = useState(false);
+  const [activeCardMenu, setActiveCardMenu] = useState<{ type: 'project' | 'showcase'; id: number } | null>(null);
+  const [reportModalVisible, setReportModalVisible] = useState(false);
+  const [reportTarget, setReportTarget] = useState<{ postType: 'project' | 'showcase'; postId: number } | null>(null);
 
   // Poll unread notification count every 30 seconds
   useEffect(() => {
@@ -1140,7 +1144,10 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
         key={project.project_id}
         style={styles.projectCard}
         activeOpacity={0.7}
-        onPress={() => setSelectedProject(project)}
+        onPress={() => {
+          setActiveCardMenu(null);
+          setSelectedProject(project);
+        }}
       >
         {/* Header: Owner Info + Deadline Badge */}
         <View style={styles.projectHeader}>
@@ -1181,14 +1188,43 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
               </Text>
             </View>
           </TouchableOpacity>
-          {daysRemaining !== null && (
-            <View style={[styles.deadlineBadge, daysRemaining <= 3 && styles.deadlineUrgent]}>
-              <MaterialIcons name="access-time" size={14} color={daysRemaining <= 3 ? '#E74C3C' : '#F39C12'} />
-              <Text style={[styles.deadlineText, daysRemaining <= 3 && styles.deadlineTextUrgent]}>
-                {daysRemaining > 0 ? `${daysRemaining}d left` : 'Due today'}
-              </Text>
+          <View style={styles.cardHeaderActions}>
+            {daysRemaining !== null && (
+              <View style={[styles.deadlineBadge, daysRemaining <= 3 && styles.deadlineUrgent]}>
+                <MaterialIcons name="access-time" size={14} color={daysRemaining <= 3 ? '#E74C3C' : '#F39C12'} />
+                <Text style={[styles.deadlineText, daysRemaining <= 3 && styles.deadlineTextUrgent]}>
+                  {daysRemaining > 0 ? `${daysRemaining}d left` : 'Due today'}
+                </Text>
+              </View>
+            )}
+            <View style={styles.cardMenuWrap}>
+              <TouchableOpacity
+                style={styles.cardMenuButton}
+                onPress={(e) => {
+                  e.stopPropagation?.();
+                  openProjectCardMenu(project.project_id);
+                }}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <MaterialIcons name="more-vert" size={20} color="#4B5563" />
+              </TouchableOpacity>
+
+              {activeCardMenu?.type === 'project' && activeCardMenu.id === project.project_id && (
+                <View style={styles.cardMenuDropdown}>
+                  <TouchableOpacity
+                    style={styles.cardMenuItem}
+                    onPress={(e) => {
+                      e.stopPropagation?.();
+                      setActiveCardMenu(null);
+                      openReportReasons('project', project.project_id);
+                    }}
+                  >
+                    <Text style={styles.cardMenuDangerText}>Report</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
-          )}
+          </View>
         </View>
 
         {/* Project Title */}
@@ -1432,6 +1468,37 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
     }
   }, [highlightingPostId]);
 
+  const submitPostReport = useCallback(async (reason: string, details?: string) => {
+    if (!reportTarget) {
+      return { success: false, message: 'No report target selected.' };
+    }
+
+    const res = await post_service.report_post(reportTarget.postType, reportTarget.postId, reason, details);
+    return {
+      success: !!res.success,
+      message: res.message || (res.success ? 'Report submitted.' : 'Unable to submit report right now.'),
+    };
+  }, [reportTarget]);
+
+  const openReportReasons = useCallback((postType: 'project' | 'showcase', postId: number) => {
+    setReportTarget({ postType, postId });
+    setReportModalVisible(true);
+  }, [submitPostReport]);
+
+  const openProjectCardMenu = useCallback((projectId: number) => {
+    setActiveCardMenu(prev => {
+      if (prev?.type === 'project' && prev.id === projectId) return null;
+      return { type: 'project', id: projectId };
+    });
+  }, []);
+
+  const openShowcaseCardMenu = useCallback((postId: number) => {
+    setActiveCardMenu(prev => {
+      if (prev?.type === 'showcase' && prev.id === postId) return null;
+      return { type: 'showcase', id: postId };
+    });
+  }, []);
+
   const renderShowcaseCard = (post: any, index: number) => {
     const avatarUrl = post.avatar
       ? getStorageUrl(post.avatar)
@@ -1454,7 +1521,10 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
         key={`showcase-${post.post_id}-${index}`}
         style={styles.projectCard}
         activeOpacity={0.8}
-        onPress={() => setSelectedShowcasePost(post)}
+        onPress={() => {
+          setActiveCardMenu(null);
+          setSelectedShowcasePost(post);
+        }}
       >
         {/* Header: Author info + linked project tag */}
         <View style={styles.projectHeader}>
@@ -1514,28 +1584,46 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
             </View>
           </TouchableOpacity>
 
-          {/* Highlight pin icon — only visible to the post owner */}
-          {isOwn && (
+          <View style={styles.cardMenuWrap}>
             <TouchableOpacity
-              onPress={() => handleToggleHighlight(post.post_id, isHighlighted)}
-              activeOpacity={0.7}
-              disabled={highlightingPostId === post.post_id}
-              style={{
-                padding: 6,
-                marginLeft: 4,
-                borderRadius: 20,
-                backgroundColor: isHighlighted ? '#FFF8EE' : 'transparent',
+              style={styles.cardMenuButton}
+              onPress={(e) => {
+                e.stopPropagation?.();
+                openShowcaseCardMenu(post.post_id);
               }}
+              disabled={highlightingPostId === post.post_id}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <MaterialIcons
-                name="push-pin"
-                size={20}
-                color={isHighlighted ? '#EEA24B' : '#b0b0b0'}
-                style={isHighlighted ? undefined : { opacity: 0.6 }}
-              />
+              <MaterialIcons name="more-vert" size={20} color="#4B5563" />
             </TouchableOpacity>
-          )}
+
+            {activeCardMenu?.type === 'showcase' && activeCardMenu.id === post.post_id && (
+              <View style={styles.cardMenuDropdown}>
+                {isOwn && (
+                  <TouchableOpacity
+                    style={styles.cardMenuItem}
+                    onPress={(e) => {
+                      e.stopPropagation?.();
+                      setActiveCardMenu(null);
+                      handleToggleHighlight(post.post_id, isHighlighted);
+                    }}
+                  >
+                    <Text style={styles.cardMenuItemText}>{isHighlighted ? 'Unhighlight' : 'Highlight'}</Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity
+                  style={styles.cardMenuItem}
+                  onPress={(e) => {
+                    e.stopPropagation?.();
+                    setActiveCardMenu(null);
+                    openReportReasons('showcase', post.post_id);
+                  }}
+                >
+                  <Text style={styles.cardMenuDangerText}>Report</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
         </View>
 
         {/* Title */}
@@ -1572,6 +1660,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
     })();
 
     return (
+      <>
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
@@ -1682,6 +1771,16 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
           )}
         </View>
       </ScrollView>
+
+      <ReportPostModal
+        visible={reportModalVisible}
+        onClose={() => {
+          setReportModalVisible(false);
+          setReportTarget(null);
+        }}
+        onSubmit={submitPostReport}
+      />
+      </>
     );
   };
 
@@ -1867,6 +1966,7 @@ const renderProfileContent = () => {
     return (
       <ShowcasePostDetail
         post={selectedShowcasePost}
+        isOwner={isOwn}
         onClose={() => setSelectedShowcasePost(null)}
         onViewProfile={(!isOwn && selectedShowcasePost.user_id) ? () => {
           const sp = selectedShowcasePost;
@@ -2798,6 +2898,54 @@ const styles = StyleSheet.create({
   },
   deadlineTextUrgent: {
     color: '#E74C3C',
+  },
+  cardHeaderActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  cardMenuWrap: {
+    position: 'relative',
+    zIndex: 30,
+  },
+  cardMenuButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardMenuDropdown: {
+    position: 'absolute',
+    top: 24,
+    right: 0,
+    minWidth: 108,
+    maxWidth: 132,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    paddingVertical: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.14,
+    shadowRadius: 8,
+    elevation: 6,
+    zIndex: 20,
+  },
+  cardMenuItem: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  cardMenuItemText: {
+    fontSize: 13,
+    color: '#1F2937',
+    fontWeight: '500',
+  },
+  cardMenuDangerText: {
+    fontSize: 13,
+    color: '#B91C1C',
+    fontWeight: '600',
   },
   projectTitleText: {
     fontSize: 16,

@@ -1,9 +1,11 @@
 // @ts-nocheck
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
+  Alert,
+  ActivityIndicator,
   StyleSheet,
   ScrollView,
   Dimensions,
@@ -15,8 +17,11 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import ImageFallback from '../../components/ImageFallbackFixed';
+import ImageFallback from '../../components/imageFallback';
+import ReportPostModal from '../../components/reportPostModal';
 import { api_config } from '../../config/api';
+import { highlightService } from '../../services/highlightService';
+import { post_service } from '../../services/post_service';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -54,7 +59,6 @@ export interface ShowcasePost {
   linked_project_id?: number;
   linked_project_title?: string;
   linked_milestone_name?: string;
-  tagged_user_id?: number;
   images?: Array<{
     image_id?: number;
     file_path: string;
@@ -67,16 +71,26 @@ interface ShowcasePostDetailProps {
   post: ShowcasePost;
   onClose: () => void;
   onViewProfile?: () => void;
+  isOwner?: boolean;
 }
 
 export default function ShowcasePostDetail({
   post,
   onClose,
   onViewProfile,
+  isOwner = false,
 }: ShowcasePostDetailProps) {
   const insets = useSafeAreaInsets();
   const [imageViewerVisible, setImageViewerVisible] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [reportModalVisible, setReportModalVisible] = useState(false);
+  const [isHighlighted, setIsHighlighted] = useState(!!post.is_highlighted);
+
+  useEffect(() => {
+    setIsHighlighted(!!post.is_highlighted);
+  }, [post.post_id, post.is_highlighted]);
 
   // Build image URLs
   const postImages = (post.images || []).map((img) => ({
@@ -114,6 +128,40 @@ export default function ShowcasePostDetail({
     setSelectedImageIndex(index);
     setImageViewerVisible(true);
   };
+
+  const submitReport = useCallback(async (reason: string, details?: string) => {
+    const res = await post_service.report_post('showcase', post.post_id, reason, details);
+    return {
+      success: !!res.success,
+      message: res.message || (res.success ? 'Report submitted.' : 'Unable to submit report right now.'),
+    };
+  }, [post.post_id]);
+
+  const openReportReasons = useCallback(() => {
+    setMenuVisible(false);
+    setReportModalVisible(true);
+  }, [submitReport]);
+
+  const toggleHighlight = useCallback(async () => {
+    if (!isOwner) return;
+
+    setMenuVisible(false);
+    setActionLoading(true);
+    try {
+      const res = isHighlighted
+        ? await highlightService.unhighlightPost(post.post_id)
+        : await highlightService.highlightPost(post.post_id);
+
+      if (res.success) {
+        setIsHighlighted(!isHighlighted);
+        Alert.alert('Success', isHighlighted ? 'Post unhighlighted.' : 'Post highlighted.');
+      } else {
+        Alert.alert('Highlight', res.message || 'Unable to update highlight.');
+      }
+    } finally {
+      setActionLoading(false);
+    }
+  }, [isOwner, isHighlighted, post.post_id]);
 
   // Image gallery sizing
   const H_PADDING = 16;
@@ -264,7 +312,28 @@ export default function ShowcasePostDetail({
           <Ionicons name="arrow-back" size={24} color="#1A1A1A" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Showcase Post</Text>
-        <View style={{ width: 40 }} />
+        <View style={styles.cardMenuWrap}>
+          <TouchableOpacity style={styles.menuButton} onPress={() => setMenuVisible(v => !v)}>
+            <MaterialIcons name="more-vert" size={24} color="#1A1A1A" />
+          </TouchableOpacity>
+          {menuVisible && (
+            <View style={styles.cardMenuDropdown}>
+              {isOwner && (
+                <TouchableOpacity style={styles.cardMenuItem} onPress={toggleHighlight} disabled={actionLoading}>
+                  <Text style={styles.cardMenuItemText}>{isHighlighted ? 'Unhighlight' : 'Highlight'}</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity style={styles.cardMenuItem} onPress={openReportReasons} disabled={actionLoading}>
+                <Text style={styles.cardMenuDangerText}>Report</Text>
+              </TouchableOpacity>
+              {actionLoading && (
+                <View style={styles.menuLoadingRow}>
+                  <ActivityIndicator size="small" color="#EEA24B" />
+                </View>
+              )}
+            </View>
+          )}
+        </View>
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
@@ -302,8 +371,8 @@ export default function ShowcasePostDetail({
               </Text>
             </View>
 
-            {/* Highlight badge */}
-            {!!post.is_highlighted && (
+            {/* Highlight badge — only visible to the post owner */}
+            {isOwner && isHighlighted && (
               <View style={styles.highlightBadge}>
                 <MaterialIcons name="push-pin" size={14} color="#EEA24B" />
                 <Text style={styles.highlightBadgeText}>Highlighted</Text>
@@ -429,6 +498,13 @@ export default function ShowcasePostDetail({
           ) : null}
         </View>
       </Modal>
+
+      <ReportPostModal
+        visible={reportModalVisible}
+        onClose={() => setReportModalVisible(false)}
+        onSubmit={submitReport}
+      />
+
     </View>
   );
 }
@@ -451,6 +527,49 @@ const styles = StyleSheet.create({
   backButton: {
     padding: 4,
   },
+  menuButton: {
+    padding: 4,
+    width: 40,
+    alignItems: 'flex-end',
+  },
+  cardMenuWrap: {
+    position: 'relative',
+    width: 40,
+    alignItems: 'flex-end',
+    zIndex: 30,
+  },
+  cardMenuDropdown: {
+    position: 'absolute',
+    top: 24,
+    right: 0,
+    minWidth: 108,
+    maxWidth: 132,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    paddingVertical: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.14,
+    shadowRadius: 8,
+    elevation: 6,
+    zIndex: 20,
+  },
+  cardMenuItem: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  cardMenuItemText: {
+    fontSize: 13,
+    color: '#1F2937',
+    fontWeight: '500',
+  },
+  cardMenuDangerText: {
+    fontSize: 13,
+    color: '#B91C1C',
+    fontWeight: '600',
+  },
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
@@ -470,21 +589,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   authorAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     marginRight: 12,
     backgroundColor: '#E5E5E5',
   },
   authorName: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     color: '#1A1A1A',
-    marginBottom: 2,
   },
   postDate: {
-    fontSize: 13,
-    color: '#666666',
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
   },
   highlightBadge: {
     flexDirection: 'row',
@@ -648,5 +767,41 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '600',
+  },
+  menuOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.15)',
+  },
+  menuCard: {
+    position: 'absolute',
+    right: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    minWidth: 170,
+    paddingVertical: 6,
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 8,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  menuItemText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  menuLoadingRow: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+    alignItems: 'flex-start',
   },
 });

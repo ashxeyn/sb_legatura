@@ -598,6 +598,7 @@ use App\Http\Controllers\reviewController;
 use App\Http\Controllers\both\highlightController;
 use App\Http\Controllers\profileApiController;
 use App\Http\Controllers\both\postController;
+use App\Http\Controllers\both\reportController;
 
 // ── Reviews ─────────────────────────────────────────────────────────────────
 Route::post('/reviews', [reviewController::class, 'store']);
@@ -629,5 +630,17 @@ Route::get('/feed', [postController::class, 'feed']);
 
 // ── Unified Feed (bidding projects + showcase posts merged) ─────────────
 Route::get('/unified-feed', [postController::class, 'unifiedFeed']);
+
+// ── Showcase Moderation (Admin) ───────────────────────────────────────
+Route::get('/admin/showcases', [postController::class, 'adminShowcases']);
+Route::post('/admin/showcases/{id}/approve', [postController::class, 'adminApproveShowcase']);
+Route::post('/admin/showcases/{id}/reject', [postController::class, 'adminRejectShowcase']);
+
+// ── Content Reports (Projects + Showcases) ────────────────────────────
+Route::post('/reports', [reportController::class, 'store']);
+Route::get('/reports/mine', [reportController::class, 'mine']);
+Route::get('/admin/reports', [reportController::class, 'adminIndex']);
+Route::get('/admin/reports/{reportId}', [reportController::class, 'adminShow']);
+Route::post('/admin/reports/{reportId}/review', [reportController::class, 'adminReview']);
 
 // NOTE: change-otp endpoints are registered publicly (do not rely on Sanctum middleware)

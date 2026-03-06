@@ -48,7 +48,7 @@ class profileService
         $header = $this->buildHeader($user, $role);
 
         // Build tabs data
-        $posts    = $this->getPostsTab($userId, $role);
+        $posts    = $this->getPostsTab($userId, $role, (bool) $isOwner);
         $reviews  = $this->reviewService->getReviewsForUser($userId, $role, 1, 10);
         $about    = $this->getAboutTab($userId, $role);
 
@@ -138,30 +138,37 @@ class profileService
     }
 
     /**
-     * Posts tab: only showcase posts (from project_posts table).
+     * Posts tab: only showcase posts (from showcases table).
      * Traditional projects are NOT listed here — contractors must create
      * a showcase post (optionally linked to a completed project) to appear.
      */
-    private function getPostsTab(int $userId, string $role): array
+    private function getPostsTab(int $userId, string $role, bool $isOwner): array
     {
-        // Showcase posts from project_posts table
-        $showcasePosts = DB::table('project_posts as pp')
+        // Showcase posts from showcases table
+        $query = DB::table('showcases as pp')
             ->leftJoin('projects as lp', 'pp.linked_project_id', '=', 'lp.project_id')
             ->where('pp.user_id', $userId)
-            ->where('pp.status', '!=', 'deleted')
             ->select(
                 'pp.*',
                 'lp.project_title as linked_project_title',
                 'lp.project_status as linked_project_status',
                 DB::raw("'social' as source")
-            )
+            );
+
+        if ($isOwner) {
+            $query->where('pp.status', '!=', 'deleted');
+        } else {
+            $query->where('pp.status', 'approved');
+        }
+
+        $showcasePosts = $query
             ->orderByDesc('pp.created_at')
             ->get();
 
         // Attach images to each showcase post
         if ($showcasePosts->isNotEmpty()) {
             $postIds = $showcasePosts->pluck('post_id')->toArray();
-            $images = DB::table('project_post_images')
+            $images = DB::table('showcase_images')
                 ->whereIn('post_id', $postIds)
                 ->orderBy('sort_order')
                 ->get()

@@ -1,4 +1,4 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -14,7 +14,7 @@ import { View as SafeAreaView, StatusBar, Platform, AppState } from 'react-nativ
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import ImageFallback from '../../components/ImageFallbackFixed';
+import ImageFallback from '../../components/imageFallback';
 import { contractors_service } from '../../services/contractors_service';
 import { api_config } from '../../config/api';
 import { role_service } from '../../services/role_service';
@@ -296,7 +296,7 @@ export default function ContractorProfileScreen({ onLogout, onViewProfile, onOpe
           </TouchableOpacity>
         </View>
 
-        <View style={styles.footer}><Text style={styles.footerText}>Legatura © 2025</Text><Text style={styles.footerSubtext}>All rights reserved</Text></View>
+        <View style={styles.footer}><Text style={styles.footerText}>Legatura � 2025</Text><Text style={styles.footerSubtext}>All rights reserved</Text></View>
       </ScrollView>
     </SafeAreaView>
   );

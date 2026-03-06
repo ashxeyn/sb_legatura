@@ -478,7 +478,7 @@ class FeatureSeeder extends Seeder
                     $postType = 'project';
                 }
 
-                $status = ($i < 45) ? 'open' : 'closed';
+                $status = ($i < 45) ? 'approved' : 'closed';
 
                 // Boost
                 $boost = $boostAssignment[$i] ?? 'none';
@@ -495,7 +495,7 @@ class FeatureSeeder extends Seeder
                     $boostExp = now()->subDays(rand(1, 10));
                 }
 
-                $postId = DB::table('project_posts')->insertGetId([
+                $postId = DB::table('showcases')->insertGetId([
                     'user_id'                  => $uId,
                     'post_type'                => $postType,
                     'title'                    => $this->projectTitles[array_rand($this->projectTitles)],
@@ -527,7 +527,7 @@ class FeatureSeeder extends Seeder
                 if ($highlightCount === 0) continue;
 
                 foreach ($toHighlight as $hp) {
-                    DB::table('project_posts')->where('post_id', $hp['post_id'])->update([
+                    DB::table('showcases')->where('post_id', $hp['post_id'])->update([
                         'is_highlighted' => true,
                         'highlighted_at' => now()->subDays(rand(0, 10)),
                     ]);

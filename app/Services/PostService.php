@@ -11,7 +11,7 @@ use Illuminate\Support\Collection;
  * PostService — Showcase / social posting for project portfolios.
  *
  * Responsibilities:
- *   1. CRUD for project_posts (create, update, delete)
+ *   1. CRUD for showcases (create, update, delete)
  *   2. User-specific posts (profile Posts tab)
  *   3. Simple feed with freshness + boost ordering
  */
@@ -25,7 +25,7 @@ class postService
      * Create a new showcase post.
      *
      * @param  int   $userId
-     * @param  array $data  Keys: title, content, tagged_user_id, linked_project_id
+     * @param  array $data  Keys: title, content, linked_project_id
      * @param  array $images  Array of UploadedFile objects
      * @return array
      */
@@ -39,13 +39,13 @@ class postService
         try {
             DB::beginTransaction();
 
-            $postId = DB::table('project_posts')->insertGetId([
+            $postId = DB::table('showcases')->insertGetId([
                 'user_id'            => $userId,
                 'title'              => $data['title'] ?? null,
                 'content'            => $content,
                 'linked_project_id'  => $data['linked_project_id'] ?? null,
                 'location'           => $data['location'] ?? null,
-                'status'             => 'open',
+                'status'             => 'pending',
                 'is_highlighted'     => false,
                 'highlighted_at'     => null,
                 'boost_tier'         => null,
@@ -59,7 +59,7 @@ class postService
                 $filename = time() . '_post_' . $postId . '_' . $i . '.' . $image->getClientOriginalExtension();
                 $path = $image->storeAs('post_images', $filename, 'public');
 
-                DB::table('project_post_images')->insert([
+                DB::table('showcase_images')->insert([
                     'post_id'       => $postId,
                     'file_path'     => $path,
                     'original_name' => $image->getClientOriginalName(),
@@ -87,7 +87,7 @@ class postService
      */
     public function updatePost(int $userId, int $postId, array $data): array
     {
-        $post = DB::table('project_posts')->where('post_id', $postId)->first();
+        $post = DB::table('showcases')->where('post_id', $postId)->first();
         if (!$post) return ['success' => false, 'message' => 'Post not found.'];
         if ((int) $post->user_id !== $userId) return ['success' => false, 'message' => 'Unauthorized.'];
 
@@ -100,7 +100,7 @@ class postService
         }
         $updatePayload['updated_at'] = now();
 
-        DB::table('project_posts')->where('post_id', $postId)->update($updatePayload);
+        DB::table('showcases')->where('post_id', $postId)->update($updatePayload);
 
         return ['success' => true, 'message' => 'Post updated.', 'data' => $this->getPostById($postId)];
     }
@@ -110,11 +110,11 @@ class postService
      */
     public function deletePost(int $userId, int $postId): array
     {
-        $post = DB::table('project_posts')->where('post_id', $postId)->first();
+        $post = DB::table('showcases')->where('post_id', $postId)->first();
         if (!$post) return ['success' => false, 'message' => 'Post not found.'];
         if ((int) $post->user_id !== $userId) return ['success' => false, 'message' => 'Unauthorized.'];
 
-        DB::table('project_posts')->where('post_id', $postId)->update([
+        DB::table('showcases')->where('post_id', $postId)->update([
             'status'     => 'deleted',
             'updated_at' => now(),
         ]);
@@ -127,7 +127,7 @@ class postService
      */
     public function getPostById(int $postId): ?object
     {
-        $post = DB::table('project_posts as pp')
+        $post = DB::table('showcases as pp')
             ->leftJoin('users as u', 'pp.user_id', '=', 'u.user_id')
             ->leftJoin('contractors as c', 'u.user_id', '=', 'c.user_id')
             ->leftJoin('property_owners as po', 'u.user_id', '=', 'po.user_id')
@@ -144,7 +144,7 @@ class postService
             ->first();
 
         if ($post) {
-            $post->images = DB::table('project_post_images')
+            $post->images = DB::table('showcase_images')
                 ->where('post_id', $postId)
                 ->orderBy('sort_order')
                 ->get()
@@ -173,7 +173,7 @@ class postService
      */
     public function getUserPosts(int $userId, int $page = 1, int $perPage = 20): array
     {
-        $query = DB::table('project_posts')
+        $query = DB::table('showcases')
             ->where('user_id', $userId)
             ->where('status', '!=', 'deleted');
 
@@ -192,7 +192,7 @@ class postService
         // Batch-load images
         if ($posts->isNotEmpty()) {
             $postIds = $posts->pluck('post_id')->toArray();
-            $images = DB::table('project_post_images')
+            $images = DB::table('showcase_images')
                 ->whereIn('post_id', $postIds)
                 ->orderBy('sort_order')
                 ->get()
@@ -261,8 +261,8 @@ class postService
                 ->count();
         }
 
-        $postCount = DB::table('project_posts')
-            ->where('project_posts.status', 'open')
+        $postCount = DB::table('showcases')
+            ->where('showcases.status', 'approved')
             ->count();
 
         $total     = $projectCount + $contractorCount + $postCount;
@@ -348,7 +348,7 @@ class postService
         }
 
         // ── 2. Showcase posts ──
-        $posts = DB::table('project_posts as pp')
+        $posts = DB::table('showcases as pp')
             ->join('users as u', 'pp.user_id', '=', 'u.user_id')
             ->leftJoin('contractors as c', 'u.user_id', '=', 'c.user_id')
             ->leftJoin('property_owners as po', 'u.user_id', '=', 'po.user_id')
@@ -358,7 +358,7 @@ class postService
                      ->on('ms.contractor_id', '=', 'lp.selected_contractor_id')
                      ->where('ms.setup_status', '=', 'approved');
             })
-            ->where('pp.status', 'open')
+            ->where('pp.status', 'approved')
             ->select(
                 'pp.*',
                 'u.username', 'u.profile_pic', 'u.user_type',
@@ -412,7 +412,7 @@ class postService
         $showcaseItems = $pageItems->filter(fn ($i) => $i->feed_type === 'showcase');
         if ($showcaseItems->isNotEmpty()) {
             $postIds = $showcaseItems->map(fn ($i) => $i->data->post_id)->toArray();
-            $images  = DB::table('project_post_images')
+            $images  = DB::table('showcase_images')
                 ->whereIn('post_id', $postIds)
                 ->orderBy('sort_order')
                 ->get()
@@ -453,9 +453,9 @@ class postService
      */
     public function getFeedForUser(int $userId, int $page = 1, int $perPage = 20, array $filters = []): array
     {
-        $query = DB::table('project_posts as pp')
+        $query = DB::table('showcases as pp')
             ->join('users as u', 'pp.user_id', '=', 'u.user_id')
-            ->where('pp.status', 'open')
+            ->where('pp.status', 'approved')
             ->where('pp.user_id', '!=', $userId)
             ->select('pp.*', 'u.username', 'u.profile_pic', 'u.user_type');
 
@@ -501,7 +501,7 @@ class postService
         $userIds = $posts->pluck('user_id')->unique()->toArray();
 
         // Batch load images
-        $images = DB::table('project_post_images')
+        $images = DB::table('showcase_images')
             ->whereIn('post_id', $postIds)
             ->orderBy('sort_order')
             ->get()

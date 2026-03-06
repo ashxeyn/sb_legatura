@@ -153,7 +153,7 @@ export default function CreateShowcase({ visible, onClose, onCreated }: CreateSh
 
       const res = await post_service.create_showcase(payload, images);
       if (res.success) {
-        Alert.alert('Success', 'Your showcase post has been created!', [
+          Alert.alert('Submitted', 'Your showcase post was submitted and is pending review.', [
           { text: 'OK', onPress: () => { onCreated(); onClose(); } },
         ]);
       } else {

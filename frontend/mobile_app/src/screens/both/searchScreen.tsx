@@ -16,7 +16,7 @@ import {
   Dimensions,
   ScrollView,
 } from 'react-native';
-import ImageFallback from '../../components/ImageFallbackFixed';
+import ImageFallback from '../../components/imageFallback';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { api_config } from '../../config/api';
@@ -25,7 +25,7 @@ import {
   ContractorFilters,
   ProjectFilters,
 } from '../../services/search_service';
-import FilterSheet from '../../components/FilterSheet';
+import FilterSheet from '../../components/filterSheet';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
