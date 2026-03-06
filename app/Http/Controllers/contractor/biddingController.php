@@ -581,30 +581,49 @@ class biddingController extends Controller
                 'bid_files.*' => 'file|max:10240|mimes:pdf,doc,docx,jpg,jpeg,png,gif,xls,xlsx'
             ]);
 
-            // Check if bid already exists
+            // Respect unique(project_id, contractor_id): either reject active bid,
+            // or reuse a cancelled row by reactivating it.
             $existingBid = DB::table('bids')
                 ->where('project_id', $projectId)
                 ->where('contractor_id', $contractor->contractor_id)
-                ->whereNotIn('bid_status', ['cancelled'])
                 ->first();
 
-            if ($existingBid) {
+            if ($existingBid && $existingBid->bid_status !== 'cancelled') {
                 return response()->json([
                     'success' => false,
-                    'message' => 'You have already submitted a bid for this project'
-                ], 400);
+                    'message' => 'You have already submitted a bid for this project',
+                    'error_code' => 'BID_ALREADY_EXISTS',
+                    'data' => [
+                        'bid_id' => $existingBid->bid_id,
+                        'bid_status' => $existingBid->bid_status,
+                    ],
+                ], 409);
             }
 
-            // Create bid
-            $bidId = DB::table('bids')->insertGetId([
-                'project_id' => $projectId,
-                'contractor_id' => $contractor->contractor_id,
-                'proposed_cost' => $validated['proposed_cost'],
-                'estimated_timeline' => $validated['estimated_timeline'],
-                'contractor_notes' => $validated['contractor_notes'] ?? null,
-                'bid_status' => 'submitted',
-                'submitted_at' => now()
-            ]);
+            if ($existingBid && $existingBid->bid_status === 'cancelled') {
+                DB::table('bids')
+                    ->where('bid_id', $existingBid->bid_id)
+                    ->update([
+                        'proposed_cost' => $validated['proposed_cost'],
+                        'estimated_timeline' => $validated['estimated_timeline'],
+                        'contractor_notes' => $validated['contractor_notes'] ?? null,
+                        'bid_status' => 'submitted',
+                        'submitted_at' => now(),
+                    ]);
+
+                $bidId = $existingBid->bid_id;
+            } else {
+                // Create fresh bid row when none exists yet.
+                $bidId = DB::table('bids')->insertGetId([
+                    'project_id' => $projectId,
+                    'contractor_id' => $contractor->contractor_id,
+                    'proposed_cost' => $validated['proposed_cost'],
+                    'estimated_timeline' => $validated['estimated_timeline'],
+                    'contractor_notes' => $validated['contractor_notes'] ?? null,
+                    'bid_status' => 'submitted',
+                    'submitted_at' => now()
+                ]);
+            }
 
             // Handle file uploads
             $uploadedFiles = [];
@@ -679,10 +698,36 @@ class biddingController extends Controller
                 'message' => 'Validation failed',
                 'errors' => $e->errors()
             ], 422);
-        } catch (\Exception $e) {
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Gracefully handle unique(project_id, contractor_id) race/duplicates.
+            if ((int) ($e->errorInfo[1] ?? 0) === 1062) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You have already submitted a bid for this project',
+                    'error_code' => 'BID_ALREADY_EXISTS'
+                ], 409);
+            }
+
+            Log::error('apiSubmitBid query error', [
+                'project_id' => $projectId,
+                'user_id' => $userId ?? null,
+                'error' => $e->getMessage(),
+            ]);
+
             return response()->json([
                 'success' => false,
-                'message' => 'Error submitting bid: ' . $e->getMessage()
+                'message' => 'Failed to submit bid. Please try again.'
+            ], 500);
+        } catch (\Exception $e) {
+            Log::error('apiSubmitBid unexpected error', [
+                'project_id' => $projectId,
+                'user_id' => $userId ?? null,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to submit bid. Please try again.'
             ], 500);
         }
     }
@@ -702,10 +747,24 @@ class biddingController extends Controller
                 ], 400);
             }
 
-            // Get contractor info
+            // Get contractor info - check both direct contractor ownership and staff membership
             $contractor = DB::table('contractors')
                 ->where('user_id', $userId)
                 ->first();
+
+            if (!$contractor) {
+                $contractorUser = DB::table('contractor_users')
+                    ->where('user_id', $userId)
+                    ->where('is_active', 1)
+                    ->where('is_deleted', 0)
+                    ->first();
+
+                if ($contractorUser) {
+                    $contractor = DB::table('contractors')
+                        ->where('contractor_id', $contractorUser->contractor_id)
+                        ->first();
+                }
+            }
 
             if (!$contractor) {
                 return response()->json([

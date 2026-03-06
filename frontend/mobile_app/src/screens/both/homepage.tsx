@@ -2094,7 +2094,17 @@ const renderProfileContent = () => {
           setBidProject(null);
         }}
         onBidSubmitted={() => {
-          // Refresh the projects list after submitting a bid
+          const submittedProjectId = bidProject?.project_id;
+
+          // Hide the project immediately from contractor lists so no manual reload is needed.
+          if (submittedProjectId) {
+            setFeedItems(prev =>
+              prev.filter(item => !(item?.feed_type === 'project' && item?.data?.project_id === submittedProjectId))
+            );
+            setAvailableProjects(prev => prev.filter(p => p.project_id !== submittedProjectId));
+          }
+
+          // Keep background data in sync for any legacy/non-unified screens.
           refreshProjects();
         }}
         onOpenSubscription={() => {

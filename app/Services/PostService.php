@@ -237,6 +237,13 @@ class postService
         // Property owners see contractor profiles instead.
         $isContractor = in_array($role, ['contractor', 'both']);
         $isOwner      = !$isContractor;
+        $contractorId = null;
+
+        if ($isContractor) {
+            $contractorId = DB::table('contractors')
+                ->where('user_id', $userId)
+                ->value('contractor_id');
+        }
 
         // ── Count totals ──
         $projectCount = 0;
@@ -248,6 +255,15 @@ class postService
                 ->where(function ($q) {
                     $q->whereNull('pr.bidding_due')
                       ->orWhere('pr.bidding_due', '>=', now());
+                })
+                ->when($contractorId, function ($q) use ($contractorId) {
+                    $q->whereNotExists(function ($sub) use ($contractorId) {
+                        $sub->select(DB::raw(1))
+                            ->from('bids as b')
+                            ->whereColumn('b.project_id', 'p.project_id')
+                            ->where('b.contractor_id', $contractorId)
+                            ->whereNotIn('b.bid_status', ['cancelled']);
+                    });
                 })
                 ->count();
         }
@@ -285,6 +301,15 @@ class postService
                 ->where(function ($q) {
                     $q->whereNull('pr.bidding_due')
                       ->orWhere('pr.bidding_due', '>=', now());
+                })
+                ->when($contractorId, function ($q) use ($contractorId) {
+                    $q->whereNotExists(function ($sub) use ($contractorId) {
+                        $sub->select(DB::raw(1))
+                            ->from('bids as b')
+                            ->whereColumn('b.project_id', 'p.project_id')
+                            ->where('b.contractor_id', $contractorId)
+                            ->whereNotIn('b.bid_status', ['cancelled']);
+                    });
                 })
                 ->select(
                     'p.project_id', 'p.project_title', 'p.project_description',
