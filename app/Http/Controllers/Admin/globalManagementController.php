@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use App\Http\Requests\admin\rejectPostRequest;
 use App\Models\admin\postingManagementClass;
+use App\Models\admin\reviewsClass;
 use Illuminate\Support\Facades\Http;
 
 class globalManagementController extends Controller
@@ -29,10 +30,10 @@ class globalManagementController extends Controller
     public function proofOfPayments(Request $request)
     {
         $filters = [
-            'search'    => $request->query('search'),
-            'status'    => $request->query('status'),
+            'search' => $request->query('search'),
+            'status' => $request->query('status'),
             'date_from' => $request->query('date_from'),
-            'date_to'   => $request->query('date_to'),
+            'date_to' => $request->query('date_to'),
         ];
 
         $payments = $this->getAllPaymentProofs(
@@ -55,7 +56,7 @@ class globalManagementController extends Controller
 
         return view('admin.globalManagement.proofOfpayments', [
             'payments' => $payments,
-            'stats'    => $stats,
+            'stats' => $stats,
         ]);
     }
 
@@ -74,14 +75,14 @@ class globalManagementController extends Controller
             ->first();
 
         return [
-            'total'     => $rows->total     ?? 0,
-            'pending'   => $rows->pending   ?? 0,
-            'failed'    => $rows->failed    ?? 0,
+            'total' => $rows->total ?? 0,
+            'pending' => $rows->pending ?? 0,
+            'failed' => $rows->failed ?? 0,
             'completed' => $rows->completed ?? 0,
         ];
     }
 
-     /**
+    /**
      * Display the AI management page
      */
     public function aiManagement()
@@ -107,9 +108,9 @@ class globalManagementController extends Controller
             ->get();
 
         return view('admin.globalManagement.aiManagement', [
-            'aiUsage'        => $aiUsage,
+            'aiUsage' => $aiUsage,
             'predictionLogs' => $predictionLogs,
-            'projects'       => $projects,
+            'projects' => $projects,
         ]);
     }
 
@@ -138,13 +139,13 @@ class globalManagementController extends Controller
 
             // 2. Save to Database (Create History Log)
             DB::table('ai_prediction_logs')->insert([
-                'project_id'           => $id,
-                'prediction'           => $data['prediction']['prediction'],
-                'delay_probability'    => $data['prediction']['delay_probability'],
-                'weather_severity'     => $data['weather_severity'],
+                'project_id' => $id,
+                'prediction' => $data['prediction']['prediction'],
+                'delay_probability' => $data['prediction']['delay_probability'],
+                'weather_severity' => $data['weather_severity'],
                 'ai_response_snapshot' => json_encode($data),
-                'created_at'           => now(),
-                'updated_at'           => now(),
+                'created_at' => now(),
+                'updated_at' => now(),
             ]);
 
             return response()->json(['success' => true, 'message' => 'Analysis Complete', 'data' => $data]);
@@ -181,12 +182,57 @@ class globalManagementController extends Controller
     }
 
     /**
+     * Display the review & rating management page
+     */
+    public function reviewManagement(Request $request)
+    {
+        $filters = [
+            'search' => $request->query('search'),
+            'rating' => $request->query('rating'),
+            'date_from' => $request->query('date_from'),
+            'date_to' => $request->query('date_to'),
+        ];
+
+        $model = new reviewsClass();
+        $reviews = $model->fetchReviews($filters);
+
+        if ($request->ajax()) {
+            return response()->json([
+                'reviews_html' => view('admin.globalManagement.partials.reviewManagementTable', ['reviews' => $reviews])->render()
+            ]);
+        }
+
+        return view('admin.globalManagement.reviewManagement', [
+            'reviews' => $reviews
+        ]);
+    }
+
+    /**
+     * Delete (soft delete) a review
+     */
+    public function deleteReview(Request $request, $id)
+    {
+        $request->validate([
+            'deletion_reason' => 'required|string|max:500'
+        ]);
+
+        $model = new reviewsClass();
+        $deleted = $model->deleteReview($id, $request->deletion_reason);
+
+        if ($deleted) {
+            return response()->json(['success' => true, 'message' => 'Review successfully deleted.']);
+        }
+
+        return response()->json(['success' => false, 'message' => 'Failed to delete review.'], 400);
+    }
+
+    /**
      * Get all bids with project and contractor information
      */
     private function getAllBids($search = null, $status = null, $page = 1)
     {
         $query = DB::table('bids')
-            ->join('projects',    'bids.project_id',    '=', 'projects.project_id')
+            ->join('projects', 'bids.project_id', '=', 'projects.project_id')
             ->join('contractors', 'bids.contractor_id', '=', 'contractors.contractor_id')
             ->select(
                 'bids.bid_id',
@@ -211,8 +257,8 @@ class globalManagementController extends Controller
 
         if ($search) {
             $query->where(function ($q) use ($search) {
-                $q->where('projects.project_title',  'like', "%{$search}%")
-                ->orWhere('contractors.company_name', 'like', "%{$search}%");
+                $q->where('projects.project_title', 'like', "%{$search}%")
+                    ->orWhere('contractors.company_name', 'like', "%{$search}%");
             });
         }
 
@@ -221,9 +267,9 @@ class globalManagementController extends Controller
         }
 
         return $query->orderBy('bids.submitted_at', 'desc')
-                    ->paginate(15, ['*'], 'page', $page);
+            ->paginate(15, ['*'], 'page', $page);
     }
-// ----------------------------------------------------------------
+    // ----------------------------------------------------------------
 // 2. NEW: getBidFiles() — AJAX endpoint to load files for a bid
 //    Route: GET /admin/global-management/bid-management/files/{id}
 // ----------------------------------------------------------------
@@ -242,7 +288,7 @@ class globalManagementController extends Controller
         return response()->json($files);
     }
 
-// ----------------------------------------------------------------
+    // ----------------------------------------------------------------
 // 3. NEW: updateBid() — AJAX PUT to update status/cost/notes
 //    Route: PUT /admin/global-management/bid-management/{id}
 // ----------------------------------------------------------------
@@ -250,15 +296,15 @@ class globalManagementController extends Controller
     public function updateBid(Request $request, $id)
     {
         $allowed = ['submitted', 'under_review', 'accepted', 'rejected', 'cancelled'];
-        $status  = $request->input('bid_status');
+        $status = $request->input('bid_status');
 
         if ($status && !in_array($status, $allowed)) {
             return response()->json(['success' => false, 'message' => 'Invalid status.'], 422);
         }
 
         $data = array_filter([
-            'bid_status'       => $status,
-            'proposed_cost'    => $request->input('proposed_cost'),
+            'bid_status' => $status,
+            'proposed_cost' => $request->input('proposed_cost'),
             'contractor_notes' => $request->input('contractor_notes'),
         ], fn($v) => !is_null($v));
 
@@ -275,7 +321,7 @@ class globalManagementController extends Controller
         return response()->json(['success' => false, 'message' => 'Failed to update bid.'], 400);
     }
 
-// ----------------------------------------------------------------
+    // ----------------------------------------------------------------
 // 4. NEW: deleteBid() — AJAX DELETE
 //    Route: DELETE /admin/global-management/bid-management/{id}
 // ----------------------------------------------------------------
@@ -293,7 +339,7 @@ class globalManagementController extends Controller
 
         return response()->json(['success' => false, 'message' => 'Failed to delete bid.'], 400);
     }
-   /**
+    /**
      * Get all payment proofs — joined correctly using milestone_payments schema.
      *
      * milestone_payments columns used:
@@ -336,10 +382,10 @@ class globalManagementController extends Controller
 
         if ($search) {
             $query->where(function ($q) use ($search) {
-                $q->where('p.project_title',  'like', "%{$search}%")
-                  ->orWhere('c.company_name', 'like', "%{$search}%")
-                  ->orWhere('po.first_name',  'like', "%{$search}%")
-                  ->orWhere('po.last_name',   'like', "%{$search}%");
+                $q->where('p.project_title', 'like', "%{$search}%")
+                    ->orWhere('c.company_name', 'like', "%{$search}%")
+                    ->orWhere('po.first_name', 'like', "%{$search}%")
+                    ->orWhere('po.last_name', 'like', "%{$search}%");
             });
         }
 
@@ -348,11 +394,11 @@ class globalManagementController extends Controller
         }
 
         return $query->orderBy('mp.transaction_date', 'desc')
-                     ->paginate(15, ['*'], 'page', $page);
+            ->paginate(15, ['*'], 'page', $page);
     }
 
 
-     /**
+    /**
      * Get AI usage statistics by connecting to Python Service
      * (single, authoritative definition — no duplicate)
      */
@@ -360,7 +406,7 @@ class globalManagementController extends Controller
     {
         // Safe defaults
         $aiData = [
-            'status'   => 'Offline',
+            'status' => 'Offline',
             'features' => [],
         ];
 
@@ -371,7 +417,7 @@ class globalManagementController extends Controller
             if ($response->successful()) {
                 $data = $response->json();
                 // Only read keys that Python actually returns
-                $aiData['status']   = $data['service_status']  ?? 'Offline';
+                $aiData['status'] = $data['service_status'] ?? 'Offline';
                 $aiData['features'] = $data['active_features'] ?? [];
             }
         } catch (\Exception $e) {
@@ -476,7 +522,7 @@ class globalManagementController extends Controller
     /**
      * Get payments as JSON (for AJAX)
      */
-    
+
     public function getPaymentDetail($id)
     {
         $payment = DB::table('milestone_payments as mp')
@@ -512,7 +558,7 @@ class globalManagementController extends Controller
     public function updatePayment(Request $request, $id)
     {
         $allowed = ['submitted', 'approved', 'rejected', 'deleted'];
-        $status  = $request->input('payment_status');
+        $status = $request->input('payment_status');
 
         if ($status && !in_array($status, $allowed)) {
             return response()->json(['success' => false, 'message' => 'Invalid status.'], 422);
@@ -554,7 +600,7 @@ class globalManagementController extends Controller
             ->update($data);
 
         return ($updated !== false)
-            ? response()->json(['success' => true,  'message' => 'Payment updated successfully.'])
+            ? response()->json(['success' => true, 'message' => 'Payment updated successfully.'])
             : response()->json(['success' => false, 'message' => 'Failed to update payment.'], 400);
     }
 
@@ -568,7 +614,7 @@ class globalManagementController extends Controller
             ->update(['payment_status' => 'approved', 'updated_at' => now()]);
 
         return $updated
-            ? response()->json(['success' => true,  'message' => 'Payment approved.'])
+            ? response()->json(['success' => true, 'message' => 'Payment approved.'])
             : response()->json(['success' => false, 'message' => 'Failed to approve payment.'], 400);
     }
 
@@ -577,13 +623,13 @@ class globalManagementController extends Controller
      */
     public function rejectPayment(Request $request, $id)
     {
-        $reason  = $request->input('reason', 'Rejected by admin');
+        $reason = $request->input('reason', 'Rejected by admin');
         $updated = DB::table('milestone_payments')
             ->where('payment_id', $id)
             ->update(['payment_status' => 'rejected', 'reason' => $reason, 'updated_at' => now()]);
 
         return $updated
-            ? response()->json(['success' => true,  'message' => 'Payment rejected.'])
+            ? response()->json(['success' => true, 'message' => 'Payment rejected.'])
             : response()->json(['success' => false, 'message' => 'Failed to reject payment.'], 400);
     }
 
@@ -597,7 +643,7 @@ class globalManagementController extends Controller
             ->update(['payment_status' => 'deleted', 'updated_at' => now()]);
 
         return $deleted
-            ? response()->json(['success' => true,  'message' => 'Payment deleted.'])
+            ? response()->json(['success' => true, 'message' => 'Payment deleted.'])
             : response()->json(['success' => false, 'message' => 'Failed to delete payment.'], 400);
     }
     /**
