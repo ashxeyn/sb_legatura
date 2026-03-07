@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', function () {
         '</div>';
 
     // ── AJAX: Fetch Showcases (table reload) ──
-    function fetchShowcases() {
+    function fetchShowcases(page = 1) {
         if (!tableBody) return;
 
         var searchInput = document.getElementById('topNavSearch');
@@ -31,7 +31,8 @@ document.addEventListener('DOMContentLoaded', function () {
             search: searchInput ? searchInput.value : '',
             status: statusFilter ? statusFilter.value : '',
             date_from: dateFrom ? dateFrom.value : '',
-            date_to: dateTo ? dateTo.value : ''
+            date_to: dateTo ? dateTo.value : '',
+            page: page
         });
 
         fetch(window.location.pathname + '?' + queryParams.toString(), {
@@ -41,6 +42,10 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(function (data) {
                 if (data.showcases_html) {
                     tableBody.innerHTML = data.showcases_html;
+                    var paginationContainer = document.getElementById('paginationLinks');
+                    if (paginationContainer && data.pagination_html !== undefined) {
+                        paginationContainer.innerHTML = data.pagination_html;
+                    }
                     rebindActionButtons();
                 }
             })
@@ -387,22 +392,37 @@ document.addEventListener('DOMContentLoaded', function () {
     if (searchInput) {
         searchInput.addEventListener('input', function () {
             clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(fetchShowcases, 400);
+            searchTimeout = setTimeout(function () { fetchShowcases(1); }, 400);
         });
     }
-    if (statusFilter) statusFilter.addEventListener('change', fetchShowcases);
-    if (dateFrom) dateFrom.addEventListener('change', fetchShowcases);
-    if (dateTo) dateTo.addEventListener('change', fetchShowcases);
+
+    if (statusFilter) {
+        statusFilter.addEventListener('change', function () { fetchShowcases(1); });
+    }
 
     if (resetBtn) {
-        resetBtn.addEventListener('click', function () {
-            if (statusFilter) statusFilter.value = '';
-            if (dateFrom) dateFrom.value = '';
-            if (dateTo) dateTo.value = '';
+        resetBtn.addEventListener('click', function (e) {
+            e.preventDefault();
             if (searchInput) searchInput.value = '';
-            fetchShowcases();
+            if (statusFilter) statusFilter.value = '';
+            if (dateFrom) { dateFrom.value = ''; dateTo.min = ''; }
+            if (dateTo) { dateTo.value = ''; dateFrom.max = ''; }
+            fetchShowcases(1);
         });
     }
+
+    // ── Pagination Click Handling (Delegated) ──
+    document.addEventListener('click', function (e) {
+        var a = e.target.closest("#paginationLinks a");
+        if (a) {
+            e.preventDefault();
+            var url = new URL(a.href);
+            var page = url.searchParams.get('page');
+            if (page) {
+                fetchShowcases(page);
+            }
+        }
+    });
 
     // ── Toast Notification ──
     function showNotification(message, type) {

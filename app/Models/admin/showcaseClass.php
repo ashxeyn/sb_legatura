@@ -132,7 +132,7 @@ class showcaseClass
             $post = DB::table('showcases')
                 ->join('users', 'showcases.user_id', '=', 'users.user_id')
                 ->where('showcases.post_id', $postId)
-                ->select('showcases.*', 'users.email', 'users.first_name')
+                ->select('showcases.*', 'users.email', 'users.username')
                 ->first();
 
             if (!$post) {
@@ -161,7 +161,7 @@ class showcaseClass
                 try {
                     if ($post->email) {
                         $subject = "Showcase Approved";
-                        $body = "Dear {$post->first_name},\n\nYour showcase post \"{$post->title}\" has been approved and is now visible in the public feed.\n\nThank you for sharing your work on our platform.";
+                        $body = "Dear {$post->username},\n\nYour showcase post \"{$post->title}\" has been approved and is now visible in the public feed.\n\nThank you for sharing your work on our platform.";
                         \Illuminate\Support\Facades\Mail::raw($body, function ($m) use ($post, $subject) {
                             $m->to($post->email)->subject($subject);
                         });
@@ -185,7 +185,7 @@ class showcaseClass
             $post = DB::table('showcases')
                 ->join('users', 'showcases.user_id', '=', 'users.user_id')
                 ->where('showcases.post_id', $postId)
-                ->select('showcases.*', 'users.email', 'users.first_name')
+                ->select('showcases.*', 'users.email', 'users.username')
                 ->first();
 
             if (!$post) {
@@ -215,7 +215,7 @@ class showcaseClass
                 try {
                     if ($post->email) {
                         $subject = "Showcase Rejected";
-                        $body = "Dear {$post->first_name},\n\nYour showcase post \"{$post->title}\" has been rejected.\n\nReason: {$reason}\n\nPlease review our guidelines and feel free to submit anew.";
+                        $body = "Dear {$post->username},\n\nYour showcase post \"{$post->title}\" has been rejected.\n\nReason: {$reason}\n\nPlease review our guidelines and feel free to submit anew.";
                         \Illuminate\Support\Facades\Mail::raw($body, function ($m) use ($post, $subject) {
                             $m->to($post->email)->subject($subject);
                         });

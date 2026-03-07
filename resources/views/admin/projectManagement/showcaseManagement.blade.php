@@ -166,6 +166,11 @@
                     </div>
                 </div>
 
+                <!-- Pagination Container -->
+                <div class="mt-4" id="paginationLinks">
+                    {{ $showcases->links() }}
+                </div>
+
             </div>
 
         </main>

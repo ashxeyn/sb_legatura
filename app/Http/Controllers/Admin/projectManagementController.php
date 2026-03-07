@@ -1156,7 +1156,8 @@ class projectManagementController extends Controller
 
         if ($request->ajax()) {
             return response()->json([
-                'showcases_html' => view('admin.projectManagement.partials.showcaseTable', ['showcases' => $showcases])->render()
+                'showcases_html' => view('admin.projectManagement.partials.showcaseTable', ['showcases' => $showcases])->render(),
+                'pagination_html' => (string) $showcases->links()
             ]);
         }
 
