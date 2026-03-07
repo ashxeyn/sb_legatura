@@ -154,6 +154,27 @@ class postController extends Controller
     }
 
     /**
+     * Search role-aware unified feed.
+     *
+     * GET /api/unified-feed/search?search=...&scope=all|users|posts&page=1&per_page=20
+     */
+    public function searchUnifiedFeed(Request $request)
+    {
+        $userId = $this->resolveUserId($request);
+        if (!$userId) {
+            return response()->json(['success' => false, 'message' => 'Authentication required.'], 401);
+        }
+
+        $search = trim((string) $request->query('search', ''));
+        $scope = (string) $request->query('scope', 'all');
+        $page = max(1, (int) $request->query('page', 1));
+        $perPage = min(50, max(1, (int) $request->query('per_page', 20)));
+
+        $data = $this->postService->searchUnifiedFeed($userId, $search, $scope, $page, $perPage);
+        return response()->json(['success' => true, 'data' => $data]);
+    }
+
+    /**
      * Admin list for showcase moderation.
      *
      * GET /api/admin/showcases?status=pending|approved|rejected|closed|deleted|all

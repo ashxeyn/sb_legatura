@@ -25,6 +25,7 @@ import {
   ContractorFilters,
   ProjectFilters,
 } from '../../services/search_service';
+import { post_service, FeedItem } from '../../services/post_service';
 import FilterSheet from '../../components/filterSheet';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -83,6 +84,9 @@ interface SearchScreenProps {
   onContractorPress?: (contractor: Contractor) => void;
   onOwnerPress?: (owner: any) => void;
   onProjectPress?: (project: Project) => void;
+  onShowcasePress?: (showcase: any) => void;
+  renderFeedItemCard?: (item: FeedItem, index: number) => React.ReactNode;
+  renderContractorFeedCard?: (contractor: any) => React.ReactNode;
 }
 
 /* ===================================================================
@@ -96,6 +100,9 @@ export default function SearchScreen({
   onContractorPress,
   onOwnerPress,
   onProjectPress,
+  onShowcasePress,
+  renderFeedItemCard,
+  renderContractorFeedCard,
 }: SearchScreenProps) {
   const insets = useSafeAreaInsets();
   const statusBarHeight = insets.top || (Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 44);
@@ -116,8 +123,8 @@ export default function SearchScreen({
   const [activeTab, setActiveTab] = useState<TabKey>('all');
 
   // ── Results (separate state per type for "All" tab) ───────────────
-  const [contractorResults, setContractorResults] = useState<Contractor[]>([]);
-  const [projectResults, setProjectResults] = useState<Project[]>([]);
+  const [contractorResults, setContractorResults] = useState<FeedItem[]>([]);
+  const [projectResults, setProjectResults] = useState<FeedItem[]>([]);
   const [isSearching, setIsSearching] = useState(false);
 
   // Pagination per type
@@ -174,44 +181,46 @@ export default function SearchScreen({
     }
 
     try {
-      // Users (contractors + property owners)
+      // Users (role-aware opposite profiles)
       if (fetchContractors) {
-        const response = await search_service.search_users(
+        const response = await post_service.search_unified_feed(
           query.trim(),
+          'users',
           pageNum,
           PER_PAGE,
         );
         if (response.success) {
-          const data = response.data?.data || response.data || [];
+          const data = response.data?.items || [];
           const dataArray = Array.isArray(data) ? data : [];
           if (append) {
             setContractorResults(prev => [...prev, ...dataArray]);
           } else {
             setContractorResults(dataArray);
           }
-          const pag = response.data?.pagination || response.pagination;
+          const pag = response.data?.pagination;
           setContractorHasMore(pag?.has_more || false);
           setContractorTotal(pag?.total || dataArray.length);
           setContractorPage(pageNum);
         }
       }
 
-      // Projects ("Posts")
+      // Posts (projects + showcases)
       if (fetchProjects) {
-        const response = await search_service.search_projects(
-          { ...pFilters, search: query.trim() },
+        const response = await post_service.search_unified_feed(
+          query.trim(),
+          'posts',
           pageNum,
           PER_PAGE,
         );
         if (response.success) {
-          const data = response.data?.data || response.data || [];
+          const data = response.data?.items || [];
           const dataArray = Array.isArray(data) ? data : [];
           if (append) {
             setProjectResults(prev => [...prev, ...dataArray]);
           } else {
             setProjectResults(dataArray);
           }
-          const pPag = response.data?.pagination || response.pagination;
+          const pPag = response.data?.pagination;
           setProjectHasMore(pPag?.has_more || false);
           setProjectTotal(pPag?.total || dataArray.length);
           setProjectPage(pageNum);
@@ -243,22 +252,22 @@ export default function SearchScreen({
       try {
         const items: any[] = [];
 
-        // Fetch both contractors (Users) and projects (Posts) for suggestions
+        // Fetch both users and posts for suggestions
         const [cRes, pRes] = await Promise.all([
-          search_service.search_users(q, 1, 5),
-          search_service.search_projects({ search: q }, 1, 5),
+          post_service.search_unified_feed(q, 'users', 1, 5),
+          post_service.search_unified_feed(q, 'posts', 1, 5),
         ]);
 
         if (cRes.success) {
-          const cData = cRes.data?.data || cRes.data || [];
+          const cData = cRes.data?.items || [];
           (Array.isArray(cData) ? cData : []).forEach(c =>
-            items.push({ type: 'contractor', data: c })
+            items.push({ type: 'user', data: c })
           );
         }
         if (pRes.success) {
-          const pData = pRes.data?.data || pRes.data || [];
+          const pData = pRes.data?.items || [];
           (Array.isArray(pData) ? pData : []).forEach(p =>
-            items.push({ type: 'project', data: p })
+            items.push({ type: 'post', data: p })
           );
         }
 
@@ -442,16 +451,25 @@ export default function SearchScreen({
   // ==================================================================
   //  RENDER: Contractor Card (feed-style, matching homepage)
   // ==================================================================
-  const renderContractorCard = (item: Contractor) => {
-    const isOwner = (item as any).role === 'property_owner';
-    const hasCoverPhoto = item.cover_photo && !item.cover_photo.includes('placeholder');
+  const renderContractorCard = (rawItem: any) => {
+    const feedItem = rawItem?.data ? rawItem : null;
+    const item = (feedItem?.data || rawItem) as any;
+    const feedType = feedItem?.feed_type || item?.feed_type || item?.role;
+    const isOwner = feedType === 'owner' || feedType === 'property_owner' || item?.role === 'property_owner';
+
+    if (!isOwner && feedType === 'contractor' && renderContractorFeedCard) {
+      return <>{renderContractorFeedCard(item)}</>;
+    }
+
+    const hasCoverPhoto = item.cover_photo && !String(item.cover_photo).includes('placeholder');
     const coverPhotoUri = hasCoverPhoto
       ? `${api_config.base_url}/storage/${item.cover_photo}`
       : null;
     const logoUri = item.profile_pic
       ? (item.profile_pic.startsWith('http') ? item.profile_pic : `${api_config.base_url}/storage/${item.profile_pic}`)
       : null;
-    const initials = getInitials(item.company_name);
+    const displayName = item.company_name || item.display_name || item.username || 'User';
+    const initials = getInitials(displayName);
     const fallbackAvatar = isOwner ? defaultOwnerAvatar : defaultContractorAvatar;
 
     return (
@@ -459,7 +477,7 @@ export default function SearchScreen({
         style={styles.card}
         activeOpacity={0.7}
         onPress={() => {
-          if ((item as any).role === 'property_owner' && onOwnerPress) {
+          if (isOwner && onOwnerPress) {
             onOwnerPress(item);
           } else {
             onContractorPress?.(item);
@@ -478,7 +496,7 @@ export default function SearchScreen({
         <View style={styles.typeBadgeOverlap}>
           <View style={styles.typeBadgeContainer}>
             <Text style={styles.typeBadgeText}>
-              {item.role === 'property_owner' ? 'Property Owner' : (item.type_name || 'General')}
+              {isOwner ? 'Property Owner' : (item.type_name || 'General')}
             </Text>
           </View>
         </View>
@@ -497,7 +515,7 @@ export default function SearchScreen({
 
         {/* Info */}
         <View style={styles.cardBody}>
-          <Text style={styles.cardTitle} numberOfLines={2}>{item.company_name}</Text>
+          <Text style={styles.cardTitle} numberOfLines={2}>{displayName}</Text>
           {!isOwner && (
             <Text style={styles.cardSubtitle}>
               {item.years_of_experience || 0} years experience
@@ -546,7 +564,55 @@ export default function SearchScreen({
   // ==================================================================
   //  RENDER: Project Card (feed-style, matching homepage)
   // ==================================================================
-  const renderProjectCard = (item: Project) => {
+  const renderProjectCard = (rawItem: any, index: number = 0) => {
+    const feedItem = rawItem?.data ? rawItem : null;
+    const item = (feedItem?.data || rawItem) as any;
+    const feedType = feedItem?.feed_type || item?.feed_type || 'project';
+
+    if (renderFeedItemCard && feedItem) {
+      return <>{renderFeedItemCard(feedItem as FeedItem, index)}</>;
+    }
+
+    if (feedType === 'showcase') {
+      const displayName = item.display_name || item.username || 'User';
+      const avatar = item.avatar ? `${api_config.base_url}/storage/${item.avatar}` : undefined;
+      return (
+        <TouchableOpacity
+          style={styles.card}
+          activeOpacity={0.7}
+          onPress={() => onShowcasePress?.(item)}
+        >
+          <View style={styles.projectHeader}>
+            <View style={styles.ownerInfo}>
+              <ImageFallback
+                uri={avatar}
+                defaultImage={defaultOwnerAvatar}
+                style={styles.ownerAvatar}
+                resizeMode="cover"
+              />
+              <View>
+                <Text style={styles.ownerName}>{displayName}</Text>
+                <Text style={styles.postDate}>
+                  {item.created_at
+                    ? `Posted ${new Date(item.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+                    : 'Recently posted'}
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          {!!item.title && <Text style={styles.projectTitle}>{item.title}</Text>}
+          <Text style={styles.projectDescription} numberOfLines={3}>{item.content}</Text>
+          {!!item.location && (
+            <View style={styles.detailRow}>
+              <MaterialIcons name="location-on" size={16} color="#666" />
+              <Text style={styles.detailText}>{item.location}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      );
+    }
+
     const ownerProfileUrl = item.owner_profile_pic
       ? `${api_config.base_url}/storage/${item.owner_profile_pic}`
       : null;
@@ -557,7 +623,7 @@ export default function SearchScreen({
       <TouchableOpacity
         style={styles.card}
         activeOpacity={0.7}
-        onPress={() => onProjectPress?.(item)}
+        onPress={() => onProjectPress?.(item as any)}
       >
         {/* Header: Owner info + deadline */}
         <View style={styles.projectHeader}>
@@ -687,7 +753,7 @@ export default function SearchScreen({
     : contractorTotal + projectTotal;
 
   // ── Render list item ──────────────────────────────────────────────
-  const renderItem = useCallback(({ item }: { item: any }) => {
+  const renderItem = useCallback(({ item, index }: { item: any; index: number }) => {
     if (item.type === 'see_all') {
       return (
         <TouchableOpacity
@@ -707,19 +773,24 @@ export default function SearchScreen({
       );
     }
     if (item.type === 'contractor') return renderContractorCard(item.data);
-    if (item.type === 'project') return renderProjectCard(item.data);
+    if (item.type === 'project') return renderProjectCard(item.data, index);
     return null;
-  }, [onContractorPress, onOwnerPress, onProjectPress]);
+  }, [onContractorPress, onOwnerPress, onProjectPress, renderFeedItemCard, renderContractorFeedCard]);
 
   const getItemKey = (item: any, index: number) => {
     if (item.type === 'section_header') return `section-${index}`;
     if (item.type === 'see_all') return `seeall-${index}`;
-    if (item.type === 'contractor') return `c-${item.data.contractor_id || item.data.user_id}`;
-    return `p-${item.data.project_id}`;
+    if (item.type === 'contractor') {
+      const payload = item.data?.data || item.data;
+      return `c-${payload.contractor_id || payload.owner_id || payload.user_id || index}`;
+    }
+    const feedType = item.data?.feed_type || item.data?.data?.feed_type || 'project';
+    const payload = item.data?.data || item.data;
+    return `p-${feedType}-${payload.project_id || payload.post_id || payload.item_id || index}`;
   };
 
   // ── Handle suggestion tap: go straight to full results ────────────
-  const handleSuggestionContractorPress = useCallback((contractor: any) => {
+  const handleSuggestionContractorPress = useCallback((userItem: any) => {
     // Save query to recents, then open results page with the contractor selected
     const q = searchQuery.trim();
     if (q) {
@@ -730,15 +801,17 @@ export default function SearchScreen({
     }
     setSuggestions([]);
     setShowResults(false);
-    // Route to the correct profile based on role
-    if (contractor.role === 'property_owner' && onOwnerPress) {
-      onOwnerPress(contractor);
+    const feedType = userItem?.feed_type;
+    const payload = userItem?.data || userItem;
+
+    if ((feedType === 'owner' || payload?.role === 'property_owner') && onOwnerPress) {
+      onOwnerPress(payload);
     } else {
-      onContractorPress?.(contractor);
+      onContractorPress?.(payload);
     }
   }, [searchQuery, onContractorPress, onOwnerPress]);
 
-  const handleSuggestionProjectPress = useCallback((project: any) => {
+  const handleSuggestionProjectPress = useCallback((feedItem: any) => {
     const q = searchQuery.trim();
     if (q) {
       setRecentSearches(prev => {
@@ -748,21 +821,29 @@ export default function SearchScreen({
     }
     setSuggestions([]);
     setShowResults(false);
-    onProjectPress?.(project);
-  }, [searchQuery, onProjectPress]);
+    const feedType = feedItem?.feed_type;
+    const payload = feedItem?.data || feedItem;
+    if (feedType === 'showcase') {
+      onShowcasePress?.(payload);
+      return;
+    }
+    onProjectPress?.(payload);
+  }, [searchQuery, onProjectPress, onShowcasePress]);
 
   // ── Render a compact suggestion row ───────────────────────────────
   const renderSuggestionItem = ({ item }: { item: any }) => {
-    if (item.type === 'contractor') {
-      const c = item.data;
+    if (item.type === 'user') {
+      const uItem = item.data;
+      const c = uItem?.data || uItem;
+      const feedType = uItem?.feed_type;
       const logoUri = c.profile_pic
-        ? (c.profile_pic.startsWith('http') ? c.profile_pic : `${api_config.base_url}/storage/${c.profile_pic}`)
+        ? (String(c.profile_pic).startsWith('http') ? c.profile_pic : `${api_config.base_url}/storage/${c.profile_pic}`)
         : null;
-      const suggestionFallback = c.role === 'property_owner' ? defaultOwnerAvatar : defaultContractorAvatar;
+      const suggestionFallback = feedType === 'owner' ? defaultOwnerAvatar : defaultContractorAvatar;
       return (
         <TouchableOpacity
           style={styles.suggestionRow}
-          onPress={() => handleSuggestionContractorPress(c)}
+          onPress={() => handleSuggestionContractorPress(uItem)}
           activeOpacity={0.7}
         >
           <ImageFallback
@@ -772,28 +853,30 @@ export default function SearchScreen({
             resizeMode="cover"
           />
           <View style={styles.suggestionInfo}>
-            <Text style={styles.suggestionTitle} numberOfLines={1}>{c.company_name}</Text>
+            <Text style={styles.suggestionTitle} numberOfLines={1}>{c.company_name || c.display_name || c.username}</Text>
             <Text style={styles.suggestionMeta} numberOfLines={1}>
-              {c.role === 'property_owner' ? 'Property Owner' : (c.type_name || 'Contractor')}
+              {feedType === 'owner' ? 'Property Owner' : (c.type_name || 'Contractor')}
               {(c.business_address || c.address) ? ` • ${c.business_address || c.address}` : ''}
             </Text>
           </View>
           <View style={styles.suggestionTypeBadge}>
-            <MaterialIcons name={c.role === 'property_owner' ? 'person' : 'engineering'} size={14} color="#65676B" />
+            <MaterialIcons name={feedType === 'owner' ? 'person' : 'engineering'} size={14} color="#65676B" />
           </View>
         </TouchableOpacity>
       );
     }
 
-    if (item.type === 'project') {
-      const p = item.data;
+    if (item.type === 'post') {
+      const pItem = item.data;
+      const p = pItem?.data || pItem;
+      const feedType = pItem?.feed_type;
       const ownerUri = p.owner_profile_pic
         ? `${api_config.base_url}/storage/${p.owner_profile_pic}`
-        : null;
+        : (p.avatar ? `${api_config.base_url}/storage/${p.avatar}` : null);
       return (
         <TouchableOpacity
           style={styles.suggestionRow}
-          onPress={() => handleSuggestionProjectPress(p)}
+          onPress={() => handleSuggestionProjectPress(pItem)}
           activeOpacity={0.7}
         >
           <ImageFallback
@@ -803,14 +886,14 @@ export default function SearchScreen({
             resizeMode="cover"
           />
           <View style={styles.suggestionInfo}>
-            <Text style={styles.suggestionTitle} numberOfLines={1}>{p.project_title}</Text>
+            <Text style={styles.suggestionTitle} numberOfLines={1}>{p.project_title || p.title}</Text>
             <Text style={styles.suggestionMeta} numberOfLines={1}>
-              {p.type_name || 'Project'}
-              {p.project_location ? ` • ${p.project_location}` : ''}
+              {feedType === 'showcase' ? 'Showcase' : (p.type_name || 'Project')}
+              {(p.project_location || p.location) ? ` • ${p.project_location || p.location}` : ''}
             </Text>
           </View>
           <View style={styles.suggestionTypeBadge}>
-            <MaterialIcons name="business" size={14} color="#65676B" />
+            <MaterialIcons name={feedType === 'showcase' ? 'collections' : 'business'} size={14} color="#65676B" />
           </View>
         </TouchableOpacity>
       );
@@ -839,9 +922,9 @@ export default function SearchScreen({
               <FlatList
                 data={suggestions}
                 keyExtractor={(item, i) =>
-                  item.type === 'contractor'
-                    ? `sc-${item.data.contractor_id || item.data.user_id}`
-                    : `sp-${item.data.project_id}`
+                  item.type === 'user'
+                    ? `su-${item.data?.item_id || item.data?.data?.user_id || i}`
+                    : `sp-${item.data?.item_id || item.data?.data?.project_id || item.data?.data?.post_id || i}`
                 }
                 renderItem={renderSuggestionItem}
                 showsVerticalScrollIndicator={false}

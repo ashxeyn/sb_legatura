@@ -239,9 +239,17 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
   // Get status bar height (top inset)
   const statusBarHeight = insets.top || (Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 44);
 
+  // Staff/contractor-member users must always operate in contractor context.
+  const isStaffContext = useMemo(() => {
+    const rawType = String(userData?.user_type || '').toLowerCase();
+    const determinedRole = String(userData?.determinedRole || '').toLowerCase();
+    return rawType === 'staff' || determinedRole === 'contractor' || !!userData?.contractor_member;
+  }, [userData?.user_type, userData?.determinedRole, userData?.contractor_member]);
+
   // Resolve effective user type: prefer explicit userData.user_type when available
   // IMPORTANT: Staff users should be treated as contractors
   const effectiveUserType = useMemo(() => {
+    if (isStaffContext) return 'contractor';
     if (currentRole === 'owner') return 'property_owner';
     if (currentRole === 'contractor') return 'contractor';
 
@@ -251,13 +259,19 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
       return 'contractor';
     }
     return rawType === 'property_owner' || rawType === 'both' ? 'property_owner' : userType;
-  }, [currentRole, userData?.user_type, userType]);
+  }, [isStaffContext, currentRole, userData?.user_type, userType]);
 
   // Refresh current role from API on mount and when app comes to foreground
   useEffect(() => {
     let isMounted = true;
     const fetchCurrentRole = async () => {
       try {
+        // Force contractor role for staff/member sessions regardless of role endpoint defaults.
+        if (isStaffContext) {
+          if (isMounted) setCurrentRole('contractor');
+          return;
+        }
+
         const res = await role_service.get_current_role();
         if (res?.success) {
           const roleVal = (res as any).current_role || (res as any).data?.current_role || (res as any).user_type;
@@ -303,7 +317,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
           } catch (err) {
             // ignore storage errors
           }
- rr       }
+        }
       } catch (e) {
         // Silent failure; keep existing role
       }
@@ -325,7 +339,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
       try { roleChangedSub.remove(); } catch (e) {}
       try { appStateSub.remove(); } catch (e) {}
     };
-  }, []);
+  }, [isStaffContext]);
 
   // Handle logout - calls the parent callback
   const handleLogout = () => {
@@ -1331,6 +1345,11 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
     setSelectedProject(project);
   }, []);
 
+  const handleSearchShowcasePress = useCallback((showcase: any) => {
+    setShowSearchScreen(false);
+    setSelectedShowcasePost(showcase);
+  }, []);
+
   const handleSearchContractorPress = useCallback((contractor: any) => {
     setShowSearchScreen(false);
     setSelectedContractor({
@@ -1351,11 +1370,45 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
     setSelectedOwner({
       owner_id: owner.owner_id,
       user_id: owner.user_id,
-      name: owner.company_name || owner.username || 'Property Owner',
+      name: owner.display_name || owner.company_name || owner.username || 'Property Owner',
       profile_pic: owner.profile_pic,
       address: owner.address,
     });
   }, []);
+
+  const renderSearchFeedItem = useCallback((feedItem: any, index: number) => {
+    if (!feedItem) return null;
+
+    if (feedItem.feed_type === 'project') {
+      return renderProjectCard(feedItem.data as any);
+    }
+
+    if (feedItem.feed_type === 'showcase') {
+      return renderShowcaseCard(feedItem.data, index);
+    }
+
+    if (feedItem.feed_type === 'contractor') {
+      return renderContractorCard({
+        item: {
+          ...feedItem.data,
+          contractor_type: feedItem.data?.type_name,
+          location: feedItem.data?.business_address,
+        },
+      });
+    }
+
+    return null;
+  }, [renderProjectCard, renderShowcaseCard, renderContractorCard]);
+
+  const renderSearchContractorCard = useCallback((contractor: any) => {
+    return renderContractorCard({
+      item: {
+        ...contractor,
+        contractor_type: contractor?.type_name,
+        location: contractor?.business_address,
+      },
+    });
+  }, [renderContractorCard]);
 
   /* ═══════════════════════════════════════════════════════════════════
    * Showcase Post Card (for unified feed)
@@ -2123,6 +2176,9 @@ const renderProfileContent = () => {
         onContractorPress={handleSearchContractorPress}
         onOwnerPress={handleSearchOwnerPress}
         onProjectPress={handleSearchProjectPress}
+        onShowcasePress={handleSearchShowcasePress}
+        renderFeedItemCard={renderSearchFeedItem}
+        renderContractorFeedCard={renderSearchContractorCard}
       />
     );
   }

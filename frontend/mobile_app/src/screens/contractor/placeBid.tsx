@@ -98,6 +98,7 @@ export default function PlaceBid({ project, userId, onClose, onBidSubmitted, ini
   const [pendingSubmission, setPendingSubmission] = useState(false);
   const [previewFile, setPreviewFile] = useState<{ url: string; name: string } | null>(null);
   const [bidEligibility, setBidEligibility] = useState<BidEligibility | null>(null);
+  const [isCancelling, setIsCancelling] = useState(false);
 
   const statusBarHeight = insets.top || (Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 44);
 
@@ -387,6 +388,47 @@ export default function PlaceBid({ project, userId, onClose, onBidSubmitted, ini
 
   const handleContinueSubmission = () => {
     proceedWithSubmission();
+  };
+
+  const handleCancelBid = () => {
+    if (!existingBid?.bid_id || isCancelling) return;
+
+    Alert.alert(
+      'Cancel Bid',
+      'Are you sure you want to cancel this bid? You can submit a new bid again while bidding is still open.',
+      [
+        { text: 'Keep Bid', style: 'cancel' },
+        {
+          text: 'Cancel Bid',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setIsCancelling(true);
+              const response = await projects_service.cancel_bid(existingBid.bid_id, userId);
+
+              if (response.success) {
+                setExistingBid({ ...existingBid, bid_status: 'cancelled' });
+                setExistingBidFiles([]);
+                setBidFiles([]);
+                setDeleteFileIds([]);
+                setIsEditing(false);
+
+                if (onBidSubmitted) onBidSubmitted();
+
+                Alert.alert('Bid Cancelled', 'Your bid has been cancelled successfully.');
+              } else {
+                Alert.alert('Error', response.message || 'Failed to cancel bid. Please try again.');
+              }
+            } catch (error) {
+              console.error('Error cancelling bid:', error);
+              Alert.alert('Error', 'Failed to cancel bid. Please try again.');
+            } finally {
+              setIsCancelling(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const daysRemaining = getDaysRemaining();
@@ -919,6 +961,21 @@ export default function PlaceBid({ project, userId, onClose, onBidSubmitted, ini
                   <Feather name="edit-2" size={18} color={COLORS.primary} />
                   <Text style={styles.editBidButtonText}>Edit Bid</Text>
                 </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.cancelBidButton, isCancelling && styles.cancelBidButtonDisabled]}
+                  onPress={handleCancelBid}
+                  disabled={isCancelling}
+                  activeOpacity={0.8}
+                >
+                  {isCancelling ? (
+                    <ActivityIndicator size="small" color={COLORS.error} />
+                  ) : (
+                    <>
+                      <Feather name="x-circle" size={18} color={COLORS.error} />
+                      <Text style={styles.cancelBidButtonText}>Cancel Bid</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
               </View>
             )
           ) : (
@@ -1256,6 +1313,25 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: COLORS.textSecondary,
+  },
+  cancelBidButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFF1F2',
+    borderRadius: 12,
+    paddingVertical: 14,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  cancelBidButtonDisabled: {
+    opacity: 0.6,
+  },
+  cancelBidButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: COLORS.error,
   },
   // Budget Warning Modal Styles
   modalOverlay: {

@@ -234,8 +234,9 @@ class postService
         $user = DB::table('users')->where('user_id', $userId)->first();
         $role = $user->preferred_role ?? $user->user_type ?? 'property_owner';
         // Contractors (or "both" with contractor preference) see bidding projects;
+        // staff users are contractor team members and should follow contractor feed rules.
         // Property owners see contractor profiles instead.
-        $isContractor = in_array($role, ['contractor', 'both']);
+        $isContractor = in_array($role, ['contractor', 'both', 'staff']);
         $isOwner      = !$isContractor;
         $contractorId = null;
 
@@ -243,6 +244,16 @@ class postService
             $contractorId = DB::table('contractors')
                 ->where('user_id', $userId)
                 ->value('contractor_id');
+
+            // Staff/representative users do not own the contractor account directly;
+            // resolve their parent contractor_id from contractor_users.
+            if (!$contractorId) {
+                $contractorId = DB::table('contractor_users')
+                    ->where('user_id', $userId)
+                    ->where('is_active', 1)
+                    ->where('is_deleted', 0)
+                    ->value('contractor_id');
+            }
         }
 
         // ── Count totals ──
@@ -458,6 +469,298 @@ class postService
                 'total'        => $total,
                 'total_pages'  => $totalPages,
                 'has_more'     => $page < $totalPages,
+            ],
+        ];
+    }
+
+    /**
+     * Search the unified feed with role-aware visibility.
+     *
+     * Scope rules:
+     * - Contractor/staff search sees: owner projects, owner showcases, owner profiles.
+     * - Property-owner search sees: contractor showcases, contractor profiles.
+     *
+     * @param  string $scope all|users|posts
+     */
+    public function searchUnifiedFeed(int $userId, string $keyword, string $scope = 'all', int $page = 1, int $perPage = 20): array
+    {
+        $scope = in_array($scope, ['all', 'users', 'posts'], true) ? $scope : 'all';
+        $keyword = trim($keyword);
+
+        if ($keyword === '') {
+            return [
+                'items' => collect(),
+                'pagination' => [
+                    'current_page' => $page,
+                    'per_page' => $perPage,
+                    'total' => 0,
+                    'total_pages' => 0,
+                    'has_more' => false,
+                ],
+            ];
+        }
+
+        $offset = ($page - 1) * $perPage;
+        $like = '%' . $keyword . '%';
+
+        $user = DB::table('users')->where('user_id', $userId)->first();
+        $role = $user->preferred_role ?? $user->user_type ?? 'property_owner';
+        $isContractor = in_array($role, ['contractor', 'both', 'staff'], true);
+        $isOwner = !$isContractor;
+        $contractorId = null;
+
+        if ($isContractor) {
+            $contractorId = DB::table('contractors')
+                ->where('user_id', $userId)
+                ->value('contractor_id');
+
+            if (!$contractorId) {
+                $contractorId = DB::table('contractor_users')
+                    ->where('user_id', $userId)
+                    ->where('is_active', 1)
+                    ->where('is_deleted', 0)
+                    ->value('contractor_id');
+            }
+        }
+
+        $users = collect();
+        $projects = collect();
+        $showcases = collect();
+
+        if ($scope !== 'posts') {
+            if ($isContractor) {
+                $users = DB::table('property_owners as po')
+                    ->join('users as u', 'po.user_id', '=', 'u.user_id')
+                    ->where('po.verification_status', 'approved')
+                    ->where('u.user_id', '!=', $userId)
+                    ->where(function ($q) use ($like) {
+                        $q->where('u.username', 'LIKE', $like)
+                          ->orWhere('po.first_name', 'LIKE', $like)
+                          ->orWhere('po.last_name', 'LIKE', $like)
+                          ->orWhere('po.address', 'LIKE', $like)
+                          ->orWhereRaw("CONCAT(po.first_name, ' ', po.last_name) LIKE ?", [$like]);
+                    })
+                    ->select(
+                        'po.owner_id',
+                        'u.user_id',
+                        'u.username',
+                        'u.profile_pic',
+                        'u.cover_photo',
+                        'po.address',
+                        'po.created_at',
+                        DB::raw("CONCAT(po.first_name, ' ', po.last_name) as display_name")
+                    )
+                    ->orderByDesc('po.created_at')
+                    ->get()
+                    ->map(fn ($o) => (object) [
+                        'feed_type' => 'owner',
+                        'item_id' => $o->owner_id,
+                        'created_at' => $o->created_at,
+                        'data' => $o,
+                    ]);
+            }
+
+            if ($isOwner) {
+                $users = DB::table('contractors as c')
+                    ->join('users as u', 'c.user_id', '=', 'u.user_id')
+                    ->join('contractor_types as ct', 'c.type_id', '=', 'ct.type_id')
+                    ->where('c.verification_status', 'approved')
+                    ->where('u.user_id', '!=', $userId)
+                    ->where(function ($q) use ($like) {
+                        $q->where('c.company_name', 'LIKE', $like)
+                          ->orWhere('u.username', 'LIKE', $like)
+                          ->orWhere('c.services_offered', 'LIKE', $like)
+                          ->orWhere('c.business_address', 'LIKE', $like)
+                          ->orWhere('ct.type_name', 'LIKE', $like);
+                    })
+                    ->select(
+                        'c.contractor_id',
+                        'c.company_name',
+                        'c.years_of_experience',
+                        'c.services_offered',
+                        'c.business_address',
+                        'c.company_description',
+                        'c.completed_projects',
+                        'c.company_logo',
+                        'c.company_banner',
+                        'c.created_at',
+                        'ct.type_name',
+                        'ct.type_id',
+                        'u.user_id',
+                        'u.username',
+                        'u.profile_pic',
+                        'u.cover_photo'
+                    )
+                    ->orderByDesc('c.created_at')
+                    ->get()
+                    ->map(fn ($c) => (object) [
+                        'feed_type' => 'contractor',
+                        'item_id' => $c->contractor_id,
+                        'created_at' => $c->created_at,
+                        'data' => $c,
+                    ]);
+            }
+        }
+
+        if ($scope !== 'users') {
+            if ($isContractor) {
+                $projects = DB::table('projects as p')
+                    ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
+                    ->join('property_owners as po', 'pr.owner_id', '=', 'po.owner_id')
+                    ->join('users as u', 'po.user_id', '=', 'u.user_id')
+                    ->leftJoin('contractor_types as ct', 'p.type_id', '=', 'ct.type_id')
+                    ->where('p.project_status', 'open')
+                    ->where('pr.project_post_status', 'approved')
+                    ->where(function ($q) {
+                        $q->whereNull('pr.bidding_due')
+                          ->orWhere('pr.bidding_due', '>=', now());
+                    })
+                    ->when($contractorId, function ($q) use ($contractorId) {
+                        $q->whereNotExists(function ($sub) use ($contractorId) {
+                            $sub->select(DB::raw(1))
+                                ->from('bids as b')
+                                ->whereColumn('b.project_id', 'p.project_id')
+                                ->where('b.contractor_id', $contractorId)
+                                ->whereNotIn('b.bid_status', ['cancelled']);
+                        });
+                    })
+                    ->where(function ($q) use ($like) {
+                        $q->where('p.project_title', 'LIKE', $like)
+                          ->orWhere('p.project_description', 'LIKE', $like)
+                          ->orWhere('p.project_location', 'LIKE', $like)
+                          ->orWhere('ct.type_name', 'LIKE', $like)
+                          ->orWhereRaw("CONCAT(po.first_name, ' ', po.last_name) LIKE ?", [$like]);
+                    })
+                    ->select(
+                        'p.project_id', 'p.project_title', 'p.project_description',
+                        'p.project_location', 'p.budget_range_min', 'p.budget_range_max',
+                        'p.lot_size', 'p.floor_area', 'p.property_type', 'p.type_id',
+                        'ct.type_name', 'p.project_status',
+                        'pr.project_post_status',
+                        'pr.bidding_due as bidding_deadline',
+                        'pr.owner_id',
+                        'u.user_id as owner_user_id',
+                        'u.profile_pic as owner_profile_pic',
+                        DB::raw("CONCAT(po.first_name, ' ', po.last_name) as owner_name"),
+                        'pr.created_at'
+                    )
+                    ->orderByDesc('pr.created_at')
+                    ->get()
+                    ->map(fn ($p) => (object) [
+                        'feed_type' => 'project',
+                        'item_id' => $p->project_id,
+                        'created_at' => $p->created_at,
+                        'data' => $p,
+                    ]);
+            }
+
+            $showcases = DB::table('showcases as pp')
+                ->join('users as u', 'pp.user_id', '=', 'u.user_id')
+                ->leftJoin('contractors as c', 'u.user_id', '=', 'c.user_id')
+                ->leftJoin('property_owners as po', 'u.user_id', '=', 'po.user_id')
+                ->leftJoin('projects as lp', 'pp.linked_project_id', '=', 'lp.project_id')
+                ->leftJoin('milestones as ms', function ($join) {
+                    $join->on('ms.project_id', '=', 'lp.project_id')
+                        ->on('ms.contractor_id', '=', 'lp.selected_contractor_id')
+                        ->where('ms.setup_status', '=', 'approved');
+                })
+                ->where('pp.status', 'approved')
+                ->where(function ($q) use ($isContractor, $isOwner) {
+                    if ($isContractor) {
+                        $q->whereNotNull('po.owner_id');
+                    }
+                    if ($isOwner) {
+                        $q->whereNotNull('c.contractor_id');
+                    }
+                })
+                ->where(function ($q) use ($like) {
+                    $q->where('pp.title', 'LIKE', $like)
+                      ->orWhere('pp.content', 'LIKE', $like)
+                      ->orWhere('pp.location', 'LIKE', $like)
+                      ->orWhere('u.username', 'LIKE', $like)
+                      ->orWhere('c.company_name', 'LIKE', $like)
+                      ->orWhereRaw("CONCAT(po.first_name, ' ', po.last_name) LIKE ?", [$like]);
+                })
+                ->select(
+                    'pp.*',
+                    'u.username', 'u.profile_pic', 'u.user_type',
+                    'c.company_name', 'c.company_logo',
+                    'po.first_name as owner_first_name',
+                    'po.last_name as owner_last_name',
+                    'lp.project_title as linked_project_title',
+                    'ms.milestone_name as linked_milestone_name'
+                )
+                ->orderByDesc('pp.created_at')
+                ->get()
+                ->map(function ($p) {
+                    if (!empty($p->company_name)) {
+                        $p->display_name = $p->company_name;
+                    } elseif (!empty($p->owner_first_name)) {
+                        $p->display_name = trim($p->owner_first_name . ' ' . ($p->owner_last_name ?? ''));
+                    } else {
+                        $p->display_name = $p->username;
+                    }
+                    $p->avatar = $p->company_logo ?? $p->profile_pic ?? null;
+
+                    return (object) [
+                        'feed_type' => 'showcase',
+                        'item_id' => $p->post_id,
+                        'created_at' => $p->created_at,
+                        'data' => $p,
+                    ];
+                });
+        }
+
+        if ($scope === 'users') {
+            $merged = $users->sortByDesc('created_at')->values();
+        } elseif ($scope === 'posts') {
+            $merged = $projects->merge($showcases)->sortByDesc('created_at')->values();
+        } else {
+            $merged = $projects->merge($users)->merge($showcases)->sortByDesc('created_at')->values();
+        }
+
+        $total = $merged->count();
+        $totalPages = $total > 0 ? (int) ceil($total / $perPage) : 0;
+        $pageItems = $merged->slice($offset, $perPage)->values();
+
+        foreach ($pageItems->filter(fn ($i) => $i->feed_type === 'project') as $item) {
+            $item->data->bids_count = DB::table('bids')
+                ->where('project_id', $item->data->project_id)
+                ->whereNotIn('bid_status', ['cancelled'])
+                ->count();
+
+            $item->data->files = DB::table('project_files')
+                ->where('project_id', $item->data->project_id)
+                ->orderBy('file_id')
+                ->select('file_id', 'file_type', 'file_path')
+                ->get()
+                ->toArray();
+        }
+
+        $showcaseItems = $pageItems->filter(fn ($i) => $i->feed_type === 'showcase');
+        if ($showcaseItems->isNotEmpty()) {
+            $postIds = $showcaseItems->map(fn ($i) => $i->data->post_id)->toArray();
+            $images = DB::table('showcase_images')
+                ->whereIn('post_id', $postIds)
+                ->orderBy('sort_order')
+                ->get()
+                ->groupBy('post_id');
+
+            foreach ($showcaseItems as $item) {
+                $item->data->images = isset($images[$item->data->post_id])
+                    ? $images[$item->data->post_id]->values()->toArray()
+                    : [];
+            }
+        }
+
+        return [
+            'items' => $pageItems,
+            'pagination' => [
+                'current_page' => $page,
+                'per_page' => $perPage,
+                'total' => $total,
+                'total_pages' => $totalPages,
+                'has_more' => $totalPages > 0 ? $page < $totalPages : false,
             ],
         ];
     }

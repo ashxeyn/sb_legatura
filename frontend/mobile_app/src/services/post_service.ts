@@ -84,11 +84,22 @@ export interface FeedContractor {
   created_at: string;
 }
 
+export interface FeedOwner {
+  owner_id: number;
+  user_id: number;
+  username?: string;
+  profile_pic?: string | null;
+  cover_photo?: string | null;
+  address?: string | null;
+  display_name?: string;
+  created_at: string;
+}
+
 export interface FeedItem {
-  feed_type: 'project' | 'showcase' | 'contractor';
+  feed_type: 'project' | 'showcase' | 'contractor' | 'owner';
   item_id: number;
   created_at: string;
-  data: FeedProject | FeedShowcase | FeedContractor;
+  data: FeedProject | FeedShowcase | FeedContractor | FeedOwner;
 }
 
 export interface UnifiedFeedResponse {
@@ -271,6 +282,55 @@ export const post_service = {
       };
     } catch (error) {
       console.error('[post_service] get_unified_feed error:', error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Network error',
+        status: 0,
+      };
+    }
+  },
+
+  /**
+   * Search role-aware unified feed.
+   *
+   * GET /api/unified-feed/search?search=...&scope=all|users|posts&page=N&per_page=N
+   */
+  search_unified_feed: async (
+    search: string,
+    scope: 'all' | 'users' | 'posts' = 'all',
+    page: number = 1,
+    perPage: number = 20,
+  ): Promise<ApiResponse<UnifiedFeedResponse>> => {
+    try {
+      const params = new URLSearchParams();
+      params.append('search', search.trim());
+      params.append('scope', scope);
+      params.append('page', String(page));
+      params.append('per_page', String(perPage));
+
+      const response = await api_request(
+        `/api/unified-feed/search?${params.toString()}`,
+        {
+          method: 'GET',
+          headers: { Accept: 'application/json' },
+        },
+      );
+
+      if (response.success && response.data?.data) {
+        return {
+          success: true,
+          data: response.data.data as UnifiedFeedResponse,
+          status: response.status,
+        };
+      }
+
+      return {
+        success: false,
+        message: response.data?.message || 'Failed to search feed',
+        status: response.status,
+      };
+    } catch (error) {
+      console.error('[post_service] search_unified_feed error:', error);
       return {
         success: false,
         message: error instanceof Error ? error.message : 'Network error',

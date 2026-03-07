@@ -635,6 +635,32 @@ export class projects_service {
   }
 
   /**
+   * Cancel an existing bid (contractor) — only for submitted/under_review bids
+   */
+  static async cancel_bid(bidId: number, userId: number): Promise<ApiResponse> {
+    try {
+      const response = await api_request(`/api/contractor/bids/${bidId}/cancel`, {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify({ user_id: userId }),
+      });
+
+      return response;
+    } catch (error) {
+      console.error('Error cancelling bid:', error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to cancel bid',
+        status: 500,
+      };
+    }
+  }
+
+  /**
    * Get contractor's existing bid for a project
    */
   static async get_my_bid(projectId: number, userId: number): Promise<ApiResponse> {

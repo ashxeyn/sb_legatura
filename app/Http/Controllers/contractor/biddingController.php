@@ -344,6 +344,100 @@ class biddingController extends Controller
     }
 
     /**
+     * API endpoint for mobile app to cancel a contractor bid.
+     * Only owner/representative can cancel bids.
+     */
+    public function apiCancelBid(Request $request, $bidId)
+    {
+        try {
+            $userId = $request->input('user_id');
+
+            if (!$userId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User ID is required'
+                ], 400);
+            }
+
+            // Authorization check: Only owner/representative can cancel bids
+            $authService = app(\App\Services\ContractorAuthorizationService::class);
+            $authError = $authService->validateBiddingAccess((int) $userId);
+            if ($authError) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $authError,
+                    'error_code' => 'UNAUTHORIZED_BIDDING'
+                ], 403);
+            }
+
+            // Resolve contractor context (owner account or active staff member)
+            $contractor = DB::table('contractors')
+                ->where('user_id', $userId)
+                ->first();
+
+            if (!$contractor) {
+                $contractorUser = DB::table('contractor_users')
+                    ->where('user_id', $userId)
+                    ->where('is_active', 1)
+                    ->where('is_deleted', 0)
+                    ->first();
+
+                if ($contractorUser) {
+                    $contractor = DB::table('contractors')
+                        ->where('contractor_id', $contractorUser->contractor_id)
+                        ->first();
+                }
+            }
+
+            if (!$contractor) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Contractor profile not found'
+                ], 404);
+            }
+
+            $bid = DB::table('bids')
+                ->where('bid_id', $bidId)
+                ->where('contractor_id', $contractor->contractor_id)
+                ->first();
+
+            if (!$bid) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Bid not found or unauthorized'
+                ], 404);
+            }
+
+            if (!in_array($bid->bid_status, ['submitted', 'under_review'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This bid cannot be cancelled in its current status.'
+                ], 400);
+            }
+
+            DB::table('bids')
+                ->where('bid_id', $bidId)
+                ->update(['bid_status' => 'cancelled']);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Bid cancelled successfully'
+            ], 200);
+        } catch (\Exception $e) {
+            Log::error('apiCancelBid error', [
+                'bid_id' => $bidId,
+                'user_id' => $request->input('user_id'),
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to cancel bid. Please try again.'
+            ], 500);
+        }
+    }
+
+    /**
      * API endpoint to get all bids for a project (for property owner)
      */
     public function getProjectBids(Request $request, $projectId)
@@ -860,7 +954,6 @@ class biddingController extends Controller
                 ->leftJoin('users', 'property_owners.user_id', '=', 'users.user_id')
                 ->leftJoin('contractor_types', 'projects.type_id', '=', 'contractor_types.type_id')
                 ->where('bids.contractor_id', $contractor->contractor_id)
-                ->whereNotIn('bids.bid_status', ['cancelled'])
                 ->select(
                     'bids.bid_id',
                     'bids.project_id',

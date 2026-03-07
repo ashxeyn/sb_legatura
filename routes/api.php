@@ -205,6 +205,7 @@ Route::get('/contractor/projects/{projectId}/my-bid', [\App\Http\Controllers\con
 Route::get('/contractor/my-bids', [\App\Http\Controllers\contractor\biddingController::class, 'apiGetMyBids']);
 Route::put('/contractor/bids/{id}', [\App\Http\Controllers\contractor\biddingController::class, 'update']);
 Route::post('/contractor/bids/{id}', [\App\Http\Controllers\contractor\biddingController::class, 'update']); // POST with _method=PUT for FormData
+Route::post('/contractor/bids/{id}/cancel', [\App\Http\Controllers\contractor\biddingController::class, 'apiCancelBid']);
 
 // Contractor milestone setup endpoints
 Route::get('/contractor/my-projects', [\App\Http\Controllers\contractor\cprocessController::class, 'apiGetContractorProjects']);
@@ -630,6 +631,7 @@ Route::get('/feed', [postController::class, 'feed']);
 
 // ── Unified Feed (bidding projects + showcase posts merged) ─────────────
 Route::get('/unified-feed', [postController::class, 'unifiedFeed']);
+Route::get('/unified-feed/search', [postController::class, 'searchUnifiedFeed']);
 
 // ── Showcase Moderation (Admin) ───────────────────────────────────────
 Route::get('/admin/showcases', [postController::class, 'adminShowcases']);

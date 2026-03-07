@@ -64,6 +64,7 @@ export default function App() {
      * Determine the dashboard type for a user.
      * RULES:
      * - user_type === 'staff' → contractor (staff are contractor team members)
+     * - contractor_member present → contractor
      * - user_type === 'contractor' → contractor
      * - determinedRole === 'contractor' → contractor
      * - user_type === 'property_owner' → property_owner
@@ -72,6 +73,10 @@ export default function App() {
     const getDashboardType = (userData: any): 'contractor' | 'property_owner' => {
         // RULE 1: Staff users ALWAYS go to contractor dashboard
         if (userData?.user_type === 'staff') {
+            return 'contractor';
+        }
+        // RULE 1b: Contractor member context (staff/representative) is contractor dashboard
+        if (userData?.contractor_member) {
             return 'contractor';
         }
         // RULE 2: Contractor users go to contractor dashboard
