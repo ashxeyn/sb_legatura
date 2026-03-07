@@ -113,7 +113,7 @@ class userManagementController extends authController
                     "Please change your password after logging in.",
                     function ($message) use ($result) {
                         $message->to($result['email'])
-                                ->subject('Account Created - Legatura');
+                            ->subject('Account Created - Legatura');
                     }
                 );
             } catch (\Exception $e) {
@@ -143,10 +143,10 @@ class userManagementController extends authController
 
             // Construct Address
             $address = $validated['business_address_street'] . ', ' .
-                       $validated['business_address_barangay'] . ', ' .
-                       $validated['business_address_city'] . ', ' .
-                       $validated['business_address_province'] . ' ' .
-                       $validated['business_address_postal'];
+                $validated['business_address_barangay'] . ', ' .
+                $validated['business_address_city'] . ', ' .
+                $validated['business_address_province'] . ' ' .
+                $validated['business_address_postal'];
 
             // Calculate Years of Experience
             $startDate = new \DateTime($validated['company_start_date']);
@@ -206,7 +206,7 @@ class userManagementController extends authController
                     "Please change your password after logging in.",
                     function ($message) use ($result) {
                         $message->to($result['email'])
-                                ->subject('Contractor Account Created - Legatura');
+                            ->subject('Contractor Account Created - Legatura');
                     }
                 );
             } catch (\Exception $e) {
@@ -236,10 +236,10 @@ class userManagementController extends authController
 
             // Construct Address
             $address = $validated['business_address_street'] . ', ' .
-                       $validated['business_address_barangay'] . ', ' .
-                       $validated['business_address_city'] . ', ' .
-                       $validated['business_address_province'] . ' ' .
-                       $validated['business_address_postal'];
+                $validated['business_address_barangay'] . ', ' .
+                $validated['business_address_city'] . ', ' .
+                $validated['business_address_province'] . ' ' .
+                $validated['business_address_postal'];
 
             // Calculate Years of Experience
             $startDate = new \DateTime($validated['company_start_date']);
@@ -357,20 +357,24 @@ class userManagementController extends authController
             return response()->json(['error' => 'Property Owner not found'], 404);
         }
 
-        // Parse Address
-        $addressParts = explode(', ', $propertyOwner->address);
-        $street = $addressParts[0] ?? '';
-        $barangay = $addressParts[1] ?? '';
-        $city = $addressParts[2] ?? '';
-        $provinceZip = $addressParts[3] ?? '';
-
-        // Extract Zip from Province
+        // Parse Address securely from the end
+        $addressStr = trim($propertyOwner->address);
         $zip = '';
-        $province = $provinceZip;
-        if (preg_match('/(.*)\s+(\d+)$/', $provinceZip, $matches)) {
-            $province = $matches[1];
-            $zip = $matches[2];
+
+        // Extract 3 to 5 digit zip code at the end
+        if (preg_match('/[\s,]+(\d{3,5})$/', $addressStr, $matches)) {
+            $zip = $matches[1];
+            // Remove the zip code and trailing spaces/commas from the address
+            $addressStr = preg_replace('/[\s,]+(\d{3,5})$/', '', $addressStr);
         }
+
+        // Now split the remaining by comma and trim
+        $addressParts = array_map('trim', explode(',', $addressStr));
+
+        $province = array_pop($addressParts) ?? '';
+        $city = array_pop($addressParts) ?? '';
+        $barangay = array_pop($addressParts) ?? '';
+        $street = implode(', ', $addressParts);
 
         $propertyOwner->street_address = $street;
         $propertyOwner->barangay = $barangay;
@@ -629,7 +633,7 @@ class userManagementController extends authController
                     "Please change your password after logging in for security.",
                     function ($message) use ($result) {
                         $message->to($result['email'])
-                                ->subject('Team Member Account Created - Legatura');
+                            ->subject('Team Member Account Created - Legatura');
                     }
                 );
             } catch (\Exception $e) {
@@ -687,7 +691,7 @@ class userManagementController extends authController
                     "If you have any questions, please contact the administrator.",
                     function ($message) use ($newRep) {
                         $message->to($newRep->email)
-                                ->subject('Company Representative Assignment - Legatura');
+                            ->subject('Company Representative Assignment - Legatura');
                     }
                 );
             } catch (\Exception $e) {
@@ -922,9 +926,9 @@ class userManagementController extends authController
         // Fetch pending contractors
         $contractorQuery = DB::table('contractors')
             ->join('users', 'contractors.user_id', '=', 'users.user_id')
-            ->leftJoin('contractor_users', function($join) {
+            ->leftJoin('contractor_users', function ($join) {
                 $join->on('contractors.contractor_id', '=', 'contractor_users.contractor_id')
-                     ->where('contractor_users.role', '=', 'owner');
+                    ->where('contractor_users.role', '=', 'owner');
             })
             ->where('contractors.verification_status', 'pending');
 
@@ -935,25 +939,25 @@ class userManagementController extends authController
             $contractorQuery->whereDate('contractors.created_at', '<=', $dateTo);
         }
         if ($search) {
-            $contractorQuery->where(function($q) use ($search) {
+            $contractorQuery->where(function ($q) use ($search) {
                 $q->where('users.username', 'like', "%{$search}%")
-                  ->orWhere('users.email', 'like', "%{$search}%")
-                  ->orWhere('contractors.company_name', 'like', "%{$search}%")
-                  ->orWhere('contractor_users.authorized_rep_fname', 'like', "%{$search}%")
-                  ->orWhere('contractor_users.authorized_rep_lname', 'like', "%{$search}%");
+                    ->orWhere('users.email', 'like', "%{$search}%")
+                    ->orWhere('contractors.company_name', 'like', "%{$search}%")
+                    ->orWhere('contractor_users.authorized_rep_fname', 'like', "%{$search}%")
+                    ->orWhere('contractor_users.authorized_rep_lname', 'like', "%{$search}%");
             });
         }
 
         $contractorRequests = $contractorQuery->select(
-                'users.user_id',
-                'users.username',
-                'users.email',
-                'contractors.verification_status',
-                'contractors.created_at as request_date',
-                'contractors.company_name',
-                'contractor_users.authorized_rep_fname',
-                'contractor_users.authorized_rep_lname'
-            )
+            'users.user_id',
+            'users.username',
+            'users.email',
+            'contractors.verification_status',
+            'contractors.created_at as request_date',
+            'contractors.company_name',
+            'contractor_users.authorized_rep_fname',
+            'contractor_users.authorized_rep_lname'
+        )
             ->paginate(10, ['*'], 'contractors_page');
 
         // Fetch pending property owners
@@ -968,23 +972,23 @@ class userManagementController extends authController
             $ownerQuery->whereDate('property_owners.created_at', '<=', $dateTo);
         }
         if ($search) {
-            $ownerQuery->where(function($q) use ($search) {
+            $ownerQuery->where(function ($q) use ($search) {
                 $q->where('users.username', 'like', "%{$search}%")
-                  ->orWhere('users.email', 'like', "%{$search}%")
-                  ->orWhere('property_owners.first_name', 'like', "%{$search}%")
-                  ->orWhere('property_owners.last_name', 'like', "%{$search}%");
+                    ->orWhere('users.email', 'like', "%{$search}%")
+                    ->orWhere('property_owners.first_name', 'like', "%{$search}%")
+                    ->orWhere('property_owners.last_name', 'like', "%{$search}%");
             });
         }
 
         $ownerRequests = $ownerQuery->select(
-                'users.user_id',
-                'users.username',
-                'users.email',
-                'property_owners.verification_status',
-                'property_owners.created_at as request_date',
-                'property_owners.first_name',
-                'property_owners.last_name'
-            )
+            'users.user_id',
+            'users.username',
+            'users.email',
+            'property_owners.verification_status',
+            'property_owners.created_at as request_date',
+            'property_owners.first_name',
+            'property_owners.last_name'
+        )
             ->paginate(10, ['*'], 'owners_page');
 
         if ($request->ajax()) {
@@ -1333,7 +1337,7 @@ class userManagementController extends authController
 
                     Mail::raw("Dear {$owner->first_name},\n\nYour account has been suspended.\n\nReason: {$reason}\nDuration: " . ucfirst($duration) . "\nSuspension Until: {$suspensionUntil}\n\nPlease contact support for more information.", function ($message) use ($user) {
                         $message->to($user->email)
-                                ->subject('Account Suspension Notification');
+                            ->subject('Account Suspension Notification');
                     });
                 } catch (\Exception $e) {
                     // Log email error but don't fail the request
@@ -1381,7 +1385,7 @@ class userManagementController extends authController
 
                     Mail::raw("Dear {$contractor->company_name},\n\nYour contractor account has been suspended.\n\nReason: {$reason}\nDuration: " . ucfirst($duration) . "\nSuspension Until: {$suspensionUntil}\n\nPlease contact support for more information.", function ($message) use ($user) {
                         $message->to($user->email)
-                                ->subject('Contractor Account Suspension Notification');
+                            ->subject('Contractor Account Suspension Notification');
                     });
                 } catch (\Exception $e) {
                     // Log email error but don't fail the request

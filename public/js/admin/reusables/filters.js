@@ -2,8 +2,20 @@ document.addEventListener("DOMContentLoaded", function () {
     // Existing filters
     const dateFromInput = document.getElementById("dateFrom");
     const dateToInput = document.getElementById("dateTo");
-    const searchInput = document.getElementById("searchInput");
+    const searchInput = document.getElementById("searchInput") || document.getElementById("topNavSearch");
     const resetBtn = document.getElementById("resetFilterBtn");
+
+    // Dynamic Date Boundaries
+    if (dateFromInput && dateToInput) {
+        dateFromInput.addEventListener('change', function () {
+            if (this.value) dateToInput.min = this.value;
+            else dateToInput.removeAttribute('min');
+        });
+        dateToInput.addEventListener('change', function () {
+            if (this.value) dateFromInput.max = this.value;
+            else dateFromInput.removeAttribute('max');
+        });
+    }
 
     // New filters for Posting Management
     const statusFilter = document.getElementById("statusFilter");

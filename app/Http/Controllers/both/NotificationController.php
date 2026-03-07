@@ -4,15 +4,15 @@ namespace App\Http\Controllers\both;
 
 use App\Http\Controllers\Controller;
 use App\Models\both\notificationClass;
-use App\Services\NotificationService;
-use App\Services\NotificationRedirectService;
+use App\Services\notificationService;
+use App\Services\notificationRedirectService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
 use Laravel\Sanctum\PersonalAccessToken;
 
-class NotificationController extends Controller
+class notificationController extends Controller
 {
     protected notificationClass $notificationClass;
 
@@ -70,7 +70,7 @@ class NotificationController extends Controller
 
         // Map each row to frontend shape
         $formatted = collect($result['notifications'])->map(function ($row) {
-            return NotificationService::formatForFrontend($row);
+            return notificationService::formatForFrontend($row);
         })->values()->all();
 
         return response()->json([
@@ -178,7 +178,7 @@ class NotificationController extends Controller
 
         // Resolve redirect
         $userRole = $this->resolveRole($user);
-        $result = NotificationRedirectService::resolve($notification, $userRole);
+        $result = notificationRedirectService::resolve($notification, $userRole);
 
         if ($result['flash']) {
             return redirect($result['url'])->with('warning', $result['flash']);
@@ -222,7 +222,7 @@ class NotificationController extends Controller
 
         // Resolve redirect
         $userRole = $this->resolveRole($user);
-        $payload = NotificationRedirectService::resolveForApi($notification, $userRole);
+        $payload = notificationRedirectService::resolveForApi($notification, $userRole);
 
         return response()->json([
             'success' => true,

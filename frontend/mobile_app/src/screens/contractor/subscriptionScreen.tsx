@@ -67,6 +67,16 @@ const getPlanStyle = (planKey: string): { icon: keyof typeof Ionicons.glyphMap; 
     return { icon: 'ribbon', color: '#3B82F6', gradient: ['#60A5FA', '#3B82F6'] };
 };
 
+// Get tier rank for upgrade comparison (higher = better)
+const getTierRank = (planKey: string | null | undefined): number => {
+    if (!planKey) return 0; // No subscription = rank 0
+    const key = planKey.toLowerCase();
+    if (key.includes('gold') || key.includes('premium')) return 3;
+    if (key.includes('silver') || key.includes('standard')) return 2;
+    if (key.includes('bronze') || key.includes('basic')) return 1;
+    return 0;
+};
+
 const isGoldTier = (planKey: string): boolean => {
     const key = planKey?.toLowerCase() || '';
     return key.includes('gold') || key.includes('premium');
@@ -97,16 +107,23 @@ export default function SubscriptionScreen({ onBack }: Props) {
         setFetching(true);
         try {
             const response = await api_request('/subs/modal-data', { method: 'GET' });
+
             if (response.success && response.data) {
-                setSubscription(response.data.subscription || null);
+                const currentSubscription = response.data.subscription || null;
+                setSubscription(currentSubscription);
                 // Load plans from API
                 const fetchedPlans: SubscriptionPlan[] = response.data.plans || [];
                 setPlans(fetchedPlans);
-                // Set default selection to first plan if not already selected
-                if (fetchedPlans.length > 0 && !selectedPlan) {
-                    // Prefer gold tier as default, otherwise first plan
-                    const goldPlan = fetchedPlans.find(p => isGoldTier(p.plan_key));
-                    const defaultPlan = goldPlan || fetchedPlans[0];
+
+                // Filter to only show upgrade options based on current subscription
+                const currentTierRank = currentSubscription ? getTierRank(currentSubscription.plan_key) : 0;
+                const availablePlans = fetchedPlans.filter(p => getTierRank(p.plan_key) > currentTierRank);
+
+                // Set default selection to best available plan (always update if plans exist)
+                if (availablePlans.length > 0) {
+                    // Prefer gold tier as default, otherwise first available
+                    const goldPlan = availablePlans.find(p => isGoldTier(p.plan_key));
+                    const defaultPlan = goldPlan || availablePlans[0];
                     setSelectedPlan(defaultPlan.plan_key);
                     setExpandedPlan(defaultPlan.plan_key);
                 }
@@ -347,15 +364,29 @@ export default function SubscriptionScreen({ onBack }: Props) {
     const renderPlansTab = () => {
         const expandedPlanData = expandedPlan ? plans.find(p => p.plan_key === expandedPlan) : null;
 
+        // Filter plans to show only upgrade options based on current subscription
+        const currentTierRank = subscription ? getTierRank(subscription.plan_key) : 0;
+        const availablePlans = plans.filter(plan => getTierRank(plan.plan_key) > currentTierRank);
+
         return (
         <View style={styles.tabContent}>
             <View style={styles.plansHeader}>
-                <Text style={styles.plansTitle}>Choose Your Plan</Text>
-                <Text style={styles.plansSubtitle}>Select the best plan for your business</Text>
+                <Text style={styles.plansTitle}>{subscription ? 'Upgrade Your Plan' : 'Choose Your Plan'}</Text>
+                <Text style={styles.plansSubtitle}>
+                    {subscription
+                        ? 'Select a higher tier plan to upgrade'
+                        : 'Select the best plan for your business'}
+                </Text>
             </View>
 
             <View style={styles.plansList}>
-                {plans.map((plan) => {
+                {availablePlans.length === 0 ? (
+                    <View style={styles.noPlansContainer}>
+                        <Ionicons name="trophy" size={48} color="#F59E0B" />
+                        <Text style={styles.noPlansText}>You're already on the highest plan!</Text>
+                        <Text style={styles.noPlansSubtext}>Enjoy unlimited bids with Gold subscription.</Text>
+                    </View>
+                ) : availablePlans.map((plan) => {
                     const planStyle = getPlanStyle(plan.plan_key);
                     const isSelected = selectedPlan === plan.plan_key;
 
@@ -536,7 +567,7 @@ export default function SubscriptionScreen({ onBack }: Props) {
                             <Text style={styles.cancelButtonLargeText}>Already Subscribed</Text>
                         ) : (
                             <View style={{ alignItems: 'center' }}>
-                                <Text style={styles.cancelButtonLargeText}>Subscribe Now</Text>
+                                <Text style={styles.cancelButtonLargeText}>{subscription ? 'Upgrade Now' : 'Subscribe Now'}</Text>
 
                             </View>
                         )}
@@ -556,10 +587,10 @@ export default function SubscriptionScreen({ onBack }: Props) {
                                 <Ionicons name="card" size={32} color="#FFFFFF" />
                             </LinearGradient>
                         </View>
-                        <Text style={styles.modalTitle}>Confirm Subscription</Text>
+                        <Text style={styles.modalTitle}>{subscription ? 'Confirm Upgrade' : 'Confirm Subscription'}</Text>
                         {subscription ? (
                             <Text style={styles.modalMessage}>
-                                You're about to subscribe to the {selectedPlanData?.name || 'selected'} plan. This will replace your current subscription. You will be redirected to complete your payment.
+                                You're about to upgrade to the {selectedPlanData?.name || 'selected'} plan. Your current {subscription.plan_name || 'subscription'} will be cancelled and replaced. You will be redirected to complete your payment.
                             </Text>
                         ) : (
                             <Text style={styles.modalMessage}>
@@ -946,6 +977,25 @@ const styles = StyleSheet.create({
     },
     plansList: {
         marginBottom: 16,
+    },
+    noPlansContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 40,
+        paddingHorizontal: 20,
+    },
+    noPlansText: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: '#1F2937',
+        marginTop: 16,
+        textAlign: 'center',
+    },
+    noPlansSubtext: {
+        fontSize: 14,
+        color: '#6B7280',
+        marginTop: 8,
+        textAlign: 'center',
     },
     planCard: {
         backgroundColor: '#FFFFFF',

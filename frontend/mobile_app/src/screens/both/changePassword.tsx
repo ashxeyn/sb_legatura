@@ -162,7 +162,8 @@ export default function ChangePasswordScreen({ userData, onPasswordChanged, onLo
               style={styles.eyeIcon}
               onPress={() => setShowConfirmPassword(prev => !prev)}
             >
-c            </TouchableOpacity>
+              <Ionicons name={showConfirmPassword ? 'eye-off' : 'eye'} size={22} color="#999" />
+            </TouchableOpacity>
           </View>
           {confirmPassword.length > 0 && !passwordsMatch && (
             <Text style={styles.errorText}>Passwords do not match</Text>

@@ -1,0 +1,66 @@
+/* ── Section divider ── */
+    .section-divider {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin: 2rem 0 1.5rem;
+    }
+    .section-divider h2 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #1e293b;
+      white-space: nowrap;
+    }
+    .section-divider span {
+      flex: 1;
+      height: 2px;
+      background: linear-gradient(to right, #e2e8f0, transparent);
+      border-radius: 2px;
+    }
+
+    /* ── Stat hero cards ── */
+    .perf-card {
+      position: relative;
+      border-radius: 1.25rem;
+      padding: 1.5rem;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0,0,0,.08);
+      transition: transform .25s, box-shadow .25s;
+    }
+    .perf-card:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(0,0,0,.12); }
+    .perf-card .blob {
+      position: absolute;
+      top: -1rem; right: -1rem;
+      width: 7rem; height: 7rem;
+      border-radius: 50%;
+      background: rgba(255,255,255,.12);
+    }
+
+    /* ── Progress bar ── */
+    .progress-bar-wrap { background: rgba(255,255,255,.25); border-radius: 999px; height: .4rem; overflow: hidden; margin-top: .6rem; }
+    .progress-bar-fill { height: 100%; border-radius: 999px; background: rgba(255,255,255,.8); transition: width 1.2s cubic-bezier(.22,1,.36,1); }
+
+    /* ── Metric sub-cards ── */
+    .metric-sub {
+      background: #fff;
+      border-radius: 1rem;
+      padding: 1.25rem 1.5rem;
+      box-shadow: 0 2px 12px rgba(0,0,0,.06);
+      border-left: 4px solid;
+      transition: box-shadow .2s;
+    }
+    .metric-sub:hover { box-shadow: 0 6px 20px rgba(0,0,0,.1); }
+
+    /* ── Top contractors table ── */
+    .contractors-table th { font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; color: #64748b; padding: 1rem 1.25rem; background: #f8fafc; }
+    .contractors-table td { padding: .85rem 1.25rem; border-bottom: 1px solid #f1f5f9; font-size: .875rem; }
+    .contractors-table tr:last-child td { border-bottom: none; }
+    .contractors-table tr:hover td { background: #f8fafc; }
+
+    .rank-badge { width: 2rem; height: 2rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .8rem; }
+
+    /* ── Chart containers ── */
+    .chart-box { background: #fff; border-radius: 1.25rem; padding: 1.5rem; box-shadow: 0 2px 12px rgba(0,0,0,.06); }
+
+    /* ── Badge pill ── */
+    .bid-pill { display: inline-flex; align-items: center; gap: .35rem; padding: .25rem .75rem; border-radius: 999px; font-size: .75rem; font-weight: 600; }

@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Log;
  * Contractor project feed now uses feedRankingService for scored ordering:
  *   feedClass (filter + fetch) → feedRankingService (score + sort) → paginate → hydrate
  */
-class FeedService
+class feedService
 {
     protected feedClass $feed;
     protected feedRankingService $ranker;

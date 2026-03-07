@@ -110,6 +110,7 @@ class ProjectUpdateService
             'pending_extension'  => $this->getPendingUpdate($projectId),
             'plan_id'            => $plan?->plan_id ?? null,
             'contractor_id'      => $contractorUserId ? (int) $contractorUserId : null,
+            'downpayment_cleared' => milestoneService::isDownpaymentCleared($projectId),
         ];
     }
 

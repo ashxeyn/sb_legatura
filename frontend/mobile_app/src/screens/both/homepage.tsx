@@ -13,6 +13,7 @@ import {
   Platform,
   StatusBar,
   AppState,
+  Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DeviceEventEmitter } from 'react-native';
@@ -20,7 +21,7 @@ import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import Feather from 'react-native-vector-icons/Feather';
 import { Image } from 'expo-image';
-import ImageFallback from '../../components/ImageFallbackFixed';
+import ImageFallback from '../../components/imageFallback';
 import { projects_service, ContractorType as ContractorTypeOption } from '../../services/projects_service';
 import { api_config } from '../../config/api';
 import { contractors_service } from '../../services/contractors_service';
@@ -52,6 +53,8 @@ import PropertyOwnerProfile from '../owner/profile';
 import BoostScreen from '../owner/boostScreen';
 import ContractorProfile from '../contractor/profile';
 import CheckProfile from './checkProfile';
+import CheckOwnerProfile, { OwnerProp } from './checkOwnerProfile';
+import WriteReview from './writeReview';
 
 // Import dashboard screens
 import PropertyOwnerDashboard from '../owner/dashboard';
@@ -71,6 +74,15 @@ import PlaceBid from '../contractor/placeBid';
 
 // Import project post detail screen
 import ProjectPostDetail from './projectPostDetail';
+
+// Import create showcase modal and post service for unified feed
+import CreateShowcase from './createShowcase';
+import { post_service } from '../../services/post_service';
+import { highlightService } from '../../services/highlightService';
+import ReportPostModal from '../../components/reportPostModal';
+
+// Import showcase post detail screen
+import ShowcasePostDetail from './showcasePostDetail';
 
 // Import notifications screen
 import Notifications from './notifications';
@@ -126,7 +138,7 @@ interface HomepageProps {
   userType?: 'property_owner' | 'contractor';
   userData?: UserData;
   onLogout?: () => void;
-  onViewProfile?: () => void;
+  onViewProfile?: (initialTab?: string) => void;
   onEditProfile?: () => void;
   onOpenHelp?: () => void;
   onOpenSwitchRole?: () => void;
@@ -163,11 +175,18 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
 
   // View contractor profile state
   const [selectedContractor, setSelectedContractor] = useState<ContractorType | null>(null);
+  // View owner profile state
+  const [selectedOwner, setSelectedOwner] = useState<OwnerProp | null>(null);
+  // Write review state (from notification deep-link)
+  const [reviewParams, setReviewParams] = useState<{ projectId: number; revieweeUserId: number } | null>(null);
   // Authenticated contractor profile (company_logo/company_banner)
   const [myContractorProfile, setMyContractorProfile] = useState<any>(null);
 
   // View project state (for contractors viewing projects)
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+
+  // View showcase post detail state
+  const [selectedShowcasePost, setSelectedShowcasePost] = useState<any>(null);
 
   // Place bid screen state
   const [showPlaceBid, setShowPlaceBid] = useState(false);
@@ -176,6 +195,17 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
   // Notifications screen state
   const [showNotifications, setShowNotifications] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+
+  // Unified feed state (projects + showcase posts merged)
+  const [feedItems, setFeedItems] = useState<any[]>([]);
+  const [feedPage, setFeedPage] = useState(1);
+  const [hasMoreFeed, setHasMoreFeed] = useState(true);
+  const [loadingFeed, setLoadingFeed] = useState(true);
+  const [showCreateChooser, setShowCreateChooser] = useState(false);
+  const [showCreateShowcase, setShowCreateShowcase] = useState(false);
+  const [activeCardMenu, setActiveCardMenu] = useState<{ type: 'project' | 'showcase'; id: number } | null>(null);
+  const [reportModalVisible, setReportModalVisible] = useState(false);
+  const [reportTarget, setReportTarget] = useState<{ postType: 'project' | 'showcase'; postId: number } | null>(null);
 
   // Poll unread notification count every 30 seconds
   useEffect(() => {
@@ -209,9 +239,17 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
   // Get status bar height (top inset)
   const statusBarHeight = insets.top || (Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 44);
 
+  // Staff/contractor-member users must always operate in contractor context.
+  const isStaffContext = useMemo(() => {
+    const rawType = String(userData?.user_type || '').toLowerCase();
+    const determinedRole = String(userData?.determinedRole || '').toLowerCase();
+    return rawType === 'staff' || determinedRole === 'contractor' || !!userData?.contractor_member;
+  }, [userData?.user_type, userData?.determinedRole, userData?.contractor_member]);
+
   // Resolve effective user type: prefer explicit userData.user_type when available
   // IMPORTANT: Staff users should be treated as contractors
   const effectiveUserType = useMemo(() => {
+    if (isStaffContext) return 'contractor';
     if (currentRole === 'owner') return 'property_owner';
     if (currentRole === 'contractor') return 'contractor';
 
@@ -221,13 +259,19 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
       return 'contractor';
     }
     return rawType === 'property_owner' || rawType === 'both' ? 'property_owner' : userType;
-  }, [currentRole, userData?.user_type, userType]);
+  }, [isStaffContext, currentRole, userData?.user_type, userType]);
 
   // Refresh current role from API on mount and when app comes to foreground
   useEffect(() => {
     let isMounted = true;
     const fetchCurrentRole = async () => {
       try {
+        // Force contractor role for staff/member sessions regardless of role endpoint defaults.
+        if (isStaffContext) {
+          if (isMounted) setCurrentRole('contractor');
+          return;
+        }
+
         const res = await role_service.get_current_role();
         if (res?.success) {
           const roleVal = (res as any).current_role || (res as any).data?.current_role || (res as any).user_type;
@@ -273,7 +317,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
           } catch (err) {
             // ignore storage errors
           }
- rr       }
+        }
       } catch (e) {
         // Silent failure; keep existing role
       }
@@ -295,7 +339,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
       try { roleChangedSub.remove(); } catch (e) {}
       try { appStateSub.remove(); } catch (e) {}
     };
-  }, []);
+  }, [isStaffContext]);
 
   // Handle logout - calls the parent callback
   const handleLogout = () => {
@@ -483,6 +527,51 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
     fetchProjects();
   }, [effectiveUserType]);
 
+  // ── Unified feed fetch (both roles: bidding projects + showcase posts) ──
+  const fetchUnifiedFeed = useCallback(async (page: number = 1, append: boolean = false) => {
+    try {
+      if (!append) {
+        setLoadingFeed(true);
+        setError(null);
+      } else {
+        setLoadingMore(true);
+      }
+
+      const response = await post_service.get_unified_feed(page, PER_PAGE);
+
+      if (response.success && response.data) {
+        const items = response.data.items || [];
+        if (append) {
+          setFeedItems(prev => [...prev, ...items]);
+        } else {
+          setFeedItems(items);
+        }
+        setHasMoreFeed(response.data.pagination?.has_more ?? false);
+        setFeedPage(page);
+      } else {
+        if (!append) {
+          setError(response.message || 'Failed to load feed');
+        }
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'An unexpected error occurred';
+      if (!append) setError(msg);
+      console.error('Error fetching unified feed:', err);
+    } finally {
+      setLoadingFeed(false);
+      setLoadingMore(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchUnifiedFeed(1);
+  }, []);
+
+  const loadMoreFeed = useCallback(() => {
+    if (loadingMore || !hasMoreFeed) return;
+    fetchUnifiedFeed(feedPage + 1, true);
+  }, [loadingMore, hasMoreFeed, feedPage, fetchUnifiedFeed]);
+
   // Function to refresh available projects (for contractor view)
   const refreshProjects = useCallback(async () => {
     if (userType !== 'contractor') return;
@@ -561,7 +650,12 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
         break;
 
       case 'profile':
-        setActiveTab('profile');
+        if (params.tab === 'reviews') {
+          // Navigate to the full view-profile screen with Reviews tab focused
+          onViewProfile?.('Reviews');
+        } else {
+          setActiveTab('profile');
+        }
         break;
 
       case 'dashboard':
@@ -572,6 +666,16 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
           setTimeout(() => {
             DeviceEventEmitter.emit('dashboardNavigate', params);
           }, 500);
+        }
+        break;
+
+      case 'review':
+        // Deep-link from review_prompt notification
+        if (params.project_id && params.reviewee_user_id) {
+          setReviewParams({
+            projectId: Number(params.project_id),
+            revieweeUserId: Number(params.reviewee_user_id),
+          });
         }
         break;
 
@@ -1054,11 +1158,28 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
         key={project.project_id}
         style={styles.projectCard}
         activeOpacity={0.7}
-        onPress={() => setSelectedProject(project)}
+        onPress={() => {
+          setActiveCardMenu(null);
+          setSelectedProject(project);
+        }}
       >
         {/* Header: Owner Info + Deadline Badge */}
         <View style={styles.projectHeader}>
-          <View style={styles.ownerInfo}>
+          <TouchableOpacity
+            style={styles.ownerInfo}
+            activeOpacity={0.7}
+            onPress={(e) => {
+              e.stopPropagation?.();
+              if (project.owner_user_id && !isOwnProject) {
+                setSelectedOwner({
+                  owner_id: project.owner_id,
+                  user_id: project.owner_user_id,
+                  name: project.owner_name || 'Property Owner',
+                  profile_pic: project.owner_profile_pic,
+                });
+              }
+            }}
+          >
             {ownerProfileUrl ? (
               <ImageFallback
                 uri={ownerProfileUrl}
@@ -1080,15 +1201,44 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
                 Posted {new Date(project.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
               </Text>
             </View>
-          </View>
-          {daysRemaining !== null && (
-            <View style={[styles.deadlineBadge, daysRemaining <= 3 && styles.deadlineUrgent]}>
-              <MaterialIcons name="access-time" size={14} color={daysRemaining <= 3 ? '#E74C3C' : '#F39C12'} />
-              <Text style={[styles.deadlineText, daysRemaining <= 3 && styles.deadlineTextUrgent]}>
-                {daysRemaining > 0 ? `${daysRemaining}d left` : 'Due today'}
-              </Text>
+          </TouchableOpacity>
+          <View style={styles.cardHeaderActions}>
+            {daysRemaining !== null && (
+              <View style={[styles.deadlineBadge, daysRemaining <= 3 && styles.deadlineUrgent]}>
+                <MaterialIcons name="access-time" size={14} color={daysRemaining <= 3 ? '#E74C3C' : '#F39C12'} />
+                <Text style={[styles.deadlineText, daysRemaining <= 3 && styles.deadlineTextUrgent]}>
+                  {daysRemaining > 0 ? `${daysRemaining}d left` : 'Due today'}
+                </Text>
+              </View>
+            )}
+            <View style={styles.cardMenuWrap}>
+              <TouchableOpacity
+                style={styles.cardMenuButton}
+                onPress={(e) => {
+                  e.stopPropagation?.();
+                  openProjectCardMenu(project.project_id);
+                }}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <MaterialIcons name="more-vert" size={20} color="#4B5563" />
+              </TouchableOpacity>
+
+              {activeCardMenu?.type === 'project' && activeCardMenu.id === project.project_id && (
+                <View style={styles.cardMenuDropdown}>
+                  <TouchableOpacity
+                    style={styles.cardMenuItem}
+                    onPress={(e) => {
+                      e.stopPropagation?.();
+                      setActiveCardMenu(null);
+                      openReportReasons('project', project.project_id);
+                    }}
+                  >
+                    <Text style={styles.cardMenuDangerText}>Report</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
-          )}
+          </View>
         </View>
 
         {/* Project Title */}
@@ -1195,12 +1345,17 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
     setSelectedProject(project);
   }, []);
 
+  const handleSearchShowcasePress = useCallback((showcase: any) => {
+    setShowSearchScreen(false);
+    setSelectedShowcasePost(showcase);
+  }, []);
+
   const handleSearchContractorPress = useCallback((contractor: any) => {
     setShowSearchScreen(false);
     setSelectedContractor({
       contractor_id: contractor.contractor_id,
       company_name: contractor.company_name,
-      location: contractor.business_address,
+      location: contractor.business_address || contractor.address,
       contractor_type: contractor.type_name,
       years_of_experience: contractor.years_of_experience,
       completed_projects: contractor.completed_projects,
@@ -1210,190 +1365,406 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
     });
   }, []);
 
-  // Render the home content (contractors feed for property owners)
+  const handleSearchOwnerPress = useCallback((owner: any) => {
+    setShowSearchScreen(false);
+    setSelectedOwner({
+      owner_id: owner.owner_id,
+      user_id: owner.user_id,
+      name: owner.display_name || owner.company_name || owner.username || 'Property Owner',
+      profile_pic: owner.profile_pic,
+      address: owner.address,
+    });
+  }, []);
+
+  const renderSearchFeedItem = useCallback((feedItem: any, index: number) => {
+    if (!feedItem) return null;
+
+    if (feedItem.feed_type === 'project') {
+      return renderProjectCard(feedItem.data as any);
+    }
+
+    if (feedItem.feed_type === 'showcase') {
+      return renderShowcaseCard(feedItem.data, index);
+    }
+
+    if (feedItem.feed_type === 'contractor') {
+      return renderContractorCard({
+        item: {
+          ...feedItem.data,
+          contractor_type: feedItem.data?.type_name,
+          location: feedItem.data?.business_address,
+        },
+      });
+    }
+
+    return null;
+  }, [renderProjectCard, renderShowcaseCard, renderContractorCard]);
+
+  const renderSearchContractorCard = useCallback((contractor: any) => {
+    return renderContractorCard({
+      item: {
+        ...contractor,
+        contractor_type: contractor?.type_name,
+        location: contractor?.business_address,
+      },
+    });
+  }, [renderContractorCard]);
+
+  /* ═══════════════════════════════════════════════════════════════════
+   * Showcase Post Card (for unified feed)
+   * ═══════════════════════════════════════════════════════════════════ */
+
+  const renderShowcaseImages = (images: Array<{ url: string }>) => {
+    if (images.length === 0) return null;
+
+    const H_PADDING = 2;
+    const GAP = 2;
+    const usableWidth = width - H_PADDING * 2;
+    const halfSize = Math.floor((usableWidth - GAP) / 2);
+    const singleHeight = Math.floor(usableWidth * 0.56);
+
+    if (images.length === 1) {
+      return (
+        <View style={[styles.imageCollageContainer, { paddingHorizontal: H_PADDING }]}>
+          <Image
+            source={{ uri: images[0].url }}
+            style={{ width: usableWidth, height: singleHeight, borderRadius: 2 }}
+            contentFit="cover"
+            transition={200}
+            cachePolicy="memory-disk"
+          />
+        </View>
+      );
+    }
+
+    if (images.length === 2) {
+      return (
+        <View style={[styles.imageCollageContainer, { paddingHorizontal: H_PADDING }]}>
+          <View style={{ flexDirection: 'row' }}>
+            {images.map((img, i) => (
+              <Image
+                key={i}
+                source={{ uri: img.url }}
+                style={{ width: halfSize, height: halfSize, borderRadius: 2, marginLeft: i === 1 ? GAP : 0 }}
+                contentFit="cover"
+                transition={200}
+                cachePolicy="memory-disk"
+              />
+            ))}
+          </View>
+        </View>
+      );
+    }
+
+    // 3+ images: 2x2 grid with +N overlay
+    const grid = images.slice(0, 4);
+    const extra = images.length - 4;
+    return (
+      <View style={[styles.imageCollageContainer, { paddingHorizontal: H_PADDING }]}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', width: usableWidth }}>
+          {grid.map((img, i) => (
+            <View key={i} style={{
+              width: halfSize,
+              height: halfSize,
+              marginLeft: i % 2 === 1 ? GAP : 0,
+              marginTop: i >= 2 ? GAP : 0,
+              borderRadius: 2,
+              overflow: 'hidden',
+            }}>
+              <Image
+                source={{ uri: img.url }}
+                style={{ width: halfSize, height: halfSize }}
+                contentFit="cover"
+                transition={200}
+                cachePolicy="memory-disk"
+              />
+              {i === 3 && extra > 0 && (
+                <View style={styles.imageOverlay}>
+                  <Text style={styles.imageOverlayText}>+{extra}</Text>
+                </View>
+              )}
+            </View>
+          ))}
+        </View>
+      </View>
+    );
+  };
+
+  // ── Highlight toggling for showcase posts ──
+  const [highlightingPostId, setHighlightingPostId] = useState<number | null>(null);
+
+  const handleToggleHighlight = useCallback(async (postId: number, currentlyHighlighted: boolean) => {
+    if (highlightingPostId) return; // debounce
+    setHighlightingPostId(postId);
+    try {
+      const res = currentlyHighlighted
+        ? await highlightService.unhighlightPost(postId)
+        : await highlightService.highlightPost(postId);
+      if (res.success) {
+        // Optimistic update in the feed
+        setFeedItems(prev => prev.map(item => {
+          if (item.data?.post_id === postId) {
+            return {
+              ...item,
+              data: { ...item.data, is_highlighted: currentlyHighlighted ? 0 : 1 },
+            };
+          }
+          return item;
+        }));
+      } else {
+        Alert.alert('Highlight', res.message || 'Could not update highlight.');
+      }
+    } catch {
+      Alert.alert('Error', 'Something went wrong.');
+    } finally {
+      setHighlightingPostId(null);
+    }
+  }, [highlightingPostId]);
+
+  const submitPostReport = useCallback(async (reason: string, details?: string) => {
+    if (!reportTarget) {
+      return { success: false, message: 'No report target selected.' };
+    }
+
+    const res = await post_service.report_post(reportTarget.postType, reportTarget.postId, reason, details);
+    return {
+      success: !!res.success,
+      message: res.message || (res.success ? 'Report submitted.' : 'Unable to submit report right now.'),
+    };
+  }, [reportTarget]);
+
+  const openReportReasons = useCallback((postType: 'project' | 'showcase', postId: number) => {
+    setReportTarget({ postType, postId });
+    setReportModalVisible(true);
+  }, [submitPostReport]);
+
+  const openProjectCardMenu = useCallback((projectId: number) => {
+    setActiveCardMenu(prev => {
+      if (prev?.type === 'project' && prev.id === projectId) return null;
+      return { type: 'project', id: projectId };
+    });
+  }, []);
+
+  const openShowcaseCardMenu = useCallback((postId: number) => {
+    setActiveCardMenu(prev => {
+      if (prev?.type === 'showcase' && prev.id === postId) return null;
+      return { type: 'showcase', id: postId };
+    });
+  }, []);
+
+  const renderShowcaseCard = (post: any, index: number) => {
+    const avatarUrl = post.avatar
+      ? getStorageUrl(post.avatar)
+      : (post.company_logo ? getStorageUrl(post.company_logo) : null);
+
+    const postImages = (post.images || []).map((img: any) => ({
+      url: img.file_path?.startsWith('http')
+        ? img.file_path
+        : `${api_config.base_url}/storage/${img.file_path}`,
+    }));
+
+    const isOwn = post.user_id === userData?.user_id;
+    const isHighlighted = !!post.is_highlighted;
+
+    // Prefer milestone name, then project title for linked project display
+    const linkedName = post.linked_milestone_name || post.linked_project_title || null;
+
+    return (
+      <TouchableOpacity
+        key={`showcase-${post.post_id}-${index}`}
+        style={styles.projectCard}
+        activeOpacity={0.8}
+        onPress={() => {
+          setActiveCardMenu(null);
+          setSelectedShowcasePost(post);
+        }}
+      >
+        {/* Header: Author info + linked project tag */}
+        <View style={styles.projectHeader}>
+          <TouchableOpacity
+            style={[styles.ownerInfo, { flex: 1 }]}
+            activeOpacity={0.7}
+            onPress={() => {
+              if (!isOwn && post.user_id) {
+                if (post.user_type === 'contractor' || post.company_name) {
+                  setSelectedContractor({
+                    contractor_id: 0,
+                    company_name: post.display_name || post.company_name || post.username,
+                    user_id: post.user_id,
+                    logo_url: avatarUrl,
+                  });
+                } else {
+                  setSelectedOwner({
+                    owner_id: 0,
+                    user_id: post.user_id,
+                    name: post.display_name || post.username || 'Property Owner',
+                    profile_pic: post.avatar || post.profile_pic,
+                  });
+                }
+              }
+            }}
+          >
+            <ImageFallback
+              uri={avatarUrl || undefined}
+              defaultImage={
+                post.user_type === 'contractor' ? defaultContractorAvatar : defaultOwnerAvatar
+              }
+              style={styles.ownerAvatarImg}
+              resizeMode="cover"
+            />
+            <View style={{ flex: 1 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
+                <Text style={styles.ownerName} numberOfLines={1}>
+                  {post.display_name || post.username || 'User'}
+                </Text>
+                {linkedName ? (
+                  <>
+                    <Text style={{ color: '#999', fontSize: 13 }}>—</Text>
+                    <MaterialIcons name="label" size={14} color="#1565C0" />
+                    <Text style={{ fontSize: 13, color: '#1565C0', fontWeight: '600' }} numberOfLines={1}>
+                      {linkedName}
+                    </Text>
+                  </>
+                ) : null}
+              </View>
+              <Text style={styles.postDate}>
+                Posted{' '}
+                {new Date(post.created_at).toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                })}
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          <View style={styles.cardMenuWrap}>
+            <TouchableOpacity
+              style={styles.cardMenuButton}
+              onPress={(e) => {
+                e.stopPropagation?.();
+                openShowcaseCardMenu(post.post_id);
+              }}
+              disabled={highlightingPostId === post.post_id}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <MaterialIcons name="more-vert" size={20} color="#4B5563" />
+            </TouchableOpacity>
+
+            {activeCardMenu?.type === 'showcase' && activeCardMenu.id === post.post_id && (
+              <View style={styles.cardMenuDropdown}>
+                {isOwn && (
+                  <TouchableOpacity
+                    style={styles.cardMenuItem}
+                    onPress={(e) => {
+                      e.stopPropagation?.();
+                      setActiveCardMenu(null);
+                      handleToggleHighlight(post.post_id, isHighlighted);
+                    }}
+                  >
+                    <Text style={styles.cardMenuItemText}>{isHighlighted ? 'Unhighlight' : 'Highlight'}</Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity
+                  style={styles.cardMenuItem}
+                  onPress={(e) => {
+                    e.stopPropagation?.();
+                    setActiveCardMenu(null);
+                    openReportReasons('showcase', post.post_id);
+                  }}
+                >
+                  <Text style={styles.cardMenuDangerText}>Report</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* Title */}
+        {post.title && <Text style={styles.projectTitleText}>{post.title}</Text>}
+
+        {/* Content */}
+        <Text style={styles.projectDescriptionText} numberOfLines={3}>
+          {post.content}
+        </Text>
+
+        {/* Images */}
+        {postImages.length > 0 && renderShowcaseImages(postImages)}
+
+        {/* Location (below images) */}
+        {post.location && (
+          <View style={[styles.detailRow, { marginTop: 8 }]}>
+            <MaterialIcons name="location-on" size={16} color="#666666" />
+            <Text style={styles.detailText}>{post.location}</Text>
+          </View>
+        )}
+      </TouchableOpacity>
+    );
+  };
+
+  // Render the home content (unified feed for both roles)
   const renderHomeContent = () => {
     // Build profile image URL using getStorageUrl and respect preferred_role for 'both' users
     const profileImageUrl = (() => {
       if (!userData) return undefined;
-      // Prefer explicit company_logo on userData, otherwise use authenticated contractor profile
       const companyLogo = userData.company_logo || myContractorProfile?.company_logo || null;
-      if (userData.user_type === 'contractor') return getStorageUrl(companyLogo);
-      if (userData.user_type === 'property_owner') return getStorageUrl(userData.profile_pic);
-      if (userData.user_type === 'both') {
-        return (userData.preferred_role || '').toString().toLowerCase() === 'contractor'
-          ? getStorageUrl(companyLogo)
-          : getStorageUrl(userData.profile_pic);
-      }
+      if (effectiveUserType === 'contractor') return getStorageUrl(companyLogo);
+      if (effectiveUserType === 'property_owner') return getStorageUrl(userData.profile_pic);
       return getStorageUrl(userData.profile_pic);
     })();
 
-    console.log('Profile image URL:', profileImageUrl);
-
-    // For contractors, show projects feed
-    if (effectiveUserType === 'contractor') {
-      return renderContractorHomeContent();
-    }
-
-    // For property owners, show contractors feed
     return (
+      <>
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
-        onMomentumScrollEnd={(e) => handleScrollEnd(e, loadMoreContractors)}
-        onScrollEndDrag={(e) => handleScrollEnd(e, loadMoreContractors)}
+        onMomentumScrollEnd={(e) => handleScrollEnd(e, loadMoreFeed)}
+        onScrollEndDrag={(e) => handleScrollEnd(e, loadMoreFeed)}
       >
-        {/* User Profile and Project Input */}
+        {/* ── Create Post Section ── */}
         <View style={styles.profileSection}>
           <ImageFallback
             uri={profileImageUrl}
-            defaultImage={require('../../../assets/images/pictures/property_owner_default.png')}
+            defaultImage={
+              effectiveUserType === 'contractor'
+                ? require('../../../assets/images/pictures/contractor_default.png')
+                : require('../../../assets/images/pictures/property_owner_default.png')
+            }
             style={styles.profileImage}
             resizeMode="cover"
           />
           <TouchableOpacity
             style={styles.projectInput}
-            onPress={() => setShowCreateProject(true)}
+            onPress={() => {
+              if (effectiveUserType === 'property_owner') {
+                setShowCreateChooser(true);
+              } else {
+                setShowCreateShowcase(true);
+              }
+            }}
           >
-            <Text style={styles.projectInputText}>Post your project</Text>
+            <Text style={styles.projectInputText}>
+              {effectiveUserType === 'contractor'
+                ? 'Share your work...'
+                : 'Create a post...'}
+            </Text>
           </TouchableOpacity>
         </View>
 
-        {/* Popular Contractors Section */}
+        {/* ── Feed Section ── */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Popular Contractors</Text>
+          <Text style={styles.sectionTitle}>Feed</Text>
 
-          {/* Loading State */}
-          {isLoading && (
+          {/* Loading */}
+          {loadingFeed && (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color="#EC7E00" />
-              <Text style={styles.loadingText}>Loading contractors...</Text>
+              <Text style={styles.loadingText}>Loading feed...</Text>
             </View>
           )}
 
-          {/* Error State */}
-          {!isLoading && error && (
-            <View style={styles.errorContainer}>
-              <MaterialIcons name="error-outline" size={48} color="#E74C3C" />
-              <Text style={styles.errorText}>{error}</Text>
-              <TouchableOpacity
-                style={styles.retryButton}
-                onPress={() => {
-                  // Retry fetching contractors
-                  setError(null);
-                  setIsLoading(true);
-                  setContractorsPage(1);
-                  contractors_service.get_active_contractors(undefined, 1, PER_PAGE)
-                    .then(response => {
-                      const contractorsData = response.data?.data || response.data;
-                      if (response.success && contractorsData && Array.isArray(contractorsData)) {
-                        const transformedContractors = contractors_service.transform_contractors(contractorsData);
-                        setPopularContractors(transformedContractors);
-                        if (response.pagination) {
-                          setHasMoreContractors(response.pagination.has_more);
-                        }
-                      }
-                    })
-                    .finally(() => setIsLoading(false));
-                }}
-              >
-                <Text style={styles.retryButtonText}>Retry</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {/* Empty State */}
-          {!isLoading && !error && popularContractors.length === 0 && (
-            <View style={styles.emptyContainer}>
-              <MaterialIcons name="business" size={48} color="#999999" />
-              <Text style={styles.emptyText}>No contractors available at the moment</Text>
-            </View>
-          )}
-
-          {/* Contractors List */}
-          {!isLoading && !error && popularContractors.length > 0 && (
-            <>
-              {popularContractors.map((contractor, index) => (
-                <View key={`contractor-${contractor.contractor_id || index}-${index}`}>
-                  {renderContractorCard({ item: contractor })}
-                </View>
-              ))}
-
-              {/* Loading More Indicator */}
-              {loadingMore && (
-                <View style={styles.loadingMoreContainer}>
-                  <ActivityIndicator size="small" color="#EC7E00" />
-                  <Text style={styles.loadingMoreText}>Loading more...</Text>
-                </View>
-              )}
-
-              {/* End of List Indicator */}
-              {!loadingMore && !hasMoreContractors && (
-                <View style={styles.endOfListContainer}>
-                  <Text style={styles.endOfListText}>You've reached the end</Text>
-                </View>
-              )}
-            </>
-          )}
-        </View>
-      </ScrollView>
-    );
-  };
-
-  // Render home content for contractors (projects feed)
-  const renderContractorHomeContent = () => {
-    // Build profile image URL for contractor view; respect preferred_role when user is 'both'
-    const profileImageUrl = (() => {
-      if (!userData) return undefined;
-      // Prefer company_logo from authenticated contractor profile when available
-      const companyLogo = userData.company_logo || myContractorProfile?.company_logo || null;
-
-      if (userData.user_type === 'contractor') return getStorageUrl(companyLogo);
-      if (userData.user_type === 'property_owner') return getStorageUrl(userData.profile_pic);
-      if (userData.user_type === 'both') {
-        return (userData.preferred_role || '').toString().toLowerCase() === 'contractor'
-          ? getStorageUrl(companyLogo)
-          : getStorageUrl(userData.profile_pic);
-      }
-      return getStorageUrl(userData.profile_pic);
-    })();
-
-    return (
-      <ScrollView
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-        onMomentumScrollEnd={(e) => handleScrollEnd(e, loadMoreProjects)}
-        onScrollEndDrag={(e) => handleScrollEnd(e, loadMoreProjects)}
-      >
-        {/* User Profile and Search */}
-        <View style={styles.profileSection}>
-          <ImageFallback
-            uri={profileImageUrl}
-            defaultImage={require('../../../assets/images/pictures/contractor_default.png')}
-            style={styles.profileImage}
-            resizeMode="cover"
-          />
-          <View style={styles.searchBarContainer}>
-            <Feather name="search" size={18} color="#999999" />
-            <Text style={styles.searchBarText}>Find projects to bid on...</Text>
-          </View>
-        </View>
-
-        {/* Available Projects Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Available Projects</Text>
-
-          {/* Loading State */}
-          {isLoading && (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#EC7E00" />
-              <Text style={styles.loadingText}>Loading projects...</Text>
-            </View>
-          )}
-
-          {/* Error State */}
-          {!isLoading && error && (
+          {/* Error */}
+          {!loadingFeed && error && (
             <View style={styles.errorContainer}>
               <MaterialIcons name="error-outline" size={48} color="#E74C3C" />
               <Text style={styles.errorText}>{error}</Text>
@@ -1401,19 +1772,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
                 style={styles.retryButton}
                 onPress={() => {
                   setError(null);
-                  setIsLoading(true);
-                  setProjectsPage(1);
-                  projects_service.get_approved_projects(1, PER_PAGE)
-                    .then(response => {
-                      const projectsData = response.data?.data || response.data;
-                      if (response.success && projectsData && Array.isArray(projectsData)) {
-                        setAvailableProjects(projectsData);
-                        if (response.pagination) {
-                          setHasMoreProjects(response.pagination.has_more);
-                        }
-                      }
-                    })
-                    .finally(() => setIsLoading(false));
+                  fetchUnifiedFeed(1);
                 }}
               >
                 <Text style={styles.retryButtonText}>Retry</Text>
@@ -1421,21 +1780,33 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
             </View>
           )}
 
-          {/* Empty State */}
-          {!isLoading && !error && availableProjects.length === 0 && (
+          {/* Empty */}
+          {!loadingFeed && !error && feedItems.length === 0 && (
             <View style={styles.emptyContainer}>
               <Feather name="inbox" size={48} color="#999999" />
-              <Text style={styles.emptyText}>No projects available at the moment</Text>
-              <Text style={styles.emptySubtext}>Check back later for new project postings</Text>
+              <Text style={styles.emptyText}>No posts available yet</Text>
+              <Text style={styles.emptySubtext}>Be the first to share something!</Text>
             </View>
           )}
 
-          {/* Projects List */}
-          {!isLoading && !error && availableProjects.length > 0 && (
+          {/* Feed Items */}
+          {!loadingFeed && !error && feedItems.length > 0 && (
             <>
-              {availableProjects.map((project) => renderProjectCard(project))}
+              {feedItems.map((item: any, index: number) => (
+                <React.Fragment key={`${item.feed_type}-${item.item_id}`}>
+                  {item.feed_type === 'project'
+                    ? renderProjectCard(item.data)
+                    : item.feed_type === 'contractor'
+                      ? renderContractorCard({ item: {
+                          ...item.data,
+                          contractor_type: item.data.type_name,
+                          location: item.data.business_address,
+                        }})
+                      : renderShowcaseCard(item.data, index)}
+                </React.Fragment>
+              ))}
 
-              {/* Loading More Indicator */}
+              {/* Loading More */}
               {loadingMore && (
                 <View style={styles.loadingMoreContainer}>
                   <ActivityIndicator size="small" color="#EC7E00" />
@@ -1443,8 +1814,8 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
                 </View>
               )}
 
-              {/* End of List Indicator */}
-              {!loadingMore && !hasMoreProjects && (
+              {/* End of List */}
+              {!loadingMore && !hasMoreFeed && (
                 <View style={styles.endOfListContainer}>
                   <Text style={styles.endOfListText}>You've reached the end</Text>
                 </View>
@@ -1453,6 +1824,16 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
           )}
         </View>
       </ScrollView>
+
+      <ReportPostModal
+        visible={reportModalVisible}
+        onClose={() => {
+          setReportModalVisible(false);
+          setReportTarget(null);
+        }}
+        onSubmit={submitPostReport}
+      />
+      </>
     );
   };
 
@@ -1632,6 +2013,41 @@ const renderProfileContent = () => {
     }
   };
 
+  // If viewing a showcase post detail, show ShowcasePostDetail screen
+  if (selectedShowcasePost) {
+    const isOwn = selectedShowcasePost.user_id === userData?.user_id;
+    return (
+      <ShowcasePostDetail
+        post={selectedShowcasePost}
+        isOwner={isOwn}
+        onClose={() => setSelectedShowcasePost(null)}
+        onViewProfile={(!isOwn && selectedShowcasePost.user_id) ? () => {
+          const sp = selectedShowcasePost;
+          setSelectedShowcasePost(null);
+          if (sp.user_type === 'contractor' || sp.company_name) {
+            setSelectedContractor({
+              contractor_id: 0,
+              company_name: sp.display_name || sp.company_name || sp.username,
+              user_id: sp.user_id,
+              logo_url: sp.avatar
+                ? getStorageUrl(sp.avatar)
+                : sp.company_logo
+                  ? getStorageUrl(sp.company_logo)
+                  : undefined,
+            });
+          } else {
+            setSelectedOwner({
+              owner_id: 0,
+              user_id: sp.user_id,
+              name: sp.display_name || sp.username || 'Property Owner',
+              profile_pic: sp.avatar || sp.profile_pic,
+            });
+          }
+        } : undefined}
+      />
+    );
+  }
+
   // If viewing a project detail, show ProjectPostDetail screen
   if (selectedProject) {
     const isOwn = (
@@ -1649,6 +2065,44 @@ const renderProfileContent = () => {
           setSelectedProject(null);
           setShowPlaceBid(true);
         } : undefined}
+        onViewOwnerProfile={(!isOwn && selectedProject.owner_user_id) ? () => {
+          const proj = selectedProject;
+          setSelectedProject(null);
+          setSelectedOwner({
+            owner_id: proj.owner_id,
+            user_id: proj.owner_user_id!,
+            name: proj.owner_name || 'Property Owner',
+            profile_pic: proj.owner_profile_pic,
+          });
+        } : undefined}
+      />
+    );
+  }
+
+  // If the WriteReview screen is active (from notification deep-link)
+  if (reviewParams) {
+    return (
+      <WriteReview
+        projectId={reviewParams.projectId}
+        revieweeUserId={reviewParams.revieweeUserId}
+        onClose={() => setReviewParams(null)}
+        onReviewSubmitted={() => {
+          setReviewParams(null);
+        }}
+      />
+    );
+  }
+
+  // If viewing an owner profile, show CheckOwnerProfile screen
+  if (selectedOwner) {
+    return (
+      <CheckOwnerProfile
+        owner={selectedOwner}
+        onClose={() => setSelectedOwner(null)}
+        onSendMessage={() => {
+          setSelectedOwner(null);
+          setActiveTab('messages');
+        }}
       />
     );
   }
@@ -1693,8 +2147,21 @@ const renderProfileContent = () => {
           setBidProject(null);
         }}
         onBidSubmitted={() => {
-          // Refresh the projects list after submitting a bid
+          const submittedProjectId = bidProject?.project_id;
+
+          // Hide the project immediately from contractor lists so no manual reload is needed.
+          if (submittedProjectId) {
+            setFeedItems(prev =>
+              prev.filter(item => !(item?.feed_type === 'project' && item?.data?.project_id === submittedProjectId))
+            );
+            setAvailableProjects(prev => prev.filter(p => p.project_id !== submittedProjectId));
+          }
+
+          // Keep background data in sync for any legacy/non-unified screens.
           refreshProjects();
+        }}
+        onOpenSubscription={() => {
+          if (global.set_app_state) global.set_app_state('subscription');
         }}
       />
     );
@@ -1707,7 +2174,11 @@ const renderProfileContent = () => {
         onClose={handleSearchClose}
         searchType={effectiveUserType === 'contractor' ? 'projects' : 'contractors'}
         onContractorPress={handleSearchContractorPress}
+        onOwnerPress={handleSearchOwnerPress}
         onProjectPress={handleSearchProjectPress}
+        onShowcasePress={handleSearchShowcasePress}
+        renderFeedItemCard={renderSearchFeedItem}
+        renderContractorFeedCard={renderSearchContractorCard}
       />
     );
   }
@@ -1823,9 +2294,133 @@ const renderProfileContent = () => {
           </TouchableOpacity>
         </View>
       )}
+
+      {/* ── Create Post Chooser Modal (Property Owners) ── */}
+      <Modal
+        visible={showCreateChooser}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowCreateChooser(false)}
+      >
+        <TouchableOpacity
+          style={chooserStyles.overlay}
+          activeOpacity={1}
+          onPress={() => setShowCreateChooser(false)}
+        >
+          <View style={chooserStyles.sheet}>
+            <Text style={chooserStyles.title}>Create a Post</Text>
+
+            <TouchableOpacity
+              style={chooserStyles.option}
+              onPress={() => {
+                setShowCreateChooser(false);
+                setShowCreateProject(true);
+              }}
+            >
+              <View style={[chooserStyles.iconWrap, { backgroundColor: '#FFF3E6' }]}>
+                <MaterialIcons name="gavel" size={22} color="#EC7E00" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={chooserStyles.optionTitle}>Project for Bidding</Text>
+                <Text style={chooserStyles.optionDesc}>Post a project and find a contractor</Text>
+              </View>
+              <MaterialIcons name="chevron-right" size={22} color="#CCC" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={chooserStyles.option}
+              onPress={() => {
+                setShowCreateChooser(false);
+                setShowCreateShowcase(true);
+              }}
+            >
+              <View style={[chooserStyles.iconWrap, { backgroundColor: '#E8F5E9' }]}>
+                <MaterialIcons name="photo-library" size={22} color="#4CAF50" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={chooserStyles.optionTitle}>Showcase Post</Text>
+                <Text style={chooserStyles.optionDesc}>Share photos and updates from your projects</Text>
+              </View>
+              <MaterialIcons name="chevron-right" size={22} color="#CCC" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={chooserStyles.cancelBtn}
+              onPress={() => setShowCreateChooser(false)}
+            >
+              <Text style={chooserStyles.cancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* ── Create Showcase Modal (both roles) ── */}
+      <CreateShowcase
+        visible={showCreateShowcase}
+        onClose={() => setShowCreateShowcase(false)}
+        onCreated={() => fetchUnifiedFeed(1)}
+      />
     </SafeAreaView>
   );
 }
+
+/* ── Chooser modal styles ─────────────────────────────────────────── */
+const chooserStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'flex-end',
+  },
+  sheet: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 34,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    marginBottom: 16,
+  },
+  option: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+    gap: 12,
+  },
+  iconWrap: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  optionTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1A1A1A',
+  },
+  optionDesc: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 2,
+  },
+  cancelBtn: {
+    alignItems: 'center',
+    paddingVertical: 14,
+    marginTop: 8,
+  },
+  cancelText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#999',
+  },
+});
 
 const styles = StyleSheet.create({
   container: {
@@ -2370,6 +2965,54 @@ const styles = StyleSheet.create({
   deadlineTextUrgent: {
     color: '#E74C3C',
   },
+  cardHeaderActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  cardMenuWrap: {
+    position: 'relative',
+    zIndex: 30,
+  },
+  cardMenuButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardMenuDropdown: {
+    position: 'absolute',
+    top: 24,
+    right: 0,
+    minWidth: 108,
+    maxWidth: 132,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    paddingVertical: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.14,
+    shadowRadius: 8,
+    elevation: 6,
+    zIndex: 20,
+  },
+  cardMenuItem: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  cardMenuItemText: {
+    fontSize: 13,
+    color: '#1F2937',
+    fontWeight: '500',
+  },
+  cardMenuDangerText: {
+    fontSize: 13,
+    color: '#B91C1C',
+    fontWeight: '600',
+  },
   projectTitleText: {
     fontSize: 16,
     fontWeight: '600',
@@ -2438,7 +3081,7 @@ const styles = StyleSheet.create({
   imageCollageContainer: {
     marginTop: 12,
     marginBottom: 0,
-    borderRadius: 8,
+    borderRadius: 2,
     overflow: 'hidden',
   },
   imageSingle: {

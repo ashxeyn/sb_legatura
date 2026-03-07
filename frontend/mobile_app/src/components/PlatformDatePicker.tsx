@@ -6,10 +6,11 @@ import { formatDate } from '../utils/roleFormUtils';
 type Props = {
   value?: string; // YYYY-MM-DD
   onChange: (val: string) => void;
+  minimumDate?: Date;
   maximumDate?: Date;
 };
 
-export default function PlatformDatePicker({ value, onChange, maximumDate }: Props) {
+export default function PlatformDatePicker({ value, onChange, minimumDate, maximumDate }: Props) {
   if (Platform.OS === 'web') {
     return (
       <View>
@@ -33,6 +34,7 @@ export default function PlatformDatePicker({ value, onChange, maximumDate }: Pro
       value={dateValue}
       mode="date"
       display="spinner"
+      minimumDate={minimumDate || new Date(1900, 0, 1)}
       maximumDate={maximumDate}
       onChange={(_e, d) => {
         if (d) onChange(formatDate(d));

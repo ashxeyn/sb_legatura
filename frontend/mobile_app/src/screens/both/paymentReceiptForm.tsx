@@ -69,6 +69,7 @@ interface PaymentReceiptFormProps {
   totalSubmitted?: number;
   remainingBalance?: number;
   overAmount?: number;
+  isDownpayment?: boolean;
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -85,6 +86,7 @@ export default function paymentReceiptForm({
   totalSubmitted = 0,
   remainingBalance = 0,
   overAmount = 0,
+  isDownpayment = false,
   onClose,
   onSuccess,
 }: PaymentReceiptFormProps) {
@@ -291,15 +293,24 @@ export default function paymentReceiptForm({
     setIsSubmitting(true);
 
     try {
-      const response = await payment_service.upload_payment(
-        milestoneItemId,
-        projectId,
-        parseFloat(removeCommas(amount)),
-        paymentType,
-        transactionNumber || null,
-        formatDateForAPI(transactionDate),
-        receiptPhoto
-      );
+      const response = isDownpayment
+        ? await payment_service.upload_downpayment(
+            projectId,
+            parseFloat(removeCommas(amount)),
+            paymentType,
+            transactionNumber || null,
+            formatDateForAPI(transactionDate),
+            receiptPhoto
+          )
+        : await payment_service.upload_payment(
+            milestoneItemId,
+            projectId,
+            parseFloat(removeCommas(amount)),
+            paymentType,
+            transactionNumber || null,
+            formatDateForAPI(transactionDate),
+            receiptPhoto
+          );
 
       if (response.success) {
         Alert.alert('Success', 'Payment receipt uploaded successfully', [

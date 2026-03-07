@@ -29,6 +29,7 @@ import RoleAddScreen from './src/screens/both/addRoleRegistration';
 import { api_config, api_request, set_unauthorized_handler, reset_unauthorized_guard } from './src/config/api';
 import EmailVerificationScreen from './src/screens/both/emailVerification';
 import ProfilePictureScreen from './src/screens/both/profilePic';
+import RegistrationSuccessModal from './src/components/registrationSuccessModal';
 import HomepageScreen from './src/screens/both/homepage';
 import SubscriptionScreen from './src/screens/contractor/subscriptionScreen';
 import ChangePasswordScreen from './src/screens/both/changePassword';
@@ -63,6 +64,7 @@ export default function App() {
      * Determine the dashboard type for a user.
      * RULES:
      * - user_type === 'staff' → contractor (staff are contractor team members)
+     * - contractor_member present → contractor
      * - user_type === 'contractor' → contractor
      * - determinedRole === 'contractor' → contractor
      * - user_type === 'property_owner' → property_owner
@@ -71,6 +73,10 @@ export default function App() {
     const getDashboardType = (userData: any): 'contractor' | 'property_owner' => {
         // RULE 1: Staff users ALWAYS go to contractor dashboard
         if (userData?.user_type === 'staff') {
+            return 'contractor';
+        }
+        // RULE 1b: Contractor member context (staff/representative) is contractor dashboard
+        if (userData?.contractor_member) {
             return 'contractor';
         }
         // RULE 2: Contractor users go to contractor dashboard
@@ -130,6 +136,7 @@ export default function App() {
 
 
     const [initial_home_tab, set_initial_home_tab] = useState<'home' | 'dashboard' | 'messages' | 'profile'>('home');
+    const [view_profile_initial_tab, set_view_profile_initial_tab] = useState<string | undefined>(undefined);
     const [registration_target_role, set_registration_target_role] = useState<'contractor' | 'owner' | null>(null);
 
     // Form data from backend
@@ -147,6 +154,10 @@ export default function App() {
     const [contractor_company_info, set_contractor_company_info] = useState<any>(null);
     const [contractor_account_info, set_contractor_account_info] = useState<any>(null);
     const [contractor_documents_info, set_contractor_documents_info] = useState<any>(null);
+
+    // Registration success modal
+    const [show_registration_success, set_show_registration_success] = useState(false);
+    const [registration_success_target, set_registration_success_target] = useState<AppState>('login');
 
     // Forgot password flow data
     const [reset_email, set_reset_email] = useState('');
@@ -833,6 +844,7 @@ export default function App() {
         return (
             <SafeAreaProvider>
                 <ProfilePictureScreen
+                    userType="property_owner"
                     onBackPress={() => set_app_state('po_role_verification')}
                     onComplete={async (profileInfo: any) => {
                         try {
@@ -841,6 +853,7 @@ export default function App() {
                             // Include all previous step data so server can process stateless mobile flow
                             const payload = {
                                 profileImageUri: profileInfo.profileImageUri,
+                                coverImageUri: profileInfo.coverImageUri,
                                 step1_data: po_personal_info,
                                 step2_data: po_account_setup,
                                 step4_data: po_verification_info,
@@ -851,9 +864,8 @@ export default function App() {
                             console.log('🔥 App.tsx - Final step response:', response);
 
                             if (response.success) {
-                                Alert.alert('Success', 'Registration completed successfully! Please login to continue.', [
-                                    { text: 'OK', onPress: () => set_app_state('login') }
-                                ]);
+                                set_registration_success_target('login');
+                                set_show_registration_success(true);
                             } else {
                                 const errorMsg = response.message || `Failed to complete registration. Status: ${response.status}`;
                                 console.error('🔥 App.tsx - Registration failed:', errorMsg);
@@ -877,9 +889,8 @@ export default function App() {
                             const response = await auth_service.property_owner_final(payload);
 
                             if (response.success) {
-                                Alert.alert('Success', 'Registration completed successfully! Please login to continue.', [
-                                    { text: 'OK', onPress: () => set_app_state('login') }
-                                ]);
+                                set_registration_success_target('login');
+                                set_show_registration_success(true);
                             } else {
                                 Alert.alert('Error', response.message || 'Failed to complete registration. Please try again.');
                             }
@@ -900,7 +911,7 @@ export default function App() {
                     userType={selected_user_type || 'property_owner'}
                     userData={user_data}
                     onLogout={handle_logout}
-                    onViewProfile={() => set_app_state('view_profile')}
+                    onViewProfile={(initialTab) => { set_view_profile_initial_tab(initialTab); set_app_state('view_profile'); }}
                     onEditProfile={() => set_app_state('edit_profile')}
                     onOpenHelp={() => set_app_state('help_center')}
                     onOpenSwitchRole={() => set_app_state('switch_role')}
@@ -966,12 +977,13 @@ export default function App() {
         return (
             <SafeAreaProvider>
                 <ViewProfileScreen
-                    onBack={() => set_app_state('main')}
+                    onBack={() => { set_view_profile_initial_tab(undefined); set_app_state('main'); }}
                     userData={{
                         ...user_data,
                         profile_pic: user_data?.profile_pic ? `${api_config.base_url}/storage/${user_data.profile_pic}` : undefined,
                         cover_photo: user_data?.cover_photo ? `${api_config.base_url}/storage/${user_data.cover_photo}` : undefined,
                     }}
+                    initialTab={view_profile_initial_tab}
                 />
             </SafeAreaProvider>
         );
@@ -1233,6 +1245,7 @@ export default function App() {
         return (
             <SafeAreaProvider>
                 <ProfilePictureScreen
+                    userType="contractor"
                     onBackPress={() => set_app_state('contractor_business_documents')}
                     onComplete={async (profileInfo: any) => {
                         try {
@@ -1245,9 +1258,8 @@ export default function App() {
                             const response = await auth_service.contractor_final(payload);
 
                             if (response.success) {
-                                Alert.alert('Success', 'Registration completed successfully!', [
-                                    { text: 'OK', onPress: () => set_app_state('main') }
-                                ]);
+                                set_registration_success_target('login');
+                                set_show_registration_success(true);
                             } else {
                                 Alert.alert('Error', response.message || 'Failed to complete registration. Please try again.');
                             }
@@ -1266,9 +1278,8 @@ export default function App() {
                             const response = await auth_service.contractor_final(payload);
 
                             if (response.success) {
-                                Alert.alert('Success', 'Registration completed successfully!', [
-                                    { text: 'OK', onPress: () => set_app_state('main') }
-                                ]);
+                                set_registration_success_target('login');
+                                set_show_registration_success(true);
                             } else {
                                 Alert.alert('Error', response.message || 'Failed to complete registration. Please try again.');
                             }
@@ -1285,6 +1296,13 @@ export default function App() {
     return (
         <SafeAreaProvider>
             {/* Main app content will go here */}
+            <RegistrationSuccessModal
+                visible={show_registration_success}
+                onDismiss={() => {
+                    set_show_registration_success(false);
+                    set_app_state(registration_success_target);
+                }}
+            />
         </SafeAreaProvider>
     );
 }

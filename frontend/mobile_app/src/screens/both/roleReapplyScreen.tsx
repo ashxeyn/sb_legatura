@@ -1866,7 +1866,8 @@ export default function RoleReapplyScreen(props: RoleReapplyScreenProps) {
               <DateTimePicker
                 value={formData.experience_start_date ? new Date(formData.experience_start_date) : new Date()}
                 mode="date"
-                display="default"
+                display="spinner"
+                minimumDate={new Date(1900, 0, 1)}
                 maximumDate={new Date()}
                 onChange={(event, date) => {
                   if (date) {

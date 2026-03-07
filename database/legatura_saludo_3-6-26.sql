@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Feb 27, 2026 at 11:45 AM
+-- Generation Time: Mar 06, 2026 at 03:39 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -24,11 +24,26 @@ SET time_zone = "+00:00";
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `admin_activity_logs`
+--
+
+CREATE TABLE `admin_activity_logs` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `admin_id` bigint(20) UNSIGNED NOT NULL,
+  `action` varchar(100) NOT NULL,
+  `details` text DEFAULT NULL,
+  `ip_address` varchar(45) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `admin_users`
 --
 
 CREATE TABLE `admin_users` (
-  `admin_id` int(11) NOT NULL,
+  `admin_id` varchar(20) NOT NULL DEFAULT '',
   `username` varchar(50) NOT NULL,
   `email` varchar(100) NOT NULL,
   `password_hash` varchar(255) NOT NULL,
@@ -44,7 +59,32 @@ CREATE TABLE `admin_users` (
 --
 
 INSERT INTO `admin_users` (`admin_id`, `username`, `email`, `password_hash`, `last_name`, `middle_name`, `first_name`, `is_active`, `created_at`) VALUES
-(1, 'admin123', 'admin@gmail.com', '$2y$12$wN6x17yJegWeKIUj3Lq8O.sAG6QfX.5OPQ13k0xSAY./xrDhej5Uq', 'admin', 'admin', 'admin', 1, '2025-10-25 15:19:23');
+('ADMIN-1', 'admin123', 'admin@gmail.com', '$2y$12$wN6x17yJegWeKIUj3Lq8O.sAG6QfX.5OPQ13k0xSAY./xrDhej5Uq', 'admin', 'admin', 'admin', 1, '2025-10-25 15:19:23');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `ai_prediction_logs`
+--
+
+CREATE TABLE `ai_prediction_logs` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `project_id` int(11) NOT NULL,
+  `prediction` varchar(20) NOT NULL,
+  `delay_probability` decimal(5,4) NOT NULL,
+  `weather_severity` int(11) NOT NULL DEFAULT 0,
+  `ai_response_snapshot` longtext DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `ai_prediction_logs`
+--
+
+INSERT INTO `ai_prediction_logs` (`id`, `project_id`, `prediction`, `delay_probability`, `weather_severity`, `ai_response_snapshot`, `created_at`, `updated_at`) VALUES
+(1, 1057, 'ON-TIME', 0.1067, 0, '{\"prediction\":{\"delay_probability\":0.1067,\"prediction\":\"ON-TIME\",\"reason\":\"Standard AI analysis based on current metrics.\"},\"analysis_report\":{\"conclusion\":\"The project \'Wonderland\' is currently ahead of schedule. AI predicts a 10.7% probability of delay. Weather impact is Minimal (0.08mm rain). Holidays impact 0% of remaining time. Standard AI analysis based on current metrics.\",\"pacing_status\":{\"pacing_index\":1,\"avg_delay_days\":0,\"rejected_count\":0,\"details\":[{\"title\":\"First\",\"status\":\"No Submission\",\"days_variance\":0,\"pacing_label\":\"Pending\"},{\"title\":\"Secondt\",\"status\":\"No Submission\",\"days_variance\":0,\"pacing_label\":\"Pending\"}]},\"contractor_audit\":{\"experience\":\"5 Years\",\"historical_success\":\"39%\",\"flagged\":false}},\"weather\":{\"avg_temp\":28.5,\"avg_humidity\":74,\"avg_wind\":10.8,\"total_rain\":0.08,\"condition_text\":\"Patchy rain nearby\",\"condition_icon\":\"https:\\/\\/cdn.weatherapi.com\\/weather\\/64x64\\/day\\/176.png\",\"forecast\":[{\"date\":\"Wed, Mar 04\",\"temp_avg\":25.9,\"condition\":\"Patchy rain nearby\",\"icon\":\"https:\\/\\/cdn.weatherapi.com\\/weather\\/64x64\\/day\\/176.png\",\"rain_chance\":96},{\"date\":\"Thu, Mar 05\",\"temp_avg\":25.9,\"condition\":\"Patchy rain nearby\",\"icon\":\"https:\\/\\/cdn.weatherapi.com\\/weather\\/64x64\\/day\\/176.png\",\"rain_chance\":79},{\"date\":\"Fri, Mar 06\",\"temp_avg\":26.4,\"condition\":\"Patchy rain nearby\",\"icon\":\"https:\\/\\/cdn.weatherapi.com\\/weather\\/64x64\\/day\\/176.png\",\"rain_chance\":84}]},\"weather_severity\":0,\"dds_recommendations\":[],\"enso_state\":\"Neutral\"}', '2026-03-03 21:40:30', '2026-03-03 21:40:30'),
+(2, 1048, 'DELAYED', 0.7500, 0, '{\"prediction\":{\"delay_probability\":0.75,\"prediction\":\"DELAYED\",\"reason\":\"CRITICAL: 1 active dispute(s) detected. Construction disputes typically slow or halt work progress.\"},\"analysis_report\":{\"conclusion\":\"The project \'noche buena\' is currently ahead of schedule. AI predicts a 75.0% probability of delay. Weather impact is Minimal (0.09mm rain). Holidays impact 0% of remaining time. CRITICAL: 1 active dispute(s) detected. Construction disputes typically slow or halt work progress.\",\"pacing_status\":{\"pacing_index\":1.2,\"avg_delay_days\":-259,\"rejected_count\":0,\"details\":[{\"title\":\"1st\",\"status\":\"approved\",\"days_variance\":-153,\"pacing_label\":\"ON-TIME\\/EARLY\"},{\"title\":\"2nd\",\"status\":\"approved\",\"days_variance\":-365,\"pacing_label\":\"ON-TIME\\/EARLY\"}]},\"contractor_audit\":{\"experience\":\"5 Years\",\"historical_success\":\"39%\",\"flagged\":false}},\"weather\":{\"avg_temp\":28.5,\"avg_humidity\":75,\"avg_wind\":10.4,\"total_rain\":0.09,\"condition_text\":\"Patchy rain nearby\",\"condition_icon\":\"https:\\/\\/cdn.weatherapi.com\\/weather\\/64x64\\/day\\/176.png\",\"forecast\":[{\"date\":\"Wed, Mar 04\",\"temp_avg\":25.8,\"condition\":\"Patchy rain nearby\",\"icon\":\"https:\\/\\/cdn.weatherapi.com\\/weather\\/64x64\\/day\\/176.png\",\"rain_chance\":96},{\"date\":\"Thu, Mar 05\",\"temp_avg\":25.8,\"condition\":\"Patchy rain nearby\",\"icon\":\"https:\\/\\/cdn.weatherapi.com\\/weather\\/64x64\\/day\\/176.png\",\"rain_chance\":86},{\"date\":\"Fri, Mar 06\",\"temp_avg\":26.3,\"condition\":\"Patchy rain nearby\",\"icon\":\"https:\\/\\/cdn.weatherapi.com\\/weather\\/64x64\\/day\\/176.png\",\"rain_chance\":89}]},\"weather_severity\":0,\"dds_recommendations\":[\"\\ud83d\\udfe2 PACING GOOD: Work is ahead of schedule. Ensure quality isn\'t being sacrificed for speed.\",\"\\u2696\\ufe0f LEGAL RISK: Active disputes detected. Assign a mediator immediately.\",\"\\ud83d\\udce2 MANAGEMENT ACTION: High Risk of Delay. Convene emergency meeting with contractor.\"],\"enso_state\":\"Neutral\"}', '2026-03-03 21:41:46', '2026-03-03 21:41:46');
 
 -- --------------------------------------------------------
 
@@ -83,7 +123,9 @@ INSERT INTO `bids` (`bid_id`, `project_id`, `contractor_id`, `proposed_cost`, `e
 (263, 1054, 1809, 30000000.00, 24, 'Just some notes for you', 'accepted', NULL, '2026-01-25 00:16:01', '2026-01-25 00:17:04'),
 (293, 1053, 1809, 34444444.00, 23, 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'accepted', NULL, '2026-02-20 06:11:56', NULL),
 (294, 1056, 1810, 50000000.00, 24, 'oudydiydidyyky', 'accepted', NULL, '2026-02-21 01:57:19', '2026-02-23 00:09:12'),
-(295, 1047, 1810, 6898.00, 24, 'tuItskss', 'accepted', NULL, '2026-02-22 03:17:31', '2026-02-22 07:19:27');
+(295, 1047, 1810, 6898.00, 24, 'tuItskss', 'accepted', NULL, '2026-02-22 03:17:31', '2026-02-22 07:19:27'),
+(296, 1055, 1809, 1234567.00, 12, 'kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk', 'cancelled', NULL, '2026-03-01 03:37:06', NULL),
+(297, 1057, 1809, 9000000.00, 36, 'Miney Mouse Club House Wonderland we are the best', 'accepted', NULL, '2026-03-03 21:20:40', '2026-03-03 21:21:42');
 
 -- --------------------------------------------------------
 
@@ -107,30 +149,30 @@ CREATE TABLE `bid_files` (
 INSERT INTO `bid_files` (`file_id`, `bid_id`, `file_name`, `file_path`, `description`, `uploaded_at`) VALUES
 (9, 294, 'Screenshot_20260219-230933.jpg', 'bid_attachments/1771667839_6999817fd07f3_Screenshot_20260219-230933.jpg', NULL, '2026-02-21 01:57:19'),
 (10, 295, 'IMG_20260221_165037_972.jpg', 'bid_attachments/1771756154_699ada7a4ac36_IMG_20260221_165037_972.jpg', NULL, '2026-02-22 02:29:15'),
-(11, 295, 'EMBEDDED-SYSTEMS-DESIGN-Lect.pdf', 'bid_files/1771759051_699ae5cb322cb_EMBEDDED-SYSTEMS-DESIGN-Lect.pdf', NULL, '2026-02-22 03:17:31');
+(11, 295, 'EMBEDDED-SYSTEMS-DESIGN-Lect.pdf', 'bid_files/1771759051_699ae5cb322cb_EMBEDDED-SYSTEMS-DESIGN-Lect.pdf', NULL, '2026-02-22 03:17:31'),
+(12, 296, 'id.pdf', 'bid_files/1772365006_id.pdf', NULL, '2026-03-01 03:36:46'),
+(13, 296, '753fc4e1-2fff-400b-b27d-e27c967575dc.jpg', 'bid_files/1772365006_753fc4e1-2fff-400b-b27d-e27c967575dc.jpg', NULL, '2026-03-01 03:36:46'),
+(14, 297, 'EMBEDDED-SYSTEMS-DESIGN-Lect.pdf', 'bid_files/1772601640_69a7c128a533a_EMBEDDED-SYSTEMS-DESIGN-Lect.pdf', NULL, '2026-03-03 21:20:40');
 
 -- --------------------------------------------------------
 
 --
--- Table structure for table `cache`
+-- Table structure for table `content_reports`
 --
 
-CREATE TABLE `cache` (
-  `key` varchar(255) NOT NULL,
-  `value` mediumtext NOT NULL,
-  `expiration` int(11) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `cache_locks`
---
-
-CREATE TABLE `cache_locks` (
-  `key` varchar(255) NOT NULL,
-  `owner` varchar(255) NOT NULL,
-  `expiration` int(11) NOT NULL
+CREATE TABLE `content_reports` (
+  `report_id` bigint(20) UNSIGNED NOT NULL,
+  `reporter_user_id` bigint(20) UNSIGNED NOT NULL,
+  `content_type` enum('project','showcase') NOT NULL,
+  `content_id` bigint(20) UNSIGNED NOT NULL,
+  `reason` varchar(120) NOT NULL,
+  `details` text DEFAULT NULL,
+  `status` enum('pending','under_review','resolved','dismissed') NOT NULL DEFAULT 'pending',
+  `reviewed_by_user_id` bigint(20) UNSIGNED DEFAULT NULL,
+  `admin_notes` text DEFAULT NULL,
+  `reviewed_at` timestamp NULL DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -142,6 +184,9 @@ CREATE TABLE `cache_locks` (
 CREATE TABLE `contractors` (
   `contractor_id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL,
+  `company_logo` varchar(255) DEFAULT NULL,
+  `company_banner` varchar(255) DEFAULT NULL,
+  `bio` text DEFAULT NULL,
   `company_name` varchar(200) NOT NULL,
   `company_start_date` date NOT NULL DEFAULT current_timestamp(),
   `years_of_experience` int(11) NOT NULL,
@@ -178,131 +223,137 @@ CREATE TABLE `contractors` (
 -- Dumping data for table `contractors`
 --
 
-INSERT INTO `contractors` (`contractor_id`, `user_id`, `company_name`, `company_start_date`, `years_of_experience`, `type_id`, `contractor_type_other`, `services_offered`, `business_address`, `company_email`, `company_phone`, `company_website`, `company_social_media`, `company_description`, `picab_number`, `picab_category`, `picab_expiration_date`, `business_permit_number`, `business_permit_city`, `business_permit_expiration`, `tin_business_reg_number`, `dti_sec_registration_photo`, `verification_status`, `verification_date`, `is_active`, `suspension_until`, `suspension_reason`, `deletion_reason`, `rejection_reason`, `completed_projects`, `created_at`, `updated_at`) VALUES
-(1687, 1, 'Main Construction Co 1', '2011-12-16', 14, 8, NULL, 'General Construction', 'Zamboanga City', 'company1@example.com', '09170000001', NULL, NULL, NULL, 'PCAB-23362', 'A', '2026-12-31', 'BP-1', 'Zamboanga', '2026-01-01', 'TIN-1', 'dti_cert.jpg', 'approved', '2025-08-01 07:49:09', 1, NULL, NULL, NULL, NULL, 5, '2025-07-30 07:49:09', '2025-12-16 08:41:07'),
-(1688, 2, 'Main Construction Co 2', '2000-12-16', 25, 5, NULL, 'General Construction', 'Zamboanga City', 'company2@example.com', '09170000002', NULL, NULL, NULL, 'PCAB-22358', 'A', '2026-12-31', 'BP-2', 'Zamboanga', '2026-01-01', 'TIN-2', 'dti_cert.jpg', 'approved', '2025-10-23 07:49:09', 1, NULL, NULL, NULL, NULL, 43, '2025-10-21 07:49:09', '2025-12-16 08:41:07'),
-(1689, 3, 'Main Construction Co 3', '2005-12-16', 20, 6, NULL, 'General Construction', 'Zamboanga City', 'company3@example.com', '09170000003', NULL, NULL, NULL, 'PCAB-11115', 'A', '2026-12-31', 'BP-3', 'Zamboanga', '2026-01-01', 'TIN-3', 'dti_cert.jpg', 'approved', '2024-12-19 07:49:09', 1, NULL, NULL, NULL, NULL, 28, '2024-12-17 07:49:09', '2025-12-16 08:41:07'),
-(1690, 4, 'Main Construction Co 4', '1998-12-16', 27, 4, NULL, 'General Construction', 'Zamboanga City', 'company4@example.com', '09170000004', NULL, NULL, NULL, 'PCAB-96931', 'A', '2026-12-31', 'BP-4', 'Zamboanga', '2026-01-01', 'TIN-4', 'dti_cert.jpg', 'approved', '2025-01-26 07:49:09', 1, NULL, NULL, NULL, NULL, 23, '2025-01-24 07:49:09', '2025-12-16 08:41:07'),
-(1691, 5, 'Main Construction Co 5', '2013-12-16', 12, 1, NULL, 'General Construction', 'Zamboanga City', 'company5@example.com', '09170000005', NULL, NULL, NULL, 'PCAB-75904', 'A', '2026-12-31', 'BP-5', 'Zamboanga', '2026-01-01', 'TIN-5', 'dti_cert.jpg', 'approved', NULL, 1, NULL, NULL, NULL, '', 4, '2025-02-19 07:49:09', '2025-12-16 08:41:07'),
-(1692, 6, 'Main Construction Co 6', '2014-12-16', 11, 9, NULL, 'General Construction', 'Zamboanga City', 'company6@example.com', '09170000006', NULL, NULL, NULL, 'PCAB-79857', 'A', '2026-12-31', 'BP-6', 'Zamboanga', '2026-01-01', 'TIN-6', 'dti_cert.jpg', 'approved', '2025-04-23 07:49:09', 1, NULL, NULL, NULL, NULL, 24, '2025-04-21 07:49:09', '2025-12-16 08:41:07'),
-(1693, 7, 'Main Construction Co 7', '2008-12-16', 17, 6, NULL, 'General Construction', 'Zamboanga City', 'company7@example.com', '09170000007', NULL, NULL, NULL, 'PCAB-39566', 'A', '2026-12-31', 'BP-7', 'Zamboanga', '2026-01-01', 'TIN-7', 'dti_cert.jpg', 'approved', '2025-11-27 07:49:09', 1, NULL, NULL, NULL, NULL, 38, '2025-11-25 07:49:09', '2025-12-16 08:41:07'),
-(1694, 8, 'Main Construction Co 8', '2003-12-16', 22, 7, NULL, 'General Construction', 'Zamboanga City', 'company8@example.com', '09170000008', NULL, NULL, NULL, 'PCAB-54580', 'A', '2026-12-31', 'BP-8', 'Zamboanga', '2026-01-01', 'TIN-8', 'dti_cert.jpg', 'approved', '2025-10-10 07:49:09', 1, NULL, NULL, NULL, NULL, 19, '2025-10-08 07:49:09', '2025-12-16 08:41:07'),
-(1695, 9, 'Main Construction Co 9', '1999-12-16', 26, 9, NULL, 'General Construction', 'Zamboanga City', 'company9@example.com', '09170000009', NULL, NULL, NULL, 'PCAB-34347', 'A', '2026-12-31', 'BP-9', 'Zamboanga', '2026-01-01', 'TIN-9', 'dti_cert.jpg', 'approved', '2025-03-28 07:49:09', 1, NULL, NULL, NULL, NULL, 47, '2025-03-26 07:49:09', '2025-12-16 08:41:07'),
-(1696, 10, 'Main Construction Co 10', '2018-12-16', 7, 6, NULL, 'General Construction', 'Zamboanga City', 'company10@example.com', '09170000010', NULL, NULL, NULL, 'PCAB-69751', 'A', '2026-12-31', 'BP-10', 'Zamboanga', '2026-01-01', 'TIN-10', 'dti_cert.jpg', 'rejected', NULL, 1, NULL, NULL, NULL, 'Permit expired.', 37, '2025-09-23 07:49:09', '2025-12-16 08:41:07'),
-(1697, 11, 'Main Construction Co 11', '2010-12-16', 15, 9, NULL, 'General Construction', 'Zamboanga City', 'company11@example.com', '09170000011', NULL, NULL, NULL, 'PCAB-70939', 'A', '2026-12-31', 'BP-11', 'Zamboanga', '2026-01-01', 'TIN-11', 'dti_cert.jpg', 'approved', '2025-05-12 07:49:09', 1, NULL, NULL, NULL, NULL, 20, '2025-05-10 07:49:09', '2025-12-16 08:41:07'),
-(1698, 12, 'Main Construction Co 12', '2003-12-16', 22, 1, NULL, 'General Construction', 'Zamboanga City', 'company12@example.com', '09170000012', NULL, NULL, NULL, 'PCAB-10680', 'A', '2026-12-31', 'BP-12', 'Zamboanga', '2026-01-01', 'TIN-12', 'dti_cert.jpg', 'approved', '2025-09-11 07:49:09', 1, NULL, NULL, NULL, NULL, 38, '2025-09-09 07:49:09', '2025-12-16 08:41:07'),
-(1699, 13, 'Main Construction Co 13', '2021-12-16', 4, 1, NULL, 'General Construction', 'Zamboanga City', 'company13@example.com', '09170000013', NULL, NULL, NULL, 'PCAB-10739', 'A', '2026-12-31', 'BP-13', 'Zamboanga', '2026-01-01', 'TIN-13', 'dti_cert.jpg', 'approved', '2025-07-08 07:49:09', 1, NULL, NULL, NULL, NULL, 18, '2025-07-06 07:49:09', '2025-12-16 08:41:07'),
-(1700, 14, 'Main Construction Co 14', '2012-12-16', 13, 4, NULL, 'General Construction', 'Zamboanga City', 'company14@example.com', '09170000014', NULL, NULL, NULL, 'PCAB-81118', 'A', '2026-12-31', 'BP-14', 'Zamboanga', '2026-01-01', 'TIN-14', 'dti_cert.jpg', 'approved', '2025-02-22 07:49:09', 1, NULL, NULL, NULL, NULL, 11, '2025-02-20 07:49:09', '2025-12-16 08:41:07'),
-(1701, 15, 'Main Construction Co 15', '2003-12-16', 22, 5, NULL, 'General Construction', 'Zamboanga City', 'company15@example.com', '09170000015', NULL, NULL, NULL, 'PCAB-66597', 'A', '2026-12-31', 'BP-15', 'Zamboanga', '2026-01-01', 'TIN-15', 'dti_cert.jpg', 'approved', NULL, 1, NULL, NULL, NULL, '', 12, '2025-01-08 07:49:09', '2025-12-17 14:57:33'),
-(1702, 16, 'Main Construction Co 16', '2012-12-16', 13, 2, NULL, 'General Construction', 'Zamboanga City', 'company16@example.com', '09170000016', NULL, NULL, NULL, 'PCAB-19082', 'A', '2026-12-31', 'BP-16', 'Zamboanga', '2026-01-01', 'TIN-16', 'dti_cert.jpg', 'approved', '2025-05-17 07:49:09', 1, NULL, NULL, NULL, NULL, 25, '2025-05-15 07:49:09', '2025-12-16 08:41:07'),
-(1703, 17, 'Main Construction Co 17', '2000-12-16', 25, 5, NULL, 'General Construction', 'Zamboanga City', 'company17@example.com', '09170000017', NULL, NULL, NULL, 'PCAB-77703', 'A', '2026-12-31', 'BP-17', 'Zamboanga', '2026-01-01', 'TIN-17', 'dti_cert.jpg', 'approved', '2025-05-01 07:49:09', 1, NULL, NULL, NULL, NULL, 12, '2025-04-29 07:49:09', '2025-12-16 08:41:07'),
-(1704, 18, 'Main Construction Co 18', '1996-12-16', 29, 2, NULL, 'General Construction', 'Zamboanga City', 'company18@example.com', '09170000018', NULL, NULL, NULL, 'PCAB-36965', 'A', '2026-12-31', 'BP-18', 'Zamboanga', '2026-01-01', 'TIN-18', 'dti_cert.jpg', 'approved', '2025-01-06 07:49:09', 1, NULL, NULL, NULL, NULL, 9, '2025-01-04 07:49:09', '2025-12-16 08:41:07'),
-(1705, 19, 'Main Construction Co 19', '2016-12-16', 9, 2, NULL, 'General Construction', 'Zamboanga City', 'company19@example.com', '09170000019', NULL, NULL, NULL, 'PCAB-34306', 'A', '2026-12-31', 'BP-19', 'Zamboanga', '2026-01-01', 'TIN-19', 'dti_cert.jpg', 'approved', '2025-05-31 07:49:09', 1, NULL, NULL, NULL, NULL, 28, '2025-05-29 07:49:09', '2025-12-16 08:41:07'),
-(1706, 20, 'Main Construction Co 20', '2006-12-16', 19, 3, NULL, 'General Construction', 'Zamboanga City', 'company20@example.com', '09170000020', NULL, NULL, NULL, 'PCAB-67093', 'A', '2026-12-31', 'BP-20', 'Zamboanga', '2026-01-01', 'TIN-20', 'dti_cert.jpg', 'rejected', NULL, 1, NULL, NULL, NULL, 'Permit expired.', 6, '2025-10-18 07:49:09', '2025-12-16 08:41:07'),
-(1707, 21, 'Main Construction Co 21', '2019-12-16', 6, 2, NULL, 'General Construction', 'Zamboanga City', 'company21@example.com', '09170000021', NULL, NULL, NULL, 'PCAB-39542', 'A', '2026-12-31', 'BP-21', 'Zamboanga', '2026-01-01', 'TIN-21', 'dti_cert.jpg', 'approved', '2025-01-24 07:49:09', 1, NULL, NULL, NULL, NULL, 10, '2025-01-22 07:49:09', '2025-12-16 08:41:07'),
-(1708, 22, 'Main Construction Co 22', '2024-12-16', 1, 3, NULL, 'General Construction', 'Zamboanga City', 'company22@example.com', '09170000022', NULL, NULL, NULL, 'PCAB-34168', 'A', '2026-12-31', 'BP-22', 'Zamboanga', '2026-01-01', 'TIN-22', 'dti_cert.jpg', 'approved', '2025-10-18 07:49:09', 1, NULL, NULL, NULL, NULL, 11, '2025-10-16 07:49:09', '2025-12-16 08:41:07'),
-(1709, 23, 'Main Construction Co 23', '2008-12-16', 17, 6, NULL, 'General Construction', 'Zamboanga City', 'company23@example.com', '09170000023', NULL, NULL, NULL, 'PCAB-42469', 'A', '2026-12-31', 'BP-23', 'Zamboanga', '2026-01-01', 'TIN-23', 'dti_cert.jpg', 'approved', '2025-03-18 07:49:09', 1, NULL, NULL, NULL, NULL, 15, '2025-03-16 07:49:09', '2025-12-16 08:41:07'),
-(1710, 24, 'Main Construction Co 24', '2002-12-16', 23, 5, NULL, 'General Construction', 'Zamboanga City', 'company24@example.com', '09170000024', NULL, NULL, NULL, 'PCAB-46764', 'A', '2026-12-31', 'BP-24', 'Zamboanga', '2026-01-01', 'TIN-24', 'dti_cert.jpg', 'approved', '2025-08-27 07:49:09', 1, NULL, NULL, NULL, NULL, 32, '2025-08-25 07:49:09', '2025-12-16 08:41:07'),
-(1711, 25, 'Main Construction Co 25', '2021-12-16', 4, 1, NULL, 'General Construction', 'Zamboanga City', 'company25@example.com', '09170000025', NULL, NULL, NULL, 'PCAB-57726', 'A', '2026-12-31', 'BP-25', 'Zamboanga', '2026-01-01', 'TIN-25', 'dti_cert.jpg', 'pending', NULL, 1, NULL, NULL, NULL, NULL, 48, '2025-05-01 07:49:09', '2025-12-16 08:41:07'),
-(1712, 26, 'Main Construction Co 26', '2017-12-16', 8, 2, NULL, 'General Construction', 'Zamboanga City', 'company26@example.com', '09170000026', NULL, NULL, NULL, 'PCAB-45837', 'A', '2026-12-31', 'BP-26', 'Zamboanga', '2026-01-01', 'TIN-26', 'dti_cert.jpg', 'approved', '2025-08-16 07:49:09', 1, NULL, NULL, NULL, NULL, 6, '2025-08-14 07:49:09', '2025-12-16 08:41:07'),
-(1713, 27, 'Main Construction Co 27', '1998-12-16', 27, 5, NULL, 'General Construction', 'Zamboanga City', 'company27@example.com', '09170000027', NULL, NULL, NULL, 'PCAB-36243', 'A', '2026-12-31', 'BP-27', 'Zamboanga', '2026-01-01', 'TIN-27', 'dti_cert.jpg', 'approved', '2025-11-08 07:49:09', 1, NULL, NULL, NULL, NULL, 21, '2025-11-06 07:49:09', '2025-12-16 08:41:07'),
-(1714, 28, 'Main Construction Co 28', '2003-12-16', 22, 8, NULL, 'General Construction', 'Zamboanga City', 'company28@example.com', '09170000028', NULL, NULL, NULL, 'PCAB-96216', 'A', '2026-12-31', 'BP-28', 'Zamboanga', '2026-01-01', 'TIN-28', 'dti_cert.jpg', 'approved', '2025-05-03 07:49:09', 1, NULL, NULL, NULL, NULL, 21, '2025-05-01 07:49:09', '2025-12-16 08:41:07'),
-(1715, 29, 'Main Construction Co 29', '1997-12-16', 28, 8, NULL, 'General Construction', 'Zamboanga City', 'company29@example.com', '09170000029', NULL, NULL, NULL, 'PCAB-84101', 'A', '2026-12-31', 'BP-29', 'Zamboanga', '2026-01-01', 'TIN-29', 'dti_cert.jpg', 'approved', '2025-07-21 07:49:09', 1, NULL, NULL, NULL, NULL, 19, '2025-07-19 07:49:09', '2025-12-16 08:41:07'),
-(1716, 30, 'Main Construction Co 30', '2010-12-16', 15, 6, NULL, 'General Construction', 'Zamboanga City', 'company30@example.com', '09170000030', NULL, NULL, NULL, 'PCAB-57206', 'A', '2026-12-31', 'BP-30', 'Zamboanga', '2026-01-01', 'TIN-30', 'dti_cert.jpg', 'rejected', NULL, 1, NULL, NULL, NULL, 'Permit expired.', 20, '2025-05-24 07:49:09', '2025-12-16 08:41:07'),
-(1717, 31, 'Main Construction Co 31', '2006-12-16', 19, 2, NULL, 'General Construction', 'Zamboanga City', 'company31@example.com', '09170000031', NULL, NULL, NULL, 'PCAB-68035', 'A', '2026-12-31', 'BP-31', 'Zamboanga', '2026-01-01', 'TIN-31', 'dti_cert.jpg', 'approved', '2025-11-10 07:49:09', 1, NULL, NULL, NULL, NULL, 42, '2025-11-08 07:49:09', '2025-12-16 08:41:07'),
-(1718, 32, 'Main Construction Co 32', '2006-12-16', 19, 4, NULL, 'General Construction', 'Zamboanga City', 'company32@example.com', '09170000032', NULL, NULL, NULL, 'PCAB-72477', 'A', '2026-12-31', 'BP-32', 'Zamboanga', '2026-01-01', 'TIN-32', 'dti_cert.jpg', 'approved', '2025-10-01 07:49:09', 1, NULL, NULL, NULL, NULL, 21, '2025-09-29 07:49:09', '2025-12-16 08:41:07'),
-(1719, 33, 'Main Construction Co 33', '2017-12-16', 8, 6, NULL, 'General Construction', 'Zamboanga City', 'company33@example.com', '09170000033', NULL, NULL, NULL, 'PCAB-44442', 'A', '2026-12-31', 'BP-33', 'Zamboanga', '2026-01-01', 'TIN-33', 'dti_cert.jpg', 'approved', '2025-02-06 07:49:09', 1, NULL, NULL, NULL, NULL, 1, '2025-02-04 07:49:09', '2025-12-16 08:41:07'),
-(1720, 34, 'Main Construction Co 34', '2012-12-16', 13, 6, NULL, 'General Construction', 'Zamboanga City', 'company34@example.com', '09170000034', NULL, NULL, NULL, 'PCAB-88849', 'A', '2026-12-31', 'BP-34', 'Zamboanga', '2026-01-01', 'TIN-34', 'dti_cert.jpg', 'approved', '2025-08-20 07:49:09', 1, NULL, NULL, NULL, NULL, 8, '2025-08-18 07:49:09', '2025-12-16 08:41:07'),
-(1721, 35, 'Main Construction Co 35', '2015-12-16', 10, 1, NULL, 'General Construction', 'Zamboanga City', 'company35@example.com', '09170000035', NULL, NULL, NULL, 'PCAB-23798', 'A', '2026-12-31', 'BP-35', 'Zamboanga', '2026-01-01', 'TIN-35', 'dti_cert.jpg', 'pending', NULL, 1, NULL, NULL, NULL, NULL, 42, '2025-04-22 07:49:09', '2025-12-16 08:41:07'),
-(1722, 36, 'Main Construction Co 36', '2012-12-16', 13, 8, NULL, 'General Construction', 'Zamboanga City', 'company36@example.com', '09170000036', NULL, NULL, NULL, 'PCAB-33648', 'A', '2026-12-31', 'BP-36', 'Zamboanga', '2026-01-01', 'TIN-36', 'dti_cert.jpg', 'approved', '2025-09-24 07:49:09', 1, NULL, NULL, NULL, NULL, 44, '2025-09-22 07:49:09', '2025-12-16 08:41:07'),
-(1723, 37, 'Main Construction Co 37', '2024-12-16', 1, 2, NULL, 'General Construction', 'Zamboanga City', 'company37@example.com', '09170000037', NULL, NULL, NULL, 'PCAB-32151', 'A', '2026-12-31', 'BP-37', 'Zamboanga', '2026-01-01', 'TIN-37', 'dti_cert.jpg', 'approved', '2025-05-12 07:49:09', 1, NULL, NULL, NULL, NULL, 22, '2025-05-10 07:49:09', '2025-12-16 08:41:07'),
-(1724, 38, 'Main Construction Co 38', '1997-12-16', 28, 7, NULL, 'General Construction', 'Zamboanga City', 'company38@example.com', '09170000038', NULL, NULL, NULL, 'PCAB-53613', 'A', '2026-12-31', 'BP-38', 'Zamboanga', '2026-01-01', 'TIN-38', 'dti_cert.jpg', 'approved', '2025-02-10 07:49:09', 1, NULL, NULL, NULL, NULL, 27, '2025-02-08 07:49:09', '2025-12-16 08:41:07'),
-(1725, 39, 'Main Construction Co 39', '2009-12-16', 16, 8, NULL, 'General Construction', 'Zamboanga City', 'company39@example.com', '09170000039', NULL, NULL, NULL, 'PCAB-85450', 'A', '2026-12-31', 'BP-39', 'Zamboanga', '2026-01-01', 'TIN-39', 'dti_cert.jpg', 'approved', '2025-07-23 07:49:09', 1, NULL, NULL, NULL, NULL, 42, '2025-07-21 07:49:09', '2025-12-16 08:41:07'),
-(1726, 40, 'Main Construction Co 40', '2001-12-16', 24, 6, NULL, 'General Construction', 'Zamboanga City', 'company40@example.com', '09170000040', NULL, NULL, NULL, 'PCAB-48462', 'A', '2026-12-31', 'BP-40', 'Zamboanga', '2026-01-01', 'TIN-40', 'dti_cert.jpg', 'rejected', NULL, 1, NULL, NULL, NULL, 'Permit expired.', 11, '2025-02-04 07:49:09', '2025-12-16 08:41:07'),
-(1727, 41, 'Main Construction Co 41', '2011-12-16', 14, 9, NULL, 'General Construction', 'Zamboanga City', 'company41@example.com', '09170000041', NULL, NULL, NULL, 'PCAB-67854', 'A', '2026-12-31', 'BP-41', 'Zamboanga', '2026-01-01', 'TIN-41', 'dti_cert.jpg', 'approved', '2025-02-10 07:49:09', 1, NULL, NULL, NULL, NULL, 25, '2025-02-08 07:49:09', '2025-12-16 08:41:07'),
-(1728, 42, 'Main Construction Co 42', '1999-12-16', 26, 9, NULL, 'General Construction', 'Zamboanga City', 'company42@example.com', '09170000042', NULL, NULL, NULL, 'PCAB-91907', 'A', '2026-12-31', 'BP-42', 'Zamboanga', '2026-01-01', 'TIN-42', 'dti_cert.jpg', 'approved', '2025-06-04 07:49:09', 1, NULL, NULL, NULL, NULL, 19, '2025-06-02 07:49:09', '2025-12-16 08:41:07'),
-(1729, 43, 'Main Construction Co 43', '1999-12-16', 26, 3, NULL, 'General Construction', 'Zamboanga City', 'company43@example.com', '09170000043', NULL, NULL, NULL, 'PCAB-33148', 'A', '2026-12-31', 'BP-43', 'Zamboanga', '2026-01-01', 'TIN-43', 'dti_cert.jpg', 'approved', '2025-05-23 07:49:09', 1, NULL, NULL, NULL, NULL, 31, '2025-05-21 07:49:09', '2025-12-16 08:41:07'),
-(1730, 44, 'Main Construction Co 44', '2002-12-16', 23, 6, NULL, 'General Construction', 'Zamboanga City', 'company44@example.com', '09170000044', NULL, NULL, NULL, 'PCAB-27263', 'A', '2026-12-31', 'BP-44', 'Zamboanga', '2026-01-01', 'TIN-44', 'dti_cert.jpg', 'approved', '2025-06-30 07:49:09', 1, NULL, NULL, NULL, NULL, 7, '2025-06-28 07:49:09', '2025-12-16 08:41:07'),
-(1731, 45, 'Main Construction Co 45', '2018-12-16', 7, 9, NULL, 'General Construction', 'Zamboanga City', 'company45@example.com', '09170000045', NULL, NULL, NULL, 'PCAB-35372', 'A', '2026-12-31', 'BP-45', 'Zamboanga', '2026-01-01', 'TIN-45', 'dti_cert.jpg', 'pending', NULL, 1, NULL, NULL, NULL, NULL, 12, '2025-04-02 07:49:09', '2025-12-16 08:41:07'),
-(1732, 46, 'Main Construction Co 46', '1999-12-16', 26, 6, NULL, 'General Construction', 'Zamboanga City', 'company46@example.com', '09170000046', NULL, NULL, NULL, 'PCAB-88247', 'A', '2026-12-31', 'BP-46', 'Zamboanga', '2026-01-01', 'TIN-46', 'dti_cert.jpg', 'approved', '2025-08-08 07:49:09', 1, NULL, NULL, NULL, NULL, 1, '2025-08-06 07:49:09', '2025-12-16 08:41:07'),
-(1733, 47, 'Main Construction Co 47', '2006-12-16', 19, 3, NULL, 'General Construction', 'Zamboanga City', 'company47@example.com', '09170000047', NULL, NULL, NULL, 'PCAB-60406', 'A', '2026-12-31', 'BP-47', 'Zamboanga', '2026-01-01', 'TIN-47', 'dti_cert.jpg', 'approved', '2025-07-14 07:49:09', 1, NULL, NULL, NULL, NULL, 37, '2025-07-12 07:49:09', '2025-12-16 08:41:07'),
-(1734, 48, 'Main Construction Co 48', '2007-12-16', 18, 2, NULL, 'General Construction', 'Zamboanga City', 'company48@example.com', '09170000048', NULL, NULL, NULL, 'PCAB-21775', 'A', '2026-12-31', 'BP-48', 'Zamboanga', '2026-01-01', 'TIN-48', 'dti_cert.jpg', 'approved', '2025-06-17 07:49:09', 1, NULL, NULL, NULL, NULL, 10, '2025-06-15 07:49:09', '2025-12-16 08:41:07'),
-(1735, 49, 'Main Construction Co 49', '1996-12-16', 29, 2, NULL, 'General Construction', 'Sample, Cahayagan, Carmen, Agusan Del Norte 2311', 'company49@example.com', '09170000049', NULL, NULL, NULL, 'PCAB-80787', 'A', '2026-12-31', 'BP-49', 'Agutaya', '2026-01-01', 'TIN-49', 'dti_cert.jpg', 'approved', '2025-12-14 07:49:09', 1, NULL, NULL, NULL, NULL, 4, '2025-12-12 07:49:09', '2025-12-16 09:56:43'),
-(1736, 50, 'Main Construction Co 50', '2023-12-16', 2, 3, NULL, 'General Construction', 'Zamboanga City', 'company50@example.com', '09170000050', NULL, NULL, NULL, 'PCAB-46129', 'A', '2026-12-31', 'BP-50', 'Zamboanga', '2026-01-01', 'TIN-50', 'dti_cert.jpg', 'rejected', NULL, 1, NULL, NULL, NULL, 'Permit expired.', 47, '2025-08-24 07:49:09', '2025-12-16 08:41:07'),
-(1737, 51, 'Main Construction Co 51', '2014-12-16', 11, 3, NULL, 'General Construction', 'Zamboanga City', 'company51@example.com', '09170000051', NULL, NULL, NULL, 'PCAB-85340', 'A', '2026-12-31', 'BP-51', 'Zamboanga', '2026-01-01', 'TIN-51', 'dti_cert.jpg', 'approved', '2025-09-19 07:49:09', 1, NULL, NULL, NULL, NULL, 3, '2025-09-17 07:49:09', '2025-12-16 08:41:07'),
-(1738, 52, 'Main Construction Co 52', '2006-12-16', 19, 1, NULL, 'General Construction', 'Zamboanga City', 'company52@example.com', '09170000052', NULL, NULL, NULL, 'PCAB-78141', 'A', '2026-12-31', 'BP-52', 'Zamboanga', '2026-01-01', 'TIN-52', 'dti_cert.jpg', 'approved', '2025-08-29 07:49:09', 1, NULL, NULL, NULL, NULL, 46, '2025-08-27 07:49:09', '2025-12-16 08:41:07'),
-(1739, 53, 'Main Construction Co 53', '2022-12-16', 3, 6, NULL, 'General Construction', 'Zamboanga City', 'company53@example.com', '09170000053', NULL, NULL, NULL, 'PCAB-34145', 'A', '2026-12-31', 'BP-53', 'Zamboanga', '2026-01-01', 'TIN-53', 'dti_cert.jpg', 'approved', '2025-11-12 07:49:09', 1, NULL, NULL, NULL, NULL, 30, '2025-11-10 07:49:09', '2025-12-16 08:41:07'),
-(1740, 54, 'Main Construction Co 54', '2006-12-16', 19, 2, NULL, 'General Construction', 'Zamboanga City', 'company54@example.com', '09170000054', NULL, NULL, NULL, 'PCAB-32105', 'A', '2026-12-31', 'BP-54', 'Zamboanga', '2026-01-01', 'TIN-54', 'dti_cert.jpg', 'approved', '2025-01-15 07:49:09', 1, NULL, NULL, NULL, NULL, 38, '2025-01-13 07:49:09', '2025-12-16 08:41:07'),
-(1741, 55, 'Main Construction Co 55', '2002-12-16', 23, 6, NULL, 'General Construction', 'Zamboanga City', 'company55@example.com', '09170000055', NULL, NULL, NULL, 'PCAB-36431', 'A', '2026-12-31', 'BP-55', 'Zamboanga', '2026-01-01', 'TIN-55', 'dti_cert.jpg', 'pending', NULL, 1, NULL, NULL, NULL, NULL, 0, '2025-06-01 07:49:09', '2025-12-16 08:41:07'),
-(1742, 56, 'Main Construction Co 56', '1997-12-16', 28, 3, NULL, 'General Construction', 'Zamboanga City', 'company56@example.com', '09170000056', NULL, NULL, NULL, 'PCAB-82813', 'A', '2026-12-31', 'BP-56', 'Zamboanga', '2026-01-01', 'TIN-56', 'dti_cert.jpg', 'approved', '2025-03-16 07:49:09', 1, NULL, NULL, NULL, NULL, 38, '2025-03-14 07:49:09', '2025-12-16 08:41:07'),
-(1743, 57, 'Main Construction Co 57', '2013-12-16', 12, 1, NULL, 'General Construction', 'Zamboanga City', 'company57@example.com', '09170000057', NULL, NULL, NULL, 'PCAB-72710', 'A', '2026-12-31', 'BP-57', 'Zamboanga', '2026-01-01', 'TIN-57', 'dti_cert.jpg', 'approved', '2025-03-27 07:49:09', 1, NULL, NULL, NULL, NULL, 12, '2025-03-25 07:49:09', '2025-12-16 08:41:07'),
-(1744, 58, 'Main Construction Co 58', '2019-12-16', 6, 8, NULL, 'General Construction', 'Zamboanga City', 'company58@example.com', '09170000058', NULL, NULL, NULL, 'PCAB-34834', 'A', '2026-12-31', 'BP-58', 'Zamboanga', '2026-01-01', 'TIN-58', 'dti_cert.jpg', 'approved', '2025-01-25 07:49:09', 1, NULL, NULL, NULL, NULL, 9, '2025-01-23 07:49:09', '2025-12-16 08:41:07'),
-(1745, 59, 'Main Construction Co 59', '2004-12-16', 21, 6, NULL, 'General Construction', 'Zamboanga City', 'company59@example.com', '09170000059', NULL, NULL, NULL, 'PCAB-19251', 'A', '2026-12-31', 'BP-59', 'Zamboanga', '2026-01-01', 'TIN-59', 'dti_cert.jpg', 'approved', '2025-06-12 07:49:09', 1, NULL, NULL, NULL, NULL, 44, '2025-06-10 07:49:09', '2025-12-16 08:41:07'),
-(1746, 60, 'Main Construction Co 60', '1996-12-16', 29, 4, NULL, 'General Construction', 'Zamboanga City', 'company60@example.com', '09170000060', NULL, NULL, NULL, 'PCAB-71914', 'A', '2026-12-31', 'BP-60', 'Zamboanga', '2026-01-01', 'TIN-60', 'dti_cert.jpg', 'rejected', NULL, 1, NULL, NULL, NULL, 'Permit expired.', 46, '2025-10-15 07:49:09', '2025-12-16 08:41:07'),
-(1747, 61, 'Main Construction Co 61', '2005-12-16', 20, 3, NULL, 'General Construction', 'Zamboanga City', 'company61@example.com', '09170000061', NULL, NULL, NULL, 'PCAB-15554', 'A', '2026-12-31', 'BP-61', 'Zamboanga', '2026-01-01', 'TIN-61', 'dti_cert.jpg', 'approved', '2024-12-25 07:49:09', 1, NULL, NULL, NULL, NULL, 15, '2024-12-23 07:49:09', '2025-12-16 08:41:07'),
-(1748, 62, 'Main Construction Co 62', '2013-12-16', 12, 7, NULL, 'General Construction', 'Zamboanga City', 'company62@example.com', '09170000062', NULL, NULL, NULL, 'PCAB-84279', 'A', '2026-12-31', 'BP-62', 'Zamboanga', '2026-01-01', 'TIN-62', 'dti_cert.jpg', 'approved', '2025-01-18 07:49:09', 1, NULL, NULL, NULL, NULL, 1, '2025-01-16 07:49:09', '2025-12-16 08:41:07'),
-(1749, 63, 'Main Construction Co 63', '1997-12-16', 28, 4, NULL, 'General Construction', 'Zamboanga City', 'company63@example.com', '09170000063', NULL, NULL, NULL, 'PCAB-24967', 'A', '2026-12-31', 'BP-63', 'Zamboanga', '2026-01-01', 'TIN-63', 'dti_cert.jpg', 'approved', '2025-03-29 07:49:09', 1, NULL, NULL, NULL, NULL, 2, '2025-03-27 07:49:09', '2025-12-16 08:41:07'),
-(1750, 64, 'Main Construction Co 64', '2010-12-16', 15, 5, NULL, 'General Construction', 'Zamboanga City', 'company64@example.com', '09170000064', NULL, NULL, NULL, 'PCAB-42118', 'A', '2026-12-31', 'BP-64', 'Zamboanga', '2026-01-01', 'TIN-64', 'dti_cert.jpg', 'approved', '2025-08-21 07:49:09', 1, NULL, NULL, NULL, NULL, 7, '2025-08-19 07:49:09', '2025-12-16 08:41:07'),
-(1751, 65, 'Main Construction Co 65', '2005-12-16', 20, 1, NULL, 'General Construction', 'Zamboanga City', 'company65@example.com', '09170000065', NULL, NULL, NULL, 'PCAB-11349', 'A', '2026-12-31', 'BP-65', 'Zamboanga', '2026-01-01', 'TIN-65', 'dti_cert.jpg', 'pending', NULL, 1, NULL, NULL, NULL, NULL, 10, '2025-01-05 07:49:09', '2025-12-16 08:41:07'),
-(1752, 66, 'Main Construction Co 66', '2002-12-16', 23, 9, NULL, 'General Construction', 'Zamboanga City', 'company66@example.com', '09170000066', NULL, NULL, NULL, 'PCAB-91407', 'A', '2026-12-31', 'BP-66', 'Zamboanga', '2026-01-01', 'TIN-66', 'dti_cert.jpg', 'approved', '2025-10-21 07:49:09', 1, NULL, NULL, NULL, NULL, 18, '2025-10-19 07:49:09', '2025-12-16 08:41:07'),
-(1753, 67, 'Main Construction Co 67', '1999-12-16', 26, 3, NULL, 'General Construction', 'Zamboanga City', 'company67@example.com', '09170000067', NULL, NULL, NULL, 'PCAB-58294', 'A', '2026-12-31', 'BP-67', 'Zamboanga', '2026-01-01', 'TIN-67', 'dti_cert.jpg', 'approved', '2025-01-01 07:49:09', 1, NULL, NULL, NULL, NULL, 13, '2024-12-30 07:49:09', '2025-12-16 08:41:07'),
-(1754, 68, 'Main Construction Co 68', '1997-12-16', 28, 8, NULL, 'General Construction', 'Zamboanga City', 'company68@example.com', '09170000068', NULL, NULL, NULL, 'PCAB-21255', 'A', '2026-12-31', 'BP-68', 'Zamboanga', '2026-01-01', 'TIN-68', 'dti_cert.jpg', 'approved', '2025-06-26 07:49:09', 1, NULL, NULL, NULL, NULL, 8, '2025-06-24 07:49:09', '2025-12-16 08:41:07'),
-(1755, 69, 'Main Construction Co 69', '2021-12-16', 4, 1, NULL, 'General Construction', 'Zamboanga City', 'company69@example.com', '09170000069', NULL, NULL, NULL, 'PCAB-67993', 'A', '2026-12-31', 'BP-69', 'Zamboanga', '2026-01-01', 'TIN-69', 'dti_cert.jpg', 'approved', '2025-03-18 07:49:09', 1, NULL, NULL, NULL, NULL, 48, '2025-03-16 07:49:09', '2025-12-16 08:41:07'),
-(1756, 70, 'Main Construction Co 70', '2000-12-16', 25, 9, NULL, 'General Construction', 'Zamboanga City', 'company70@example.com', '09170000070', NULL, NULL, NULL, 'PCAB-28285', 'A', '2026-12-31', 'BP-70', 'Zamboanga', '2026-01-01', 'TIN-70', 'dti_cert.jpg', 'rejected', NULL, 1, NULL, NULL, NULL, 'Permit expired.', 2, '2025-07-27 07:49:09', '2025-12-16 08:41:07'),
-(1757, 71, 'Main Construction Co 71', '2003-12-16', 22, 6, NULL, 'General Construction', 'Zamboanga City', 'company71@example.com', '09170000071', NULL, NULL, NULL, 'PCAB-42832', 'A', '2026-12-31', 'BP-71', 'Zamboanga', '2026-01-01', 'TIN-71', 'dti_cert.jpg', 'approved', '2025-07-26 07:49:09', 1, NULL, NULL, NULL, NULL, 12, '2025-07-24 07:49:09', '2025-12-16 08:41:07'),
-(1758, 72, 'Main Construction Co 72', '2019-12-16', 6, 7, NULL, 'General Construction', 'Zamboanga City', 'company72@example.com', '09170000072', NULL, NULL, NULL, 'PCAB-52638', 'A', '2026-12-31', 'BP-72', 'Zamboanga', '2026-01-01', 'TIN-72', 'dti_cert.jpg', 'approved', '2025-04-28 07:49:09', 1, NULL, NULL, NULL, NULL, 31, '2025-04-26 07:49:09', '2025-12-16 08:41:07'),
-(1759, 73, 'Main Construction Co 73', '2004-12-16', 21, 1, NULL, 'General Construction', 'Zamboanga City', 'company73@example.com', '09170000073', NULL, NULL, NULL, 'PCAB-28803', 'A', '2026-12-31', 'BP-73', 'Zamboanga', '2026-01-01', 'TIN-73', 'dti_cert.jpg', 'approved', '2025-02-23 07:49:09', 1, NULL, NULL, NULL, NULL, 9, '2025-02-21 07:49:09', '2025-12-16 08:41:07'),
-(1760, 74, 'Main Construction Co 74', '1997-12-16', 28, 3, NULL, 'General Construction', 'Zamboanga City', 'company74@example.com', '09170000074', NULL, NULL, NULL, 'PCAB-70844', 'A', '2026-12-31', 'BP-74', 'Zamboanga', '2026-01-01', 'TIN-74', 'dti_cert.jpg', 'approved', '2025-01-31 07:49:09', 1, NULL, NULL, NULL, NULL, 18, '2025-01-29 07:49:09', '2025-12-16 08:41:07'),
-(1761, 75, 'Main Construction Co 75', '2007-12-16', 18, 6, NULL, 'General Construction', 'Zamboanga City', 'company75@example.com', '09170000075', NULL, NULL, NULL, 'PCAB-56597', 'A', '2026-12-31', 'BP-75', 'Zamboanga', '2026-01-01', 'TIN-75', 'dti_cert.jpg', 'pending', NULL, 1, NULL, NULL, NULL, NULL, 35, '2025-11-17 07:49:09', '2025-12-16 08:41:07'),
-(1762, 76, 'Main Construction Co 76', '2020-12-16', 5, 3, NULL, 'General Construction', 'Zamboanga City', 'company76@example.com', '09170000076', NULL, NULL, NULL, 'PCAB-73540', 'A', '2026-12-31', 'BP-76', 'Zamboanga', '2026-01-01', 'TIN-76', 'dti_cert.jpg', 'approved', '2025-10-07 07:49:09', 1, NULL, NULL, NULL, NULL, 26, '2025-10-05 07:49:09', '2025-12-16 08:41:07'),
-(1763, 77, 'Main Construction Co 77', '1995-12-16', 30, 8, NULL, 'General Construction', 'Zamboanga City', 'company77@example.com', '09170000077', NULL, NULL, NULL, 'PCAB-30352', 'A', '2026-12-31', 'BP-77', 'Zamboanga', '2026-01-01', 'TIN-77', 'dti_cert.jpg', 'approved', '2025-04-13 07:49:09', 1, NULL, NULL, NULL, NULL, 33, '2025-04-11 07:49:09', '2025-12-16 08:41:07'),
-(1764, 78, 'Main Construction Co 78', '2012-12-16', 13, 4, NULL, 'General Construction', 'Zamboanga City', 'company78@example.com', '09170000078', NULL, NULL, NULL, 'PCAB-97162', 'A', '2026-12-31', 'BP-78', 'Zamboanga', '2026-01-01', 'TIN-78', 'dti_cert.jpg', 'approved', '2025-12-07 07:49:09', 1, NULL, NULL, NULL, NULL, 27, '2025-12-05 07:49:09', '2025-12-16 08:41:07'),
-(1765, 79, 'Main Construction Co 79', '2021-12-16', 4, 8, NULL, 'General Construction', 'Zamboanga City', 'company79@example.com', '09170000079', NULL, NULL, NULL, 'PCAB-11742', 'A', '2026-12-31', 'BP-79', 'Zamboanga', '2026-01-01', 'TIN-79', 'dti_cert.jpg', 'approved', '2025-04-27 07:49:09', 1, NULL, NULL, NULL, NULL, 27, '2025-04-25 07:49:09', '2025-12-16 08:41:07'),
-(1766, 80, 'Main Construction Co 80', '2015-12-16', 10, 5, NULL, 'General Construction', 'Zamboanga City', 'company80@example.com', '09170000080', NULL, NULL, NULL, 'PCAB-94072', 'A', '2026-12-31', 'BP-80', 'Zamboanga', '2026-01-01', 'TIN-80', 'dti_cert.jpg', 'rejected', NULL, 1, NULL, NULL, NULL, 'Permit expired.', 43, '2025-02-08 07:49:09', '2025-12-16 08:41:07'),
-(1767, 81, 'Main Construction Co 81', '2018-12-16', 7, 4, NULL, 'General Construction', 'Zamboanga City', 'company81@example.com', '09170000081', NULL, NULL, NULL, 'PCAB-22152', 'A', '2026-12-31', 'BP-81', 'Zamboanga', '2026-01-01', 'TIN-81', 'dti_cert.jpg', 'approved', '2025-03-27 07:49:09', 1, NULL, NULL, NULL, NULL, 6, '2025-03-25 07:49:09', '2025-12-16 08:41:07'),
-(1768, 82, 'Main Construction Co 82', '2021-12-16', 4, 4, NULL, 'General Construction', 'Zamboanga City', 'company82@example.com', '09170000082', NULL, NULL, NULL, 'PCAB-97364', 'A', '2026-12-31', 'BP-82', 'Zamboanga', '2026-01-01', 'TIN-82', 'dti_cert.jpg', 'approved', '2025-01-07 07:49:09', 1, NULL, NULL, NULL, NULL, 4, '2025-01-05 07:49:09', '2025-12-16 08:41:07'),
-(1769, 83, 'Main Construction Co 83', '1997-12-16', 28, 7, NULL, 'General Construction', 'Zamboanga City', 'company83@example.com', '09170000083', NULL, NULL, NULL, 'PCAB-14246', 'A', '2026-12-31', 'BP-83', 'Zamboanga', '2026-01-01', 'TIN-83', 'dti_cert.jpg', 'approved', '2024-12-27 07:49:09', 1, NULL, NULL, NULL, NULL, 47, '2024-12-25 07:49:09', '2025-12-16 08:41:07'),
-(1770, 84, 'Main Construction Co 84', '2018-12-16', 7, 1, NULL, 'General Construction', 'Zamboanga City', 'company84@example.com', '09170000084', NULL, NULL, NULL, 'PCAB-81872', 'A', '2026-12-31', 'BP-84', 'Zamboanga', '2026-01-01', 'TIN-84', 'dti_cert.jpg', 'approved', '2025-03-15 07:49:09', 1, NULL, NULL, NULL, NULL, 25, '2025-03-13 07:49:09', '2025-12-16 08:41:07'),
-(1771, 85, 'Main Construction Co 85', '2014-12-16', 11, 6, NULL, 'General Construction', 'Zamboanga City', 'company85@example.com', '09170000085', NULL, NULL, NULL, 'PCAB-39928', 'A', '2026-12-31', 'BP-85', 'Zamboanga', '2026-01-01', 'TIN-85', 'dti_cert.jpg', 'pending', NULL, 1, NULL, NULL, NULL, NULL, 26, '2024-12-27 07:49:09', '2025-12-16 08:41:07'),
-(1772, 86, 'Main Construction Co 86', '2022-12-16', 3, 7, NULL, 'General Construction', 'Zamboanga City', 'company86@example.com', '09170000086', NULL, NULL, NULL, 'PCAB-74824', 'A', '2026-12-31', 'BP-86', 'Zamboanga', '2026-01-01', 'TIN-86', 'dti_cert.jpg', 'approved', '2025-08-28 07:49:09', 1, NULL, NULL, NULL, NULL, 49, '2025-08-26 07:49:09', '2025-12-16 08:41:07'),
-(1773, 87, 'Main Construction Co 87', '2014-12-16', 11, 8, NULL, 'General Construction', 'Zamboanga City', 'company87@example.com', '09170000087', NULL, NULL, NULL, 'PCAB-17198', 'A', '2026-12-31', 'BP-87', 'Zamboanga', '2026-01-01', 'TIN-87', 'dti_cert.jpg', 'approved', '2025-08-23 07:49:09', 1, NULL, NULL, NULL, NULL, 49, '2025-08-21 07:49:09', '2025-12-16 08:41:07'),
-(1774, 88, 'Main Construction Co 88', '2009-12-16', 16, 9, NULL, 'General Construction', 'Zamboanga City', 'company88@example.com', '09170000088', NULL, NULL, NULL, 'PCAB-27581', 'A', '2026-12-31', 'BP-88', 'Zamboanga', '2026-01-01', 'TIN-88', 'dti_cert.jpg', 'approved', '2025-09-24 07:49:09', 1, NULL, NULL, NULL, NULL, 24, '2025-09-22 07:49:09', '2025-12-16 08:41:07'),
-(1775, 89, 'Main Construction Co 89', '2009-12-16', 16, 4, NULL, 'General Construction', 'Zamboanga City', 'company89@example.com', '09170000089', NULL, NULL, NULL, 'PCAB-97920', 'A', '2026-12-31', 'BP-89', 'Zamboanga', '2026-01-01', 'TIN-89', 'dti_cert.jpg', 'approved', '2025-07-13 07:49:09', 1, NULL, NULL, NULL, NULL, 29, '2025-07-11 07:49:09', '2025-12-16 08:41:07'),
-(1776, 90, 'Main Construction Co 90', '2024-12-16', 1, 8, NULL, 'General Construction', 'Zamboanga City', 'company90@example.com', '09170000090', NULL, NULL, NULL, 'PCAB-36143', 'A', '2026-12-31', 'BP-90', 'Zamboanga', '2026-01-01', 'TIN-90', 'dti_cert.jpg', 'rejected', NULL, 1, NULL, NULL, NULL, 'Permit expired.', 18, '2025-04-07 07:49:09', '2025-12-16 08:41:07'),
-(1777, 91, 'Main Construction Co 91', '2008-12-16', 17, 4, NULL, 'General Construction', 'Zamboanga City', 'company91@example.com', '09170000091', NULL, NULL, NULL, 'PCAB-34191', 'A', '2026-12-31', 'BP-91', 'Zamboanga', '2026-01-01', 'TIN-91', 'dti_cert.jpg', 'approved', '2025-09-18 07:49:09', 1, NULL, NULL, NULL, NULL, 2, '2025-09-16 07:49:09', '2025-12-16 08:41:07'),
-(1778, 92, 'Main Construction Co 92', '2002-12-16', 23, 7, NULL, 'General Construction', 'Zamboanga City', 'company92@example.com', '09170000092', NULL, NULL, NULL, 'PCAB-89813', 'A', '2026-12-31', 'BP-92', 'Zamboanga', '2026-01-01', 'TIN-92', 'dti_cert.jpg', 'approved', '2025-10-11 07:49:09', 1, NULL, NULL, NULL, NULL, 10, '2025-10-09 07:49:09', '2025-12-16 08:41:07'),
-(1779, 93, 'Main Construction Co 93', '2021-12-16', 4, 7, NULL, 'General Construction', 'Zamboanga City', 'company93@example.com', '09170000093', NULL, NULL, NULL, 'PCAB-59197', 'A', '2026-12-31', 'BP-93', 'Zamboanga', '2026-01-01', 'TIN-93', 'dti_cert.jpg', 'approved', '2025-10-08 07:49:09', 1, NULL, NULL, NULL, NULL, 12, '2025-10-06 07:49:09', '2025-12-16 08:41:07'),
-(1780, 94, 'Main Construction Co 94', '2017-12-16', 8, 6, NULL, 'General Construction', 'Zamboanga City', 'company94@example.com', '09170000094', NULL, NULL, NULL, 'PCAB-74178', 'A', '2026-12-31', 'BP-94', 'Zamboanga', '2026-01-01', 'TIN-94', 'dti_cert.jpg', 'approved', '2025-05-26 07:49:09', 1, NULL, NULL, NULL, NULL, 4, '2025-05-24 07:49:09', '2025-12-16 08:41:07'),
-(1781, 95, 'Main Construction Co 95', '1997-12-16', 28, 2, NULL, 'General Construction', 'Zamboanga City', 'company95@example.com', '09170000095', NULL, NULL, NULL, 'PCAB-32796', 'A', '2026-12-31', 'BP-95', 'Zamboanga', '2026-01-01', 'TIN-95', 'dti_cert.jpg', 'pending', NULL, 1, NULL, NULL, NULL, NULL, 21, '2025-04-03 07:49:09', '2025-12-16 08:41:07'),
-(1782, 96, 'Main Construction Co 96', '2001-12-16', 24, 1, NULL, 'General Construction', 'Zamboanga City', 'company96@example.com', '09170000096', NULL, NULL, NULL, 'PCAB-78766', 'A', '2026-12-31', 'BP-96', 'Zamboanga', '2026-01-01', 'TIN-96', 'dti_cert.jpg', 'approved', '2025-12-02 07:49:09', 1, NULL, NULL, NULL, NULL, 11, '2025-11-30 07:49:09', '2025-12-16 08:41:07'),
-(1783, 97, 'Main Construction Co 97', '2017-12-16', 8, 1, NULL, 'General Construction', 'Zamboanga City', 'company97@example.com', '09170000097', NULL, NULL, NULL, 'PCAB-29749', 'A', '2026-12-31', 'BP-97', 'Zamboanga', '2026-01-01', 'TIN-97', 'dti_cert.jpg', 'approved', '2025-01-04 07:49:09', 1, NULL, NULL, NULL, NULL, 13, '2025-01-02 07:49:09', '2025-12-16 08:41:07'),
-(1784, 98, 'Main Construction Co 98', '1997-12-16', 28, 4, NULL, 'General Construction', 'Zamboanga City', 'company98@example.com', '09170000098', NULL, NULL, NULL, 'PCAB-73126', 'A', '2026-12-31', 'BP-98', 'Zamboanga', '2026-01-01', 'TIN-98', 'dti_cert.jpg', 'approved', '2025-10-25 07:49:09', 1, NULL, NULL, NULL, NULL, 30, '2025-10-23 07:49:09', '2025-12-16 08:41:07'),
-(1785, 99, 'Main Construction Co 99', '2003-12-16', 22, 7, NULL, 'General Construction', 'Zamboanga City', 'company99@example.com', '09170000099', NULL, NULL, NULL, 'PCAB-92160', 'A', '2026-12-31', 'BP-99', 'Zamboanga', '2026-01-01', 'TIN-99', 'dti_cert.jpg', 'approved', '2025-07-15 07:49:09', 1, NULL, NULL, NULL, NULL, 28, '2025-07-13 07:49:09', '2025-12-16 08:41:07'),
-(1786, 100, 'Main Construction Co 100', '1996-12-16', 29, 9, NULL, 'General Construction', 'Zamboanga City', 'company100@example.com', '09170000100', NULL, NULL, NULL, 'PCAB-87531', 'A', '2026-12-31', 'BP-100', 'Zamboanga', '2026-01-01', 'TIN-100', 'dti_cert.jpg', 'rejected', NULL, 1, NULL, NULL, NULL, 'Permit expired.', 27, '2025-07-02 07:49:09', '2025-12-16 08:41:07'),
-(1787, 201, 'Main Construction Co 201', '2006-12-16', 19, 6, NULL, 'General Construction', 'Zamboanga City', 'company201@example.com', '09170000201', NULL, NULL, NULL, 'PCAB-77737', 'A', '2026-12-31', 'BP-201', 'Zamboanga', '2026-01-01', 'TIN-201', 'dti_cert.jpg', 'approved', '2025-08-16 07:49:09', 1, NULL, NULL, NULL, NULL, 42, '2025-08-14 07:49:09', '2025-12-16 08:41:07'),
-(1788, 202, 'Main Construction Co 202', '2021-12-16', 4, 2, NULL, 'General Construction', 'Zamboanga City', 'company202@example.com', '09170000202', NULL, NULL, NULL, 'PCAB-39620', 'A', '2026-12-31', 'BP-202', 'Zamboanga', '2026-01-01', 'TIN-202', 'dti_cert.jpg', 'approved', '2025-04-18 07:49:09', 1, NULL, NULL, NULL, NULL, 35, '2025-04-16 07:49:09', '2025-12-16 08:41:07'),
-(1789, 203, 'Main Construction Co 203', '2000-12-16', 25, 8, NULL, 'General Construction', 'Zamboanga City', 'company203@example.com', '09170000203', NULL, NULL, NULL, 'PCAB-69863', 'A', '2026-12-31', 'BP-203', 'Zamboanga', '2026-01-01', 'TIN-203', 'dti_cert.jpg', 'approved', '2025-09-06 07:49:09', 1, NULL, NULL, NULL, NULL, 15, '2025-09-04 07:49:09', '2025-12-16 08:41:07'),
-(1790, 204, 'Main Construction Co 204', '2002-12-16', 23, 3, NULL, 'General Construction', 'Zamboanga City', 'company204@example.com', '09170000204', NULL, NULL, NULL, 'PCAB-61739', 'A', '2026-12-31', 'BP-204', 'Zamboanga', '2026-01-01', 'TIN-204', 'dti_cert.jpg', 'approved', '2025-09-23 07:49:09', 1, NULL, NULL, NULL, NULL, 41, '2025-09-21 07:49:09', '2025-12-16 08:41:07'),
-(1791, 205, 'Main Construction Co 205', '2018-12-16', 7, 1, NULL, 'General Construction', 'Zamboanga City', 'company205@example.com', '09170000205', NULL, NULL, NULL, 'PCAB-32187', 'A', '2026-12-31', 'BP-205', 'Zamboanga', '2026-01-01', 'TIN-205', 'dti_cert.jpg', 'pending', NULL, 1, NULL, NULL, NULL, NULL, 21, '2025-05-29 07:49:09', '2025-12-16 08:41:07'),
-(1792, 206, 'Main Construction Co 206', '1999-12-16', 26, 1, NULL, 'General Construction', 'Zamboanga City', 'company206@example.com', '09170000206', NULL, NULL, NULL, 'PCAB-75939', 'A', '2026-12-31', 'BP-206', 'Zamboanga', '2026-01-01', 'TIN-206', 'dti_cert.jpg', 'approved', '2025-11-17 07:49:09', 1, NULL, NULL, NULL, NULL, 45, '2025-11-15 07:49:09', '2025-12-16 08:41:07'),
-(1793, 207, 'Main Construction Co 207', '2006-12-16', 19, 3, NULL, 'General Construction', 'Zamboanga City', 'company207@example.com', '09170000207', NULL, NULL, NULL, 'PCAB-51453', 'A', '2026-12-31', 'BP-207', 'Zamboanga', '2026-01-01', 'TIN-207', 'dti_cert.jpg', 'approved', '2025-04-18 07:49:09', 1, NULL, NULL, NULL, NULL, 3, '2025-04-16 07:49:09', '2025-12-16 08:41:07'),
-(1794, 208, 'Main Construction Co 208', '2009-12-16', 16, 2, NULL, 'General Construction', 'Zamboanga City', 'company208@example.com', '09170000208', NULL, NULL, NULL, 'PCAB-13265', 'A', '2026-12-31', 'BP-208', 'Zamboanga', '2026-01-01', 'TIN-208', 'dti_cert.jpg', 'approved', '2025-12-10 07:49:09', 1, NULL, NULL, NULL, NULL, 8, '2025-12-08 07:49:09', '2025-12-16 08:41:07'),
-(1795, 209, 'Main Construction Co 209', '2003-12-16', 22, 2, NULL, 'General Construction', 'Zamboanga City', 'company209@example.com', '09170000209', NULL, NULL, NULL, 'PCAB-91806', 'A', '2026-12-31', 'BP-209', 'Zamboanga', '2026-01-01', 'TIN-209', 'dti_cert.jpg', 'approved', '2025-07-17 07:49:09', 1, NULL, NULL, NULL, NULL, 24, '2025-07-15 07:49:09', '2025-12-16 08:41:07'),
-(1796, 210, 'Main Construction Co 210', '2021-12-16', 4, 7, NULL, 'General Construction', 'Zamboanga City', 'company210@example.com', '09170000210', NULL, NULL, NULL, 'PCAB-69228', 'A', '2026-12-31', 'BP-210', 'Zamboanga', '2026-01-01', 'TIN-210', 'dti_cert.jpg', 'rejected', NULL, 1, NULL, NULL, NULL, 'Permit expired.', 45, '2025-06-18 07:49:09', '2025-12-16 08:41:07'),
-(1797, 211, 'Main Construction Co 211', '2014-12-16', 11, 6, NULL, 'General Construction', 'Zamboanga City', 'company211@example.com', '09170000211', NULL, NULL, NULL, 'PCAB-52834', 'A', '2026-12-31', 'BP-211', 'Zamboanga', '2026-01-01', 'TIN-211', 'dti_cert.jpg', 'approved', '2025-10-14 07:49:09', 1, NULL, NULL, NULL, NULL, 49, '2025-10-12 07:49:09', '2025-12-16 08:41:07'),
-(1798, 212, 'Main Construction Co 212', '2011-12-16', 14, 7, NULL, 'General Construction', 'Zamboanga City', 'company212@example.com', '09170000212', NULL, NULL, NULL, 'PCAB-70043', 'A', '2026-12-31', 'BP-212', 'Zamboanga', '2026-01-01', 'TIN-212', 'dti_cert.jpg', 'approved', '2025-02-18 07:49:09', 1, NULL, NULL, NULL, NULL, 16, '2025-02-16 07:49:09', '2025-12-16 08:41:07'),
-(1799, 213, 'Main Construction Co 213', '2019-12-16', 6, 7, NULL, 'General Construction', 'Zamboanga City', 'company213@example.com', '09170000213', NULL, NULL, NULL, 'PCAB-34511', 'A', '2026-12-31', 'BP-213', 'Zamboanga', '2026-01-01', 'TIN-213', 'dti_cert.jpg', 'approved', '2025-05-19 07:49:09', 1, NULL, NULL, NULL, NULL, 5, '2025-05-17 07:49:09', '2025-12-16 08:41:07'),
-(1800, 214, 'Main Construction Co 214', '2006-12-16', 19, 6, NULL, 'General Construction', 'Zamboanga City', 'company214@example.com', '09170000214', NULL, NULL, NULL, 'PCAB-56516', 'A', '2026-12-31', 'BP-214', 'Zamboanga', '2026-01-01', 'TIN-214', 'dti_cert.jpg', 'approved', '2025-06-20 07:49:09', 1, NULL, NULL, NULL, NULL, 2, '2025-06-18 07:49:09', '2025-12-16 08:41:07'),
-(1801, 215, 'Main Construction Co 215', '2011-12-16', 14, 7, NULL, 'General Construction', 'Zamboanga City', 'company215@example.com', '09170000215', NULL, NULL, NULL, 'PCAB-75873', 'A', '2026-12-31', 'BP-215', 'Zamboanga', '2026-01-01', 'TIN-215', 'dti_cert.jpg', 'pending', NULL, 1, NULL, NULL, NULL, NULL, 5, '2025-08-12 07:49:09', '2025-12-16 08:41:07'),
-(1802, 216, 'Main Construction Co 216', '2011-12-16', 14, 1, NULL, 'General Construction', 'Zamboanga City', 'company216@example.com', '09170000216', NULL, NULL, NULL, 'PCAB-62029', 'A', '2026-12-31', 'BP-216', 'Zamboanga', '2026-01-01', 'TIN-216', 'dti_cert.jpg', 'approved', '2025-04-13 07:49:09', 1, NULL, NULL, NULL, NULL, 27, '2025-04-11 07:49:09', '2025-12-16 08:41:07'),
-(1803, 217, 'Main Construction Co 217', '1998-12-16', 27, 9, NULL, 'General Construction', 'Zamboanga City', 'company217@example.com', '09170000217', NULL, NULL, NULL, 'PCAB-27801', 'A', '2026-12-31', 'BP-217', 'Zamboanga', '2026-01-01', 'TIN-217', 'dti_cert.jpg', 'approved', '2025-01-16 07:49:09', 1, NULL, NULL, NULL, NULL, 49, '2025-01-14 07:49:09', '2025-12-16 08:41:07'),
-(1804, 218, 'Main Construction Co 218', '2022-12-16', 3, 8, NULL, 'General Construction', 'Zamboanga City', 'company218@example.com', '09170000218', NULL, NULL, NULL, 'PCAB-45679', 'A', '2026-12-31', 'BP-218', 'Zamboanga', '2026-01-01', 'TIN-218', 'dti_cert.jpg', 'approved', '2025-06-07 07:49:09', 1, NULL, NULL, NULL, NULL, 23, '2025-06-05 07:49:09', '2025-12-16 08:41:07'),
-(1805, 219, 'Main Construction Co 219', '2000-12-16', 25, 4, NULL, 'General Construction', 'Zamboanga City', 'company219@example.com', '09170000219', NULL, NULL, NULL, 'PCAB-73715', 'A', '2026-12-31', 'BP-219', 'Zamboanga', '2026-01-01', 'TIN-219', 'dti_cert.jpg', 'approved', '2025-03-11 07:49:09', 1, NULL, NULL, NULL, NULL, 13, '2025-03-09 07:49:09', '2025-12-16 08:41:07'),
-(1806, 220, 'Main Construction Co 220', '2001-12-16', 24, 5, NULL, 'General Construction', 'Zamboanga City', 'company220@example.com', '09170000220', NULL, NULL, NULL, 'PCAB-16396', 'A', '2026-12-31', 'BP-220', 'Zamboanga', '2026-01-01', 'TIN-220', 'dti_cert.jpg', 'rejected', NULL, 1, NULL, NULL, NULL, 'Permit expired.', 49, '2025-11-08 07:49:09', '2025-12-16 08:41:07'),
-(1807, 360, 'Rone Works', '2023-01-01', 2, 9, 'Gaming', 'Nothing', 'Nothing, Amparo, City of Butuan, 160200000 7000', 'shanehart100q1@gmail.com', '09926314071', NULL, NULL, NULL, '1231232', 'AA', '2025-12-31', '12124', 'Ajuy', '2025-12-31', '13123123', 'DTI_SEC/dAbCKi0N1cEfYwEtU0cQKlsCp1EoVCeh22H3ldvV.jpg', 'approved', '2025-12-16 08:22:15', 1, NULL, NULL, NULL, NULL, 0, '2025-12-16 08:22:15', '2025-12-16 09:21:56'),
-(1808, 361, 'Krystal Services', '2023-01-31', 2, 5, NULL, 'Nothing', 'Sample, Humilog, Remedios T. Romualdez, Agusan Del Norte 2311', 'shanehart1001d@gmail.com', '09926314033', 'https://krystal.com', 'https://krystalservices.com', 'desc to', '123341212', 'AA', '2025-12-31', '1234423123', 'Aguinaldo', '2025-12-31', '1231231ss', 'DTI_SEC/ECDYAx9WeQj2kcVgICbYIdyf7lCE903hLfOZdvBN.jpg', 'approved', '2025-12-16 08:40:00', 1, NULL, NULL, NULL, NULL, 0, '2025-12-16 08:40:00', '2025-12-16 20:49:54'),
-(1809, 372, 'test2', '2025-12-18', 5, 7, NULL, 'yes services here and there', 'Anywhere, Saluping, Tabuan-Lasa, Basilan 7000', 'slayvibe.info@gmail.com', '09360211157', NULL, NULL, NULL, '82919910181', 'AAAA', '2026-12-18', '01917291082', 'Zamboanga City', '2025-12-18', '0198237292772', 'DTI_SEC/41dcx0yqd7nbVQK36H34tylFRgZYKrCyF5vPasPU.jpg', 'approved', '0000-00-00 00:00:00', 1, NULL, NULL, NULL, NULL, 0, '2025-12-17 13:58:50', '2025-12-18 15:00:59'),
-(1810, 380, 'Apex Company', '2026-02-21', 40, 8, NULL, 'iydiyditd', '456 oak ridge, Inyawan, Libertad, Antique, 7000', 'joxego4264@advarm.com', '09360521478', 'mbkyc.com', 'khfykdyo', NULL, '936336939663', 'AAA', '2027-02-02', '0292746391', 'Alcala', '2027-02-02', '13589652', 'DTI_SEC/jNfmB6LE9tIJvCij8DG61oi7HTCji94XlRwQFjcu.jpg', 'approved', NULL, 1, NULL, NULL, NULL, NULL, 0, '2026-02-21 01:34:20', '2026-02-21 09:38:34');
+INSERT INTO `contractors` (`contractor_id`, `user_id`, `company_logo`, `company_banner`, `bio`, `company_name`, `company_start_date`, `years_of_experience`, `type_id`, `contractor_type_other`, `services_offered`, `business_address`, `company_email`, `company_phone`, `company_website`, `company_social_media`, `company_description`, `picab_number`, `picab_category`, `picab_expiration_date`, `business_permit_number`, `business_permit_city`, `business_permit_expiration`, `tin_business_reg_number`, `dti_sec_registration_photo`, `verification_status`, `verification_date`, `is_active`, `suspension_until`, `suspension_reason`, `deletion_reason`, `rejection_reason`, `completed_projects`, `created_at`, `updated_at`) VALUES
+(1687, 1, NULL, NULL, NULL, 'Main Construction Co 1', '2011-12-16', 14, 8, NULL, 'General Construction', 'Zamboanga City', 'company1@example.com', '09170000001', NULL, NULL, NULL, 'PCAB-23362', 'A', '2026-12-31', 'BP-1', 'Zamboanga', '2026-01-01', 'TIN-1', 'dti_cert.jpg', 'approved', '2025-08-01 07:49:09', 1, NULL, NULL, NULL, NULL, 5, '2025-07-30 07:49:09', '2025-12-16 08:41:07'),
+(1688, 2, NULL, NULL, NULL, 'Main Construction Co 2', '2000-12-16', 25, 5, NULL, 'General Construction', 'Zamboanga City', 'company2@example.com', '09170000002', NULL, NULL, NULL, 'PCAB-22358', 'A', '2026-12-31', 'BP-2', 'Zamboanga', '2026-01-01', 'TIN-2', 'dti_cert.jpg', 'approved', '2025-10-23 07:49:09', 1, NULL, NULL, NULL, NULL, 43, '2025-10-21 07:49:09', '2025-12-16 08:41:07'),
+(1689, 3, NULL, NULL, NULL, 'Main Construction Co 3', '2005-12-16', 20, 6, NULL, 'General Construction', 'Zamboanga City', 'company3@example.com', '09170000003', NULL, NULL, NULL, 'PCAB-11115', 'A', '2026-12-31', 'BP-3', 'Zamboanga', '2026-01-01', 'TIN-3', 'dti_cert.jpg', 'approved', '2024-12-19 07:49:09', 1, NULL, NULL, NULL, NULL, 28, '2024-12-17 07:49:09', '2025-12-16 08:41:07'),
+(1690, 4, NULL, NULL, NULL, 'Main Construction Co 4', '1998-12-16', 27, 4, NULL, 'General Construction', 'Zamboanga City', 'company4@example.com', '09170000004', NULL, NULL, NULL, 'PCAB-96931', 'A', '2026-12-31', 'BP-4', 'Zamboanga', '2026-01-01', 'TIN-4', 'dti_cert.jpg', 'approved', '2025-01-26 07:49:09', 1, NULL, NULL, NULL, NULL, 23, '2025-01-24 07:49:09', '2025-12-16 08:41:07'),
+(1691, 5, NULL, NULL, NULL, 'Main Construction Co 5', '2013-12-16', 12, 1, NULL, 'General Construction', 'Zamboanga City', 'company5@example.com', '09170000005', NULL, NULL, NULL, 'PCAB-75904', 'A', '2026-12-31', 'BP-5', 'Zamboanga', '2026-01-01', 'TIN-5', 'dti_cert.jpg', 'approved', NULL, 1, NULL, NULL, NULL, '', 4, '2025-02-19 07:49:09', '2025-12-16 08:41:07'),
+(1692, 6, NULL, NULL, NULL, 'Main Construction Co 6', '2014-12-16', 11, 9, NULL, 'General Construction', 'Zamboanga City', 'company6@example.com', '09170000006', NULL, NULL, NULL, 'PCAB-79857', 'A', '2026-12-31', 'BP-6', 'Zamboanga', '2026-01-01', 'TIN-6', 'dti_cert.jpg', 'approved', '2025-04-23 07:49:09', 1, NULL, NULL, NULL, NULL, 24, '2025-04-21 07:49:09', '2025-12-16 08:41:07'),
+(1693, 7, NULL, NULL, NULL, 'Main Construction Co 7', '2008-12-16', 17, 6, NULL, 'General Construction', 'Zamboanga City', 'company7@example.com', '09170000007', NULL, NULL, NULL, 'PCAB-39566', 'A', '2026-12-31', 'BP-7', 'Zamboanga', '2026-01-01', 'TIN-7', 'dti_cert.jpg', 'approved', '2025-11-27 07:49:09', 1, NULL, NULL, NULL, NULL, 38, '2025-11-25 07:49:09', '2025-12-16 08:41:07'),
+(1694, 8, NULL, NULL, NULL, 'Main Construction Co 8', '2003-12-16', 22, 7, NULL, 'General Construction', 'Zamboanga City', 'company8@example.com', '09170000008', NULL, NULL, NULL, 'PCAB-54580', 'A', '2026-12-31', 'BP-8', 'Zamboanga', '2026-01-01', 'TIN-8', 'dti_cert.jpg', 'approved', '2025-10-10 07:49:09', 1, NULL, NULL, NULL, NULL, 19, '2025-10-08 07:49:09', '2025-12-16 08:41:07'),
+(1695, 9, NULL, NULL, NULL, 'Main Construction Co 9', '1999-12-16', 26, 9, NULL, 'General Construction', 'Zamboanga City', 'company9@example.com', '09170000009', NULL, NULL, NULL, 'PCAB-34347', 'A', '2026-12-31', 'BP-9', 'Zamboanga', '2026-01-01', 'TIN-9', 'dti_cert.jpg', 'approved', '2025-03-28 07:49:09', 1, NULL, NULL, NULL, NULL, 47, '2025-03-26 07:49:09', '2025-12-16 08:41:07'),
+(1696, 10, NULL, NULL, NULL, 'Main Construction Co 10', '2018-12-16', 7, 6, NULL, 'General Construction', 'Zamboanga City', 'company10@example.com', '09170000010', NULL, NULL, NULL, 'PCAB-69751', 'A', '2026-12-31', 'BP-10', 'Zamboanga', '2026-01-01', 'TIN-10', 'dti_cert.jpg', 'rejected', NULL, 1, NULL, NULL, NULL, 'Permit expired.', 37, '2025-09-23 07:49:09', '2025-12-16 08:41:07'),
+(1697, 11, NULL, NULL, NULL, 'Main Construction Co 11', '2010-12-16', 15, 9, NULL, 'General Construction', 'Zamboanga City', 'company11@example.com', '09170000011', NULL, NULL, NULL, 'PCAB-70939', 'A', '2026-12-31', 'BP-11', 'Zamboanga', '2026-01-01', 'TIN-11', 'dti_cert.jpg', 'approved', '2025-05-12 07:49:09', 1, NULL, NULL, NULL, NULL, 20, '2025-05-10 07:49:09', '2025-12-16 08:41:07'),
+(1698, 12, NULL, NULL, NULL, 'Main Construction Co 12', '2003-12-16', 22, 1, NULL, 'General Construction', 'Zamboanga City', 'company12@example.com', '09170000012', NULL, NULL, NULL, 'PCAB-10680', 'A', '2026-12-31', 'BP-12', 'Zamboanga', '2026-01-01', 'TIN-12', 'dti_cert.jpg', 'approved', '2025-09-11 07:49:09', 1, NULL, NULL, NULL, NULL, 38, '2025-09-09 07:49:09', '2025-12-16 08:41:07'),
+(1699, 13, NULL, NULL, NULL, 'Main Construction Co 13', '2021-12-16', 4, 1, NULL, 'General Construction', 'Zamboanga City', 'company13@example.com', '09170000013', NULL, NULL, NULL, 'PCAB-10739', 'A', '2026-12-31', 'BP-13', 'Zamboanga', '2026-01-01', 'TIN-13', 'dti_cert.jpg', 'approved', '2025-07-08 07:49:09', 1, NULL, NULL, NULL, NULL, 18, '2025-07-06 07:49:09', '2025-12-16 08:41:07'),
+(1700, 14, NULL, NULL, NULL, 'Main Construction Co 14', '2012-12-16', 13, 4, NULL, 'General Construction', 'Zamboanga City', 'company14@example.com', '09170000014', NULL, NULL, NULL, 'PCAB-81118', 'A', '2026-12-31', 'BP-14', 'Zamboanga', '2026-01-01', 'TIN-14', 'dti_cert.jpg', 'approved', '2025-02-22 07:49:09', 1, NULL, NULL, NULL, NULL, 11, '2025-02-20 07:49:09', '2025-12-16 08:41:07'),
+(1701, 15, NULL, NULL, NULL, 'Main Construction Co 15', '2003-12-16', 22, 5, NULL, 'General Construction', 'Zamboanga City', 'company15@example.com', '09170000015', NULL, NULL, NULL, 'PCAB-66597', 'A', '2026-12-31', 'BP-15', 'Zamboanga', '2026-01-01', 'TIN-15', 'dti_cert.jpg', 'approved', NULL, 1, NULL, NULL, NULL, '', 12, '2025-01-08 07:49:09', '2025-12-17 14:57:33'),
+(1702, 16, NULL, NULL, NULL, 'Main Construction Co 16', '2012-12-16', 13, 2, NULL, 'General Construction', 'Zamboanga City', 'company16@example.com', '09170000016', NULL, NULL, NULL, 'PCAB-19082', 'A', '2026-12-31', 'BP-16', 'Zamboanga', '2026-01-01', 'TIN-16', 'dti_cert.jpg', 'approved', '2025-05-17 07:49:09', 1, NULL, NULL, NULL, NULL, 25, '2025-05-15 07:49:09', '2025-12-16 08:41:07'),
+(1703, 17, NULL, NULL, NULL, 'Main Construction Co 17', '2000-12-16', 25, 5, NULL, 'General Construction', 'Zamboanga City', 'company17@example.com', '09170000017', NULL, NULL, NULL, 'PCAB-77703', 'A', '2026-12-31', 'BP-17', 'Zamboanga', '2026-01-01', 'TIN-17', 'dti_cert.jpg', 'approved', '2025-05-01 07:49:09', 1, NULL, NULL, NULL, NULL, 12, '2025-04-29 07:49:09', '2025-12-16 08:41:07'),
+(1704, 18, NULL, NULL, NULL, 'Main Construction Co 18', '1996-12-16', 29, 2, NULL, 'General Construction', 'Zamboanga City', 'company18@example.com', '09170000018', NULL, NULL, NULL, 'PCAB-36965', 'A', '2026-12-31', 'BP-18', 'Zamboanga', '2026-01-01', 'TIN-18', 'dti_cert.jpg', 'approved', '2025-01-06 07:49:09', 1, NULL, NULL, NULL, NULL, 9, '2025-01-04 07:49:09', '2025-12-16 08:41:07'),
+(1705, 19, NULL, NULL, NULL, 'Main Construction Co 19', '2016-12-16', 9, 2, NULL, 'General Construction', 'Zamboanga City', 'company19@example.com', '09170000019', NULL, NULL, NULL, 'PCAB-34306', 'A', '2026-12-31', 'BP-19', 'Zamboanga', '2026-01-01', 'TIN-19', 'dti_cert.jpg', 'approved', '2025-05-31 07:49:09', 1, NULL, NULL, NULL, NULL, 28, '2025-05-29 07:49:09', '2025-12-16 08:41:07'),
+(1706, 20, NULL, NULL, NULL, 'Main Construction Co 20', '2006-12-16', 19, 3, NULL, 'General Construction', 'Zamboanga City', 'company20@example.com', '09170000020', NULL, NULL, NULL, 'PCAB-67093', 'A', '2026-12-31', 'BP-20', 'Zamboanga', '2026-01-01', 'TIN-20', 'dti_cert.jpg', 'rejected', NULL, 1, NULL, NULL, NULL, 'Permit expired.', 6, '2025-10-18 07:49:09', '2025-12-16 08:41:07'),
+(1707, 21, NULL, NULL, NULL, 'Main Construction Co 21', '2019-12-16', 6, 2, NULL, 'General Construction', 'Zamboanga City', 'company21@example.com', '09170000021', NULL, NULL, NULL, 'PCAB-39542', 'A', '2026-12-31', 'BP-21', 'Zamboanga', '2026-01-01', 'TIN-21', 'dti_cert.jpg', 'approved', '2025-01-24 07:49:09', 1, NULL, NULL, NULL, NULL, 10, '2025-01-22 07:49:09', '2025-12-16 08:41:07'),
+(1708, 22, NULL, NULL, NULL, 'Main Construction Co 22', '2024-12-16', 1, 3, NULL, 'General Construction', 'Zamboanga City', 'company22@example.com', '09170000022', NULL, NULL, NULL, 'PCAB-34168', 'A', '2026-12-31', 'BP-22', 'Zamboanga', '2026-01-01', 'TIN-22', 'dti_cert.jpg', 'approved', '2025-10-18 07:49:09', 1, NULL, NULL, NULL, NULL, 11, '2025-10-16 07:49:09', '2025-12-16 08:41:07'),
+(1709, 23, NULL, NULL, NULL, 'Main Construction Co 23', '2008-12-16', 17, 6, NULL, 'General Construction', 'Zamboanga City', 'company23@example.com', '09170000023', NULL, NULL, NULL, 'PCAB-42469', 'A', '2026-12-31', 'BP-23', 'Zamboanga', '2026-01-01', 'TIN-23', 'dti_cert.jpg', 'approved', '2025-03-18 07:49:09', 1, NULL, NULL, NULL, NULL, 15, '2025-03-16 07:49:09', '2025-12-16 08:41:07'),
+(1710, 24, NULL, NULL, NULL, 'Main Construction Co 24', '2002-12-16', 23, 5, NULL, 'General Construction', 'Zamboanga City', 'company24@example.com', '09170000024', NULL, NULL, NULL, 'PCAB-46764', 'A', '2026-12-31', 'BP-24', 'Zamboanga', '2026-01-01', 'TIN-24', 'dti_cert.jpg', 'approved', '2025-08-27 07:49:09', 1, NULL, NULL, NULL, NULL, 32, '2025-08-25 07:49:09', '2025-12-16 08:41:07'),
+(1711, 25, NULL, NULL, NULL, 'Main Construction Co 25', '2021-12-16', 4, 1, NULL, 'General Construction', 'Zamboanga City', 'company25@example.com', '09170000025', NULL, NULL, NULL, 'PCAB-57726', 'A', '2026-12-31', 'BP-25', 'Zamboanga', '2026-01-01', 'TIN-25', 'dti_cert.jpg', 'pending', NULL, 1, NULL, NULL, NULL, NULL, 48, '2025-05-01 07:49:09', '2025-12-16 08:41:07'),
+(1712, 26, NULL, NULL, NULL, 'Main Construction Co 26', '2017-12-16', 8, 2, NULL, 'General Construction', 'Zamboanga City', 'company26@example.com', '09170000026', NULL, NULL, NULL, 'PCAB-45837', 'A', '2026-12-31', 'BP-26', 'Zamboanga', '2026-01-01', 'TIN-26', 'dti_cert.jpg', 'approved', '2025-08-16 07:49:09', 1, NULL, NULL, NULL, NULL, 6, '2025-08-14 07:49:09', '2025-12-16 08:41:07'),
+(1713, 27, NULL, NULL, NULL, 'Main Construction Co 27', '1998-12-16', 27, 5, NULL, 'General Construction', 'Zamboanga City', 'company27@example.com', '09170000027', NULL, NULL, NULL, 'PCAB-36243', 'A', '2026-12-31', 'BP-27', 'Zamboanga', '2026-01-01', 'TIN-27', 'dti_cert.jpg', 'approved', '2025-11-08 07:49:09', 1, NULL, NULL, NULL, NULL, 21, '2025-11-06 07:49:09', '2025-12-16 08:41:07'),
+(1714, 28, NULL, NULL, NULL, 'Main Construction Co 28', '2003-12-16', 22, 8, NULL, 'General Construction', 'Zamboanga City', 'company28@example.com', '09170000028', NULL, NULL, NULL, 'PCAB-96216', 'A', '2026-12-31', 'BP-28', 'Zamboanga', '2026-01-01', 'TIN-28', 'dti_cert.jpg', 'approved', '2025-05-03 07:49:09', 1, NULL, NULL, NULL, NULL, 21, '2025-05-01 07:49:09', '2025-12-16 08:41:07'),
+(1715, 29, NULL, NULL, NULL, 'Main Construction Co 29', '1997-12-16', 28, 8, NULL, 'General Construction', 'Zamboanga City', 'company29@example.com', '09170000029', NULL, NULL, NULL, 'PCAB-84101', 'A', '2026-12-31', 'BP-29', 'Zamboanga', '2026-01-01', 'TIN-29', 'dti_cert.jpg', 'approved', '2025-07-21 07:49:09', 1, NULL, NULL, NULL, NULL, 19, '2025-07-19 07:49:09', '2025-12-16 08:41:07'),
+(1716, 30, NULL, NULL, NULL, 'Main Construction Co 30', '2010-12-16', 15, 6, NULL, 'General Construction', 'Zamboanga City', 'company30@example.com', '09170000030', NULL, NULL, NULL, 'PCAB-57206', 'A', '2026-12-31', 'BP-30', 'Zamboanga', '2026-01-01', 'TIN-30', 'dti_cert.jpg', 'rejected', NULL, 1, NULL, NULL, NULL, 'Permit expired.', 20, '2025-05-24 07:49:09', '2025-12-16 08:41:07'),
+(1717, 31, NULL, NULL, NULL, 'Main Construction Co 31', '2006-12-16', 19, 2, NULL, 'General Construction', 'Zamboanga City', 'company31@example.com', '09170000031', NULL, NULL, NULL, 'PCAB-68035', 'A', '2026-12-31', 'BP-31', 'Zamboanga', '2026-01-01', 'TIN-31', 'dti_cert.jpg', 'approved', '2025-11-10 07:49:09', 1, NULL, NULL, NULL, NULL, 42, '2025-11-08 07:49:09', '2025-12-16 08:41:07'),
+(1718, 32, NULL, NULL, NULL, 'Main Construction Co 32', '2006-12-16', 19, 4, NULL, 'General Construction', 'Zamboanga City', 'company32@example.com', '09170000032', NULL, NULL, NULL, 'PCAB-72477', 'A', '2026-12-31', 'BP-32', 'Zamboanga', '2026-01-01', 'TIN-32', 'dti_cert.jpg', 'approved', '2025-10-01 07:49:09', 1, NULL, NULL, NULL, NULL, 21, '2025-09-29 07:49:09', '2025-12-16 08:41:07'),
+(1719, 33, NULL, NULL, NULL, 'Main Construction Co 33', '2017-12-16', 8, 6, NULL, 'General Construction', 'Zamboanga City', 'company33@example.com', '09170000033', NULL, NULL, NULL, 'PCAB-44442', 'A', '2026-12-31', 'BP-33', 'Zamboanga', '2026-01-01', 'TIN-33', 'dti_cert.jpg', 'approved', '2025-02-06 07:49:09', 1, NULL, NULL, NULL, NULL, 1, '2025-02-04 07:49:09', '2025-12-16 08:41:07'),
+(1720, 34, NULL, NULL, NULL, 'Main Construction Co 34', '2012-12-16', 13, 6, NULL, 'General Construction', 'Zamboanga City', 'company34@example.com', '09170000034', NULL, NULL, NULL, 'PCAB-88849', 'A', '2026-12-31', 'BP-34', 'Zamboanga', '2026-01-01', 'TIN-34', 'dti_cert.jpg', 'approved', '2025-08-20 07:49:09', 1, NULL, NULL, NULL, NULL, 8, '2025-08-18 07:49:09', '2025-12-16 08:41:07'),
+(1721, 35, NULL, NULL, NULL, 'Main Construction Co 35', '2015-12-16', 10, 1, NULL, 'General Construction', 'Zamboanga City', 'company35@example.com', '09170000035', NULL, NULL, NULL, 'PCAB-23798', 'A', '2026-12-31', 'BP-35', 'Zamboanga', '2026-01-01', 'TIN-35', 'dti_cert.jpg', 'pending', NULL, 1, NULL, NULL, NULL, NULL, 42, '2025-04-22 07:49:09', '2025-12-16 08:41:07'),
+(1722, 36, NULL, NULL, NULL, 'Main Construction Co 36', '2012-12-16', 13, 8, NULL, 'General Construction', 'Zamboanga City', 'company36@example.com', '09170000036', NULL, NULL, NULL, 'PCAB-33648', 'A', '2026-12-31', 'BP-36', 'Zamboanga', '2026-01-01', 'TIN-36', 'dti_cert.jpg', 'approved', '2025-09-24 07:49:09', 1, NULL, NULL, NULL, NULL, 44, '2025-09-22 07:49:09', '2025-12-16 08:41:07'),
+(1723, 37, NULL, NULL, NULL, 'Main Construction Co 37', '2024-12-16', 1, 2, NULL, 'General Construction', 'Zamboanga City', 'company37@example.com', '09170000037', NULL, NULL, NULL, 'PCAB-32151', 'A', '2026-12-31', 'BP-37', 'Zamboanga', '2026-01-01', 'TIN-37', 'dti_cert.jpg', 'approved', '2025-05-12 07:49:09', 1, NULL, NULL, NULL, NULL, 22, '2025-05-10 07:49:09', '2025-12-16 08:41:07'),
+(1724, 38, NULL, NULL, NULL, 'Main Construction Co 38', '1997-12-16', 28, 7, NULL, 'General Construction', 'Zamboanga City', 'company38@example.com', '09170000038', NULL, NULL, NULL, 'PCAB-53613', 'A', '2026-12-31', 'BP-38', 'Zamboanga', '2026-01-01', 'TIN-38', 'dti_cert.jpg', 'approved', '2025-02-10 07:49:09', 1, NULL, NULL, NULL, NULL, 27, '2025-02-08 07:49:09', '2025-12-16 08:41:07'),
+(1725, 39, NULL, NULL, NULL, 'Main Construction Co 39', '2009-12-16', 16, 8, NULL, 'General Construction', 'Zamboanga City', 'company39@example.com', '09170000039', NULL, NULL, NULL, 'PCAB-85450', 'A', '2026-12-31', 'BP-39', 'Zamboanga', '2026-01-01', 'TIN-39', 'dti_cert.jpg', 'approved', '2025-07-23 07:49:09', 1, NULL, NULL, NULL, NULL, 42, '2025-07-21 07:49:09', '2025-12-16 08:41:07'),
+(1726, 40, NULL, NULL, NULL, 'Main Construction Co 40', '2001-12-16', 24, 6, NULL, 'General Construction', 'Zamboanga City', 'company40@example.com', '09170000040', NULL, NULL, NULL, 'PCAB-48462', 'A', '2026-12-31', 'BP-40', 'Zamboanga', '2026-01-01', 'TIN-40', 'dti_cert.jpg', 'rejected', NULL, 1, NULL, NULL, NULL, 'Permit expired.', 11, '2025-02-04 07:49:09', '2025-12-16 08:41:07'),
+(1727, 41, NULL, NULL, NULL, 'Main Construction Co 41', '2011-12-16', 14, 9, NULL, 'General Construction', 'Zamboanga City', 'company41@example.com', '09170000041', NULL, NULL, NULL, 'PCAB-67854', 'A', '2026-12-31', 'BP-41', 'Zamboanga', '2026-01-01', 'TIN-41', 'dti_cert.jpg', 'approved', '2025-02-10 07:49:09', 1, NULL, NULL, NULL, NULL, 25, '2025-02-08 07:49:09', '2025-12-16 08:41:07'),
+(1728, 42, NULL, NULL, NULL, 'Main Construction Co 42', '1999-12-16', 26, 9, NULL, 'General Construction', 'Zamboanga City', 'company42@example.com', '09170000042', NULL, NULL, NULL, 'PCAB-91907', 'A', '2026-12-31', 'BP-42', 'Zamboanga', '2026-01-01', 'TIN-42', 'dti_cert.jpg', 'approved', '2025-06-04 07:49:09', 1, NULL, NULL, NULL, NULL, 19, '2025-06-02 07:49:09', '2025-12-16 08:41:07'),
+(1729, 43, NULL, NULL, NULL, 'Main Construction Co 43', '1999-12-16', 26, 3, NULL, 'General Construction', 'Zamboanga City', 'company43@example.com', '09170000043', NULL, NULL, NULL, 'PCAB-33148', 'A', '2026-12-31', 'BP-43', 'Zamboanga', '2026-01-01', 'TIN-43', 'dti_cert.jpg', 'approved', '2025-05-23 07:49:09', 1, NULL, NULL, NULL, NULL, 31, '2025-05-21 07:49:09', '2025-12-16 08:41:07'),
+(1730, 44, NULL, NULL, NULL, 'Main Construction Co 44', '2002-12-16', 23, 6, NULL, 'General Construction', 'Zamboanga City', 'company44@example.com', '09170000044', NULL, NULL, NULL, 'PCAB-27263', 'A', '2026-12-31', 'BP-44', 'Zamboanga', '2026-01-01', 'TIN-44', 'dti_cert.jpg', 'approved', '2025-06-30 07:49:09', 1, NULL, NULL, NULL, NULL, 7, '2025-06-28 07:49:09', '2025-12-16 08:41:07'),
+(1731, 45, NULL, NULL, NULL, 'Main Construction Co 45', '2018-12-16', 7, 9, NULL, 'General Construction', 'Zamboanga City', 'company45@example.com', '09170000045', NULL, NULL, NULL, 'PCAB-35372', 'A', '2026-12-31', 'BP-45', 'Zamboanga', '2026-01-01', 'TIN-45', 'dti_cert.jpg', 'pending', NULL, 1, NULL, NULL, NULL, NULL, 12, '2025-04-02 07:49:09', '2025-12-16 08:41:07'),
+(1732, 46, NULL, NULL, NULL, 'Main Construction Co 46', '1999-12-16', 26, 6, NULL, 'General Construction', 'Zamboanga City', 'company46@example.com', '09170000046', NULL, NULL, NULL, 'PCAB-88247', 'A', '2026-12-31', 'BP-46', 'Zamboanga', '2026-01-01', 'TIN-46', 'dti_cert.jpg', 'approved', '2025-08-08 07:49:09', 1, NULL, NULL, NULL, NULL, 1, '2025-08-06 07:49:09', '2025-12-16 08:41:07'),
+(1733, 47, NULL, NULL, NULL, 'Main Construction Co 47', '2006-12-16', 19, 3, NULL, 'General Construction', 'Zamboanga City', 'company47@example.com', '09170000047', NULL, NULL, NULL, 'PCAB-60406', 'A', '2026-12-31', 'BP-47', 'Zamboanga', '2026-01-01', 'TIN-47', 'dti_cert.jpg', 'approved', '2025-07-14 07:49:09', 1, NULL, NULL, NULL, NULL, 37, '2025-07-12 07:49:09', '2025-12-16 08:41:07'),
+(1734, 48, NULL, NULL, NULL, 'Main Construction Co 48', '2007-12-16', 18, 2, NULL, 'General Construction', 'Zamboanga City', 'company48@example.com', '09170000048', NULL, NULL, NULL, 'PCAB-21775', 'A', '2026-12-31', 'BP-48', 'Zamboanga', '2026-01-01', 'TIN-48', 'dti_cert.jpg', 'approved', '2025-06-17 07:49:09', 1, NULL, NULL, NULL, NULL, 10, '2025-06-15 07:49:09', '2025-12-16 08:41:07'),
+(1735, 49, NULL, NULL, NULL, 'Main Construction Co 49', '1996-12-16', 29, 2, NULL, 'General Construction', 'Sample, Cahayagan, Carmen, Agusan Del Norte 2311', 'company49@example.com', '09170000049', NULL, NULL, NULL, 'PCAB-80787', 'A', '2026-12-31', 'BP-49', 'Agutaya', '2026-01-01', 'TIN-49', 'dti_cert.jpg', 'approved', '2025-12-14 07:49:09', 1, NULL, NULL, NULL, NULL, 4, '2025-12-12 07:49:09', '2025-12-16 09:56:43'),
+(1736, 50, NULL, NULL, NULL, 'Main Construction Co 50', '2023-12-16', 2, 3, NULL, 'General Construction', 'Zamboanga City', 'company50@example.com', '09170000050', NULL, NULL, NULL, 'PCAB-46129', 'A', '2026-12-31', 'BP-50', 'Zamboanga', '2026-01-01', 'TIN-50', 'dti_cert.jpg', 'rejected', NULL, 1, NULL, NULL, NULL, 'Permit expired.', 47, '2025-08-24 07:49:09', '2025-12-16 08:41:07'),
+(1737, 51, NULL, NULL, NULL, 'Main Construction Co 51', '2014-12-16', 11, 3, NULL, 'General Construction', 'Zamboanga City', 'company51@example.com', '09170000051', NULL, NULL, NULL, 'PCAB-85340', 'A', '2026-12-31', 'BP-51', 'Zamboanga', '2026-01-01', 'TIN-51', 'dti_cert.jpg', 'approved', '2025-09-19 07:49:09', 1, NULL, NULL, NULL, NULL, 3, '2025-09-17 07:49:09', '2025-12-16 08:41:07'),
+(1738, 52, NULL, NULL, NULL, 'Main Construction Co 52', '2006-12-16', 19, 1, NULL, 'General Construction', 'Zamboanga City', 'company52@example.com', '09170000052', NULL, NULL, NULL, 'PCAB-78141', 'A', '2026-12-31', 'BP-52', 'Zamboanga', '2026-01-01', 'TIN-52', 'dti_cert.jpg', 'approved', '2025-08-29 07:49:09', 1, NULL, NULL, NULL, NULL, 46, '2025-08-27 07:49:09', '2025-12-16 08:41:07'),
+(1739, 53, NULL, NULL, NULL, 'Main Construction Co 53', '2022-12-16', 3, 6, NULL, 'General Construction', 'Zamboanga City', 'company53@example.com', '09170000053', NULL, NULL, NULL, 'PCAB-34145', 'A', '2026-12-31', 'BP-53', 'Zamboanga', '2026-01-01', 'TIN-53', 'dti_cert.jpg', 'approved', '2025-11-12 07:49:09', 1, NULL, NULL, NULL, NULL, 30, '2025-11-10 07:49:09', '2025-12-16 08:41:07'),
+(1740, 54, NULL, NULL, NULL, 'Main Construction Co 54', '2006-12-16', 19, 2, NULL, 'General Construction', 'Zamboanga City', 'company54@example.com', '09170000054', NULL, NULL, NULL, 'PCAB-32105', 'A', '2026-12-31', 'BP-54', 'Zamboanga', '2026-01-01', 'TIN-54', 'dti_cert.jpg', 'approved', '2025-01-15 07:49:09', 1, NULL, NULL, NULL, NULL, 38, '2025-01-13 07:49:09', '2025-12-16 08:41:07'),
+(1741, 55, NULL, NULL, NULL, 'Main Construction Co 55', '2002-12-16', 23, 6, NULL, 'General Construction', 'Zamboanga City', 'company55@example.com', '09170000055', NULL, NULL, NULL, 'PCAB-36431', 'A', '2026-12-31', 'BP-55', 'Zamboanga', '2026-01-01', 'TIN-55', 'dti_cert.jpg', 'pending', NULL, 1, NULL, NULL, NULL, NULL, 0, '2025-06-01 07:49:09', '2025-12-16 08:41:07'),
+(1742, 56, NULL, NULL, NULL, 'Main Construction Co 56', '1997-12-16', 28, 3, NULL, 'General Construction', 'Zamboanga City', 'company56@example.com', '09170000056', NULL, NULL, NULL, 'PCAB-82813', 'A', '2026-12-31', 'BP-56', 'Zamboanga', '2026-01-01', 'TIN-56', 'dti_cert.jpg', 'approved', '2025-03-16 07:49:09', 1, NULL, NULL, NULL, NULL, 38, '2025-03-14 07:49:09', '2025-12-16 08:41:07'),
+(1743, 57, NULL, NULL, NULL, 'Main Construction Co 57', '2013-12-16', 12, 1, NULL, 'General Construction', 'Zamboanga City', 'company57@example.com', '09170000057', NULL, NULL, NULL, 'PCAB-72710', 'A', '2026-12-31', 'BP-57', 'Zamboanga', '2026-01-01', 'TIN-57', 'dti_cert.jpg', 'approved', '2025-03-27 07:49:09', 1, NULL, NULL, NULL, NULL, 12, '2025-03-25 07:49:09', '2025-12-16 08:41:07'),
+(1744, 58, NULL, NULL, NULL, 'Main Construction Co 58', '2019-12-16', 6, 8, NULL, 'General Construction', 'Zamboanga City', 'company58@example.com', '09170000058', NULL, NULL, NULL, 'PCAB-34834', 'A', '2026-12-31', 'BP-58', 'Zamboanga', '2026-01-01', 'TIN-58', 'dti_cert.jpg', 'approved', '2025-01-25 07:49:09', 1, NULL, NULL, NULL, NULL, 9, '2025-01-23 07:49:09', '2025-12-16 08:41:07'),
+(1745, 59, NULL, NULL, NULL, 'Main Construction Co 59', '2004-12-16', 21, 6, NULL, 'General Construction', 'Zamboanga City', 'company59@example.com', '09170000059', NULL, NULL, NULL, 'PCAB-19251', 'A', '2026-12-31', 'BP-59', 'Zamboanga', '2026-01-01', 'TIN-59', 'dti_cert.jpg', 'approved', '2025-06-12 07:49:09', 1, NULL, NULL, NULL, NULL, 44, '2025-06-10 07:49:09', '2025-12-16 08:41:07'),
+(1746, 60, NULL, NULL, NULL, 'Main Construction Co 60', '1996-12-16', 29, 4, NULL, 'General Construction', 'Zamboanga City', 'company60@example.com', '09170000060', NULL, NULL, NULL, 'PCAB-71914', 'A', '2026-12-31', 'BP-60', 'Zamboanga', '2026-01-01', 'TIN-60', 'dti_cert.jpg', 'rejected', NULL, 1, NULL, NULL, NULL, 'Permit expired.', 46, '2025-10-15 07:49:09', '2025-12-16 08:41:07'),
+(1747, 61, NULL, NULL, NULL, 'Main Construction Co 61', '2005-12-16', 20, 3, NULL, 'General Construction', 'Zamboanga City', 'company61@example.com', '09170000061', NULL, NULL, NULL, 'PCAB-15554', 'A', '2026-12-31', 'BP-61', 'Zamboanga', '2026-01-01', 'TIN-61', 'dti_cert.jpg', 'approved', '2024-12-25 07:49:09', 1, NULL, NULL, NULL, NULL, 15, '2024-12-23 07:49:09', '2025-12-16 08:41:07'),
+(1748, 62, NULL, NULL, NULL, 'Main Construction Co 62', '2013-12-16', 12, 7, NULL, 'General Construction', 'Zamboanga City', 'company62@example.com', '09170000062', NULL, NULL, NULL, 'PCAB-84279', 'A', '2026-12-31', 'BP-62', 'Zamboanga', '2026-01-01', 'TIN-62', 'dti_cert.jpg', 'approved', '2025-01-18 07:49:09', 1, NULL, NULL, NULL, NULL, 1, '2025-01-16 07:49:09', '2025-12-16 08:41:07'),
+(1749, 63, NULL, NULL, NULL, 'Main Construction Co 63', '1997-12-16', 28, 4, NULL, 'General Construction', 'Zamboanga City', 'company63@example.com', '09170000063', NULL, NULL, NULL, 'PCAB-24967', 'A', '2026-12-31', 'BP-63', 'Zamboanga', '2026-01-01', 'TIN-63', 'dti_cert.jpg', 'approved', '2025-03-29 07:49:09', 1, NULL, NULL, NULL, NULL, 2, '2025-03-27 07:49:09', '2025-12-16 08:41:07'),
+(1750, 64, NULL, NULL, NULL, 'Main Construction Co 64', '2010-12-16', 15, 5, NULL, 'General Construction', 'Zamboanga City', 'company64@example.com', '09170000064', NULL, NULL, NULL, 'PCAB-42118', 'A', '2026-12-31', 'BP-64', 'Zamboanga', '2026-01-01', 'TIN-64', 'dti_cert.jpg', 'approved', '2025-08-21 07:49:09', 1, NULL, NULL, NULL, NULL, 7, '2025-08-19 07:49:09', '2025-12-16 08:41:07'),
+(1751, 65, NULL, NULL, NULL, 'Main Construction Co 65', '2005-12-16', 20, 1, NULL, 'General Construction', 'Zamboanga City', 'company65@example.com', '09170000065', NULL, NULL, NULL, 'PCAB-11349', 'A', '2026-12-31', 'BP-65', 'Zamboanga', '2026-01-01', 'TIN-65', 'dti_cert.jpg', 'pending', NULL, 1, NULL, NULL, NULL, NULL, 10, '2025-01-05 07:49:09', '2025-12-16 08:41:07'),
+(1752, 66, NULL, NULL, NULL, 'Main Construction Co 66', '2002-12-16', 23, 9, NULL, 'General Construction', 'Zamboanga City', 'company66@example.com', '09170000066', NULL, NULL, NULL, 'PCAB-91407', 'A', '2026-12-31', 'BP-66', 'Zamboanga', '2026-01-01', 'TIN-66', 'dti_cert.jpg', 'approved', '2025-10-21 07:49:09', 1, NULL, NULL, NULL, NULL, 18, '2025-10-19 07:49:09', '2025-12-16 08:41:07'),
+(1753, 67, NULL, NULL, NULL, 'Main Construction Co 67', '1999-12-16', 26, 3, NULL, 'General Construction', 'Zamboanga City', 'company67@example.com', '09170000067', NULL, NULL, NULL, 'PCAB-58294', 'A', '2026-12-31', 'BP-67', 'Zamboanga', '2026-01-01', 'TIN-67', 'dti_cert.jpg', 'approved', '2025-01-01 07:49:09', 1, NULL, NULL, NULL, NULL, 13, '2024-12-30 07:49:09', '2025-12-16 08:41:07'),
+(1754, 68, NULL, NULL, NULL, 'Main Construction Co 68', '1997-12-16', 28, 8, NULL, 'General Construction', 'Zamboanga City', 'company68@example.com', '09170000068', NULL, NULL, NULL, 'PCAB-21255', 'A', '2026-12-31', 'BP-68', 'Zamboanga', '2026-01-01', 'TIN-68', 'dti_cert.jpg', 'approved', '2025-06-26 07:49:09', 1, NULL, NULL, NULL, NULL, 8, '2025-06-24 07:49:09', '2025-12-16 08:41:07'),
+(1755, 69, NULL, NULL, NULL, 'Main Construction Co 69', '2021-12-16', 4, 1, NULL, 'General Construction', 'Zamboanga City', 'company69@example.com', '09170000069', NULL, NULL, NULL, 'PCAB-67993', 'A', '2026-12-31', 'BP-69', 'Zamboanga', '2026-01-01', 'TIN-69', 'dti_cert.jpg', 'approved', '2025-03-18 07:49:09', 1, NULL, NULL, NULL, NULL, 48, '2025-03-16 07:49:09', '2025-12-16 08:41:07'),
+(1756, 70, NULL, NULL, NULL, 'Main Construction Co 70', '2000-12-16', 25, 9, NULL, 'General Construction', 'Zamboanga City', 'company70@example.com', '09170000070', NULL, NULL, NULL, 'PCAB-28285', 'A', '2026-12-31', 'BP-70', 'Zamboanga', '2026-01-01', 'TIN-70', 'dti_cert.jpg', 'rejected', NULL, 1, NULL, NULL, NULL, 'Permit expired.', 2, '2025-07-27 07:49:09', '2025-12-16 08:41:07'),
+(1757, 71, NULL, NULL, NULL, 'Main Construction Co 71', '2003-12-16', 22, 6, NULL, 'General Construction', 'Zamboanga City', 'company71@example.com', '09170000071', NULL, NULL, NULL, 'PCAB-42832', 'A', '2026-12-31', 'BP-71', 'Zamboanga', '2026-01-01', 'TIN-71', 'dti_cert.jpg', 'approved', '2025-07-26 07:49:09', 1, NULL, NULL, NULL, NULL, 12, '2025-07-24 07:49:09', '2025-12-16 08:41:07'),
+(1758, 72, NULL, NULL, NULL, 'Main Construction Co 72', '2019-12-16', 6, 7, NULL, 'General Construction', 'Zamboanga City', 'company72@example.com', '09170000072', NULL, NULL, NULL, 'PCAB-52638', 'A', '2026-12-31', 'BP-72', 'Zamboanga', '2026-01-01', 'TIN-72', 'dti_cert.jpg', 'approved', '2025-04-28 07:49:09', 1, NULL, NULL, NULL, NULL, 31, '2025-04-26 07:49:09', '2025-12-16 08:41:07'),
+(1759, 73, NULL, NULL, NULL, 'Main Construction Co 73', '2004-12-16', 21, 1, NULL, 'General Construction', 'Zamboanga City', 'company73@example.com', '09170000073', NULL, NULL, NULL, 'PCAB-28803', 'A', '2026-12-31', 'BP-73', 'Zamboanga', '2026-01-01', 'TIN-73', 'dti_cert.jpg', 'approved', '2025-02-23 07:49:09', 1, NULL, NULL, NULL, NULL, 9, '2025-02-21 07:49:09', '2025-12-16 08:41:07'),
+(1760, 74, NULL, NULL, NULL, 'Main Construction Co 74', '1997-12-16', 28, 3, NULL, 'General Construction', 'Zamboanga City', 'company74@example.com', '09170000074', NULL, NULL, NULL, 'PCAB-70844', 'A', '2026-12-31', 'BP-74', 'Zamboanga', '2026-01-01', 'TIN-74', 'dti_cert.jpg', 'approved', '2025-01-31 07:49:09', 1, NULL, NULL, NULL, NULL, 18, '2025-01-29 07:49:09', '2025-12-16 08:41:07'),
+(1761, 75, NULL, NULL, NULL, 'Main Construction Co 75', '2007-12-16', 18, 6, NULL, 'General Construction', 'Zamboanga City', 'company75@example.com', '09170000075', NULL, NULL, NULL, 'PCAB-56597', 'A', '2026-12-31', 'BP-75', 'Zamboanga', '2026-01-01', 'TIN-75', 'dti_cert.jpg', 'pending', NULL, 1, NULL, NULL, NULL, NULL, 35, '2025-11-17 07:49:09', '2025-12-16 08:41:07'),
+(1762, 76, NULL, NULL, NULL, 'Main Construction Co 76', '2020-12-16', 5, 3, NULL, 'General Construction', 'Zamboanga City', 'company76@example.com', '09170000076', NULL, NULL, NULL, 'PCAB-73540', 'A', '2026-12-31', 'BP-76', 'Zamboanga', '2026-01-01', 'TIN-76', 'dti_cert.jpg', 'approved', '2025-10-07 07:49:09', 1, NULL, NULL, NULL, NULL, 26, '2025-10-05 07:49:09', '2025-12-16 08:41:07'),
+(1763, 77, NULL, NULL, NULL, 'Main Construction Co 77', '1995-12-16', 30, 8, NULL, 'General Construction', 'Zamboanga City', 'company77@example.com', '09170000077', NULL, NULL, NULL, 'PCAB-30352', 'A', '2026-12-31', 'BP-77', 'Zamboanga', '2026-01-01', 'TIN-77', 'dti_cert.jpg', 'approved', '2025-04-13 07:49:09', 1, NULL, NULL, NULL, NULL, 33, '2025-04-11 07:49:09', '2025-12-16 08:41:07'),
+(1764, 78, NULL, NULL, NULL, 'Main Construction Co 78', '2012-12-16', 13, 4, NULL, 'General Construction', 'Zamboanga City', 'company78@example.com', '09170000078', NULL, NULL, NULL, 'PCAB-97162', 'A', '2026-12-31', 'BP-78', 'Zamboanga', '2026-01-01', 'TIN-78', 'dti_cert.jpg', 'approved', '2025-12-07 07:49:09', 1, NULL, NULL, NULL, NULL, 27, '2025-12-05 07:49:09', '2025-12-16 08:41:07'),
+(1765, 79, NULL, NULL, NULL, 'Main Construction Co 79', '2021-12-16', 4, 8, NULL, 'General Construction', 'Zamboanga City', 'company79@example.com', '09170000079', NULL, NULL, NULL, 'PCAB-11742', 'A', '2026-12-31', 'BP-79', 'Zamboanga', '2026-01-01', 'TIN-79', 'dti_cert.jpg', 'approved', '2025-04-27 07:49:09', 1, NULL, NULL, NULL, NULL, 27, '2025-04-25 07:49:09', '2025-12-16 08:41:07'),
+(1766, 80, NULL, NULL, NULL, 'Main Construction Co 80', '2015-12-16', 10, 5, NULL, 'General Construction', 'Zamboanga City', 'company80@example.com', '09170000080', NULL, NULL, NULL, 'PCAB-94072', 'A', '2026-12-31', 'BP-80', 'Zamboanga', '2026-01-01', 'TIN-80', 'dti_cert.jpg', 'rejected', NULL, 1, NULL, NULL, NULL, 'Permit expired.', 43, '2025-02-08 07:49:09', '2025-12-16 08:41:07'),
+(1767, 81, NULL, NULL, NULL, 'Main Construction Co 81', '2018-12-16', 7, 4, NULL, 'General Construction', 'Zamboanga City', 'company81@example.com', '09170000081', NULL, NULL, NULL, 'PCAB-22152', 'A', '2026-12-31', 'BP-81', 'Zamboanga', '2026-01-01', 'TIN-81', 'dti_cert.jpg', 'approved', '2025-03-27 07:49:09', 1, NULL, NULL, NULL, NULL, 6, '2025-03-25 07:49:09', '2025-12-16 08:41:07'),
+(1768, 82, NULL, NULL, NULL, 'Main Construction Co 82', '2021-12-16', 4, 4, NULL, 'General Construction', 'Zamboanga City', 'company82@example.com', '09170000082', NULL, NULL, NULL, 'PCAB-97364', 'A', '2026-12-31', 'BP-82', 'Zamboanga', '2026-01-01', 'TIN-82', 'dti_cert.jpg', 'approved', '2025-01-07 07:49:09', 1, NULL, NULL, NULL, NULL, 4, '2025-01-05 07:49:09', '2025-12-16 08:41:07'),
+(1769, 83, NULL, NULL, NULL, 'Main Construction Co 83', '1997-12-16', 28, 7, NULL, 'General Construction', 'Zamboanga City', 'company83@example.com', '09170000083', NULL, NULL, NULL, 'PCAB-14246', 'A', '2026-12-31', 'BP-83', 'Zamboanga', '2026-01-01', 'TIN-83', 'dti_cert.jpg', 'approved', '2024-12-27 07:49:09', 1, NULL, NULL, NULL, NULL, 47, '2024-12-25 07:49:09', '2025-12-16 08:41:07'),
+(1770, 84, NULL, NULL, NULL, 'Main Construction Co 84', '2018-12-16', 7, 1, NULL, 'General Construction', 'Zamboanga City', 'company84@example.com', '09170000084', NULL, NULL, NULL, 'PCAB-81872', 'A', '2026-12-31', 'BP-84', 'Zamboanga', '2026-01-01', 'TIN-84', 'dti_cert.jpg', 'approved', '2025-03-15 07:49:09', 1, NULL, NULL, NULL, NULL, 25, '2025-03-13 07:49:09', '2025-12-16 08:41:07'),
+(1771, 85, NULL, NULL, NULL, 'Main Construction Co 85', '2014-12-16', 11, 6, NULL, 'General Construction', 'Zamboanga City', 'company85@example.com', '09170000085', NULL, NULL, NULL, 'PCAB-39928', 'A', '2026-12-31', 'BP-85', 'Zamboanga', '2026-01-01', 'TIN-85', 'dti_cert.jpg', 'pending', NULL, 1, NULL, NULL, NULL, NULL, 26, '2024-12-27 07:49:09', '2025-12-16 08:41:07'),
+(1772, 86, NULL, NULL, NULL, 'Main Construction Co 86', '2022-12-16', 3, 7, NULL, 'General Construction', 'Zamboanga City', 'company86@example.com', '09170000086', NULL, NULL, NULL, 'PCAB-74824', 'A', '2026-12-31', 'BP-86', 'Zamboanga', '2026-01-01', 'TIN-86', 'dti_cert.jpg', 'approved', '2025-08-28 07:49:09', 1, NULL, NULL, NULL, NULL, 49, '2025-08-26 07:49:09', '2025-12-16 08:41:07'),
+(1773, 87, NULL, NULL, NULL, 'Main Construction Co 87', '2014-12-16', 11, 8, NULL, 'General Construction', 'Zamboanga City', 'company87@example.com', '09170000087', NULL, NULL, NULL, 'PCAB-17198', 'A', '2026-12-31', 'BP-87', 'Zamboanga', '2026-01-01', 'TIN-87', 'dti_cert.jpg', 'approved', '2025-08-23 07:49:09', 1, NULL, NULL, NULL, NULL, 49, '2025-08-21 07:49:09', '2025-12-16 08:41:07'),
+(1774, 88, NULL, NULL, NULL, 'Main Construction Co 88', '2009-12-16', 16, 9, NULL, 'General Construction', 'Zamboanga City', 'company88@example.com', '09170000088', NULL, NULL, NULL, 'PCAB-27581', 'A', '2026-12-31', 'BP-88', 'Zamboanga', '2026-01-01', 'TIN-88', 'dti_cert.jpg', 'approved', '2025-09-24 07:49:09', 1, NULL, NULL, NULL, NULL, 24, '2025-09-22 07:49:09', '2025-12-16 08:41:07'),
+(1775, 89, NULL, NULL, NULL, 'Main Construction Co 89', '2009-12-16', 16, 4, NULL, 'General Construction', 'Zamboanga City', 'company89@example.com', '09170000089', NULL, NULL, NULL, 'PCAB-97920', 'A', '2026-12-31', 'BP-89', 'Zamboanga', '2026-01-01', 'TIN-89', 'dti_cert.jpg', 'approved', '2025-07-13 07:49:09', 1, NULL, NULL, NULL, NULL, 29, '2025-07-11 07:49:09', '2025-12-16 08:41:07'),
+(1776, 90, NULL, NULL, NULL, 'Main Construction Co 90', '2024-12-16', 1, 8, NULL, 'General Construction', 'Zamboanga City', 'company90@example.com', '09170000090', NULL, NULL, NULL, 'PCAB-36143', 'A', '2026-12-31', 'BP-90', 'Zamboanga', '2026-01-01', 'TIN-90', 'dti_cert.jpg', 'rejected', NULL, 1, NULL, NULL, NULL, 'Permit expired.', 18, '2025-04-07 07:49:09', '2025-12-16 08:41:07'),
+(1777, 91, NULL, NULL, NULL, 'Main Construction Co 91', '2008-12-16', 17, 4, NULL, 'General Construction', 'Zamboanga City', 'company91@example.com', '09170000091', NULL, NULL, NULL, 'PCAB-34191', 'A', '2026-12-31', 'BP-91', 'Zamboanga', '2026-01-01', 'TIN-91', 'dti_cert.jpg', 'approved', '2025-09-18 07:49:09', 1, NULL, NULL, NULL, NULL, 2, '2025-09-16 07:49:09', '2025-12-16 08:41:07'),
+(1778, 92, NULL, NULL, NULL, 'Main Construction Co 92', '2002-12-16', 23, 7, NULL, 'General Construction', 'Zamboanga City', 'company92@example.com', '09170000092', NULL, NULL, NULL, 'PCAB-89813', 'A', '2026-12-31', 'BP-92', 'Zamboanga', '2026-01-01', 'TIN-92', 'dti_cert.jpg', 'approved', '2025-10-11 07:49:09', 1, NULL, NULL, NULL, NULL, 10, '2025-10-09 07:49:09', '2025-12-16 08:41:07'),
+(1779, 93, NULL, NULL, NULL, 'Main Construction Co 93', '2021-12-16', 4, 7, NULL, 'General Construction', 'Zamboanga City', 'company93@example.com', '09170000093', NULL, NULL, NULL, 'PCAB-59197', 'A', '2026-12-31', 'BP-93', 'Zamboanga', '2026-01-01', 'TIN-93', 'dti_cert.jpg', 'approved', '2025-10-08 07:49:09', 1, NULL, NULL, NULL, NULL, 12, '2025-10-06 07:49:09', '2025-12-16 08:41:07'),
+(1780, 94, NULL, NULL, NULL, 'Main Construction Co 94', '2017-12-16', 8, 6, NULL, 'General Construction', 'Zamboanga City', 'company94@example.com', '09170000094', NULL, NULL, NULL, 'PCAB-74178', 'A', '2026-12-31', 'BP-94', 'Zamboanga', '2026-01-01', 'TIN-94', 'dti_cert.jpg', 'approved', '2025-05-26 07:49:09', 1, NULL, NULL, NULL, NULL, 4, '2025-05-24 07:49:09', '2025-12-16 08:41:07'),
+(1781, 95, NULL, NULL, NULL, 'Main Construction Co 95', '1997-12-16', 28, 2, NULL, 'General Construction', 'Zamboanga City', 'company95@example.com', '09170000095', NULL, NULL, NULL, 'PCAB-32796', 'A', '2026-12-31', 'BP-95', 'Zamboanga', '2026-01-01', 'TIN-95', 'dti_cert.jpg', 'pending', NULL, 1, NULL, NULL, NULL, NULL, 21, '2025-04-03 07:49:09', '2025-12-16 08:41:07'),
+(1782, 96, NULL, NULL, NULL, 'Main Construction Co 96', '2001-12-16', 24, 1, NULL, 'General Construction', 'Zamboanga City', 'company96@example.com', '09170000096', NULL, NULL, NULL, 'PCAB-78766', 'A', '2026-12-31', 'BP-96', 'Zamboanga', '2026-01-01', 'TIN-96', 'dti_cert.jpg', 'approved', '2025-12-02 07:49:09', 1, NULL, NULL, NULL, NULL, 11, '2025-11-30 07:49:09', '2025-12-16 08:41:07'),
+(1783, 97, NULL, NULL, NULL, 'Main Construction Co 97', '2017-12-16', 8, 1, NULL, 'General Construction', 'Zamboanga City', 'company97@example.com', '09170000097', NULL, NULL, NULL, 'PCAB-29749', 'A', '2026-12-31', 'BP-97', 'Zamboanga', '2026-01-01', 'TIN-97', 'dti_cert.jpg', 'approved', '2025-01-04 07:49:09', 1, NULL, NULL, NULL, NULL, 13, '2025-01-02 07:49:09', '2025-12-16 08:41:07'),
+(1784, 98, NULL, NULL, NULL, 'Main Construction Co 98', '1997-12-16', 28, 4, NULL, 'General Construction', 'Zamboanga City', 'company98@example.com', '09170000098', NULL, NULL, NULL, 'PCAB-73126', 'A', '2026-12-31', 'BP-98', 'Zamboanga', '2026-01-01', 'TIN-98', 'dti_cert.jpg', 'approved', '2025-10-25 07:49:09', 1, NULL, NULL, NULL, NULL, 30, '2025-10-23 07:49:09', '2025-12-16 08:41:07'),
+(1785, 99, NULL, NULL, NULL, 'Main Construction Co 99', '2003-12-16', 22, 7, NULL, 'General Construction', 'Zamboanga City', 'company99@example.com', '09170000099', NULL, NULL, NULL, 'PCAB-92160', 'A', '2026-12-31', 'BP-99', 'Zamboanga', '2026-01-01', 'TIN-99', 'dti_cert.jpg', 'approved', '2025-07-15 07:49:09', 1, NULL, NULL, NULL, NULL, 28, '2025-07-13 07:49:09', '2025-12-16 08:41:07'),
+(1786, 100, NULL, NULL, NULL, 'Main Construction Co 100', '1996-12-16', 29, 9, NULL, 'General Construction', 'Zamboanga City', 'company100@example.com', '09170000100', NULL, NULL, NULL, 'PCAB-87531', 'A', '2026-12-31', 'BP-100', 'Zamboanga', '2026-01-01', 'TIN-100', 'dti_cert.jpg', 'rejected', NULL, 1, NULL, NULL, NULL, 'Permit expired.', 27, '2025-07-02 07:49:09', '2025-12-16 08:41:07'),
+(1787, 201, NULL, NULL, NULL, 'Main Construction Co 201', '2006-12-16', 19, 6, NULL, 'General Construction', 'Zamboanga City', 'company201@example.com', '09170000201', NULL, NULL, NULL, 'PCAB-77737', 'A', '2026-12-31', 'BP-201', 'Zamboanga', '2026-01-01', 'TIN-201', 'dti_cert.jpg', 'approved', '2025-08-16 07:49:09', 1, NULL, NULL, NULL, NULL, 42, '2025-08-14 07:49:09', '2025-12-16 08:41:07'),
+(1788, 202, NULL, NULL, NULL, 'Main Construction Co 202', '2021-12-16', 4, 2, NULL, 'General Construction', 'Zamboanga City', 'company202@example.com', '09170000202', NULL, NULL, NULL, 'PCAB-39620', 'A', '2026-12-31', 'BP-202', 'Zamboanga', '2026-01-01', 'TIN-202', 'dti_cert.jpg', 'approved', '2025-04-18 07:49:09', 1, NULL, NULL, NULL, NULL, 35, '2025-04-16 07:49:09', '2025-12-16 08:41:07'),
+(1789, 203, NULL, NULL, NULL, 'Main Construction Co 203', '2000-12-16', 25, 8, NULL, 'General Construction', 'Zamboanga City', 'company203@example.com', '09170000203', NULL, NULL, NULL, 'PCAB-69863', 'A', '2026-12-31', 'BP-203', 'Zamboanga', '2026-01-01', 'TIN-203', 'dti_cert.jpg', 'approved', '2025-09-06 07:49:09', 1, NULL, NULL, NULL, NULL, 15, '2025-09-04 07:49:09', '2025-12-16 08:41:07'),
+(1790, 204, NULL, NULL, NULL, 'Main Construction Co 204', '2002-12-16', 23, 3, NULL, 'General Construction', 'Zamboanga City', 'company204@example.com', '09170000204', NULL, NULL, NULL, 'PCAB-61739', 'A', '2026-12-31', 'BP-204', 'Zamboanga', '2026-01-01', 'TIN-204', 'dti_cert.jpg', 'approved', '2025-09-23 07:49:09', 1, NULL, NULL, NULL, NULL, 41, '2025-09-21 07:49:09', '2025-12-16 08:41:07'),
+(1791, 205, NULL, NULL, NULL, 'Main Construction Co 205', '2018-12-16', 7, 1, NULL, 'General Construction', 'Zamboanga City', 'company205@example.com', '09170000205', NULL, NULL, NULL, 'PCAB-32187', 'A', '2026-12-31', 'BP-205', 'Zamboanga', '2026-01-01', 'TIN-205', 'dti_cert.jpg', 'pending', NULL, 1, NULL, NULL, NULL, NULL, 21, '2025-05-29 07:49:09', '2025-12-16 08:41:07'),
+(1792, 206, NULL, NULL, NULL, 'Main Construction Co 206', '1999-12-16', 26, 1, NULL, 'General Construction', 'Zamboanga City', 'company206@example.com', '09170000206', NULL, NULL, NULL, 'PCAB-75939', 'A', '2026-12-31', 'BP-206', 'Zamboanga', '2026-01-01', 'TIN-206', 'dti_cert.jpg', 'approved', '2025-11-17 07:49:09', 1, NULL, NULL, NULL, NULL, 45, '2025-11-15 07:49:09', '2025-12-16 08:41:07'),
+(1793, 207, NULL, NULL, NULL, 'Main Construction Co 207', '2006-12-16', 19, 3, NULL, 'General Construction', 'Zamboanga City', 'company207@example.com', '09170000207', NULL, NULL, NULL, 'PCAB-51453', 'A', '2026-12-31', 'BP-207', 'Zamboanga', '2026-01-01', 'TIN-207', 'dti_cert.jpg', 'approved', '2025-04-18 07:49:09', 1, NULL, NULL, NULL, NULL, 3, '2025-04-16 07:49:09', '2025-12-16 08:41:07'),
+(1794, 208, NULL, NULL, NULL, 'Main Construction Co 208', '2009-12-16', 16, 2, NULL, 'General Construction', 'Zamboanga City', 'company208@example.com', '09170000208', NULL, NULL, NULL, 'PCAB-13265', 'A', '2026-12-31', 'BP-208', 'Zamboanga', '2026-01-01', 'TIN-208', 'dti_cert.jpg', 'approved', '2025-12-10 07:49:09', 1, NULL, NULL, NULL, NULL, 8, '2025-12-08 07:49:09', '2025-12-16 08:41:07'),
+(1795, 209, NULL, NULL, NULL, 'Main Construction Co 209', '2003-12-16', 22, 2, NULL, 'General Construction', 'Zamboanga City', 'company209@example.com', '09170000209', NULL, NULL, NULL, 'PCAB-91806', 'A', '2026-12-31', 'BP-209', 'Zamboanga', '2026-01-01', 'TIN-209', 'dti_cert.jpg', 'approved', '2025-07-17 07:49:09', 1, NULL, NULL, NULL, NULL, 24, '2025-07-15 07:49:09', '2025-12-16 08:41:07'),
+(1796, 210, NULL, NULL, NULL, 'Main Construction Co 210', '2021-12-16', 4, 7, NULL, 'General Construction', 'Zamboanga City', 'company210@example.com', '09170000210', NULL, NULL, NULL, 'PCAB-69228', 'A', '2026-12-31', 'BP-210', 'Zamboanga', '2026-01-01', 'TIN-210', 'dti_cert.jpg', 'rejected', NULL, 1, NULL, NULL, NULL, 'Permit expired.', 45, '2025-06-18 07:49:09', '2025-12-16 08:41:07'),
+(1797, 211, NULL, NULL, NULL, 'Main Construction Co 211', '2014-12-16', 11, 6, NULL, 'General Construction', 'Zamboanga City', 'company211@example.com', '09170000211', NULL, NULL, NULL, 'PCAB-52834', 'A', '2026-12-31', 'BP-211', 'Zamboanga', '2026-01-01', 'TIN-211', 'dti_cert.jpg', 'approved', '2025-10-14 07:49:09', 1, NULL, NULL, NULL, NULL, 49, '2025-10-12 07:49:09', '2025-12-16 08:41:07'),
+(1798, 212, NULL, NULL, NULL, 'Main Construction Co 212', '2011-12-16', 14, 7, NULL, 'General Construction', 'Zamboanga City', 'company212@example.com', '09170000212', NULL, NULL, NULL, 'PCAB-70043', 'A', '2026-12-31', 'BP-212', 'Zamboanga', '2026-01-01', 'TIN-212', 'dti_cert.jpg', 'approved', '2025-02-18 07:49:09', 1, NULL, NULL, NULL, NULL, 16, '2025-02-16 07:49:09', '2025-12-16 08:41:07'),
+(1799, 213, NULL, NULL, NULL, 'Main Construction Co 213', '2019-12-16', 6, 7, NULL, 'General Construction', 'Zamboanga City', 'company213@example.com', '09170000213', NULL, NULL, NULL, 'PCAB-34511', 'A', '2026-12-31', 'BP-213', 'Zamboanga', '2026-01-01', 'TIN-213', 'dti_cert.jpg', 'approved', '2025-05-19 07:49:09', 1, NULL, NULL, NULL, NULL, 5, '2025-05-17 07:49:09', '2025-12-16 08:41:07'),
+(1800, 214, NULL, NULL, NULL, 'Main Construction Co 214', '2006-12-16', 19, 6, NULL, 'General Construction', 'Zamboanga City', 'company214@example.com', '09170000214', NULL, NULL, NULL, 'PCAB-56516', 'A', '2026-12-31', 'BP-214', 'Zamboanga', '2026-01-01', 'TIN-214', 'dti_cert.jpg', 'approved', '2025-06-20 07:49:09', 1, NULL, NULL, NULL, NULL, 2, '2025-06-18 07:49:09', '2025-12-16 08:41:07'),
+(1801, 215, NULL, NULL, NULL, 'Main Construction Co 215', '2011-12-16', 14, 7, NULL, 'General Construction', 'Zamboanga City', 'company215@example.com', '09170000215', NULL, NULL, NULL, 'PCAB-75873', 'A', '2026-12-31', 'BP-215', 'Zamboanga', '2026-01-01', 'TIN-215', 'dti_cert.jpg', 'pending', NULL, 1, NULL, NULL, NULL, NULL, 5, '2025-08-12 07:49:09', '2025-12-16 08:41:07'),
+(1802, 216, NULL, NULL, NULL, 'Main Construction Co 216', '2011-12-16', 14, 1, NULL, 'General Construction', 'Zamboanga City', 'company216@example.com', '09170000216', NULL, NULL, NULL, 'PCAB-62029', 'A', '2026-12-31', 'BP-216', 'Zamboanga', '2026-01-01', 'TIN-216', 'dti_cert.jpg', 'approved', '2025-04-13 07:49:09', 1, NULL, NULL, NULL, NULL, 27, '2025-04-11 07:49:09', '2025-12-16 08:41:07'),
+(1803, 217, NULL, NULL, NULL, 'Main Construction Co 217', '1998-12-16', 27, 9, NULL, 'General Construction', 'Zamboanga City', 'company217@example.com', '09170000217', NULL, NULL, NULL, 'PCAB-27801', 'A', '2026-12-31', 'BP-217', 'Zamboanga', '2026-01-01', 'TIN-217', 'dti_cert.jpg', 'approved', '2025-01-16 07:49:09', 1, NULL, NULL, NULL, NULL, 49, '2025-01-14 07:49:09', '2025-12-16 08:41:07'),
+(1804, 218, NULL, NULL, NULL, 'Main Construction Co 218', '2022-12-16', 3, 8, NULL, 'General Construction', 'Zamboanga City', 'company218@example.com', '09170000218', NULL, NULL, NULL, 'PCAB-45679', 'A', '2026-12-31', 'BP-218', 'Zamboanga', '2026-01-01', 'TIN-218', 'dti_cert.jpg', 'approved', '2025-06-07 07:49:09', 1, NULL, NULL, NULL, NULL, 23, '2025-06-05 07:49:09', '2025-12-16 08:41:07'),
+(1805, 219, NULL, NULL, NULL, 'Main Construction Co 219', '2000-12-16', 25, 4, NULL, 'General Construction', 'Zamboanga City', 'company219@example.com', '09170000219', NULL, NULL, NULL, 'PCAB-73715', 'A', '2026-12-31', 'BP-219', 'Zamboanga', '2026-01-01', 'TIN-219', 'dti_cert.jpg', 'approved', '2025-03-11 07:49:09', 1, NULL, NULL, NULL, NULL, 13, '2025-03-09 07:49:09', '2025-12-16 08:41:07'),
+(1806, 220, NULL, NULL, NULL, 'Main Construction Co 220', '2001-12-16', 24, 5, NULL, 'General Construction', 'Zamboanga City', 'company220@example.com', '09170000220', NULL, NULL, NULL, 'PCAB-16396', 'A', '2026-12-31', 'BP-220', 'Zamboanga', '2026-01-01', 'TIN-220', 'dti_cert.jpg', 'rejected', NULL, 1, NULL, NULL, NULL, 'Permit expired.', 49, '2025-11-08 07:49:09', '2025-12-16 08:41:07'),
+(1807, 360, NULL, NULL, NULL, 'Rone Works', '2023-01-01', 2, 9, 'Gaming', 'Nothing', 'Nothing, Amparo, City of Butuan, 160200000 7000', 'shanehart100q1@gmail.com', '09926314071', NULL, NULL, NULL, '1231232', 'AA', '2025-12-31', '12124', 'Ajuy', '2025-12-31', '13123123', 'DTI_SEC/dAbCKi0N1cEfYwEtU0cQKlsCp1EoVCeh22H3ldvV.jpg', 'approved', '2025-12-16 08:22:15', 1, NULL, NULL, NULL, NULL, 0, '2025-12-16 08:22:15', '2025-12-16 09:21:56'),
+(1808, 361, NULL, NULL, NULL, 'Krystal Services', '2023-01-31', 2, 5, NULL, 'Nothing', 'Sample, Humilog, Remedios T. Romualdez, Agusan Del Norte 2311', 'shanehart1001d@gmail.com', '09926314033', 'https://krystal.com', 'https://krystalservices.com', 'desc to', '123341212', 'AA', '2025-12-31', '1234423123', 'Aguinaldo', '2025-12-31', '1231231ss', 'DTI_SEC/ECDYAx9WeQj2kcVgICbYIdyf7lCE903hLfOZdvBN.jpg', 'approved', '2025-12-16 08:40:00', 1, NULL, NULL, NULL, NULL, 0, '2025-12-16 08:40:00', '2025-12-16 20:49:54'),
+(1809, 372, 'profiles/1772560572_company_logo_c59d053f-94c9-4085-9380-7e85badcaf9e.jpg', 'cover_photos/1772560580_company_banner_41c24ee1-3579-4d14-93e0-1e9c14afb6d3.jpg', NULL, 'test2', '2025-12-18', 5, 7, NULL, 'yes services here and there', 'Anywhere, Saluping, Tabuan-Lasa, Basilan 7000', 'slayvibe.info@gmail.com', '09360211157', NULL, NULL, NULL, '82919910181', 'AAAA', '2026-12-18', '01917291082', 'Zamboanga City', '2025-12-18', '0198237292772', 'DTI_SEC/41dcx0yqd7nbVQK36H34tylFRgZYKrCyF5vPasPU.jpg', 'approved', '0000-00-00 00:00:00', 1, NULL, NULL, NULL, NULL, 0, '2025-12-17 13:58:50', '2026-03-03 09:56:20'),
+(1810, 380, NULL, NULL, NULL, 'Apex Company', '2026-02-21', 40, 8, NULL, 'iydiyditd', '456 oak ridge, Inyawan, Libertad, Antique, 7000', 'joxego4264@advarm.com', '09360521478', 'mbkyc.com', 'khfykdyo', NULL, '936336939663', 'AAA', '2027-02-02', '0292746391', 'Alcala', '2027-02-02', '13589652', 'DTI_SEC/jNfmB6LE9tIJvCij8DG61oi7HTCji94XlRwQFjcu.jpg', 'approved', NULL, 1, NULL, NULL, NULL, NULL, 0, '2026-02-21 01:34:20', '2026-02-21 09:38:34'),
+(1811, 384, NULL, NULL, NULL, 'asdasdasdasd', '2026-03-03', 22, 7, NULL, 'asdadasdasd', 'sdadasd, 060605007, 060605000, 060600000 1000', 'gewejo6388@creteanu.com', '09872347234', NULL, NULL, NULL, '2342342', 'B', '2026-05-08', '2342342342', 'Alicia', '2026-03-12', 'qqe3423423', 'contractor_documents/dti_sec_1772473484_b0c08f6a-3498-4c97-86da-c5ba12a9c3e6.jpg', 'pending', NULL, 1, NULL, NULL, NULL, NULL, 0, '2026-03-02 09:44:49', '2026-03-02 09:44:49');
+INSERT INTO `contractors` (`contractor_id`, `user_id`, `company_logo`, `company_banner`, `bio`, `company_name`, `company_start_date`, `years_of_experience`, `type_id`, `contractor_type_other`, `services_offered`, `business_address`, `company_email`, `company_phone`, `company_website`, `company_social_media`, `company_description`, `picab_number`, `picab_category`, `picab_expiration_date`, `business_permit_number`, `business_permit_city`, `business_permit_expiration`, `tin_business_reg_number`, `dti_sec_registration_photo`, `verification_status`, `verification_date`, `is_active`, `suspension_until`, `suspension_reason`, `deletion_reason`, `rejection_reason`, `completed_projects`, `created_at`, `updated_at`) VALUES
+(1812, 386, NULL, NULL, NULL, 'nsjsjejeje', '2026-03-03', 0, 9, 'nznsjss', 'hznznnss', 'bzbzns, Suligan, Tabuan-Lasa, Basilan, 6562', 'raded36969@creteanu.com', '09926312457', NULL, NULL, NULL, 'bshsjs', 'D', '2026-04-03', '263537', 'Abulug', '2026-03-04', 'jsj1233', 'DTI_SEC/uTTLvkx7VkvbLUeN3C8zoNXi4qd7sMctvwbppdlk.jpg', 'pending', NULL, 1, NULL, NULL, NULL, NULL, 0, '2026-03-02 11:30:58', '2026-03-02 11:30:58'),
+(1813, 389, NULL, NULL, NULL, 'bhft', '2026-03-03', 0, 4, NULL, 'tchfj', 'gcdj, Tambulig Buton, Tabuan-Lasa, Basilan, 896', 'foyad47678@creteanu.com', '09963285452', NULL, NULL, NULL, '1238483', 'C', '2029-03-03', 'ehjdjd', 'Aglipay', '2026-03-04', 'bsbsbs', 'DTI_SEC/7OwaXv3z02pCSPXXR1b3NwccnFYNuXlC87YNFZ5k.png', 'pending', NULL, 1, NULL, NULL, NULL, NULL, 0, '2026-03-02 12:17:06', '2026-03-02 12:17:06'),
+(1814, 371, NULL, NULL, NULL, 'hryv', '2026-03-03', 5, 9, 'gyu', 'bvhj', 'anywhere, Bohebaca, Tipo-Tipo, Basilan, 7000', 'shanehart1001@gmail.com', '09360211158', NULL, NULL, NULL, 'rtvv', 'C', '2028-03-03', 'shsjdjd', 'Aglipay', '2026-03-04', 'qweuei', 'contractor_documents/1772483825_dti_sec_dti_sec_registration.jpg', 'pending', NULL, 1, NULL, NULL, NULL, NULL, 0, '2026-03-02 12:37:15', '2026-03-05 00:54:58'),
+(1815, 393, 'profile_pics/hYByMnEsgd186684lhmD4I4m24ctOdbGX3RRuccs.jpg', 'profile_pic/5wQHXD5Q9B2Q9nJL5OnnmBKuKVtyrpz1bte8LBvR.jpg', NULL, 'Hakdok Corporation', '2026-03-05', 50, 9, 'Scrambled', 'We offer what you want', '456 Oak, Purok 6, Colorado, Jabonga, Agusan Del Norte, 7000', 'xelif27722@cslua.com', '09360215487', 'hakdokcorp.com', 'Hakdok Corporation', NULL, '853810474729', 'AAA', '2027-03-05', '8251940106472', 'Agno', '2027-03-05', '917351930471', 'DTI_SEC/1ODg2oRF8PpJRoDEXAxOLzmIbyRm9tOApDU7AY75.jpg', 'approved', '2026-03-05 05:34:05', 1, NULL, NULL, NULL, NULL, 0, '2026-03-05 05:24:36', '2026-03-05 13:34:05');
 
 -- --------------------------------------------------------
 
@@ -536,7 +587,12 @@ INSERT INTO `contractor_users` (`contractor_user_id`, `contractor_id`, `user_id`
 (2056, 1809, 376, 'wwwwwww', 'wwwwwwww', 'wwwwwwww', '09987674839', 'representative', 'others', 'ddddddd', 0, 1, NULL, NULL, NULL, '2026-01-27 06:39:40'),
 (2057, 1809, 377, 'wwwwwwwwwwwww', 'wwwww', 'wwwwwwww', '09987647589', 'architect', NULL, NULL, 0, 1, NULL, NULL, NULL, '2026-01-27 06:43:03'),
 (2058, 1809, 378, 'Sah', NULL, 'Emman', '09987678987', 'others', NULL, 'Nigas', 0, 1, NULL, NULL, NULL, '2026-01-29 04:26:35'),
-(2059, 1810, 380, 'test4', 'test4', 'test4', '09360521479', 'owner', NULL, NULL, 0, 0, NULL, NULL, NULL, '2026-02-21 01:34:20');
+(2059, 1810, 380, 'test4', 'test4', 'test4', '09360521479', 'owner', NULL, NULL, 0, 0, NULL, NULL, NULL, '2026-02-21 01:34:20'),
+(2060, 1811, 384, 'sdfsdf', 'sfsdfsdf', 'sedfsdfsdf', '09872347234', 'owner', NULL, NULL, 0, 0, NULL, NULL, NULL, '2026-03-02 09:44:49'),
+(2061, 1812, 386, 'bzjsjs', NULL, 'vshsu', '09926312457', 'owner', NULL, NULL, 0, 0, NULL, NULL, NULL, '2026-03-02 11:30:58'),
+(2062, 1813, 389, 'FJXJ', NULL, 'FHCJV', '09963285452', 'owner', NULL, NULL, 0, 0, NULL, NULL, NULL, '2026-03-02 12:17:06'),
+(2063, 1814, 371, 'Test', NULL, 'Test', '09360211158', 'owner', NULL, NULL, 0, 0, NULL, NULL, NULL, '2026-03-02 12:37:15'),
+(2064, 1815, 393, 'Hakdok', 'Hakdok', 'Hakdok', '09360215487', 'owner', NULL, NULL, 0, 1, NULL, NULL, NULL, '2026-03-05 05:24:36');
 
 -- --------------------------------------------------------
 
@@ -570,25 +626,24 @@ CREATE TABLE `conversations` (
   `suspended_until` datetime DEFAULT NULL,
   `status` enum('active','suspended') NOT NULL DEFAULT 'active',
   `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `is_admin_conversation` tinyint(1) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `conversations`
 --
 
-INSERT INTO `conversations` (`conversation_id`, `sender_id`, `receiver_id`, `is_suspended`, `no_suspends`, `reason`, `suspended_until`, `status`, `created_at`, `updated_at`) VALUES
-(1000002, 1, 2, 0, 0, NULL, NULL, 'active', '2026-02-06 23:31:07', '2026-02-06 23:31:07'),
-(1000010, 1, 10, 0, 0, NULL, NULL, 'active', '2026-02-07 03:08:43', '2026-02-07 03:08:43'),
-(1000102, 1, 102, 0, 0, 'spam', NULL, 'active', '2026-02-07 03:19:39', '2026-02-07 03:19:39'),
-(1000103, 1, 103, 0, 0, NULL, NULL, 'active', '2026-02-07 03:26:49', '2026-02-07 03:26:49'),
-(1000371, 1, 371, 0, 0, NULL, NULL, 'active', '2026-02-06 22:56:13', '2026-02-06 22:56:13'),
-(1000372, 1, 372, 0, 0, NULL, NULL, 'active', '2026-02-06 22:56:53', '2026-02-07 01:15:12'),
-(2000371, 371, 2, 0, 4, NULL, NULL, 'active', '2026-02-07 19:29:05', '2026-02-07 19:29:05'),
-(3000372, 372, 3, 0, 0, NULL, NULL, 'active', '2026-02-08 07:47:21', '2026-02-08 07:47:21'),
-(103000371, 371, 103, 0, 2, NULL, NULL, 'active', '2026-02-08 06:44:37', '2026-02-08 06:44:37'),
-(352000372, 372, 352, 0, 1, NULL, NULL, 'active', '2026-02-08 04:39:09', '2026-02-08 04:39:09'),
-(371000372, 371, 372, 0, 4, NULL, NULL, 'active', '2026-02-07 19:29:05', '2026-02-07 19:29:05');
+INSERT INTO `conversations` (`conversation_id`, `sender_id`, `receiver_id`, `is_suspended`, `no_suspends`, `reason`, `suspended_until`, `status`, `created_at`, `updated_at`, `is_admin_conversation`) VALUES
+(1000002, 1, 2, 0, 0, NULL, NULL, 'active', '2026-03-02 22:23:21', '2026-03-02 22:23:21', 1),
+(1000372, 1, 372, 0, 0, NULL, NULL, 'active', '2026-03-02 22:38:22', '2026-03-02 22:38:22', 1),
+(2000371, 371, 2, 0, 4, NULL, NULL, 'active', '2026-02-07 19:29:05', '2026-02-07 19:29:05', 0),
+(2000372, 372, 2, 0, 0, NULL, NULL, 'active', '2026-03-02 23:03:00', '2026-03-02 23:03:00', 0),
+(3000372, 372, 3, 0, 0, NULL, NULL, 'active', '2026-02-08 07:47:21', '2026-02-08 07:47:21', 0),
+(103000371, 371, 103, 0, 2, NULL, NULL, 'active', '2026-02-08 06:44:37', '2026-02-08 06:44:37', 0),
+(352000372, 372, 352, 0, 1, NULL, NULL, 'active', '2026-02-08 04:39:09', '2026-02-08 04:39:09', 0),
+(371000372, 371, 372, 0, 1, NULL, NULL, 'active', '2026-02-07 19:29:05', '2026-02-07 19:29:05', 0),
+(372000392, 372, 392, 0, 0, NULL, NULL, 'active', '2026-03-03 21:23:49', '2026-03-03 21:23:49', 0);
 
 -- --------------------------------------------------------
 
@@ -628,7 +683,9 @@ INSERT INTO `disputes` (`dispute_id`, `project_id`, `raised_by_user_id`, `agains
 (84, 1045, 371, 372, 1556, 2767, 'Payment', NULL, NULL, 'Di nagbabayad', 'under_review', NULL, '', NULL, '2025-12-18 08:22:56', NULL),
 (85, 1047, 371, 372, 1557, 2773, 'Halt', NULL, NULL, 'jakahaojana', 'closed', NULL, '', 'Project halted based on this dispute. Halt reason: wwwwwwwwwwwwwwwwwww', '2025-12-18 20:59:09', NULL),
 (86, 1048, 371, 372, 1558, 2774, 'Halt', NULL, NULL, 'oskznzlaka', 'open', NULL, '', 'jejemon', '2025-12-18 21:12:39', NULL),
-(87, 1049, 371, 372, 1559, 2776, 'Payment', NULL, NULL, 'Di nagbabayad', 'resolved', NULL, '', 'ya pone flooring', '2025-12-19 00:03:35', NULL);
+(87, 1049, 371, 372, 1559, 2776, 'Payment', NULL, NULL, 'Di nagbabayad', 'resolved', NULL, '', 'ya pone flooring', '2025-12-19 00:03:35', NULL),
+(88, 1056, 380, 379, 1564, 2790, 'Delay', NULL, NULL, 'qqqqqqqqqqqqqqqqqqqqqqqqqqq', 'open', '', '', NULL, '2026-02-28 06:17:02', NULL),
+(89, 1049, 372, 371, 1559, 2776, 'Halt', NULL, NULL, 'aaaaaaaaaaaaaa', 'open', '', '', NULL, '2026-03-01 08:03:02', NULL);
 
 -- --------------------------------------------------------
 
@@ -654,7 +711,38 @@ INSERT INTO `dispute_files` (`file_id`, `dispute_id`, `storage_path`, `original_
 (1, 84, 'disputes/evidence/1766074976_69442a60304b0.jpg', 'Screenshot_20251215_171943.jpg', 'image/jpeg', 353892, '2025-12-18 08:22:57'),
 (2, 85, 'disputes/evidence/1766120349_6944db9d7271b.jpg', 'Screenshot_20251219-085607.jpg', 'image/jpeg', 310716, '2025-12-18 20:59:09'),
 (3, 86, 'disputes/evidence/1766121159_6944dec7479d9.jpg', 'Screenshot_20251219-085607.jpg', 'image/jpeg', 310716, '2025-12-18 21:12:39'),
-(4, 87, 'disputes/evidence/1766131415_694506d7f2230.docx', 'sandbox-of-SE-Revisions-List-Template.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 1985858, '2025-12-19 00:03:36');
+(4, 87, 'disputes/evidence/1766131415_694506d7f2230.docx', 'sandbox-of-SE-Revisions-List-Template.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 1985858, '2025-12-19 00:03:36'),
+(5, 88, 'disputes/evidence/1772288222_69a2f8de919b7.pdf', 'id.pdf', 'application/pdf', 220855, '2026-02-28 06:17:02'),
+(6, 89, 'disputes/evidence/1772380982_69a46336bfcce.pdf', 'id.pdf', 'application/pdf', 220855, '2026-03-01 08:03:03');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `downpayment_payments`
+--
+
+CREATE TABLE `downpayment_payments` (
+  `dp_payment_id` int(10) UNSIGNED NOT NULL,
+  `project_id` int(10) UNSIGNED NOT NULL,
+  `owner_id` int(10) UNSIGNED NOT NULL,
+  `contractor_user_id` int(10) UNSIGNED NOT NULL,
+  `amount` decimal(12,2) NOT NULL,
+  `payment_type` enum('cash','check','bank_transfer','online_payment') NOT NULL,
+  `transaction_number` varchar(100) DEFAULT NULL,
+  `receipt_photo` varchar(255) DEFAULT NULL,
+  `transaction_date` date DEFAULT NULL,
+  `payment_status` enum('submitted','approved','rejected','deleted') NOT NULL DEFAULT 'submitted',
+  `reason` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `downpayment_payments`
+--
+
+INSERT INTO `downpayment_payments` (`dp_payment_id`, `project_id`, `owner_id`, `contractor_user_id`, `amount`, `payment_type`, `transaction_number`, `receipt_photo`, `transaction_date`, `payment_status`, `reason`, `created_at`, `updated_at`) VALUES
+(1, 1053, 1814, 2055, 4444444.00, 'bank_transfer', '70493826472', 'payments/downpayment/1772724249_dp_69a9a0190da2e.jpg', '2026-03-05', 'approved', NULL, '2026-03-05 15:24:09', '2026-03-05 15:45:57');
 
 -- --------------------------------------------------------
 
@@ -667,6 +755,16 @@ CREATE TABLE `item_files` (
   `item_id` int(11) NOT NULL,
   `file_path` varchar(500) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `item_files`
+--
+
+INSERT INTO `item_files` (`file_id`, `item_id`, `file_path`) VALUES
+(1, 2795, 'milestone_items/jiaBhBN028G1GLxgXApICwggfJMRvZmsSfpS28GM.jpg'),
+(2, 2796, 'milestone_items/Uwk27nM4pjAQhpNCrSdbxteGWg665fUdraAGJzLZ.pdf'),
+(3, 2797, 'milestone_items/Myc9WL0ApLmIXZ1Y1bQVCPZZViWA2ad8X6UfpZA2.pdf'),
+(4, 2798, 'milestone_items/lMpHOc87MWCpLYsxogWVxjyvXwKU1tytkvT7kPeM.pdf');
 
 -- --------------------------------------------------------
 
@@ -691,67 +789,6 @@ CREATE TABLE `messages` (
 --
 
 INSERT INTO `messages` (`message_id`, `conversation_id`, `from_sender`, `content`, `is_read`, `is_flagged`, `flag_reason`, `created_at`, `updated_at`) VALUES
-(177, 1000371, 0, 'ssssssssssssssssssssssssssssssssssssssss', 1, 0, NULL, '2026-02-06 22:56:13', '2026-02-07 03:07:49'),
-(178, 1000372, 0, 'hi b', 1, 0, NULL, '2026-02-06 22:56:53', '2026-02-07 03:07:46'),
-(179, 1000371, 0, 'ww', 1, 0, NULL, '2026-02-06 22:59:01', '2026-02-06 22:59:01'),
-(180, 1000371, 0, 'ww', 1, 0, NULL, '2026-02-06 22:59:05', '2026-02-06 22:59:05'),
-(181, 1000371, 0, 'hi baby check mo progress report ko, love you kain ka na', 1, 0, NULL, '2026-02-06 22:59:23', '2026-02-06 22:59:23'),
-(182, 1000371, 0, 'hi', 1, 0, NULL, '2026-02-06 23:05:58', '2026-02-06 23:05:58'),
-(183, 1000371, 0, 'hello guys', 1, 0, NULL, '2026-02-06 23:31:06', '2026-02-06 23:31:06'),
-(184, 1000002, 0, 'hello guys', 1, 0, NULL, '2026-02-06 23:31:07', '2026-02-07 03:21:57'),
-(185, 1000371, 0, 'gg', 1, 0, NULL, '2026-02-06 23:53:56', '2026-02-06 23:53:56'),
-(186, 1000371, 0, 'what', 1, 0, NULL, '2026-02-06 23:39:17', '2026-02-07 03:07:49'),
-(187, 1000371, 0, 'hi', 1, 0, NULL, '2026-02-06 23:52:51', '2026-02-07 03:07:49'),
-(188, 1000372, 0, 'bb', 1, 0, NULL, '2026-02-06 23:55:39', '2026-02-07 03:07:46'),
-(190, 1000371, 0, 'see this file below girl ugh', 1, 0, NULL, '2026-02-06 23:57:11', '2026-02-07 03:07:49'),
-(193, 1000371, 0, 'se', 1, 0, NULL, '2026-02-07 00:10:03', '2026-02-07 03:07:49'),
-(196, 1000002, 0, 'Test real-time message from user 2!', 1, 0, NULL, '2026-02-07 00:32:27', '2026-02-07 03:21:57'),
-(197, 1000002, 0, 'Test real-time message from user 2!', 1, 0, NULL, '2026-02-07 00:32:48', '2026-02-07 03:21:57'),
-(198, 1000371, 0, 'd', 1, 0, NULL, '2026-02-07 00:37:19', '2026-02-07 03:07:49'),
-(199, 1000372, 1, 'hi', 1, 0, NULL, '2026-02-07 03:08:19', '2026-02-07 03:08:47'),
-(200, 1000372, 1, 'see mo ito', 1, 0, NULL, '2026-02-07 03:08:28', '2026-02-07 03:08:47'),
-(201, 1000010, 1, 'baby hi', 1, 0, NULL, '2026-02-07 03:08:43', '2026-02-07 03:08:51'),
-(202, 1000010, 1, 'ddd', 1, 0, NULL, '2026-02-07 03:09:09', '2026-02-07 03:09:14'),
-(203, 1000372, 1, 'whats that', 1, 0, NULL, '2026-02-07 03:09:24', '2026-02-07 08:26:49'),
-(204, 1000002, 1, 'Test from User 1', 1, 0, NULL, '2026-02-07 03:13:07', '2026-02-07 03:13:07'),
-(205, 1000002, 0, 'Test from User 2', 1, 0, NULL, '2026-02-07 03:13:07', '2026-02-07 03:21:57'),
-(206, 1000002, 1, 'Another test from User 1', 1, 0, NULL, '2026-02-07 03:13:07', '2026-02-07 03:13:07'),
-(207, 1000002, 0, 'Another test from User 2', 1, 0, NULL, '2026-02-07 03:13:07', '2026-02-07 03:21:57'),
-(208, 1000002, 1, 'hi', 1, 0, NULL, '2026-02-07 03:13:49', '2026-02-07 03:13:49'),
-(209, 1000102, 1, 'hiiiiiiiiiiiiiiii', 0, 0, NULL, '2026-02-07 03:19:39', '2026-02-07 03:19:39'),
-(210, 1000002, 1, 'Test 1 from User 1', 1, 0, NULL, '2026-02-07 03:21:57', '2026-02-07 03:21:57'),
-(211, 1000002, 1, 'Test 2 from User 1', 1, 0, NULL, '2026-02-07 03:21:57', '2026-02-07 03:21:57'),
-(212, 1000002, 0, 'Test 1 from User 2', 1, 0, NULL, '2026-02-07 03:21:57', '2026-02-07 03:21:57'),
-(213, 1000002, 1, 'Test 1 from User 1', 0, 0, NULL, '2026-02-07 03:22:50', '2026-02-07 03:22:50'),
-(214, 1000002, 1, 'Test 2 from User 1', 0, 0, NULL, '2026-02-07 03:22:50', '2026-02-07 03:22:50'),
-(215, 1000002, 0, 'Test 1 from User 2', 1, 0, NULL, '2026-02-07 03:22:50', '2026-02-07 03:22:50'),
-(216, 1000103, 1, 'test', 0, 0, NULL, '2026-02-07 03:26:49', '2026-02-07 03:26:49'),
-(217, 1000103, 1, 'see ,', 0, 0, NULL, '2026-02-07 03:27:07', '2026-02-07 03:27:07'),
-(218, 1000372, 1, 'hi', 1, 0, NULL, '2026-02-07 05:47:27', '2026-02-07 08:26:49'),
-(219, 1000372, 1, 'hi', 1, 0, NULL, '2026-02-07 08:02:00', '2026-02-07 08:26:49'),
-(220, 1000371, 0, 'hmm', 1, 0, NULL, '2026-02-07 08:28:08', '2026-02-07 08:38:39'),
-(221, 1000010, 0, 'hmm', 1, 0, NULL, '2026-02-07 08:28:29', '2026-02-07 08:39:02'),
-(222, 1000371, 1, 'hi', 1, 0, NULL, '2026-02-07 08:38:43', '2026-02-07 17:32:37'),
-(223, 1000372, 1, 'hi gutl', 1, 0, NULL, '2026-02-07 08:38:51', '2026-02-07 19:30:24'),
-(224, 1000371, 1, 'hello', 1, 0, NULL, '2026-02-07 17:32:53', '2026-02-07 17:33:07'),
-(225, 1000371, 1, 'hello', 1, 0, NULL, '2026-02-07 17:32:56', '2026-02-07 17:33:07'),
-(226, 1000371, 1, 'hi', 1, 0, NULL, '2026-02-07 17:33:11', '2026-02-07 17:38:44'),
-(227, 1000371, 1, 'hello', 1, 0, NULL, '2026-02-07 17:38:58', '2026-02-07 17:39:21'),
-(228, 1000371, 1, 'hi', 1, 0, NULL, '2026-02-07 17:40:09', '2026-02-07 17:40:17'),
-(229, 1000371, 1, 'hi', 1, 0, NULL, '2026-02-07 17:52:23', '2026-02-07 17:52:30'),
-(230, 1000371, 1, 'hi', 1, 0, NULL, '2026-02-07 17:52:35', '2026-02-07 17:52:41'),
-(231, 1000371, 1, 'hello\\', 1, 0, NULL, '2026-02-07 17:58:51', '2026-02-07 17:59:03'),
-(232, 1000371, 1, 'nigger', 1, 0, NULL, '2026-02-07 18:57:26', '2026-02-07 18:57:32'),
-(233, 1000371, 1, 'hi muah', 1, 0, NULL, '2026-02-07 19:02:22', '2026-02-07 19:02:24'),
-(234, 1000371, 1, 'gi', 1, 0, NULL, '2026-02-07 19:02:28', '2026-02-07 19:02:30'),
-(235, 1000371, 1, 'i have chika', 1, 0, NULL, '2026-02-07 19:03:54', '2026-02-07 19:03:58'),
-(236, 1000371, 1, 'i have chila', 1, 0, NULL, '2026-02-07 19:15:11', '2026-02-07 19:15:54'),
-(237, 1000371, 1, 'i have chila', 1, 0, NULL, '2026-02-07 19:15:14', '2026-02-07 19:15:54'),
-(238, 1000371, 0, 'huy', 1, 0, NULL, '2026-02-07 19:20:32', '2026-02-07 19:20:38'),
-(239, 1000371, 1, 'how are you', 1, 0, NULL, '2026-02-07 19:20:45', '2026-02-07 19:20:48'),
-(240, 1000371, 0, 'im good', 1, 0, NULL, '2026-02-07 19:20:51', '2026-02-07 19:20:54'),
-(241, 1000371, 0, 'see mo to', 1, 0, NULL, '2026-02-07 19:21:10', '2026-02-07 19:21:13'),
-(242, 1000371, 1, 'wow okay', 1, 0, NULL, '2026-02-07 19:21:22', '2026-02-07 19:21:25'),
 (243, 2000371, 1, 'hi po free po ba kayo ngayon', 0, 0, NULL, '2026-02-07 19:29:05', '2026-02-07 19:29:05'),
 (244, 371000372, 1, 'hi po free po ba kayo ngayon', 1, 0, NULL, '2026-02-07 19:29:05', '2026-02-07 19:30:25'),
 (245, 371000372, 0, 'nuyan', 1, 0, NULL, '2026-02-07 19:30:32', '2026-02-07 19:30:37'),
@@ -760,49 +797,22 @@ INSERT INTO `messages` (`message_id`, `conversation_id`, `from_sender`, `content
 (248, 371000372, 1, '', 1, 0, NULL, '2026-02-07 19:34:05', '2026-02-07 19:34:09'),
 (249, 371000372, 0, 'hi beh', 1, 0, NULL, '2026-02-07 23:29:34', '2026-02-07 23:29:51'),
 (250, 371000372, 0, 'hi', 1, 0, NULL, '2026-02-07 23:30:17', '2026-02-07 23:34:30'),
-(251, 1000371, 0, 'gg', 1, 0, NULL, '2026-02-07 23:30:53', '2026-02-07 23:30:59'),
 (252, 371000372, 0, 'hi', 1, 0, NULL, '2026-02-07 23:34:25', '2026-02-07 23:34:30'),
 (253, 371000372, 0, 'kumain ka na?', 1, 0, NULL, '2026-02-07 23:35:05', '2026-02-07 23:35:15'),
 (254, 371000372, 0, 'kamusta', 1, 0, NULL, '2026-02-07 23:35:23', '2026-02-07 23:35:30'),
-(255, 1000371, 1, 'te', 1, 0, NULL, '2026-02-07 23:35:36', '2026-02-07 23:35:46'),
-(256, 1000371, 0, 'dd', 1, 0, NULL, '2026-02-07 23:36:44', '2026-02-07 23:36:50'),
-(257, 1000371, 1, 'hi', 1, 0, NULL, '2026-02-07 23:44:00', '2026-02-07 23:44:09'),
-(258, 1000371, 0, 'teh', 1, 0, NULL, '2026-02-07 23:44:11', '2026-02-07 23:45:56'),
 (259, 371000372, 0, 'hmm', 1, 0, NULL, '2026-02-07 23:44:28', '2026-02-07 23:44:32'),
 (260, 371000372, 1, 'hmmm', 1, 0, NULL, '2026-02-07 23:44:34', '2026-02-07 23:44:46'),
 (261, 371000372, 0, 'hhhhh', 1, 0, NULL, '2026-02-07 23:44:50', '2026-02-07 23:44:55'),
-(262, 1000372, 1, 'te', 1, 0, NULL, '2026-02-07 23:45:07', '2026-02-07 23:45:51'),
-(263, 1000372, 0, 'sss', 1, 0, NULL, '2026-02-07 23:45:53', '2026-02-07 23:45:58'),
-(264, 1000372, 1, 'hi', 1, 0, NULL, '2026-02-07 23:52:20', '2026-02-07 23:52:44'),
-(265, 1000372, 0, 's', 1, 0, NULL, '2026-02-07 23:52:47', '2026-02-07 23:53:01'),
 (266, 371000372, 0, 'ddd', 1, 0, NULL, '2026-02-07 23:53:10', '2026-02-07 23:53:15'),
-(267, 1000372, 1, 'hi', 1, 0, NULL, '2026-02-07 23:59:07', '2026-02-07 23:59:32'),
-(268, 1000371, 1, 'jjjjj', 1, 0, NULL, '2026-02-07 23:59:14', '2026-02-08 00:07:16'),
 (269, 371000372, 1, 'sss', 1, 0, NULL, '2026-02-07 23:59:24', '2026-02-08 00:06:32'),
-(270, 1000372, 0, 'qq', 1, 0, NULL, '2026-02-07 23:59:35', '2026-02-08 00:00:25'),
 (271, 371000372, 1, 'hello', 1, 0, NULL, '2026-02-07 23:59:44', '2026-02-08 00:06:32'),
-(272, 1000372, 0, 'sss', 1, 0, NULL, '2026-02-08 00:00:17', '2026-02-08 00:00:25'),
 (273, 371000372, 1, 'yow', 1, 0, NULL, '2026-02-08 00:06:28', '2026-02-08 00:06:32'),
 (274, 371000372, 0, 'hi', 1, 0, NULL, '2026-02-08 00:06:34', '2026-02-08 00:08:20'),
-(275, 1000372, 1, 'sss', 1, 0, NULL, '2026-02-08 00:06:50', '2026-02-08 00:07:11'),
-(276, 1000371, 1, 'sss', 1, 0, NULL, '2026-02-08 00:06:55', '2026-02-08 00:07:16'),
-(277, 1000371, 1, 'good morning baby', 1, 0, NULL, '2026-02-08 00:08:34', '2026-02-08 00:09:49'),
-(278, 1000372, 1, 'good morning baby', 1, 0, NULL, '2026-02-08 00:08:37', '2026-02-08 00:09:46'),
-(279, 1000372, 1, 'hi po block kita', 1, 0, NULL, '2026-02-08 00:16:13', '2026-02-08 00:16:21'),
-(280, 1000371, 1, 'hi po block kita nigga', 1, 0, NULL, '2026-02-08 00:16:16', '2026-02-08 00:16:23'),
-(281, 1000371, 0, 'okay po', 1, 0, NULL, '2026-02-08 00:16:27', '2026-02-08 00:16:29'),
 (282, 371000372, 0, 'free kaba bukas?', 1, 0, NULL, '2026-02-08 00:16:42', '2026-02-08 00:16:46'),
 (283, 371000372, 0, 'hi ngga]\\', 1, 0, NULL, '2026-02-08 00:20:32', '2026-02-08 00:20:34'),
 (284, 371000372, 1, 'okay ka lang?4', 1, 0, NULL, '2026-02-08 00:23:40', '2026-02-08 00:23:44'),
 (285, 371000372, 0, 'yea okay lang naman po', 1, 0, NULL, '2026-02-08 00:23:49', '2026-02-08 00:23:50'),
-(286, 1000372, 0, 'block', 1, 0, NULL, '2026-02-08 00:29:43', '2026-02-08 00:30:40'),
-(287, 1000372, 1, 'hi', 1, 0, NULL, '2026-02-08 03:49:01', '2026-02-08 03:49:07'),
-(288, 1000372, 0, 'hmm', 1, 0, NULL, '2026-02-08 03:49:09', '2026-02-08 03:49:11'),
-(289, 1000372, 0, 'I can pay via gcash', 1, 1, 'System: Suspicious Keyword Detected', '2026-02-08 03:49:29', '2026-02-08 03:49:32'),
-(290, 1000372, 0, 'facebook', 1, 0, NULL, '2026-02-08 03:49:48', '2026-02-08 03:49:50'),
 (291, 371000372, 1, 'nigga', 1, 0, NULL, '2026-02-08 03:54:56', '2026-02-08 03:55:14'),
-(292, 1000372, 1, 'gcash', 1, 1, 'System: Suspicious Keyword Detected', '2026-02-08 03:57:37', '2026-02-08 03:59:33'),
-(293, 1000372, 0, 'facebook', 1, 0, NULL, '2026-02-08 03:59:59', '2026-02-08 04:00:04'),
 (294, 371000372, 1, 'negro', 1, 0, NULL, '2026-02-08 04:02:31', '2026-02-08 04:02:41'),
 (295, 371000372, 0, 'musta', 1, 0, NULL, '2026-02-08 04:07:10', '2026-02-08 04:07:14'),
 (296, 371000372, 0, 'negro', 1, 0, NULL, '2026-02-08 04:10:01', '2026-02-08 04:10:05'),
@@ -810,18 +820,14 @@ INSERT INTO `messages` (`message_id`, `conversation_id`, `from_sender`, `content
 (298, 2000371, 1, 'nigggggggggggga', 0, 0, NULL, '2026-02-08 05:05:58', '2026-02-08 05:05:58'),
 (299, 2000371, 1, 'nigga', 0, 0, NULL, '2026-02-08 05:06:04', '2026-02-08 05:06:04'),
 (300, 371000372, 0, 'sorry beh', 1, 0, NULL, '2026-02-08 05:31:06', '2026-02-08 05:31:13'),
-(301, 1000371, 0, 'ss', 1, 0, NULL, '2026-02-08 06:24:23', '2026-02-08 07:32:28'),
-(302, 1000371, 1, 's', 1, 0, NULL, '2026-02-08 06:32:34', '2026-02-08 06:51:36'),
 (303, 371000372, 1, 'hi', 1, 0, NULL, '2026-02-08 06:38:54', '2026-02-08 06:39:01'),
 (304, 371000372, 0, 'sss', 1, 0, NULL, '2026-02-08 06:39:04', '2026-02-08 06:39:08'),
 (305, 371000372, 1, 'nigga', 1, 0, NULL, '2026-02-08 06:39:11', '2026-02-08 06:39:15'),
 (306, 103000371, 1, 'sss', 0, 0, NULL, '2026-02-08 06:44:37', '2026-02-08 06:44:37'),
 (307, 103000371, 1, 'nigga', 0, 0, NULL, '2026-02-08 06:44:53', '2026-02-08 06:44:53'),
 (308, 103000371, 1, 'nigga', 0, 0, NULL, '2026-02-08 06:45:29', '2026-02-08 06:45:29'),
-(309, 1000371, 1, '', 1, 0, NULL, '2026-02-08 06:51:25', '2026-02-08 06:51:36'),
 (310, 371000372, 0, 'nigga', 1, 0, NULL, '2026-02-08 07:22:01', '2026-02-08 07:23:50'),
 (311, 371000372, 1, 'test', 1, 0, NULL, '2026-02-08 07:23:55', '2026-02-08 07:23:59'),
-(312, 1000372, 1, 'www', 1, 0, NULL, '2026-02-08 07:47:02', '2026-02-08 07:47:10'),
 (313, 3000372, 1, 'sss', 0, 0, NULL, '2026-02-08 07:47:21', '2026-02-08 07:47:21'),
 (314, 371000372, 1, '', 1, 0, NULL, '2026-02-08 07:57:42', '2026-02-08 07:57:47'),
 (315, 371000372, 0, 'hello', 1, 0, NULL, '2026-02-08 23:21:08', '2026-02-08 23:21:31'),
@@ -833,18 +839,97 @@ INSERT INTO `messages` (`message_id`, `conversation_id`, `from_sender`, `content
 (321, 371000372, 0, 'teh', 1, 0, NULL, '2026-02-08 23:36:42', '2026-02-08 23:36:44'),
 (322, 371000372, 1, 'hi', 1, 0, NULL, '2026-02-08 23:43:39', '2026-02-08 23:43:42'),
 (323, 371000372, 0, 's', 1, 0, NULL, '2026-02-09 00:27:51', '2026-02-09 00:27:54'),
-(324, 1000371, 0, 'd', 1, 0, NULL, '2026-02-09 00:52:14', '2026-02-09 00:57:27'),
-(325, 1000372, 0, 's', 1, 0, NULL, '2026-02-09 00:52:24', '2026-02-09 00:57:30'),
-(326, 1000372, 0, 'w', 1, 0, NULL, '2026-02-09 00:52:45', '2026-02-09 00:57:30'),
-(327, 1000372, 0, 'wwwwww', 1, 0, NULL, '2026-02-09 00:52:58', '2026-02-09 00:57:30'),
-(328, 1000372, 0, 'ww', 1, 0, NULL, '2026-02-09 00:53:05', '2026-02-09 00:57:30'),
 (329, 371000372, 1, 'hi', 1, 0, NULL, '2026-02-12 20:49:55', '2026-02-12 20:50:11'),
 (330, 371000372, 1, 'hi', 1, 0, NULL, '2026-02-12 20:49:58', '2026-02-12 20:50:11'),
 (331, 371000372, 1, 'hi', 1, 0, NULL, '2026-02-12 20:50:00', '2026-02-12 20:50:11'),
-(332, 371000372, 0, 'nigger', 1, 1, 'System: Suspicious Keyword Detected', '2026-02-12 20:51:02', '2026-02-12 20:51:04'),
+(332, 371000372, 0, 'nigger', 1, 0, NULL, '2026-02-12 20:51:02', '2026-02-12 20:51:04'),
 (333, 371000372, 0, 'n i g g a', 1, 0, NULL, '2026-02-12 20:51:18', '2026-02-12 20:51:20'),
-(334, 371000372, 0, 'fuck you', 1, 1, 'System: Suspicious Keyword Detected', '2026-02-12 20:51:24', '2026-02-12 20:51:26'),
-(335, 371000372, 0, 'buysit', 1, 0, NULL, '2026-02-12 20:51:45', '2026-02-12 20:51:47');
+(334, 371000372, 0, 'fuck you', 1, 0, NULL, '2026-02-12 20:51:24', '2026-02-12 20:51:26'),
+(335, 371000372, 0, 'buysit', 1, 0, NULL, '2026-02-12 20:51:45', '2026-02-12 20:51:47'),
+(336, 371000372, 0, 'Buysir', 1, 0, NULL, '2026-03-01 01:25:24', '2026-03-01 01:31:41'),
+(337, 371000372, 0, 'Fuck you', 1, 0, NULL, '2026-03-01 01:25:48', '2026-03-01 01:31:41'),
+(338, 371000372, 1, 'fuck you', 1, 0, NULL, '2026-03-01 01:32:24', '2026-03-01 01:32:25'),
+(339, 371000372, 0, 'Kgkg', 1, 0, NULL, '2026-03-01 01:33:48', '2026-03-01 01:33:51'),
+(340, 371000372, 1, 'Gyuiu', 1, 0, NULL, '2026-03-01 01:35:38', '2026-03-01 01:35:40'),
+(341, 371000372, 0, 'Jggh', 1, 0, NULL, '2026-03-01 01:35:50', '2026-03-01 01:35:57'),
+(342, 371000372, 1, 'nigger', 1, 0, NULL, '2026-03-01 01:37:55', '2026-03-01 01:37:57'),
+(343, 371000372, 1, 'nigga', 1, 0, NULL, '2026-03-01 01:38:22', '2026-03-01 01:38:32'),
+(344, 371000372, 1, 'Jeff freekava', 1, 0, NULL, '2026-03-01 02:18:08', '2026-03-01 02:18:09'),
+(345, 371000372, 1, 'Jnd akk frre bukss', 1, 0, NULL, '2026-03-01 02:18:25', '2026-03-01 02:18:26'),
+(346, 371000372, 0, 'Bald free kvs Bald kbsdj', 1, 0, NULL, '2026-03-01 02:18:38', '2026-03-01 02:18:41'),
+(347, 371000372, 1, 'Hi teh free jva vujad o hnd', 1, 0, NULL, '2026-03-01 02:23:23', '2026-03-01 02:23:25'),
+(348, 371000372, 0, 'JV dldudzgh', 1, 0, NULL, '2026-03-01 02:23:36', '2026-03-01 02:23:39'),
+(349, 371000372, 0, 'Jjfjfuxueuxghbguhghhjfhvçheycfgxjvf', 1, 0, NULL, '2026-03-01 02:24:48', '2026-03-01 02:24:50'),
+(350, 371000372, 1, 'sfsdfsdfsdfsdfsdfsdfsdfsdfsdfsdfsdfsdfsdfsdfsfsfsdfsdfsdfsfsfsfs', 1, 0, NULL, '2026-03-01 02:26:16', '2026-03-01 02:26:18'),
+(351, 371000372, 0, 'gcash', 1, 0, NULL, '2026-03-02 03:33:00', '2026-03-02 12:33:51'),
+(352, 371000372, 0, 'facebook', 1, 0, NULL, '2026-03-02 03:33:07', '2026-03-02 12:33:51'),
+(353, 371000372, 0, 'gmail', 1, 0, NULL, '2026-03-02 03:33:28', '2026-03-02 12:33:51'),
+(354, 371000372, 0, 'nigga', 1, 0, NULL, '2026-03-02 03:33:34', '2026-03-02 12:33:51'),
+(355, 371000372, 0, 'fuck', 1, 0, NULL, '2026-03-02 03:33:38', '2026-03-02 12:33:51'),
+(356, 371000372, 0, 'puta', 1, 0, NULL, '2026-03-02 03:33:43', '2026-03-02 12:33:51'),
+(357, 371000372, 0, 'ulol', 1, 0, NULL, '2026-03-02 03:36:56', '2026-03-02 12:33:51'),
+(358, 371000372, 0, 'pokpok', 1, 0, NULL, '2026-03-02 03:37:10', '2026-03-02 12:33:51'),
+(359, 371000372, 0, 'pokpok', 1, 0, NULL, '2026-03-02 03:45:47', '2026-03-02 12:33:51'),
+(360, 371000372, 0, 'niiger', 1, 0, NULL, '2026-03-02 03:45:52', '2026-03-02 12:33:51'),
+(361, 371000372, 0, 'nigger', 1, 0, NULL, '2026-03-02 03:45:56', '2026-03-02 12:33:51'),
+(362, 371000372, 0, 'pok pok\\', 1, 0, NULL, '2026-03-02 06:56:03', '2026-03-02 12:33:51'),
+(363, 371000372, 0, 'pok pok', 1, 0, NULL, '2026-03-02 06:56:05', '2026-03-02 12:33:51'),
+(364, 371000372, 0, 'poki', 1, 0, NULL, '2026-03-02 06:56:11', '2026-03-02 12:33:51'),
+(365, 371000372, 0, 'puki', 1, 0, NULL, '2026-03-02 06:56:15', '2026-03-02 12:33:51'),
+(366, 371000372, 0, 'poki', 1, 0, NULL, '2026-03-02 21:10:43', '2026-03-02 21:11:43'),
+(367, 371000372, 0, 'pok pok', 1, 0, NULL, '2026-03-02 21:10:48', '2026-03-02 21:11:43'),
+(368, 371000372, 0, 'pokpok', 1, 0, NULL, '2026-03-02 21:10:52', '2026-03-02 21:11:43'),
+(369, 371000372, 1, 'puki', 1, 0, NULL, '2026-03-02 21:11:48', '2026-03-02 21:11:51'),
+(371, 371000372, 0, 'pokpok', 1, 0, NULL, '2026-03-02 21:12:26', '2026-03-02 21:12:30'),
+(372, 371000372, 0, 'poki', 1, 0, NULL, '2026-03-02 21:12:46', '2026-03-02 21:12:49'),
+(374, 371000372, 0, 'puki', 1, 0, NULL, '2026-03-02 21:13:14', '2026-03-02 21:13:18'),
+(375, 371000372, 0, 'puki', 1, 0, NULL, '2026-03-02 21:29:05', '2026-03-02 21:29:09'),
+(376, 371000372, 0, 'nigga', 1, 0, NULL, '2026-03-02 21:30:18', '2026-03-02 21:30:22'),
+(377, 371000372, 1, 'jiggs', 1, 0, NULL, '2026-03-02 21:30:28', '2026-03-02 21:30:34'),
+(378, 1000002, 1, 'asdasdasdadadsasd', 0, 0, NULL, '2026-03-02 22:23:21', '2026-03-02 22:23:21'),
+(379, 371000372, 0, 'hanalul', 1, 0, NULL, '2026-03-02 22:37:53', '2026-03-02 22:37:59'),
+(380, 371000372, 1, 'eyos', 1, 0, NULL, '2026-03-02 22:38:04', '2026-03-02 22:38:07'),
+(381, 1000372, 1, 'hi', 1, 0, NULL, '2026-03-02 22:38:22', '2026-03-02 22:43:05'),
+(382, 1000372, 0, 'hi sir', 1, 0, NULL, '2026-03-02 22:43:10', '2026-03-02 22:43:22'),
+(383, 371000372, 1, 'teh', 1, 0, NULL, '2026-03-02 22:43:31', '2026-03-02 22:43:37'),
+(384, 1000372, 1, 'bro', 1, 0, NULL, '2026-03-02 22:49:54', '2026-03-02 22:49:59'),
+(385, 1000372, 0, 'wtf', 1, 1, 'System: Suspicious Keyword Detected', '2026-03-02 22:50:03', '2026-03-02 22:52:36'),
+(386, 371000372, 0, 'dd', 1, 0, NULL, '2026-03-02 22:52:43', '2026-03-02 23:08:39'),
+(387, 1000372, 1, 'hello', 1, 0, NULL, '2026-03-02 22:59:51', '2026-03-02 22:59:58'),
+(388, 1000372, 0, 'hi', 1, 0, NULL, '2026-03-02 23:00:02', '2026-03-02 23:00:06'),
+(389, 2000372, 1, 'sds', 0, 0, NULL, '2026-03-02 23:03:00', '2026-03-02 23:03:00'),
+(390, 371000372, 1, 'niiger', 1, 0, NULL, '2026-03-02 23:12:01', '2026-03-02 23:12:06'),
+(391, 371000372, 1, 'nigga', 1, 0, NULL, '2026-03-02 23:12:12', '2026-03-02 23:12:18'),
+(392, 371000372, 1, 'nigga', 1, 0, NULL, '2026-03-02 23:12:15', '2026-03-02 23:12:18'),
+(393, 371000372, 0, 'nigga', 1, 0, NULL, '2026-03-02 23:28:36', '2026-03-02 23:29:36'),
+(394, 371000372, 0, 'nigga', 1, 0, NULL, '2026-03-02 23:28:41', '2026-03-02 23:29:36'),
+(395, 1000372, 1, 'hello', 1, 0, NULL, '2026-03-03 05:09:27', '2026-03-03 05:09:42'),
+(396, 1000372, 0, 'hi bro', 1, 0, NULL, '2026-03-03 05:09:47', '2026-03-03 05:09:49'),
+(397, 371000372, 0, 'yehey not na suspende', 1, 1, 'System: Suspicious Keyword Detected', '2026-03-03 05:10:45', '2026-03-03 05:10:57'),
+(398, 371000372, 0, 'yehey not na suspended', 1, 1, 'System: Suspicious Keyword Detected', '2026-03-03 05:10:47', '2026-03-03 05:10:57'),
+(399, 371000372, 0, 'suspended', 1, 1, 'System: Suspicious Keyword Detected', '2026-03-03 05:11:07', '2026-03-03 05:11:11'),
+(400, 371000372, 0, 'yehey', 1, 0, NULL, '2026-03-03 05:11:13', '2026-03-03 05:11:17'),
+(401, 371000372, 0, 'gcash', 1, 0, NULL, '2026-03-03 05:11:23', '2026-03-03 05:11:27'),
+(402, 371000372, 0, 'viber', 1, 0, NULL, '2026-03-03 05:13:11', '2026-03-03 05:13:15'),
+(403, 371000372, 1, 'hi beh', 1, 0, NULL, '2026-03-03 10:15:48', '2026-03-03 10:24:45'),
+(404, 371000372, 1, 'beh', 1, 0, NULL, '2026-03-03 10:16:01', '2026-03-03 10:24:45'),
+(405, 371000372, 1, 'ss', 1, 0, NULL, '2026-03-03 10:17:58', '2026-03-03 10:24:45'),
+(406, 371000372, 1, 'ssss', 1, 0, NULL, '2026-03-03 10:18:09', '2026-03-03 10:24:45'),
+(407, 371000372, 1, 'ss', 1, 0, NULL, '2026-03-03 10:24:29', '2026-03-03 10:24:45'),
+(408, 371000372, 0, 'hi', 1, 0, NULL, '2026-03-03 10:25:50', '2026-03-03 18:30:40'),
+(409, 371000372, 0, 'dfg', 1, 0, NULL, '2026-03-03 18:30:06', '2026-03-03 18:30:40'),
+(410, 371000372, 1, 'sss', 1, 0, NULL, '2026-03-03 18:30:46', '2026-03-03 18:30:48'),
+(411, 371000372, 1, 'sdsdfsdfsdfsf', 1, 0, NULL, '2026-03-03 18:33:51', '2026-03-03 18:39:49'),
+(412, 371000372, 1, 'sdsds', 1, 0, NULL, '2026-03-03 18:37:30', '2026-03-03 18:39:49'),
+(413, 371000372, 0, 'asdad', 1, 0, NULL, '2026-03-03 18:44:36', '2026-03-03 18:44:39'),
+(414, 371000372, 1, 'Hello thereee hakfok', 1, 0, NULL, '2026-03-03 20:31:59', '2026-03-03 20:32:08'),
+(416, 371000372, 1, 'Uuhyuuh', 1, 0, NULL, '2026-03-03 20:32:43', '2026-03-03 20:32:46'),
+(417, 371000372, 1, '', 1, 0, NULL, '2026-03-03 20:40:12', '2026-03-03 20:40:23'),
+(418, 371000372, 0, 'ck cutie', 1, 0, NULL, '2026-03-03 20:45:14', '2026-03-03 20:45:29'),
+(419, 371000372, 0, 'ack', 1, 0, NULL, '2026-03-03 20:45:40', '2026-03-03 20:45:44'),
+(420, 371000372, 0, 'heyaaa', 1, 0, NULL, '2026-03-03 20:46:49', '2026-03-03 20:49:35'),
+(421, 371000372, 0, 'hi nigga free kbabtosa', 1, 1, 'System: Suspicious Keyword Detected', '2026-03-03 20:49:56', '2026-03-03 20:49:59'),
+(422, 372000392, 1, 'hello', 1, 0, NULL, '2026-03-03 21:23:49', '2026-03-03 21:24:21');
 
 -- --------------------------------------------------------
 
@@ -866,16 +951,12 @@ CREATE TABLE `message_attachments` (
 --
 
 INSERT INTO `message_attachments` (`attachment_id`, `message_id`, `file_path`, `file_name`, `file_type`, `created_at`) VALUES
-(1, 179, 'messages/CVBM9jTmvTPQqrJLo0P9f1RIdhJf6Ymf3tboDJbC.pdf', 'seminar_proposal-Google-Docs.pdf', 'application/pdf', '2026-02-07 06:59:03'),
-(2, 180, 'messages/tIbZRP5BhBfBYuW6UZYNjbqny8ffXWKBHh1Sw1av.pdf', 'seminar_proposal-Google-Docs.pdf', 'application/pdf', '2026-02-07 06:59:05'),
-(3, 193, 'messages/5D12SL9bZstw2wBGiguLmvr4OGvKYz05nVKa9ShT.docx', 'JIMENEZ, SHANE HART D..docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', '2026-02-07 08:10:03'),
-(4, 200, 'messages/5BmJ2FAxNwVjzUSzlnkkEMN7ms415hoxBoV3LTxS.docx', 'JIMENEZ, SHANE HART D..docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', '2026-02-07 11:08:28'),
-(5, 217, 'messages/f3kvPLX6CcXtDpAmQ77kYn4hRyJNWscm3oO37P57.docx', 'JIMENEZ, SHANE HART D..docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', '2026-02-07 11:27:07'),
-(6, 241, 'messages/u5v23MLTVzuFOaVjrpmStAZ1IvrAutEbtfesaCF0.docx', 'JIMENEZ, SHANE HART D..docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', '2026-02-08 03:21:11'),
 (7, 246, 'messages/ypyI3pkZkvu6VQtu9idy6v3X6P6eSGlibrCQsD3R.pdf', 'epic.pdf', 'application/pdf', '2026-02-08 03:33:43'),
 (8, 248, 'messages/mXFY5qs6wlYturTaNNxDobHlp9vzETNwiK5LdwTO.docx', 'JIMENEZ, SHANE HART D..docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', '2026-02-08 03:34:05'),
-(9, 309, 'messages/L47HAt8H1e8xPNEEU8MG5f0z0X5mF90FQZokB97v.jpg', '9066ae1f-a8e6-4c83-b936-c46ba7e5fd64.jpeg', 'image/jpeg', '2026-02-08 14:51:26'),
-(10, 314, 'messages/1f1XraBKAeJtpNtExDhUzerIRXSosrWJSEFjngbk.docx', 'JIMENEZ, SHANE HART D..docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', '2026-02-08 15:57:43');
+(10, 314, 'messages/1f1XraBKAeJtpNtExDhUzerIRXSosrWJSEFjngbk.docx', 'JIMENEZ, SHANE HART D..docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', '2026-02-08 15:57:43'),
+(11, 339, 'messages/QPDfnsnG4wWEdHdcydB1Xs1BWxd6EcQ8CzJ0Woc3.jpg', 'IMG_20251212_212838.jpg', 'image/jpeg', '2026-03-01 09:33:48'),
+(12, 378, 'messages/5mEpnIiguYqhXW5FU8Y582ImE8g3tEneUBC8XH5g.jpg', 'c59d053f-94c9-4085-9380-7e85badcaf9e.jpg', 'image/jpeg', '2026-03-03 06:23:21'),
+(13, 417, 'messages/re71ltyTXf2LTDUn6wngt74XYxYyyo3QIZprE6LX.jpg', 'IMG_20260302_101315.jpg', 'image/jpeg', '2026-03-04 04:40:12');
 
 -- --------------------------------------------------------
 
@@ -894,22 +975,21 @@ CREATE TABLE `migrations` (
 --
 
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES
-(1, '2026_02_18_125202_add_expiration_and_payment_type_to_platform_payments_table', 1),
-(2, '2026_02_17_063309_create_cache_table', 2),
-(3, '2026_02_19_151606_make_otp_hash_nullable_in_users_table', 2),
-(4, '2026_02_19_154043_add_status_columns_to_contractors_table', 2),
-(5, '2026_02_22_150746_add_settlement_due_date_to_milestone_items_table', 2),
-(6, '2026_02_23_120000_add_payment_allocation_columns', 3),
-(7, '2026_02_23_144926_make_payment_id_nullable_in_payment_adjustment_logs', 4),
-(8, '2026_02_25_000001_create_project_extensions_table', 5),
-(9, '2026_02_25_100000_add_budget_columns_to_project_extensions', 6),
-(10, '2026_02_25_200000_add_revision_status_to_project_extensions', 7),
-(11, '2026_02_25_300000_drop_allocation_method_from_project_extensions', 8),
-(12, '2026_02_25_400000_rename_project_extensions_to_project_updates', 9),
-(13, '2026_02_26_000001_create_milestone_date_histories_and_extension_tracking', 10),
-(14, '2026_02_27_051146_add_start_date_to_milestone_items_table', 11),
-(15, '2026_02_28_000000_make_proposed_end_date_nullable_in_project_updates', 12),
-(16, '2026_02_27_120000_create_milestone_item_updates_and_make_proposed_end_date_nullable', 13);
+(1, '2026_02_27_051146_add_start_date_to_milestone_items_table', 1),
+(2, '2026_02_27_120000_create_milestone_item_updates_and_make_proposed_end_date_nullable', 2),
+(3, '2026_02_28_000000_create_subscription_plans_table', 2),
+(4, '2026_02_28_144747_normalize_platform_payments_table', 3),
+(5, '2026_03_01_052140_add_duration_days_to_subscription_plans_table', 4),
+(6, '2026_03_02_000001_add_feature_columns_and_project_posts', 5),
+(7, '2026_03_03_000002_create_admin_activity_logs_table', 5),
+(8, '2026_03_04_042038_fix_item_files_file_id_auto_increment', 5),
+(9, '2026_03_05_151421_create_downpayment_payments_table', 6),
+(10, '2026_03_06_000001_rename_project_posts_to_showcases', 7),
+(11, '2026_03_06_000002_rename_tagged_user_to_tagged_project_in_showcases', 8),
+(12, '2026_03_06_000003_drop_tagged_project_id_from_showcases', 9),
+(13, '2026_03_06_000004_update_showcase_statuses_for_moderation', 10),
+(14, '2026_03_06_000005_create_content_reports_table', 11),
+(15, '2026_03_06_000006_rename_post_report_columns_to_post_type_and_post_id', 12);
 
 -- --------------------------------------------------------
 
@@ -1037,7 +1117,9 @@ INSERT INTO `milestones` (`milestone_id`, `project_id`, `contractor_id`, `plan_i
 (1559, 1049, 1809, 923, 'Construction Project', 'Construction Project', 'not_started', NULL, '2025-12-19 00:00:00', '2026-12-19 23:59:59', NULL, NULL, 'approved', NULL, '2025-12-18 23:59:41', '2025-12-19 00:00:35'),
 (1560, 1054, 1809, 924, 'Project Construction for Residential Area', 'Project Construction for Residential Area', 'in_progress', NULL, '2026-01-25 00:00:00', '2028-01-25 23:59:59', NULL, NULL, 'approved', NULL, '2026-01-25 00:20:09', '2026-02-20 14:59:33'),
 (1563, 1047, 1810, 927, 'Proyekto ng bayan', 'Proyekto ng bayan', 'not_started', NULL, '2026-02-22 00:00:00', '2026-02-28 23:59:59', NULL, NULL, 'approved', NULL, '2026-02-22 07:51:59', '2026-02-22 08:08:23'),
-(1564, 1056, 1810, 928, 'Project Batumbakal', 'Project Batumbakal', 'not_started', NULL, '2026-02-23 00:00:00', '2026-03-07 23:59:59', NULL, NULL, 'approved', NULL, '2026-02-23 00:12:07', '2026-02-25 07:15:26');
+(1564, 1056, 1810, 928, 'Project Batumbakal', 'Project Batumbakal', 'not_started', NULL, '2026-02-23 00:00:00', '2026-03-07 23:59:59', NULL, NULL, 'approved', NULL, '2026-02-23 00:12:07', '2026-02-25 07:15:26'),
+(1567, 1053, 1809, 931, 'Project Batumbakal', 'Project Batumbakal', 'not_started', NULL, '2026-03-04 00:00:00', '2026-04-30 23:59:59', NULL, NULL, 'approved', NULL, '2026-03-03 20:22:42', '2026-03-05 06:20:44'),
+(1568, 1057, 1809, 932, 'Winter Wonderland', 'Winter Wonderland', 'not_started', NULL, '2026-03-04 00:00:00', '2026-04-30 23:59:59', NULL, NULL, 'approved', NULL, '2026-03-03 21:29:46', '2026-03-03 21:34:56');
 
 -- --------------------------------------------------------
 
@@ -1065,7 +1147,11 @@ CREATE TABLE `milestone_date_histories` (
 INSERT INTO `milestone_date_histories` (`id`, `item_id`, `previous_date`, `new_date`, `extension_id`, `changed_by`, `changed_at`, `change_reason`, `created_at`, `updated_at`) VALUES
 (1, 2790, '2026-02-18 23:59:59', '2026-02-25 23:59:59', 2, 379, '2026-02-25 15:15:26', 'Project update #2 approved (retroactive)', '2026-02-26 03:26:12', '2026-02-26 03:26:12'),
 (2, 2791, '2026-02-28 23:59:59', '2026-03-07 23:59:59', 2, 379, '2026-02-25 15:15:26', 'Project update #2 approved (retroactive)', '2026-02-26 03:26:12', '2026-02-26 03:26:12'),
-(3, 2792, '2026-02-28 23:59:59', '2026-03-07 23:59:59', 2, 379, '2026-02-25 15:15:26', 'Project update #2 approved (retroactive)', '2026-02-26 03:26:12', '2026-02-26 03:26:12');
+(3, 2792, '2026-02-28 23:59:59', '2026-03-07 23:59:59', 2, 379, '2026-02-25 15:15:26', 'Project update #2 approved (retroactive)', '2026-02-26 03:26:12', '2026-02-26 03:26:12'),
+(4, 2790, '2026-02-25 00:00:00', '2026-02-25 00:00:00', 4, 379, '2026-02-27 12:12:04', 'project_update_approved', '2026-02-27 04:12:04', '2026-02-27 04:12:04'),
+(5, 2791, '2026-03-02 00:00:00', '2026-03-02 00:00:00', 4, 379, '2026-02-27 12:12:04', 'project_update_approved', '2026-02-27 04:12:04', '2026-02-27 04:12:04'),
+(6, 2797, '2026-03-18 23:59:59', '2026-04-17 23:59:59', 5, 392, '2026-03-04 05:34:56', 'Project update #5 approved', '2026-03-03 21:34:56', '2026-03-03 21:34:56'),
+(7, 2798, '2026-03-31 23:59:59', '2026-04-30 23:59:59', 5, 392, '2026-03-04 05:34:56', 'Project update #5 approved', '2026-03-03 21:34:56', '2026-03-03 21:34:56');
 
 -- --------------------------------------------------------
 
@@ -1289,7 +1375,7 @@ INSERT INTO `milestone_items` (`item_id`, `milestone_id`, `sequence_order`, `per
 (2773, 1557, 2, 20.00, 'haianaja', 'vskakaban', 8500000.00, NULL, 0.00, 'not_started', NULL, 'in_progress', '2027-12-14 23:59:59', NULL, 0, 0, NULL, NULL, NULL),
 (2774, 1558, 1, 50.00, '1st', 'Hahsshha', 100000000.00, NULL, 0.00, 'completed', NULL, NULL, '2026-05-21 23:59:59', NULL, 0, 0, NULL, NULL, NULL),
 (2775, 1558, 2, 50.00, '2nd', 'Bzbabsbs', 100000000.00, NULL, 0.00, 'completed', NULL, NULL, '2026-12-19 23:59:59', NULL, 0, 0, NULL, NULL, NULL),
-(2776, 1559, 1, 50.00, 'PHASE 1', 'PHASE 1 DESC', 27495000.00, NULL, 0.00, 'not_started', NULL, NULL, '2026-03-31 23:59:59', NULL, 0, 0, NULL, NULL, NULL),
+(2776, 1559, 1, 50.00, 'PHASE 1', 'PHASE 1 DESC', 27495000.00, NULL, 0.00, 'in_progress', NULL, NULL, '2026-03-31 23:59:59', NULL, 0, 0, NULL, NULL, '2026-03-05 14:19:52'),
 (2777, 1559, 2, 50.00, 'PHASE 2', 'PHASE 2 DESC', 27495000.00, NULL, 0.00, 'not_started', NULL, NULL, '2026-02-26 23:59:59', NULL, 0, 0, NULL, NULL, NULL),
 (2778, 1560, 1, 30.00, 'Foundation and Framework', 'it is what it is', 6000000.00, NULL, 0.00, 'completed', NULL, NULL, '2026-04-17 23:59:59', NULL, 0, 0, NULL, NULL, NULL),
 (2779, 1560, 2, 50.00, 'Madami gagawin', 'Basta madami gagawin', 12000000.00, NULL, 0.00, 'completed', NULL, NULL, '2027-01-30 23:59:59', NULL, 0, 0, NULL, NULL, NULL),
@@ -1297,9 +1383,13 @@ INSERT INTO `milestone_items` (`item_id`, `milestone_id`, `sequence_order`, `per
 (2781, 1560, 4, 10.00, 'eeeeeeeeee', 'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeee', 1.00, NULL, 0.00, 'not_started', NULL, NULL, '2028-01-18 22:53:08', NULL, 0, 0, NULL, NULL, NULL),
 (2786, 1563, 1, 50.00, 'giobgy', 'ginvf', 3000.00, NULL, 0.00, 'not_started', NULL, NULL, '2026-02-25 23:59:59', NULL, 0, 0, NULL, NULL, NULL),
 (2787, 1563, 2, 50.00, 'dyondsuig', '', 3000.00, NULL, 0.00, 'not_started', NULL, NULL, '2026-02-28 23:59:59', NULL, 0, 0, NULL, NULL, NULL),
-(2790, 1564, 1, 33.33, 'Foundations', 'Foundation ngani', 20000000.00, NULL, 0.00, 'completed', NULL, NULL, '2026-02-25 23:59:59', '2026-02-18 23:59:59', 1, 1, '2026-02-26', NULL, '2026-02-27 09:52:29'),
-(2791, 1564, 2, 35.00, 'Doners', 'downers', 20000000.00, 21000000.00, 1000000.00, 'in_progress', '2026-02-27 00:00:00', NULL, '2026-03-02 00:00:00', '2026-02-28 23:59:59', 1, 1, '2026-03-02', NULL, '2026-02-27 09:52:29'),
-(2792, 1564, 3, 31.67, 'extension', 'hdkdykkydkhdkhd', 19000000.00, NULL, 0.00, 'not_started', '2026-03-03 00:00:00', NULL, '2026-03-07 23:59:59', '2026-02-28 23:59:59', 1, 1, NULL, NULL, '2026-02-27 09:52:29');
+(2790, 1564, 1, 33.33, 'Foundations', 'Foundation ngani', 20000000.00, NULL, 0.00, 'in_progress', '2026-02-23 00:00:00', NULL, '2026-02-25 00:00:00', '2026-02-18 23:59:59', 1, 1, '2026-02-25', NULL, '2026-02-27 12:12:04'),
+(2791, 1564, 2, 35.00, 'Doners', 'downers', 20000000.00, 21000000.00, 1000000.00, 'in_progress', '2026-02-26 00:00:00', NULL, '2026-03-02 00:00:00', '2026-02-28 23:59:59', 1, 1, '2026-03-02', NULL, '2026-02-27 12:12:04'),
+(2792, 1564, 3, 31.67, 'extension', 'hdkdykkydkhdkhd', 19000000.00, NULL, 0.00, 'not_started', '2026-03-03 00:00:00', NULL, '2026-03-07 23:59:59', '2026-02-28 23:59:59', 1, 1, NULL, NULL, '2026-02-27 12:12:04'),
+(2795, 1567, 1, 50.00, 'First', 'foundations', 15000000.00, NULL, 0.00, 'not_started', '2026-03-04 00:00:00', NULL, '2026-03-31 23:59:59', NULL, 0, 0, NULL, NULL, NULL),
+(2796, 1567, 2, 50.00, 'Second', 'finishing', 15000000.00, NULL, 0.00, 'not_started', '2026-04-01 00:00:00', NULL, '2026-04-30 23:59:59', NULL, 0, 0, NULL, NULL, NULL),
+(2797, 1568, 1, 49.72, 'First', 'yes first', 4475000.00, NULL, 0.00, 'not_started', '2026-03-05 00:00:00', NULL, '2026-04-17 23:59:59', '2026-03-18 23:59:59', 1, 1, NULL, NULL, '2026-03-04 05:34:56'),
+(2798, 1568, 2, 49.72, 'Secondt', 'second the motion', 4475000.00, NULL, 0.00, 'not_started', '2026-03-19 00:00:00', NULL, '2026-04-30 23:59:59', '2026-03-31 23:59:59', 1, 1, NULL, NULL, '2026-03-04 05:34:56');
 
 -- --------------------------------------------------------
 
@@ -1331,7 +1421,12 @@ CREATE TABLE `milestone_item_updates` (
 --
 
 INSERT INTO `milestone_item_updates` (`id`, `milestone_item_id`, `project_update_id`, `proposed_start_date`, `proposed_end_date`, `proposed_cost`, `proposed_title`, `previous_start_date`, `previous_end_date`, `previous_cost`, `previous_title`, `status`, `approved_by`, `approved_at`, `created_at`, `updated_at`) VALUES
-(1, 2791, 6, '2026-02-25', '2026-03-01', NULL, NULL, '2026-02-27', '2026-03-02', 21000000.00, 'Doners', 'pending', NULL, NULL, '2026-02-27 02:36:05', '2026-02-27 02:36:05');
+(1, 2790, 3, '2026-02-23', NULL, NULL, NULL, NULL, '2026-02-26', 20000000.00, 'Foundations', 'pending', NULL, NULL, '2026-02-27 03:59:51', '2026-02-27 03:59:51'),
+(2, 2791, 3, '2026-02-27', '2026-03-02', NULL, NULL, NULL, '2026-03-07', 21000000.00, 'Doners', 'pending', NULL, NULL, '2026-02-27 03:59:51', '2026-02-27 03:59:51'),
+(3, 2792, 3, '2026-03-03', NULL, NULL, NULL, NULL, '2026-03-07', 19000000.00, 'extension', 'pending', NULL, NULL, '2026-02-27 03:59:51', '2026-02-27 03:59:51'),
+(4, 2790, 4, '2026-02-23', '2026-02-25', NULL, NULL, NULL, '2026-02-26', 20000000.00, 'Foundations', 'approved', 379, '2026-02-27 04:12:04', '2026-02-27 04:07:06', '2026-02-27 04:12:04'),
+(5, 2791, 4, '2026-02-26', '2026-03-02', NULL, NULL, NULL, '2026-03-07', 21000000.00, 'Doners', 'approved', 379, '2026-02-27 04:12:04', '2026-02-27 04:07:06', '2026-02-27 04:12:04'),
+(6, 2792, 4, '2026-03-03', NULL, NULL, NULL, NULL, '2026-03-07', 19000000.00, 'extension', 'approved', 379, '2026-02-27 04:12:04', '2026-02-27 04:07:06', '2026-02-27 04:12:04');
 
 -- --------------------------------------------------------
 
@@ -1418,10 +1513,7 @@ INSERT INTO `milestone_payments` (`payment_id`, `item_id`, `project_id`, `owner_
 (822, 2778, 1054, 1814, 2055, 6000000.00, 'bank_transfer', '01927101662', 'payments/receipts/1769329448_6975d328ce6d8.jpg', '2026-01-25', 'approved', NULL, NULL),
 (823, 2779, 1054, 1814, 2055, 12000000.00, 'bank_transfer', '00182629163', 'payments/receipts/1769329737_6975d4499041f.jpg', '2026-01-25', 'approved', NULL, NULL),
 (824, 2780, 1054, 1814, 2055, 2000000.00, 'bank_transfer', '027292773291', 'payments/receipts/1769329763_6975d4639157a.jpg', '2026-01-25', 'approved', NULL, NULL),
-(825, 2790, 1056, 1819, 2059, 19000000.00, 'bank_transfer', '01018273628190383', 'payments/receipts/1771850637_699c4b8d02e1c.jpg', '2026-02-23', 'approved', NULL, '2026-02-23 12:45:54'),
-(826, 2791, 1056, 1819, 2059, 21000000.00, 'bank_transfer', '0913717101792092', 'payments/receipts/1772127830_69a0865633ce6.jpg', '2026-02-27', 'approved', NULL, '2026-02-26 17:55:45'),
-(827, 2791, 1056, 1819, 2059, 1000000.00, 'bank_transfer', '07362927292', 'payments/receipts/1772128494_69a088ee99e2b.jpg', '2026-02-27', 'approved', NULL, '2026-02-26 17:55:48'),
-(828, 2791, 1056, 1819, 2059, 1000000.00, 'bank_transfer', '029473829292', 'payments/receipts/1772153229_69a0e98d3c038.jpg', '2026-02-27', 'approved', NULL, '2026-02-27 00:48:14');
+(825, 2790, 1056, 1819, 2059, 19000000.00, 'bank_transfer', '01018273628190383', 'payments/receipts/1771850637_699c4b8d02e1c.jpg', '2026-02-23', 'approved', NULL, '2026-02-23 12:45:54');
 
 -- --------------------------------------------------------
 
@@ -1434,7 +1526,7 @@ CREATE TABLE `notifications` (
   `user_id` int(11) NOT NULL,
   `message` text NOT NULL,
   `title` varchar(255) DEFAULT NULL,
-  `type` enum('Milestone Update','Bid Status','Payment Reminder','Project Alert','Progress Update','Dispute Update','Team Update','Payment Status') NOT NULL,
+  `type` enum('Milestone Update','Bid Status','Payment Reminder','Project Alert','Progress Update','Dispute Update','Team Update','Payment Status','Message') NOT NULL,
   `is_read` tinyint(1) DEFAULT 0,
   `delivery_method` enum('App','Email','Both') DEFAULT 'App',
   `priority` enum('critical','high','normal') NOT NULL DEFAULT 'normal',
@@ -1721,10 +1813,10 @@ INSERT INTO `notifications` (`notification_id`, `user_id`, `message`, `title`, `
 (3686, 269, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
 (3687, 270, 'Welcome!', NULL, 'Project Alert', 0, 'App', 'normal', NULL, NULL, NULL, NULL, '2025-12-15 07:49:09'),
 (3688, 371, 'A contractor has submitted a bid for \"jslaabxxbxsssss\".', 'New Bid Received', 'Bid Status', 1, 'App', 'normal', 'bid', 267, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1055,\"tab\":\"bids\"},\"notification_sub_type\":\"bid_received\"}', '2026-02-14 10:45:22'),
-(3689, 371, 'A contractor has submitted a bid for \"jslaabxxbxsssss\".', 'New Bid Received', 'Bid Status', 0, 'App', 'normal', 'bid', 268, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1055,\"tab\":\"bids\"},\"notification_sub_type\":\"bid_received\"}', '2026-02-15 22:20:11'),
-(3690, 371, 'A contractor has submitted a bid for \"jslaabxxbxsssss\".', 'New Bid Received', 'Bid Status', 0, 'App', 'normal', 'bid', 269, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1055,\"tab\":\"bids\"},\"notification_sub_type\":\"bid_received\"}', '2026-02-15 22:21:27'),
-(3691, 371, 'A contractor has submitted a bid for \"jslaabxxbxsssss\".', 'New Bid Received', 'Bid Status', 0, 'App', 'normal', 'bid', 270, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1055,\"tab\":\"bids\"},\"notification_sub_type\":\"bid_received\"}', '2026-02-15 22:25:42'),
-(3692, 371, 'A contractor has submitted a bid for \"jslaabxxbxsssss\".', 'New Bid Received', 'Bid Status', 0, 'App', 'normal', 'bid', 271, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1055,\"tab\":\"bids\"},\"notification_sub_type\":\"bid_received\"}', '2026-02-15 22:43:13'),
+(3689, 371, 'A contractor has submitted a bid for \"jslaabxxbxsssss\".', 'New Bid Received', 'Bid Status', 1, 'App', 'normal', 'bid', 268, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1055,\"tab\":\"bids\"},\"notification_sub_type\":\"bid_received\"}', '2026-02-15 22:20:11'),
+(3690, 371, 'A contractor has submitted a bid for \"jslaabxxbxsssss\".', 'New Bid Received', 'Bid Status', 1, 'App', 'normal', 'bid', 269, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1055,\"tab\":\"bids\"},\"notification_sub_type\":\"bid_received\"}', '2026-02-15 22:21:27'),
+(3691, 371, 'A contractor has submitted a bid for \"jslaabxxbxsssss\".', 'New Bid Received', 'Bid Status', 1, 'App', 'normal', 'bid', 270, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1055,\"tab\":\"bids\"},\"notification_sub_type\":\"bid_received\"}', '2026-02-15 22:25:42'),
+(3692, 371, 'A contractor has submitted a bid for \"jslaabxxbxsssss\".', 'New Bid Received', 'Bid Status', 1, 'App', 'normal', 'bid', 271, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1055,\"tab\":\"bids\"},\"notification_sub_type\":\"bid_received\"}', '2026-02-15 22:43:13'),
 (3693, 371, 'A contractor has submitted a bid for \"jslaabxxbxsssss\".', 'New Bid Received', 'Bid Status', 1, 'App', 'normal', 'bid', 272, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1055,\"tab\":\"bids\"},\"notification_sub_type\":\"bid_received\"}', '2026-02-15 23:20:55'),
 (3694, 371, 'A contractor has submitted a bid for \"jslaabxxbxsssss\".', 'New Bid Received', 'Bid Status', 1, 'App', 'normal', 'bid', 273, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1055,\"tab\":\"bids\"},\"notification_sub_type\":\"bid_received\"}', '2026-02-16 01:23:58'),
 (3695, 371, 'A contractor has submitted a bid for \"Project Images Testing\".', 'New Bid Received', 'Bid Status', 1, 'App', 'normal', 'bid', 274, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1052,\"tab\":\"bids\"},\"notification_sub_type\":\"bid_received\"}', '2026-02-16 01:37:22'),
@@ -1751,7 +1843,7 @@ INSERT INTO `notifications` (`notification_id`, `user_id`, `message`, `title`, `
 (3716, 371, 'A contractor has submitted a bid for \"Testing again\".', 'New Bid Received', 'Bid Status', 1, 'App', 'normal', 'bid', 293, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1053,\"tab\":\"bids\"},\"notification_sub_type\":\"bid_received\"}', '2026-02-20 06:11:56'),
 (3717, 379, 'A contractor has submitted a bid for \"Commercial Building\".', 'New Bid Received', 'Bid Status', 1, 'App', 'normal', 'bid', 294, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1056,\"tab\":\"bids\"},\"notification_sub_type\":\"bid_received\"}', '2026-02-21 01:57:19'),
 (3718, 371, 'A contractor has submitted a bid for \"Testz\".', 'New Bid Received', 'Bid Status', 1, 'App', 'normal', 'bid', 295, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1047,\"tab\":\"bids\"},\"notification_sub_type\":\"bid_received\"}', '2026-02-22 02:29:15'),
-(3719, 372, 'The property owner has already chosen a contractor for \"Testz\". Thank you for your bid.', 'Bid Not Selected', 'Bid Status', 0, 'App', 'normal', 'bid', 260, NULL, '{\"screen\":\"MyBids\",\"params\":{\"projectId\":1047},\"notification_sub_type\":\"bid_rejected\"}', '2026-02-22 07:19:27'),
+(3719, 372, 'The property owner has already chosen a contractor for \"Testz\". Thank you for your bid.', 'Bid Not Selected', 'Bid Status', 1, 'App', 'normal', 'bid', 260, NULL, '{\"screen\":\"MyBids\",\"params\":{\"projectId\":1047},\"notification_sub_type\":\"bid_rejected\"}', '2026-02-22 07:19:27'),
 (3720, 371, 'Contractor submitted a milestone plan for \"Testz\". Please review.', 'Milestone Submitted', 'Milestone Update', 1, 'App', 'normal', 'milestone', 1563, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1047,\"tab\":\"milestones\"},\"notification_sub_type\":\"milestone_submitted\"}', '2026-02-22 07:51:59'),
 (3721, 379, 'Contractor submitted a milestone plan for \"Commercial Building\". Please review.', 'Milestone Submitted', 'Milestone Update', 1, 'App', 'normal', 'milestone', 1564, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1056,\"tab\":\"milestones\"},\"notification_sub_type\":\"milestone_submitted\"}', '2026-02-23 00:12:07'),
 (3722, 379, 'Contractor has modified and resubmitted the milestone setup for \"Commercial Building\". Please review the updated proposal.', 'Milestone Resubmitted', 'Milestone Update', 1, 'App', 'high', 'milestone', 1564, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1056,\"tab\":\"milestones\"},\"notification_sub_type\":\"milestone_resubmitted\"}', '2026-02-23 00:58:25'),
@@ -1760,22 +1852,63 @@ INSERT INTO `notifications` (`notification_id`, `user_id`, `message`, `title`, `
 (3726, 379, 'Contractor uploaded progress for \"Doners\" on \"Commercial Building\".', 'Progress Uploaded', 'Progress Update', 1, 'App', 'normal', 'progress', 833, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1056,\"tab\":\"progress\"},\"notification_sub_type\":\"progress_submitted\"}', '2026-02-23 04:47:56'),
 (3727, 380, 'Owner set a payment deadline of Feb 26, 2026 for \"Foundations\".', 'Payment Due Date Set', 'Payment Reminder', 1, 'App', 'high', 'milestone_item', 2790, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1056,\"tab\":\"payments\"},\"notification_sub_type\":\"payment_due\"}', '2026-02-24 23:54:58'),
 (3730, 380, 'Your project update request has been approved. The project timeline and budget have been updated.', 'Budget Adjustment Approved', 'Project Alert', 1, 'App', 'high', 'project', 1056, NULL, '{\"screen\":\"ProjectTimeline\",\"params\":{\"projectId\":1056},\"notification_sub_type\":\"project_update\"}', '2026-02-25 07:15:26'),
-(3732, 380, 'Owner uploaded a payment for \"Commercial Building\". Please review.', 'Payment Uploaded', 'Payment Status', 1, 'App', 'normal', 'payment', 827, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1056,\"tab\":\"payments\"},\"notification_sub_type\":\"payment_submitted\"}', '2026-02-26 09:54:54'),
-(3733, 379, 'Your payment for \"Commercial Building\" has been approved by the contractor.', 'Payment Approved', 'Payment Status', 1, 'App', 'normal', 'payment', 826, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1056,\"tab\":\"payments\"},\"notification_sub_type\":\"payment_approved\"}', '2026-02-26 09:55:45'),
-(3734, 380, 'Milestone item \"Doners\" for \"Commercial Building\" has been fully paid.', 'Fully Paid', 'Payment Status', 1, 'App', 'normal', 'milestone_item', 2791, 'fully_paid_2791', '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1056,\"tab\":\"payments\"},\"notification_sub_type\":\"payment_fully_paid\"}', '2026-02-26 09:55:45'),
-(3735, 379, 'Milestone item \"Doners\" for \"Commercial Building\" is now fully paid. Thank you!', 'Fully Paid', 'Payment Status', 1, 'App', 'normal', 'milestone_item', 2791, 'fully_paid_2791_owner', '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1056,\"tab\":\"payments\"},\"notification_sub_type\":\"payment_fully_paid\"}', '2026-02-26 09:55:45'),
-(3736, 379, 'Your payment for \"Commercial Building\" has been approved by the contractor.', 'Payment Approved', 'Payment Status', 1, 'App', 'normal', 'payment', 827, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1056,\"tab\":\"payments\"},\"notification_sub_type\":\"payment_approved\"}', '2026-02-26 09:55:48'),
-(3737, 379, 'You overpaid 1,000,000.00 on \"Doners\". The excess is recorded on this item and will NOT be auto-applied to the next milestone.', 'Overpayment Recorded', 'Payment Status', 1, 'App', 'normal', 'milestone_item', 2791, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1056,\"tab\":\"payments\"},\"notification_sub_type\":\"payment_overpaid\"}', '2026-02-26 09:55:48'),
-(3738, 380, 'Owner uploaded a payment for \"Commercial Building\". Please review.', 'Payment Uploaded', 'Payment Status', 1, 'App', 'normal', 'payment', 828, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1056,\"tab\":\"payments\"},\"notification_sub_type\":\"payment_submitted\"}', '2026-02-26 16:47:09'),
-(3739, 379, 'Your payment for \"Commercial Building\" has been approved by the contractor.', 'Payment Approved', 'Payment Status', 1, 'App', 'normal', 'payment', 828, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1056,\"tab\":\"payments\"},\"notification_sub_type\":\"payment_approved\"}', '2026-02-26 16:48:14'),
-(3740, 379, 'You overpaid 2,000,000.00 on \"Doners\". The excess is recorded on this item and will NOT be auto-applied to the next milestone.', 'Overpayment Recorded', 'Payment Status', 1, 'App', 'normal', 'milestone_item', 2791, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1056,\"tab\":\"payments\"},\"notification_sub_type\":\"payment_overpaid\"}', '2026-02-26 16:48:14'),
-(3741, 379, 'Contractor submitted a project update request for \"Commercial Building\". Please review.', 'Project Update Request Submitted', 'Project Alert', 1, 'App', 'high', 'project', 1056, NULL, '{\"screen\":\"ProjectTimeline\",\"params\":{\"projectId\":1056},\"notification_sub_type\":\"project_update\"}', '2026-02-26 23:59:59'),
-(3742, 379, 'The contractor has withdrawn their update request for \"Commercial Building\".', 'Project Update Withdrawn', 'Project Alert', 1, 'App', 'normal', 'project', 1056, NULL, '{\"screen\":\"ProjectTimeline\",\"params\":{\"projectId\":1056},\"notification_sub_type\":\"project_update\"}', '2026-02-27 00:08:10'),
-(3743, 379, 'Contractor submitted a project update request for \"Commercial Building\". Please review.', 'Project Update Request Submitted', 'Project Alert', 1, 'App', 'high', 'project', 1056, NULL, '{\"screen\":\"ProjectTimeline\",\"params\":{\"projectId\":1056},\"notification_sub_type\":\"project_update\"}', '2026-02-27 01:12:10'),
-(3744, 379, 'The contractor has withdrawn their update request for \"Commercial Building\".', 'Project Update Withdrawn', 'Project Alert', 1, 'App', 'normal', 'project', 1056, NULL, '{\"screen\":\"ProjectTimeline\",\"params\":{\"projectId\":1056},\"notification_sub_type\":\"project_update\"}', '2026-02-27 01:31:37'),
-(3745, 379, 'Contractor submitted a project update request for \"Commercial Building\". Please review.', 'Project Update Request Submitted', 'Project Alert', 1, 'App', 'high', 'project', 1056, NULL, '{\"screen\":\"ProjectTimeline\",\"params\":{\"projectId\":1056},\"notification_sub_type\":\"project_update\"}', '2026-02-27 01:51:32'),
-(3746, 380, 'Your project update request has been approved. The project timeline and budget have been updated.', 'Project Update Approved', 'Project Alert', 0, 'App', 'high', 'project', 1056, NULL, '{\"screen\":\"ProjectTimeline\",\"params\":{\"projectId\":1056},\"notification_sub_type\":\"project_update\"}', '2026-02-27 01:52:29'),
-(3747, 379, 'Contractor submitted a project update request for \"Commercial Building\". Please review.', 'Project Update Request Submitted', 'Project Alert', 0, 'App', 'high', 'project', 1056, NULL, '{\"screen\":\"ProjectTimeline\",\"params\":{\"projectId\":1056},\"notification_sub_type\":\"project_update\"}', '2026-02-27 02:36:05');
+(3731, 379, 'Contractor submitted a project update request for \"Commercial Building\". Please review.', 'Project Update Request Submitted', 'Project Alert', 0, 'App', 'high', 'project', 1056, NULL, '{\"screen\":\"ProjectTimeline\",\"params\":{\"projectId\":1056},\"notification_sub_type\":\"project_update\"}', '2026-02-27 03:59:51'),
+(3732, 379, 'The contractor has withdrawn their update request for \"Commercial Building\".', 'Project Update Withdrawn', 'Project Alert', 0, 'App', 'normal', 'project', 1056, NULL, '{\"screen\":\"ProjectTimeline\",\"params\":{\"projectId\":1056},\"notification_sub_type\":\"project_update\"}', '2026-02-27 04:02:45'),
+(3733, 379, 'Contractor submitted a project update request for \"Commercial Building\". Please review.', 'Project Update Request Submitted', 'Project Alert', 0, 'App', 'high', 'project', 1056, NULL, '{\"screen\":\"ProjectTimeline\",\"params\":{\"projectId\":1056},\"notification_sub_type\":\"project_update\"}', '2026-02-27 04:07:06'),
+(3734, 380, 'Your project update request has been approved. The project timeline and budget have been updated.', 'Project Update Approved', 'Project Alert', 0, 'App', 'high', 'project', 1056, NULL, '{\"screen\":\"ProjectTimeline\",\"params\":{\"projectId\":1056},\"notification_sub_type\":\"project_update\"}', '2026-02-27 04:12:04'),
+(3735, 379, 'A Delay dispute has been filed against you on \"Commercial Building\".', 'Dispute Filed', 'Dispute Update', 0, 'App', 'critical', 'dispute', 88, NULL, '{\"screen\":\"DisputeDetails\",\"params\":{\"disputeId\":88},\"notification_sub_type\":\"dispute_opened\"}', '2026-02-28 06:17:02'),
+(3736, 371, 'A contractor has submitted a bid for \"jslaabxxbxsssss\".', 'New Bid Received', 'Bid Status', 1, 'App', 'normal', 'bid', 296, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1055,\"tab\":\"bids\"},\"notification_sub_type\":\"bid_received\"}', '2026-03-01 03:36:46'),
+(3737, 371, 'A Halt dispute has been filed against you on \"Project\".', 'Dispute Filed', 'Dispute Update', 1, 'App', 'critical', 'dispute', 89, NULL, '{\"screen\":\"DisputeDetails\",\"params\":{\"disputeId\":89},\"notification_sub_type\":\"dispute_opened\"}', '2026-03-01 08:03:03'),
+(3738, 372, 'Your bid for \"Modern Residential House Construction\" has been accepted.', 'Bid Accepted! 🎉', 'Bid Status', 1, 'App', 'high', 'bid', 1, NULL, '{\"notification_sub_type\":\"bid_accepted\"}', '2026-03-03 10:06:57'),
+(3739, 372, 'Your bid for \"Commercial Building Renovation\" was not selected.', 'Bid Not Selected', 'Bid Status', 1, 'App', 'normal', 'bid', 2, NULL, '{\"notification_sub_type\":\"bid_rejected\"}', '2026-03-03 10:06:57'),
+(3740, 372, 'Milestone \"Foundation Work\" has been approved by the property owner.', 'Milestone Approved ✓', 'Milestone Update', 1, 'App', 'normal', 'milestone', 1, NULL, '{\"notification_sub_type\":\"milestone_approved\"}', '2026-03-03 10:06:57'),
+(3741, 372, 'Milestone \"Roofing Installation\" needs revisions. Check feedback.', 'Milestone Rejected', 'Milestone Update', 1, 'App', 'high', 'milestone', 2, NULL, '{\"notification_sub_type\":\"milestone_rejected\"}', '2026-03-03 10:06:57'),
+(3742, 372, 'Milestone \"Electrical Wiring\" has been marked as completed.', 'Milestone Completed! ✓', 'Milestone Update', 1, 'App', 'normal', 'milestone', 3, NULL, '{\"notification_sub_type\":\"milestone_completed\"}', '2026-03-03 10:06:57'),
+(3743, 372, 'Property owner updated the requirements for \"Plumbing Installation\".', 'Milestone Updated', 'Milestone Update', 1, 'App', 'normal', 'milestone', 4, NULL, '{\"notification_sub_type\":\"milestone_updated\"}', '2026-03-03 10:06:57'),
+(3744, 372, 'Payment of ₱150,000 for Milestone 1 has been approved and processed.', 'Payment Received 💰', 'Payment Status', 1, 'App', 'high', 'payment', 1, NULL, '{\"notification_sub_type\":\"payment_approved\"}', '2026-03-03 10:06:57'),
+(3745, 372, 'Payment request for ₱75,000 requires additional documentation.', 'Payment Issue', 'Payment Status', 1, 'App', 'high', 'payment', 2, NULL, '{\"notification_sub_type\":\"payment_rejected\"}', '2026-03-03 10:06:57'),
+(3746, 372, 'Milestone 2 payment has been fully paid (₱200,000).', 'Payment Complete ✓', 'Payment Status', 1, 'App', 'normal', 'payment', 3, NULL, '{\"notification_sub_type\":\"payment_fully_paid\"}', '2026-03-03 10:06:57'),
+(3747, 372, 'A dispute has been opened regarding \"Quality of Materials\".', 'Dispute Filed', 'Dispute Update', 1, 'App', 'critical', 'dispute', 1, NULL, '{\"notification_sub_type\":\"dispute_opened\"}', '2026-03-03 10:06:57'),
+(3748, 372, 'Admin is reviewing the dispute case #DR-2024-001.', 'Dispute Under Review', 'Dispute Update', 1, 'App', 'high', 'dispute', 1, NULL, '{\"notification_sub_type\":\"dispute_under_review\"}', '2026-03-03 10:06:57'),
+(3749, 372, 'Dispute case #DR-2024-001 has been successfully resolved.', 'Dispute Resolved ✓', 'Dispute Update', 1, 'App', 'high', 'dispute', 1, NULL, '{\"notification_sub_type\":\"dispute_resolved\"}', '2026-03-03 10:06:57'),
+(3750, 372, 'Congratulations! \"Modern Residential House Construction\" has been successfully completed.', 'Project Completed! 🎊', 'Project Alert', 1, 'App', 'high', 'project', 1, NULL, '{\"notification_sub_type\":\"project_completed\"}', '2026-03-03 10:06:57'),
+(3751, 372, 'Project \"Commercial Building Renovation\" has been temporarily halted.', 'Project Halted', 'Project Alert', 1, 'App', 'critical', 'project', 2, NULL, '{\"notification_sub_type\":\"project_halted\"}', '2026-03-03 10:06:57'),
+(3752, 372, 'Project \"Office Building Construction\" has been terminated by the owner.', 'Project Terminated', 'Project Alert', 1, 'App', 'critical', 'project', 3, NULL, '{\"notification_sub_type\":\"project_terminated\"}', '2026-03-03 10:06:57'),
+(3753, 372, 'You have been invited to join the project team for \"Luxury Villa Construction\".', 'Team Invitation 👥', 'Team Update', 1, 'App', 'normal', 'team', 1, NULL, '{\"notification_sub_type\":\"team_invite\"}', '2026-03-03 10:06:57'),
+(3754, 372, 'You have been removed from the team for \"Residential Complex Development\".', 'Removed from Team', 'Team Update', 1, 'App', 'high', 'team', 2, NULL, '{\"notification_sub_type\":\"team_removed\"}', '2026-03-03 10:06:57'),
+(3755, 372, 'Your role has been updated to \"Lead Engineer\" in the project team.', 'Role Updated', 'Team Update', 1, 'App', 'normal', 'team', 3, NULL, '{\"notification_sub_type\":\"team_role_changed\"}', '2026-03-03 10:06:57'),
+(3756, 372, 'Milestone item \"Install Water Lines\" has been completed.', 'Task Completed', 'Milestone Update', 1, 'App', 'normal', 'milestone_item', 5, NULL, '{\"notification_sub_type\":\"milestone_item_completed\"}', '2026-03-03 10:06:57'),
+(3757, 372, 'Milestone \"Landscaping\" has been removed from the project.', 'Milestone Removed', 'Milestone Update', 1, 'App', 'normal', 'milestone', 6, NULL, '{\"notification_sub_type\":\"milestone_deleted\"}', '2026-03-03 10:06:57'),
+(3758, 372, 'Your payment request for ₱100,000 has been submitted for approval.', 'Payment Request Submitted', 'Payment Status', 1, 'App', 'normal', 'payment', 4, NULL, '{\"notification_sub_type\":\"payment_submitted\"}', '2026-03-03 10:06:57');
+INSERT INTO `notifications` (`notification_id`, `user_id`, `message`, `title`, `type`, `is_read`, `delivery_method`, `priority`, `reference_type`, `reference_id`, `dedup_key`, `action_link`, `created_at`) VALUES
+(3759, 372, 'Payment details for Milestone 3 have been updated.', 'Payment Updated', 'Payment Status', 1, 'App', 'normal', 'payment', 5, NULL, '{\"notification_sub_type\":\"payment_updated\"}', '2026-03-03 10:06:57'),
+(3760, 372, 'Test Test: ss', 'New Message 💬', 'Project Alert', 1, 'App', 'normal', 'conversation', 371000372, NULL, '{\"screen\":\"messages\",\"params\":{\"conversationId\":371000372},\"notification_sub_type\":\"message_received\"}', '2026-03-03 10:24:30'),
+(3761, 371, 'test2: hi', 'New Message 💬', 'Project Alert', 1, 'App', 'normal', 'conversation', 371000372, NULL, '{\"screen\":\"messages\",\"params\":{\"conversationId\":371000372},\"notification_sub_type\":\"message_received\"}', '2026-03-03 10:25:51'),
+(3762, 371, 'test2: dfg', 'New Message 💬', 'Project Alert', 1, 'App', 'normal', 'conversation', 371000372, NULL, '{\"screen\":\"messages\",\"params\":{\"conversationId\":371000372},\"notification_sub_type\":\"message_received\"}', '2026-03-03 18:30:06'),
+(3763, 372, 'Test Test: sss', 'New Message 💬', 'Project Alert', 1, 'App', 'normal', 'conversation', 371000372, NULL, '{\"screen\":\"messages\",\"params\":{\"conversationId\":371000372},\"notification_sub_type\":\"message_received\"}', '2026-03-03 18:30:46'),
+(3764, 372, 'Test Test: sdsds', 'New Message 💬', 'Project Alert', 1, 'App', 'normal', 'conversation', 371000372, NULL, '{\"screen\":\"messages\",\"params\":{\"conversationId\":371000372},\"notification_sub_type\":\"message_received\"}', '2026-03-03 18:37:30'),
+(3765, 371, 'test2: asdad', 'New Message 💬', 'Message', 1, 'App', 'normal', 'conversation', 371000372, NULL, '{\"screen\":\"messages\",\"params\":{\"conversationId\":371000372},\"notification_sub_type\":\"message_received\"}', '2026-03-03 18:44:36'),
+(3766, 371, 'Contractor submitted a milestone plan for \"Testing again\". Please review.', 'Milestone Submitted', 'Milestone Update', 1, 'App', 'normal', 'milestone', 1567, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1053,\"tab\":\"milestones\"},\"notification_sub_type\":\"milestone_submitted\"}', '2026-03-03 20:22:42'),
+(3767, 372, 'Test Test: Hello thereee hakfok', 'New Message 💬', 'Project Alert', 1, 'App', 'normal', 'conversation', 371000372, NULL, '{\"screen\":\"messages\",\"params\":{\"conversationId\":371000372},\"notification_sub_type\":\"message_received\"}', '2026-03-03 20:32:07'),
+(3768, 371, 'test2: soo hello goodevening', 'New Message 💬', 'Project Alert', 1, 'App', 'normal', 'conversation', 371000372, NULL, '{\"screen\":\"messages\",\"params\":{\"conversationId\":371000372},\"notification_sub_type\":\"message_received\"}', '2026-03-03 20:32:12'),
+(3769, 372, 'Test Test: Uuhyuuh', 'New Message 💬', 'Project Alert', 1, 'App', 'normal', 'conversation', 371000372, NULL, '{\"screen\":\"messages\",\"params\":{\"conversationId\":371000372},\"notification_sub_type\":\"message_received\"}', '2026-03-03 20:32:45'),
+(3770, 371, 'test2: ck cutie', 'New Message 💬', 'Project Alert', 1, 'App', 'normal', 'conversation', 371000372, NULL, '{\"screen\":\"messages\",\"params\":{\"conversationId\":371000372},\"notification_sub_type\":\"message_received\"}', '2026-03-03 20:45:18'),
+(3771, 371, 'test2: ack', 'New Message 💬', 'Project Alert', 1, 'App', 'normal', 'conversation', 371000372, NULL, '{\"screen\":\"messages\",\"params\":{\"conversationId\":371000372},\"notification_sub_type\":\"message_received\"}', '2026-03-03 20:45:43'),
+(3772, 371, 'test2: heyaaa', 'New Message 💬', 'Project Alert', 1, 'App', 'normal', 'conversation', 371000372, NULL, '{\"screen\":\"messages\",\"params\":{\"conversationId\":371000372},\"notification_sub_type\":\"message_received\"}', '2026-03-03 20:46:51'),
+(3773, 371, 'test2: hi nigga free kbabtosa', 'New Message 💬', 'Project Alert', 1, 'App', 'normal', 'conversation', 371000372, NULL, '{\"screen\":\"messages\",\"params\":{\"conversationId\":371000372},\"notification_sub_type\":\"message_received\"}', '2026-03-03 20:49:58'),
+(3774, 392, 'Your project post \"Wonderland\" has been approved and is now visible to contractors.', 'Project Post Approved', 'Project Alert', 0, 'App', 'high', 'project', 1057, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1057},\"notification_sub_type\":\"project_update\"}', '2026-03-03 21:17:13'),
+(3775, 392, 'A contractor has submitted a bid for \"Wonderland\".', 'New Bid Received', 'Bid Status', 1, 'App', 'normal', 'bid', 297, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1057,\"tab\":\"bids\"},\"notification_sub_type\":\"bid_received\"}', '2026-03-03 21:20:40'),
+(3776, 372, 'Your bid for \"Wonderland\" has been accepted!', 'Bid Accepted', 'Bid Status', 1, 'App', 'high', 'project', 1057, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1057},\"notification_sub_type\":\"bid_accepted\"}', '2026-03-03 21:21:42'),
+(3777, 392, 'test2: hello', 'New Message 💬', 'Project Alert', 0, 'App', 'normal', 'conversation', 372000392, NULL, '{\"screen\":\"messages\",\"params\":{\"conversationId\":372000392},\"notification_sub_type\":\"message_received\"}', '2026-03-03 21:23:51'),
+(3778, 392, 'Contractor submitted a milestone plan for \"Wonderland\". Please review.', 'Milestone Submitted', 'Milestone Update', 1, 'App', 'normal', 'milestone', 1568, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1057,\"tab\":\"milestones\"},\"notification_sub_type\":\"milestone_submitted\"}', '2026-03-03 21:29:46'),
+(3779, 372, 'Your milestone \"Winter Wonderland\" has been approved by the owner.', 'Milestone Approved', 'Milestone Update', 1, 'App', 'normal', 'milestone', 1568, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1057,\"tab\":\"milestones\"},\"notification_sub_type\":\"milestone_approved\"}', '2026-03-03 21:29:58'),
+(3780, 392, 'Contractor submitted a project update request for \"Wonderland\". Please review.', 'Project Update Request Submitted', 'Project Alert', 1, 'App', 'high', 'project', 1057, NULL, '{\"screen\":\"ProjectTimeline\",\"params\":{\"projectId\":1057},\"notification_sub_type\":\"project_update\"}', '2026-03-03 21:34:19'),
+(3781, 372, 'Your project update request has been approved. The project timeline and budget have been updated.', 'Project Update Approved', 'Project Alert', 1, 'App', 'high', 'project', 1057, NULL, '{\"screen\":\"ProjectTimeline\",\"params\":{\"projectId\":1057},\"notification_sub_type\":\"project_update\"}', '2026-03-03 21:34:56'),
+(3782, 372, 'The project \"noche buena\" has been marked as completed. Congratulations!', 'Project Completed', 'Project Alert', 0, 'App', 'high', 'project', 1048, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1048},\"notification_sub_type\":\"project_completed\"}', '2026-03-05 04:52:03'),
+(3783, 371, 'How was your experience with the contractor on \"noche buena\"? Tap here to leave a review.', 'Leave a Review', 'Project Alert', 0, 'App', 'high', 'project', 1048, NULL, '{\"screen\":\"review\",\"params\":{\"projectId\":1048,\"revieweeUserId\":372},\"notification_sub_type\":\"review_prompt\"}', '2026-03-05 04:52:03'),
+(3784, 372, 'How was your experience with the property owner on \"noche buena\"? Tap here to leave a review.', 'Leave a Review', 'Project Alert', 0, 'App', 'high', 'project', 1048, NULL, '{\"screen\":\"review\",\"params\":{\"projectId\":1048,\"revieweeUserId\":371},\"notification_sub_type\":\"review_prompt\"}', '2026-03-05 04:52:03'),
+(3785, 372, 'test1 left a review on \"noche buena\".', 'New Review Received', 'Project Alert', 0, 'App', 'normal', 'review', 40, NULL, '{\"screen\":\"profile\",\"params\":{\"tab\":\"reviews\"},\"notification_sub_type\":\"review_submitted\"}', '2026-03-05 04:52:38'),
+(3786, 372, 'Your milestone \"Project Batumbakal\" has been approved by the owner.', 'Milestone Approved', 'Milestone Update', 0, 'App', 'normal', 'milestone', 1567, NULL, '{\"screen\":\"ProjectDetails\",\"params\":{\"projectId\":1053,\"tab\":\"milestones\"},\"notification_sub_type\":\"milestone_approved\"}', '2026-03-05 06:20:44');
 
 -- --------------------------------------------------------
 
@@ -1849,9 +1982,7 @@ CREATE TABLE `payment_adjustment_logs` (
 
 INSERT INTO `payment_adjustment_logs` (`log_id`, `project_id`, `milestone_id`, `source_item_id`, `target_item_id`, `payment_id`, `adjustment_type`, `original_required`, `total_paid`, `adjustment_amount`, `target_original_cost`, `target_adjusted_cost`, `notes`, `created_at`) VALUES
 (1, 1056, 1564, 2790, 2791, NULL, 'underpayment', 20000000.00, 19000000.00, 1000000.00, 20000000.00, 21000000.00, 'Data repair: carry-forward corrected from 2M to 1M (was doubled due to missing transaction + non-idempotent code). Shortfall of 1,000,000.00 carried from item 2790 to 2791.', '2026-02-23 07:03:48'),
-(2, 1056, 1564, 2790, 2791, NULL, 'underpayment', 20000000.00, 19000000.00, 1000000.00, 20000000.00, 21000000.00, 'Shortfall of 1,000,000.00 carried forward on item completion to item #2 (Doners).', '2026-02-23 07:21:06'),
-(3, 1056, 1564, 2791, NULL, 827, 'overpayment', 20000000.00, 22000000.00, 1000000.00, NULL, NULL, 'Overpayment of 1,000,000.00 recorded. Excess stays on this item.', '2026-02-26 09:55:48'),
-(4, 1056, 1564, 2791, NULL, 828, 'overpayment', 20000000.00, 23000000.00, 2000000.00, NULL, NULL, 'Overpayment of 2,000,000.00 recorded. Excess stays on this item.', '2026-02-26 16:48:14');
+(2, 1056, 1564, 2790, 2791, NULL, 'underpayment', 20000000.00, 19000000.00, 1000000.00, 20000000.00, 21000000.00, 'Shortfall of 1,000,000.00 carried forward on item completion to item #2 (Doners).', '2026-02-23 07:21:06');
 
 -- --------------------------------------------------------
 
@@ -1914,7 +2045,9 @@ INSERT INTO `payment_plans` (`plan_id`, `project_id`, `contractor_id`, `payment_
 (925, 1055, 1809, 'downpayment', 8000000.00, 2000000.00, 0, '2026-02-17 01:11:33', '2026-02-17 01:11:33'),
 (926, 1055, 1809, 'downpayment', 8000000.00, 2000000.00, 0, '2026-02-17 01:48:12', '2026-02-17 01:48:12'),
 (927, 1047, 1810, 'downpayment', 6898.00, 898.00, 0, '2026-02-22 07:51:59', '2026-02-22 07:51:59'),
-(928, 1056, 1810, 'downpayment', 60000000.00, 10000000.00, 0, '2026-02-23 00:12:07', '2026-02-27 01:52:29');
+(928, 1056, 1810, 'downpayment', 60000000.00, 10000000.00, 0, '2026-02-23 00:12:07', '2026-02-27 04:12:04'),
+(931, 1053, 1809, 'downpayment', 34444444.00, 4444444.00, 0, '2026-03-03 20:22:42', '2026-03-03 20:22:42'),
+(932, 1057, 1809, 'downpayment', 9000000.00, 50000.00, 0, '2026-03-03 21:29:46', '2026-03-03 21:34:56');
 
 -- --------------------------------------------------------
 
@@ -2053,15 +2186,30 @@ INSERT INTO `personal_access_tokens` (`id`, `tokenable_type`, `tokenable_id`, `n
 (111, 'App\\Models\\User', 380, 'mobile-app', 'b475cdfc1255b967f1f74d46660a743f812cf6f8d185e180dd7bf392f04a1c75', '[\"*\"]', NULL, NULL, '2026-02-26 07:12:19', '2026-02-26 07:12:19'),
 (112, 'App\\Models\\User', 372, 'mobile-app', '4f55ec7ce11edd1fafabfed25d3a4d2176410990bf85a92de936d3749e27a5f7', '[\"*\"]', NULL, NULL, '2026-02-26 07:17:25', '2026-02-26 07:17:25'),
 (113, 'App\\Models\\User', 379, 'mobile-app', 'c4a91d18349d33031ad568a1d08e9f05c96481877e0116673d1eeb4058da0df4', '[\"*\"]', NULL, NULL, '2026-02-26 07:18:09', '2026-02-26 07:18:09'),
-(114, 'App\\Models\\User', 371, 'mobile-app', '75bad8f4c660e595009c7ad6fcc8b3a1625cc774eac8f7c5b9d9a0af8fbd2dba', '[\"*\"]', NULL, NULL, '2026-02-26 09:45:11', '2026-02-26 09:45:11'),
-(115, 'App\\Models\\User', 380, 'mobile-app', '9ff8f274e7c434571af38434530b5120940a0f7e6df8780bea05ce6396007b4a', '[\"*\"]', NULL, NULL, '2026-02-26 09:45:40', '2026-02-26 09:45:40'),
-(116, 'App\\Models\\User', 379, 'mobile-app', 'cdadada6c968e0da08ecb89c7b2a87e37712ed37b422a9f5881b390a164227f4', '[\"*\"]', NULL, NULL, '2026-02-26 09:54:15', '2026-02-26 09:54:15'),
-(117, 'App\\Models\\User', 380, 'mobile-app', '7b662492ce84ba725a35ff731d42b77e6a4bf4d9c539b9abd69d7a488ae4b600', '[\"*\"]', NULL, NULL, '2026-02-26 09:55:20', '2026-02-26 09:55:20'),
-(118, 'App\\Models\\User', 379, 'mobile-app', '1a8580d80405344a525ed452542f4683994f740cc5c547bf9a16aca64127ff07', '[\"*\"]', NULL, NULL, '2026-02-26 09:57:00', '2026-02-26 09:57:00'),
-(119, 'App\\Models\\User', 380, 'mobile-app', '1ac76949d16997239ab703e083dbee4f5c4590145b32d8544cb88d1ceb6c4dca', '[\"*\"]', NULL, NULL, '2026-02-26 16:47:38', '2026-02-26 16:47:38'),
-(120, 'App\\Models\\User', 379, 'mobile-app', '2d7a3c361ea362722af7230ecd4d4cc14be39805aef9a10765228ec18d7a4706', '[\"*\"]', NULL, NULL, '2026-02-27 01:52:15', '2026-02-27 01:52:15'),
-(121, 'App\\Models\\User', 380, 'mobile-app', '2725cf63452e5c2f9a078a6ca54f77e6e06fd91b6cffc94ed1b22d49e3239119', '[\"*\"]', NULL, NULL, '2026-02-27 02:34:07', '2026-02-27 02:34:07'),
-(122, 'App\\Models\\User', 379, 'mobile-app', '682683134287596e6fbd8f34fda3531c84321e07b5ed6ce51106bc56c795ecc7', '[\"*\"]', NULL, NULL, '2026-02-27 02:43:46', '2026-02-27 02:43:46');
+(114, 'App\\Models\\User', 380, 'mobile-app', '922d63055d9f80b182d107cf3a50be361b365fb3874abba1751ceed05bc9c8ec', '[\"*\"]', NULL, NULL, '2026-02-27 03:41:46', '2026-02-27 03:41:46'),
+(115, 'App\\Models\\User', 380, 'mobile-app', 'b413ea6dfb6bff190d74a7252d7aae324c8a4abd36780d3c1db9227bebdd5a8d', '[\"*\"]', NULL, NULL, '2026-02-27 04:07:43', '2026-02-27 04:07:43'),
+(116, 'App\\Models\\User', 379, 'mobile-app', 'd3a06e5cfa377e38f90340940968288a4f7974e620898d993228d5fd70025e87', '[\"*\"]', NULL, NULL, '2026-02-27 04:08:22', '2026-02-27 04:08:22'),
+(117, 'App\\Models\\User', 380, 'mobile-app', '37166ebd4a543ccc681c8ff08dcb9aea4f327870b34a9e4327b58efebaadaa8b', '[\"*\"]', NULL, NULL, '2026-03-01 00:18:39', '2026-03-01 00:18:39'),
+(118, 'App\\Models\\User', 372, 'mobile-app', '3fe1a26b378e3bb1abbbd1de7349cfeec9827e1dbeff0571d861f16bc90a7bea', '[\"*\"]', NULL, NULL, '2026-03-01 01:16:35', '2026-03-01 01:16:35'),
+(119, 'App\\Models\\User', 371, 'mobile-app', '86f2f3d08ebe8fff63f75c26d515a71adbab9d7dc300eefcd0eefe88b3dc68e0', '[\"*\"]', NULL, NULL, '2026-03-01 01:31:29', '2026-03-01 01:31:29'),
+(120, 'App\\Models\\User', 372, 'mobile-app', '795a968371dd1bf8fd28eebe2c3f95da4650952db5253577587d34811767ee15', '[\"*\"]', NULL, NULL, '2026-03-02 11:44:44', '2026-03-02 11:44:44'),
+(121, 'App\\Models\\User', 371, 'mobile-app', 'c090770b981bd7c471ccd010a467f6a0aa661f1da1c73f54c76426b3978c66cb', '[\"*\"]', NULL, NULL, '2026-03-02 12:32:23', '2026-03-02 12:32:23'),
+(122, 'App\\Models\\User', 372, 'mobile-app', '371371c2e24952710b64d902567febfa1be9d71a40af52a0a531f6e57be1f968', '[\"*\"]', NULL, NULL, '2026-03-03 20:08:19', '2026-03-03 20:08:19'),
+(123, 'App\\Models\\User', 371, 'mobile-app', '58d3ecc838f9a557a347b0987b380d654673536444c67738d1cde846fe199c91', '[\"*\"]', NULL, NULL, '2026-03-03 20:30:28', '2026-03-03 20:30:28'),
+(124, 'App\\Models\\User', 371, 'mobile-app', '20ced9fafd26b384f3caf900c77973275242f19ad8a22a565f0af6d1f4c1fe61', '[\"*\"]', NULL, NULL, '2026-03-03 21:04:53', '2026-03-03 21:04:53'),
+(125, 'App\\Models\\User', 392, 'mobile-app', 'd80f910cd717ae69e5876c4939694472a59b13ec62048eaf617a90d30d877b06', '[\"*\"]', NULL, NULL, '2026-03-03 21:13:50', '2026-03-03 21:13:50'),
+(126, 'App\\Models\\User', 372, 'mobile-app', '5a6e83303169bf6d61e1c68121673684451332ac92328dc038b2d4c6a87fd59c', '[\"*\"]', NULL, NULL, '2026-03-03 21:17:26', '2026-03-03 21:17:26'),
+(127, 'App\\Models\\User', 392, 'mobile-app', '855b339750c099a5dcf4af413ea5a819d9c059f1fc4574546e18f49d32f05e88', '[\"*\"]', NULL, NULL, '2026-03-03 21:21:07', '2026-03-03 21:21:07'),
+(128, 'App\\Models\\User', 372, 'mobile-app', 'a2e6a6063a60643ea074ca7f70a6e4c54da665bbe2b2eb7b4b75700cf8bbeecb', '[\"*\"]', NULL, NULL, '2026-03-03 21:21:58', '2026-03-03 21:21:58'),
+(129, 'App\\Models\\User', 392, 'mobile-app', 'a8ba448765d8c01ea398f6536145111f4e5f354d4adf864a46d2bfb9ea38ba92', '[\"*\"]', NULL, NULL, '2026-03-03 21:23:03', '2026-03-03 21:23:03'),
+(130, 'App\\Models\\User', 371, 'mobile-app', '9621e7d08c0e0e5a6110828e6183d9d049a43928b1c260594331b75b70f2640d', '[\"*\"]', NULL, NULL, '2026-03-05 00:54:02', '2026-03-05 00:54:02'),
+(131, 'App\\Models\\User', 371, 'mobile-app', 'f296708e4b47b00ca9153409882b7cf2d68b170107847c9ba75ad0761d4ec5dc', '[\"*\"]', NULL, NULL, '2026-03-05 00:55:44', '2026-03-05 00:55:44'),
+(132, 'App\\Models\\User', 380, 'mobile-app', '536a57cba3010d4d462639ff4f87c9ea062a69c5881f89c27c4d99f05a5793d3', '[\"*\"]', NULL, NULL, '2026-03-05 01:12:43', '2026-03-05 01:12:43'),
+(133, 'App\\Models\\User', 371, 'mobile-app', 'e4d9c2ec75f8d61b8b2a338d0cfefe7f7a6bc6b9d684fd693997ddae2a222823', '[\"*\"]', NULL, NULL, '2026-03-05 01:36:14', '2026-03-05 01:36:14'),
+(134, 'App\\Models\\User', 371, 'mobile-app', 'bf0c93398ecec1f57e1e984f2cee25b0365c9612b9e3cdb35dc2448e949bd5cb', '[\"*\"]', NULL, NULL, '2026-03-05 04:44:10', '2026-03-05 04:44:10'),
+(135, 'App\\Models\\User', 371, 'mobile-app', '7ca5c0bc82423a472edc9b17e3db4a75a5a5eab9835695c47351c08ed2844547', '[\"*\"]', NULL, NULL, '2026-03-05 04:48:47', '2026-03-05 04:48:47'),
+(136, 'App\\Models\\User', 371, 'mobile-app', 'e9b7b7c052831944a9ab36f206a1490d149ac5a2c37c788de20e0bda4a5c9203', '[\"*\"]', NULL, NULL, '2026-03-05 06:19:06', '2026-03-05 06:19:06'),
+(137, 'App\\Models\\User', 372, 'mobile-app', '09e69c10b715f33ebe7375244a0087ac31aad987728c00f5615a256b56eb4d1d', '[\"*\"]', NULL, NULL, '2026-03-05 07:45:21', '2026-03-05 07:45:21');
 
 -- --------------------------------------------------------
 
@@ -2071,33 +2219,77 @@ INSERT INTO `personal_access_tokens` (`id`, `tokenable_type`, `tokenable_id`, `n
 
 CREATE TABLE `platform_payments` (
   `platform_payment_id` int(11) NOT NULL,
+  `subscriptionPlanId` bigint(20) UNSIGNED DEFAULT NULL,
   `project_id` int(11) DEFAULT NULL,
   `contractor_id` int(11) DEFAULT NULL,
   `owner_id` int(11) DEFAULT NULL,
-  `payment_for` enum('subscription','boosted_post') NOT NULL,
-  `subscription_tier` varchar(50) DEFAULT NULL,
   `amount` decimal(15,2) NOT NULL,
   `transaction_number` varchar(100) DEFAULT NULL,
   `transaction_date` timestamp NULL DEFAULT current_timestamp(),
   `is_approved` tinyint(1) DEFAULT 0,
-  `approved_by` int(11) DEFAULT NULL,
+  `is_cancelled` tinyint(4) NOT NULL DEFAULT 0,
+  `approved_by` varchar(20) DEFAULT NULL,
   `expiration_date` timestamp NULL DEFAULT NULL,
-  `payment_type` varchar(255) DEFAULT NULL
+  `payment_type` varchar(255) DEFAULT NULL,
+  `deactivation_reason` text DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `platform_payments`
 --
 
-INSERT INTO `platform_payments` (`platform_payment_id`, `project_id`, `contractor_id`, `owner_id`, `payment_for`, `subscription_tier`, `amount`, `transaction_number`, `transaction_date`, `is_approved`, `approved_by`, `expiration_date`, `payment_type`) VALUES
-(90, 1055, NULL, 1814, 'boosted_post', NULL, 49.00, 'cs_563785e374e74df22bf15ee4', '2026-02-19 00:07:16', 1, NULL, '2026-02-26 00:07:16', 'PayMongo'),
-(91, NULL, 1809, NULL, 'subscription', 'silver', 1499.00, 'cs_88743ff4cc19941b12468aed', '2026-02-19 00:09:36', 0, NULL, '2026-03-19 00:09:36', 'PayMongo'),
-(92, 1053, NULL, 1814, 'boosted_post', NULL, 49.00, 'cs_126348af6114a956204d1202', '2026-02-19 00:14:45', 1, NULL, '2026-02-26 00:14:45', 'PayMongo'),
-(94, NULL, 1809, NULL, 'subscription', 'silver', 1499.00, 'cs_83ccd03dcb453c420f9170d1', '2026-02-19 00:47:48', 0, NULL, '2026-03-19 00:47:48', 'PayMongo'),
-(96, NULL, 1809, NULL, 'subscription', 'gold', 1999.00, 'cs_f8f6f0de7782cf24191133ff', '2026-02-19 01:45:57', 0, NULL, '2026-03-19 01:45:57', 'PayMongo'),
-(97, 1046, NULL, 1814, 'boosted_post', NULL, 49.00, 'cs_f5dab5282bbe15916c650ecf', '2026-02-19 01:48:17', 1, NULL, '2026-02-26 01:48:17', 'PayMongo'),
-(99, NULL, 1809, NULL, 'subscription', 'gold', 1999.00, 'cs_a3296f7cc6cf84f80ad62ed9', '2026-02-20 04:07:32', 1, NULL, '2026-03-20 04:07:32', 'PayMongo'),
-(100, 1055, NULL, 1814, 'boosted_post', NULL, 49.00, 'cs_0fd13e153e20ec8cb6f70f59', '2026-02-26 03:44:59', 0, NULL, '2026-03-05 03:44:59', 'PayMongo');
+INSERT INTO `platform_payments` (`platform_payment_id`, `subscriptionPlanId`, `project_id`, `contractor_id`, `owner_id`, `amount`, `transaction_number`, `transaction_date`, `is_approved`, `is_cancelled`, `approved_by`, `expiration_date`, `payment_type`, `deactivation_reason`) VALUES
+(90, 4, 1055, NULL, 1814, 49.00, 'cs_563785e374e74df22bf15ee4', '2026-02-19 00:07:16', 1, 0, NULL, '2026-02-26 00:07:16', 'PayMongo', NULL),
+(91, 2, NULL, 1809, NULL, 1499.00, 'cs_88743ff4cc19941b12468aed', '2026-02-19 00:09:36', 0, 0, NULL, '2026-03-19 00:09:36', 'PayMongo', NULL),
+(92, 4, 1053, NULL, 1814, 49.00, 'cs_126348af6114a956204d1202', '2026-02-19 00:14:45', 1, 0, NULL, '2026-02-26 00:14:45', 'PayMongo', NULL),
+(94, 2, NULL, 1809, NULL, 1499.00, 'cs_83ccd03dcb453c420f9170d1', '2026-02-19 00:47:48', 0, 0, NULL, '2026-03-19 00:47:48', 'PayMongo', NULL),
+(96, 1, NULL, 1809, NULL, 1999.00, 'cs_f8f6f0de7782cf24191133ff', '2026-02-19 01:45:57', 0, 0, NULL, '2026-03-19 01:45:57', 'PayMongo', NULL),
+(97, 4, 1046, NULL, 1814, 49.00, 'cs_f5dab5282bbe15916c650ecf', '2026-02-19 01:48:17', 1, 0, NULL, '2026-02-26 01:48:17', 'PayMongo', NULL),
+(99, 1, NULL, 1809, NULL, 1999.00, 'cs_a3296f7cc6cf84f80ad62ed9', '2026-02-20 04:07:32', 0, 1, NULL, '2026-03-20 04:07:32', 'PayMongo', NULL),
+(100, 4, 1055, NULL, 1814, 49.00, 'cs_0fd13e153e20ec8cb6f70f59', '2026-02-26 03:44:59', 0, 0, NULL, '2026-03-05 03:44:59', 'PayMongo', NULL),
+(102, 1, NULL, 1810, NULL, 1998.00, 'cs_13026498638949aee27b4ed0', '2026-02-28 09:17:11', 0, 0, NULL, '2026-03-28 09:17:11', 'PayMongo', NULL),
+(103, 1, NULL, 1810, NULL, 1922.00, 'cs_91be49e8101b4de595ca80e1', '2026-02-28 10:48:45', 0, 0, NULL, '2026-03-28 10:48:45', 'PayMongo', NULL),
+(104, 4, 1055, NULL, 1814, 50.00, 'cs_757175f49a65fe00ed93f6a1', '2026-02-28 19:54:35', 0, 0, NULL, '2026-03-07 19:54:35', 'PayMongo', NULL),
+(105, 4, 1053, NULL, 1814, 50.00, 'cs_b2aefb8d3774a5ead6bb1ebc', '2026-02-28 19:54:56', 0, 0, NULL, '2026-03-07 19:54:56', 'PayMongo', NULL),
+(106, 4, 1053, NULL, 1814, 50.00, 'cs_cdddf7af73dd78638f5e612c', '2026-02-28 20:22:14', 0, 0, NULL, '2026-03-07 20:22:14', 'PayMongo', NULL),
+(107, 4, 1053, NULL, 1814, 50.00, 'cs_e40d945f9857e3d24b0d3a5c', '2026-02-28 20:24:16', 0, 0, NULL, '2026-03-07 20:24:16', 'PayMongo', NULL),
+(109, 1, NULL, 1810, NULL, 1922.00, 'cs_398b263e5abb936979d7acac', '2026-02-28 20:40:09', 0, 0, NULL, '2026-03-31 20:40:09', 'PayMongo', NULL),
+(112, 5, 1053, NULL, 1814, 500.00, 'cs_e0f022a5780370410c5dc44d', '2026-02-28 20:47:55', 0, 0, NULL, '2026-03-07 20:47:55', 'PayMongo', NULL),
+(113, 4, 1055, NULL, 1814, 50.00, 'cs_b035f977f7e1ceb3423e07b9', '2026-02-28 20:48:20', 0, 0, NULL, '2026-03-07 20:48:20', 'PayMongo', NULL),
+(114, 7, 1053, NULL, 1814, 213.00, 'cs_9f3da1dd54eb1f9496639344', '2026-02-28 21:29:58', 0, 0, NULL, '2026-03-07 21:29:58', 'PayMongo', NULL),
+(115, 7, 1053, NULL, 1814, 213.00, 'cs_858e76b43f30cc4f8dbaff42', '2026-02-28 21:45:38', 0, 0, NULL, '2026-03-07 21:45:38', 'PayMongo', NULL),
+(116, 4, 1053, NULL, 1814, 49.00, 'cs_3bc2b1faa70a3d9bf5ee9a52', '2026-02-28 21:57:49', 0, 1, NULL, '2026-03-10 21:57:49', 'PayMongo', 'ssssssssssssssssssssssssssssss'),
+(117, 1, NULL, 1810, NULL, 1999.00, 'cs_51636cac5dcc8d7f869c53fd', '2026-02-28 21:58:45', 1, 0, NULL, '2026-03-12 21:58:45', 'PayMongo', NULL),
+(118, 1, NULL, 1809, NULL, 1999.00, 'cs_ef47c01aad36aab5abdea355', '2026-03-03 21:36:42', 1, 0, NULL, '2026-04-03 21:36:42', 'PayMongo', NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `post_reports`
+--
+
+CREATE TABLE `post_reports` (
+  `report_id` bigint(20) UNSIGNED NOT NULL,
+  `reporter_user_id` int(11) NOT NULL,
+  `post_type` enum('project','showcase') NOT NULL,
+  `post_id` int(11) NOT NULL,
+  `reason` varchar(120) NOT NULL,
+  `details` text DEFAULT NULL,
+  `status` enum('pending','under_review','resolved','dismissed') NOT NULL DEFAULT 'pending',
+  `reviewed_by_user_id` int(11) DEFAULT NULL,
+  `admin_notes` text DEFAULT NULL,
+  `reviewed_at` timestamp NULL DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `post_reports`
+--
+
+INSERT INTO `post_reports` (`report_id`, `reporter_user_id`, `post_type`, `post_id`, `reason`, `details`, `status`, `reviewed_by_user_id`, `admin_notes`, `reviewed_at`, `created_at`, `updated_at`) VALUES
+(1, 372, 'showcase', 1, 'Other', 'Funny lang kasi di pagkain siya eh', 'pending', NULL, NULL, NULL, '2026-03-06 06:28:57', '2026-03-06 06:28:57'),
+(2, 372, 'showcase', 1, 'Inappropriate Content', NULL, 'pending', NULL, NULL, NULL, '2026-03-06 06:32:56', '2026-03-06 06:32:56');
 
 -- --------------------------------------------------------
 
@@ -2258,86 +2450,89 @@ CREATE TABLE `projects` (
   `previous_status` varchar(50) DEFAULT NULL,
   `stat_reason` text DEFAULT NULL,
   `remarks` text DEFAULT NULL,
-  `selected_contractor_id` int(11) DEFAULT NULL
+  `selected_contractor_id` int(11) DEFAULT NULL,
+  `is_highlighted` tinyint(1) NOT NULL DEFAULT 0,
+  `highlighted_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `projects`
 --
 
-INSERT INTO `projects` (`project_id`, `relationship_id`, `project_title`, `project_description`, `project_location`, `budget_range_min`, `budget_range_max`, `lot_size`, `floor_area`, `property_type`, `type_id`, `if_others_ctype`, `to_finish`, `project_status`, `previous_status`, `stat_reason`, `remarks`, `selected_contractor_id`) VALUES
-(985, 987, 'Project 987', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'terminated', NULL, '', '', NULL),
-(986, 988, 'Project 988', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, NULL, '', NULL),
-(987, 989, 'Project 989', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', NULL),
-(988, 990, 'Project 990', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', NULL),
-(989, 994, 'Project 994', 'Description text.', 'Pasonanca, Zamboanga City', 1000000.00, 1500000.00, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', NULL),
-(990, 995, 'Project 995', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', NULL),
-(991, 997, 'Project 997', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', NULL),
-(992, 998, 'Project 998', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', NULL),
-(993, 999, 'Project 999', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', NULL),
-(994, 1000, 'Project 1000', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', NULL),
-(995, 1003, 'Project 1003', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, NULL, '', NULL),
-(996, 1005, 'Project 1005', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', NULL),
-(997, 1010, 'Project 1010', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', NULL),
-(998, 1012, 'Project 1012', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', NULL),
-(999, 1013, 'Project 1013', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', NULL),
-(1000, 1018, 'Project 1018', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', NULL),
-(1001, 1019, 'Project 1019', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', NULL),
-(1002, 1020, 'Project 1020', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', NULL),
-(1003, 1021, 'Project 1021', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', NULL),
-(1004, 1022, 'Project 1022', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', NULL),
-(1005, 1023, 'Project 1023', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', NULL),
-(1006, 1024, 'Project 1024', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', NULL),
-(1007, 1027, 'Project 1027', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, NULL, '', NULL),
-(1008, 1032, 'Project 1032', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', NULL),
-(1009, 1034, 'Project 1034', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', NULL),
-(1010, 1035, 'Project 1035', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', NULL),
-(1011, 1036, 'Project 1036', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', NULL),
-(1012, 1037, 'Project 1037', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', NULL),
-(1013, 1038, 'Project 1038', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', NULL),
-(1014, 1042, 'Project 1042', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', NULL),
-(1015, 1017, 'Project 1017', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, '', '', 1690),
-(1016, 1030, 'Project 1030', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, '', '', 1694),
-(1017, 1025, 'Project 1025', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, '', '', 1700),
-(1018, 1014, 'Project 1014', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', 1702),
-(1019, 1040, 'Project 1040', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, '', '', 1702),
-(1020, 991, 'Project 991', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, '', '', 1707),
-(1021, 1004, 'Project 1004', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', 1715),
-(1022, 1011, 'Project 1011', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', 1717),
-(1023, 1026, 'Project 1026', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, '', '', 1717),
-(1024, 1001, 'Project 1001', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', 1718),
-(1025, 1043, 'Project 1043', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, '', '', 1718),
-(1026, 1002, 'Project 1002', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', 1725),
-(1027, 986, 'Project 986', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, NULL, '', 1727),
-(1028, 1041, 'Project 1041', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', 1730),
-(1029, 1008, 'Project 1008', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, '', '', 1733),
-(1030, 1009, 'Project 1009', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, '', '', 1735),
-(1031, 1039, 'Project 1039', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', 1739),
-(1032, 1044, 'Project 1044', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', 1740),
-(1033, 985, 'Project 985', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', 1745),
-(1034, 1029, 'Project 1029', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, '', '', 1755),
-(1035, 1028, 'Project 1028', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', 1763),
-(1036, 1007, 'Project 1007', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, '', '', 1764),
-(1037, 1031, 'Project 1031', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', 1768),
-(1038, 1033, 'Project 1033', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', 1773),
-(1039, 996, 'Project 996', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', 1777),
-(1040, 1015, 'Project 1015', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', 1787),
-(1041, 993, 'Project 993', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, '', '', 1789),
-(1042, 992, 'Project 992', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, '', '', 1792),
-(1043, 1006, 'Project 1006', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, '', '', 1794),
-(1044, 1016, 'Project 1016', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, NULL, '', 1798),
-(1045, 1045, 'Test Project', 'Test description', 'Anywhere , Ayala, Zamboanga City, Zamboanga del Sur', 50000000.00, 60000000.00, 500, 450, 'Residential', 6, NULL, NULL, 'open', NULL, NULL, '', 1809),
-(1046, 1046, 'PROJECT FOR BID', 'Project test for bid', 'Anywhere, Arena Blanco, Zamboanga City, Zamboanga del Sur', 77000000.00, 80000000.00, 600, 550, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', 1687),
-(1047, 1047, 'Testz', 'twstw', 'City of Zamboanga, Zamboanga Del Sur Sur', 5000.00, 6898.00, 64649, 94649, 'Residential', 8, NULL, NULL, 'bidding_closed', 'in_progress', 'wwwwwwwwwwwwwwwwwww', 'wwwwwwwwwwwwwwwwwwwww', 1810),
-(1048, 1048, 'noche buena', 'uwi na pls', 'anywhere, Baluno, Zamboanga City, Zamboanga del Sur', 20000000.00, 30000000.00, 5000000, 4444444, 'Residential', 2, NULL, NULL, 'open', NULL, '', '', 1809),
-(1049, 1049, 'Project', 'Test', 'Porcentro, Tumaga, Zamboanga City, Zamboanga del Sur', 50000000.00, 60000000.00, 500, 250, 'Residential', 6, NULL, NULL, 'open', NULL, '', '', 1809),
-(1050, NULL, 'Test3', 'Test 3 Description', 'Street There, Arena Blanco, Zamboanga City, Zamboanga del Sur', 2500000.00, 5000000.00, 500, 250, 'Residential', 6, NULL, NULL, 'open', NULL, '', '', NULL),
-(1051, NULL, 'Testing for Form', 'Form Description', 'Somewhere There, Arena Blanco, Zamboanga City, Zamboanga del Sur', 2000000.00, 5000000.00, 500, 250, 'Residential', 6, NULL, NULL, 'open', NULL, '', '', NULL),
-(1052, 1052, 'Project Images Testing', 'Testing Images if it would show', 'Somewhere , Arena Blanco, Zamboanga City, Zamboanga del Sur', 2000000.00, 5000000.00, 500, 250, 'Residential', 6, NULL, NULL, 'open', NULL, '', '', NULL),
-(1053, 1053, 'Testing again', 'tws', 'jakana, Arena Blanco, Zamboanga City, Zamboanga del Sur', 250.00, 500.00, 500, 250, 'Residential', 6, NULL, NULL, 'open', NULL, '', '', NULL),
-(1054, 1054, 'Test Project Posting', 'Test Projects posting pages and flow', 'Anywhere There, Zamboanga Del Sur Sur', 25000000.00, 50000000.00, 500, 250, 'Residential', 5, NULL, NULL, 'halt', NULL, 'status reason ng isang nigger', 'si carl di nagbabayad banned ka na dito boi', 1809),
-(1055, 1055, 'jslaabxxbxsssss', 'abahajaa', 'bzzjsskaaka, Zamboanga Del Sur Sur', 2433867.00, 6434994.00, 1001, 901, 'Residential', 2, NULL, NULL, 'open', NULL, NULL, '', NULL),
-(1056, 1056, 'Commercial Building', 'ffrjookedowkjwwojdpjeonwozkwkspsw', '456 Oak Street Apt , Arena Blanco, Zamboanga City, Zamboanga del Sur', 25000000.00, 50000000.00, 500, 350, 'Commercial', 6, NULL, NULL, 'in_progress', NULL, NULL, NULL, 1810);
+INSERT INTO `projects` (`project_id`, `relationship_id`, `project_title`, `project_description`, `project_location`, `budget_range_min`, `budget_range_max`, `lot_size`, `floor_area`, `property_type`, `type_id`, `if_others_ctype`, `to_finish`, `project_status`, `previous_status`, `stat_reason`, `remarks`, `selected_contractor_id`, `is_highlighted`, `highlighted_at`) VALUES
+(985, 987, 'Project 987', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'terminated', NULL, '', '', NULL, 0, NULL),
+(986, 988, 'Project 988', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, NULL, '', NULL, 0, NULL),
+(987, 989, 'Project 989', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', NULL, 0, NULL),
+(988, 990, 'Project 990', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', NULL, 0, NULL),
+(989, 994, 'Project 994', 'Description text.', 'Pasonanca, Zamboanga City', 1000000.00, 1500000.00, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', NULL, 0, NULL),
+(990, 995, 'Project 995', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', NULL, 0, NULL),
+(991, 997, 'Project 997', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', NULL, 0, NULL),
+(992, 998, 'Project 998', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', NULL, 0, NULL),
+(993, 999, 'Project 999', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', NULL, 0, NULL),
+(994, 1000, 'Project 1000', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', NULL, 0, NULL),
+(995, 1003, 'Project 1003', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, NULL, '', NULL, 0, NULL),
+(996, 1005, 'Project 1005', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', NULL, 0, NULL),
+(997, 1010, 'Project 1010', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', NULL, 0, NULL),
+(998, 1012, 'Project 1012', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', NULL, 0, NULL),
+(999, 1013, 'Project 1013', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', NULL, 0, NULL),
+(1000, 1018, 'Project 1018', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', NULL, 0, NULL),
+(1001, 1019, 'Project 1019', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', NULL, 0, NULL),
+(1002, 1020, 'Project 1020', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', NULL, 0, NULL),
+(1003, 1021, 'Project 1021', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', NULL, 0, NULL),
+(1004, 1022, 'Project 1022', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', NULL, 0, NULL),
+(1005, 1023, 'Project 1023', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', NULL, 0, NULL),
+(1006, 1024, 'Project 1024', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', NULL, 0, NULL),
+(1007, 1027, 'Project 1027', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, NULL, '', NULL, 0, NULL),
+(1008, 1032, 'Project 1032', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', NULL, 0, NULL),
+(1009, 1034, 'Project 1034', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', NULL, 0, NULL),
+(1010, 1035, 'Project 1035', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', NULL, 0, NULL),
+(1011, 1036, 'Project 1036', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', NULL, 0, NULL),
+(1012, 1037, 'Project 1037', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', NULL, 0, NULL),
+(1013, 1038, 'Project 1038', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', NULL, 0, NULL),
+(1014, 1042, 'Project 1042', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', NULL, 0, NULL),
+(1015, 1017, 'Project 1017', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, '', '', 1690, 0, NULL),
+(1016, 1030, 'Project 1030', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, '', '', 1694, 0, NULL),
+(1017, 1025, 'Project 1025', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, '', '', 1700, 0, NULL),
+(1018, 1014, 'Project 1014', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', 1702, 0, NULL),
+(1019, 1040, 'Project 1040', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, '', '', 1702, 0, NULL),
+(1020, 991, 'Project 991', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, '', '', 1707, 0, NULL),
+(1021, 1004, 'Project 1004', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', 1715, 0, NULL),
+(1022, 1011, 'Project 1011', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', 1717, 0, NULL),
+(1023, 1026, 'Project 1026', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, '', '', 1717, 0, NULL),
+(1024, 1001, 'Project 1001', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', 1718, 0, NULL),
+(1025, 1043, 'Project 1043', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, '', '', 1718, 0, NULL),
+(1026, 1002, 'Project 1002', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', 1725, 0, NULL),
+(1027, 986, 'Project 986', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, NULL, '', 1727, 0, NULL),
+(1028, 1041, 'Project 1041', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', 1730, 0, NULL),
+(1029, 1008, 'Project 1008', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, '', '', 1733, 0, NULL),
+(1030, 1009, 'Project 1009', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, '', '', 1735, 0, NULL),
+(1031, 1039, 'Project 1039', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', 1739, 0, NULL),
+(1032, 1044, 'Project 1044', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', 1740, 0, NULL),
+(1033, 985, 'Project 985', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', 1745, 0, NULL),
+(1034, 1029, 'Project 1029', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, '', '', 1755, 0, NULL),
+(1035, 1028, 'Project 1028', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', 1763, 0, NULL),
+(1036, 1007, 'Project 1007', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, '', '', 1764, 0, NULL),
+(1037, 1031, 'Project 1031', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', 1768, 0, NULL),
+(1038, 1033, 'Project 1033', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', 1773, 0, NULL),
+(1039, 996, 'Project 996', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', 1777, 0, NULL),
+(1040, 1015, 'Project 1015', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', 1787, 0, NULL),
+(1041, 993, 'Project 993', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, '', '', 1789, 0, NULL),
+(1042, 992, 'Project 992', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, '', '', 1792, 0, NULL),
+(1043, 1006, 'Project 1006', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, '', '', 1794, 0, NULL),
+(1044, 1016, 'Project 1016', 'Description text.', 'Pasonanca, Zamboanga City', NULL, NULL, 150, 80, 'Residential', 1, NULL, NULL, 'in_progress', NULL, NULL, '', 1798, 0, NULL),
+(1045, 1045, 'Test Project', 'Test description', 'Anywhere , Ayala, Zamboanga City, Zamboanga del Sur', 50000000.00, 60000000.00, 500, 450, 'Residential', 6, NULL, NULL, 'open', NULL, NULL, '', 1809, 0, NULL),
+(1046, 1046, 'PROJECT FOR BID', 'Project test for bid', 'Anywhere, Arena Blanco, Zamboanga City, Zamboanga del Sur', 77000000.00, 80000000.00, 600, 550, 'Residential', 1, NULL, NULL, 'open', NULL, '', '', 1687, 0, NULL),
+(1047, 1047, 'Testz', 'twstw', 'City of Zamboanga, Zamboanga Del Sur Sur', 5000.00, 6898.00, 64649, 94649, 'Residential', 8, NULL, NULL, 'bidding_closed', 'in_progress', 'wwwwwwwwwwwwwwwwwww', 'wwwwwwwwwwwwwwwwwwwww', 1810, 0, NULL),
+(1048, 1048, 'noche buena', 'uwi na pls', 'anywhere, Baluno, Zamboanga City, Zamboanga del Sur', 20000000.00, 30000000.00, 5000000, 4444444, 'Residential', 2, NULL, NULL, 'completed', NULL, '', '', 1809, 0, NULL),
+(1049, 1049, 'Project', 'Test', 'Porcentro, Tumaga, Zamboanga City, Zamboanga del Sur', 50000000.00, 60000000.00, 500, 250, 'Residential', 6, NULL, NULL, 'open', NULL, '', '', 1809, 0, NULL),
+(1050, NULL, 'Test3', 'Test 3 Description', 'Street There, Arena Blanco, Zamboanga City, Zamboanga del Sur', 2500000.00, 5000000.00, 500, 250, 'Residential', 6, NULL, NULL, 'open', NULL, '', '', NULL, 0, NULL),
+(1051, NULL, 'Testing for Form', 'Form Description', 'Somewhere There, Arena Blanco, Zamboanga City, Zamboanga del Sur', 2000000.00, 5000000.00, 500, 250, 'Residential', 6, NULL, NULL, 'open', NULL, '', '', NULL, 0, NULL),
+(1052, 1052, 'Project Images Testing', 'Testing Images if it would show', 'Somewhere , Arena Blanco, Zamboanga City, Zamboanga del Sur', 2000000.00, 5000000.00, 500, 250, 'Residential', 6, NULL, NULL, 'open', NULL, '', '', NULL, 0, NULL),
+(1053, 1053, 'Testing again', 'tws', 'jakana, Arena Blanco, Zamboanga City, Zamboanga del Sur', 250.00, 500.00, 500, 250, 'Residential', 6, NULL, NULL, 'in_progress', NULL, '', '', NULL, 0, NULL),
+(1054, 1054, 'Test Project Posting', 'Test Projects posting pages and flow', 'Anywhere There, Zamboanga Del Sur Sur', 25000000.00, 50000000.00, 500, 250, 'Residential', 5, NULL, NULL, 'halt', NULL, 'status reason ng isang nigger', 'si carl di nagbabayad banned ka na dito boi', 1809, 0, NULL),
+(1055, 1055, 'jslaabxxbxsssss', 'abahajaa', 'bzzjsskaaka, Zamboanga Del Sur Sur', 2433867.00, 6434994.00, 1001, 901, 'Residential', 2, NULL, NULL, 'open', NULL, NULL, '', NULL, 0, NULL),
+(1056, 1056, 'Commercial Building', 'ffrjookedowkjwwojdpjeonwozkwkspsw', '456 Oak Street Apt , Arena Blanco, Zamboanga City, Zamboanga del Sur', 25000000.00, 50000000.00, 500, 350, 'Commercial', 6, NULL, NULL, 'in_progress', NULL, NULL, NULL, 1810, 0, NULL),
+(1057, 1057, 'Wonderland', 'Onde ta keda el Disney', 'Purok 234, Disney Princess, Arena Blanco, Zamboanga City, Zamboanga del Sur', 5000000.00, 10000000.00, 3000, 2500, 'Commercial', 6, NULL, NULL, 'in_progress', NULL, NULL, NULL, 1809, 0, NULL);
 
 -- --------------------------------------------------------
 
@@ -2682,7 +2877,19 @@ INSERT INTO `project_files` (`file_id`, `project_id`, `file_type`, `file_path`, 
 (351, 1056, 'desired design', 'project_files/designs/hlKaFFL24cESvQO1O3PEq6Qe27su6XSBiepWh3p1.jpg', '2026-02-21 01:53:41'),
 (352, 1056, 'desired design', 'project_files/designs/Q41t0QkR9jnAHA5q6fipJ85nInUsczMOiXPReYCp.jpg', '2026-02-21 01:53:41'),
 (353, 1056, 'desired design', 'project_files/designs/ufYXn4h3GhBhxT8dH3gjL1nnb8QJGKNPdm7CpSrE.jpg', '2026-02-21 01:53:41'),
-(354, 1056, 'others', 'project_files/others/5yyXtH0K2hmfJLmuugSEJO6XHBO29jMCIqbWVMNX.jpg', '2026-02-21 01:53:41');
+(354, 1056, 'others', 'project_files/others/5yyXtH0K2hmfJLmuugSEJO6XHBO29jMCIqbWVMNX.jpg', '2026-02-21 01:53:41'),
+(355, 1057, 'building permit', 'project_files/building_permit/kA6bRHU7B3bVmjKA6k9xHw2scjJG0ow2HTW8Lasx.jpg', '2026-03-03 21:16:54'),
+(356, 1057, 'title', 'project_files/titles/VpEVWJcRyiHIwE2xyAamxDmWgwkWEEMmKyomZ9Ir.jpg', '2026-03-03 21:16:54'),
+(357, 1057, 'blueprint', 'project_files/blueprints/h3iNVM7Kv1MjsH9gAWf8qjDmxRJbSaV2YSODV6xS.jpg', '2026-03-03 21:16:54'),
+(358, 1057, 'desired design', 'project_files/designs/pqh3UpNNEFurkoLVkeROECI1OFtNY8F72OALQYkY.jpg', '2026-03-03 21:16:54'),
+(359, 1057, 'desired design', 'project_files/designs/aNGpk7zsa8ZqRoHmi8hD3nVpFugoktwqIiZWvdpW.jpg', '2026-03-03 21:16:54'),
+(360, 1057, 'desired design', 'project_files/designs/mFEh97IIpUuUdTfR4rrrpHQJvAVGgUUbEvP0TjgB.jpg', '2026-03-03 21:16:54'),
+(361, 1057, 'desired design', 'project_files/designs/NBo7uF3sZYkkR3P9WMU1mbXlYfdIrvVTGsqLMkjP.jpg', '2026-03-03 21:16:54'),
+(362, 1057, 'others', 'project_files/others/7Z8RlPlL9g78QR7tTcCg551DMDuTSynoEQ8rdVeM.jpg', '2026-03-03 21:16:54'),
+(363, 1057, 'others', 'project_files/others/ILrrePWra4cMhBSYa2prSGgfNURdEDGdYmJH30nR.jpg', '2026-03-03 21:16:54'),
+(364, 1057, 'others', 'project_files/others/t7G2szktEX2kIwfoKh6cJYhs7I2IQZIpaN8OQC2A.jpg', '2026-03-03 21:16:54'),
+(365, 1057, 'others', 'project_files/others/tyiX3hqRp4KtaflQAh5U3sSEFUoGo2hj7hT74Pia.jpg', '2026-03-03 21:16:54'),
+(366, 1057, 'others', 'project_files/others/EhmXPIFrUuHpoQdub4WbFDtyAobupTOnsHJL5oal.jpg', '2026-03-03 21:16:54');
 
 -- --------------------------------------------------------
 
@@ -2775,7 +2982,8 @@ INSERT INTO `project_relationships` (`rel_id`, `owner_id`, `selected_contractor_
 (1053, 1814, NULL, 'approved', NULL, '2026-03-16', '2026-01-19 07:13:02', '2026-02-14 19:03:06'),
 (1054, 1814, NULL, 'approved', NULL, '2027-01-01', '2026-01-25 00:13:57', '2026-02-19 07:27:48'),
 (1055, 1814, NULL, 'approved', NULL, '2026-04-30', '2026-01-25 00:55:26', '2026-02-12 10:09:26'),
-(1056, 1819, 1810, 'approved', NULL, '2026-02-28', '2026-02-21 01:53:41', '2026-02-23 08:09:12');
+(1056, 1819, 1810, 'due', NULL, '2026-02-28', '2026-02-21 01:53:41', '2026-02-28 06:07:12'),
+(1057, 1829, 1809, 'approved', NULL, '2026-03-31', '2026-03-03 21:16:54', '2026-03-04 05:21:42');
 
 -- --------------------------------------------------------
 
@@ -2813,10 +3021,9 @@ CREATE TABLE `project_updates` (
 INSERT INTO `project_updates` (`extension_id`, `project_id`, `contractor_user_id`, `owner_user_id`, `current_end_date`, `proposed_end_date`, `reason`, `current_budget`, `proposed_budget`, `budget_change_type`, `has_additional_cost`, `additional_amount`, `milestone_changes`, `allocation_mode`, `status`, `owner_response`, `revision_notes`, `applied_at`, `created_at`, `updated_at`) VALUES
 (1, 1056, 380, 379, '2026-02-28', '2026-03-07', 'just to be safe hludludluxluuuuuhclhclhclhyhckykkkkgxkgxmgggxmgxmggxmgxmgxmgxmyxmyxk', 50000000.00, NULL, 'none', 0, NULL, '{\"new_items\":[],\"edited_items\":[],\"deleted_item_ids\":[]}', 'percentage', 'withdrawn', NULL, NULL, NULL, '2026-02-25 04:16:25', '2026-02-25 06:02:10'),
 (2, 1056, 380, 379, '2026-02-28', '2026-03-07', 'uhvlhlyffulylfylxlhxxlhlhclhclhchclh', 50000000.00, 60000000.00, 'increase', 1, 10000000.00, '{\"new_items\":[{\"title\":\"extension\",\"description\":\"hdkdykkydkhdkhd\",\"cost\":19000000}],\"edited_items\":[],\"deleted_item_ids\":[],\"_deleted_items\":[],\"_snapshot_meta\":{\"current_budget\":50000000,\"proposed_budget\":60000000,\"budget_change\":\"increase\",\"allocation_mode\":\"exact\",\"snapshot_at\":\"2026-02-25T15:01:17+00:00\"}}', 'exact', 'approved', NULL, NULL, '2026-02-25 07:15:26', '2026-02-25 07:01:17', '2026-02-25 07:15:26'),
-(3, 1056, 380, 379, '2026-03-07', '2026-03-09', 'just because okay now', 60000000.00, 60000000.00, 'none', 0, NULL, '{\"new_items\":[],\"edited_items\":[{\"item_id\":2791,\"start_date\":\"2026-02-27\",\"due_date\":\"2026-03-02\",\"_original\":{\"title\":\"Doners\",\"cost\":21000000,\"percentage\":35,\"start_date\":null,\"due_date\":\"2026-03-07 23:59:59\"}},{\"item_id\":2792,\"start_date\":\"2026-03-03\",\"due_date\":\"2026-03-09\",\"_original\":{\"title\":\"extension\",\"cost\":19000000,\"percentage\":31.67,\"start_date\":null,\"due_date\":\"2026-03-07 23:59:59\"}}],\"deleted_item_ids\":[],\"_deleted_items\":[],\"_snapshot_meta\":{\"current_budget\":60000000,\"proposed_budget\":60000000,\"budget_change\":\"none\",\"allocation_mode\":\"percentage\",\"snapshot_at\":\"2026-02-27T07:59:59+00:00\"}}', 'percentage', 'withdrawn', NULL, NULL, NULL, '2026-02-26 23:59:59', '2026-02-27 00:08:09'),
-(4, 1056, 380, 379, '2026-03-07', '2026-03-07', 'just because you have to do this', 60000000.00, 60000000.00, 'none', 0, NULL, '{\"new_items\":[],\"edited_items\":[{\"item_id\":2791,\"start_date\":\"2026-02-27\",\"due_date\":\"2026-03-02\",\"_original\":{\"title\":\"Doners\",\"cost\":21000000,\"percentage\":35,\"start_date\":null,\"due_date\":\"2026-03-07 23:59:59\"}},{\"item_id\":2792,\"start_date\":\"2026-03-03\",\"_original\":{\"title\":\"extension\",\"cost\":19000000,\"percentage\":31.67,\"start_date\":null,\"due_date\":\"2026-03-07 23:59:59\"}}],\"deleted_item_ids\":[],\"_deleted_items\":[],\"_snapshot_meta\":{\"current_budget\":60000000,\"proposed_budget\":60000000,\"budget_change\":\"none\",\"allocation_mode\":\"percentage\",\"snapshot_at\":\"2026-02-27T09:12:10+00:00\"}}', 'percentage', 'withdrawn', NULL, NULL, NULL, '2026-02-27 01:12:10', '2026-02-27 01:31:37'),
-(5, 1056, 380, 379, '2026-03-07', NULL, 'bikginbgiknvyikvuibj', 60000000.00, 60000000.00, 'none', 0, NULL, '{\"new_items\":[],\"edited_items\":[{\"item_id\":2791,\"start_date\":\"2026-02-27\",\"due_date\":\"2026-03-02\",\"_original\":{\"title\":\"Doners\",\"cost\":21000000,\"percentage\":35,\"start_date\":null,\"due_date\":\"2026-03-07 23:59:59\"}},{\"item_id\":2792,\"start_date\":\"2026-03-03\",\"_original\":{\"title\":\"extension\",\"cost\":19000000,\"percentage\":31.67,\"start_date\":null,\"due_date\":\"2026-03-07 23:59:59\"}}],\"deleted_item_ids\":[],\"_deleted_items\":[],\"_snapshot_meta\":{\"current_budget\":60000000,\"proposed_budget\":60000000,\"budget_change\":\"none\",\"allocation_mode\":\"percentage\",\"snapshot_at\":\"2026-02-27T09:51:32+00:00\"}}', 'percentage', 'approved', NULL, NULL, '2026-02-27 01:52:29', '2026-02-27 01:51:32', '2026-02-27 01:52:29'),
-(6, 1056, 380, 379, '2026-03-07', NULL, 'jslakchspakbdsllansn', 60000000.00, 60000000.00, 'none', 0, NULL, '{\"new_items\":[],\"edited_items\":[{\"item_id\":2791,\"start_date\":\"2026-02-25\",\"due_date\":\"2026-03-01\",\"_original\":{\"title\":\"Doners\",\"cost\":21000000,\"percentage\":35,\"start_date\":\"2026-02-27 00:00:00\",\"due_date\":\"2026-03-02\"}}],\"deleted_item_ids\":[],\"_deleted_items\":[],\"_snapshot_meta\":{\"current_budget\":60000000,\"proposed_budget\":60000000,\"budget_change\":\"none\",\"allocation_mode\":\"percentage\",\"snapshot_at\":\"2026-02-27T10:36:05+00:00\"}}', 'percentage', 'pending', NULL, NULL, NULL, '2026-02-27 02:36:05', '2026-02-27 02:36:05');
+(3, 1056, 380, 379, '2026-03-07', NULL, 'hlchclhclhclhlchlchclhcl', 60000000.00, 60000000.00, 'none', 0, NULL, '{\"new_items\":[],\"edited_items\":[{\"item_id\":2790,\"start_date\":\"2026-02-23\",\"_original\":{\"title\":\"Foundations\",\"cost\":20000000,\"percentage\":33.33,\"start_date\":null,\"due_date\":\"2026-02-26\"}},{\"item_id\":2791,\"start_date\":\"2026-02-27\",\"due_date\":\"2026-03-02\",\"_original\":{\"title\":\"Doners\",\"cost\":21000000,\"percentage\":35,\"start_date\":null,\"due_date\":\"2026-03-07 23:59:59\"}},{\"item_id\":2792,\"start_date\":\"2026-03-03\",\"_original\":{\"title\":\"extension\",\"cost\":19000000,\"percentage\":31.67,\"start_date\":null,\"due_date\":\"2026-03-07 23:59:59\"}}],\"deleted_item_ids\":[],\"_deleted_items\":[],\"_snapshot_meta\":{\"current_budget\":60000000,\"proposed_budget\":60000000,\"budget_change\":\"none\",\"allocation_mode\":\"percentage\",\"snapshot_at\":\"2026-02-27T11:59:51+00:00\"}}', 'percentage', 'withdrawn', NULL, NULL, NULL, '2026-02-27 03:59:51', '2026-02-27 04:02:45'),
+(4, 1056, 380, 379, '2026-03-07', NULL, 'kgzjgsktdkyddgkgkxhfl', 60000000.00, 60000000.00, 'none', 0, NULL, '{\"new_items\":[],\"edited_items\":[{\"item_id\":2790,\"start_date\":\"2026-02-23\",\"due_date\":\"2026-02-25\",\"_original\":{\"title\":\"Foundations\",\"cost\":20000000,\"percentage\":33.33,\"start_date\":null,\"due_date\":\"2026-02-26\"}},{\"item_id\":2791,\"start_date\":\"2026-02-26\",\"due_date\":\"2026-03-02\",\"_original\":{\"title\":\"Doners\",\"cost\":21000000,\"percentage\":35,\"start_date\":null,\"due_date\":\"2026-03-07 23:59:59\"}},{\"item_id\":2792,\"start_date\":\"2026-03-03\",\"_original\":{\"title\":\"extension\",\"cost\":19000000,\"percentage\":31.67,\"start_date\":null,\"due_date\":\"2026-03-07 23:59:59\"}}],\"deleted_item_ids\":[],\"_deleted_items\":[],\"_snapshot_meta\":{\"current_budget\":60000000,\"proposed_budget\":60000000,\"budget_change\":\"none\",\"allocation_mode\":\"percentage\",\"snapshot_at\":\"2026-02-27T12:07:06+00:00\"}}', 'percentage', 'approved', NULL, NULL, '2026-02-27 04:12:04', '2026-02-27 04:07:06', '2026-02-27 04:12:04'),
+(5, 1057, 372, 392, '2026-03-31', '2026-04-30', 'Kasi wala budget! reason ko yon bakit ba', 9000000.00, 9000000.00, 'none', 0, NULL, '{\"new_items\":[],\"edited_items\":[],\"deleted_item_ids\":[],\"_deleted_items\":[],\"_snapshot_meta\":{\"current_budget\":9000000,\"proposed_budget\":9000000,\"budget_change\":\"none\",\"allocation_mode\":\"percentage\",\"snapshot_at\":\"2026-03-04T05:34:19+00:00\"}}', 'percentage', 'approved', NULL, NULL, '2026-03-03 21:34:56', '2026-03-03 21:34:19', '2026-03-03 21:34:56');
 
 -- --------------------------------------------------------
 
@@ -2831,6 +3038,7 @@ CREATE TABLE `property_owners` (
   `middle_name` varchar(100) DEFAULT NULL,
   `first_name` varchar(100) NOT NULL,
   `phone_number` varchar(20) NOT NULL,
+  `bio` text DEFAULT NULL,
   `address` varchar(500) NOT NULL,
   `valid_id_id` int(11) DEFAULT NULL,
   `valid_id_photo` varchar(255) DEFAULT NULL,
@@ -2854,150 +3062,146 @@ CREATE TABLE `property_owners` (
 -- Dumping data for table `property_owners`
 --
 
-INSERT INTO `property_owners` (`owner_id`, `user_id`, `last_name`, `middle_name`, `first_name`, `phone_number`, `address`, `valid_id_id`, `valid_id_photo`, `valid_id_back_photo`, `police_clearance`, `date_of_birth`, `age`, `occupation_id`, `occupation_other`, `verification_status`, `is_active`, `suspension_until`, `rejection_reason`, `deletion_reason`, `suspension_reason`, `verification_date`, `created_at`) VALUES
-(1687, 101, 'Tampus', NULL, 'Jeffslazir Augheight', '09990000101', 'Tetuan, Poblacion, Mankayan, Benguet 7000', 3, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 3, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-12-18 20:07:36', '2025-04-06 07:49:09'),
-(1688, 102, 'OwnerLast102', NULL, 'OwnerFirst102', '09990000102', 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 21, NULL, 'pending', 0, NULL, NULL, NULL, NULL, '2025-12-16 04:29:45', '2025-12-06 07:49:09'),
-(1689, 103, 'OwnerLast103', NULL, 'OwnerFirst103', '09990000103', 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 23, NULL, 'approved', 0, NULL, NULL, NULL, NULL, '2025-04-22 07:49:09', '2025-04-21 07:49:09'),
-(1690, 104, 'OwnerLast104', NULL, 'OwnerFirst104', '09990000104', 'Tetuan, Zamboanga City', 5, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 20, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-03-06 07:49:09', '2025-03-05 07:49:09'),
-(1691, 105, 'OwnerLast105', NULL, 'OwnerFirst105', '09990000105', 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 21, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-05-11 07:49:09', '2025-05-10 07:49:09'),
-(1692, 106, 'OwnerLast106', NULL, 'OwnerFirst106', '09990000106', 'Tetuan, Zamboanga City', 5, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 3, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-05-08 07:49:09', '2025-05-07 07:49:09'),
-(1693, 107, 'OwnerLast107', NULL, 'OwnerFirst107', '09990000107', 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 4, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-05-24 07:49:09', '2025-05-23 07:49:09'),
-(1694, 108, 'OwnerLast108', NULL, 'OwnerFirst108', '09990000108', 'Tetuan, Zamboanga City', 5, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 21, NULL, 'pending', 0, NULL, '', NULL, NULL, '2025-12-15 08:06:48', '2025-03-29 07:49:09'),
-(1695, 109, 'OwnerLast109', NULL, 'OwnerFirst109', '09990000109', 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 18, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-06-10 07:49:09', '2025-06-09 07:49:09'),
-(1696, 110, 'OwnerLast110', NULL, 'OwnerFirst110', '09990000110', 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 3, NULL, 'rejected', 1, NULL, 'Invalid ID.', NULL, NULL, '2025-07-10 07:49:09', '2025-07-09 07:49:09'),
-(1697, 111, 'OwnerLast111', NULL, 'OwnerFirst111', '09990000111', 'Tetuan, Tadiangan, Tuba, Benguet 2342', 2, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 15, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2024-12-18 07:49:09', '2024-12-17 07:49:09'),
-(1698, 112, 'OwnerLast112', NULL, 'OwnerFirst112', '09990000112', 'Tetuan, Zamboanga City', 5, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 4, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-08-20 07:49:09', '2025-08-19 07:49:09'),
-(1699, 113, 'OwnerLast113', NULL, 'OwnerFirst113', '09990000113', 'Tetuan, Zamboanga City', 2, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 6, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-07-29 07:49:09', '2025-07-28 07:49:09'),
-(1700, 114, 'OwnerLast114', NULL, 'OwnerFirst114', '09990000114', 'Tetuan, Zamboanga City', 5, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 23, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-07-27 07:49:09', '2025-07-26 07:49:09'),
-(1701, 115, 'OwnerLast115', NULL, 'OwnerFirst115', '09990000115', 'Tetuan, Zamboanga City', 6, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 13, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-12-06 07:49:09', '2025-12-05 07:49:09'),
-(1702, 116, 'OwnerLast116', NULL, 'OwnerFirst116', '09990000116', 'Tetuan, Zamboanga City', 5, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 18, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-04-09 07:49:09', '2025-04-08 07:49:09'),
-(1703, 117, 'OwnerLast117', NULL, 'OwnerFirst117', '09990000117', 'Tetuan, Zamboanga City', 5, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 13, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '0000-00-00 00:00:00', '2025-10-17 07:49:09'),
-(1704, 118, 'OwnerLast118', NULL, 'OwnerFirst118', '09990000118', 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 23, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-04-15 07:49:09', '2025-04-14 07:49:09'),
-(1705, 119, 'OwnerLast119', NULL, 'OwnerFirst119', '09990000119', 'Tetuan, Zamboanga City', 6, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 1, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-06-23 07:49:09', '2025-06-22 07:49:09'),
-(1706, 120, 'OwnerLast120', NULL, 'OwnerFirst120', '09990000120', 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 20, NULL, 'rejected', 0, NULL, 'Invalid ID.', NULL, NULL, '2025-08-23 07:49:09', '2025-08-22 07:49:09'),
-(1707, 121, 'OwnerLast121', NULL, 'OwnerFirst121', '09990000121', 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 1, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2024-12-31 07:49:09', '2024-12-30 07:49:09'),
-(1708, 122, 'OwnerLast122', NULL, 'OwnerFirst122', '09990000122', 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 1, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-08-14 07:49:09', '2025-08-13 07:49:09'),
-(1709, 123, 'OwnerLast123', NULL, 'OwnerFirst123', '09990000123', 'Tetuan, Zamboanga City', 6, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 25, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-12-08 07:49:09', '2025-12-07 07:49:09'),
-(1710, 124, 'OwnerLast124', NULL, 'OwnerFirst124', '09990000124', 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 13, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-11-28 07:49:09', '2025-11-27 07:49:09'),
-(1711, 125, 'OwnerLast125', NULL, 'OwnerFirst125', '09990000125', 'Tetuan, Zamboanga City', 6, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 14, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-11-08 07:49:09', '2025-11-07 07:49:09'),
-(1712, 126, 'OwnerLast126', NULL, 'OwnerFirst126', '09990000126', 'Tetuan, Zamboanga City', 6, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 13, NULL, 'pending', 0, NULL, NULL, NULL, NULL, '0000-00-00 00:00:00', '2025-04-22 07:49:09'),
-(1713, 127, 'OwnerLast127', NULL, 'OwnerFirst127', '09990000127', 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 19, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-03-05 07:49:09', '2025-03-04 07:49:09'),
-(1714, 128, 'OwnerLast128', NULL, 'OwnerFirst128', '09990000128', 'Tetuan, Zamboanga City', 6, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 12, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-05-31 07:49:09', '2025-05-30 07:49:09'),
-(1715, 129, 'OwnerLast129', NULL, 'OwnerFirst129', '09990000129', 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 25, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-03-27 07:49:09', '2025-03-26 07:49:09'),
-(1716, 130, 'OwnerLast130', NULL, 'OwnerFirst130', '09990000130', 'Tetuan, Zamboanga City', 5, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 6, NULL, 'rejected', 1, NULL, 'Invalid ID.', NULL, NULL, '2025-06-13 07:49:09', '2025-06-12 07:49:09'),
-(1717, 131, 'OwnerLast131', NULL, 'OwnerFirst131', '09990000131', 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 23, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-04-30 07:49:09', '2025-04-29 07:49:09'),
-(1718, 132, 'OwnerLast132', NULL, 'OwnerFirst132', '09990000132', 'Tetuan, Zamboanga City', 2, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 1, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-12-04 07:49:09', '2025-12-03 07:49:09'),
-(1719, 133, 'OwnerLast133', NULL, 'OwnerFirst133', '09990000133', 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 10, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-09-23 07:49:09', '2025-09-22 07:49:09'),
-(1720, 134, 'OwnerLast134', NULL, 'OwnerFirst134', '09990000134', 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 4, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-06-21 07:49:09', '2025-06-20 07:49:09'),
-(1721, 135, 'OwnerLast135', NULL, 'OwnerFirst135', '09990000135', 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 20, NULL, 'pending', 0, NULL, NULL, NULL, NULL, '0000-00-00 00:00:00', '2025-01-10 07:49:09'),
-(1722, 136, 'OwnerLast136', NULL, 'OwnerFirst136', '09990000136', 'Tetuan, Zamboanga City', 6, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 25, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-09-30 07:49:09', '2025-09-29 07:49:09'),
-(1723, 137, 'OwnerLast137', NULL, 'OwnerFirst137', '09990000137', 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 1, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-04-25 07:49:09', '2025-04-24 07:49:09'),
-(1724, 138, 'OwnerLast138', NULL, 'OwnerFirst138', '09990000138', 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 13, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-05-08 07:49:09', '2025-05-07 07:49:09'),
-(1725, 139, 'OwnerLast139', NULL, 'OwnerFirst139', '09990000139', 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 20, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-02-11 07:49:09', '2025-02-10 07:49:09'),
-(1726, 140, 'OwnerLast140', NULL, 'OwnerFirst140', '09990000140', 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 12, NULL, 'rejected', 0, NULL, 'Invalid ID.', NULL, NULL, '2025-03-07 07:49:09', '2025-03-06 07:49:09'),
-(1727, 141, 'OwnerLast141', NULL, 'OwnerFirst141', '09990000141', 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 11, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-08-07 07:49:09', '2025-08-06 07:49:09'),
-(1728, 142, 'OwnerLast142', NULL, 'OwnerFirst142', '09990000142', 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 17, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-05-18 07:49:09', '2025-05-17 07:49:09'),
-(1729, 143, 'OwnerLast143', NULL, 'OwnerFirst143', '09990000143', 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 16, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-10-18 07:49:09', '2025-10-17 07:49:09'),
-(1730, 144, 'OwnerLast144', NULL, 'OwnerFirst144', '09990000144', 'Tetuan, Zamboanga City', 6, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 4, NULL, 'pending', 0, NULL, NULL, NULL, NULL, '0000-00-00 00:00:00', '2025-02-03 07:49:09'),
-(1731, 145, 'OwnerLast145', NULL, 'OwnerFirst145', '09990000145', 'Tetuan, Zamboanga City', 5, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 3, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-03-25 07:49:09', '2025-03-24 07:49:09'),
-(1732, 146, 'OwnerLast146', NULL, 'OwnerFirst146', '09990000146', 'Tetuan, Zamboanga City', 2, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 19, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-10-16 07:49:09', '2025-10-15 07:49:09'),
-(1733, 147, 'OwnerLast147', NULL, 'OwnerFirst147', '09990000147', 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 1, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-10-04 07:49:09', '2025-10-03 07:49:09'),
-(1734, 148, 'OwnerLast148', NULL, 'OwnerFirst148', '09990000148', 'Tetuan, Zamboanga City', 5, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 23, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-04-12 07:49:09', '2025-04-11 07:49:09'),
-(1735, 149, 'OwnerLast149', NULL, 'OwnerFirst149', '09990000149', 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 4, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-06-14 07:49:09', '2025-06-13 07:49:09'),
-(1736, 150, 'OwnerLast150', NULL, 'OwnerFirst150', '09990000150', 'Tetuan, Zamboanga City', 2, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 19, NULL, 'rejected', 1, NULL, 'Invalid ID.', NULL, NULL, '2025-09-27 07:49:09', '2025-09-26 07:49:09'),
-(1737, 151, 'OwnerLast151', NULL, 'OwnerFirst151', '09990000151', 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 20, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-10-26 07:49:09', '2025-10-25 07:49:09'),
-(1738, 152, 'OwnerLast152', NULL, 'OwnerFirst152', '09990000152', 'Tetuan, Zamboanga City', 5, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 8, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-03-13 07:49:09', '2025-03-12 07:49:09'),
-(1739, 153, 'OwnerLast153', NULL, 'OwnerFirst153', '09990000153', 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 11, NULL, 'pending', 0, NULL, NULL, NULL, NULL, '0000-00-00 00:00:00', '2025-12-14 07:49:09'),
-(1740, 154, 'OwnerLast154', NULL, 'OwnerFirst154', '09990000154', 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 22, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-12-10 07:49:09', '2025-12-09 07:49:09'),
-(1741, 155, 'OwnerLast155', NULL, 'OwnerFirst155', '09990000155', 'Tetuan, Zamboanga City', 5, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 15, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-06-12 07:49:09', '2025-06-11 07:49:09'),
-(1742, 156, 'OwnerLast156', NULL, 'OwnerFirst156', '09990000156', 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 14, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-09-03 07:49:09', '2025-09-02 07:49:09'),
-(1743, 157, 'OwnerLast157', NULL, 'OwnerFirst157', '09990000157', 'Tetuan, Zamboanga City', 2, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 4, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-12-06 07:49:09', '2025-12-05 07:49:09'),
-(1744, 158, 'OwnerLast158', NULL, 'OwnerFirst158', '09990000158', 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 6, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-07-12 07:49:09', '2025-07-11 07:49:09'),
-(1745, 159, 'OwnerLast159', NULL, 'OwnerFirst159', '09990000159', 'Tetuan, Zamboanga City', 6, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 13, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-11-24 07:49:09', '2025-11-23 07:49:09'),
-(1746, 160, 'OwnerLast160', NULL, 'OwnerFirst160', '09990000160', 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 8, NULL, 'rejected', 0, NULL, 'Invalid ID.', NULL, NULL, '2025-10-12 07:49:09', '2025-10-11 07:49:09'),
-(1747, 161, 'OwnerLast161', NULL, 'OwnerFirst161', '09990000161', 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 26, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-06-29 07:49:09', '2025-06-28 07:49:09'),
-(1748, 162, 'OwnerLast162', NULL, 'OwnerFirst162', '09990000162', 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 12, NULL, 'pending', 0, NULL, NULL, NULL, NULL, '0000-00-00 00:00:00', '2025-09-06 07:49:09'),
-(1749, 163, 'OwnerLast163', NULL, 'OwnerFirst163', '09990000163', 'Tetuan, Zamboanga City', 5, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 2, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-05-13 07:49:09', '2025-05-12 07:49:09'),
-(1750, 164, 'OwnerLast164', NULL, 'OwnerFirst164', '09990000164', 'Tetuan, Zamboanga City', 2, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 11, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-05-22 07:49:09', '2025-05-21 07:49:09'),
-(1751, 165, 'OwnerLast165', NULL, 'OwnerFirst165', '09990000165', 'Tetuan, Zamboanga City', 5, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 15, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-10-11 07:49:09', '2025-10-10 07:49:09'),
-(1752, 166, 'OwnerLast166', NULL, 'OwnerFirst166', '09990000166', 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 4, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-01-09 07:49:09', '2025-01-08 07:49:09'),
-(1753, 167, 'OwnerLast167', NULL, 'OwnerFirst167', '09990000167', 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 16, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-04-01 07:49:09', '2025-03-31 07:49:09'),
-(1754, 168, 'OwnerLast168', NULL, 'OwnerFirst168', '09990000168', 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 8, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-11-13 07:49:09', '2025-11-12 07:49:09'),
-(1755, 169, 'OwnerLast169', NULL, 'OwnerFirst169', '09990000169', 'Tetuan, Zamboanga City', 6, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 12, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-05-19 07:49:09', '2025-05-18 07:49:09'),
-(1756, 170, 'OwnerLast170', NULL, 'OwnerFirst170', '09990000170', 'Tetuan, Zamboanga City', 2, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 23, NULL, 'rejected', 1, NULL, 'Invalid ID.', NULL, NULL, '2025-07-22 07:49:09', '2025-07-21 07:49:09'),
-(1757, 171, 'OwnerLast171', NULL, 'OwnerFirst171', '09990000171', 'Tetuan, Zamboanga City', 6, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 5, NULL, 'pending', 0, NULL, NULL, NULL, NULL, '0000-00-00 00:00:00', '2025-05-17 07:49:09'),
-(1758, 172, 'OwnerLast172', NULL, 'OwnerFirst172', '09990000172', 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 25, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-08-02 07:49:09', '2025-08-01 07:49:09'),
-(1759, 173, 'OwnerLast173', NULL, 'OwnerFirst173', '09990000173', 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 13, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-09-04 07:49:09', '2025-09-03 07:49:09'),
-(1760, 174, 'OwnerLast174', NULL, 'OwnerFirst174', '09990000174', 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 22, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-04-13 07:49:09', '2025-04-12 07:49:09'),
-(1761, 175, 'OwnerLast175', NULL, 'OwnerFirst175', '09990000175', 'Tetuan, Zamboanga City', 6, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 23, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-02-13 07:49:09', '2025-02-12 07:49:09'),
-(1762, 176, 'OwnerLast176', NULL, 'OwnerFirst176', '09990000176', 'Tetuan, Zamboanga City', 5, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 5, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-10-12 07:49:09', '2025-10-11 07:49:09'),
-(1763, 177, 'OwnerLast177', NULL, 'OwnerFirst177', '09990000177', 'Tetuan, Zamboanga City', 6, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 7, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-09-08 07:49:09', '2025-09-07 07:49:09'),
-(1764, 178, 'OwnerLast178', NULL, 'OwnerFirst178', '09990000178', 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 19, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-02-04 07:49:09', '2025-02-03 07:49:09'),
-(1765, 179, 'OwnerLast179', NULL, 'OwnerFirst179', '09990000179', 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 20, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-06-27 07:49:09', '2025-06-26 07:49:09'),
-(1766, 180, 'OwnerLast180', NULL, 'OwnerFirst180', '09990000180', 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 22, NULL, 'rejected', 0, NULL, 'Invalid ID.', NULL, NULL, '0000-00-00 00:00:00', '2025-11-28 07:49:09'),
-(1767, 181, 'OwnerLast181', NULL, 'OwnerFirst181', '09990000181', 'Tetuan, Zamboanga City', 2, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 2, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-01-27 07:49:09', '2025-01-26 07:49:09'),
-(1768, 182, 'OwnerLast182', NULL, 'OwnerFirst182', '09990000182', 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 6, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-05-10 07:49:09', '2025-05-09 07:49:09'),
-(1769, 183, 'OwnerLast183', NULL, 'OwnerFirst183', '09990000183', 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 2, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-12-08 07:49:09', '2025-12-07 07:49:09'),
-(1770, 184, 'OwnerLast184', NULL, 'OwnerFirst184', '09990000184', 'Tetuan, Zamboanga City', 2, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 8, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-03-11 07:49:09', '2025-03-10 07:49:09'),
-(1771, 185, 'OwnerLast185', NULL, 'OwnerFirst185', '09990000185', 'Tetuan, Zamboanga City', 6, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 5, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-08-21 07:49:09', '2025-08-20 07:49:09'),
-(1772, 186, 'OwnerLast186', NULL, 'OwnerFirst186', '09990000186', 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 1, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2024-12-19 07:49:09', '2024-12-18 07:49:09'),
-(1773, 187, 'OwnerLast187', NULL, 'OwnerFirst187', '09990000187', 'Tetuan, Zamboanga City', 2, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 5, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-03-06 07:49:09', '2025-03-05 07:49:09'),
-(1774, 188, 'OwnerLast188', NULL, 'OwnerFirst188', '09990000188', 'Tetuan, Zamboanga City', 2, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 11, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-05-23 07:49:09', '2025-05-22 07:49:09'),
-(1775, 189, 'OwnerLast189', NULL, 'OwnerFirst189', '09990000189', 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 21, NULL, 'pending', 0, NULL, NULL, NULL, NULL, '0000-00-00 00:00:00', '2025-03-19 07:49:09'),
-(1776, 190, 'OwnerLast190', NULL, 'OwnerFirst190', '09990000190', 'Tetuan, Zamboanga City', 5, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 19, NULL, 'rejected', 1, NULL, 'Invalid ID.', NULL, NULL, '2025-08-27 07:49:09', '2025-08-26 07:49:09'),
-(1777, 191, 'OwnerLast191', NULL, 'OwnerFirst191', '09990000191', 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 23, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-05-19 07:49:09', '2025-05-18 07:49:09'),
-(1778, 192, 'OwnerLast192', NULL, 'OwnerFirst192', '09990000192', 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 15, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-11-06 07:49:09', '2025-11-05 07:49:09'),
-(1779, 193, 'OwnerLast193', NULL, 'OwnerFirst193', '09990000193', 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 5, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-01-24 07:49:09', '2025-01-23 07:49:09'),
-(1780, 194, 'OwnerLast194', NULL, 'OwnerFirst194', '09990000194', 'Tetuan, Zamboanga City', 2, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 3, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-06-17 07:49:09', '2025-06-16 07:49:09'),
-(1781, 195, 'OwnerLast195', NULL, 'OwnerFirst195', '09990000195', 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 2, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-05-29 07:49:09', '2025-05-28 07:49:09'),
-(1782, 196, 'OwnerLast196', NULL, 'OwnerFirst196', '09990000196', 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 3, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-09-21 07:49:09', '2025-09-20 07:49:09'),
-(1783, 197, 'OwnerLast197', NULL, 'OwnerFirst197', '09990000197', 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 26, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-07-20 07:49:09', '2025-07-19 07:49:09'),
-(1784, 198, 'OwnerLast198', NULL, 'OwnerFirst198', '09990000198', 'Tetuan, Zamboanga City', 5, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 7, NULL, 'pending', 0, NULL, NULL, NULL, NULL, '0000-00-00 00:00:00', '2025-12-03 07:49:09'),
-(1785, 199, 'OwnerLast199', NULL, 'OwnerFirst199', '09990000199', 'Tetuan, Zamboanga City', 5, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 12, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-01-21 07:49:09', '2025-01-20 07:49:09'),
-(1786, 200, 'OwnerLast200', NULL, 'OwnerFirst200', '09990000200', 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 18, NULL, 'rejected', 0, NULL, 'Invalid ID.', NULL, NULL, '2025-08-05 07:49:09', '2025-08-04 07:49:09'),
-(1787, 201, 'OwnerLast201', NULL, 'OwnerFirst201', '09990000201', 'Tetuan, Zamboanga City', 5, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 20, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-08-15 07:49:09', '2025-08-14 07:49:09'),
-(1788, 202, 'OwnerLast202', NULL, 'OwnerFirst202', '09990000202', 'Tetuan, Zamboanga City', 6, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 3, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-04-17 07:49:09', '2025-04-16 07:49:09'),
-(1789, 203, 'OwnerLast203', NULL, 'OwnerFirst203', '09990000203', 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 24, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-09-05 07:49:09', '2025-09-04 07:49:09'),
-(1790, 204, 'OwnerLast204', NULL, 'OwnerFirst204', '09990000204', 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 6, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-09-22 07:49:09', '2025-09-21 07:49:09'),
-(1791, 205, 'OwnerLast205', NULL, 'OwnerFirst205', '09990000205', 'Tetuan, Zamboanga City', 5, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 10, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-05-30 07:49:09', '2025-05-29 07:49:09'),
-(1792, 206, 'OwnerLast206', NULL, 'OwnerFirst206', '09990000206', 'Tetuan, Zamboanga City', 5, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 24, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-11-16 07:49:09', '2025-11-15 07:49:09'),
-(1793, 207, 'OwnerLast207', NULL, 'OwnerFirst207', '09990000207', 'Tetuan, Zamboanga City', 2, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 24, NULL, 'pending', 0, NULL, NULL, NULL, NULL, '0000-00-00 00:00:00', '2025-04-16 07:49:09'),
-(1794, 208, 'OwnerLast208', NULL, 'OwnerFirst208', '09990000208', 'Tetuan, Zamboanga City', 2, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 2, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-12-09 07:49:09', '2025-12-08 07:49:09'),
-(1795, 209, 'OwnerLast209', NULL, 'OwnerFirst209', '09990000209', 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 12, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-07-16 07:49:09', '2025-07-15 07:49:09'),
-(1796, 210, 'OwnerLast210', NULL, 'OwnerFirst210', '09990000210', 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 6, NULL, 'rejected', 1, NULL, 'Invalid ID.', NULL, NULL, '2025-06-19 07:49:09', '2025-06-18 07:49:09'),
-(1797, 211, 'OwnerLast211', NULL, 'OwnerFirst211', '09990000211', 'Tetuan, Zamboanga City', 6, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 15, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-10-13 07:49:09', '2025-10-12 07:49:09'),
-(1798, 212, 'OwnerLast212', NULL, 'OwnerFirst212', '09990000212', 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 15, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-02-17 07:49:09', '2025-02-16 07:49:09'),
-(1799, 213, 'OwnerLast213', NULL, 'OwnerFirst213', '09990000213', 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 26, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-05-18 07:49:09', '2025-05-17 07:49:09'),
-(1800, 214, 'OwnerLast214', NULL, 'OwnerFirst214', '09990000214', 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 4, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-06-19 07:49:09', '2025-06-18 07:49:09'),
-(1801, 215, 'OwnerLast215', NULL, 'OwnerFirst215', '09990000215', 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 17, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-08-13 07:49:09', '2025-08-12 07:49:09'),
-(1802, 216, 'OwnerLast216', NULL, 'OwnerFirst216', '09990000216', 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 25, NULL, 'pending', 0, NULL, NULL, NULL, NULL, '0000-00-00 00:00:00', '2025-04-11 07:49:09'),
-(1803, 217, 'OwnerLast217', NULL, 'OwnerFirst217', '09990000217', 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 3, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-01-15 07:49:09', '2025-01-14 07:49:09'),
-(1804, 218, 'OwnerLast218', NULL, 'OwnerFirst218', '09990000218', 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 12, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-06-06 07:49:09', '2025-06-05 07:49:09'),
-(1805, 219, 'OwnerLast219', NULL, 'OwnerFirst219', '09990000219', 'Tetuan, Zamboanga City', 2, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 3, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-03-10 07:49:09', '2025-03-09 07:49:09'),
-(1806, 220, 'OwnerLast220', NULL, 'OwnerFirst220', '09990000220', 'Tetuan, Zamboanga City', 2, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 17, NULL, 'rejected', 0, NULL, 'Invalid ID.', NULL, NULL, '2025-11-09 07:49:09', '2025-11-08 07:49:09'),
-(1807, 351, 'Bongo', 'Duran', 'Chrysjann Theo', '09926314071', 'Sapphire Street, Baliwasan, City of Zamboanga, Zamboanga Del Sur 7000', 2, 'validID/front/tQ9mcgV1EIbDSijOfEFkbS00YfuRxHBIkPtORkDn.jpg', 'validID/back/TUqXZpXuuzBHWXneHWA9cjG7zCxzHFoAbqC9iFw2.jpg', 'policeClearance/laoVX4DumPxRgQ9hKsyFcjXzeq90pYpV5eGR8MW2.png', '2004-10-01', 21, NULL, 'Comshop', 'approved', 1, NULL, NULL, NULL, NULL, '2025-12-16 03:04:28', '2025-12-15 18:13:01'),
-(1808, 352, 'Padios', 'Ahat', 'Olive Faith', '09926354567', 'Unit No.3, Baliwasan, City of Zamboanga, Zamboanga Del Sur 7000', 4, 'validID/front/MvGX5e8pYjtVsFkylyaxHaueJ3HVwnIWvXRWkVm5.png', 'validID/back/5NkmiiyJDLqow0XzLRGQLYqFefcYAsQyaBs8gGJh.png', 'policeClearance/WW7HTg8kE6w1DvCN2adronrHrCmDHzKIYr470veX.png', '2000-02-09', 25, 4, NULL, 'deleted', 0, NULL, NULL, NULL, NULL, '2025-12-15 20:32:28', '2025-12-15 20:32:28'),
-(1809, 353, 'Kulong', 'Gellecania', 'Rone Paullan', '09926354567', 'Bungiau, Baliwasan, City of Zamboanga, Zamboanga Del Sur 7000', 2, 'validID/front/WQFw3sDBljTwWxtdrWcwFsRISqJnM5sjGBKbCtAU.jpg', 'validID/back/mP8bq8qSm6avB2SubBvNv0jdW8DhgVECUFFlUv8l.jpg', 'policeClearance/zKsaydvtQFqb40O5FvYeNGbqdqkyXHrOOWAa4BE4.png', '2025-12-17', 0, NULL, 'Private Nurse', 'approved', 1, NULL, NULL, NULL, NULL, '2025-12-16 08:15:37', '2025-12-16 00:10:43'),
-(1810, 365, 'Tampus', NULL, 'Jeffslazir', '09990000104', 'Tetuan, Mampayag, Manolo Fortich, Bukidnon 7000', 4, 'validID/front/0twyJfLOF07DtNKKSIOrl5pujO6eCHt693gc9Td8.jpg', 'validID/back/XRNvfAUrKK07HDk5OXt7KVjM6eFkzN00ut98cIf0.jpg', 'policeClearance/hiSNt5ZlA2klKupTAr6gbHPoV0W7IJLUpfsiAuXm.jpg', '1998-02-03', 27, 20, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-12-17 08:20:13', '2025-12-17 08:20:13'),
-(1814, 371, 'Test', NULL, 'Test', '09360211158', 'anywhere, 150706003, 150706000, 150700000, 7000', NULL, 'validID/Gr8y8x2b1bgXXMbvhGQVKamRm5YPbfmOYlX4JbBV.jpg', 'validID/QW2dEJivxK7kFXJtaPqbuurdaGqDEtPqnCdJxtZy.jpg', 'policeClearance/vkrbCkOsrrDCp2pbvi7U4Amd1PhSp91a0KCDI44h.jpg', '2007-12-18', 17, 9, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-12-17 20:17:25', '2025-12-17 12:16:07'),
-(1815, 28, '', NULL, '', '', '', NULL, NULL, '', '', '0000-00-00', 0, NULL, NULL, 'approved', 0, NULL, NULL, NULL, NULL, '2025-12-18 14:45:33', '2025-12-18 14:45:33'),
-(1816, 373, 'Tampus', NULL, 'Jeff', '09756420289', 'Anywhere, 148105004, 148105000, 148100000, 7000', NULL, 'validID/BI2w5cvODwtD48iS09cX8B6uujdADyZzk1ZDZEx9.jpg', 'validID/3g3bIGeuaNaJbDXZfil5uznjZcfZIv4Lcv3yccM0.jpg', 'policeClearance/exF5TQRqOsVdMpiY3soByLTBlRy2Ap9lSyiQKyDI.jpg', '2000-12-19', 24, 21, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2026-01-29 14:51:28', '2025-12-18 12:03:19'),
-(1818, 375, 'Jimenez', NULL, 'Hart', '09360211156', 'Anywhere, 148106025, 148106000, 148100000, 7000', 4, 'validID/YlXxOQqkmL397keDUR2rLzJQVm4r5iheiCGWwOn2.jpg', 'validID/RlHDVSKWPEKxWjRxYBt43GWzyQySLRDJnnAcF71c.jpg', 'policeClearance/pFDmPT5EMupLCPaFUhRuudvwteTp0xYTMeg0ZCej.jpg', '2003-12-19', 22, 10, NULL, 'pending', 0, NULL, NULL, NULL, NULL, '2025-12-19 00:39:57', '2025-12-18 16:39:57'),
-(1819, 379, 'test3', 'test3', 'test3', '09360211158', '456 Oakd, 160202033, 160202000, 160200000, 7000', 4, 'validID/rYbiFg2gfxb6RCVJ3MW2eyVHBRGkrqnqMvquoQc3.jpg', 'validID/7gWklG7yvruN2dB4kBIzkO2ISUV1QulaJiV2rJ4r.jpg', 'policeClearance/XpC3e0OTf6PGURy3HH1TY2vTcawjz8ezGaIL8Aqr.jpg', '1998-02-21', 28, 22, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2026-02-21 09:06:36', '2026-02-21 00:54:11');
-
--- --------------------------------------------------------
-
---
--- Table structure for table `qr_codes`
---
-
-CREATE TABLE `qr_codes` (
-  `qr_id` int(11) NOT NULL,
-  `qr_path` varchar(255) NOT NULL,
-  `qr_name` varchar(255) NOT NULL,
-  `uploaded_at` timestamp NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+INSERT INTO `property_owners` (`owner_id`, `user_id`, `last_name`, `middle_name`, `first_name`, `phone_number`, `bio`, `address`, `valid_id_id`, `valid_id_photo`, `valid_id_back_photo`, `police_clearance`, `date_of_birth`, `age`, `occupation_id`, `occupation_other`, `verification_status`, `is_active`, `suspension_until`, `rejection_reason`, `deletion_reason`, `suspension_reason`, `verification_date`, `created_at`) VALUES
+(1687, 101, 'Tampus', NULL, 'Jeffslazir Augheight', '09990000101', NULL, 'Tetuan, Poblacion, Mankayan, Benguet 7000', 3, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 3, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-12-18 20:07:36', '2025-04-06 07:49:09'),
+(1688, 102, 'OwnerLast102', NULL, 'OwnerFirst102', '09990000102', NULL, 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 21, NULL, 'pending', 0, NULL, NULL, NULL, NULL, '2025-12-16 04:29:45', '2025-12-06 07:49:09'),
+(1689, 103, 'OwnerLast103', NULL, 'OwnerFirst103', '09990000103', NULL, 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 23, NULL, 'approved', 0, NULL, NULL, NULL, NULL, '2025-04-22 07:49:09', '2025-04-21 07:49:09'),
+(1690, 104, 'OwnerLast104', NULL, 'OwnerFirst104', '09990000104', NULL, 'Tetuan, Zamboanga City', 5, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 20, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-03-06 07:49:09', '2025-03-05 07:49:09'),
+(1691, 105, 'OwnerLast105', NULL, 'OwnerFirst105', '09990000105', NULL, 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 21, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-05-11 07:49:09', '2025-05-10 07:49:09'),
+(1692, 106, 'OwnerLast106', NULL, 'OwnerFirst106', '09990000106', NULL, 'Tetuan, Zamboanga City', 5, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 3, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-05-08 07:49:09', '2025-05-07 07:49:09'),
+(1693, 107, 'OwnerLast107', NULL, 'OwnerFirst107', '09990000107', NULL, 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 4, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-05-24 07:49:09', '2025-05-23 07:49:09'),
+(1694, 108, 'OwnerLast108', NULL, 'OwnerFirst108', '09990000108', NULL, 'Tetuan, Zamboanga City', 5, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 21, NULL, 'pending', 0, NULL, '', NULL, NULL, '2025-12-15 08:06:48', '2025-03-29 07:49:09'),
+(1695, 109, 'OwnerLast109', NULL, 'OwnerFirst109', '09990000109', NULL, 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 18, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-06-10 07:49:09', '2025-06-09 07:49:09'),
+(1696, 110, 'OwnerLast110', NULL, 'OwnerFirst110', '09990000110', NULL, 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 3, NULL, 'rejected', 1, NULL, 'Invalid ID.', NULL, NULL, '2025-07-10 07:49:09', '2025-07-09 07:49:09'),
+(1697, 111, 'OwnerLast111', NULL, 'OwnerFirst111', '09990000111', NULL, 'Tetuan, Tadiangan, Tuba, Benguet 2342', 2, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 15, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2024-12-18 07:49:09', '2024-12-17 07:49:09'),
+(1698, 112, 'OwnerLast112', NULL, 'OwnerFirst112', '09990000112', NULL, 'Tetuan, Zamboanga City', 5, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 4, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-08-20 07:49:09', '2025-08-19 07:49:09'),
+(1699, 113, 'OwnerLast113', NULL, 'OwnerFirst113', '09990000113', NULL, 'Tetuan, Zamboanga City', 2, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 6, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-07-29 07:49:09', '2025-07-28 07:49:09'),
+(1700, 114, 'OwnerLast114', NULL, 'OwnerFirst114', '09990000114', NULL, 'Tetuan, Zamboanga City', 5, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 23, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-07-27 07:49:09', '2025-07-26 07:49:09'),
+(1701, 115, 'OwnerLast115', NULL, 'OwnerFirst115', '09990000115', NULL, 'Tetuan, Zamboanga City', 6, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 13, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-12-06 07:49:09', '2025-12-05 07:49:09'),
+(1702, 116, 'OwnerLast116', NULL, 'OwnerFirst116', '09990000116', NULL, 'Tetuan, Zamboanga City', 5, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 18, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-04-09 07:49:09', '2025-04-08 07:49:09'),
+(1703, 117, 'OwnerLast117', NULL, 'OwnerFirst117', '09990000117', NULL, 'Tetuan, Zamboanga City', 5, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 13, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '0000-00-00 00:00:00', '2025-10-17 07:49:09'),
+(1704, 118, 'OwnerLast118', NULL, 'OwnerFirst118', '09990000118', NULL, 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 23, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-04-15 07:49:09', '2025-04-14 07:49:09'),
+(1705, 119, 'OwnerLast119', NULL, 'OwnerFirst119', '09990000119', NULL, 'Tetuan, Zamboanga City', 6, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 1, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-06-23 07:49:09', '2025-06-22 07:49:09'),
+(1706, 120, 'OwnerLast120', NULL, 'OwnerFirst120', '09990000120', NULL, 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 20, NULL, 'rejected', 0, NULL, 'Invalid ID.', NULL, NULL, '2025-08-23 07:49:09', '2025-08-22 07:49:09'),
+(1707, 121, 'OwnerLast121', NULL, 'OwnerFirst121', '09990000121', NULL, 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 1, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2024-12-31 07:49:09', '2024-12-30 07:49:09'),
+(1708, 122, 'OwnerLast122', NULL, 'OwnerFirst122', '09990000122', NULL, 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 1, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-08-14 07:49:09', '2025-08-13 07:49:09'),
+(1709, 123, 'OwnerLast123', NULL, 'OwnerFirst123', '09990000123', NULL, 'Tetuan, Zamboanga City', 6, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 25, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-12-08 07:49:09', '2025-12-07 07:49:09'),
+(1710, 124, 'OwnerLast124', NULL, 'OwnerFirst124', '09990000124', NULL, 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 13, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-11-28 07:49:09', '2025-11-27 07:49:09'),
+(1711, 125, 'OwnerLast125', NULL, 'OwnerFirst125', '09990000125', NULL, 'Tetuan, Zamboanga City', 6, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 14, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-11-08 07:49:09', '2025-11-07 07:49:09'),
+(1712, 126, 'OwnerLast126', NULL, 'OwnerFirst126', '09990000126', NULL, 'Tetuan, Zamboanga City', 6, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 13, NULL, 'pending', 0, NULL, NULL, NULL, NULL, '0000-00-00 00:00:00', '2025-04-22 07:49:09'),
+(1713, 127, 'OwnerLast127', NULL, 'OwnerFirst127', '09990000127', NULL, 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 19, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-03-05 07:49:09', '2025-03-04 07:49:09'),
+(1714, 128, 'OwnerLast128', NULL, 'OwnerFirst128', '09990000128', NULL, 'Tetuan, Zamboanga City', 6, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 12, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-05-31 07:49:09', '2025-05-30 07:49:09'),
+(1715, 129, 'OwnerLast129', NULL, 'OwnerFirst129', '09990000129', NULL, 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 25, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-03-27 07:49:09', '2025-03-26 07:49:09'),
+(1716, 130, 'OwnerLast130', NULL, 'OwnerFirst130', '09990000130', NULL, 'Tetuan, Zamboanga City', 5, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 6, NULL, 'rejected', 1, NULL, 'Invalid ID.', NULL, NULL, '2025-06-13 07:49:09', '2025-06-12 07:49:09'),
+(1717, 131, 'OwnerLast131', NULL, 'OwnerFirst131', '09990000131', NULL, 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 23, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-04-30 07:49:09', '2025-04-29 07:49:09'),
+(1718, 132, 'OwnerLast132', NULL, 'OwnerFirst132', '09990000132', NULL, 'Tetuan, Zamboanga City', 2, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 1, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-12-04 07:49:09', '2025-12-03 07:49:09'),
+(1719, 133, 'OwnerLast133', NULL, 'OwnerFirst133', '09990000133', NULL, 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 10, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-09-23 07:49:09', '2025-09-22 07:49:09'),
+(1720, 134, 'OwnerLast134', NULL, 'OwnerFirst134', '09990000134', NULL, 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 4, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-06-21 07:49:09', '2025-06-20 07:49:09'),
+(1721, 135, 'OwnerLast135', NULL, 'OwnerFirst135', '09990000135', NULL, 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 20, NULL, 'pending', 0, NULL, NULL, NULL, NULL, '0000-00-00 00:00:00', '2025-01-10 07:49:09'),
+(1722, 136, 'OwnerLast136', NULL, 'OwnerFirst136', '09990000136', NULL, 'Tetuan, Zamboanga City', 6, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 25, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-09-30 07:49:09', '2025-09-29 07:49:09'),
+(1723, 137, 'OwnerLast137', NULL, 'OwnerFirst137', '09990000137', NULL, 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 1, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-04-25 07:49:09', '2025-04-24 07:49:09'),
+(1724, 138, 'OwnerLast138', NULL, 'OwnerFirst138', '09990000138', NULL, 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 13, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-05-08 07:49:09', '2025-05-07 07:49:09'),
+(1725, 139, 'OwnerLast139', NULL, 'OwnerFirst139', '09990000139', NULL, 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 20, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-02-11 07:49:09', '2025-02-10 07:49:09'),
+(1726, 140, 'OwnerLast140', NULL, 'OwnerFirst140', '09990000140', NULL, 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 12, NULL, 'rejected', 0, NULL, 'Invalid ID.', NULL, NULL, '2025-03-07 07:49:09', '2025-03-06 07:49:09'),
+(1727, 141, 'OwnerLast141', NULL, 'OwnerFirst141', '09990000141', NULL, 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 11, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-08-07 07:49:09', '2025-08-06 07:49:09'),
+(1728, 142, 'OwnerLast142', NULL, 'OwnerFirst142', '09990000142', NULL, 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 17, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-05-18 07:49:09', '2025-05-17 07:49:09'),
+(1729, 143, 'OwnerLast143', NULL, 'OwnerFirst143', '09990000143', NULL, 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 16, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-10-18 07:49:09', '2025-10-17 07:49:09'),
+(1730, 144, 'OwnerLast144', NULL, 'OwnerFirst144', '09990000144', NULL, 'Tetuan, Zamboanga City', 6, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 4, NULL, 'pending', 0, NULL, NULL, NULL, NULL, '0000-00-00 00:00:00', '2025-02-03 07:49:09'),
+(1731, 145, 'OwnerLast145', NULL, 'OwnerFirst145', '09990000145', NULL, 'Tetuan, Zamboanga City', 5, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 3, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-03-25 07:49:09', '2025-03-24 07:49:09'),
+(1732, 146, 'OwnerLast146', NULL, 'OwnerFirst146', '09990000146', NULL, 'Tetuan, Zamboanga City', 2, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 19, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-10-16 07:49:09', '2025-10-15 07:49:09'),
+(1733, 147, 'OwnerLast147', NULL, 'OwnerFirst147', '09990000147', NULL, 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 1, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-10-04 07:49:09', '2025-10-03 07:49:09'),
+(1734, 148, 'OwnerLast148', NULL, 'OwnerFirst148', '09990000148', NULL, 'Tetuan, Zamboanga City', 5, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 23, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-04-12 07:49:09', '2025-04-11 07:49:09'),
+(1735, 149, 'OwnerLast149', NULL, 'OwnerFirst149', '09990000149', NULL, 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 4, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-06-14 07:49:09', '2025-06-13 07:49:09'),
+(1736, 150, 'OwnerLast150', NULL, 'OwnerFirst150', '09990000150', NULL, 'Tetuan, Zamboanga City', 2, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 19, NULL, 'rejected', 1, NULL, 'Invalid ID.', NULL, NULL, '2025-09-27 07:49:09', '2025-09-26 07:49:09'),
+(1737, 151, 'OwnerLast151', NULL, 'OwnerFirst151', '09990000151', NULL, 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 20, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-10-26 07:49:09', '2025-10-25 07:49:09'),
+(1738, 152, 'OwnerLast152', NULL, 'OwnerFirst152', '09990000152', NULL, 'Tetuan, Zamboanga City', 5, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 8, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-03-13 07:49:09', '2025-03-12 07:49:09'),
+(1739, 153, 'OwnerLast153', NULL, 'OwnerFirst153', '09990000153', NULL, 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 11, NULL, 'pending', 0, NULL, NULL, NULL, NULL, '0000-00-00 00:00:00', '2025-12-14 07:49:09'),
+(1740, 154, 'OwnerLast154', NULL, 'OwnerFirst154', '09990000154', NULL, 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 22, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-12-10 07:49:09', '2025-12-09 07:49:09'),
+(1741, 155, 'OwnerLast155', NULL, 'OwnerFirst155', '09990000155', NULL, 'Tetuan, Zamboanga City', 5, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 15, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-06-12 07:49:09', '2025-06-11 07:49:09'),
+(1742, 156, 'OwnerLast156', NULL, 'OwnerFirst156', '09990000156', NULL, 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 14, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-09-03 07:49:09', '2025-09-02 07:49:09'),
+(1743, 157, 'OwnerLast157', NULL, 'OwnerFirst157', '09990000157', NULL, 'Tetuan, Zamboanga City', 2, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 4, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-12-06 07:49:09', '2025-12-05 07:49:09'),
+(1744, 158, 'OwnerLast158', NULL, 'OwnerFirst158', '09990000158', NULL, 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 6, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-07-12 07:49:09', '2025-07-11 07:49:09'),
+(1745, 159, 'OwnerLast159', NULL, 'OwnerFirst159', '09990000159', NULL, 'Tetuan, Zamboanga City', 6, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 13, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-11-24 07:49:09', '2025-11-23 07:49:09'),
+(1746, 160, 'OwnerLast160', NULL, 'OwnerFirst160', '09990000160', NULL, 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 8, NULL, 'rejected', 0, NULL, 'Invalid ID.', NULL, NULL, '2025-10-12 07:49:09', '2025-10-11 07:49:09'),
+(1747, 161, 'OwnerLast161', NULL, 'OwnerFirst161', '09990000161', NULL, 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 26, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-06-29 07:49:09', '2025-06-28 07:49:09'),
+(1748, 162, 'OwnerLast162', NULL, 'OwnerFirst162', '09990000162', NULL, 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 12, NULL, 'pending', 0, NULL, NULL, NULL, NULL, '0000-00-00 00:00:00', '2025-09-06 07:49:09'),
+(1749, 163, 'OwnerLast163', NULL, 'OwnerFirst163', '09990000163', NULL, 'Tetuan, Zamboanga City', 5, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 2, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-05-13 07:49:09', '2025-05-12 07:49:09'),
+(1750, 164, 'OwnerLast164', NULL, 'OwnerFirst164', '09990000164', NULL, 'Tetuan, Zamboanga City', 2, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 11, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-05-22 07:49:09', '2025-05-21 07:49:09'),
+(1751, 165, 'OwnerLast165', NULL, 'OwnerFirst165', '09990000165', NULL, 'Tetuan, Zamboanga City', 5, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 15, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-10-11 07:49:09', '2025-10-10 07:49:09'),
+(1752, 166, 'OwnerLast166', NULL, 'OwnerFirst166', '09990000166', NULL, 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 4, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-01-09 07:49:09', '2025-01-08 07:49:09'),
+(1753, 167, 'OwnerLast167', NULL, 'OwnerFirst167', '09990000167', NULL, 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 16, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-04-01 07:49:09', '2025-03-31 07:49:09'),
+(1754, 168, 'OwnerLast168', NULL, 'OwnerFirst168', '09990000168', NULL, 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 8, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-11-13 07:49:09', '2025-11-12 07:49:09'),
+(1755, 169, 'OwnerLast169', NULL, 'OwnerFirst169', '09990000169', NULL, 'Tetuan, Zamboanga City', 6, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 12, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-05-19 07:49:09', '2025-05-18 07:49:09'),
+(1756, 170, 'OwnerLast170', NULL, 'OwnerFirst170', '09990000170', NULL, 'Tetuan, Zamboanga City', 2, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 23, NULL, 'rejected', 1, NULL, 'Invalid ID.', NULL, NULL, '2025-07-22 07:49:09', '2025-07-21 07:49:09'),
+(1757, 171, 'OwnerLast171', NULL, 'OwnerFirst171', '09990000171', NULL, 'Tetuan, Zamboanga City', 6, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 5, NULL, 'pending', 0, NULL, NULL, NULL, NULL, '0000-00-00 00:00:00', '2025-05-17 07:49:09'),
+(1758, 172, 'OwnerLast172', NULL, 'OwnerFirst172', '09990000172', NULL, 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 25, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-08-02 07:49:09', '2025-08-01 07:49:09'),
+(1759, 173, 'OwnerLast173', NULL, 'OwnerFirst173', '09990000173', NULL, 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 13, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-09-04 07:49:09', '2025-09-03 07:49:09'),
+(1760, 174, 'OwnerLast174', NULL, 'OwnerFirst174', '09990000174', NULL, 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 22, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-04-13 07:49:09', '2025-04-12 07:49:09'),
+(1761, 175, 'OwnerLast175', NULL, 'OwnerFirst175', '09990000175', NULL, 'Tetuan, Zamboanga City', 6, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 23, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-02-13 07:49:09', '2025-02-12 07:49:09'),
+(1762, 176, 'OwnerLast176', NULL, 'OwnerFirst176', '09990000176', NULL, 'Tetuan, Zamboanga City', 5, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 5, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-10-12 07:49:09', '2025-10-11 07:49:09'),
+(1763, 177, 'OwnerLast177', NULL, 'OwnerFirst177', '09990000177', NULL, 'Tetuan, Zamboanga City', 6, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 7, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-09-08 07:49:09', '2025-09-07 07:49:09'),
+(1764, 178, 'OwnerLast178', NULL, 'OwnerFirst178', '09990000178', NULL, 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 19, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-02-04 07:49:09', '2025-02-03 07:49:09'),
+(1765, 179, 'OwnerLast179', NULL, 'OwnerFirst179', '09990000179', NULL, 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 20, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-06-27 07:49:09', '2025-06-26 07:49:09'),
+(1766, 180, 'OwnerLast180', NULL, 'OwnerFirst180', '09990000180', NULL, 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 22, NULL, 'rejected', 0, NULL, 'Invalid ID.', NULL, NULL, '0000-00-00 00:00:00', '2025-11-28 07:49:09'),
+(1767, 181, 'OwnerLast181', NULL, 'OwnerFirst181', '09990000181', NULL, 'Tetuan, Zamboanga City', 2, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 2, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-01-27 07:49:09', '2025-01-26 07:49:09'),
+(1768, 182, 'OwnerLast182', NULL, 'OwnerFirst182', '09990000182', NULL, 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 6, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-05-10 07:49:09', '2025-05-09 07:49:09'),
+(1769, 183, 'OwnerLast183', NULL, 'OwnerFirst183', '09990000183', NULL, 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 2, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-12-08 07:49:09', '2025-12-07 07:49:09'),
+(1770, 184, 'OwnerLast184', NULL, 'OwnerFirst184', '09990000184', NULL, 'Tetuan, Zamboanga City', 2, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 8, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-03-11 07:49:09', '2025-03-10 07:49:09'),
+(1771, 185, 'OwnerLast185', NULL, 'OwnerFirst185', '09990000185', NULL, 'Tetuan, Zamboanga City', 6, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 5, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-08-21 07:49:09', '2025-08-20 07:49:09'),
+(1772, 186, 'OwnerLast186', NULL, 'OwnerFirst186', '09990000186', NULL, 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 1, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2024-12-19 07:49:09', '2024-12-18 07:49:09'),
+(1773, 187, 'OwnerLast187', NULL, 'OwnerFirst187', '09990000187', NULL, 'Tetuan, Zamboanga City', 2, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 5, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-03-06 07:49:09', '2025-03-05 07:49:09'),
+(1774, 188, 'OwnerLast188', NULL, 'OwnerFirst188', '09990000188', NULL, 'Tetuan, Zamboanga City', 2, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 11, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-05-23 07:49:09', '2025-05-22 07:49:09'),
+(1775, 189, 'OwnerLast189', NULL, 'OwnerFirst189', '09990000189', NULL, 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 21, NULL, 'pending', 0, NULL, NULL, NULL, NULL, '0000-00-00 00:00:00', '2025-03-19 07:49:09'),
+(1776, 190, 'OwnerLast190', NULL, 'OwnerFirst190', '09990000190', NULL, 'Tetuan, Zamboanga City', 5, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 19, NULL, 'rejected', 1, NULL, 'Invalid ID.', NULL, NULL, '2025-08-27 07:49:09', '2025-08-26 07:49:09'),
+(1777, 191, 'OwnerLast191', NULL, 'OwnerFirst191', '09990000191', NULL, 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 23, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-05-19 07:49:09', '2025-05-18 07:49:09'),
+(1778, 192, 'OwnerLast192', NULL, 'OwnerFirst192', '09990000192', NULL, 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 15, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-11-06 07:49:09', '2025-11-05 07:49:09'),
+(1779, 193, 'OwnerLast193', NULL, 'OwnerFirst193', '09990000193', NULL, 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 5, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-01-24 07:49:09', '2025-01-23 07:49:09'),
+(1780, 194, 'OwnerLast194', NULL, 'OwnerFirst194', '09990000194', NULL, 'Tetuan, Zamboanga City', 2, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 3, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-06-17 07:49:09', '2025-06-16 07:49:09'),
+(1781, 195, 'OwnerLast195', NULL, 'OwnerFirst195', '09990000195', NULL, 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 2, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-05-29 07:49:09', '2025-05-28 07:49:09'),
+(1782, 196, 'OwnerLast196', NULL, 'OwnerFirst196', '09990000196', NULL, 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 3, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-09-21 07:49:09', '2025-09-20 07:49:09'),
+(1783, 197, 'OwnerLast197', NULL, 'OwnerFirst197', '09990000197', NULL, 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 26, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-07-20 07:49:09', '2025-07-19 07:49:09'),
+(1784, 198, 'OwnerLast198', NULL, 'OwnerFirst198', '09990000198', NULL, 'Tetuan, Zamboanga City', 5, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 7, NULL, 'pending', 0, NULL, NULL, NULL, NULL, '0000-00-00 00:00:00', '2025-12-03 07:49:09'),
+(1785, 199, 'OwnerLast199', NULL, 'OwnerFirst199', '09990000199', NULL, 'Tetuan, Zamboanga City', 5, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 12, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-01-21 07:49:09', '2025-01-20 07:49:09'),
+(1786, 200, 'OwnerLast200', NULL, 'OwnerFirst200', '09990000200', NULL, 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 18, NULL, 'rejected', 0, NULL, 'Invalid ID.', NULL, NULL, '2025-08-05 07:49:09', '2025-08-04 07:49:09'),
+(1787, 201, 'OwnerLast201', NULL, 'OwnerFirst201', '09990000201', NULL, 'Tetuan, Zamboanga City', 5, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 20, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-08-15 07:49:09', '2025-08-14 07:49:09'),
+(1788, 202, 'OwnerLast202', NULL, 'OwnerFirst202', '09990000202', NULL, 'Tetuan, Zamboanga City', 6, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 3, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-04-17 07:49:09', '2025-04-16 07:49:09'),
+(1789, 203, 'OwnerLast203', NULL, 'OwnerFirst203', '09990000203', NULL, 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 24, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-09-05 07:49:09', '2025-09-04 07:49:09'),
+(1790, 204, 'OwnerLast204', NULL, 'OwnerFirst204', '09990000204', NULL, 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 6, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-09-22 07:49:09', '2025-09-21 07:49:09'),
+(1791, 205, 'OwnerLast205', NULL, 'OwnerFirst205', '09990000205', NULL, 'Tetuan, Zamboanga City', 5, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 10, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-05-30 07:49:09', '2025-05-29 07:49:09'),
+(1792, 206, 'OwnerLast206', NULL, 'OwnerFirst206', '09990000206', NULL, 'Tetuan, Zamboanga City', 5, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 24, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-11-16 07:49:09', '2025-11-15 07:49:09'),
+(1793, 207, 'OwnerLast207', NULL, 'OwnerFirst207', '09990000207', NULL, 'Tetuan, Zamboanga City', 2, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 24, NULL, 'pending', 0, NULL, NULL, NULL, NULL, '0000-00-00 00:00:00', '2025-04-16 07:49:09'),
+(1794, 208, 'OwnerLast208', NULL, 'OwnerFirst208', '09990000208', NULL, 'Tetuan, Zamboanga City', 2, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 2, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-12-09 07:49:09', '2025-12-08 07:49:09'),
+(1795, 209, 'OwnerLast209', NULL, 'OwnerFirst209', '09990000209', NULL, 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 12, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-07-16 07:49:09', '2025-07-15 07:49:09'),
+(1796, 210, 'OwnerLast210', NULL, 'OwnerFirst210', '09990000210', NULL, 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 6, NULL, 'rejected', 1, NULL, 'Invalid ID.', NULL, NULL, '2025-06-19 07:49:09', '2025-06-18 07:49:09'),
+(1797, 211, 'OwnerLast211', NULL, 'OwnerFirst211', '09990000211', NULL, 'Tetuan, Zamboanga City', 6, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 15, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-10-13 07:49:09', '2025-10-12 07:49:09'),
+(1798, 212, 'OwnerLast212', NULL, 'OwnerFirst212', '09990000212', NULL, 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 15, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-02-17 07:49:09', '2025-02-16 07:49:09'),
+(1799, 213, 'OwnerLast213', NULL, 'OwnerFirst213', '09990000213', NULL, 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 26, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-05-18 07:49:09', '2025-05-17 07:49:09'),
+(1800, 214, 'OwnerLast214', NULL, 'OwnerFirst214', '09990000214', NULL, 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 4, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-06-19 07:49:09', '2025-06-18 07:49:09'),
+(1801, 215, 'OwnerLast215', NULL, 'OwnerFirst215', '09990000215', NULL, 'Tetuan, Zamboanga City', 1, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 17, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-08-13 07:49:09', '2025-08-12 07:49:09'),
+(1802, 216, 'OwnerLast216', NULL, 'OwnerFirst216', '09990000216', NULL, 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 25, NULL, 'pending', 0, NULL, NULL, NULL, NULL, '0000-00-00 00:00:00', '2025-04-11 07:49:09'),
+(1803, 217, 'OwnerLast217', NULL, 'OwnerFirst217', '09990000217', NULL, 'Tetuan, Zamboanga City', 4, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 3, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-01-15 07:49:09', '2025-01-14 07:49:09'),
+(1804, 218, 'OwnerLast218', NULL, 'OwnerFirst218', '09990000218', NULL, 'Tetuan, Zamboanga City', 3, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 12, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-06-06 07:49:09', '2025-06-05 07:49:09'),
+(1805, 219, 'OwnerLast219', NULL, 'OwnerFirst219', '09990000219', NULL, 'Tetuan, Zamboanga City', 2, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 3, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-03-10 07:49:09', '2025-03-09 07:49:09'),
+(1806, 220, 'OwnerLast220', NULL, 'OwnerFirst220', '09990000220', NULL, 'Tetuan, Zamboanga City', 2, 'id_front.jpg', 'id_back.jpg', 'police.jpg', '1990-01-01', 35, 17, NULL, 'rejected', 0, NULL, 'Invalid ID.', NULL, NULL, '2025-11-09 07:49:09', '2025-11-08 07:49:09'),
+(1807, 351, 'Bongo', 'Duran', 'Chrysjann Theo', '09926314071', NULL, 'Sapphire Street, Baliwasan, City of Zamboanga, Zamboanga Del Sur 7000', 2, 'validID/front/tQ9mcgV1EIbDSijOfEFkbS00YfuRxHBIkPtORkDn.jpg', 'validID/back/TUqXZpXuuzBHWXneHWA9cjG7zCxzHFoAbqC9iFw2.jpg', 'policeClearance/laoVX4DumPxRgQ9hKsyFcjXzeq90pYpV5eGR8MW2.png', '2004-10-01', 21, NULL, 'Comshop', 'approved', 1, NULL, NULL, NULL, NULL, '2025-12-16 03:04:28', '2025-12-15 18:13:01'),
+(1808, 352, 'Padios', 'Ahat', 'Olive Faith', '09926354567', NULL, 'Unit No.3, Baliwasan, City of Zamboanga, Zamboanga Del Sur 7000', 4, 'validID/front/MvGX5e8pYjtVsFkylyaxHaueJ3HVwnIWvXRWkVm5.png', 'validID/back/5NkmiiyJDLqow0XzLRGQLYqFefcYAsQyaBs8gGJh.png', 'policeClearance/WW7HTg8kE6w1DvCN2adronrHrCmDHzKIYr470veX.png', '2000-02-09', 25, 4, NULL, 'deleted', 0, NULL, NULL, NULL, NULL, '2025-12-15 20:32:28', '2025-12-15 20:32:28'),
+(1809, 353, 'Kulong', 'Gellecania', 'Rone Paullan', '09926354567', NULL, 'Bungiau, Baliwasan, City of Zamboanga, Zamboanga Del Sur 7000', 2, 'validID/front/WQFw3sDBljTwWxtdrWcwFsRISqJnM5sjGBKbCtAU.jpg', 'validID/back/mP8bq8qSm6avB2SubBvNv0jdW8DhgVECUFFlUv8l.jpg', 'policeClearance/zKsaydvtQFqb40O5FvYeNGbqdqkyXHrOOWAa4BE4.png', '2025-12-17', 0, NULL, 'Private Nurse', 'approved', 1, NULL, NULL, NULL, NULL, '2025-12-16 08:15:37', '2025-12-16 00:10:43'),
+(1810, 365, 'Tampus', NULL, 'Jeffslazir', '09990000104', NULL, 'Tetuan, Mampayag, Manolo Fortich, Bukidnon 7000', 4, 'validID/front/0twyJfLOF07DtNKKSIOrl5pujO6eCHt693gc9Td8.jpg', 'validID/back/XRNvfAUrKK07HDk5OXt7KVjM6eFkzN00ut98cIf0.jpg', 'policeClearance/hiSNt5ZlA2klKupTAr6gbHPoV0W7IJLUpfsiAuXm.jpg', '1998-02-03', 27, 20, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2025-12-17 08:20:13', '2025-12-17 08:20:13'),
+(1814, 371, 'Test', NULL, 'Test', '09360211158', 'this is meee though', 'anywhere, Bohebaca, Tipo-Tipo, Basilan, 7000', NULL, 'validID/Gr8y8x2b1bgXXMbvhGQVKamRm5YPbfmOYlX4JbBV.jpg', 'validID/QW2dEJivxK7kFXJtaPqbuurdaGqDEtPqnCdJxtZy.jpg', 'policeClearance/vkrbCkOsrrDCp2pbvi7U4Amd1PhSp91a0KCDI44h.jpg', '2007-12-18', 17, 9, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2026-03-05 08:54:58', '2025-12-17 12:16:07'),
+(1815, 28, '', NULL, '', '', NULL, '', NULL, NULL, '', '', '0000-00-00', 0, NULL, NULL, 'approved', 0, NULL, NULL, NULL, NULL, '2025-12-18 14:45:33', '2025-12-18 14:45:33'),
+(1816, 373, 'Tampus', NULL, 'Jeff', '09756420289', NULL, 'Anywhere, 148105004, 148105000, 148100000, 7000', NULL, 'validID/BI2w5cvODwtD48iS09cX8B6uujdADyZzk1ZDZEx9.jpg', 'validID/3g3bIGeuaNaJbDXZfil5uznjZcfZIv4Lcv3yccM0.jpg', 'policeClearance/exF5TQRqOsVdMpiY3soByLTBlRy2Ap9lSyiQKyDI.jpg', '2000-12-19', 24, 21, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2026-01-29 14:51:28', '2025-12-18 12:03:19'),
+(1818, 375, 'Jimenez', NULL, 'Hart', '09360211156', NULL, 'Anywhere, 148106025, 148106000, 148100000, 7000', 4, 'validID/YlXxOQqkmL397keDUR2rLzJQVm4r5iheiCGWwOn2.jpg', 'validID/RlHDVSKWPEKxWjRxYBt43GWzyQySLRDJnnAcF71c.jpg', 'policeClearance/pFDmPT5EMupLCPaFUhRuudvwteTp0xYTMeg0ZCej.jpg', '2003-12-19', 22, 10, NULL, 'pending', 0, NULL, NULL, NULL, NULL, '2025-12-19 00:39:57', '2025-12-18 16:39:57'),
+(1819, 379, 'test3', 'test3', 'test3', '09360211158', NULL, '456 Oakd, 160202033, 160202000, 160200000, 7000', 4, 'validID/rYbiFg2gfxb6RCVJ3MW2eyVHBRGkrqnqMvquoQc3.jpg', 'validID/7gWklG7yvruN2dB4kBIzkO2ISUV1QulaJiV2rJ4r.jpg', 'policeClearance/XpC3e0OTf6PGURy3HH1TY2vTcawjz8ezGaIL8Aqr.jpg', '1998-02-21', 28, 22, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2026-02-21 09:06:36', '2026-02-21 00:54:11'),
+(1820, 381, 'Jimenez', NULL, 'Shane Hartw', '09926314071', NULL, 'sapphire, 060602007, 060602000, 060600000, 3453', 4, 'validID/4ZCNeMq9P0zWvoijBFMix8tvZz3oVqH6Z0AfwFlM.jpg', 'validID/j6PJPg9vt7SQvNwvGH4dqfncdObykaTeFkrRFiMI.jpg', 'policeClearance/c3q7KeC2ofs3Pgek2Q0xya2zYAbFYOnTOkvJXCMh.pdf', '1999-12-28', 26, 26, NULL, 'pending', 0, NULL, NULL, NULL, NULL, '2026-03-01 16:56:15', '2026-03-01 08:56:15'),
+(1821, 382, 'HART', 'QWEQE', 'SHANE', '09926123384', NULL, 'as, 050517006, 050517000, 050500000, 7000', 4, 'validID/OIjWK7bsBvdPGlYCPiCQ7HpKUL7bEQQDj1YMEXNb.jpg', 'validID/2ntKEzxmz4zBsVEHeKOpa1wZ0QlEfhjTt6IsLs4F.jpg', 'policeClearance/osEq36axDFuWxq1Pm9Vu5DtPhrbBlZnKHQD2MQfa.jpg', '1999-03-01', 27, 26, NULL, 'pending', 0, NULL, NULL, NULL, NULL, '2026-03-02 17:23:23', '2026-03-02 09:23:23'),
+(1822, 383, 'ASDASDASDASDAD', 'QWEQE', 'ASDASDASD', '09926123384', NULL, 'as, 050517006, 050517000, 050500000, 7000', 4, 'validID/yDDALMOB0OkhM3V3jhwDXdlVgD1t90U1i1ptSO3O.jpg', 'validID/RTBfrdyiSGsH34cRJiskSRZO5uQien4tQotvKM7n.jpg', 'policeClearance/I1rJyPERtS4K4MxyHEiJoStqUX7IFzTg3tZ51I8E.jpg', '2003-01-28', 23, 17, NULL, 'pending', 0, NULL, NULL, NULL, NULL, '2026-03-02 17:30:17', '2026-03-02 09:30:17'),
+(1823, 385, 'jcjcjvjv', NULL, 'bffjvjgjfj', '09965582159', NULL, 'vdhdh, 037707009, 037707000, 037700000, 8866', 6, 'validID/VR3Mi9f2pz1MkB6zBgEyZbz4iQgwCsvYzNYu1BEv.jpg', 'validID/DYbP1wiX4vztAbAUOVBJM58bz8ADpHyf3xPnt2MS.jpg', 'policeClearance/5yWYl1Hv1fVfDHQMXUbyJt68nkNA3kEFCSJXcSse.jpg', '1997-03-03', 28, 9, NULL, 'pending', 0, NULL, NULL, NULL, NULL, '2026-03-02 19:19:43', '2026-03-02 11:19:43'),
+(1824, 387, 'ASDASDASD', NULL, 'ASDADASDAD', '09926314071', NULL, 'Anywhere, 050508005, 050508000, 050500000, 7000', 1, 'validID/oS0SPJKbQjgiJNdItbTwAZJZwH55UoM6q3mTk3Bs.jpg', 'validID/g5SeTxC4wQlwsYjORD8XeD2Lh9qP6ntCp7Wvsuhs.jpg', 'policeClearance/IEtO1PE1Lih0ioOIjTJdCLUHvJteeuj95CgsDEpR.jpg', '2001-03-01', 25, 26, 'Comshop', 'pending', 0, NULL, NULL, NULL, NULL, '2026-03-02 19:57:37', '2026-03-02 11:57:37'),
+(1825, 388, 'scafa', NULL, 'ijscjsfw', '09956235986', NULL, 'b,bzjs, 150713008, 150713000, 150700000, 6669', 6, 'validID/N4YSn5HHqn2SZST38k3LZ7hYRV5fMimWqzFTEOtw.png', 'validID/Fu4YpC3BpyHCJUwzfZriO7km4tR1yBtYoeOhX4a6.png', 'policeClearance/AeYoubG0tCyOlC5RRVf5WhUhr5v4SkRiMaXx5fLM.png', '1996-03-03', 29, 26, 'nigsd', 'pending', 0, NULL, NULL, NULL, NULL, '2026-03-02 20:00:49', '2026-03-02 12:00:49'),
+(1826, 390, 'GFOCM', NULL, 'GGKCH', '09966585438', NULL, 'Tjfu, 030810012, Orion, Bataan, 7896', 5, 'validID/WTGk0aHGDJXGn5qwsTcHdjN1nGaCxVNpE1jvHMe4.jpg', 'validID/2Mvv0Y3JuEYeSNHZFyqM0NjeuHa0Ea4O0rgv7Xwy.jpg', 'policeClearance/k8OOaTfKArOqLPaoYO6idEdx7qXQBuUiHnyDsBA2.jpg', '2001-03-03', 24, 26, 'Vhhh', 'pending', 0, NULL, NULL, NULL, NULL, '2026-03-02 20:20:19', '2026-03-02 12:20:19'),
+(1827, 391, 'ASASDA', 'ASFAS', 'ASFFSAF', '09926314071', NULL, 'asdsd, 148104006, Kabugao, Apayao, 1233', 4, 'validID/b83TGt5cZgcimP0qYUJQVhLjed8AHwoAmEcRYvMh.jpg', 'validID/93Wandt2zL7EQULl12PIIbjdNjE1oerIEjlC1Ori.jpg', 'policeClearance/us42czhjUN32R0KLtCw8iauqCahZdTJgN3CikwHT.jpg', '2000-02-01', 26, 26, 'asdada', 'pending', 0, NULL, NULL, NULL, NULL, '2026-03-02 20:23:34', '2026-03-02 12:23:34'),
+(1828, 372, 'TEST', NULL, 'TEST', '09360211157', NULL, 'Anywhere, 150713008, 150713000, 150700000, 7000', 3, 'owner_documents/1772512123_valid_id_front_1ad08ada-c85d-44dc-888f-622fa318d9fe.jpg', 'owner_documents/1772512123_valid_id_back_1ad08ada-c85d-44dc-888f-622fa318d9fe.jpg', 'owner_documents/1772512123_police_1ad08ada-c85d-44dc-888f-622fa318d9fe.jpg', '1979-03-08', 46, 26, 'Florist', 'pending', 0, NULL, NULL, NULL, NULL, '2026-03-03 04:28:48', '2026-03-02 20:28:48'),
+(1829, 392, 'Mouse', NULL, 'Miney', '09360211159', NULL, 'Purok Disney, Channel Avenue 143, 140101001, Bangued, Abra, 7000', 4, 'validID/ovqCUJ6OkFzFeGVJuoAbeTvt6ff53qV8Up42gExT.jpg', 'validID/DfguKdknpymizgZvMR3sRYSCz0P2eDkpMkPVpnG6.jpg', 'policeClearance/6TuIOgOkjw5nCErXFzvgIcpJTUxlx9mCjEHoxHTl.jpg', '1968-03-04', 58, 3, NULL, 'approved', 1, NULL, NULL, NULL, NULL, '2026-03-03 21:13:43', '2026-03-03 21:12:42');
 
 -- --------------------------------------------------------
 
@@ -3014,6 +3218,105 @@ CREATE TABLE `reviews` (
   `comment` text DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `reviews`
+--
+
+INSERT INTO `reviews` (`review_id`, `project_id`, `reviewer_user_id`, `reviewee_user_id`, `rating`, `comment`, `created_at`) VALUES
+(40, 1048, 371, 372, 4, 'really good to work with', '2026-03-05 04:52:37');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `showcases`
+--
+
+CREATE TABLE `showcases` (
+  `post_id` bigint(20) UNSIGNED NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `title` varchar(255) DEFAULT NULL,
+  `content` text NOT NULL,
+  `linked_project_id` int(11) DEFAULT NULL,
+  `location` varchar(500) DEFAULT NULL,
+  `status` enum('pending','approved','rejected','closed','deleted') NOT NULL DEFAULT 'pending',
+  `is_highlighted` tinyint(1) NOT NULL DEFAULT 0,
+  `highlighted_at` timestamp NULL DEFAULT NULL,
+  `boost_tier` varchar(20) DEFAULT NULL,
+  `boost_expiration` timestamp NULL DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `showcases`
+--
+
+INSERT INTO `showcases` (`post_id`, `user_id`, `title`, `content`, `linked_project_id`, `location`, `status`, `is_highlighted`, `highlighted_at`, `boost_tier`, `boost_expiration`, `created_at`, `updated_at`) VALUES
+(1, 371, 'Testing Purposes Test', 'gnjejtbttbfheejggjjgeeyyyjiij', NULL, 'Zamboanga City', 'approved', 1, '2026-03-05 01:46:22', NULL, NULL, '2026-03-05 01:46:09', '2026-03-05 01:46:22');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `showcase_images`
+--
+
+CREATE TABLE `showcase_images` (
+  `image_id` bigint(20) UNSIGNED NOT NULL,
+  `post_id` bigint(20) UNSIGNED NOT NULL,
+  `file_path` varchar(500) NOT NULL,
+  `original_name` varchar(255) DEFAULT NULL,
+  `sort_order` int(11) NOT NULL DEFAULT 0,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `showcase_images`
+--
+
+INSERT INTO `showcase_images` (`image_id`, `post_id`, `file_path`, `original_name`, `sort_order`, `created_at`, `updated_at`) VALUES
+(1, 1, 'post_images/1772703969_post_1_0.jpg', '6362.jpg', 0, '2026-03-05 01:46:09', '2026-03-05 01:46:09'),
+(2, 1, 'post_images/1772703969_post_1_1.jpg', '6363.jpg', 1, '2026-03-05 01:46:09', '2026-03-05 01:46:09'),
+(3, 1, 'post_images/1772703969_post_1_2.jpg', '6366.jpg', 2, '2026-03-05 01:46:09', '2026-03-05 01:46:09'),
+(4, 1, 'post_images/1772703969_post_1_3.jpg', '6364.jpg', 3, '2026-03-05 01:46:09', '2026-03-05 01:46:09'),
+(5, 1, 'post_images/1772703969_post_1_4.jpg', '6365.jpg', 4, '2026-03-05 01:46:09', '2026-03-05 01:46:09');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `subscription_plans`
+--
+
+CREATE TABLE `subscription_plans` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `plan_key` varchar(255) NOT NULL,
+  `for_contractor` tinyint(4) NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `amount` bigint(20) NOT NULL,
+  `currency` varchar(255) NOT NULL DEFAULT 'PHP',
+  `billing_cycle` varchar(255) NOT NULL DEFAULT 'monthly',
+  `duration_days` int(11) DEFAULT NULL,
+  `deletion_reason` text DEFAULT NULL,
+  `benefits` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`benefits`)),
+  `is_active` tinyint(1) NOT NULL DEFAULT 1,
+  `is_deleted` tinyint(4) NOT NULL DEFAULT 0,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `subscription_plans`
+--
+
+INSERT INTO `subscription_plans` (`id`, `plan_key`, `for_contractor`, `name`, `amount`, `currency`, `billing_cycle`, `duration_days`, `deletion_reason`, `benefits`, `is_active`, `is_deleted`, `created_at`, `updated_at`) VALUES
+(1, 'gold', 1, 'Gold Tier Subscriptions', 199900, 'PHP', 'monthly', NULL, NULL, '[\"Unlock AI driven analytics\",\"Unlimited Bids per month\",\"Boost Bids\"]', 1, 0, '2026-02-28 05:15:48', '2026-03-02 20:41:31'),
+(2, 'silver', 1, 'Silver Tier Subscription', 149900, 'PHP', 'monthly', NULL, NULL, '[\"25 Bids per month\",\"Boost Bids\"]', 1, 0, '2026-02-28 05:15:48', '2026-02-28 21:27:29'),
+(3, 'bronze', 1, 'Bronze Tier Subscription', 99900, 'PHP', 'monthly', NULL, NULL, '[\"10 Bids per month\"]', 1, 0, '2026-02-28 05:15:48', '2026-02-28 05:15:48'),
+(4, 'boost', 0, 'Project Boost', 4900, 'PHP', 'one-time', 7, '', '[\"7 Days Visibility Boost\"]', 1, 0, '2026-02-28 05:15:48', '2026-02-28 21:59:43'),
+(5, 'sssss', 0, 'dedede', 50000, 'PHP', 'monthly', NULL, 'aaaaaaaaaaaaaaaaaaaaaaaaaaaa', '[\"dededede\"]', 0, 1, '2026-02-28 10:30:34', '2026-02-28 21:10:56'),
+(7, 'GRRR', 0, 'dedddddddddddddddddddddd', 21300, 'PHP', 'one-time', 23, 'dfdddddddddddddddddddddd', '[\"NIGGER\"]', 0, 1, '2026-02-28 21:25:35', '2026-02-28 22:05:50'),
+(10, 'sdffsd', 0, 'Shibal', 1231200, 'PHP', 'one-time', 34, 'adsdasdsd', '[\"sfsdfsdfdsf\"]', 0, 1, '2026-03-02 20:42:19', '2026-03-02 20:42:25');
 
 -- --------------------------------------------------------
 
@@ -3330,15 +3633,28 @@ INSERT INTO `users` (`user_id`, `profile_pic`, `cover_photo`, `username`, `email
 (360, NULL, NULL, 'contractor_4054', 'shanehart100q1@gmail.com', '$2y$12$Uj22aRA04XH.OiqcZej.nuxxeT3oyLaRKODB7EMJi8vK6Lw2yCDSS', 'admin_created', 'contractor', NULL, '2025-12-16 08:22:15', '2025-12-16 09:21:56'),
 (361, 'profile_pics/N6NbFyTan68hUgpd9meLOly1afCTS0mX6q8v3dZm.jpg', 'profile_pics/5hGgtBXNnOwCHzbfj1KNioqPjQQx1zwMtvyC6S5N.jpg', 'contractor_9632', 'shanehart1001d@gmail.com', '$2y$12$cNMryBR0IsGQAbeUNQ/bkuGKy44A4veQ2OI5NYqEYYut3.N5I81DS', 'admin_created', 'contractor', NULL, '2025-12-16 08:40:00', '2025-12-16 20:49:54'),
 (365, 'profiles/1Twen5pb0MvZ0hkjQU39J1Sb2gOWoylDK1N5gUvR.jpg', NULL, 'owner_1483', 'HZ2021528@wmsu.edu.ph', '$2y$12$.ToBRQGOoWi4g/dow6gbRO/MslShqipGG0IUaVCb.fDEG4VWdGMqy', 'admin_created', 'property_owner', NULL, '2025-12-17 08:20:13', '2025-12-18 19:48:02'),
-(371, 'profiles/YHttWdw17tQVKfB3dprbX0fnaLtQ30kH3wfzX8dG.jpg', NULL, 'test1', 'shanehart1001@gmail.com', '$2y$12$I23UIvo1LPBhLJjAFaKOqONRSUzIs3HSoUQZPYaETr.bAODmkDbuy', '$2y$12$hf2aLN6aEwj2DFhHHbHrTOvtSnEqfkKzt6TjtJCc/ASmiWEKMkKVi', 'property_owner', NULL, '2025-12-17 12:16:07', '2025-12-19 05:25:17'),
-(372, 'profiles/QCgGQLDwfeLz1aFX2zg3vFSzgxoKp6nUVSeYmgWC.jpg', NULL, 'test2', 'ashxeyn@gmail.com', '$2y$12$RCCdaH9TGLtCnAp7AQFWyuYlcoHHqnk2JvUQu4vCMrQRTK9tLNIOq', '$2y$12$0shaEjoJdsPrdl5KZmmHNuPPhrTbT8oZfbka2HsxcCFO6hRb3vwZC', 'contractor', NULL, '2025-12-17 13:58:50', '2025-12-19 05:24:59'),
+(371, 'profiles/1772703455_profile_0b9b323b-12bd-4280-aeaf-4dc9a6f68a13.jpeg', NULL, 'test1', 'shanehart1001@gmail.com', '$2y$12$I23UIvo1LPBhLJjAFaKOqONRSUzIs3HSoUQZPYaETr.bAODmkDbuy', '$2y$12$hf2aLN6aEwj2DFhHHbHrTOvtSnEqfkKzt6TjtJCc/ASmiWEKMkKVi', 'property_owner', NULL, '2025-12-17 12:16:07', '2026-03-05 09:37:36'),
+(372, 'profiles/QCgGQLDwfeLz1aFX2zg3vFSzgxoKp6nUVSeYmgWC.jpg', NULL, 'test2', 'ashxeyn@gmail.com', '$2y$12$GBNarghlLWZ2LkbSetQKn.scOxxl.3mHS.SDT2R2Nx3XPsgDVjNrG', '$2y$12$0shaEjoJdsPrdl5KZmmHNuPPhrTbT8oZfbka2HsxcCFO6hRb3vwZC', 'contractor', NULL, '2025-12-17 13:58:50', '2026-03-02 20:41:00'),
 (373, 'profiles/UiT3r2ZPyfFmE9azsGvdlbrjls5yOuqfGcbh643X.jpg', NULL, 'jeff', 'hz202301528@wmsu.edu.ph', '$2y$12$Xau9dnWCbF819X9HyJqfLeNmlK2vCbIaowSWvvhV6roEeHGw46hXK', '$2y$12$khOd0DlL9AX7KrYCeUw01uHEnX.rThxnGqOdAgWS.qAKKAgG6Il2O', 'property_owner', NULL, '2025-12-18 12:03:19', '2025-12-18 12:03:19'),
 (375, 'profiles/RxtgbX4TuWXc9yiTQLhhTP9rJHIYTnQXtCKhS5Y9.jpg', NULL, 'hartj', 'phantomhiro143@gmail.com', '$2y$12$073h2ma9ombfcYjLtxWILOj8cUfH/TAtyfGB27qxCEjf9gz6lx6r2', '$2y$12$M1pAd.4SVs/r7tx8U7PmPu.YvUBQFSygXXut3/4yuIbNK0Dfdqgti', 'property_owner', NULL, '2025-12-18 16:39:57', '2025-12-18 16:39:57'),
 (376, NULL, NULL, 'staff_7484', 'www@gmail.com', '$2y$12$/xCh4O9aA2eLxxFql7733.cZbLEFu632tnj37l74ldcsal3h8ItFa', 'admin_created', 'staff', NULL, '2026-01-27 06:39:40', '2026-01-27 06:39:40'),
 (377, NULL, NULL, 'staff_3987', 'weqwdas@gmail.com', '$2y$12$ewimmmI7B/wacS/XgaD6w.YBAlgjBhyZbea4tqNWBd0PyFF3TPpUm', 'admin_created', 'staff', NULL, '2026-01-27 06:43:03', '2026-01-27 06:43:03'),
 (378, 'team_members/VBsJKuTxBo5DZN7oA9YBy7TozufMrYlaCPTnX0o8.jpg', NULL, 'staff_2774', 'ditema1752@gamening.com', '$2y$12$Ygpc9NCqA4zYpscBwtT1Ku6sLm9jXSDq0AiZjL/jOmi8aldUB45YO', 'admin_created', 'staff', NULL, '2026-01-29 04:26:35', '2026-01-29 04:26:35'),
 (379, 'profiles/PhbbqKnsc3fS1Nv7LERONCLhNcqWD331gUXLHNQV.jpg', NULL, 'test3', 'yelib38945@advarm.com', '$2y$12$2Cbv3LvvnvNIZpUIuKGgz.L56xz9OqxDkFLujjp2dl.MvnjQnxTuS', '$2y$12$y9VTPCjj6m4qOfJnD8wUJOS/kg4/FY8BwWdG/X7cmS8lEFGG99eNS', 'property_owner', NULL, '2026-02-21 00:54:11', '2026-02-21 00:54:11'),
-(380, 'profiles/xLaCN2XuTkTXk8xvfyXBErZruRmXqAU5e15zM9U9.jpg', NULL, 'test4', 'joxego4264@advarm.com', '$2y$12$oy0SpEQMnFtlwTulClUVguhsYbZ20auAGsYIjpZ1KdmWxXvk7phqy', '$2y$12$1kC/giaAe0.Zk/XU1Gky7.42RItGVQ8kF/mqvgu1BoNcyc0Tli3QG', 'contractor', NULL, '2026-02-21 01:34:20', '2026-02-21 02:36:37');
+(380, 'profiles/xLaCN2XuTkTXk8xvfyXBErZruRmXqAU5e15zM9U9.jpg', NULL, 'test4', 'joxego4264@advarm.com', '$2y$12$oy0SpEQMnFtlwTulClUVguhsYbZ20auAGsYIjpZ1KdmWxXvk7phqy', '$2y$12$1kC/giaAe0.Zk/XU1Gky7.42RItGVQ8kF/mqvgu1BoNcyc0Tli3QG', 'contractor', NULL, '2026-02-21 01:34:20', '2026-02-21 02:36:37'),
+(381, NULL, NULL, 'ashxeynwwww', 'xalax77113@creteanu.com', '$2y$12$akr4WdYGoIB.3VxyuIAy6.refgKEI83zc7TqFbMKprJr.NU35Cuee', '$2y$12$RVFr2uAkjyZAgjZxaV971.G6Hjv6DtpzGsRj/rZUqrpM5fMnT88vS', 'property_owner', NULL, '2026-03-01 08:56:15', '2026-03-01 08:56:15'),
+(382, NULL, NULL, 'sdfsfsdfsdf', 'pifel41176@bultoc.com', '$2y$12$Fmw0H4s8B4ayi2JJU5c3PupfCLRBf3PfDQuTm5PobbpsxuB9KE0pe', '$2y$12$cJyYc3dp8c7cEwUndAd.aOX/uYZKZG2PS0RIYX1Mwr5d4S0EWcVCa', 'property_owner', NULL, '2026-03-02 09:23:23', '2026-03-02 09:23:23'),
+(383, NULL, NULL, 'sdfsfsdfsdfasd', 'yofigab837@creteanu.com', '$2y$12$7lA12UvVg2Ipr9XIJjhrVudwyawRZ8wiDuzyNub2CSwL5m85rd4E2', '$2y$12$2608yPZcohcYoa7V2iOvse/ypnimGX8cXfe.hx0/2mJUsJjuzr32K', 'property_owner', NULL, '2026-03-02 09:30:17', '2026-03-02 09:30:17'),
+(384, NULL, NULL, 'sdfsdfsf', 'gewejo6388@creteanu.com', '$2y$12$UPVNtXClS4n.PmSTsmlGgOZrdllIqy4PB3LoVx0Y2A5YxhAh68Pny', '$2y$12$3LC7oMEu0FGzDYDvV6eQN.bfuTIcu6TDoDr6EGAY0P1zpprOFGqA.', 'contractor', NULL, '2026-03-02 09:44:49', '2026-03-02 09:44:49'),
+(385, NULL, NULL, 'bgihn', 'nijexax443@creteanu.com', '$2y$12$Kx7okmlB0VFqn/Ix.rIAweQcvbP0QR3/98IpkqTuKPNMgPzwr/UIy', '$2y$12$RZXHZ6wqHG6fCxno5VfEd.gGHpVkPNQrjsvwbxwF2pWC15eUE1SuG', 'property_owner', NULL, '2026-03-02 11:19:43', '2026-03-02 11:19:43'),
+(386, NULL, NULL, 'nsjsjs', 'raded36969@creteanu.com', '$2y$12$eR7Yhs.gABg/k2d82R18autdM/6aUMrQYLTDdWeLw75ul.O27X/Qm', '$2y$12$.sSUBkjhKKrdsMv7hemb5uhUF2xOZb1rCtRcML42bZwk5.gqx9/ju', 'contractor', NULL, '2026-03-02 11:30:58', '2026-03-02 11:30:58'),
+(387, 'profiles/LFmXsYnMRYuOdgMlXxjAHMbAn3ZYIczlYXjXILxj.jpg', NULL, 'asdasdasdasdasdasdada', 'nitalom904@creteanu.com', '$2y$12$g4Fk8OheJCEmv3Uke.V8.e6tKekL3.kKL7/ynVLDy1hMcx3OfH.0G', '$2y$12$Z4LB8ceJiszpvqwDk6pYN.HCtKRXnSpR9IwSaliNiJzIB5a/DyEhq', 'property_owner', NULL, '2026-03-02 11:57:37', '2026-03-02 11:57:37'),
+(388, NULL, NULL, 'jshshdhd', 'cogec32379@creteanu.com', '$2y$12$aY33arECoPwtuSYGRmnBKuCJyutXrjTvz5P5l/g6AT5xHL8auEBA2', '$2y$12$6zRhOUGqGBI4oqYGeSrhEurwuJMH6ek1t0PLV7C7/kiX2vwarzPXu', 'property_owner', NULL, '2026-03-02 12:00:49', '2026-03-02 12:00:49'),
+(389, NULL, NULL, 'cncy', 'fzoyad47678@creteanu.com', '$2y$12$Dj9YW9tsofrjSx8G25QqxuA.IFVaBCqPwqPo1C0KT7ByFhBptyvWq', '$2y$12$GzLNiJfaI1X7J7LVjun.jOT17jRjVOM6Sm/1UQkCwKfkwGou4F8ue', 'contractor', NULL, '2026-03-02 12:17:06', '2026-03-02 20:18:51'),
+(390, 'profiles/q7h8Qj9wWFS4h1YdyYvn14xkKGLUXKGphQ9Q5TZL.jpg', NULL, 'cjfhj', 'foyssad47678@creteanu.com', '$2y$12$3c003vPyD1TE/yNX2QFl5.QkGZH711WcKwGyk81DQ77zSM78H5gVG', '$2y$12$Zj.ZANP6CNP2zyit0/K2/.Wc.c/2E6KwKYLPb3yLAmlQlsdyj8Va.', 'property_owner', NULL, '2026-03-02 12:20:19', '2026-03-02 20:22:30'),
+(391, NULL, NULL, 'adasdasd', 'foyad47678@creteanu.com', '$2y$12$47oSnuB70fYyzcvfTgwBMO7PMLDqCn84Y7sMlae9IdNcaXABzeS7C', '$2y$12$ZOXZySSEkf2tD2Akeh/66ehLP/WP5i20BsfqwkbOpKtW79ON/aPPO', 'property_owner', NULL, '2026-03-02 12:23:34', '2026-03-02 12:23:34'),
+(392, 'profiles/psqnzew1BBoGOVhCZ7yafvJAR210xGaxC3fqFH2e.jpg', NULL, 'miney', 'gelapix796@cslua.com', '$2y$12$EZUOnp2p9H07ys7ytDIhg.mZey5Adv.UmioeWJs2NEzO2DmzCGbmi', '$2y$12$Qg9Ee0bewNKPtza8pmqoC.n.Q4RWFNTQzIq9FxdN7zAHd6c7AuCgy', 'property_owner', NULL, '2026-03-03 21:12:42', '2026-03-03 21:12:42'),
+(393, NULL, NULL, 'hakdok', 'xelif27722@cslua.com', '$2y$12$kMm/rbXPBQh85qL2u3DcsewoYp7crIrwzpCN1.PBVOLk8g8/zHjWy', '$2y$12$vGHWfWYC3G60Xe2IglEeEepY9rQ6RpZqHMbNXcYIUtdb9OkNkACrm', 'contractor', NULL, '2026-03-05 05:24:36', '2026-03-05 05:24:36');
 
 -- --------------------------------------------------------
 
@@ -3368,12 +3684,26 @@ INSERT INTO `valid_ids` (`id`, `valid_id_name`) VALUES
 --
 
 --
+-- Indexes for table `admin_activity_logs`
+--
+ALTER TABLE `admin_activity_logs`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_admin_created` (`admin_id`,`created_at`);
+
+--
 -- Indexes for table `admin_users`
 --
 ALTER TABLE `admin_users`
   ADD PRIMARY KEY (`admin_id`),
   ADD UNIQUE KEY `username` (`username`),
   ADD UNIQUE KEY `email` (`email`);
+
+--
+-- Indexes for table `ai_prediction_logs`
+--
+ALTER TABLE `ai_prediction_logs`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `project_id` (`project_id`);
 
 --
 -- Indexes for table `bids`
@@ -3391,16 +3721,10 @@ ALTER TABLE `bid_files`
   ADD KEY `bid_id` (`bid_id`);
 
 --
--- Indexes for table `cache`
+-- Indexes for table `content_reports`
 --
-ALTER TABLE `cache`
-  ADD PRIMARY KEY (`key`);
-
---
--- Indexes for table `cache_locks`
---
-ALTER TABLE `cache_locks`
-  ADD PRIMARY KEY (`key`);
+ALTER TABLE `content_reports`
+  ADD PRIMARY KEY (`report_id`);
 
 --
 -- Indexes for table `contractors`
@@ -3463,9 +3787,19 @@ ALTER TABLE `dispute_files`
   ADD KEY `dispute_id` (`dispute_id`);
 
 --
+-- Indexes for table `downpayment_payments`
+--
+ALTER TABLE `downpayment_payments`
+  ADD PRIMARY KEY (`dp_payment_id`),
+  ADD KEY `idx_dp_project` (`project_id`),
+  ADD KEY `idx_dp_owner` (`owner_id`),
+  ADD KEY `idx_dp_status` (`payment_status`);
+
+--
 -- Indexes for table `item_files`
 --
 ALTER TABLE `item_files`
+  ADD PRIMARY KEY (`file_id`),
   ADD KEY `item_id` (`item_id`);
 
 --
@@ -3583,7 +3917,18 @@ ALTER TABLE `platform_payments`
   ADD KEY `project_id` (`project_id`),
   ADD KEY `contractor_id` (`contractor_id`),
   ADD KEY `owner_id` (`owner_id`),
-  ADD KEY `approved_by` (`approved_by`);
+  ADD KEY `approved_by` (`approved_by`),
+  ADD KEY `platform_payments_subscriptionplanid_foreign` (`subscriptionPlanId`);
+
+--
+-- Indexes for table `post_reports`
+--
+ALTER TABLE `post_reports`
+  ADD PRIMARY KEY (`report_id`),
+  ADD KEY `post_reports_reviewed_by_user_id_foreign` (`reviewed_by_user_id`),
+  ADD KEY `cr_status_idx` (`status`),
+  ADD KEY `cr_reporter_idx` (`reporter_user_id`),
+  ADD KEY `pr_post_idx` (`post_type`,`post_id`);
 
 --
 -- Indexes for table `progress`
@@ -3605,7 +3950,10 @@ ALTER TABLE `progress_files`
 ALTER TABLE `projects`
   ADD PRIMARY KEY (`project_id`),
   ADD KEY `fk_projects_type_id` (`type_id`),
-  ADD KEY `fk_projects_relationship_id` (`relationship_id`);
+  ADD KEY `fk_projects_relationship_id` (`relationship_id`),
+  ADD KEY `projects_is_highlighted_idx` (`is_highlighted`,`highlighted_at`),
+  ADD KEY `projects_status_idx` (`project_status`),
+  ADD KEY `projects_type_id_idx` (`type_id`);
 
 --
 -- Indexes for table `project_files`
@@ -3640,19 +3988,40 @@ ALTER TABLE `property_owners`
   ADD KEY `occupation_id` (`occupation_id`);
 
 --
--- Indexes for table `qr_codes`
---
-ALTER TABLE `qr_codes`
-  ADD PRIMARY KEY (`qr_id`);
-
---
 -- Indexes for table `reviews`
 --
 ALTER TABLE `reviews`
   ADD PRIMARY KEY (`review_id`),
+  ADD UNIQUE KEY `reviews_reviewer_project_unique` (`reviewer_user_id`,`project_id`),
   ADD KEY `project_id` (`project_id`),
   ADD KEY `reviewer_user_id` (`reviewer_user_id`),
-  ADD KEY `reviewee_user_id` (`reviewee_user_id`);
+  ADD KEY `reviewee_user_id` (`reviewee_user_id`),
+  ADD KEY `reviews_reviewee_rating_idx` (`reviewee_user_id`,`rating`);
+
+--
+-- Indexes for table `showcases`
+--
+ALTER TABLE `showcases`
+  ADD PRIMARY KEY (`post_id`),
+  ADD KEY `pp_user_id_idx` (`user_id`),
+  ADD KEY `pp_status_idx` (`status`),
+  ADD KEY `pp_created_at_idx` (`created_at`),
+  ADD KEY `pp_highlight_idx` (`is_highlighted`,`highlighted_at`),
+  ADD KEY `pp_linked_project_idx` (`linked_project_id`);
+
+--
+-- Indexes for table `showcase_images`
+--
+ALTER TABLE `showcase_images`
+  ADD PRIMARY KEY (`image_id`),
+  ADD KEY `ppi_post_id_idx` (`post_id`);
+
+--
+-- Indexes for table `subscription_plans`
+--
+ALTER TABLE `subscription_plans`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `subscription_plans_plan_key_unique` (`plan_key`);
 
 --
 -- Indexes for table `termination_proof`
@@ -3680,28 +4049,40 @@ ALTER TABLE `valid_ids`
 --
 
 --
--- AUTO_INCREMENT for table `admin_users`
+-- AUTO_INCREMENT for table `admin_activity_logs`
 --
-ALTER TABLE `admin_users`
-  MODIFY `admin_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+ALTER TABLE `admin_activity_logs`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `ai_prediction_logs`
+--
+ALTER TABLE `ai_prediction_logs`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `bids`
 --
 ALTER TABLE `bids`
-  MODIFY `bid_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=296;
+  MODIFY `bid_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=298;
 
 --
 -- AUTO_INCREMENT for table `bid_files`
 --
 ALTER TABLE `bid_files`
-  MODIFY `file_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
+  MODIFY `file_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
+
+--
+-- AUTO_INCREMENT for table `content_reports`
+--
+ALTER TABLE `content_reports`
+  MODIFY `report_id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `contractors`
 --
 ALTER TABLE `contractors`
-  MODIFY `contractor_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1811;
+  MODIFY `contractor_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1816;
 
 --
 -- AUTO_INCREMENT for table `contractor_types`
@@ -3713,7 +4094,7 @@ ALTER TABLE `contractor_types`
 -- AUTO_INCREMENT for table `contractor_users`
 --
 ALTER TABLE `contractor_users`
-  MODIFY `contractor_user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2060;
+  MODIFY `contractor_user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2065;
 
 --
 -- AUTO_INCREMENT for table `contract_terminations`
@@ -3725,73 +4106,85 @@ ALTER TABLE `contract_terminations`
 -- AUTO_INCREMENT for table `conversations`
 --
 ALTER TABLE `conversations`
-  MODIFY `conversation_id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=371000373;
+  MODIFY `conversation_id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=372000393;
 
 --
 -- AUTO_INCREMENT for table `disputes`
 --
 ALTER TABLE `disputes`
-  MODIFY `dispute_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=88;
+  MODIFY `dispute_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=90;
 
 --
 -- AUTO_INCREMENT for table `dispute_files`
 --
 ALTER TABLE `dispute_files`
+  MODIFY `file_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+
+--
+-- AUTO_INCREMENT for table `downpayment_payments`
+--
+ALTER TABLE `downpayment_payments`
+  MODIFY `dp_payment_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- AUTO_INCREMENT for table `item_files`
+--
+ALTER TABLE `item_files`
   MODIFY `file_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `messages`
 --
 ALTER TABLE `messages`
-  MODIFY `message_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=336;
+  MODIFY `message_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=423;
 
 --
 -- AUTO_INCREMENT for table `message_attachments`
 --
 ALTER TABLE `message_attachments`
-  MODIFY `attachment_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `attachment_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
 
 --
 -- AUTO_INCREMENT for table `migrations`
 --
 ALTER TABLE `migrations`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
 
 --
 -- AUTO_INCREMENT for table `milestones`
 --
 ALTER TABLE `milestones`
-  MODIFY `milestone_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1565;
+  MODIFY `milestone_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1569;
 
 --
 -- AUTO_INCREMENT for table `milestone_date_histories`
 --
 ALTER TABLE `milestone_date_histories`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `milestone_items`
 --
 ALTER TABLE `milestone_items`
-  MODIFY `item_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2793;
+  MODIFY `item_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2799;
 
 --
 -- AUTO_INCREMENT for table `milestone_item_updates`
 --
 ALTER TABLE `milestone_item_updates`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `milestone_payments`
 --
 ALTER TABLE `milestone_payments`
-  MODIFY `payment_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=829;
+  MODIFY `payment_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=826;
 
 --
 -- AUTO_INCREMENT for table `notifications`
 --
 ALTER TABLE `notifications`
-  MODIFY `notification_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3748;
+  MODIFY `notification_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3787;
 
 --
 -- AUTO_INCREMENT for table `occupations`
@@ -3803,25 +4196,31 @@ ALTER TABLE `occupations`
 -- AUTO_INCREMENT for table `payment_adjustment_logs`
 --
 ALTER TABLE `payment_adjustment_logs`
-  MODIFY `log_id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `log_id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `payment_plans`
 --
 ALTER TABLE `payment_plans`
-  MODIFY `plan_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=929;
+  MODIFY `plan_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=933;
 
 --
 -- AUTO_INCREMENT for table `personal_access_tokens`
 --
 ALTER TABLE `personal_access_tokens`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=123;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=138;
 
 --
 -- AUTO_INCREMENT for table `platform_payments`
 --
 ALTER TABLE `platform_payments`
-  MODIFY `platform_payment_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=101;
+  MODIFY `platform_payment_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=119;
+
+--
+-- AUTO_INCREMENT for table `post_reports`
+--
+ALTER TABLE `post_reports`
+  MODIFY `report_id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `progress`
@@ -3839,43 +4238,55 @@ ALTER TABLE `progress_files`
 -- AUTO_INCREMENT for table `projects`
 --
 ALTER TABLE `projects`
-  MODIFY `project_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1057;
+  MODIFY `project_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1058;
 
 --
 -- AUTO_INCREMENT for table `project_files`
 --
 ALTER TABLE `project_files`
-  MODIFY `file_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=355;
+  MODIFY `file_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=367;
 
 --
 -- AUTO_INCREMENT for table `project_relationships`
 --
 ALTER TABLE `project_relationships`
-  MODIFY `rel_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1057;
+  MODIFY `rel_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1058;
 
 --
 -- AUTO_INCREMENT for table `project_updates`
 --
 ALTER TABLE `project_updates`
-  MODIFY `extension_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `extension_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `property_owners`
 --
 ALTER TABLE `property_owners`
-  MODIFY `owner_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1820;
-
---
--- AUTO_INCREMENT for table `qr_codes`
---
-ALTER TABLE `qr_codes`
-  MODIFY `qr_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `owner_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1830;
 
 --
 -- AUTO_INCREMENT for table `reviews`
 --
 ALTER TABLE `reviews`
-  MODIFY `review_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=40;
+  MODIFY `review_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=41;
+
+--
+-- AUTO_INCREMENT for table `showcases`
+--
+ALTER TABLE `showcases`
+  MODIFY `post_id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT for table `showcase_images`
+--
+ALTER TABLE `showcase_images`
+  MODIFY `image_id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+
+--
+-- AUTO_INCREMENT for table `subscription_plans`
+--
+ALTER TABLE `subscription_plans`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- AUTO_INCREMENT for table `termination_proof`
@@ -3887,7 +4298,7 @@ ALTER TABLE `termination_proof`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=381;
+  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=394;
 
 --
 -- AUTO_INCREMENT for table `valid_ids`
@@ -3898,6 +4309,12 @@ ALTER TABLE `valid_ids`
 --
 -- Constraints for dumped tables
 --
+
+--
+-- Constraints for table `ai_prediction_logs`
+--
+ALTER TABLE `ai_prediction_logs`
+  ADD CONSTRAINT `fk_ai_logs_project` FOREIGN KEY (`project_id`) REFERENCES `projects` (`project_id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `bids`
@@ -4011,7 +4428,15 @@ ALTER TABLE `platform_payments`
   ADD CONSTRAINT `platform_payments_ibfk_1` FOREIGN KEY (`project_id`) REFERENCES `projects` (`project_id`),
   ADD CONSTRAINT `platform_payments_ibfk_2` FOREIGN KEY (`contractor_id`) REFERENCES `contractors` (`contractor_id`),
   ADD CONSTRAINT `platform_payments_ibfk_3` FOREIGN KEY (`owner_id`) REFERENCES `property_owners` (`owner_id`),
-  ADD CONSTRAINT `platform_payments_ibfk_4` FOREIGN KEY (`approved_by`) REFERENCES `admin_users` (`admin_id`);
+  ADD CONSTRAINT `platform_payments_ibfk_4` FOREIGN KEY (`approved_by`) REFERENCES `admin_users` (`admin_id`),
+  ADD CONSTRAINT `platform_payments_subscriptionplanid_foreign` FOREIGN KEY (`subscriptionPlanId`) REFERENCES `subscription_plans` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `post_reports`
+--
+ALTER TABLE `post_reports`
+  ADD CONSTRAINT `post_reports_reporter_user_id_foreign` FOREIGN KEY (`reporter_user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `post_reports_reviewed_by_user_id_foreign` FOREIGN KEY (`reviewed_by_user_id`) REFERENCES `users` (`user_id`) ON DELETE SET NULL;
 
 --
 -- Constraints for table `progress`
@@ -4060,6 +4485,19 @@ ALTER TABLE `reviews`
   ADD CONSTRAINT `reviews_ibfk_1` FOREIGN KEY (`project_id`) REFERENCES `projects` (`project_id`),
   ADD CONSTRAINT `reviews_ibfk_2` FOREIGN KEY (`reviewer_user_id`) REFERENCES `users` (`user_id`),
   ADD CONSTRAINT `reviews_ibfk_3` FOREIGN KEY (`reviewee_user_id`) REFERENCES `users` (`user_id`);
+
+--
+-- Constraints for table `showcases`
+--
+ALTER TABLE `showcases`
+  ADD CONSTRAINT `project_posts_linked_project_id_foreign` FOREIGN KEY (`linked_project_id`) REFERENCES `projects` (`project_id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `project_posts_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `showcase_images`
+--
+ALTER TABLE `showcase_images`
+  ADD CONSTRAINT `project_post_images_post_id_foreign` FOREIGN KEY (`post_id`) REFERENCES `showcases` (`post_id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `termination_proof`

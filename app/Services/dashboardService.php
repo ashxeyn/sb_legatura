@@ -126,7 +126,7 @@ class dashboardService
         $isOwner = in_array($userType, ['property_owner', 'both'])
                 && in_array($currentRole, ['owner', 'property_owner']);
 
-        $FeedService = app(\App\Services\FeedService::class);
+        $feedService = app(\App\Services\feedService::class);
         $feedItems = [];
         $feedType = 'projects';
         $contractorProjectsForMilestone = [];
@@ -138,7 +138,7 @@ class dashboardService
 
             if ($ownerId) {
                 $excludeUserId = ($userType === 'both') ? $user->user_id : null;
-                $result = $FeedService->ownerFeedApi($excludeUserId, page: 1, perPage: 1000);
+                $result = $feedService->ownerFeedApi($excludeUserId, page: 1, perPage: 1000);
                 $feedItems = collect($result['data']);
                 $feedType = 'contractors';
             }
@@ -158,7 +158,7 @@ class dashboardService
             }
         }
 
-        $contractorTypes = $FeedService->getContractorTypes();
+        $contractorTypes = $feedService->getContractorTypes();
 
         return [
             'feedItems'                      => $feedItems,

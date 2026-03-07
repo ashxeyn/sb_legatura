@@ -40,7 +40,7 @@ interface Bid {
   proposed_cost: number;
   estimated_timeline: number;
   contractor_notes?: string;
-  bid_status: 'pending' | 'accepted' | 'rejected' | 'withdrawn' | 'submitted';
+  bid_status: 'pending' | 'accepted' | 'rejected' | 'withdrawn' | 'submitted' | 'cancelled';
   submitted_at: string;
   owner_name?: string;
   project_status?: string;
@@ -104,6 +104,7 @@ export default function MyBids({ userData, onClose }: MyBidsProps) {
   const [showEditBid, setShowEditBid] = useState(false);
   const [editBidProject, setEditBidProject] = useState<any>(null);
   const [previewFile, setPreviewFile] = useState<{ url: string; name: string; isImage: boolean } | null>(null);
+  const [isCancellingBid, setIsCancellingBid] = useState(false);
 
   // Debug effect to track state changes
   useEffect(() => {
@@ -161,11 +162,11 @@ export default function MyBids({ userData, onClose }: MyBidsProps) {
     try {
       setIsLoadingProject(true);
       console.log('handleAcceptedBidClick - Fetching project for bid:', bid.bid_id, 'project_id:', bid.project_id);
-      
+
       // Fetch contractor projects to get the full project data
       const response = await projects_service.get_contractor_projects(userData?.user_id || 0);
       console.log('handleAcceptedBidClick - Response:', response);
-      
+
       if (response.success) {
         // Handle nested response structure
         let projectsData = response.data;
@@ -174,19 +175,19 @@ export default function MyBids({ userData, onClose }: MyBidsProps) {
         } else if (!Array.isArray(projectsData)) {
           projectsData = [];
         }
-        
+
         console.log('handleAcceptedBidClick - Projects data:', projectsData);
         console.log('handleAcceptedBidClick - Projects count:', projectsData.length);
         console.log('handleAcceptedBidClick - Looking for project_id:', bid.project_id);
         console.log('handleAcceptedBidClick - Available project IDs:', projectsData.map((p: any) => ({ id: p.project_id, title: p.project_title })));
-        
+
         // Try to find project by project_id (convert to number for comparison)
         const projectIdToFind = Number(bid.project_id);
         const project = projectsData.find((p: any) => Number(p.project_id) === projectIdToFind);
-        
+
         console.log('handleAcceptedBidClick - Found project:', project);
         console.log('handleAcceptedBidClick - Project ID match:', project ? `Match: ${project.project_id} === ${bid.project_id}` : 'No match');
-        
+
         if (project) {
           // Ensure project has the right structure for milestone setup
           const projectForSetup = {
@@ -198,7 +199,7 @@ export default function MyBids({ userData, onClose }: MyBidsProps) {
           console.log('handleAcceptedBidClick - Setting project for milestone setup:', projectForSetup);
           console.log('handleAcceptedBidClick - Project display_status:', projectForSetup.display_status);
           console.log('handleAcceptedBidClick - Project milestones:', projectForSetup.milestones);
-          
+
           // Set state directly - this should trigger re-render with MilestoneSetup
           setSelectedProject(projectForSetup);
           setShowMilestoneSetup(true);
@@ -272,6 +273,8 @@ export default function MyBids({ userData, onClose }: MyBidsProps) {
         return { color: COLORS.error, bg: COLORS.errorLight, label: 'Rejected', icon: 'x-circle' };
       case 'withdrawn':
         return { color: COLORS.textMuted, bg: COLORS.border, label: 'Withdrawn', icon: 'minus-circle' };
+      case 'cancelled':
+        return { color: COLORS.textMuted, bg: '#F1F5F9', label: 'Cancelled', icon: 'slash' };
       default:
         return { color: COLORS.textMuted, bg: COLORS.border, label: status, icon: 'circle' };
     }
@@ -286,6 +289,7 @@ export default function MyBids({ userData, onClose }: MyBidsProps) {
     pending: bids.filter(b => b.bid_status === 'pending' || b.bid_status === 'submitted').length,
     accepted: bids.filter(b => b.bid_status === 'accepted').length,
     rejected: bids.filter(b => b.bid_status === 'rejected').length,
+    cancelled: bids.filter(b => b.bid_status === 'cancelled').length,
   };
 
   // Helper: check if a bid status is editable
@@ -310,6 +314,42 @@ export default function MyBids({ userData, onClose }: MyBidsProps) {
     setShowEditBid(true);
   };
 
+  const handleCancelBid = (bid: Bid) => {
+    if (!bid?.bid_id || isCancellingBid) return;
+
+    Alert.alert(
+      'Cancel Bid',
+      'Are you sure you want to cancel this bid?',
+      [
+        { text: 'Keep Bid', style: 'cancel' },
+        {
+          text: 'Cancel Bid',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setIsCancellingBid(true);
+              const response = await projects_service.cancel_bid(bid.bid_id, userData?.user_id || 0);
+
+              if (response.success) {
+                setShowDetailsModal(false);
+                setSelectedBid(null);
+                await fetchBids();
+                Alert.alert('Bid Cancelled', 'Your bid has been cancelled successfully.');
+              } else {
+                Alert.alert('Error', response.message || 'Failed to cancel bid. Please try again.');
+              }
+            } catch (error) {
+              console.error('Error cancelling bid:', error);
+              Alert.alert('Error', 'Failed to cancel bid. Please try again.');
+            } finally {
+              setIsCancellingBid(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
   // Show Edit Bid screen (PlaceBid in edit mode)
   if (showEditBid && editBidProject) {
     return (
@@ -326,6 +366,9 @@ export default function MyBids({ userData, onClose }: MyBidsProps) {
           setEditBidProject(null);
           fetchBids(); // Refresh the bids list
         }}
+        onOpenSubscription={() => {
+          if (global.set_app_state) global.set_app_state('subscription');
+        }}
       />
     );
   }
@@ -336,7 +379,7 @@ export default function MyBids({ userData, onClose }: MyBidsProps) {
     console.log('MyBids - Project ID:', selectedProject.project_id);
     console.log('MyBids - Project title:', selectedProject.project_title);
     console.log('MyBids - Project display_status:', selectedProject.display_status);
-    
+
     return (
       <MilestoneSetup
         project={selectedProject}
@@ -422,7 +465,7 @@ export default function MyBids({ userData, onClose }: MyBidsProps) {
         style={styles.filterContainer}
         contentContainerStyle={styles.filterContent}
       >
-        {['all', 'pending', 'submitted', 'accepted', 'rejected'].map((status) => (
+        {['all', 'pending', 'submitted', 'accepted', 'rejected', 'cancelled'].map((status) => (
           <TouchableOpacity
             key={status}
             style={[
@@ -828,12 +871,28 @@ export default function MyBids({ userData, onClose }: MyBidsProps) {
               {isEditableStatus(selectedBid.bid_status) && (
                 <View style={styles.modalSection}>
                   <TouchableOpacity
-                    style={styles.editBidModalButton}
+                    style={[styles.bidActionButton, styles.editBidModalButton]}
                     onPress={() => openEditBid(selectedBid)}
                     activeOpacity={0.8}
                   >
                     <Feather name="edit-2" size={18} color="#FFFFFF" />
                     <Text style={styles.editBidModalButtonText}>Edit Bid</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.bidActionButton, styles.cancelBidModalButton, isCancellingBid && styles.cancelBidModalButtonDisabled]}
+                    onPress={() => handleCancelBid(selectedBid)}
+                    disabled={isCancellingBid}
+                    activeOpacity={0.8}
+                  >
+                    {isCancellingBid ? (
+                      <ActivityIndicator size="small" color={COLORS.error} />
+                    ) : (
+                      <>
+                        <Feather name="x-circle" size={18} color={COLORS.error} />
+                        <Text style={styles.cancelBidModalButtonText}>Cancel Bid</Text>
+                      </>
+                    )}
                   </TouchableOpacity>
                 </View>
               )}
@@ -1383,19 +1442,36 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     marginLeft: 6,
   },
-  editBidModalButton: {
+  bidActionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.primary,
     paddingVertical: 14,
     borderRadius: 12,
     gap: 8,
+    borderWidth: 1,
+  },
+  editBidModalButton: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
   },
   editBidModalButtonText: {
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  cancelBidModalButton: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#FCA5A5',
+    marginTop: 10,
+  },
+  cancelBidModalButtonDisabled: {
+    opacity: 0.6,
+  },
+  cancelBidModalButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.error,
   },
   filesCard: {
     backgroundColor: COLORS.surface,

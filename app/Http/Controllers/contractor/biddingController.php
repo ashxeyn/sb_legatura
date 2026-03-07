@@ -344,6 +344,100 @@ class biddingController extends Controller
     }
 
     /**
+     * API endpoint for mobile app to cancel a contractor bid.
+     * Only owner/representative can cancel bids.
+     */
+    public function apiCancelBid(Request $request, $bidId)
+    {
+        try {
+            $userId = $request->input('user_id');
+
+            if (!$userId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User ID is required'
+                ], 400);
+            }
+
+            // Authorization check: Only owner/representative can cancel bids
+            $authService = app(\App\Services\ContractorAuthorizationService::class);
+            $authError = $authService->validateBiddingAccess((int) $userId);
+            if ($authError) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $authError,
+                    'error_code' => 'UNAUTHORIZED_BIDDING'
+                ], 403);
+            }
+
+            // Resolve contractor context (owner account or active staff member)
+            $contractor = DB::table('contractors')
+                ->where('user_id', $userId)
+                ->first();
+
+            if (!$contractor) {
+                $contractorUser = DB::table('contractor_users')
+                    ->where('user_id', $userId)
+                    ->where('is_active', 1)
+                    ->where('is_deleted', 0)
+                    ->first();
+
+                if ($contractorUser) {
+                    $contractor = DB::table('contractors')
+                        ->where('contractor_id', $contractorUser->contractor_id)
+                        ->first();
+                }
+            }
+
+            if (!$contractor) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Contractor profile not found'
+                ], 404);
+            }
+
+            $bid = DB::table('bids')
+                ->where('bid_id', $bidId)
+                ->where('contractor_id', $contractor->contractor_id)
+                ->first();
+
+            if (!$bid) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Bid not found or unauthorized'
+                ], 404);
+            }
+
+            if (!in_array($bid->bid_status, ['submitted', 'under_review'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This bid cannot be cancelled in its current status.'
+                ], 400);
+            }
+
+            DB::table('bids')
+                ->where('bid_id', $bidId)
+                ->update(['bid_status' => 'cancelled']);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Bid cancelled successfully'
+            ], 200);
+        } catch (\Exception $e) {
+            Log::error('apiCancelBid error', [
+                'bid_id' => $bidId,
+                'user_id' => $request->input('user_id'),
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to cancel bid. Please try again.'
+            ], 500);
+        }
+    }
+
+    /**
      * API endpoint to get all bids for a project (for property owner)
      */
     public function getProjectBids(Request $request, $projectId)
@@ -451,6 +545,41 @@ class biddingController extends Controller
     }
 
     /**
+     * API endpoint to check bid eligibility based on subscription
+     * GET /api/contractor/bid-eligibility
+     */
+    public function apiBidEligibility(Request $request)
+    {
+        try {
+            // Resolve user ID from various sources
+            $userId = $request->input('user_id')
+                ?? $request->header('X-User-Id')
+                ?? (auth()->user()?->user_id);
+
+            if (!$userId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User ID is required'
+                ], 400);
+            }
+
+            $eligibility = \App\Models\subs\platformPaymentClass::checkBidEligibility((int) $userId);
+
+            return response()->json([
+                'success' => true,
+                'data' => $eligibility
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::error('Bid eligibility check error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error checking bid eligibility: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * API endpoint for mobile app to submit a bid
      */
     public function apiSubmitBid(Request $request, $projectId)
@@ -526,6 +655,17 @@ class biddingController extends Controller
                 }
             }
 
+            // Check bid eligibility based on subscription tier
+            $eligibility = \App\Models\subs\platformPaymentClass::checkBidEligibility((int) $userId);
+            if (!$eligibility['can_bid']) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $eligibility['message'],
+                    'error_code' => 'BID_LIMIT_REACHED',
+                    'eligibility' => $eligibility
+                ], 403);
+            }
+
             // Validate input
             $validated = $request->validate([
                 'proposed_cost' => 'required|numeric|min:0',
@@ -535,30 +675,49 @@ class biddingController extends Controller
                 'bid_files.*' => 'file|max:10240|mimes:pdf,doc,docx,jpg,jpeg,png,gif,xls,xlsx'
             ]);
 
-            // Check if bid already exists
+            // Respect unique(project_id, contractor_id): either reject active bid,
+            // or reuse a cancelled row by reactivating it.
             $existingBid = DB::table('bids')
                 ->where('project_id', $projectId)
                 ->where('contractor_id', $contractor->contractor_id)
-                ->whereNotIn('bid_status', ['cancelled'])
                 ->first();
 
-            if ($existingBid) {
+            if ($existingBid && $existingBid->bid_status !== 'cancelled') {
                 return response()->json([
                     'success' => false,
-                    'message' => 'You have already submitted a bid for this project'
-                ], 400);
+                    'message' => 'You have already submitted a bid for this project',
+                    'error_code' => 'BID_ALREADY_EXISTS',
+                    'data' => [
+                        'bid_id' => $existingBid->bid_id,
+                        'bid_status' => $existingBid->bid_status,
+                    ],
+                ], 409);
             }
 
-            // Create bid
-            $bidId = DB::table('bids')->insertGetId([
-                'project_id' => $projectId,
-                'contractor_id' => $contractor->contractor_id,
-                'proposed_cost' => $validated['proposed_cost'],
-                'estimated_timeline' => $validated['estimated_timeline'],
-                'contractor_notes' => $validated['contractor_notes'] ?? null,
-                'bid_status' => 'submitted',
-                'submitted_at' => now()
-            ]);
+            if ($existingBid && $existingBid->bid_status === 'cancelled') {
+                DB::table('bids')
+                    ->where('bid_id', $existingBid->bid_id)
+                    ->update([
+                        'proposed_cost' => $validated['proposed_cost'],
+                        'estimated_timeline' => $validated['estimated_timeline'],
+                        'contractor_notes' => $validated['contractor_notes'] ?? null,
+                        'bid_status' => 'submitted',
+                        'submitted_at' => now(),
+                    ]);
+
+                $bidId = $existingBid->bid_id;
+            } else {
+                // Create fresh bid row when none exists yet.
+                $bidId = DB::table('bids')->insertGetId([
+                    'project_id' => $projectId,
+                    'contractor_id' => $contractor->contractor_id,
+                    'proposed_cost' => $validated['proposed_cost'],
+                    'estimated_timeline' => $validated['estimated_timeline'],
+                    'contractor_notes' => $validated['contractor_notes'] ?? null,
+                    'bid_status' => 'submitted',
+                    'submitted_at' => now()
+                ]);
+            }
 
             // Handle file uploads
             $uploadedFiles = [];
@@ -633,10 +792,36 @@ class biddingController extends Controller
                 'message' => 'Validation failed',
                 'errors' => $e->errors()
             ], 422);
-        } catch (\Exception $e) {
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Gracefully handle unique(project_id, contractor_id) race/duplicates.
+            if ((int) ($e->errorInfo[1] ?? 0) === 1062) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You have already submitted a bid for this project',
+                    'error_code' => 'BID_ALREADY_EXISTS'
+                ], 409);
+            }
+
+            Log::error('apiSubmitBid query error', [
+                'project_id' => $projectId,
+                'user_id' => $userId ?? null,
+                'error' => $e->getMessage(),
+            ]);
+
             return response()->json([
                 'success' => false,
-                'message' => 'Error submitting bid: ' . $e->getMessage()
+                'message' => 'Failed to submit bid. Please try again.'
+            ], 500);
+        } catch (\Exception $e) {
+            Log::error('apiSubmitBid unexpected error', [
+                'project_id' => $projectId,
+                'user_id' => $userId ?? null,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to submit bid. Please try again.'
             ], 500);
         }
     }
@@ -656,10 +841,24 @@ class biddingController extends Controller
                 ], 400);
             }
 
-            // Get contractor info
+            // Get contractor info - check both direct contractor ownership and staff membership
             $contractor = DB::table('contractors')
                 ->where('user_id', $userId)
                 ->first();
+
+            if (!$contractor) {
+                $contractorUser = DB::table('contractor_users')
+                    ->where('user_id', $userId)
+                    ->where('is_active', 1)
+                    ->where('is_deleted', 0)
+                    ->first();
+
+                if ($contractorUser) {
+                    $contractor = DB::table('contractors')
+                        ->where('contractor_id', $contractorUser->contractor_id)
+                        ->first();
+                }
+            }
 
             if (!$contractor) {
                 return response()->json([
@@ -755,7 +954,6 @@ class biddingController extends Controller
                 ->leftJoin('users', 'property_owners.user_id', '=', 'users.user_id')
                 ->leftJoin('contractor_types', 'projects.type_id', '=', 'contractor_types.type_id')
                 ->where('bids.contractor_id', $contractor->contractor_id)
-                ->whereNotIn('bids.bid_status', ['cancelled'])
                 ->select(
                     'bids.bid_id',
                     'bids.project_id',

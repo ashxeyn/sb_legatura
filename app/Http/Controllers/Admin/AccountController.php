@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Session;
 use Throwable;
 
-class AccountController extends Controller
+class accountController extends Controller
 {
     /**
      * Resolve the currently authenticated admin.
@@ -59,7 +59,7 @@ class AccountController extends Controller
         $userType = Session::get('userType');
         if ($userType !== 'admin') {
             // Not an admin session at all — log for debugging
-            \Illuminate\Support\Facades\Log::warning('AccountController: resolveAdmin called but userType is not admin', [
+            \Illuminate\Support\Facades\Log::warning('accountController: resolveAdmin called but userType is not admin', [
                 'userType'    => $userType,
                 'sessionKeys' => array_keys(Session::all()),
             ]);
@@ -98,7 +98,7 @@ class AccountController extends Controller
             DB::statement('
                 CREATE TABLE admin_activity_logs (
                     id          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-                    admin_id    INT(11)         NOT NULL,
+                    admin_id    VARCHAR(20)         NOT NULL,
                     action      VARCHAR(100)    NOT NULL,
                     details     TEXT            NULL,
                     ip_address  VARCHAR(45)     NULL,
@@ -261,7 +261,7 @@ class AccountController extends Controller
         ]);
     }
 
-    protected function logActivity(int $adminId, string $action, ?array $details): void
+    protected function logActivity(string $adminId, string $action, ?array $details): void
     {
         try {
             DB::table('admin_activity_logs')->insert([
@@ -271,6 +271,9 @@ class AccountController extends Controller
                 'ip_address' => request()->ip(),
                 'created_at' => now(),
             ]);
-        } catch (Throwable) {}
+        } catch (\Throwable $e) {
+            // THIS WILL LOG THE REAL ERROR TO storage/logs/laravel.log
+            \Illuminate\Support\Facades\Log::error('LogActivity Error: ' . $e->getMessage());
+        }
     }
 }

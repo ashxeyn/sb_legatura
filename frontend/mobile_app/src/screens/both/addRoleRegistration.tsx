@@ -8,7 +8,7 @@ import { role_service } from '../../services/role_service';
 import { api_request, api_config } from '../../config/api';
 import { auth_service } from '../../services/auth_service';
 import * as ImagePicker from 'expo-image-picker';
-import PlatformDatePicker from '../../components/PlatformDatePicker';
+import PlatformDatePicker from '../../components/platformDatePicker';
 import { Platform } from 'react-native';
 import { computeYears, formatDate, formatDateForDisplay, formatExperience } from '../../utils/roleFormUtils';
 

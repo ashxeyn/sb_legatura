@@ -83,6 +83,11 @@ type NotificationType =
   | 'team_removed'
   | 'team_role_changed'
   | 'team_access_changed'
+  // Reviews
+  | 'review_prompt'
+  | 'review_submitted'
+  // Payment fully paid
+  | 'payment_fully_paid'
   // Fallback
   | 'general';
 
@@ -284,6 +289,31 @@ const getNotificationStyle = (type: NotificationType) => {
         iconColor: COLORS.textSecondary,
       };
 
+    // ── Reviews ── star icon ──
+    case 'review_prompt':
+      return {
+        icon: 'star-outline' as const,
+        iconComponent: 'ionicons',
+        bgColor: COLORS.warningLight,
+        iconColor: COLORS.warning,
+      };
+    case 'review_submitted':
+      return {
+        icon: 'star' as const,
+        iconComponent: 'ionicons',
+        bgColor: COLORS.warningLight,
+        iconColor: COLORS.warning,
+      };
+
+    // ── Fully Paid ── Peso Sign ₱ ──
+    case 'payment_fully_paid':
+      return {
+        icon: '₱' as const,
+        iconComponent: 'text',
+        bgColor: COLORS.successLight,
+        iconColor: COLORS.success,
+      };
+
     // ── Team / Members ── primary ──
     case 'team_invite':
     case 'team_role_changed':
@@ -381,6 +411,8 @@ const getNotificationCategory = (type: NotificationType): NotificationCategory =
   )
     return 'projects';
   if (type.startsWith('dispute_') || type.startsWith('team_')) return 'messages';
+  if (type.startsWith('review_')) return 'projects';
+  if (type === 'payment_fully_paid') return 'payments';
   return 'all';
 };
 

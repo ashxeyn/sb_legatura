@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\both;
 
 use App\Http\Controllers\Controller;
-use App\Services\FeedService;
+use App\Services\feedService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -23,11 +23,11 @@ use Laravel\Sanctum\PersonalAccessToken;
  */
 class homepageController extends Controller
 {
-    protected FeedService $FeedService;
+    protected feedService $feedService;
 
-    public function __construct(FeedService $FeedService)
+    public function __construct(feedService $feedService)
     {
-        $this->FeedService = $FeedService;
+        $this->feedService = $feedService;
     }
 
     /* =====================================================================
@@ -76,7 +76,7 @@ class homepageController extends Controller
         $perPage = 10;
 
         // Use the API-style feed to get paginated data
-        $result = $this->FeedService->ownerFeedApi($excludeUserId, $page, $perPage, []);
+        $result = $this->feedService->ownerFeedApi($excludeUserId, $page, $perPage, []);
 
         // Normalize contractors collection for Blade
         $contractors = collect($result['data']);
@@ -93,13 +93,13 @@ class homepageController extends Controller
         }
 
         // Also prepare the jsContractors payload (first page) for client-side use
-        $jsContractors = $this->FeedService->ownerHomepageData($excludeUserId)['jsContractors'] ?? [];
+        $jsContractors = $this->feedService->ownerHomepageData($excludeUserId)['jsContractors'] ?? [];
 
         return view('owner.propertyOwner_Homepage', [
             'contractors' => $contractors,
             'pagination' => $pagination,
             'jsContractors' => $jsContractors,
-            'contractorTypes' => $this->FeedService->getContractorTypes(),
+            'contractorTypes' => $this->feedService->getContractorTypes(),
         ]);
     }
 
@@ -122,7 +122,7 @@ class homepageController extends Controller
         try {
             $user = Session::get('user');
             $userId = $user ? (int) ($user->user_id ?? $user->id ?? null) : null;
-            $data = $this->FeedService->contractorHomepageData($userId);
+            $data = $this->feedService->contractorHomepageData($userId);
         } catch (\Throwable $e) {
             Log::error('HomepageController::contractorHomepage failed: ' . $e->getMessage());
             $data = [
@@ -165,7 +165,7 @@ class homepageController extends Controller
                 'min_completed' => $request->query('min_completed'),
             ], fn($v) => $v !== null && $v !== '');
 
-            $result = $this->FeedService->ownerFeedApi(
+            $result = $this->feedService->ownerFeedApi(
                 $excludeUser ? (int) $excludeUser : null,
                 $page,
                 $perPage,
@@ -203,7 +203,7 @@ class homepageController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Contractor types retrieved successfully',
-                'data' => $this->FeedService->getContractorTypes(),
+                'data' => $this->feedService->getContractorTypes(),
             ], 200);
         } catch (\Exception $e) {
             Log::error('apiGetContractorTypes error: ' . $e->getMessage());
@@ -249,7 +249,7 @@ class homepageController extends Controller
                 'max_floor_area' => $request->query('max_floor_area'),
             ], fn($v) => $v !== null && $v !== '');
 
-            $result = $this->FeedService->contractorFeedApi($userId, $page, $perPage, $filters);
+            $result = $this->feedService->contractorFeedApi($userId, $page, $perPage, $filters);
 
             return response()->json([
                 'success' => true,
@@ -283,7 +283,7 @@ class homepageController extends Controller
     public function apiGetFilterOptions(Request $request)
     {
         try {
-            $contractorTypes = $this->FeedService->getContractorTypes();
+            $contractorTypes = $this->feedService->getContractorTypes();
             $propertyTypes = (new \App\Models\both\feedClass)->getEnumValues('projects', 'property_type');
 
             $picabCategories = ['AAAA', 'AAA', 'AA', 'A', 'B', 'C', 'D', 'Trade/E'];
@@ -308,6 +308,61 @@ class homepageController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Error retrieving filter options: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /* =====================================================================
+     * API — Combined Users search (contractors + property owners)
+     * ===================================================================== */
+
+    /**
+     * GET /api/users/search?search=keyword&page=1&per_page=15
+     *
+     * Searches both contractors and property owners by keyword.
+     */
+    public function apiSearchUsers(Request $request)
+    {
+        try {
+            $search = $request->query('search', '');
+            if (empty(trim($search))) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'No search query provided',
+                    'data' => [],
+                    'pagination' => [
+                        'current_page' => 1,
+                        'per_page' => 15,
+                        'total' => 0,
+                        'total_pages' => 0,
+                        'has_more' => false,
+                    ],
+                ], 200);
+            }
+
+            $page = max(1, (int) $request->query('page', 1));
+            $perPage = min(50, max(1, (int) $request->query('per_page', 15)));
+            $excludeUser = $request->query('exclude_user_id');
+
+            $feed = new \App\Models\both\feedClass;
+            $result = $feed->searchUsers(
+                trim($search),
+                $page,
+                $perPage,
+                $excludeUser ? (int) $excludeUser : null
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Users retrieved successfully',
+                'data' => $result['data'],
+                'pagination' => $result['pagination'],
+            ], 200);
+        } catch (\Exception $e) {
+            Log::error('apiSearchUsers error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error searching users: ' . $e->getMessage(),
             ], 500);
         }
     }

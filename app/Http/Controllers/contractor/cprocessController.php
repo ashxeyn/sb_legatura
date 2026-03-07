@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\contractor\contractorClass;
 use App\Models\contractor\progressUploadClass;
 use App\Services\NotificationService;
+use App\Services\milestoneService;
 
 class cprocessController extends Controller
 {
@@ -1388,6 +1389,12 @@ class cprocessController extends Controller
                     $milestone->payment_plan = DB::table('payment_plans')
                         ->where('plan_id', $milestone->plan_id)
                         ->first();
+
+                    // Attach computed downpayment-cleared flag so front-ends can gate milestone items
+                    if ($milestone->payment_plan) {
+                        $milestone->payment_plan->downpayment_cleared =
+                            milestoneService::isDownpaymentCleared($project->project_id);
+                    }
                 }
 
                 $project->milestones = $milestones;

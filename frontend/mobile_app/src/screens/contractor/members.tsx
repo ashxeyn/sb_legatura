@@ -55,7 +55,7 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
     last_name: '',
     email: '',
     phone_number: '',
-    role: 'manager',
+    role: 'others',
     username: '',
     password: '',
     password_confirm: '',
@@ -278,7 +278,7 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
       last_name: '',
       email: '',
       phone_number: '',
-      role: 'manager',
+      role: 'others',
       role_other: '',
       profile_pic: null,
       _pickedFile: null,
@@ -303,7 +303,7 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
       last_name: item.last_name || item.name?.split(' ').slice(1).join(' ') || '',
       email: item.email || '',
       phone_number: item.phone || item.phone_number || '',
-      role: item.role || 'manager',
+      role: item.role || 'others',
       role_other: item.role_other || '',
       profile_pic: profilePicUri,
       _pickedFile: null,
@@ -590,10 +590,9 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
               {[
                 { label: 'All', value: 'all' },
                 { label: 'Owner', value: 'owner' },
-                { label: 'Manager', value: 'manager' },
+                { label: 'Representative', value: 'representative' },
                 { label: 'Engineer', value: 'engineer' },
                 { label: 'Architect', value: 'architect' },
-                { label: 'Representative', value: 'representative' },
                 { label: 'Others', value: 'others' },
               ].filter(({ value }) => {
                 // Representatives cannot see/filter by owner
@@ -713,7 +712,7 @@ export default function Members({ userData, onClose }: { userData?: any; onClose
                 </TouchableOpacity>
                 {form.showRoleOptions && (
                   <View style={{ marginTop: 6, borderWidth: 1, borderColor: COLORS.border, borderRadius: 6, overflow: 'hidden' }}>
-                    {['owner','manager','engineer','architect','representative','others']
+                    {['owner','representative','engineer','architect','others']
                       .filter(r => {
                         // Representatives cannot assign owner role
                         if (role === 'representative' && r === 'owner') return false;

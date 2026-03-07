@@ -376,6 +376,15 @@ export class auth_service {
         formData.append('skip_profile', 'true');
       }
 
+      if (profileInfo.coverImageUri) {
+        console.log('🔥 Adding cover photo to FormData');
+        formData.append('cover_photo', {
+          uri: profileInfo.coverImageUri,
+          type: 'image/jpeg',
+          name: 'cover_photo.jpg',
+        } as any);
+      }
+
       // Include step data for stateless/mobile clients if provided
       try {
         if (profileInfo.step1_data) {
@@ -620,6 +629,16 @@ export class auth_service {
       } else {
         // Ensure we send at least one field to avoid empty body issues
         formData.append('skip_profile', 'true');
+      }
+
+      // Cover image (optional) - for contractors this is company_banner
+      if (profileInfo && profileInfo.coverImageUri) {
+        console.log('🔥 Adding company banner to FormData');
+        formData.append('company_banner', {
+          uri: profileInfo.coverImageUri,
+          type: 'image/jpeg',
+          name: 'company_banner.jpg',
+        } as any);
       }
 
       console.log('🔥 Calling endpoint:', api_config.endpoints.contractor.final);

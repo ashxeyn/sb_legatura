@@ -125,7 +125,8 @@ class paymentUploadController extends Controller
 		// Get primary contractor user (owner role preferred, or first active user, then any user)
 			$project = DB::table('projects as p')
 				->leftJoin('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
-				->leftJoin('contractors as c', 'p.selected_contractor_id', '=', 'c.contractor_id')
+				->leftJoin('payment_plans as pp', 'p.project_id', '=', 'pp.project_id')
+				->leftJoin('contractors as c', DB::raw('COALESCE(p.selected_contractor_id, pp.contractor_id)'), '=', 'c.contractor_id')
 			->leftJoin('contractor_users as cu', function($join) {
 				$join->on('c.contractor_id', '=', 'cu.contractor_id')
 					->where('cu.is_deleted', '=', 0);
@@ -200,6 +201,16 @@ class paymentUploadController extends Controller
 					'new_payment' => (float) $validated['amount'],
 					'new_total' => $newTotal,
 				]);
+			}
+
+			// ── Downpayment gate: block milestone item payments if downpayment not yet cleared ──
+			if ($validated['item_id'] != -1) {
+				if (!\App\Services\milestoneService::isDownpaymentCleared($validated['project_id'])) {
+					return response()->json([
+						'success' => false,
+						'message' => 'The downpayment must be paid and confirmed by the contractor before you can upload payments for milestone items.'
+					], 422);
+				}
 			}
 
 			// ── Sequential enforcement: previous item must be completed first ──

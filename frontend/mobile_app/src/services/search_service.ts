@@ -158,6 +158,43 @@ export class search_service {
   }
 
   /**
+   * Combined user search (contractors + property owners).
+   * Hits GET /api/search/users?search=keyword&page=N&per_page=N
+   */
+  static async search_users(
+    keyword: string,
+    page: number = 1,
+    perPage: number = 15,
+    excludeUserId?: number,
+  ): Promise<SearchResponse> {
+    try {
+      const params = new URLSearchParams();
+      params.append('search', keyword.trim());
+      params.append('page', page.toString());
+      params.append('per_page', perPage.toString());
+      if (excludeUserId) params.append('exclude_user_id', excludeUserId.toString());
+
+      const endpoint = `/api/search/users?${params.toString()}`;
+      const response = await api_request(endpoint, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      });
+
+      return response;
+    } catch (error) {
+      console.error('search_service.search_users error:', error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'User search failed',
+        status: 0,
+      };
+    }
+  }
+
+  /**
    * Fetch available filter options (contractor types, property types, etc.)
    * Hits GET /api/search/filter-options
    */

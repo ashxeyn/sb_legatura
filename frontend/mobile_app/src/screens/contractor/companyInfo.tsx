@@ -360,7 +360,8 @@ export default function CompanyInfoScreen({ onBackPress, onNext, formData, initi
                             <DateTimePicker
                                 value={foundedDate ? new Date(foundedDate) : new Date()}
                                 mode="date"
-                                display="calendar"
+                                display="spinner"
+                                minimumDate={new Date(1900, 0, 1)}
                                 maximumDate={new Date()}
                                 onChange={(event: any, selectedDate?: Date) => {
                                     setShowDatePicker(false);

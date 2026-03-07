@@ -4,6 +4,8 @@ import {
   View,
   Text,
   TouchableOpacity,
+  Alert,
+  ActivityIndicator,
   StyleSheet,
   ScrollView,
   Dimensions,
@@ -16,9 +18,11 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import ImageFallback from '../../components/ImageFallbackFixed';
+import ImageFallback from '../../components/imageFallback';
+import ReportPostModal from '../../components/reportPostModal';
 import { api_config, api_request } from '../../config/api';
 import { storage_service } from '../../utils/storage';
+import { post_service } from '../../services/post_service';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -51,6 +55,7 @@ interface ProjectPostDetailProps {
   onPlaceBid?: () => void;
   userRole?: 'owner' | 'contractor';
   canBid?: boolean; // Whether user has permission to bid (owner/representative only)
+  onViewOwnerProfile?: () => void;
 }
 
 /**
@@ -73,13 +78,29 @@ const classifyImportant = (fileType: string, rawPath: string): boolean => {
   return false;
 };
 
-export default function ProjectPostDetail({ project, onClose, onPlaceBid, userRole = 'contractor', canBid = true }: ProjectPostDetailProps) {
+export default function ProjectPostDetail({ project, onClose, onPlaceBid, userRole = 'contractor', canBid = true, onViewOwnerProfile }: ProjectPostDetailProps) {
   const insets = useSafeAreaInsets();
   const [imageViewerVisible, setImageViewerVisible] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [docViewerVisible, setDocViewerVisible] = useState(false);
   const [docViewerIndex, setDocViewerIndex] = useState(0);
   const docFlatListRef = useRef<FlatList>(null);
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [reportModalVisible, setReportModalVisible] = useState(false);
+
+  const submitReport = useCallback(async (reason: string, details?: string) => {
+    const res = await post_service.report_post('project', project.project_id, reason, details);
+    return {
+      success: !!res.success,
+      message: res.message || (res.success ? 'Report submitted.' : 'Unable to submit report right now.'),
+    };
+  }, [project.project_id]);
+
+  const openReportReasons = useCallback(() => {
+    setMenuVisible(false);
+    setReportModalVisible(true);
+  }, [submitReport]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-PH', {
@@ -355,13 +376,34 @@ export default function ProjectPostDetail({ project, onClose, onPlaceBid, userRo
           <Ionicons name="arrow-back" size={24} color="#1A1A1A" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Project Post</Text>
-        <View style={{ width: 40 }} />
+        <View style={styles.cardMenuWrap}>
+          <TouchableOpacity style={styles.menuButton} onPress={() => setMenuVisible(v => !v)}>
+            <MaterialIcons name="more-vert" size={24} color="#1A1A1A" />
+          </TouchableOpacity>
+          {menuVisible && (
+            <View style={styles.cardMenuDropdown}>
+              <TouchableOpacity style={styles.cardMenuItem} onPress={openReportReasons} disabled={actionLoading}>
+                <Text style={styles.cardMenuDangerText}>Report</Text>
+              </TouchableOpacity>
+              {actionLoading && (
+                <View style={styles.menuLoadingRow}>
+                  <ActivityIndicator size="small" color="#EEA24B" />
+                </View>
+              )}
+            </View>
+          )}
+        </View>
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Post Header - Owner Info */}
         <View style={styles.postHeader}>
-          <View style={styles.ownerInfo}>
+          <TouchableOpacity
+            style={styles.ownerInfo}
+            activeOpacity={onViewOwnerProfile ? 0.7 : 1}
+            onPress={onViewOwnerProfile}
+            disabled={!onViewOwnerProfile}
+          >
             <ImageFallback
               uri={ownerProfileUrl}
               defaultImage={defaultOwnerAvatar}
@@ -383,7 +425,7 @@ export default function ProjectPostDetail({ project, onClose, onPlaceBid, userRo
 
                 {/* contractor/type removed from header (shown in Project Details badge) */}
               </View>
-          </View>
+          </TouchableOpacity>
         </View>
 
         {/* Project Title */}
@@ -780,6 +822,13 @@ export default function ProjectPostDetail({ project, onClose, onPlaceBid, userRo
           )}
         </View>
       </Modal>
+
+      <ReportPostModal
+        visible={reportModalVisible}
+        onClose={() => setReportModalVisible(false)}
+        onSubmit={submitReport}
+      />
+
     </View>
   );
 }
@@ -801,6 +850,44 @@ const styles = StyleSheet.create({
   },
   backButton: {
     padding: 4,
+  },
+  menuButton: {
+    padding: 4,
+    width: 40,
+    alignItems: 'flex-end',
+  },
+  cardMenuWrap: {
+    position: 'relative',
+    width: 40,
+    alignItems: 'flex-end',
+    zIndex: 30,
+  },
+  cardMenuDropdown: {
+    position: 'absolute',
+    top: 24,
+    right: 0,
+    minWidth: 108,
+    maxWidth: 132,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    paddingVertical: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.14,
+    shadowRadius: 8,
+    elevation: 6,
+    zIndex: 20,
+  },
+  cardMenuItem: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  cardMenuDangerText: {
+    fontSize: 13,
+    color: '#B91C1C',
+    fontWeight: '600',
   },
   headerTitle: {
     fontSize: 18,
@@ -1267,5 +1354,41 @@ const styles = StyleSheet.create({
     backgroundColor: '#EC7E00',
     width: 20,
     borderRadius: 4,
+  },
+  menuOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.15)',
+  },
+  menuCard: {
+    position: 'absolute',
+    right: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    minWidth: 170,
+    paddingVertical: 6,
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 8,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  menuItemText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  menuLoadingRow: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+    alignItems: 'flex-start',
   },
 });

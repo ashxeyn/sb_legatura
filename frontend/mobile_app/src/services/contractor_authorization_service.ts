@@ -73,9 +73,11 @@ export class contractor_authorization_service {
         return userData.contractor_member as ContractorMemberContext;
       }
 
-      // Fallback for contractor owners who logged in before this feature was added
-      // If user is a contractor type, assume they are the owner with full permissions
-      if (userData.user_type === 'contractor' || userData.determinedRole === 'contractor') {
+      // Fallback for legacy contractor owner accounts that may not have
+      // contractor_member in stored payload yet.
+      // IMPORTANT: do NOT use determinedRole here, because staff users also
+      // resolve to contractor context but must keep role-based restrictions.
+      if (userData.user_type === 'contractor') {
         console.log('Using fallback contractor owner context');
         return {
           contractor_member_id: null,

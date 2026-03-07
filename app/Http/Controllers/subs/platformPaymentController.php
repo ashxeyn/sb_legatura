@@ -32,6 +32,14 @@ class platformPaymentController extends Controller
             }
         }
 
+        // Fallback: check X-User-Id header (mobile app sends this)
+        if (!$user) {
+            $headerUserId = request()->header('X-User-Id');
+            if ($headerUserId) {
+                $user = DB::table('users')->where('user_id', $headerUserId)->first();
+            }
+        }
+
         // Normalize user id (support both `user_id` and `id` shapes, focusing on `user_id` first)
         $userId = null;
         if ($user) {
@@ -48,7 +56,7 @@ class platformPaymentController extends Controller
         $boostableProjects = platformPaymentClass::getBoostableProjects($userId);
 
         // Get user role to filter plans
-        $role = Session::get('role');
+        $role = Session::get('role') ?? Session::get('current_role');
         if (!$role && $user) {
             if (is_object($user)) {
                 $role = $user->role ?? $user->user_type ?? null;
@@ -57,17 +65,28 @@ class platformPaymentController extends Controller
             }
         }
 
-        // Default to owner if role not found, though ideally it should be explicitly set
-        $isContractor = ($role === 'contractor') ? 1 : 0;
+        // For 'both' users, check if they have a contractor record to determine default
+        // Also check if user has contractor record as final fallback
+        $isContractor = false;
+        if ($role === 'contractor') {
+            $isContractor = true;
+        } elseif ($role === 'both' && $userId) {
+            // Check current_role session or default to contractor for 'both' users
+            $currentRole = Session::get('current_role');
+            $isContractor = ($currentRole === 'contractor' || !$currentRole);
+        } elseif ($userId && !$role) {
+            // No role detected - check if user has a contractor record
+            $hasContractor = DB::table('contractors')->where('user_id', $userId)->exists();
+            $isContractor = $hasContractor;
+        }
 
         $plansQuery = DB::table('subscription_plans')
             ->where('plan_key', '!=', 'boost')
             ->where('is_active', 1)
             ->where('is_deleted', 0);
 
-        if ($isContractor) {
-            $plansQuery->where('for_contractor', 1);
-        }
+        // Always filter by role to avoid mixing owner and contractor plans
+        $plansQuery->where('for_contractor', $isContractor ? 1 : 0);
 
         $plans = $plansQuery->get()
             ->map(function ($plan) {

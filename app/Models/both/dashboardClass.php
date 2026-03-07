@@ -304,6 +304,12 @@ class dashboardClass
                     )
                     ->where('plan_id', $milestone->plan_id)
                     ->first();
+
+                // Attach computed downpayment-cleared flag so front-ends can lock items
+                if ($milestone->payment_plan) {
+                    $milestone->payment_plan->downpayment_cleared =
+                        \App\Services\milestoneService::isDownpaymentCleared($project->project_id);
+                }
             } else {
                 $milestone->payment_plan = null;
             }

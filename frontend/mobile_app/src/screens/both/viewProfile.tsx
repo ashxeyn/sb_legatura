@@ -16,7 +16,7 @@ import {
   FlatList,
 } from 'react-native';
 import { MaterialIcons, Ionicons, FontAwesome5, Feather } from '@expo/vector-icons';
-import ImageFallback from '../../components/ImageFallbackFixed';
+import ImageFallback from '../../components/imageFallback';
 import ProjectPostDetail from './projectPostDetail';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
@@ -443,9 +443,9 @@ const ProjectCardSkeleton = () => (
 );
 
 // Main Component
-export default function ViewProfileScreen({ onBack, userData, userToken = null }: { onBack: any; userData: any; userToken?: any }) {
+export default function ViewProfileScreen({ onBack, userData, userToken, initialTab }) {
   const insets = useSafeAreaInsets();
-  const [activeTab, setActiveTab] = useState<TabType>('Posts');
+  const [activeTab, setActiveTab] = useState<TabType>(initialTab || 'Posts');
   const [isUploading, setIsUploading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
