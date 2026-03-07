@@ -11,51 +11,91 @@
     <link rel="stylesheet" href="{{ asset('css/signUp_logIN/landingPage.css') }}">
 </head>
 <body>
-    <!-- Get Started Button -->
-    <a href="/intro" class="hero-cta-button">
-        <span>Get Started</span>
-    </a>
+    <!-- Navbar -->
+    <nav class="hero-nav" id="top">
+        <div class="hero-nav-inner">
+            <div class="hero-nav-logo">
+                <img src="{{ asset('img/logo_legatura.svg') }}" alt="Legatura">
+            </div>
+            <ul class="hero-nav-links">
+                <li><a href="#about">About</a></li>
+                <li><a href="#features">Features</a></li>
+                <li><a href="#user-experience">For Users</a></li>
+                <li><a href="#plans">Subscriptions</a></li>
+                <li><a href="#team">Team</a></li>
+                <li><a href="#contact">Contact</a></li>
+            </ul>
+            <a href="/intro" class="hero-nav-cta">Download App</a>
+            <button class="hero-nav-hamburger" id="navHamburger" aria-label="Open menu">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Mobile fullscreen overlay menu -->
+    <div class="mobile-menu-overlay" id="navMobileMenu">
+        <div class="mobile-menu-header">
+            <div class="mobile-menu-logo">
+                <img src="{{ asset('img/logo_legatura.svg') }}" alt="Legatura">
+            </div>
+            <button class="mobile-menu-close" id="navMobileClose" aria-label="Close menu">
+                <span></span><span></span>
+            </button>
+        </div>
+        <nav class="mobile-menu-links">
+            <ul>
+                <li><a href="#about">About</a></li>
+                <li><a href="#features">Features</a></li>
+                <li><a href="#user-experience">For Users</a></li>
+                <li><a href="#plans">Subscriptions</a></li>
+                <li><a href="#team">Team</a></li>
+                <li><a href="#contact">Contact</a></li>
+            </ul>
+        </nav>
+    </div>
 
    <section class="hero">
+        <!-- Full-cover background image -->
         <div class="hero-image">
-            <img src="{{ asset('img/landingPage.png') }}" alt="Construction and building projects">
+            <img src="{{ asset('img/ZC.svg') }}" alt="Construction and building projects">
         </div>
-        <div class="hero-logo">
-            <img src="{{ asset('img/logo_legatura.svg') }}" alt="Legatura Logo">
+
+        <!-- Gradient overlay: light at top → transparent → dark at bottom -->
+        <div class="hero-overlay"></div>
+
+        <!-- Centered hero content -->
+        <div class="hero-body">
+            <h1 class="hero-headline">
+                <span class="hl-line1">BUILD BETTER</span><br>
+                <span class="hl-line2">BUILD WITH</span><br>
+                <span class="hl-line3">LEGATURA</span>
+            </h1>
+            <p class="hero-subtitle">
+                The bridge between vision and execution. We provide property owners with total project visibility while ensuring contractors receive fair, timely payments for every milestone achieved.
+            </p>
+            <a href="/intro" class="hero-body-cta">Download App</a>
         </div>
     </section>
 
+    <div class="main-content">
     <!-- About Section -->
-    <section class="about py-16 md:py-20">
+    <section id="about" class="about py-16 md:py-20">
         <div class="w-full px-8 md:px-16 lg:px-24 text-center">
-            <h2 class="text-3xl md:text-4xl font-extrabold mb-6 text-white">About Legatura</h2>
-            <p class="text-base md:text-lg leading-relaxed mb-12 max-w-5xl mx-auto text-white/90">
-                Legatura is a comprehensive platform that bridges the gap between property owners and skilled contractors.
-                It serves as a vital connection hub for construction projects, streamlining the bidding process,
-                facilitating transparent communication, and ensuring quality project delivery. Committed to revolutionizing
-                the construction industry, Legatura provides tools for project management, contractor verification, and
-                competitive bidding that enhance efficiency, trust, and collaboration. Through innovative technology and
-                active support, it strives to create a dynamic and reliable ecosystem, ensuring that every project is
-                completed with excellence and every stakeholder's needs are met.
+            <h2 class="text-2xl md:text-3xl lg:text-4xl font-extrabold mb-4 md:mb-6 text-white">About Legatura</h2>
+            <p class="text-sm md:text-base lg:text-lg leading-relaxed mb-8 md:mb-12 max-w-5xl mx-auto text-white/90">
+                Legatura is a platform that connects property owners with trusted contractors, simplifying project management, bidding, and communication to deliver construction projects efficiently and reliably.
             </p>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 px-4 md:px-8 lg:px-16">
-                <div class="about-card p-8 rounded-lg">
-                    <h4 class="text-xl md:text-2xl font-bold mb-4 text-white">Empowering Project Success & Quality</h4>
-                    <p class="text-sm md:text-base leading-relaxed text-white/85">
-                        Dedicated to fostering a transparent and efficient construction ecosystem, Legatura organizes
-                        project workflows that promote quality, accountability, and professional excellence. Through
-                        advanced bidding systems, contractor verification, and real-time project tracking, it enhances
-                        stakeholder engagement, strengthens the construction community, and contributes to the continuous
-                        improvement of the building experience.
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 lg:gap-12 px-0 md:px-8 lg:px-16">
+                <div class="about-card p-6 md:p-8 rounded-lg">
+                    <h4 class="text-lg md:text-xl lg:text-2xl font-bold mb-3 md:mb-4 text-white">Empowering Project Success & Quality</h4>
+                    <p class="text-xs md:text-sm lg:text-base leading-relaxed text-white/85">
+                        Legatura empowers project success through transparent workflows, verified contractors, and real-time project tracking, creating a more efficient and reliable construction ecosystem.
                     </p>
                 </div>
-                <div class="about-card p-8 rounded-lg">
-                    <h4 class="text-xl md:text-2xl font-bold mb-4 text-white">Enhancing Trust & Collaboration</h4>
-                    <p class="text-sm md:text-base leading-relaxed text-white/85">
-                        With a strong emphasis on transparency, collaboration, and industry development, Legatura serves
-                        as a bridge between property owners and contractors. It ensures that project requirements are
-                        clearly communicated, promotes a culture of trust and reliability, and helps shape a forward-thinking
-                        construction environment where quality craftsmanship and client satisfaction are paramount.
+                <div class="about-card p-6 md:p-8 rounded-lg">
+                    <h4 class="text-lg md:text-xl lg:text-2xl font-bold mb-3 md:mb-4 text-white">Enhancing Trust & Collaboration</h4>
+                    <p class="text-xs md:text-sm lg:text-base leading-relaxed text-white/85">
+                       Legatura connects property owners and contractors through a transparent platform that encourages trust, collaboration, and high-quality project delivery.
                     </p>
                 </div>
             </div>
@@ -63,38 +103,16 @@
     </section>
 
     <!-- Dual User Experience Section -->
-    <section class="user-experience py-16 md:py-20">
+    <section id="user-experience" class="user-experience py-16 md:py-20">
         <div class="w-full px-8 md:px-16 lg:px-24 text-center">
-            <h2 class="text-3xl md:text-4xl font-extrabold mb-4 text-white">Property Owners & Contractors</h2>
+            <h2 class="text-3xl md:text-4xl font-extrabold mb-4 text-white"><span style="color:#3b82f6">Property Owners</span> & <span style="color:#ec7e00">Contractors</span></h2>
             <p class="text-base md:text-lg leading-relaxed mb-12 max-w-3xl mx-auto text-white/90">
                 Discover how Legatura empowers both sides of construction projects
             </p>
             <div class="grid grid-cols-1 gap-8 md:gap-12 px-4 md:px-8 lg:px-16">
                 <!-- Property Owner Card -->
                 <div class="user-card owner-card p-8 rounded-lg">
-                    <div class="card-icon mb-6"></div>
-                    <ul class="text-left space-y-4">
-                        <li class="flex items-start">
-                            <i class="fi fi-rr-check-circle owner-check"></i>
-                            <span class="owner-text text-base">Post construction projects with detailed specifications and timelines</span>
-                        </li>
-                        <li class="flex items-start">
-                            <i class="fi fi-rr-check-circle owner-check"></i>
-                            <span class="owner-text text-base">Receive competitive bids from verified and qualified contractors</span>
-                        </li>
-                        <li class="flex items-start">
-                            <i class="fi fi-rr-check-circle owner-check"></i>
-                            <span class="owner-text text-base">Track project progress in real-time with transparent updates</span>
-                        </li>
-                        <li class="flex items-start">
-                            <i class="fi fi-rr-check-circle owner-check"></i>
-                            <span class="owner-text text-base">Verify contractor credentials, experience, and customer reviews</span>
-                        </li>
-                        <li class="flex items-start">
-                            <i class="fi fi-rr-check-circle owner-check"></i>
-                            <span class="owner-text text-base">Secure and transparent payment handling throughout the project</span>
-                        </li>
-                    </ul>
+                    <img src="{{ asset('img/owner1.svg') }}" alt="Property Owner" class="w-full h-auto">
                 </div>
 
                 <!-- Modern Separator Line -->
@@ -104,36 +122,14 @@
 
                 <!-- Contractor Card -->
                 <div class="user-card contractor-card p-8 rounded-lg">
-                    <div class="card-icon mb-6"></div>
-                    <ul class="text-left space-y-4">
-                        <li class="flex items-start">
-                            <i class="fi fi-rr-check-circle contractor-check"></i>
-                            <span class="contractor-text text-base">Discover and access qualified construction projects in your area</span>
-                        </li>
-                        <li class="flex items-start">
-                            <i class="fi fi-rr-check-circle contractor-check"></i>
-                            <span class="contractor-text text-base">Submit competitive bids and showcase your expertise and capabilities</span>
-                        </li>
-                        <li class="flex items-start">
-                            <i class="fi fi-rr-check-circle contractor-check"></i>
-                            <span class="contractor-text text-base">Build your professional reputation through quality work and client reviews</span>
-                        </li>
-                        <li class="flex items-start">
-                            <i class="fi fi-rr-check-circle contractor-check"></i>
-                            <span class="contractor-text text-base">Manage multiple projects efficiently with integrated project tools</span>
-                        </li>
-                        <li class="flex items-start">
-                            <i class="fi fi-rr-check-circle contractor-check"></i>
-                            <span class="contractor-text text-base">Ensure reliable and timely payment for completed work</span>
-                        </li>
-                    </ul>
+                    <img src="{{ asset('img/contractor1.svg') }}" alt="Contractor" class="w-full h-auto">
                 </div>
             </div>
         </div>
     </section>
 
     <!-- Features Section -->
-    <section class="features py-16 md:py-20">
+    <section id="features" class="features py-16 md:py-20">
         <div class="w-full px-8 md:px-16 lg:px-24 text-center">
             <h2 class="text-3xl md:text-4xl font-extrabold mb-4 text-white">Legatura Features</h2>
             <p class="text-base md:text-lg leading-relaxed mb-12 max-w-3xl mx-auto text-white/90">
@@ -199,9 +195,9 @@
     </section>
 
     <!-- Boosting & Subscription Section -->
-    <section class="plans-showcase py-16 md:py-20">
+    <section id="plans" class="plans-showcase py-16 md:py-20">
         <div class="w-full px-8 md:px-16 lg:px-24 text-center">
-            <h2 class="text-3xl md:text-4xl font-extrabold mb-4 text-black">Boosts and Subscriptions</h2>
+            <h2 class="text-3xl md:text-4xl font-extrabold mb-4 text-black"><span style="color:#3b82f6">Boost</span> and <span style="color:#ec7e00">Subscriptions</span></h2>
             <p class="text-base md:text-lg leading-relaxed mb-12 max-w-3xl mx-auto text-black/80">
                 Property owners can boost project posts, while contractors unlock premium growth tools.
             </p>
@@ -280,8 +276,129 @@
         </div>
     </section>
 
+    <!-- Video Demo Section -->
+    <section id="video-demo" class="video-demo py-16 md:py-20">
+        <div class="w-full px-8 md:px-16 lg:px-24 text-center">
+            <h2 class="text-3xl md:text-4xl font-extrabold mb-4 text-white">Why Choose Legatura?</h2>
+            <p class="text-base md:text-lg leading-relaxed mb-12 max-w-3xl mx-auto text-white/90">
+                Watch how Legatura streamlines construction project management from posting projects and receiving competitive bids to tracking progress in real time and ensuring every milestone is paid securely
+            </p>
+            <div class="video-frame mx-auto">
+                <iframe
+                    src="https://geo.dailymotion.com/player.html?video=xa1gf72&related=0&queue-autoplay-next=0&queue-enable=0"
+                    style="position:absolute;inset:0;width:100%;height:100%;border:none;border-radius:inherit;"
+                    title="Legatura Demo — Dailymotion"
+                    allow="web-share; fullscreen"
+                    allowfullscreen
+                ></iframe>
+            </div>
+        </div>
+    </section>
+
+    <!-- Meet Our Team Section -->
+    <section id="team" class="team-section">
+        <div class="team-inner">
+
+            <!-- Section Header -->
+            <div class="team-header">
+                <h2 class="team-section-title"><span style="color:#3b82f6">Meet</span> Our <span class="team-title-accent">Team</span></h2>
+                <p class="team-section-sub">The passionate people behind Legatura, dedicated to transforming how construction projects are managed.</p>
+            </div>
+
+            <!-- Member Cards -->
+            <div class="members-grid">
+                <div class="member-card">
+                    <div class="member-photo" style="--grad: linear-gradient(135deg,#3b82f6,#2563eb)">
+                        <img src="{{ asset('img/shane.png') }}" alt="Shane Hart Jimenez" onerror="this.style.display='none'">
+                        <span class="member-initials">SH</span>
+                    </div>
+                    <div class="member-info">
+                        <h4 class="member-name">Shane Hart Jimenez</h4>
+                        <p class="member-role">Lead Programmer</p>
+                        <p class="member-desc">Leads the development team with expertise in software architecture and innovative programming solutions.</p>
+                        <div class="member-footer">
+                            <a href="mailto:hz202300259@wmsu.edu.ph" class="member-email" title="hz202300259@wmsu.edu.ph">
+                                <i class="ri-mail-line"></i>
+                                <span>hz202300259@wmsu.edu.ph</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="member-card">
+                    <div class="member-photo" style="--grad: linear-gradient(135deg,#a855f7,#7c3aed)">
+                        <img src="{{ asset('img/jeff.png') }}" alt="Jeffslazir Augeight Tampus" onerror="this.style.display='none'">
+                        <span class="member-initials">JA</span>
+                    </div>
+                    <div class="member-info">
+                        <h4 class="member-name">Jeffslazir Augeight Tampus</h4>
+                        <p class="member-role">Project Manager</p>
+                        <p class="member-desc">Coordinates team efforts and ensures projects are delivered on time with exceptional quality.</p>
+                        <div class="member-footer">
+                            <a href="mailto:hz202301528@wmsu.edu.ph" class="member-email" title="hz202301528@wmsu.edu.ph">
+                                <i class="ri-mail-line"></i>
+                                <span>hz202301528@wmsu.edu.ph</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="member-card">
+                    <div class="member-photo" style="--grad: linear-gradient(135deg,#22c55e,#16a34a)">
+                        <img src="{{ asset('img/carl2.png') }}" alt="Carl Wayne Saludo" onerror="this.style.display='none'">
+                        <span class="member-initials">CW</span>
+                    </div>
+                    <div class="member-info">
+                        <h4 class="member-name">Carl Wayne Saludo</h4>
+                        <p class="member-role">UI/UX Designer</p>
+                        <p class="member-desc">Creates beautiful, user-friendly experiences that delight users and drive engagement through thoughtful design.</p>
+                        <div class="member-footer">
+                            <a href="mailto:hz202300241@wmsu.edu.ph" class="member-email" title="hz202300241@wmsu.edu.ph">
+                                <i class="ri-mail-line"></i>
+                                <span>hz202300241@wmsu.edu.ph</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="member-card">
+                    <div class="member-photo" style="--grad: linear-gradient(135deg,#f97316,#ea580c)">
+                        <img src="{{ asset('img/olive.png') }}" alt="Olive Faith Padios" onerror="this.style.display='none'">
+                        <span class="member-initials">OF</span>
+                    </div>
+                    <div class="member-info">
+                        <h4 class="member-name">Olive Faith Padios</h4>
+                        <p class="member-role">Design Architecture</p>
+                        <p class="member-desc">Architects comprehensive design systems and ensures cohesive visual identity across all products.</p>
+                        <div class="member-footer">
+                            <a href="mailto:hz202300486@wmsu.edu.ph" class="member-email" title="hz202300486@wmsu.edu.ph">
+                                <i class="ri-mail-line"></i>
+                                <span>hz202300486@wmsu.edu.ph</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="member-card">
+                    <div class="member-photo" style="--grad: linear-gradient(135deg,#06b6d4,#0891b2)">
+                        <img src="{{ asset('img/emman.png') }}" alt="Emmanuelle Santos" onerror="this.style.display='none'">
+                        <span class="member-initials">ES</span>
+                    </div>
+                    <div class="member-info">
+                        <h4 class="member-name">Emmanuelle Santos</h4>
+                        <p class="member-role">Data Analyst</p>
+                        <p class="member-desc">Transforms complex data into actionable insights that drive informed decision-making and strategic planning.</p>
+                        <div class="member-footer">
+                            <a href="mailto:hz202301270@wmsu.edu.ph" class="member-email" title="hz202301270@wmsu.edu.ph">
+                                <i class="ri-mail-line"></i>
+                                <span>hz202301270@wmsu.edu.ph</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
     <!-- Contact Us Section -->
-    <section class="contact-us py-16 md:py-20">
+    <section id="contact" class="contact-us py-16 md:py-20">
         <div class="w-full px-8 md:px-16 lg:px-24 text-center">
             <img src="{{ asset('img/logo2.0.svg') }}" alt="Legatura Logo" class="contact-logo mx-auto mb-6">
             <h2 class="text-3xl md:text-4xl font-extrabold mb-4 text-white">Contact Us</h2>
@@ -334,6 +451,140 @@
             </p>
         </div>
     </footer>
+    </div><!-- /.main-content -->
 
+    <script>
+        // Navbar scroll effect
+        const nav = document.querySelector('.hero-nav');
+        window.addEventListener('scroll', () => {
+            nav.classList.toggle('scrolled', window.scrollY > 40);
+        });
+
+        // Hamburger toggle
+        const hamburger = document.getElementById('navHamburger');
+        const mobileMenu = document.getElementById('navMobileMenu');
+        const mobileClose = document.getElementById('navMobileClose');
+        let scrollY = 0;
+
+        function openMenu() {
+            scrollY = window.scrollY;
+            document.body.style.position = 'fixed';
+            document.body.style.top = `-${scrollY}px`;
+            document.body.style.width = '100%';
+            document.body.style.overflow = 'hidden';
+            document.documentElement.style.overflow = 'hidden';
+            mobileMenu.classList.add('open');
+            hamburger.classList.add('open');
+        }
+        function closeMenu() {
+            mobileMenu.classList.remove('open');
+            hamburger.classList.remove('open');
+            document.body.style.position = '';
+            document.body.style.top = '';
+            document.body.style.width = '';
+            document.body.style.overflow = '';
+            document.documentElement.style.overflow = '';
+            window.scrollTo(0, scrollY);
+        }
+
+        if (hamburger && mobileMenu) {
+            hamburger.addEventListener('click', openMenu);
+        }
+        if (mobileClose) {
+            mobileClose.addEventListener('click', closeMenu);
+        }
+        if (mobileMenu) {
+            mobileMenu.querySelectorAll('a').forEach(link => {
+                link.addEventListener('click', closeMenu);
+            });
+        }
+
+        // Parallax tilt on hero background image following cursor
+        const hero = document.querySelector('.hero');
+        const heroImg = document.querySelector('.hero-image img');
+        if (hero && heroImg) {
+            hero.addEventListener('mousemove', (e) => {
+                const rect = hero.getBoundingClientRect();
+                const x = (e.clientX - rect.left) / rect.width - 0.5;  // -0.5 to 0.5
+                const y = (e.clientY - rect.top) / rect.height - 0.5;
+                heroImg.style.transform = `scale(1.06) translate(${x * -18}px, ${y * -12}px)`;
+            });
+            hero.addEventListener('mouseleave', () => {
+                heroImg.style.transform = 'scale(1.06) translate(0px, 0px)';
+            });
+        }
+
+        // ── Scroll Fade-in / Fade-out Animations ──────────────────────────
+        (function () {
+            // --- About Section ---
+            document.querySelectorAll('#about h2, #about > div > p').forEach(el => el.classList.add('scroll-fade'));
+            document.querySelectorAll('#about .about-card').forEach((el, i) => {
+                el.classList.add(i === 0 ? 'scroll-fade-left' : 'scroll-fade-right');
+                el.classList.add('scroll-delay-' + (i + 1));
+            });
+
+            // --- User Experience Section ---
+            document.querySelectorAll('#user-experience h2, #user-experience > div > p').forEach(el => el.classList.add('scroll-fade'));
+            document.querySelectorAll('#user-experience .owner-card').forEach(el => el.classList.add('scroll-fade-left'));
+            document.querySelectorAll('#user-experience .separator-container').forEach(el => el.classList.add('scroll-fade-scale'));
+            document.querySelectorAll('#user-experience .contractor-card').forEach(el => el.classList.add('scroll-fade-right'));
+
+            // --- Features Section ---
+            document.querySelectorAll('#features h2, #features > div > p').forEach(el => el.classList.add('scroll-fade'));
+            document.querySelectorAll('#features .feature-card').forEach((el, i) => {
+                el.classList.add('scroll-fade');
+                el.classList.add('scroll-delay-' + (i + 1));
+            });
+
+            // --- Plans Section ---
+            document.querySelectorAll('#plans h2, #plans > div > p').forEach(el => el.classList.add('scroll-fade'));
+            document.querySelectorAll('#plans .boost-panel').forEach(el => el.classList.add('scroll-fade-left'));
+            document.querySelectorAll('#plans .subscription-panel').forEach(el => el.classList.add('scroll-fade-right'));
+
+            // --- Video Demo Section ---
+            document.querySelectorAll('#video-demo h2, #video-demo > div > p').forEach(el => el.classList.add('scroll-fade'));
+            document.querySelectorAll('#video-demo .video-frame').forEach(el => el.classList.add('scroll-fade-scale'));
+
+            // --- Team Section ---
+            document.querySelectorAll('#team .team-header').forEach(el => el.classList.add('scroll-fade'));
+            document.querySelectorAll('#team .member-card').forEach((el, i) => {
+                el.classList.add('scroll-fade');
+                el.classList.add('scroll-delay-' + (i + 1));
+            });
+
+            // --- Contact Section ---
+            document.querySelectorAll('#contact .contact-logo').forEach(el => el.classList.add('scroll-fade-scale'));
+            document.querySelectorAll('#contact h2, #contact > div > p').forEach(el => el.classList.add('scroll-fade'));
+            document.querySelectorAll('#contact .contact-card').forEach((el, i) => {
+                el.classList.add('scroll-fade');
+                el.classList.add('scroll-delay-' + (i + 1));
+            });
+
+            // --- Footer (no animation) ---
+            // Footer is always visible, no scroll animation
+
+            // Collect every element that has a scroll-fade class
+            const allFadeEls = document.querySelectorAll(
+                '.scroll-fade, .scroll-fade-left, .scroll-fade-right, .scroll-fade-scale'
+            );
+
+            // IntersectionObserver — toggles .visible on enter/leave
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('visible');
+                    } else {
+                        entry.target.classList.remove('visible');
+                    }
+                });
+            }, {
+                threshold: 0.1,
+                rootMargin: '0px 0px -60px 0px'
+            });
+
+            allFadeEls.forEach(el => observer.observe(el));
+        })();
+        // ──────────────────────────────────────────────────────────────────
+    </script>
 </body>
 </html>
