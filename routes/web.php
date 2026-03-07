@@ -440,6 +440,11 @@ Route::post('/admin/project-management/subscriptions/{id}/reactivate', [projectM
 Route::get('/admin/project-management/disputes-reports', [projectManagementController::class, 'disputesReports'])->name('admin.projectManagement.disputesReports');
 Route::get('/admin/project-management/messages', [ProjectAdminController::class, 'messages'])->name('admin.projectManagement.messages');
 Route::get('/admin/project-management/showcase-management', [projectManagementController::class, 'showcaseManagement'])->name('admin.projectManagement.showcaseManagement');
+Route::get('/admin/project-management/showcase-management/{id}/details', [projectManagementController::class, 'getShowcaseDetails'])->name('admin.projectManagement.showcaseDetails');
+Route::post('/admin/project-management/showcase-management/{id}/approve', [projectManagementController::class, 'approveShowcase'])->name('admin.projectManagement.approveShowcase');
+Route::post('/admin/project-management/showcase-management/{id}/reject', [projectManagementController::class, 'rejectShowcase'])->name('admin.projectManagement.rejectShowcase');
+Route::post('/admin/project-management/showcase-management/{id}/delete', [projectManagementController::class, 'deleteShowcase'])->name('admin.projectManagement.deleteShowcase');
+Route::post('/admin/project-management/showcase-management/{id}/restore', [projectManagementController::class, 'restoreShowcase'])->name('admin.projectManagement.restoreShowcase');
 
 // Admin Messages API (Session-based for web dashboard)
 Route::prefix('admin/messages')->group(function () {

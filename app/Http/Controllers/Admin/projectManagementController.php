@@ -14,6 +14,7 @@ use App\Mail\disputeFiledRespondentRequest;
 use App\Http\Requests\admin\editSubRequest;
 use App\Http\Requests\admin\addSubRequest;
 use App\Models\admin\subscriptionClass;
+use App\Models\admin\showcaseClass;
 
 class projectManagementController extends Controller
 {
@@ -1135,5 +1136,119 @@ class projectManagementController extends Controller
                 'message' => 'Server error: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Show showcase management page with real DB data.
+     */
+    public function showcaseManagement(Request $request)
+    {
+        $filters = [
+            'search' => $request->query('search'),
+            'status' => $request->query('status', 'all'),
+            'date_from' => $request->query('date_from'),
+            'date_to' => $request->query('date_to'),
+        ];
+
+        $model = new showcaseClass();
+        $showcases = $model->fetchShowcases($filters);
+        $stats = $model->getStats();
+
+        if ($request->ajax()) {
+            return response()->json([
+                'showcases_html' => view('admin.projectManagement.partials.showcaseTable', ['showcases' => $showcases])->render()
+            ]);
+        }
+
+        return view('admin.projectManagement.showcaseManagement', compact('showcases', 'stats'));
+    }
+
+    /**
+     * Get showcase details (AJAX – returns rendered HTML partial)
+     */
+    public function getShowcaseDetails($id)
+    {
+        $model = new showcaseClass();
+        $details = $model->getShowcaseDetails($id);
+
+        if ($details) {
+            $html = view('admin.projectManagement.partials.showcaseViewModal', ['showcase' => $details])->render();
+            return response()->json([
+                'success' => true,
+                'html' => $html,
+                'status' => $details['post']['status'],
+                'title' => $details['post']['title'],
+            ]);
+        }
+
+        return response()->json(['success' => false, 'message' => 'Showcase not found'], 404);
+    }
+
+    /**
+     * Approve a showcase post
+     */
+    public function approveShowcase($id)
+    {
+        $model = new showcaseClass();
+        $approved = $model->approveShowcase($id);
+
+        if ($approved) {
+            return response()->json(['success' => true, 'message' => 'Showcase approved successfully.']);
+        }
+
+        return response()->json(['success' => false, 'message' => 'Failed to approve showcase.'], 400);
+    }
+
+    /**
+     * Reject a showcase post
+     */
+    public function rejectShowcase(Request $request, $id)
+    {
+        $request->validate([
+            'rejection_reason' => 'required|string|max:500'
+        ]);
+
+        $model = new showcaseClass();
+        $rejected = $model->rejectShowcase($id, $request->rejection_reason);
+
+        if ($rejected) {
+            return response()->json(['success' => true, 'message' => 'Showcase rejected successfully.']);
+        }
+
+        return response()->json(['success' => false, 'message' => 'Failed to reject showcase.'], 400);
+    }
+
+    /**
+     * Delete a showcase post
+     */
+    public function deleteShowcase(Request $request, $id)
+    {
+        $request->validate([
+            'deletion_reason' => 'required|string|max:500'
+        ]);
+
+        $model = new showcaseClass();
+        $deleted = $model->deleteShowcase($id, $request->deletion_reason);
+
+        if ($deleted) {
+            return response()->json(['success' => true, 'message' => 'Showcase deleted successfully.']);
+        }
+
+        return response()->json(['success' => false, 'message' => 'Failed to delete showcase.'], 400);
+    }
+
+    /**
+     * Restore a deleted showcase post
+     */
+    public function restoreShowcase($id)
+    {
+        $model = new showcaseClass();
+        $restored = $model->restoreShowcase($id);
+
+        if ($restored) {
+            return response()->json(['success' => true, 'message' => 'Showcase restored successfully.']);
+        }
+
+        return response()->json(['success' => false, 'message' => 'Failed to restore showcase.'], 400);
     }
 }
