@@ -518,11 +518,13 @@ class summaryService
 
     private function buildPaymentsHistory(int $projectId): array
     {
-        $payments = DB::table('milestone_payments as mp')
+        $milestonePayments = DB::table('milestone_payments as mp')
             ->join('milestone_items as mi', 'mp.item_id', '=', 'mi.item_id')
             ->where('mp.project_id', $projectId)
-            ->whereNotIn('mp.payment_status', ['deleted'])
-            ->orderBy('mp.transaction_date', 'desc')
+            ->where(function ($q) {
+                $q->whereNull('mp.payment_status')
+                  ->orWhereNotIn('mp.payment_status', ['deleted']);
+            })
             ->select(
                 'mp.payment_id',
                 'mi.milestone_item_title as milestone',
@@ -530,13 +532,38 @@ class summaryService
                 'mp.payment_type',
                 'mp.transaction_number',
                 'mp.transaction_date',
-                'mp.payment_status as status',
+                DB::raw("COALESCE(mp.payment_status, 'pending') as status"),
                 'mp.reason'
             )
             ->get();
 
+        $downpaymentPayments = DB::table('downpayment_payments as dp')
+            ->where('dp.project_id', $projectId)
+            ->where(function ($q) {
+                $q->whereNull('dp.payment_status')
+                  ->orWhereNotIn('dp.payment_status', ['deleted']);
+            })
+            ->select(
+                'dp.dp_payment_id as payment_id',
+                DB::raw("'Downpayment' as milestone"),
+                'dp.amount',
+                'dp.payment_type',
+                'dp.transaction_number',
+                'dp.transaction_date',
+                DB::raw("COALESCE(dp.payment_status, 'pending') as status"),
+                'dp.reason'
+            )
+            ->get();
+
+        $payments = $milestonePayments
+            ->concat($downpaymentPayments)
+            ->sortByDesc('transaction_date')
+            ->values();
+
         $totalApproved = $payments->where('status', 'approved')->sum('amount');
-        $totalPending  = $payments->where('status', 'submitted')->sum('amount');
+        $totalPending  = $payments
+            ->filter(fn ($p) => in_array(strtolower((string) ($p->status ?? '')), ['submitted', 'pending'], true))
+            ->sum('amount');
         $totalRejected = $payments->where('status', 'rejected')->sum('amount');
 
         return [

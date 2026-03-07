@@ -568,12 +568,15 @@ class projectsController extends Controller
         $payments = [];
         if ($projectId) {
             try {
-                $payments = DB::table('milestone_payments as mp')
+                $milestonePayments = DB::table('milestone_payments as mp')
                     ->join('milestone_items as mi', 'mp.item_id', '=', 'mi.item_id')
                     ->join('milestones as m', 'mi.milestone_id', '=', 'm.milestone_id')
                     ->leftJoin('property_owners as po', 'mp.owner_id', '=', 'po.owner_id')
                     ->where('mp.project_id', $projectId)
-                    ->whereNotIn('mp.payment_status', ['deleted'])
+                    ->where(function ($q) {
+                        $q->whereNull('mp.payment_status')
+                          ->orWhereNotIn('mp.payment_status', ['deleted']);
+                    })
                     ->select(
                         'mp.payment_id',
                         'mp.item_id',
@@ -595,9 +598,44 @@ class projectsController extends Controller
                         'm.milestone_name',
                         DB::raw('CONCAT(po.first_name, " ", po.last_name) as owner_name')
                     )
-                    ->orderBy('mp.transaction_date', 'desc')
-                    ->orderBy('mp.payment_id', 'desc')
-                    ->get()
+                    ->get();
+
+                $downpaymentPayments = DB::table('downpayment_payments as dp')
+                    ->leftJoin('property_owners as po', 'dp.owner_id', '=', 'po.owner_id')
+                    ->where('dp.project_id', $projectId)
+                    ->where(function ($q) {
+                        $q->whereNull('dp.payment_status')
+                          ->orWhereNotIn('dp.payment_status', ['deleted']);
+                    })
+                    ->select(
+                        'dp.dp_payment_id as payment_id',
+                        DB::raw('NULL as item_id'),
+                        'dp.amount',
+                        'dp.payment_type',
+                        'dp.transaction_number',
+                        'dp.receipt_photo',
+                        'dp.transaction_date',
+                        DB::raw("COALESCE(dp.payment_status, 'pending') as payment_status"),
+                        'dp.reason',
+                        'dp.updated_at',
+                        DB::raw("'Downpayment' as milestone_item_title"),
+                        DB::raw('NULL as milestone_item_cost'),
+                        DB::raw('NULL as milestone_id'),
+                        DB::raw('0 as sequence_order'),
+                        DB::raw('NULL as percentage_progress'),
+                        DB::raw('NULL as settlement_due_date'),
+                        DB::raw('NULL as extension_date'),
+                        DB::raw("'Downpayment' as milestone_name"),
+                        DB::raw('CONCAT(po.first_name, " ", po.last_name) as owner_name')
+                    )
+                    ->get();
+
+                $payments = $milestonePayments
+                    ->concat($downpaymentPayments)
+                    ->sortByDesc(function ($p) {
+                        return ($p->transaction_date ?? '') . ' ' . ($p->updated_at ?? '');
+                    })
+                    ->values()
                     ->toArray();
             } catch (\Exception $e) {
                 \Log::error('showMilestoneReport payment fetch error: ' . $e->getMessage());
@@ -2030,7 +2068,15 @@ class projectsController extends Controller
                 'property_type' => 'required|in:Residential,Commercial,Industrial,Agricultural',
                 'type_id' => 'required|integer|exists:contractor_types,type_id',
                 'to_finish' => 'nullable|integer|min:1',
-                'bidding_due' => 'required|date|after:today'
+                'bidding_due' => 'required|date|after:today',
+                'building_permit' => 'required|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:10240',
+                'title_of_land' => 'required|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:10240',
+                'blueprint' => 'nullable|array',
+                'blueprint.*' => 'file|mimes:pdf,doc,docx,jpg,jpeg,png|max:10240',
+                'desired_design' => 'nullable|array',
+                'desired_design.*' => 'file|mimes:pdf,doc,docx,jpg,jpeg,png|max:10240',
+                'others' => 'nullable|array',
+                'others.*' => 'file|mimes:pdf,doc,docx,jpg,jpeg,png|max:10240',
             ]);
 
             DB::beginTransaction();

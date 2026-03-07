@@ -13,11 +13,10 @@ import {
   Dimensions,
   Modal,
   FlatList,
-  Alert,
 } from 'react-native';
 import { View as SafeAreaView, StatusBar, Platform, DeviceEventEmitter } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { MaterialIcons, Ionicons, Feather } from '@expo/vector-icons';
+import { MaterialIcons, MaterialCommunityIcons, Ionicons, Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { projects_service } from '../../services/projects_service';
 import { api_config } from '../../config/api';
@@ -25,7 +24,6 @@ import { useContractorAuth } from '../../hooks/useContractorAuth';
 import MyProjects from './myProjects';
 import MyBids from './myBids';
 import Members from './members';
-import MilestoneSetup from './milestoneSetup';
 import AiAnalytics from './aiAnalytics';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -114,9 +112,6 @@ export default function ContractorDashboard({
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // pinned bid feature removed
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const [showMilestoneSetup, setShowMilestoneSetup] = useState(false);
-  const [isLoadingProject, setIsLoadingProject] = useState(false);
   // pin modals removed
   const [avatarError, setAvatarError] = useState(false);
   const [showMyProjects, setShowMyProjects] = useState(false);
@@ -132,16 +127,16 @@ export default function ContractorDashboard({
   const scrollY = useRef(new Animated.Value(0)).current;
 
   // Contractor member authorization - controls access to Members feature and milestones
-  const { canManageMembers, canManageMilestones, canBid, isActive, role } = useContractorAuth();
+  const { canManageMembers } = useContractorAuth();
 
   // Get status bar height (top inset)
   const statusBarHeight = insets.top || (Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 44);
 
   // Notify parent when entering/exiting full-screen mode
   useEffect(() => {
-    const isFullScreen = showMyProjects || showMyBids || showMilestoneSetup || showAiAnalytics;
+    const isFullScreen = showMyProjects || showMyBids || showAiAnalytics;
     onFullScreenChange?.(isFullScreen);
-  }, [showMyProjects, showMyBids, showMilestoneSetup, showAiAnalytics, onFullScreenChange]);
+  }, [showMyProjects, showMyBids, showAiAnalytics, onFullScreenChange]);
 
   useEffect(() => {
     setAvatarError(false);
@@ -242,77 +237,6 @@ export default function ContractorDashboard({
     activeProjects: myProjects.length, // Count all projects (in progress + waiting milestone setup)
   };
 
-  const formatBudget = (min: number, max: number) => {
-    const formatNum = (n: number) => {
-      if (n >= 1000000) return `₱${(n / 1000000).toFixed(1)}M`;
-      if (n >= 1000) return `₱${(n / 1000).toFixed(0)}K`;
-      return `₱${n}`;
-    };
-    return `${formatNum(min)} - ${formatNum(max)}`;
-  };
-
-  const handleAcceptedBidClick = async (bid: Bid) => {
-    // Check if user can manage milestones
-    if (!canManageMilestones) {
-      Alert.alert(
-        'Permission Denied',
-        'Only owners and representatives can manage milestones. You can view project details instead.',
-        [{ text: 'OK' }]
-      );
-      return;
-    }
-
-    try {
-      setIsLoadingProject(true);
-      // Fetch contractor projects to get the full project data
-      const response = await projects_service.get_contractor_projects(userData?.user_id || 0);
-      
-      if (response.success) {
-        const projectsData = response.data?.data || response.data || [];
-        const project = Array.isArray(projectsData) 
-          ? projectsData.find((p: Project) => p.project_id === bid.project_id)
-          : null;
-        
-        if (project) {
-          setSelectedProject(project);
-          setShowMilestoneSetup(true);
-        } else {
-          Alert.alert('Error', 'Project not found. Please try again.');
-        }
-      } else {
-        Alert.alert('Error', 'Failed to load project data. Please try again.');
-      }
-    } catch (error) {
-      console.error('Error loading project:', error);
-      Alert.alert('Error', 'Failed to load project data. Please try again.');
-    } finally {
-      setIsLoadingProject(false);
-    }
-  };
-
-  const formatCost = (cost: number) => {
-    if (cost >= 1000000) return `₱${(cost / 1000000).toFixed(2)}M`;
-    if (cost >= 1000) return `₱${(cost / 1000).toFixed(0)}K`;
-    return `₱${cost.toLocaleString()}`;
-  };
-
-  const getBidStatusConfig = (status: string) => {
-    switch (status) {
-      case 'pending':
-      case 'submitted':
-        return { color: COLORS.warning, bg: COLORS.warningLight, label: 'Pending', icon: 'clock' };
-      case 'accepted':
-        return { color: COLORS.success, bg: COLORS.successLight, label: 'Accepted', icon: 'check-circle' };
-      case 'rejected':
-        return { color: COLORS.error, bg: '#FEE2E2', label: 'Rejected', icon: 'x-circle' };
-      case 'withdrawn':
-      case 'cancelled':
-        return { color: COLORS.textMuted, bg: COLORS.borderLight, label: 'Cancelled', icon: 'minus-circle' };
-      default:
-        return { color: COLORS.textMuted, bg: COLORS.borderLight, label: status, icon: 'circle' };
-    }
-  };
-
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return 'Good Morning';
@@ -338,39 +262,6 @@ export default function ContractorDashboard({
           <Text style={styles.loadingText}>Loading your dashboard...</Text>
         </View>
       </SafeAreaView>
-    );
-  }
-
-  if (isLoadingProject) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <StatusBar hidden={true} />
-        <View style={styles.loadingContainer}>
-          <View style={styles.loadingSpinner}>
-            <ActivityIndicator size="large" color={COLORS.primary} />
-          </View>
-          <Text style={styles.loadingText}>Loading project...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  // Show Milestone Setup screen if selected
-  if (showMilestoneSetup && selectedProject) {
-    return (
-      <MilestoneSetup
-        project={selectedProject}
-        userId={userData?.user_id}
-        onClose={() => {
-          setShowMilestoneSetup(false);
-          setSelectedProject(null);
-        }}
-        onSave={() => {
-          setShowMilestoneSetup(false);
-          setSelectedProject(null);
-          fetchData(); // Refresh dashboard after saving milestones
-        }}
-      />
     );
   }
 
@@ -500,7 +391,7 @@ export default function ContractorDashboard({
               onPress={() => setShowMyProjects(true)}
             >
               <View style={[styles.navButtonIcon, { backgroundColor: COLORS.successLight }]}>
-                <Feather name="briefcase" size={24} color={COLORS.success} />
+                <Ionicons name="briefcase" size={24} color={COLORS.success} />
               </View>
               <View style={styles.navButtonContent}>
                 <Text style={styles.navButtonTitle}>My Projects</Text>
@@ -514,8 +405,10 @@ export default function ContractorDashboard({
               activeOpacity={0.7}
               onPress={() => setShowMyBids(true)}
             >
-              <View style={[styles.navButtonIcon, { backgroundColor: COLORS.primaryLight }]}>
-                <Feather name="file-text" size={24} color={COLORS.primary} />
+              <View style={[styles.navButtonIcon, styles.bidsNavIconFrame]}>
+                <View style={styles.bidsScaleBadge}>
+                    <MaterialCommunityIcons name="scale-balance" size={20} color="#F0B35E" />
+                </View>
               </View>
               <View style={styles.navButtonContent}>
                 <Text style={styles.navButtonTitle}>My Bids</Text>
@@ -532,7 +425,7 @@ export default function ContractorDashboard({
                 onPress={() => setShowMembers(true)}
               >
                 <View style={[styles.navButtonIcon, { backgroundColor: '#E8F6FF' }]}>
-                  <Feather name="users" size={24} color={COLORS.info} />
+                  <Ionicons name="people" size={24} color={COLORS.info} />
                 </View>
                 <View style={styles.navButtonContent}>
                   <Text style={styles.navButtonTitle}>Members</Text>
@@ -548,8 +441,12 @@ export default function ContractorDashboard({
               activeOpacity={0.7}
               onPress={() => setShowAiAnalytics(true)}
             >
-              <View style={[styles.navButtonIcon, { backgroundColor: '#FEF3C7' }]}>
-                <MaterialIcons name="psychology" size={24} color="#D97706" />
+              <View style={[styles.navButtonIcon, styles.navAiIconFrame]}>
+                <Image
+                  source={require('../../../assets/images/icons/ai.png')}
+                  style={styles.aiIconImage}
+                  resizeMode="contain"
+                />
               </View>
               <View style={styles.navButtonContent}>
                 <Text style={styles.navButtonTitle}>AI Analytics</Text>
@@ -604,102 +501,6 @@ export default function ContractorDashboard({
           </View>
         </View>
 
-        {/* Recent Bids Section */}
-        <View style={styles.recentSection}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Bids</Text>
-            <TouchableOpacity style={styles.seeAllBtn}>
-              <Text style={styles.seeAllText}>See All</Text>
-              <Feather name="chevron-right" size={16} color={COLORS.primary} />
-            </TouchableOpacity>
-          </View>
-
-          {myBids.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <View style={styles.emptyIllustration}>
-                <Feather name="file-text" size={48} color={COLORS.border} />
-              </View>
-              <Text style={styles.emptyTitle}>No Bids Yet</Text>
-              <Text style={styles.emptyText}>
-                Browse available projects and submit your first bid to get started.
-              </Text>
-              <TouchableOpacity style={styles.createButton} onPress={onBrowseProjects}>
-                <LinearGradient
-                  colors={[COLORS.primary, COLORS.primaryDark]}
-                  style={styles.createButtonGradient}
-                >
-                  <Feather name="search" size={18} color="#FFFFFF" />
-                  <Text style={styles.createButtonText}>Browse Projects</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <View style={styles.bidsList}>
-              {myBids.slice(0, 3).map((bid) => {
-                const statusConfig = getBidStatusConfig(bid.bid_status);
-                return (
-                  <TouchableOpacity
-                    key={bid.bid_id}
-                    style={styles.bidCard}
-                    activeOpacity={0.7}
-                    onPress={async () => {
-                      // If bid is accepted, redirect to milestone setup
-                      if (bid.bid_status === 'accepted') {
-                        await handleAcceptedBidClick(bid);
-                      } else {
-                        // For other statuses, navigate to MyBids screen
-                        onBrowseProjects?.();
-                      }
-                    }}
-                  >
-                    <View style={styles.bidCardHeader}>
-                      <View style={styles.bidTypeTag}>
-                        <Feather name="file-text" size={12} color={COLORS.primary} />
-                        <Text style={styles.bidTypeText}>Bid #{bid.bid_id}</Text>
-                      </View>
-                      <View style={[styles.statusBadge, { backgroundColor: statusConfig.bg }]}>
-                        <Feather name={statusConfig.icon as any} size={12} color={statusConfig.color} />
-                        <Text style={[styles.statusText, { color: statusConfig.color }]}>
-                          {statusConfig.label}
-                        </Text>
-                      </View>
-                    </View>
-
-                    <Text style={styles.bidTitle}>{bid.project_title}</Text>
-
-                    <View style={styles.bidMeta}>
-                      {bid.project_location && (
-                        <View style={styles.metaItem}>
-                          <Feather name="map-pin" size={14} color={COLORS.textMuted} />
-                          <Text style={styles.metaText} numberOfLines={1}>{bid.project_location}</Text>
-                        </View>
-                      )}
-                      <View style={styles.metaItem}>
-                        <Feather name="dollar-sign" size={14} color={COLORS.textMuted} />
-                        <Text style={styles.metaText}>{formatCost(bid.proposed_cost)}</Text>
-                      </View>
-                    </View>
-
-                    <View style={styles.bidCardFooter}>
-                      <View style={styles.footerLeft}>
-                        <View style={styles.timelineInfo}>
-                          <Feather name="calendar" size={14} color={COLORS.textMuted} />
-                          <Text style={styles.timelineText}>
-                            {bid.estimated_timeline} {bid.estimated_timeline === 1 ? 'month' : 'months'}
-                          </Text>
-                        </View>
-                      </View>
-                      <TouchableOpacity style={styles.viewDetailsBtn}>
-                        <Text style={styles.viewDetailsText}>View Details</Text>
-                        <Feather name="arrow-right" size={16} color={COLORS.primary} />
-                      </TouchableOpacity>
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          )}
-        </View>
       </Animated.ScrollView>
 
       {/* Pinned bid modals removed */}
@@ -968,23 +769,42 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.surface,
-    borderRadius: 14,
+    borderRadius: 12,
     padding: 16,
     marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    elevation: 3,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   navButtonIcon: {
     width: 50,
     height: 50,
-    borderRadius: 14,
+    borderRadius: 10,
     backgroundColor: COLORS.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
+  },
+  navAiIconFrame: {
+    backgroundColor: '#FFF2D9',
+    borderWidth: 1,
+    borderColor: '#F9D8A7',
+  },
+  bidsNavIconFrame: {
+    backgroundColor: '#EEF4FF',
+    borderWidth: 1,
+    borderColor: '#D6E2F3',
+  },
+  bidsScaleBadge: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#3E5563',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  aiIconImage: {
+    width: 28,
+    height: 28,
   },
   navButtonContent: {
     flex: 1,
@@ -1037,158 +857,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: '500',
     lineHeight: 14,
-  },
-
-  // Recent Bids Section
-  recentSection: {
-    paddingTop: 24,
-    paddingHorizontal: 20,
-  },
-  bidsList: {
-    gap: 12,
-  },
-  bidCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 16,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 12,
-    elevation: 2,
-  },
-  bidCardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  bidTypeTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: COLORS.primaryLight,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    borderRadius: 6,
-  },
-  bidTypeText: {
-    fontSize: 11,
-    color: COLORS.primary,
-    fontWeight: '600',
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    borderRadius: 6,
-    gap: 4,
-  },
-  statusText: {
-    fontSize: 10,
-    fontWeight: '600',
-  },
-  bidTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: COLORS.text,
-    marginBottom: 6,
-    lineHeight: 21,
-  },
-  bidMeta: {
-    gap: 8,
-    marginBottom: 12,
-  },
-  metaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  metaText: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-    flex: 1,
-  },
-  bidCardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.borderLight,
-  },
-  footerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  timelineInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  timelineText: {
-    fontSize: 12,
-    color: COLORS.textMuted,
-    fontWeight: '500',
-  },
-  viewDetailsBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  viewDetailsText: {
-    fontSize: 13,
-    color: COLORS.primary,
-    fontWeight: '600',
-  },
-
-  // Empty State
-  emptyContainer: {
-    alignItems: 'center',
-    paddingVertical: 48,
-    paddingHorizontal: 20,
-    backgroundColor: COLORS.surface,
-    borderRadius: 20,
-  },
-  emptyIllustration: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: COLORS.borderLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: COLORS.text,
-    marginBottom: 8,
-  },
-  emptyText: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-    lineHeight: 21,
-    marginBottom: 24,
-  },
-  createButton: {
-    borderRadius: 14,
-    overflow: 'hidden',
-  },
-  createButtonGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 14,
-    gap: 8,
-  },
-  createButtonText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '600',
   },
 
   // Modal Styles

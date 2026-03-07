@@ -50,6 +50,59 @@ Route::prefix('admin/settings/security')
 
 Route::post('/admin/global-management/ai-management/analyze/{id}', [globalManagementController::class, 'analyzeProject']);
 
+// Mobile document viewer (served as HTML so WebView has same-origin access to files)
+Route::get('/document-viewer', function () {
+    $file = request()->query('file', '');
+    $ext  = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+    $fileUrl = str_starts_with($file, 'http') ? $file : asset('storage/' . $file);
+
+    // Convert DOCX to PDF server-side for proper page rendering
+    if ($ext === 'docx' && !str_starts_with($file, 'http')) {
+        $sourcePath = storage_path('app/public/' . $file);
+        if (file_exists($sourcePath)) {
+            $cacheDir = storage_path('app/public/doc_cache');
+            if (!is_dir($cacheDir)) {
+                mkdir($cacheDir, 0755, true);
+            }
+            $hash = md5($file . filemtime($sourcePath));
+            $pdfName = $hash . '.pdf';
+            $pdfPath = $cacheDir . '/' . $pdfName;
+
+            if (!file_exists($pdfPath)) {
+                try {
+                    // Load DOCX with PhpWord and export as HTML
+                    $phpWord = \PhpOffice\PhpWord\IOFactory::load($sourcePath, 'Word2007');
+                    $htmlWriter = \PhpOffice\PhpWord\IOFactory::createWriter($phpWord, 'HTML');
+                    ob_start();
+                    $htmlWriter->save('php://output');
+                    $html = ob_get_clean();
+
+                    // Convert HTML to PDF with DomPDF for proper pagination
+                    $dompdf = new \Dompdf\Dompdf([
+                        'isHtml5ParserEnabled' => true,
+                        'isRemoteEnabled' => true,
+                        'defaultFont' => 'Arial',
+                    ]);
+                    $dompdf->setPaper('letter', 'portrait');
+                    $dompdf->loadHtml($html);
+                    $dompdf->render();
+                    file_put_contents($pdfPath, $dompdf->output());
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('DOCX→PDF conversion failed: ' . $e->getMessage());
+                }
+            }
+
+            if (file_exists($pdfPath)) {
+                $fileUrl = asset('storage/doc_cache/' . $pdfName);
+                $ext = 'pdf';
+            }
+        }
+    }
+
+    return response(view('document-viewer', compact('fileUrl', 'ext')))
+        ->header('Content-Type', 'text/html');
+});
+
 Route::get('/', function () {
     return view('signUp_logIN.landingPage');
 });

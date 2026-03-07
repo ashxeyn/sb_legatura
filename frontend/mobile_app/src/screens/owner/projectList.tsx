@@ -49,6 +49,9 @@ interface Milestone {
   end_date: string;
   created_at: string;
   updated_at: string;
+  payment_plan?: {
+    total_project_cost?: number;
+  };
 }
 
 interface ContractorInfo {
@@ -236,8 +239,10 @@ export default function ProjectList({ userData, onClose, initialFilter = 'all' }
   const searchFiltered = phaseFiltered.filter(p => {
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
+    const primaryTitle = getCardPrimaryTitle(p);
     return (
       (p.project_title || '').toLowerCase().includes(q) ||
+      (primaryTitle || '').toLowerCase().includes(q) ||
       (p.project_description || '').toLowerCase().includes(q) ||
       (p.project_location || '').toLowerCase().includes(q) ||
       (p.type_name || '').toLowerCase().includes(q) ||
@@ -253,26 +258,51 @@ export default function ProjectList({ userData, onClose, initialFilter = 'all' }
       case 'oldest':
         return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
       case 'a_z':
-        return (a.project_title || '').localeCompare(b.project_title || '');
+        return (getCardPrimaryTitle(a) || '').localeCompare(getCardPrimaryTitle(b) || '');
       case 'z_a':
-        return (b.project_title || '').localeCompare(a.project_title || '');
+        return (getCardPrimaryTitle(b) || '').localeCompare(getCardPrimaryTitle(a) || '');
       case 'budget_high':
-        return (b.budget_range_max || 0) - (a.budget_range_max || 0);
+        return getCardBudgetSortValue(b) - getCardBudgetSortValue(a);
       case 'budget_low':
-        return (a.budget_range_min || 0) - (b.budget_range_min || 0);
+        return getCardBudgetSortValue(a) - getCardBudgetSortValue(b);
       default:
         return 0;
     }
   });
 
-  const formatBudget = (min: number, max: number) => {
-    const formatNum = (n: number) => {
-      if (n >= 1000000) return `₱${(n / 1000000).toFixed(1)}M`;
-      if (n >= 1000) return `₱${(n / 1000).toFixed(0)}K`;
-      return `₱${n}`;
-    };
-    return `${formatNum(min)} - ${formatNum(max)}`;
-  };
+  function getCardPrimaryTitle(project: Project) {
+    const approvedMilestoneTitle = (project.milestones || [])
+      .find(m => m.setup_status === 'approved' && !!m.milestone_name)
+      ?.milestone_name;
+
+    return approvedMilestoneTitle || project.project_title;
+  }
+
+  function getProjectContractBudget(project: Project): number | null {
+    const approvedMilestoneCost = (project.milestones || [])
+      .find(m => m.setup_status === 'approved' && (m.payment_plan?.total_project_cost || 0) > 0)
+      ?.payment_plan?.total_project_cost;
+
+    const acceptedBidCost = project.accepted_bid?.proposed_cost;
+    const budget = approvedMilestoneCost || acceptedBidCost || 0;
+    return budget > 0 ? budget : null;
+  }
+
+  function formatPeso(n: number) {
+    return `₱${Math.round(n || 0).toLocaleString('en-PH')}`;
+  }
+
+  function getCardBudgetText(project: Project) {
+    const contractBudget = getProjectContractBudget(project);
+    if (contractBudget !== null) return `Contract: ${formatPeso(contractBudget)}`;
+    return `Post: ${formatPeso(project.budget_range_min)} - ${formatPeso(project.budget_range_max)}`;
+  }
+
+  function getCardBudgetSortValue(project: Project) {
+    const contractBudget = getProjectContractBudget(project);
+    if (contractBudget !== null) return contractBudget;
+    return project.budget_range_max || project.budget_range_min || 0;
+  }
 
   const getStatusConfig = (project: Project) => {
     const { project_status, project_post_status, display_status, selected_contractor_id } = project;
@@ -342,9 +372,10 @@ export default function ProjectList({ userData, onClose, initialFilter = 'all' }
 
   const renderProjectCard = (project: Project) => {
     const statusConfig = getStatusConfig(project);
-    const daysRemaining = project.bidding_due && !project.selected_contractor_id ? getDaysRemaining(project.bidding_due) : null;
     const isCompleted = project.project_status === 'completed' || project.display_status === 'completed';
     const isHalted = project.project_status === 'halt' || project.project_status === 'on_hold' || project.project_status === 'halted';
+    const primaryTitle = getCardPrimaryTitle(project);
+    const showPostTitle = primaryTitle !== project.project_title;
 
     return (
       <TouchableOpacity
@@ -365,7 +396,7 @@ export default function ProjectList({ userData, onClose, initialFilter = 'all' }
         )}
         {isCompleted && !isHalted && (
           <View style={styles.completedBanner}>
-            <Feather name="check-circle" size={16} color={COLORS.success} />
+            <Feather name="check-circle" size={14} color="#FFFFFF" />
             <Text style={styles.completedBannerText}>Project Completed</Text>
           </View>
         )}
@@ -382,7 +413,10 @@ export default function ProjectList({ userData, onClose, initialFilter = 'all' }
           </View>
         </View>
 
-        <Text style={styles.projectTitle}>{project.project_title}</Text>
+        <Text style={styles.projectTitle}>{primaryTitle}</Text>
+        {showPostTitle && (
+          <Text style={styles.projectPostTitle} numberOfLines={1}>Post: {project.project_title}</Text>
+        )}
         <Text style={styles.projectDescription} numberOfLines={2}>
           {project.project_description}
         </Text>
@@ -393,31 +427,8 @@ export default function ProjectList({ userData, onClose, initialFilter = 'all' }
             <Text style={styles.metaText} numberOfLines={1}>{project.project_location}</Text>
           </View>
           <View style={styles.metaItem}>
-            <Feather name="dollar-sign" size={14} color={COLORS.textMuted} />
-            <Text style={styles.metaText}>{formatBudget(project.budget_range_min, project.budget_range_max)}</Text>
-          </View>
-        </View>
-
-        <View style={styles.projectCardFooter}>
-          <View style={styles.footerLeft}>
-            {project.bids_count !== undefined && project.bids_count > 0 && (
-              <View style={styles.bidsInfo}>
-                <Feather name="users" size={14} color={COLORS.info} />
-                <Text style={styles.bidsText}>{project.bids_count} bids</Text>
-              </View>
-            )}
-            {daysRemaining !== null && daysRemaining > 0 && (
-              <View style={[styles.deadlineInfo, daysRemaining <= 3 && styles.deadlineUrgent]}>
-                <Feather name="clock" size={14} color={daysRemaining <= 3 ? COLORS.error : COLORS.textMuted} />
-                <Text style={[styles.deadlineText, daysRemaining <= 3 && styles.deadlineTextUrgent]}>
-                  {daysRemaining}d left
-                </Text>
-              </View>
-            )}
-          </View>
-          <View style={styles.viewDetailsBtn}>
-            <Text style={styles.viewDetailsText}>View</Text>
-            <Feather name="arrow-right" size={16} color={COLORS.primary} />
+            <Feather name="credit-card" size={14} color={COLORS.textMuted} />
+            <Text style={styles.metaText}>{getCardBudgetText(project)}</Text>
           </View>
         </View>
       </TouchableOpacity>
@@ -899,38 +910,32 @@ const styles = StyleSheet.create({
   },
   projectCard: {
     backgroundColor: COLORS.surface,
-    borderRadius: 12,
+    borderRadius: 6,
     padding: 16,
     marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    shadowOpacity: 0,
+    elevation: 0,
   },
   projectCardCompleted: {
-    backgroundColor: COLORS.successLight,
-    borderWidth: 2,
-    borderColor: COLORS.success,
-    shadowColor: COLORS.success,
-    shadowOpacity: 0.15,
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: '#16A34A',
   },
   projectCardHalted: {
-    borderWidth: 2,
-    borderColor: COLORS.error,
-    backgroundColor: '#FFF5F5',
+    borderWidth: 1,
+    borderColor: '#DC2626',
+    backgroundColor: '#FEF2F2',
   },
   haltedBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.error,
-    marginHorizontal: -16,
-    marginTop: -16,
-    marginBottom: 12,
-    paddingVertical: 8,
-    borderTopLeftRadius: 10,
-    borderTopRightRadius: 10,
+    backgroundColor: '#DC2626',
+    marginBottom: 10,
+    paddingVertical: 7,
+    borderRadius: 4,
     gap: 6,
   },
   haltedBannerText: {
@@ -944,13 +949,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.success,
-    marginHorizontal: -16,
-    marginTop: -16,
-    marginBottom: 12,
-    paddingVertical: 8,
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
+    backgroundColor: '#16A34A',
+    marginBottom: 10,
+    paddingVertical: 7,
+    borderRadius: 4,
     gap: 6,
   },
   completedBannerText: {
@@ -972,7 +974,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primaryLight,
     paddingHorizontal: 10,
     paddingVertical: 5,
-    borderRadius: 8,
+    borderRadius: 4,
   },
   projectTypeText: {
     fontSize: 12,
@@ -985,7 +987,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 10,
     paddingVertical: 5,
-    borderRadius: 8,
+    borderRadius: 4,
   },
   statusText: {
     fontSize: 12,
@@ -998,6 +1000,11 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     marginBottom: 6,
   },
+  projectPostTitle: {
+    fontSize: 12,
+    color: COLORS.textMuted,
+    marginBottom: 6,
+  },
   projectDescription: {
     fontSize: 13,
     color: COLORS.textSecondary,
@@ -1007,7 +1014,7 @@ const styles = StyleSheet.create({
   projectMeta: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginBottom: 14,
+    marginBottom: 2,
   },
   metaItem: {
     flexDirection: 'row',
@@ -1019,56 +1026,5 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: COLORS.textMuted,
     marginLeft: 5,
-  },
-  projectCardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.borderLight,
-  },
-  footerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  bidsInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: 14,
-  },
-  bidsText: {
-    fontSize: 13,
-    color: COLORS.info,
-    fontWeight: '600',
-    marginLeft: 5,
-  },
-  deadlineInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  deadlineUrgent: {},
-  deadlineText: {
-    fontSize: 13,
-    color: COLORS.textMuted,
-    fontWeight: '500',
-    marginLeft: 5,
-  },
-  deadlineTextUrgent: {
-    color: COLORS.error,
-  },
-  viewDetailsBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.primaryLight,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  viewDetailsText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: COLORS.primary,
-    marginRight: 4,
   },
 });

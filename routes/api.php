@@ -142,6 +142,7 @@ Route::post('/signup/owner/final', [authController::class, 'propertyOwnerFinalSt
 // PSGC API Routes (public)
 Route::get('/psgc/provinces', [authController::class, 'getProvinces']);
 Route::get('/psgc/provinces/{provinceCode}/cities', [authController::class, 'getCitiesByProvince']);
+Route::get('/psgc/cities', [authController::class, 'getAllCities']);
 Route::get('/psgc/cities/{cityCode}/barangays', [authController::class, 'getBarangaysByCity']);
 
 // Contractors endpoint for property owner feed
