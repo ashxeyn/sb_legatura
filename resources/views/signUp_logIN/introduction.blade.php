@@ -65,10 +65,10 @@
 
 			<!-- Buttons -->
 			<div class="welcome-actions">
-				<button class="btn btn-primary" onclick="window.location.href='/account-type'">
+				<button class="btn btn-primary" onclick="window.location.href='/auth/gate/account-type'">
 					Create an Account
 				</button>
-				<button class="btn btn-secondary" onclick="window.location.href='/login'">
+				<button class="btn btn-secondary" onclick="window.location.href='/auth/gate/login'">
 					Log in
 				</button>
 			</div>

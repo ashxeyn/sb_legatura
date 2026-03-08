@@ -68,26 +68,31 @@ Route::get('/intro', function () {
     return view('signUp_logIN.introduction');
 });
 
-// Owner web login screen
+// Owner web login screen — guarded, direct access returns 404
 Route::get('/login', function () {
-    return view('accounts.login');
+    abort(404);
 });
 
-// Owner account type selection screen
+// Owner account type selection screen — guarded, direct access returns 404
 Route::get('/account-type', function () {
     return view('signUp_logIN.accountType');
-});
-// Owner account setup screen
-Route::match(['get', 'post'], '/propertyOwner/account-setup', [authController::class, 'showOwnerAccountSetup'])
+})->middleware('auth.entry');
+// Owner account setup screen — guarded, direct access returns 404
+Route::get('/propertyOwner/account-setup', [authController::class, 'showOwnerAccountSetup'])
+    ->middleware('auth.entry')
     ->name('owner.account-setup');
+Route::post('/propertyOwner/account-setup', [authController::class, 'showOwnerAccountSetup']);
 
-// Back-compat: keep old path working
+// Back-compat: keep old path working (goes through gate)
 Route::get('/account-setup', function () {
-    return redirect('/propertyOwner/account-setup');
+    return redirect('/auth/gate/owner-setup');
 });
 
-// Contractor account setup screen
-Route::match(['get', 'post'], '/contractor/account-setup', [authController::class, 'showContractorSetup'])->name('contractor.account-setup');
+// Contractor account setup screen — guarded, direct access returns 404
+Route::get('/contractor/account-setup', [authController::class, 'showContractorSetup'])
+    ->middleware('auth.entry')
+    ->name('contractor.account-setup');
+Route::post('/contractor/account-setup', [authController::class, 'showContractorSetup']);
 
 // OTP Verification screen
 Route::get('/otp-verification', function () {
@@ -222,31 +227,86 @@ Route::get('/payment/callback', [payMongoController::class, 'handlePaymentSucces
 // Subscription / Boosts modal JSON data (optional endpoint)
 Route::get('/subs/modal-data', [platformPaymentController::class, 'modalData'])->name('subs.modal.data');
 
-// Authentication Routes
-Route::get('/accounts/login', [authController::class, 'showLoginForm']);
-Route::post('/accounts/login', [authController::class, 'login']);
-Route::get('/accounts/signup', [authController::class, 'showSignupForm']);
-Route::get('/owner/signup', function () {
+// ── Entry-gate setters ────────────────────────────────────────────────────
+// These routes set a short-lived session token then redirect to the
+// real destination. Only users who click a legitimate link/button will
+// have this token; anyone who types the URL directly will get 404.
+Route::get('/auth/gate/login', function () {
+    session([
+        'auth_entry_token'  => true,
+        'auth_entry_expiry' => time() + 30,  // 30-second window
+    ]);
+    return redirect('/accounts/login');
+})->name('auth.gate.login');
+
+Route::get('/auth/gate/signup', function () {
+    session([
+        'auth_entry_token'  => true,
+        'auth_entry_expiry' => time() + 30,
+    ]);
+    return redirect('/accounts/signup');
+})->name('auth.gate.signup');
+
+Route::get('/auth/gate/account-type', function () {
+    session([
+        'auth_entry_token'  => true,
+        'auth_entry_expiry' => time() + 30,
+    ]);
     return redirect('/account-type');
+})->name('auth.gate.account-type');
+
+Route::get('/auth/gate/owner-setup', function () {
+    session([
+        'auth_entry_token'  => true,
+        'auth_entry_expiry' => time() + 30,
+    ]);
+    return redirect('/propertyOwner/account-setup');
+})->name('auth.gate.owner-setup');
+
+Route::get('/auth/gate/contractor-setup', function () {
+    session([
+        'auth_entry_token'  => true,
+        'auth_entry_expiry' => time() + 30,
+    ]);
+    return redirect('/contractor/account-setup');
+})->name('auth.gate.contractor-setup');
+
+Route::get('/auth/gate/forgot-password', function () {
+    session([
+        'auth_entry_token'  => true,
+        'auth_entry_expiry' => time() + 30,
+    ]);
+    return redirect('/accounts/forgot-password');
+})->name('auth.gate.forgot-password');
+// ──────────────────────────────────────────────────────────────────────────
+
+// Authentication Routes
+// GET pages are guarded: direct URL access returns 404
+Route::get('/accounts/login', [authController::class, 'showLoginForm'])->middleware('auth.entry');
+Route::post('/accounts/login', [authController::class, 'login']);
+Route::get('/accounts/signup', [authController::class, 'showSignupForm'])->middleware('auth.entry');
+Route::get('/owner/signup', function () {
+    return redirect('/auth/gate/account-type');
 })->name('owner.signup');
 Route::post('/accounts/signup/select-role', [authController::class, 'selectRole']);
 Route::post('/accounts/logout', [authController::class, 'logout']);
 Route::get('/accounts/logout', [authController::class, 'logout']);
 
 // Forgot Password Routes
-Route::get('/accounts/forgot-password', [passwordController::class, 'showForgotForm'])->name('password.forgot');
+Route::get('/accounts/forgot-password', [passwordController::class, 'showForgotForm'])->middleware('auth.entry')->name('password.forgot');
 Route::post('/accounts/password/send-otp', [passwordController::class, 'sendResetOtp'])->name('password.send-otp');
 Route::post('/accounts/password/verify-otp', [passwordController::class, 'verifyResetOtp'])->name('password.verify-otp');
 Route::post('/accounts/password/reset', [passwordController::class, 'resetPassword'])->name('password.reset');
 
 // Admin Authentication Routes
+// GET pages abort(404) for direct URL access; the secret modal uses POST only
 Route::get('/admin/login', function () {
-    return view('accounts.login');
+    abort(404);
 })->name('admin.login');
 Route::post('/admin/login', [authController::class, 'login'])->name('admin.login.post');
 
 Route::get('/admin/signup', function () {
-    return view('accounts.login');
+    abort(404);
 })->name('admin.signup');
 Route::post('/admin/signup', [authController::class, 'adminSignup'])->name('admin.signup.post');
 

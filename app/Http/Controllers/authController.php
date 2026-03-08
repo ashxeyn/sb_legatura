@@ -2128,6 +2128,10 @@ class authController extends Controller
             ], 200);
         } else {
 
+            if (request()->is('admin/*') || request()->routeIs('admin.logout')) {
+                return redirect('/');
+            }
+
             return redirect('/accounts/login')->with('success', 'Logged out successfully');
         }
     }

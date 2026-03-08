@@ -27,9 +27,9 @@ document.addEventListener('DOMContentLoaded', () => {
 	btn.addEventListener('click', () => {
 		const selectedRole = hidden.value;
 		if (selectedRole === 'owner') {
-			window.location.href = '/propertyOwner/account-setup';
+			window.location.href = '/auth/gate/owner-setup';
 		} else if (selectedRole === 'contractor') {
-			window.location.href = '/contractor/account-setup';
+			window.location.href = '/auth/gate/contractor-setup';
 		}
 	});
 });

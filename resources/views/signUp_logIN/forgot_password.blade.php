@@ -164,7 +164,7 @@
     <div class="login-container">
         <div class="login-card">
             <!-- Back to Login Link -->
-            <a href="/accounts/login" class="back-to-login">
+            <a href="/auth/gate/login" class="back-to-login">
                 <i class="fi fi-rr-angle-small-left"></i>
                 Back to Login
             </a>

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -15,17 +15,18 @@
     <nav class="hero-nav" id="top">
         <div class="hero-nav-inner">
             <div class="hero-nav-logo">
-                <img src="{{ asset('img/logo_legatura.svg') }}" alt="Legatura">
+                <img src="{{ asset('img/LEGATURA.svg') }}" alt="Legatura">
             </div>
             <ul class="hero-nav-links">
                 <li><a href="#about">About</a></li>
                 <li><a href="#features">Features</a></li>
                 <li><a href="#user-experience">For Users</a></li>
                 <li><a href="#plans">Subscriptions</a></li>
+                <li><a href="#mvp">Core Solutions</a></li>
                 <li><a href="#team">Team</a></li>
                 <li><a href="#contact">Contact</a></li>
             </ul>
-            <a href="/intro" class="hero-nav-cta">Download App</a>
+            <button type="button" class="hero-nav-cta">Download App</button>
             <button class="hero-nav-hamburger" id="navHamburger" aria-label="Open menu">
                 <span></span><span></span><span></span>
             </button>
@@ -48,6 +49,8 @@
                 <li><a href="#features">Features</a></li>
                 <li><a href="#user-experience">For Users</a></li>
                 <li><a href="#plans">Subscriptions</a></li>
+                <li><a href="#video-demo">Why Legatura?</a></li>
+                <li><a href="#mvp">Core Solutions</a></li>
                 <li><a href="#team">Team</a></li>
                 <li><a href="#contact">Contact</a></li>
             </ul>
@@ -73,7 +76,7 @@
             <p class="hero-subtitle">
                 The bridge between vision and execution. We provide property owners with total project visibility while ensuring contractors receive fair, timely payments for every milestone achieved.
             </p>
-            <a href="/intro" class="hero-body-cta">Download App</a>
+            <button type="button" class="hero-body-cta">Download App</button>
         </div>
     </section>
 
@@ -85,7 +88,7 @@
             <p class="text-sm md:text-base lg:text-lg leading-relaxed mb-8 md:mb-12 max-w-5xl mx-auto text-white/90">
                 Legatura is a platform that connects property owners with trusted contractors, simplifying project management, bidding, and communication to deliver construction projects efficiently and reliably.
             </p>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 lg:gap-12 px-0 md:px-8 lg:px-16">
+            <div class="about-track grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 lg:gap-12 px-0 md:px-8 lg:px-16" id="aboutTrack">
                 <div class="about-card p-6 md:p-8 rounded-lg">
                     <h4 class="text-lg md:text-xl lg:text-2xl font-bold mb-3 md:mb-4 text-white">Empowering Project Success & Quality</h4>
                     <p class="text-xs md:text-sm lg:text-base leading-relaxed text-white/85">
@@ -99,13 +102,14 @@
                     </p>
                 </div>
             </div>
+            <div class="about-dots" id="aboutDots" aria-label="About carousel pagination"></div>
         </div>
     </section>
 
     <!-- Dual User Experience Section -->
     <section id="user-experience" class="user-experience py-16 md:py-20">
         <div class="w-full px-8 md:px-16 lg:px-24 text-center">
-            <h2 class="text-3xl md:text-4xl font-extrabold mb-4 text-white"><span style="color:#3b82f6">Property Owners</span> & <span style="color:#ec7e00">Contractors</span></h2>
+            <h2 class="text-3xl md:text-4xl font-extrabold mb-4 text-white"><span style="color:#1E1E1E">Property Owners</span> & <span style="color:#1E1E1E">Contractors</span></h2>
             <p class="text-base md:text-lg leading-relaxed mb-12 max-w-3xl mx-auto text-white/90">
                 Discover how Legatura empowers both sides of construction projects
             </p>
@@ -135,7 +139,7 @@
             <p class="text-base md:text-lg leading-relaxed mb-12 max-w-3xl mx-auto text-white/90">
                 Tools designed to keep every project clear, competitive, and on track
             </p>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 px-4 md:px-8 lg:px-16 text-left">
+            <div class="features-track grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 px-4 md:px-8 lg:px-16 text-left" id="featuresTrack">
                 <div class="feature-card p-6 rounded-lg">
                     <div class="feature-icon">
                         <i class="ri-briefcase-4-line"></i>
@@ -191,18 +195,19 @@
                     </p>
                 </div>
             </div>
+            <div class="features-dots" id="featuresDots" aria-label="Features carousel pagination"></div>
         </div>
     </section>
 
     <!-- Boosting & Subscription Section -->
     <section id="plans" class="plans-showcase py-16 md:py-20">
         <div class="w-full px-8 md:px-16 lg:px-24 text-center">
-            <h2 class="text-3xl md:text-4xl font-extrabold mb-4 text-black"><span style="color:#3b82f6">Boost</span> and <span style="color:#ec7e00">Subscriptions</span></h2>
+            <h2 class="text-3xl md:text-4xl font-extrabold mb-4 text-black"><span style="color:#1E1E1E">Boost</span> and <span style="color:#1E1E1E">Subscriptions</span></h2>
             <p class="text-base md:text-lg leading-relaxed mb-12 max-w-3xl mx-auto text-black/80">
                 Property owners can boost project posts, while contractors unlock premium growth tools.
             </p>
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12 px-4 md:px-8 lg:px-16 text-left">
-                <div class="plan-panel boost-panel p-6 md:p-8 rounded-lg">
+            <div class="plans-track grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12 px-4 md:px-8 lg:px-16 text-left" id="plansTrack">
+                <div class="plan-panel boost-panel p-6 md:p-8 rounded-lg" data-plan-slide>
                     <div class="panel-header">
                         <div class="panel-icon boost">
                             <i class="fi fi-rr-rocket"></i>
@@ -214,7 +219,7 @@
                     </div>
                     <div class="panel-card-grid">
                         <button class="panel-card" type="button">
-                            <div class="panel-card-emoji">🔥</div>
+                            <div class="panel-card-emoji"><i class="ri-rocket-2-line" style="color:#ec7e00;"></i></div>
                             <div>
                                 <div class="panel-card-title">Boost Your Project</div>
                                 <div class="panel-card-meta">Reach upto 1,000+ contractors</div>
@@ -230,7 +235,7 @@
                     </ul>
                 </div>
 
-                <div class="plan-panel subscription-panel p-6 md:p-8 rounded-lg">
+                <div class="plan-panel subscription-panel p-6 md:p-8 rounded-lg" data-plan-slide>
                     <div class="panel-header">
                         <div class="panel-icon subscription">
                             <i class="fi fi-rr-crown"></i>
@@ -241,24 +246,24 @@
                         </div>
                     </div>
                     <div class="panel-card-grid">
-                        <button class="panel-card" type="button">
-                            <div class="panel-card-emoji">👑</div>
+                        <button class="panel-card tier-card is-selected" data-tier="gold" type="button">
+                            <div class="panel-card-emoji"><i class="ri-vip-crown-line" style="color:#f59e0b;"></i></div>
                             <div>
                                 <div class="panel-card-title">Gold Tier</div>
                                 <div class="panel-card-meta">AI analytics + unlimited bids</div>
                             </div>
                             <span class="panel-card-price">₱1,999</span>
                         </button>
-                        <button class="panel-card" type="button">
-                            <div class="panel-card-emoji">🥈</div>
+                        <button class="panel-card tier-card" data-tier="silver" type="button">
+                            <div class="panel-card-emoji"><i class="ri-medal-line" style="color:#9ca3af;"></i></div>
                             <div>
                                 <div class="panel-card-title">Silver Tier</div>
                                 <div class="panel-card-meta">Boost bids + priority visibility</div>
                             </div>
                             <span class="panel-card-price">₱1,499</span>
                         </button>
-                        <button class="panel-card" type="button">
-                            <div class="panel-card-emoji">🥉</div>
+                        <button class="panel-card tier-card" data-tier="bronze" type="button">
+                            <div class="panel-card-emoji"><i class="ri-award-line" style="color:#b45309;"></i></div>
                             <div>
                                 <div class="panel-card-title">Bronze Tier</div>
                                 <div class="panel-card-meta">Core bidding essentials</div>
@@ -266,32 +271,433 @@
                             <span class="panel-card-price">₱999</span>
                         </button>
                     </div>
-                    <ul class="panel-list">
-                        <li><i class="fi fi-rr-check-circle"></i> Unlock AI-driven analytics</li>
-                        <li><i class="fi fi-rr-check-circle"></i> Unlimited bids and boosted reach</li>
+                    <ul class="panel-list" id="tierFeaturesList">
+                        <li><i class="fi fi-rr-check-circle"></i> All Silver tier features included</li>
+                        <li><i class="fi fi-rr-check-circle"></i> Unlimited bids per month</li>
+                        <li><i class="fi fi-rr-check-circle"></i> AI-powered weather delay predictions</li>
+                        <li><i class="fi fi-rr-check-circle"></i> Basic project listing and milestone tracking</li>
                     </ul>
 
                 </div>
+            </div>
+            <div class="plans-dots" id="plansDots">
+                <button type="button" class="plans-dot is-active" data-index="0" aria-label="Boosting plan"></button>
+                <button type="button" class="plans-dot" data-index="1" aria-label="Subscription plan"></button>
             </div>
         </div>
     </section>
 
     <!-- Video Demo Section -->
-    <section id="video-demo" class="video-demo py-16 md:py-20">
-        <div class="w-full px-8 md:px-16 lg:px-24 text-center">
-            <h2 class="text-3xl md:text-4xl font-extrabold mb-4 text-white">Why Choose Legatura?</h2>
-            <p class="text-base md:text-lg leading-relaxed mb-12 max-w-3xl mx-auto text-white/90">
-                Watch how Legatura streamlines construction project management from posting projects and receiving competitive bids to tracking progress in real time and ensuring every milestone is paid securely
-            </p>
-            <div class="video-frame mx-auto">
-                <iframe
-                    src="https://geo.dailymotion.com/player.html?video=xa1gf72&related=0&queue-autoplay-next=0&queue-enable=0"
-                    style="position:absolute;inset:0;width:100%;height:100%;border:none;border-radius:inherit;"
-                    title="Legatura Demo — Dailymotion"
-                    allow="web-share; fullscreen"
-                    allowfullscreen
-                ></iframe>
+    <section id="video-demo" class="video-demo py-10 md:py-16 lg:py-20">
+        <div class="w-full px-4 sm:px-8 md:px-16 lg:px-24">
+
+            <!-- Section Header -->
+            <div class="text-center mb-8 md:mb-12">
+                <h2 class="text-2xl sm:text-3xl md:text-4xl font-extrabold mb-3 md:mb-4 text-white">Why Choose Legatura?</h2>
             </div>
+
+            <!-- Two-column — text left, hero image right -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12 items-center mb-8 md:mb-12">
+
+                <!-- Left: Text Content -->
+                <div class="text-left">
+                    <h1 class="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-white mb-4 md:mb-6">
+                        Build with
+                        <span class="block text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-orange-600">
+                            Confidence
+                        </span>
+                    </h1>
+                    <p class="text-sm sm:text-base md:text-lg lg:text-xl text-white/90 mb-6 md:mb-8 leading-relaxed">
+                        Watch how Legatura streamlines construction project management from posting projects and receiving competitive bids to tracking progress in real time and ensuring every milestone is paid securely.
+                    </p>
+                </div>
+
+                <!-- Right: Hero Image -->
+                <div class="flex justify-center lg:justify-end">
+                    <div class="mvp-img-wrap">
+                        <img src="{{ asset('img/hero.png') }}" alt="Legatura App"
+                            class="w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-2xl xl:max-w-3xl h-auto object-contain">
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Modern Separator -->
+            <div class="separator-container mb-12">
+                <div class="modern-separator" style="background: #EC7E00; box-shadow: 0 2px 16px rgba(236,126,0,0.5);"></div>
+            </div>
+
+            <!-- Bottom: Full-width Video -->
+            <div class="video-frame mx-auto">
+                <iframe id="legatura-video" src="https://geo.dailymotion.com/player.html?video=xa1gf72&api=postMessage&queue-enable=false&queue-autoplay-next=false&sharing-enable=false&ui-start-screen-info=false" allow="autoplay; fullscreen; picture-in-picture; web-share" allowfullscreen frameborder="0"></iframe>
+            </div>
+
+            <!-- Modern Separator (below video) -->
+            <div class="separator-container mt-8 md:mt-12 mb-4 md:mb-6">
+                <div class="modern-separator" style="background: #EC7E00; box-shadow: 0 2px 16px rgba(236,126,0,0.5);"></div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- Everything You Need Section -->
+    <section id="features-highlight" class="features pt-4 md:pt-6 pb-16 md:pb-20">
+        <div class="w-full px-8 md:px-16 lg:px-24 text-center">
+
+            <!-- Section Header -->
+            <h2 class="text-2xl md:text-3xl lg:text-4xl font-extrabold mb-4 text-white">Everything You Need</h2>
+            <p class="text-sm md:text-base lg:text-lg leading-relaxed mb-8 md:mb-12 max-w-3xl mx-auto text-white/90">
+                Legatura provides all the tools you need to manage construction projects from start to finish, connecting you with the right professionals every step of the way.
+            </p>
+
+            <!-- Features Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 px-4 md:px-8 lg:px-16 text-left" id="featuresHighlightTrack">
+
+                <!-- Feature 1: Find Verified Contractors -->
+                <div class="feature-card p-6 rounded-lg">
+                    <div class="feature-icon">
+                        <i class="ri-user-star-line"></i>
+                    </div>
+                    <h4 class="text-lg md:text-xl font-bold mb-3 text-white">Find Verified Contractors</h4>
+                    <p class="text-sm md:text-base text-white/85">Browse and connect with pre-vetted contractors in your area. View portfolios, ratings, and reviews from real clients.</p>
+                    <ul class="feature-card-list">
+                        <li><i class="ri-check-line"></i> Background verified professionals</li>
+                        <li><i class="ri-check-line"></i> Portfolio &amp; credentials review</li>
+                        <li><i class="ri-check-line"></i> Real client testimonials</li>
+                    </ul>
+                </div>
+
+                <!-- Feature 2: Project Management -->
+                <div class="feature-card p-6 rounded-lg">
+                    <div class="feature-icon">
+                        <i class="ri-file-list-3-line"></i>
+                    </div>
+                    <h4 class="text-lg md:text-xl font-bold mb-3 text-white">Project Management</h4>
+                    <p class="text-sm md:text-base text-white/85">Track progress, manage timelines, and communicate with your team all in one place. Stay organized from planning to completion.</p>
+                    <ul class="feature-card-list">
+                        <li><i class="ri-check-line"></i> Timeline &amp; milestone tracking</li>
+                        <li><i class="ri-check-line"></i> Document management</li>
+                        <li><i class="ri-check-line"></i> Real-time collaboration</li>
+                    </ul>
+                </div>
+
+                <!-- Feature 3: Reviews & Ratings -->
+                <div class="feature-card p-6 rounded-lg">
+                    <div class="feature-icon">
+                        <i class="ri-star-line"></i>
+                    </div>
+                    <h4 class="text-lg md:text-xl font-bold mb-3 text-white">Reviews &amp; Ratings</h4>
+                    <p class="text-sm md:text-base text-white/85">Make informed decisions with comprehensive review system. Rate contractors and share your experience with the community.</p>
+                    <ul class="feature-card-list">
+                        <li><i class="ri-check-line"></i> Verified review system</li>
+                        <li><i class="ri-check-line"></i> Photo &amp; video testimonials</li>
+                        <li><i class="ri-check-line"></i> Quality assurance metrics</li>
+                    </ul>
+                </div>
+
+                <!-- Feature 4: Smart Matching -->
+                <div class="feature-card p-6 rounded-lg">
+                    <div class="feature-icon">
+                        <i class="ri-robot-line"></i>
+                    </div>
+                    <h4 class="text-lg md:text-xl font-bold mb-3 text-white">Smart Matching</h4>
+                    <p class="text-sm md:text-base text-white/85">Our AI-powered matching system connects you with the perfect contractors based on your project requirements and preferences.</p>
+                    <ul class="feature-card-list">
+                        <li><i class="ri-check-line"></i> AI-powered recommendations</li>
+                        <li><i class="ri-check-line"></i> Skill &amp; specialty matching</li>
+                        <li><i class="ri-check-line"></i> Budget &amp; timeline alignment</li>
+                    </ul>
+                </div>
+
+                <!-- Feature 5: Secure Payments -->
+                <div class="feature-card p-6 rounded-lg">
+                    <div class="feature-icon">
+                        <i class="ri-shield-check-line"></i>
+                    </div>
+                    <h4 class="text-lg md:text-xl font-bold mb-3 text-white">Secure Payments</h4>
+                    <p class="text-sm md:text-base text-white/85">Protected payment system with escrow services ensures secure transactions for both clients and contractors.</p>
+                    <ul class="feature-card-list">
+                        <li><i class="ri-check-line"></i> Escrow protection</li>
+                        <li><i class="ri-check-line"></i> Milestone-based payments</li>
+                        <li><i class="ri-check-line"></i> Dispute resolution</li>
+                    </ul>
+                </div>
+
+                <!-- Feature 6: Communication Hub -->
+                <div class="feature-card p-6 rounded-lg">
+                    <div class="feature-icon">
+                        <i class="ri-message-2-line"></i>
+                    </div>
+                    <h4 class="text-lg md:text-xl font-bold mb-3 text-white">Communication Hub</h4>
+                    <p class="text-sm md:text-base text-white/85">Integrated messaging, video calls, and file sharing keep everyone connected throughout your project lifecycle.</p>
+                    <ul class="feature-card-list">
+                        <li><i class="ri-check-line"></i> In-app messaging</li>
+                        <li><i class="ri-check-line"></i> Video conferencing</li>
+                        <li><i class="ri-check-line"></i> File &amp; photo sharing</li>
+                    </ul>
+                </div>
+
+            </div>
+            <div class="features-highlight-dots" id="featuresHighlightDots" aria-label="Features highlight carousel pagination"></div>
+        </div>
+    </section>
+
+    <!-- MVP Showcase Section -->
+    <section id="mvp" class="py-20" style="background:#f1f1f1;">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+            <!-- Section Header -->
+            <div class="text-center mb-10 lg:mb-20">
+                <h2 class="text-2xl sm:text-3xl lg:text-5xl font-bold mb-4" style="color:#1a1a1a;">
+                    Our Core Solutions
+                </h2>
+                <p class="text-base lg:text-lg max-w-3xl mx-auto mb-6" style="color:#525252;">
+                    These are the essential features that make Legatura the most trusted platform in construction management.
+                </p>
+                <div class="max-w-2xl mx-auto">
+                    <p class="text-sm px-4 py-3 rounded-lg border" style="color:#737373; background:#f9fafb; border-color:#e5e7eb;">
+                        <i class="ri-information-line" style="font-size:1rem; margin-right:6px; vertical-align:middle;"></i>
+                        <span class="font-medium">Prototype Notice:</span> Screenshots and interface designs shown are from our
+                        early development phase and are subject to change as we continue to refine and enhance the platform.
+                    </p>
+                </div>
+            </div>
+
+            <!-- MVP 1: Contractor Discovery -->
+            <div class="mb-16 lg:mb-32">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center">
+                    <div class="mvp-text-col">
+                        <div class="flex items-center gap-3 mb-5">
+                            <div class="w-12 h-12 lg:w-16 lg:h-16 rounded-xl flex items-center justify-center flex-shrink-0" style="background:#fff7ed;">
+                                <i class="ri-search-line" style="font-size:1.5rem; color:#EC7E00;"></i>
+                            </div>
+                            <h3 class="text-xl sm:text-2xl lg:text-3xl font-bold" style="color:#1a1a1a;">Smart Contractor Discovery</h3>
+                        </div>
+                        <p class="text-base lg:text-lg mb-6" style="color:#525252;">
+                            Find the perfect contractor for your project with our advanced matching algorithm. All contractors are
+                            verified, licensed, and reviewed by real clients.
+                        </p>
+                        <div class="space-y-4 mb-8">
+                            <div class="flex items-center">
+                                <div class="w-2 h-2 rounded-full mr-4 flex-shrink-0" style="background:#EC7E00;"></div>
+                                <span style="color:#404040;">Background verification &amp; licensing checks</span>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-2 h-2 rounded-full mr-4 flex-shrink-0" style="background:#EC7E00;"></div>
+                                <span style="color:#404040;">Portfolio showcase with past projects</span>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-2 h-2 rounded-full mr-4 flex-shrink-0" style="background:#EC7E00;"></div>
+                                <span style="color:#404040;">Skill-based matching with project requirements</span>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-2 h-2 rounded-full mr-4 flex-shrink-0" style="background:#EC7E00;"></div>
+                                <span style="color:#404040;">Real-time availability and pricing</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mvp-img-col relative mt-6 lg:mt-0">
+                        <div class="flex justify-center">
+                            <div class="mvp-img-wrap">
+                                <img src="{{ asset('img/contractor.png') }}" alt="Contractor Discovery App Screenshot">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Separator -->
+            <div class="separator-container my-6 lg:my-10">
+                <div class="modern-separator" style="background: #3b82f6; box-shadow: 0 2px 16px rgba(59,130,246,0.35);"></div>
+            </div>
+
+            <!-- MVP 2: Project Management -->
+            <div class="mb-16 lg:mb-32">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center">
+                    <div class="mvp-img-col order-2 lg:order-1 mt-6 lg:mt-0">
+                        <div class="flex justify-center">
+                            <div class="mvp-img-wrap">
+                                <img src="{{ asset('img/progress.png') }}" alt="Project Management App Screenshot">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mvp-text-col order-1 lg:order-2">
+                        <div class="flex items-center gap-3 mb-5">
+                            <div class="w-12 h-12 lg:w-16 lg:h-16 rounded-xl flex items-center justify-center flex-shrink-0" style="background:#eff6ff;">
+                                <i class="ri-file-list-3-line" style="font-size:1.5rem; color:#2563eb;"></i>
+                            </div>
+                            <h3 class="text-xl sm:text-2xl lg:text-3xl font-bold" style="color:#1a1a1a;">Complete Project Management</h3>
+                        </div>
+                        <p class="text-base lg:text-lg mb-6" style="color:#525252;">
+                            Track every aspect of your construction project from start to finish. Monitor progress, manage timelines,
+                            and stay informed with real-time updates.
+                        </p>
+                        <div class="space-y-4 mb-8">
+                            <div class="flex items-center">
+                                <div class="w-2 h-2 rounded-full mr-4 flex-shrink-0" style="background:#2563eb;"></div>
+                                <span style="color:#404040;">Interactive timeline with milestone tracking</span>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-2 h-2 rounded-full mr-4 flex-shrink-0" style="background:#2563eb;"></div>
+                                <span style="color:#404040;">Document management and file sharing</span>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-2 h-2 rounded-full mr-4 flex-shrink-0" style="background:#2563eb;"></div>
+                                <span style="color:#404040;">Budget tracking and expense management</span>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-2 h-2 rounded-full mr-4 flex-shrink-0" style="background:#2563eb;"></div>
+                                <span style="color:#404040;">Team collaboration and task assignment</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Separator -->
+            <div class="separator-container my-6 lg:my-10">
+                <div class="modern-separator" style="background: #3b82f6; box-shadow: 0 2px 16px rgba(59,130,246,0.35);"></div>
+            </div>
+
+            <!-- MVP 3: Reviews & Trust System -->
+            <div class="mb-16 lg:mb-32">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center">
+                    <div class="mvp-text-col">
+                        <div class="flex items-center gap-3 mb-5">
+                            <div class="w-12 h-12 lg:w-16 lg:h-16 rounded-xl flex items-center justify-center flex-shrink-0" style="background:#fefce8;">
+                                <i class="ri-star-line" style="font-size:1.5rem; color:#ca8a04;"></i>
+                            </div>
+                            <h3 class="text-xl sm:text-2xl lg:text-3xl font-bold" style="color:#1a1a1a;">Transparent Review System</h3>
+                        </div>
+                        <p class="text-base lg:text-lg mb-6" style="color:#525252;">
+                            Make informed decisions with our comprehensive review and rating system. Every review is verified and
+                            comes from real completed projects.
+                        </p>
+                        <div class="space-y-4 mb-8">
+                            <div class="flex items-center">
+                                <div class="w-2 h-2 rounded-full mr-4 flex-shrink-0" style="background:#ca8a04;"></div>
+                                <span style="color:#404040;">Verified reviews from completed projects only</span>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-2 h-2 rounded-full mr-4 flex-shrink-0" style="background:#ca8a04;"></div>
+                                <span style="color:#404040;">Photo and video testimonials</span>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-2 h-2 rounded-full mr-4 flex-shrink-0" style="background:#ca8a04;"></div>
+                                <span style="color:#404040;">Detailed quality metrics and ratings</span>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-2 h-2 rounded-full mr-4 flex-shrink-0" style="background:#ca8a04;"></div>
+                                <span style="color:#404040;">Response guarantee from contractors</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mvp-img-col relative mt-6 lg:mt-0">
+                        <div class="flex justify-center">
+                            <div class="mvp-img-wrap">
+                                <img src="{{ asset('img/ratings.png') }}" alt="Reviews and Ratings App Screenshot">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Separator -->
+            <div class="separator-container my-6 lg:my-10">
+                <div class="modern-separator" style="background: #3b82f6; box-shadow: 0 2px 16px rgba(59,130,246,0.35);"></div>
+            </div>
+
+            <!-- MVP 4: Secure Payments -->
+            <div class="mb-16 lg:mb-32">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center">
+                    <div class="mvp-img-col order-2 lg:order-1 mt-6 lg:mt-0">
+                        <div class="flex justify-center">
+                            <div class="mvp-img-wrap">
+                                <img src="{{ asset('img/payment.png') }}" alt="Secure Payment App Screenshot">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mvp-text-col order-1 lg:order-2">
+                        <div class="flex items-center gap-3 mb-5">
+                            <div class="w-12 h-12 lg:w-16 lg:h-16 rounded-xl flex items-center justify-center flex-shrink-0" style="background:#f0fdf4;">
+                                <i class="ri-shield-check-line" style="font-size:1.5rem; color:#16a34a;"></i>
+                            </div>
+                            <h3 class="text-xl sm:text-2xl lg:text-3xl font-bold" style="color:#1a1a1a;">Secure Payment Protection</h3>
+                        </div>
+                        <p class="text-base lg:text-lg mb-6" style="color:#525252;">
+                            Your money is protected with our escrow system. Payments are released only when milestones are completed
+                            to your satisfaction.
+                        </p>
+                        <div class="space-y-4 mb-8">
+                            <div class="flex items-center">
+                                <div class="w-2 h-2 rounded-full mr-4 flex-shrink-0" style="background:#16a34a;"></div>
+                                <span style="color:#404040;">Milestone-based payment releases</span>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-2 h-2 rounded-full mr-4 flex-shrink-0" style="background:#16a34a;"></div>
+                                <span style="color:#404040;">Escrow protection for all transactions</span>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-2 h-2 rounded-full mr-4 flex-shrink-0" style="background:#16a34a;"></div>
+                                <span style="color:#404040;">Dispute resolution support</span>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-2 h-2 rounded-full mr-4 flex-shrink-0" style="background:#16a34a;"></div>
+                                <span style="color:#404040;">Multiple payment methods accepted</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Separator -->
+            <div class="separator-container my-6 lg:my-10">
+                <div class="modern-separator" style="background: #3b82f6; box-shadow: 0 2px 16px rgba(59,130,246,0.35);"></div>
+            </div>
+
+            <!-- MVP 5: Communication Hub -->
+            <div class="mb-8 lg:mb-20">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center">
+                    <div class="mvp-text-col">
+                        <div class="flex items-center gap-3 mb-5">
+                            <div class="w-12 h-12 lg:w-16 lg:h-16 rounded-xl flex items-center justify-center flex-shrink-0" style="background:#faf5ff;">
+                                <i class="ri-message-2-line" style="font-size:1.5rem; color:#9333ea;"></i>
+                            </div>
+                            <h3 class="text-xl sm:text-2xl lg:text-3xl font-bold" style="color:#1a1a1a;">Seamless Communication</h3>
+                        </div>
+                        <p class="text-base lg:text-lg mb-6" style="color:#525252;">
+                            Stay connected with your project team through integrated messaging, video calls, and file sharing.
+                            Everything happens in one place.
+                        </p>
+                        <div class="space-y-4 mb-8">
+                            <div class="flex items-center">
+                                <div class="w-2 h-2 rounded-full mr-4 flex-shrink-0" style="background:#9333ea;"></div>
+                                <span style="color:#404040;">Real-time messaging with contractors</span>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-2 h-2 rounded-full mr-4 flex-shrink-0" style="background:#9333ea;"></div>
+                                <span style="color:#404040;">Video calls for project discussions</span>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-2 h-2 rounded-full mr-4 flex-shrink-0" style="background:#9333ea;"></div>
+                                <span style="color:#404040;">Photo and document sharing</span>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-2 h-2 rounded-full mr-4 flex-shrink-0" style="background:#9333ea;"></div>
+                                <span style="color:#404040;">Project updates and notifications</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mvp-img-col relative mt-6 lg:mt-0">
+                        <div class="flex justify-center">
+                            <div class="mvp-img-wrap">
+                                <img src="{{ asset('img/messaging.png') }}" alt="Communication and Messaging App Screenshot">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </section>
 
@@ -301,12 +707,12 @@
 
             <!-- Section Header -->
             <div class="team-header">
-                <h2 class="team-section-title"><span style="color:#3b82f6">Meet</span> Our <span class="team-title-accent">Team</span></h2>
+                <h2 class="team-section-title"><span>Meet</span> Our <span class="team-title-accent">Team</span></h2>
                 <p class="team-section-sub">The passionate people behind Legatura, dedicated to transforming how construction projects are managed.</p>
             </div>
 
             <!-- Member Cards -->
-            <div class="members-grid">
+            <div class="members-grid team-track" id="teamTrack">
                 <div class="member-card">
                     <div class="member-photo" style="--grad: linear-gradient(135deg,#3b82f6,#2563eb)">
                         <img src="{{ asset('img/shane.png') }}" alt="Shane Hart Jimenez" onerror="this.style.display='none'">
@@ -393,16 +799,17 @@
                     </div>
                 </div>
             </div>
+            <div class="team-dots" id="teamDots" aria-label="Team carousel pagination"></div>
 
         </div>
     </section>
 
     <!-- Contact Us Section -->
-    <section id="contact" class="contact-us py-16 md:py-20">
+    <section id="contact" class="contact-us py-16 md:py-20" style="background:#f8f9fb;">
         <div class="w-full px-8 md:px-16 lg:px-24 text-center">
             <img src="{{ asset('img/logo2.0.svg') }}" alt="Legatura Logo" class="contact-logo mx-auto mb-6">
-            <h2 class="text-3xl md:text-4xl font-extrabold mb-4 text-white">Contact Us</h2>
-            <p class="text-base md:text-lg leading-relaxed mb-12 max-w-3xl mx-auto text-white/90">
+            <h2 class="text-3xl md:text-4xl font-extrabold mb-4" style="color:#1a1a1a;">Contact Us</h2>
+            <p class="text-base md:text-lg leading-relaxed mb-12 max-w-3xl mx-auto" style="color:#525252;">
                 Get in touch with us for any inquiries or support
             </p>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 px-4 md:px-8 lg:px-16 text-left">
@@ -411,9 +818,9 @@
                         <div class="contact-icon">
                             <i class="ri-mail-line"></i>
                         </div>
-                        <h4 class="text-lg md:text-xl font-bold text-white">Email Address</h4>
+                        <h4 class="text-lg md:text-xl font-bold" style="color:#1a1a1a;">Email Address</h4>
                     </div>
-                    <p class="text-sm md:text-base text-white/85">
+                    <p class="text-sm md:text-base" style="color:#404040;">
                         legatura.info.official@gmail.com
                     </p>
                 </div>
@@ -422,9 +829,9 @@
                         <div class="contact-icon">
                             <i class="ri-phone-line"></i>
                         </div>
-                        <h4 class="text-lg md:text-xl font-bold text-white">Phone Number</h4>
+                        <h4 class="text-lg md:text-xl font-bold" style="color:#1a1a1a;">Phone Number</h4>
                     </div>
-                    <p class="text-sm md:text-base text-white/85">
+                    <p class="text-sm md:text-base" style="color:#404040;">
                         09755924862
                     </p>
                 </div>
@@ -433,9 +840,9 @@
                         <div class="contact-icon">
                             <i class="ri-facebook-circle-line"></i>
                         </div>
-                        <h4 class="text-lg md:text-xl font-bold text-white">Find Us On Facebook</h4>
+                        <h4 class="text-lg md:text-xl font-bold" style="color:#1a1a1a;">Find Us On Facebook</h4>
                     </div>
-                    <p class="text-sm md:text-base text-white/85">
+                    <p class="text-sm md:text-base" style="color:#404040;">
                         Legatura Official Page
                     </p>
                 </a>
@@ -453,138 +860,70 @@
     </footer>
     </div><!-- /.main-content -->
 
-    <script>
-        // Navbar scroll effect
-        const nav = document.querySelector('.hero-nav');
-        window.addEventListener('scroll', () => {
-            nav.classList.toggle('scrolled', window.scrollY > 40);
-        });
+    <!-- ── Admin Login Modal (secret access) ─────────────────────── -->
+    <div id="adminLoginModal" class="admin-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="adminModalTitle"
+        data-auto-open="{{ (session('error') || $errors->any()) ? 'true' : 'false' }}">
+        <div class="admin-modal-card">
+            <button type="button" class="admin-modal-close" id="adminModalClose" aria-label="Close">
+                <i class="ri-close-line"></i>
+            </button>
 
-        // Hamburger toggle
-        const hamburger = document.getElementById('navHamburger');
-        const mobileMenu = document.getElementById('navMobileMenu');
-        const mobileClose = document.getElementById('navMobileClose');
-        let scrollY = 0;
+            <div class="admin-modal-body">
+                <!-- Logo -->
+                <div class="admin-modal-logo-wrap">
+                    <div class="admin-modal-logo-ring"></div>
+                    <img src="{{ asset('img/logo2.0.svg') }}" alt="Legatura" class="admin-modal-logo" loading="eager">
+                </div>
 
-        function openMenu() {
-            scrollY = window.scrollY;
-            document.body.style.position = 'fixed';
-            document.body.style.top = `-${scrollY}px`;
-            document.body.style.width = '100%';
-            document.body.style.overflow = 'hidden';
-            document.documentElement.style.overflow = 'hidden';
-            mobileMenu.classList.add('open');
-            hamburger.classList.add('open');
-        }
-        function closeMenu() {
-            mobileMenu.classList.remove('open');
-            hamburger.classList.remove('open');
-            document.body.style.position = '';
-            document.body.style.top = '';
-            document.body.style.width = '';
-            document.body.style.overflow = '';
-            document.documentElement.style.overflow = '';
-            window.scrollTo(0, scrollY);
-        }
+                <!-- Header -->
+                <div class="admin-modal-header">
+                    <h2 id="adminModalTitle" class="admin-modal-title">Hi, Welcome Back!</h2>
+                    <p class="admin-modal-subtitle">Hope you're doing fine.</p>
+                </div>
 
-        if (hamburger && mobileMenu) {
-            hamburger.addEventListener('click', openMenu);
-        }
-        if (mobileClose) {
-            mobileClose.addEventListener('click', closeMenu);
-        }
-        if (mobileMenu) {
-            mobileMenu.querySelectorAll('a').forEach(link => {
-                link.addEventListener('click', closeMenu);
-            });
-        }
+                <div class="admin-modal-divider"></div>
 
-        // Parallax tilt on hero background image following cursor
-        const hero = document.querySelector('.hero');
-        const heroImg = document.querySelector('.hero-image img');
-        if (hero && heroImg) {
-            hero.addEventListener('mousemove', (e) => {
-                const rect = hero.getBoundingClientRect();
-                const x = (e.clientX - rect.left) / rect.width - 0.5;  // -0.5 to 0.5
-                const y = (e.clientY - rect.top) / rect.height - 0.5;
-                heroImg.style.transform = `scale(1.06) translate(${x * -18}px, ${y * -12}px)`;
-            });
-            hero.addEventListener('mouseleave', () => {
-                heroImg.style.transform = 'scale(1.06) translate(0px, 0px)';
-            });
-        }
+                @if(session('error'))
+                    <div class="admin-alert admin-alert-error">
+                        <span class="admin-alert-icon"><i class="ri-error-warning-line"></i></span>
+                        <p>{{ session('error') }}</p>
+                    </div>
+                @endif
 
-        // ── Scroll Fade-in / Fade-out Animations ──────────────────────────
-        (function () {
-            // --- About Section ---
-            document.querySelectorAll('#about h2, #about > div > p').forEach(el => el.classList.add('scroll-fade'));
-            document.querySelectorAll('#about .about-card').forEach((el, i) => {
-                el.classList.add(i === 0 ? 'scroll-fade-left' : 'scroll-fade-right');
-                el.classList.add('scroll-delay-' + (i + 1));
-            });
+                <form class="admin-modal-form" method="POST" action="/admin/login" autocomplete="off">
+                    @csrf
+                    <div class="admin-form-group">
+                        @if($errors->has('username'))
+                            <span class="admin-field-message">{{ $errors->first('username') }}</span>
+                        @endif
+                        <label class="admin-field">
+                            <span class="admin-field-icon"><i class="ri-mail-line"></i></span>
+                            <input type="text" name="username" placeholder="Username or Email"
+                                value="{{ old('username') }}" required autocomplete="off"
+                                class="@if($errors->has('username')) admin-input-error @endif">
+                        </label>
+                    </div>
+                    <div class="admin-form-group">
+                        @if($errors->has('password'))
+                            <span class="admin-field-message">{{ $errors->first('password') }}</span>
+                        @endif
+                        <label class="admin-field">
+                            <span class="admin-field-icon"><i class="ri-lock-line"></i></span>
+                            <input type="password" name="password" placeholder="Password"
+                                required autocomplete="new-password"
+                                class="@if($errors->has('password')) admin-input-error @endif">
+                            <button type="button" class="admin-toggle-pw" aria-label="Toggle password visibility">
+                                <i class="ri-eye-line"></i>
+                            </button>
+                        </label>
+                    </div>
+                    <button type="submit" class="admin-modal-btn">Login</button>
+                </form>
+            </div><!-- /.admin-modal-body -->
+        </div>
+    </div>
+    
 
-            // --- User Experience Section ---
-            document.querySelectorAll('#user-experience h2, #user-experience > div > p').forEach(el => el.classList.add('scroll-fade'));
-            document.querySelectorAll('#user-experience .owner-card').forEach(el => el.classList.add('scroll-fade-left'));
-            document.querySelectorAll('#user-experience .separator-container').forEach(el => el.classList.add('scroll-fade-scale'));
-            document.querySelectorAll('#user-experience .contractor-card').forEach(el => el.classList.add('scroll-fade-right'));
-
-            // --- Features Section ---
-            document.querySelectorAll('#features h2, #features > div > p').forEach(el => el.classList.add('scroll-fade'));
-            document.querySelectorAll('#features .feature-card').forEach((el, i) => {
-                el.classList.add('scroll-fade');
-                el.classList.add('scroll-delay-' + (i + 1));
-            });
-
-            // --- Plans Section ---
-            document.querySelectorAll('#plans h2, #plans > div > p').forEach(el => el.classList.add('scroll-fade'));
-            document.querySelectorAll('#plans .boost-panel').forEach(el => el.classList.add('scroll-fade-left'));
-            document.querySelectorAll('#plans .subscription-panel').forEach(el => el.classList.add('scroll-fade-right'));
-
-            // --- Video Demo Section ---
-            document.querySelectorAll('#video-demo h2, #video-demo > div > p').forEach(el => el.classList.add('scroll-fade'));
-            document.querySelectorAll('#video-demo .video-frame').forEach(el => el.classList.add('scroll-fade-scale'));
-
-            // --- Team Section ---
-            document.querySelectorAll('#team .team-header').forEach(el => el.classList.add('scroll-fade'));
-            document.querySelectorAll('#team .member-card').forEach((el, i) => {
-                el.classList.add('scroll-fade');
-                el.classList.add('scroll-delay-' + (i + 1));
-            });
-
-            // --- Contact Section ---
-            document.querySelectorAll('#contact .contact-logo').forEach(el => el.classList.add('scroll-fade-scale'));
-            document.querySelectorAll('#contact h2, #contact > div > p').forEach(el => el.classList.add('scroll-fade'));
-            document.querySelectorAll('#contact .contact-card').forEach((el, i) => {
-                el.classList.add('scroll-fade');
-                el.classList.add('scroll-delay-' + (i + 1));
-            });
-
-            // --- Footer (no animation) ---
-            // Footer is always visible, no scroll animation
-
-            // Collect every element that has a scroll-fade class
-            const allFadeEls = document.querySelectorAll(
-                '.scroll-fade, .scroll-fade-left, .scroll-fade-right, .scroll-fade-scale'
-            );
-
-            // IntersectionObserver — toggles .visible on enter/leave
-            const observer = new IntersectionObserver((entries) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        entry.target.classList.add('visible');
-                    } else {
-                        entry.target.classList.remove('visible');
-                    }
-                });
-            }, {
-                threshold: 0.1,
-                rootMargin: '0px 0px -60px 0px'
-            });
-
-            allFadeEls.forEach(el => observer.observe(el));
-        })();
-        // ──────────────────────────────────────────────────────────────────
-    </script>
+    <script src="{{ asset('js/signUp_logIN/landingPage.js') }}" defer></script>
 </body>
 </html>

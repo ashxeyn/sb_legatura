@@ -537,7 +537,7 @@
 	</div>
 
 	@if(!isset($isSwitchMode) || !$isSwitchMode)
-	<p>Already have an account? <a href="/accounts/login">Login here</a></p>
+	<p>Already have an account? <a href="/auth/gate/login">Login here</a></p>
 	@endif
 
 @if(isset($isSwitchMode) && $isSwitchMode)

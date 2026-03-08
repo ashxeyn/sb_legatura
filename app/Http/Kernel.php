@@ -40,5 +40,8 @@ class Kernel extends HttpKernel
 
         // IMPORTANT → your admin middleware
         'admin.auth' => \App\Http\Middleware\AdminAuthMiddleware::class,
+
+        // Entry-gate: prevents direct URL access to auth/signup pages
+        'auth.entry' => \App\Http\Middleware\AuthEntryMiddleware::class,
     ];
 }

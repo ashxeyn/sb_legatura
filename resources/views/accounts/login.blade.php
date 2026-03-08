@@ -94,7 +94,7 @@
 
 			<div class="login-footer">
 				<span>Don't have an account yet?</span>
-				<a href="/account-type" class="link">Sign up</a>
+				<a href="/auth/gate/account-type" class="link">Sign up</a>
 			</div>
 		</div>
 	</div>
