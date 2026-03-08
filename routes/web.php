@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\authController;
+use App\Http\Controllers\TestNotificationsController;
 use App\Http\Controllers\subs\platformPaymentController;
 use App\Http\Controllers\subs\payMongoController;
 use App\Http\Controllers\contractor\cprocessController;
@@ -694,5 +695,12 @@ Route::middleware(['web', 'auth', 'admin'])->group(function () {
     Route::post('/admin/notifications/announcement', [AdminController::class, 'sendAnnouncement'])->name('admin.sendAnnouncement');
     Route::post('/admin/notifications/targeted', [AdminController::class, 'sendTargetedNotification'])->name('admin.sendTargetedNotification');
 });
+
+// ---------------------------------------------------------------
+// DEV ONLY: Notification test panel (accessible without auth)
+// ---------------------------------------------------------------
+Route::get('/dev/test-notifications', [TestNotificationsController::class, 'index'])->name('test.notifications');
+Route::post('/dev/test-notifications/run', [TestNotificationsController::class, 'run'])->name('test.notifications.run');
+Route::post('/dev/test-notifications/clear-dedup', [TestNotificationsController::class, 'clearDedup'])->name('test.notifications.clear-dedup');
 
 

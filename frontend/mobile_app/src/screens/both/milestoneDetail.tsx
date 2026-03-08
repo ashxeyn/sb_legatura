@@ -1123,7 +1123,7 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
                       )}
                     </View>
                   </View>
-                  {(isContractor || isOwner) && derivedPaymentStatus !== 'Fully Paid' && (
+                  {isContractor && derivedPaymentStatus !== 'Fully Paid' && (
                     <TouchableOpacity
                       style={styles.fdDueDateBtn}
                       onPress={openDueDateModal}
@@ -1321,7 +1321,7 @@ export default function MilestoneDetail({ route, navigation }: MilestoneDetailPr
               <Feather name="clock" size={18} color={COLORS.text} />
               <Text style={styles.menuItemText}>Report History</Text>
             </TouchableOpacity>
-            {(isContractor || isOwner) && derivedPaymentStatus !== 'Fully Paid' && (
+            {isContractor && derivedPaymentStatus !== 'Fully Paid' && (
               <TouchableOpacity style={styles.menuItem} onPress={() => {
                 setShowMenu(false);
                 openDueDateModal();

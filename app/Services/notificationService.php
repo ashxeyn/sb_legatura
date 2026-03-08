@@ -55,6 +55,17 @@ class notificationService
         'team_access_changed' => 'Team Update',
         'review_prompt'       => 'Project Alert',
         'review_submitted'    => 'Project Alert',
+
+        // Subscription & boost expiry
+        'subscription_expiring' => 'Payment Reminder',
+        'subscription_expired'  => 'Payment Reminder',
+        'boost_expiring'        => 'Payment Reminder',
+        'boost_expired'         => 'Payment Reminder',
+
+        // Reminder-specific sub-types (distinct from action/event sub-types)
+        'bid_deadline'           => 'Bid Status',
+        'milestone_item_due'     => 'Milestone Update',
+        'milestone_item_overdue' => 'Milestone Update',
     ];
 
     /**
@@ -120,6 +131,17 @@ class notificationService
         'team_removed'        => 'contractor',
         'team_role_changed'   => 'contractor',
         'team_access_changed' => 'contractor',
+
+        // Subscription & boost expiry
+        'subscription_expiring' => 'contractor',
+        'subscription_expired'  => 'contractor',
+        'boost_expiring'        => 'owner',
+        'boost_expired'         => 'owner',
+
+        // Reminder-specific sub-types
+        'bid_deadline'           => 'contractor',
+        'milestone_item_due'     => 'both',
+        'milestone_item_overdue' => 'both',
     ];
 
     /**
