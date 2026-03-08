@@ -73,15 +73,15 @@ class notificationService
         'bid_rejected'        => 'contractor',  // contractor's bid was rejected
         'bid_received'        => 'owner',       // owner received a new bid
 
-        // Milestone notifications — contractor is doing the work
-        'milestone_submitted'      => 'contractor',
+        // Milestone notifications — contractor does the work, owner reviews
+        'milestone_submitted'      => 'both',
         'milestone_approved'       => 'contractor',
         'milestone_rejected'       => 'contractor',
         'milestone_completed'      => 'contractor',
         'milestone_item_completed' => 'contractor',
         'milestone_deleted'        => 'contractor',
-        'milestone_resubmitted'    => 'contractor',
-        'milestone_updated'        => 'contractor',
+        'milestone_resubmitted'    => 'both',
+        'milestone_updated'        => 'both',
 
         // Progress notifications — owner reviews progress
         'progress_submitted'  => 'owner',

@@ -72,6 +72,7 @@ interface ShowcasePostDetailProps {
   onClose: () => void;
   onViewProfile?: () => void;
   isOwner?: boolean;
+  initialImageIndex?: number;
 }
 
 export default function ShowcasePostDetail({
@@ -79,10 +80,11 @@ export default function ShowcasePostDetail({
   onClose,
   onViewProfile,
   isOwner = false,
+  initialImageIndex = 0,
 }: ShowcasePostDetailProps) {
   const insets = useSafeAreaInsets();
-  const [imageViewerVisible, setImageViewerVisible] = useState(false);
-  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [imageViewerVisible, setImageViewerVisible] = useState(initialImageIndex > 0);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(initialImageIndex);
   const [menuVisible, setMenuVisible] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [reportModalVisible, setReportModalVisible] = useState(false);
@@ -129,8 +131,8 @@ export default function ShowcasePostDetail({
     setImageViewerVisible(true);
   };
 
-  const submitReport = useCallback(async (reason: string, details?: string) => {
-    const res = await post_service.report_post('showcase', post.post_id, reason, details);
+  const submitReport = useCallback(async (reason: string, details?: string, attachments?: import('../../../services/post_service').ReportAttachment[]) => {
+    const res = await post_service.report_post('showcase', post.post_id, reason, details, attachments);
     return {
       success: !!res.success,
       message: res.message || (res.success ? 'Report submitted.' : 'Unable to submit report right now.'),

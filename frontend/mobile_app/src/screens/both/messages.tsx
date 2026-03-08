@@ -17,6 +17,7 @@ import {
   Linking,
   Dimensions,
   Animated,
+  DeviceEventEmitter,
 } from 'react-native';
 import { StatusBar } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -141,18 +142,20 @@ const resolveFileUrl = (url: string): string => {
   return `${api_config.base_url}${url.startsWith('/') ? '' : '/'}${url}`;
 };
 
-const getRoleLabel = (type: string): string => {
-  switch (type) {
-    case 'contractor':
-      return 'Contractor';
-    case 'property_owner':
-      return 'Property Owner';
-    case 'admin':
-      return 'Admin';
-    default:
-      return type || 'User';
-  }
+const ROLE_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
+  contractor:     { label: 'Contractor',    color: '#1d4ed8', bg: '#dbeafe' },
+  property_owner: { label: 'Property Owner', color: '#b45309', bg: '#fef3c7' },
+  admin:          { label: 'Admin',          color: '#7c3aed', bg: '#f3e8ff' },
+  owner:          { label: 'Owner',          color: '#1d4ed8', bg: '#dbeafe' },
+  representative: { label: 'Representative', color: '#0f766e', bg: '#ccfbf1' },
+  manager:        { label: 'Manager',        color: '#0369a1', bg: '#e0f2fe' },
+  engineer:       { label: 'Engineer',       color: '#15803d', bg: '#dcfce7' },
+  architect:      { label: 'Architect',      color: '#9a3412', bg: '#ffedd5' },
+  others:         { label: 'Others',         color: '#6b7280', bg: '#f3f4f6' },
 };
+
+const getRoleLabel = (type: string): string => ROLE_CONFIG[type]?.label ?? (type ? type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : 'User');
+const getRoleBadgeStyle = (type: string) => ROLE_CONFIG[type] ?? { color: '#6b7280', bg: '#f3f4f6' };
 
 /* =====================================================================
  * Sub-components
@@ -259,6 +262,9 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const activeConvRef = useRef<InboxItem | null>(null);
 
+  /* ─── Pending user navigation (from profile "Send a Message") ── */
+  const pendingUserRef = useRef<{ user_id: number; name: string; avatar?: string | null } | null>(null);
+
   // Keep ref in sync so polling callbacks read current value
   useEffect(() => {
     activeConvRef.current = activeConversation;
@@ -301,7 +307,13 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
     };
     initSequentially();
 
+    // Listen for "open conversation with this user" events emitted from profile pages
+    const sub = DeviceEventEmitter.addListener('openConversationWithUser', (data) => {
+      pendingUserRef.current = data;
+    });
+
     return () => {
+      sub.remove();
       clearPoll();
       if (channelRef.current && pusherRef.current) {
         unsubscribeFromChannel(pusherRef.current, `private-chat.${userId}`);
@@ -444,8 +456,29 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
     try {
       setInboxLoading(true);
       const res = await messages_service.get_inbox();
-      if (res.success && res.data) setInbox(res.data);
-      else setInbox([]);
+      const items = (res.success && res.data) ? res.data : [];
+      setInbox(items);
+
+      // Handle pending "Send a Message" navigation from a profile page
+      if (pendingUserRef.current) {
+        const pending = pendingUserRef.current;
+        pendingUserRef.current = null;
+        const existing = items.find((c: InboxItem) => c.other_user.id === pending.user_id);
+        if (existing) {
+          openConversation(existing);
+        } else {
+          // No existing conversation — open compose with this user pre-selected
+          const userInfo: UserInfo = {
+            id: pending.user_id,
+            name: pending.name,
+            type: 'user',
+            avatar: pending.avatar || null,
+            online: false,
+          };
+          setSelectedRecipient(userInfo);
+          setComposeVisible(true);
+        }
+      }
     } catch (err) {
       console.error('loadInbox error:', err);
     } finally {
@@ -743,12 +776,12 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
               <View
                 style={[
                   styles.roleBadge,
-                  item.other_user.type === 'contractor'
-                    ? styles.roleBadgeContractor
-                    : styles.roleBadgeOwner,
+                  { backgroundColor: getRoleBadgeStyle(item.other_user.type).bg },
                 ]}
               >
-                <Text style={styles.roleBadgeText}>{getRoleLabel(item.other_user.type)}</Text>
+                <Text style={[styles.roleBadgeText, { color: getRoleBadgeStyle(item.other_user.type).color }]}>
+                  {getRoleLabel(item.other_user.type)}
+                </Text>
               </View>
               {isSuspended && (
                 <View style={styles.suspBadge}>
@@ -945,7 +978,7 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
               <Text style={styles.chatTopName} numberOfLines={1}>
                 {other.name}
               </Text>
-              <Text style={styles.chatTopRole}>{getRoleLabel(other.type)}</Text>
+              <Text style={[styles.chatTopRole, { color: getRoleBadgeStyle(other.type).color }]}>{getRoleLabel(other.type)}</Text>
             </View>
           </TouchableOpacity>
 
@@ -1380,7 +1413,7 @@ export default function MessagesScreen({ userData }: MessagesScreenProps) {
                   <Avatar uri={usr.avatar} name={usr.name} id={usr.id} size={44} />
                   <View style={{ flex: 1, marginLeft: 12 }}>
                     <Text style={styles.userRowName}>{usr.name}</Text>
-                    <Text style={styles.userRowType}>{getRoleLabel(usr.type)}</Text>
+                    <Text style={[styles.userRowType, { color: getRoleBadgeStyle(usr.type).color }]}>{getRoleLabel(usr.type)}</Text>
                   </View>
                 </TouchableOpacity>
               )}
@@ -1611,16 +1644,9 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 4,
   },
-  roleBadgeContractor: {
-    backgroundColor: '#EBF5FF',
-  },
-  roleBadgeOwner: {
-    backgroundColor: '#FFF3E6',
-  },
   roleBadgeText: {
     fontSize: 10,
     fontWeight: '600',
-    color: COLORS.textSecondary,
   },
   suspBadge: {
     flexDirection: 'row',

@@ -633,12 +633,22 @@ export default function App() {
     }
 
     if (app_state === 'change_otp') {
+        const goBackToProfile = () => {
+            try {
+                const dashboard = getDashboardType(user_data);
+                if (dashboard === 'contractor') set_app_state('contractor_profile');
+                else set_app_state('owner_profile');
+            } catch (e) {
+                set_app_state('owner_profile');
+            }
+        };
         return (
             <SafeAreaProvider>
                 <ChangeOtpScreen
                     token={user_data?.token || user_data?.api_token || ''}
                     purpose={'change_password'}
-                    onSuccess={() => set_app_state('change_otp')}
+                    onBack={goBackToProfile}
+                    onSuccess={goBackToProfile}
                 />
             </SafeAreaProvider>
         );
@@ -899,6 +909,13 @@ export default function App() {
                         }
                     }}
                 />
+                <RegistrationSuccessModal
+                    visible={show_registration_success}
+                    onDismiss={() => {
+                        set_show_registration_success(false);
+                        set_app_state(registration_success_target);
+                    }}
+                />
             </SafeAreaProvider>
         );
     }
@@ -1035,7 +1052,15 @@ export default function App() {
         return (
             <SafeAreaProvider>
                 <HelpCenterScreen
-                    onBack={() => set_app_state('main')}
+                    onBack={() => {
+                        try {
+                            const dashboard = getDashboardType(user_data);
+                            if (dashboard === 'contractor') set_app_state('contractor_profile');
+                            else set_app_state('owner_profile');
+                        } catch (e) {
+                            set_app_state('owner_profile');
+                        }
+                    }}
                 />
             </SafeAreaProvider>
         );
@@ -1286,6 +1311,13 @@ export default function App() {
                         } catch (error) {
                             Alert.alert('Error', 'Network error. Please check your connection and try again.');
                         }
+                    }}
+                />
+                <RegistrationSuccessModal
+                    visible={show_registration_success}
+                    onDismiss={() => {
+                        set_show_registration_success(false);
+                        set_app_state(registration_success_target);
                     }}
                 />
             </SafeAreaProvider>

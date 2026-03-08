@@ -50,6 +50,9 @@ class notificationClass
         ],
         'owner' => [
             'bid_received',
+            'milestone_submitted',
+            'milestone_resubmitted',
+            'milestone_updated',
             'progress_submitted',
             'progress_approved',
             'progress_rejected',

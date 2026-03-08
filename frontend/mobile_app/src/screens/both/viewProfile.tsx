@@ -18,10 +18,17 @@ import {
 import { MaterialIcons, Ionicons, FontAwesome5, Feather } from '@expo/vector-icons';
 import ImageFallback from '../../components/imageFallback';
 import ProjectPostDetail from './projectPostDetail';
+import CreateShowcase from './createShowcase';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { api_config, api_request } from '../../config/api';
+import { storage_service } from '../../utils/storage';
 import { auth_service } from '../../services/auth_service';
+import { profile_service } from '../../services/profile_service';
+import { highlightService } from '../../services/highlightService';
+import { post_service } from '../../services/post_service';
+import ShowcasePostDetail from './showcasePostDetail';
+import ReportPostModal from '../../components/reportPostModal';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const COVER_HEIGHT = 200;
@@ -309,76 +316,103 @@ const ProjectCard = memo(({ project, onPress, ownerUser }: { project: Project; o
   };
 
   return (
-    <TouchableOpacity
-      onPress={onPress}
-      style={styles.projectCard}
-      activeOpacity={0.7}
-    >
-      <View style={styles.portfolioHeader}>
-        <View style={styles.portfolioAvatar}>
+    <View style={styles.projectCard}>
+      {/* ── Header: owner info (left) · deadline badge + status (right) ── */}
+      <View style={styles.pcHeader}>
+        <View style={styles.pcOwnerInfo}>
           {ownerProfileUrl ? (
-            <Image source={{ uri: ownerProfileUrl }} style={styles.portfolioAvatarImage} />
+            <ImageFallback
+              uri={ownerProfileUrl}
+              defaultImage={defaultOwnerAvatar}
+              style={styles.pcOwnerAvatar}
+              resizeMode="cover"
+            />
           ) : (
-            <View style={styles.portfolioAvatarPlaceholder}>
-              <Text style={styles.portfolioAvatarText}>{ownerInitials}</Text>
+            <ImageFallback
+              uri={undefined}
+              defaultImage={defaultOwnerAvatar}
+              style={styles.pcOwnerAvatar}
+              resizeMode="cover"
+            />
+          )}
+          <View>
+            <Text style={styles.pcOwnerName}>{ownerFullName}</Text>
+            <Text style={styles.pcPostDate}>
+              {(project.post_created_at || project.created_at) ? formatDate(project.post_created_at || project.created_at) : ''}
+            </Text>
+          </View>
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          {deadlineDate && deadlineDate > new Date() && (
+            <View style={[styles.pcDeadlineBadge, isUrgent && styles.pcDeadlineUrgent]}>
+              <MaterialIcons name="access-time" size={13} color={isUrgent ? '#E74C3C' : '#F39C12'} />
+              <Text style={[styles.pcDeadlineText, isUrgent && { color: '#E74C3C' }]}>
+                {Math.ceil((deadlineDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))}d left
+              </Text>
             </View>
           )}
-        </View>
-        <View style={styles.portfolioInfo}>
-          <Text style={styles.portfolioCompany}>{ownerFullName}</Text>
-          <Text style={styles.portfolioUsername}>
-            {(project.post_created_at || project.created_at) ? formatDate(project.post_created_at || project.created_at) : ''}
-          </Text>
-        </View>
-        <View style={[
-          styles.statusBadge,
-          status === 'Open' ? styles.statusOpen : styles.statusClosed
-        ]}>
-          <Text style={[
-            styles.statusText,
-            status === 'Open' ? styles.statusTextOpen : styles.statusTextClosed
-          ]}>
-            {status}
-          </Text>
+          <View style={[styles.statusBadge, status === 'Open' ? styles.statusOpen : styles.statusClosed]}>
+            <Text style={[styles.statusText, status === 'Open' ? styles.statusTextOpen : styles.statusTextClosed]}>
+              {status}
+            </Text>
+          </View>
         </View>
       </View>
 
-      <Text style={styles.portfolioTitle} numberOfLines={2}>{project.project_title}</Text>
-      <TouchableOpacity onPress={() => onPress()}>
-        <Text style={styles.portfolioMoreDetails}>More details...</Text>
-      </TouchableOpacity>
+      {/* ── Title ── */}
+      <Text style={styles.pcTitle} numberOfLines={2}>{project.project_title}</Text>
 
+      {/* ── Description ── */}
+      {project.project_description ? (
+        <Text numberOfLines={3} style={styles.pcDescription}>
+          {project.project_description}
+        </Text>
+      ) : null}
+
+      {/* ── Type badge ── */}
+      {(project.type_name || (project as any).project_type_name) ? (
+        <View style={styles.pcTypeBadge}>
+          <MaterialIcons name="business" size={13} color="#EC7E00" />
+          <Text style={styles.pcTypeText}>{project.type_name || (project as any).project_type_name}</Text>
+        </View>
+      ) : null}
+
+      {/* ── Detail rows ── */}
+      <View style={styles.pcDetails}>
+        {project.project_location ? (
+          <View style={styles.pcDetailRow}>
+            <MaterialIcons name="location-on" size={15} color="#666666" />
+            <Text style={styles.pcDetailText} numberOfLines={1}>{project.project_location}</Text>
+          </View>
+        ) : null}
+        {(project.budget_range_min || project.budget_range_max) ? (
+          <View style={styles.pcDetailRow}>
+            <MaterialIcons name="account-balance-wallet" size={15} color="#666666" />
+            <Text style={styles.pcDetailText}>{formatBudget(project.budget_range_min, project.budget_range_max)}</Text>
+          </View>
+        ) : null}
+      </View>
+
+      {/* ── Image collage (full-width) ── */}
       {renderCollage()}
 
-      <Text numberOfLines={2} style={styles.portfolioDescription}>
-        {project.project_description}
-      </Text>
-
-      <View style={styles.portfolioFooter}>
-        <View style={styles.locationBox}>
-          <Ionicons name="location-outline" size={14} color={COLORS.textMuted} />
-          <Text style={styles.footerText} numberOfLines={1}>
-            {project.project_location}
-          </Text>
-        </View>
-        <Text style={styles.budgetText}>
-          {formatBudget(project.budget_range_min, project.budget_range_max)}
-        </Text>
+      {/* ── Footer: View Details button ── */}
+      <View style={styles.pcFooter}>
+        <TouchableOpacity style={styles.pcViewBtn} onPress={() => onPress()} activeOpacity={0.8}>
+          <Feather name="eye" size={15} color="#FFFFFF" />
+          <Text style={styles.pcViewBtnText}>View Details</Text>
+        </TouchableOpacity>
       </View>
-
-      {deadlineDate && deadlineDate > new Date() && (
-        <View style={styles.deadlineRow}>
-          <Feather name="clock" size={12} color={isUrgent ? COLORS.error : COLORS.textMuted} />
-          <Text style={[styles.deadlineText, isUrgent && styles.urgentText]}>
-            Bidding ends: {formatDate(project.bidding_deadline!)}
-          </Text>
-        </View>
-      )}
-    </TouchableOpacity>
+    </View>
   );
 });
 
-const ReviewCard = memo(({ review }: { review: Review }) => {
+const ReviewCard = memo(({ review, menuOpen, onMenuToggle, onReportPress }: {
+  review: Review;
+  menuOpen: boolean;
+  onMenuToggle: () => void;
+  onReportPress: () => void;
+}) => {
   const reviewerName = useMemo(() =>
     review.reviewer_company_name ||
     review.reviewer_name ||
@@ -389,34 +423,53 @@ const ReviewCard = memo(({ review }: { review: Review }) => {
   );
 
   return (
-    <View style={styles.reviewCard}>
-      <View style={styles.reviewHeader}>
-        <View style={styles.reviewerInfo}>
-          <ImageFallback
-            uri={review.reviewer_profile_pic ?
-              (review.reviewer_profile_pic.startsWith('http')
-                ? review.reviewer_profile_pic
-                : `${api_config.base_url}/storage/${review.reviewer_profile_pic}`)
-              : undefined}
-            defaultImage={defaultOwnerAvatar}
-            style={styles.reviewerAvatar}
-          />
-          <View style={styles.reviewerDetails}>
-            <Text style={styles.reviewerName}>{reviewerName}</Text>
-            {review.reviewer_username && (
-              <Text style={styles.reviewerUsername}>@{review.reviewer_username}</Text>
-            )}
+    <View style={styles.fbCard}>
+      <View style={styles.fbCardHeader}>
+        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
+          <View style={styles.fbCardAvatar}>
+            <ImageFallback
+              uri={review.reviewer_profile_pic ?
+                (review.reviewer_profile_pic.startsWith('http')
+                  ? review.reviewer_profile_pic
+                  : `${api_config.base_url}/storage/${review.reviewer_profile_pic}`)
+                : undefined}
+              defaultImage={defaultOwnerAvatar}
+              style={styles.fbCardAvatarImg}
+            />
+          </View>
+          <View style={styles.fbCardMeta}>
+            <Text style={styles.fbCardAuthor}>{reviewerName}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2, marginTop: 2 }}>
+              {[1,2,3,4,5].map((i) => (
+                <MaterialIcons key={i} name={i <= review.rating ? 'star' : 'star-border'} size={13} color={i <= review.rating ? COLORS.star : '#d1d5db'} />
+              ))}
+            </View>
           </View>
         </View>
-        <View style={styles.ratingContainer}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <MaterialIcons name="star" size={14} color={COLORS.star} style={{ marginRight: 4 }} />
-            <Text style={styles.ratingText}>{review.rating.toFixed(1)}</Text>
+        <View style={{ alignItems: 'flex-end', gap: 4 }}>
+          {/* ⋮ menu */}
+          <View style={styles.reviewMenuWrap}>
+            <TouchableOpacity
+              onPress={onMenuToggle}
+              style={styles.reviewMenuBtn}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <MaterialIcons name="more-vert" size={18} color="#9ca3af" />
+            </TouchableOpacity>
+            {menuOpen && (
+              <View style={styles.reviewMenuDropdown}>
+                <TouchableOpacity style={styles.cardMenuItem} onPress={onReportPress}>
+                  <Text style={[styles.cardMenuItemText, { color: '#DC2626' }]}>Report</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
           <Text style={styles.reviewDate}>{formatDate(review.created_at)}</Text>
         </View>
       </View>
-      <Text style={styles.reviewComment}>{review.comment}</Text>
+      <View style={styles.fbCardBody}>
+        <Text style={styles.fbCardContent}>{review.comment}</Text>
+      </View>
     </View>
   );
 });
@@ -465,10 +518,18 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
   const [activeRoleState, setActiveRoleState] = useState<string | null>(null);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [initialImageIndex, setInitialImageIndex] = useState<number>(0);
+  const [showCreateShowcase, setShowCreateShowcase] = useState(false);
+  const [showcasePosts, setShowcasePosts] = useState<any[]>([]);
+  const [highlightingPostId, setHighlightingPostId] = useState<number | null>(null);
+  const [selectedShowcasePost, setSelectedShowcasePost] = useState<any>(null);
+  const [initialShowcaseImageIndex, setInitialShowcaseImageIndex] = useState<number>(0);
+  const [activePostMenuId, setActivePostMenuId] = useState<number | null>(null);
+  const [reviewMenuOpenId, setReviewMenuOpenId] = useState<string | number | null>(null);
+  const [reportingReview, setReportingReview] = useState<Review | null>(null);
 
   const tabs = useMemo<TabType[]>(() => {
     if (activeRoleState === 'contractor') return ['Portfolio', 'Highlights', 'Reviews', 'About'];
-    return ['Posts', 'Projects', 'About', 'Reviews'];
+    return ['Posts', 'Projects', 'Reviews', 'About'];
   }, [activeRoleState]);
 
   useEffect(() => {
@@ -544,6 +605,8 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
     }
     return filteredProjects;
   }, [filteredProjects, activeRoleState]);
+
+  const highlightedPosts = useMemo(() => showcasePosts.filter(p => !!p.is_highlighted), [showcasePosts]);
 
   const userCity = useMemo(() => {
     const addr = ownerInfo?.address_display || ownerInfo?.address || '';
@@ -871,6 +934,40 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
     }
   }, [userId, handleError, activeRoleState]);
 
+  const fetchShowcasePosts = useCallback(async () => {
+    if (!userId) return;
+    try {
+      const res = await profile_service.get_profile(userId, 'contractor');
+      if (res.success && res.data) {
+        const posts = res.data.posts?.showcase_posts ?? [];
+        setShowcasePosts(posts);
+      }
+    } catch (e) {
+      // non-fatal
+    }
+  }, [userId]);
+
+  const handleToggleHighlight = useCallback(async (postId: number, currentlyHighlighted: boolean) => {
+    if (highlightingPostId) return;
+    setHighlightingPostId(postId);
+    try {
+      const res = currentlyHighlighted
+        ? await highlightService.unhighlightPost(postId)
+        : await highlightService.highlightPost(postId);
+      if (res.success) {
+        setShowcasePosts(prev => prev.map(p =>
+          p.post_id === postId ? { ...p, is_highlighted: currentlyHighlighted ? 0 : 1 } : p
+        ));
+      } else {
+        Alert.alert('Highlight', res.message || 'Could not update highlight.');
+      }
+    } catch {
+      Alert.alert('Error', 'Something went wrong.');
+    } finally {
+      setHighlightingPostId(null);
+    }
+  }, [highlightingPostId]);
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
@@ -878,13 +975,14 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
         fetchProfile(),
         fetchProjects(),
         fetchReviews(),
+        fetchShowcasePosts(),
       ]);
     } catch (e) {
       console.error('Refresh failed:', e);
     } finally {
       setRefreshing(false);
     }
-  }, [fetchProfile, fetchProjects, fetchReviews]);
+  }, [fetchProfile, fetchProjects, fetchReviews, fetchShowcasePosts]);
 
   // Image upload
   const pickImage = useCallback(async (type: 'profile' | 'cover') => {
@@ -971,12 +1069,28 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
         if (userObj && typeof userObj === 'object') setUserData(prev => ({ ...(prev || {}), ...(userObj || {}) }));
         if (contractorObj && typeof contractorObj === 'object') setContractorInfo(contractorObj);
 
-        // Prefer user profile/cover, then contractor media, then top-level fields
-        const returnedPath = userObj?.profile_pic || userObj?.cover_photo || contractorObj?.company_logo || contractorObj?.company_banner || inner?.profile_pic || inner?.cover_photo || inner?.company_logo || inner?.company_banner || (wrapper.path ?? null);
+        // Resolve the returned path by type to avoid picking the wrong field.
+        // e.g. if uploading a cover, don't accidentally read profile_pic first.
+        let returnedPath: string | null = null;
+        if (type === 'profile') {
+          returnedPath = userObj?.profile_pic || contractorObj?.company_logo || inner?.profile_pic || inner?.company_logo || (wrapper.path ?? null);
+        } else {
+          returnedPath = userObj?.cover_photo || contractorObj?.company_banner || inner?.cover_photo || inner?.company_banner || (wrapper.path ?? null);
+        }
         if (returnedPath) {
           if (type === 'profile') setProfilePic(returnedPath);
           else setCoverPhoto(returnedPath);
         }
+        // Persist updated paths to storage so other screens (e.g. Settings) stay in sync
+        try {
+          const stored = await storage_service.get_user_data();
+          if (stored) {
+            const merged = { ...stored };
+            if (type === 'profile' && returnedPath) merged.profile_pic = returnedPath;
+            if (type === 'cover' && returnedPath) merged.cover_photo = returnedPath;
+            await storage_service.save_user_data(merged);
+          }
+        } catch (e) { /* non-critical */ }
         Alert.alert('Success', 'Photo updated successfully');
       } else {
         console.error('[uploadImage] upload failed', resp);
@@ -992,8 +1106,20 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
 
   // Effects
   useEffect(() => {
+    // Seed profile/cover from storage immediately so the latest saved data shows
+    // before the API fetch completes (editProfile saves updated data to storage on save)
+    storage_service.get_user_data().then(stored => {
+      if (stored?.profile_pic) setProfilePic(stored.profile_pic);
+      if (stored?.cover_photo) setCoverPhoto(stored.cover_photo);
+    }).catch(() => {});
     fetchProfile();
   }, [fetchProfile]);
+
+  useEffect(() => {
+    if (activeRoleState === 'contractor') {
+      fetchShowcasePosts();
+    }
+  }, [activeRoleState, fetchShowcasePosts]);
 
   useEffect(() => {
     const projectTabs = ['Posts', 'Projects', 'Portfolio', 'Highlights'];
@@ -1119,9 +1245,32 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
   );
 
   const renderPostsTab = () => {
+    const postInputBar = activeRoleState === 'contractor' ? (
+      <TouchableOpacity
+        style={styles.postInputRow}
+        activeOpacity={0.7}
+        onPress={() => setShowCreateShowcase(true)}
+      >
+        <View style={styles.postInputAvatar}>
+          {profilePic ? (
+            <Image
+              source={{ uri: String(profilePic).startsWith('http') ? String(profilePic) : `${api_config.base_url}/storage/${profilePic}` }}
+              style={{ width: 38, height: 38, borderRadius: 19 }}
+            />
+          ) : (
+            <Feather name="user" size={20} color="#9ca3af" />
+          )}
+        </View>
+        <View style={styles.postInputBtn}>
+          <Text style={styles.postInputText}>Share your work...</Text>
+        </View>
+      </TouchableOpacity>
+    ) : null;
+
     if (loading.projects) {
       return (
         <View style={styles.tabContent}>
+          {postInputBar}
           <ProjectCardSkeleton />
           <ProjectCardSkeleton />
           <ProjectCardSkeleton />
@@ -1131,29 +1280,36 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
 
     if (errors.projects) {
       return (
-        <View style={styles.emptyState}>
-          <Feather name="alert-circle" size={48} color={COLORS.border} />
-          <Text style={styles.emptyTitle}>Failed to load projects</Text>
-          <Text style={styles.emptySubtext}>{errors.projects}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={fetchProjects}>
-            <Text style={styles.retryButtonText}>Retry</Text>
-          </TouchableOpacity>
+        <View style={styles.tabContent}>
+          {postInputBar}
+          <View style={styles.emptyState}>
+            <Feather name="alert-circle" size={48} color={COLORS.border} />
+            <Text style={styles.emptyTitle}>Failed to load projects</Text>
+            <Text style={styles.emptySubtext}>{errors.projects}</Text>
+            <TouchableOpacity style={styles.retryButton} onPress={fetchProjects}>
+              <Text style={styles.retryButtonText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       );
     }
 
     if (ownerVisibleProjects.length === 0) {
       return (
-        <View style={styles.emptyState}>
-          <Feather name="folder" size={48} color={COLORS.border} />
-          <Text style={styles.emptyTitle}>No projects yet</Text>
-          <Text style={styles.emptySubtext}>This user hasn't posted any projects yet.</Text>
+        <View style={styles.tabContent}>
+          {postInputBar}
+          <View style={styles.emptyState}>
+            <Feather name="folder" size={48} color={COLORS.border} />
+            <Text style={styles.emptyTitle}>No projects yet</Text>
+            <Text style={styles.emptySubtext}>Tap above to share your first project!</Text>
+          </View>
         </View>
       );
     }
 
     return (
       <View style={styles.tabContent}>
+        {postInputBar}
         {ownerVisibleProjects.map(project => (
           <ProjectCard
             key={project.project_id}
@@ -1220,144 +1376,184 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
     );
   };
 
-  const renderAboutTab = () => (
-    <View style={styles.tabContent}>
-      <View style={styles.aboutCard}>
-        <Text style={styles.aboutTitle}>About</Text>
+  const renderAboutTab = () => {
+    if (activeRoleState === 'contractor' && contractorInfo) {
+      const verStatus = contractorInfo.verification_status || 'pending';
+      const verColor = verStatus === 'approved' ? '#16a34a' : verStatus === 'rejected' ? '#dc2626' : '#6b7280';
+      const verBg = verStatus === 'approved' ? '#dcfce7' : verStatus === 'rejected' ? '#fef2f2' : '#f3f4f6';
+      const tier = contractorInfo.subscription_tier;
+      return (
+        <View style={styles.tabContent}>
+          {/* Stats Strip */}
+          <View style={styles.statsStrip}>
+            {[
+              { label: 'Experience', value: `${contractorInfo.years_of_experience ?? 0} yrs` },
+              { label: 'Completed', value: String(projectsDone || contractorInfo.completed_projects || 0) },
+              { label: 'Rating', value: rating ? rating.toFixed(1) : 'N/A' },
+              { label: 'Reviews', value: String(reviews.length) },
+            ].map((stat, i, arr) => (
+              <React.Fragment key={stat.label}>
+                <View style={styles.statStripItem}>
+                  <Text style={styles.statStripValue}>{stat.value}</Text>
+                  <Text style={styles.statStripLabel}>{stat.label}</Text>
+                </View>
+                {i < arr.length - 1 && <View style={styles.statStripDivider} />}
+              </React.Fragment>
+            ))}
+          </View>
 
-        {activeRoleState === 'contractor' && contractorInfo ? (
-          <>
-            <View style={styles.aboutSection}>
-              <Text style={styles.aboutLabel}>Company Name</Text>
-              <Text style={styles.aboutValue}>{contractorInfo.company_name || '—'}</Text>
+          {/* Bio */}
+          <View style={styles.aboutSectionCard}>
+            <Text style={styles.aboutSectionTitle}>Bio</Text>
+            <Text style={styles.aboutText}>
+              {contractorInfo.bio || contractorInfo.company_description || 'No bio added yet.'}
+            </Text>
+          </View>
+
+          {/* Services Offered */}
+          {contractorInfo.services_offered ? (
+            <View style={styles.aboutSectionCard}>
+              <Text style={styles.aboutSectionTitle}>Services Offered</Text>
+              <Text style={styles.aboutText}>{contractorInfo.services_offered}</Text>
             </View>
+          ) : null}
 
-            <View style={styles.aboutSection}>
-              <Text style={styles.aboutLabel}>Rating & City</Text>
-              <Text style={styles.aboutValue}>
-                {rating ? (
-                  <Text>
-                    <Text style={styles.ratingNumber}>{rating.toFixed(1)}</Text>
-                    <Text> · </Text>
+          {/* Business Details */}
+          <View style={styles.aboutSectionCard}>
+            <Text style={styles.aboutSectionTitle}>Business Details</Text>
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Contractor Type</Text>
+              <Text style={styles.detailValue}>{contractorInfo.type_name || contractorInfo.contractor_type || 'General'}</Text>
+            </View>
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Experience</Text>
+              <Text style={styles.detailValue}>{contractorInfo.years_of_experience ? `${contractorInfo.years_of_experience} years` : '—'}</Text>
+            </View>
+            {contractorInfo.picab_category ? (
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>PICAB Category</Text>
+                <Text style={styles.detailValue}>{contractorInfo.picab_category}</Text>
+              </View>
+            ) : null}
+            {contractorCity && contractorCity !== '—' ? (
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>City</Text>
+                <Text style={styles.detailValue}>{contractorCity}</Text>
+              </View>
+            ) : null}
+            {tier && tier !== 'free' ? (
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Subscription</Text>
+                <View style={[styles.tierBadge, { backgroundColor: tier === 'gold' ? '#FEF3C7' : '#F3E8FF' }]}>
+                  <Text style={[styles.tierBadgeText, { color: tier === 'gold' ? '#d97706' : '#7c3aed' }]}>
+                    {tier.charAt(0).toUpperCase() + tier.slice(1)}
                   </Text>
-                ) : ''}
-                {contractorCity}
-              </Text>
-            </View>
-
-            <View style={styles.aboutSection}>
-              <Text style={styles.aboutLabel}>Bio</Text>
-              <Text style={styles.aboutValue}>{contractorInfo.bio || contractorInfo.company_description || 'This contractor hasn\'t added a bio yet.'}</Text>
-            </View>
-
-            <View style={styles.aboutSection}>
-              <Text style={styles.aboutLabel}>Experience</Text>
-              <Text style={styles.aboutValue}>{contractorInfo.years_of_experience ? `${contractorInfo.years_of_experience} years` : '—'}</Text>
-            </View>
-
-            <View style={styles.aboutSection}>
-              <Text style={styles.aboutLabel}>Services Offered</Text>
-              <Text style={styles.aboutValue}>{contractorInfo.services_offered || '—'}</Text>
-            </View>
-
-            <View style={styles.highlightsGrid}>
-              <View style={styles.highlightCard}>
-                <View style={[styles.highlightIcon, { backgroundColor: COLORS.successLight }]}>
-                  <Feather name="check-circle" size={24} color={COLORS.success} />
                 </View>
-                <Text style={styles.highlightValue}>{projectsDone || contractorInfo.completed_projects || 0}</Text>
-                <Text style={styles.highlightLabel}>Projects Done</Text>
               </View>
-
-              <View style={styles.highlightCard}>
-                <View style={[styles.highlightIcon, { backgroundColor: COLORS.primaryLight }]}>
-                  <Feather name="clock" size={24} color={COLORS.primary} />
-                </View>
-                <Text style={styles.highlightValue}>{ongoingProjects}</Text>
-                <Text style={styles.highlightLabel}>Ongoing</Text>
+            ) : null}
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Verification</Text>
+              <View style={[styles.verificationBadge, { backgroundColor: verBg }]}>
+                <Text style={[styles.verificationText, { color: verColor }]}>
+                  {verStatus.charAt(0).toUpperCase() + verStatus.slice(1)}
+                </Text>
               </View>
             </View>
+            {userState?.created_at ? (
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Member Since</Text>
+                <Text style={styles.detailValue}>{formatDate(userState.created_at)}</Text>
+              </View>
+            ) : null}
+          </View>
 
-            {contractorReps && contractorReps.length > 0 && (
-              <View style={styles.aboutSection}>
-                <Text style={styles.aboutLabel}>Representative</Text>
-                {contractorReps.map((rep, idx) => {
-                  const img = rep.profile_pic || rep.profilePic || rep.profilePicPath || null;
-                  const name = rep.full_name || (`${rep.authorized_rep_fname || ''}${rep.authorized_rep_mname ? ' ' + rep.authorized_rep_mname : ''}${rep.authorized_rep_lname ? ' ' + rep.authorized_rep_lname : ''}`).trim();
-                  return (
-                    <View key={idx} style={[styles.repCard, idx > 0 && { marginTop: 12 }]}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <ImageFallback
-                          uri={img ? (String(img).startsWith('http') ? String(img) : `${api_config.base_url}/storage/${String(img)}`) : undefined}
-                          defaultImage={defaultOwnerAvatar}
-                          style={styles.repAvatar}
-                        />
-                        <View style={{ marginLeft: 12, flex: 1 }}>
-                          <Text style={styles.repName}>{name || '—'}</Text>
-                          <Text style={styles.aboutValue}>{rep.role || '—'}</Text>
-                        </View>
+          {/* Representatives */}
+          {contractorReps && contractorReps.length > 0 && (
+            <View style={styles.aboutSectionCard}>
+              <Text style={styles.aboutSectionTitle}>Representative</Text>
+              {contractorReps.map((rep, idx) => {
+                const img = rep.profile_pic || rep.profilePic || rep.profilePicPath || null;
+                const name = rep.full_name || (`${rep.authorized_rep_fname || ''}${rep.authorized_rep_mname ? ' ' + rep.authorized_rep_mname : ''}${rep.authorized_rep_lname ? ' ' + rep.authorized_rep_lname : ''}`).trim();
+                return (
+                  <View key={idx} style={[styles.repCard, idx > 0 && { marginTop: 12 }]}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <ImageFallback
+                        uri={img ? (String(img).startsWith('http') ? String(img) : `${api_config.base_url}/storage/${String(img)}`) : undefined}
+                        defaultImage={defaultOwnerAvatar}
+                        style={styles.repAvatar}
+                      />
+                      <View style={{ marginLeft: 12, flex: 1 }}>
+                        <Text style={styles.repName}>{name || '—'}</Text>
+                        <Text style={styles.aboutText}>
+                          {rep.role ? rep.role.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()) : '—'}
+                        </Text>
                       </View>
                     </View>
-                  );
-                })}
+                  </View>
+                );
+              })}
+            </View>
+          )}
+        </View>
+      );
+    }
+
+    // Owner
+    return (
+      <View style={styles.tabContent}>
+        {/* Stats Strip */}
+        <View style={styles.statsStrip}>
+          {[
+            { label: 'Total', value: String(projectStats.total) },
+            { label: 'Completed', value: String(projectStats.completed) },
+            { label: 'Ongoing', value: String(projectStats.ongoing) },
+            { label: 'Rating', value: rating ? rating.toFixed(1) : 'N/A' },
+          ].map((stat, i, arr) => (
+            <React.Fragment key={stat.label}>
+              <View style={styles.statStripItem}>
+                <Text style={styles.statStripValue}>{stat.value}</Text>
+                <Text style={styles.statStripLabel}>{stat.label}</Text>
               </View>
-            )}
-          </>
-        ) : (
-          <>
-            <View style={styles.aboutSection}>
-              <Text style={styles.aboutLabel}>Full Name</Text>
-              <Text style={styles.aboutValue}>{displayName}</Text>
-            </View>
+              {i < arr.length - 1 && <View style={styles.statStripDivider} />}
+            </React.Fragment>
+          ))}
+        </View>
 
-            <View style={styles.aboutSection}>
-              <Text style={styles.aboutLabel}>Location</Text>
-              <Text style={styles.aboutValue}>
-                {rating ? (
-                  <Text>
-                    <Text style={styles.ratingNumber}>{rating.toFixed(1)}</Text>
-                    <Text> · {userCity}</Text>
-                  </Text>
-                ) : userCity}
-              </Text>
-            </View>
+        {/* Bio */}
+        <View style={styles.aboutSectionCard}>
+          <Text style={styles.aboutSectionTitle}>Bio</Text>
+          <Text style={styles.aboutText}>{userBio || 'No bio added yet.'}</Text>
+        </View>
 
-            <View style={styles.aboutSection}>
-              <Text style={styles.aboutLabel}>Bio</Text>
-              <Text style={styles.aboutValue}>
-                {userBio || 'This user hasn\'t added a bio yet.'}
-              </Text>
+        {/* Personal Info */}
+        <View style={styles.aboutSectionCard}>
+          <Text style={styles.aboutSectionTitle}>Personal Info</Text>
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Full Name</Text>
+            <Text style={styles.detailValue}>{displayName}</Text>
+          </View>
+          {(occupationName || ownerInfo?.occupation_name) ? (
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Occupation</Text>
+              <Text style={styles.detailValue}>{occupationName || ownerInfo?.occupation_name}</Text>
             </View>
-
-            <View style={styles.aboutSection}>
-              <Text style={styles.aboutLabel}>Occupation</Text>
-              <Text style={styles.aboutValue}>
-                {occupationName || ownerInfo?.occupation_name || ownerInfo?.occupation_id || userState?.occupation_name || '—'}
-              </Text>
+          ) : null}
+          {userCity && userCity !== '—' ? (
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Location</Text>
+              <Text style={styles.detailValue}>{userCity}</Text>
             </View>
-
-            <View style={styles.highlightsGrid}>
-              <View style={styles.highlightCard}>
-                <View style={[styles.highlightIcon, { backgroundColor: COLORS.successLight }]}>
-                  <Feather name="check-circle" size={24} color={COLORS.success} />
-                </View>
-                <Text style={styles.highlightValue}>{projectStats.completed}</Text>
-                <Text style={styles.highlightLabel}>Completed</Text>
-              </View>
-
-              <View style={styles.highlightCard}>
-                <View style={[styles.highlightIcon, { backgroundColor: COLORS.primaryLight }]}>
-                  <Feather name="clock" size={24} color={COLORS.primary} />
-                </View>
-                <Text style={styles.highlightValue}>{projectStats.ongoing}</Text>
-                <Text style={styles.highlightLabel}>Ongoing</Text>
-              </View>
+          ) : null}
+          {userState?.created_at ? (
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Member Since</Text>
+              <Text style={styles.detailValue}>{formatDate(userState.created_at)}</Text>
             </View>
-          </>
-        )}
+          ) : null}
+        </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   const renderReviewsTab = () => {
     if (loading.reviews) {
@@ -1394,78 +1590,408 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
     return (
       <View style={styles.tabContent}>
         <View style={styles.reviewsSummary}>
-          <View style={styles.ratingBig}>
-            <Text style={styles.ratingBigValue}>{rating?.toFixed(1) || '0'}</Text>
-            <View style={styles.starsRow}>
-              {[1, 2, 3, 4, 5].map((star) => (
-                <MaterialIcons
-                  key={star}
-                  name="star"
-                  size={20}
-                  color={star <= (rating || 0) ? COLORS.star : COLORS.border}
-                />
-              ))}
+          {reviews.length >= 5 ? (
+            <View style={styles.ratingBig}>
+              <Text style={styles.ratingBigValue}>{rating?.toFixed(1) || '0'}</Text>
+              <View style={styles.starsRow}>
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <MaterialIcons
+                    key={star}
+                    name="star"
+                    size={20}
+                    color={star <= (rating || 0) ? COLORS.star : COLORS.border}
+                  />
+                ))}
+              </View>
+              <Text style={styles.reviewsCountText}>
+                Based on {reviews.length} {reviews.length === 1 ? 'review' : 'reviews'}
+              </Text>
             </View>
-            <Text style={styles.reviewsCountText}>
-              Based on {reviews.length} {reviews.length === 1 ? 'review' : 'reviews'}
-            </Text>
-          </View>
+          ) : (
+            <View style={styles.ratingBig}>
+              <MaterialIcons name="star-outline" size={40} color={COLORS.border} />
+              <Text style={[styles.reviewsCountText, { marginTop: 8, textAlign: 'center' }]}>
+                Rating visible after 5 reviews
+              </Text>
+              <Text style={[styles.reviewsCountText, { marginTop: 4, textAlign: 'center' }]}>
+                {reviews.length} of 5 received
+              </Text>
+            </View>
+          )}
         </View>
         {reviews.map(review => (
-          <ReviewCard key={review.review_id} review={review} />
+          <ReviewCard
+            key={review.review_id}
+            review={review}
+            menuOpen={reviewMenuOpenId === review.review_id}
+            onMenuToggle={() => setReviewMenuOpenId(prev => prev === review.review_id ? null : review.review_id)}
+            onReportPress={() => {
+              setReviewMenuOpenId(null);
+              setReportingReview(review);
+            }}
+          />
         ))}
       </View>
     );
   };
 
   const renderHighlightsTab = () => {
-    return (
-      <View style={styles.tabContent}>
-        <View style={styles.highlightsGrid}>
-          <View style={styles.highlightCard}>
-            <View style={[styles.highlightIcon, { backgroundColor: COLORS.primaryLight }]}>
-              <Feather name="award" size={24} color={COLORS.primary} />
-            </View>
-            <Text style={styles.highlightValue}>{contractorInfo?.years_of_experience || 0}</Text>
-            <Text style={styles.highlightLabel}>Years Experience</Text>
-          </View>
-
-          <View style={styles.highlightCard}>
-            <View style={[styles.highlightIcon, { backgroundColor: COLORS.successLight }]}>
-              <Feather name="check-circle" size={24} color={COLORS.success} />
-            </View>
-            <Text style={styles.highlightValue}>{projectsDone || contractorInfo?.completed_projects || 0}</Text>
-            <Text style={styles.highlightLabel}>Projects Completed</Text>
-          </View>
-
-          <View style={styles.highlightCard}>
-            <View style={[styles.highlightIcon, { backgroundColor: COLORS.warningLight }]}>
-              <MaterialIcons name="star" size={24} color={COLORS.star} />
-            </View>
-            <Text style={styles.highlightValue}>{rating?.toFixed(1) || '0'}</Text>
-            <Text style={styles.highlightLabel}>Average Rating</Text>
-          </View>
-
-          <View style={styles.highlightCard}>
-            <View style={[styles.highlightIcon, { backgroundColor: COLORS.infoLight }]}>
-              <Feather name="message-square" size={24} color={COLORS.info} />
-            </View>
-            <Text style={styles.highlightValue}>{reviews.length}</Text>
-            <Text style={styles.highlightLabel}>Client Reviews</Text>
+    if (highlightedPosts.length === 0) {
+      return (
+        <View style={styles.tabContent}>
+          <View style={styles.emptyState}>
+            <MaterialIcons name="star-outline" size={48} color={COLORS.border} />
+            <Text style={styles.emptyTitle}>No highlighted posts yet</Text>
+            <Text style={styles.emptySubtext}>
+              In your Portfolio, tap ⋮ on a showcase post and choose "Highlight" to feature it here.
+            </Text>
           </View>
         </View>
+      );
+    }
 
-        {contractorInfo?.services_offered && (
-          <View style={styles.servicesSection}>
-            <Text style={styles.servicesSectionTitle}>Services Offered</Text>
-            <Text style={styles.servicesText}>{contractorInfo.services_offered}</Text>
-          </View>
-        )}
+    return (
+      <View style={styles.tabContent}>
+        {highlightedPosts.map(post => {
+          const allImages = (post.images || []).map((img: any) => {
+            const p = String(img.file_path || img || '');
+            return p.startsWith('http') ? p : `${api_config.base_url}/storage/${p}`;
+          }).filter(Boolean);
+          const postDate = post.created_at ? formatDate(post.created_at) : '';
+          const authorName = displayName || userState?.username || 'Contractor';
+          const authorPicUrl = profilePic
+            ? (String(profilePic).startsWith('http') ? String(profilePic) : `${api_config.base_url}/storage/${profilePic}`)
+            : null;
+          const authorInitials = authorName.split(' ').map((p: string) => p[0]).join('').toUpperCase().slice(0, 2) || 'C';
+
+          return (
+            <View key={post.post_id} style={styles.fbCard}>
+              {/* ── Header ── */}
+              <View style={styles.fbCardHeader}>
+                <View style={styles.fbCardAvatar}>
+                  {authorPicUrl ? (
+                    <Image source={{ uri: authorPicUrl }} style={styles.fbCardAvatarImg} />
+                  ) : (
+                    <View style={styles.fbCardAvatarPlaceholder}>
+                      <Text style={styles.fbCardAvatarText}>{authorInitials}</Text>
+                    </View>
+                  )}
+                </View>
+                <View style={styles.fbCardMeta}>
+                  <Text style={styles.fbCardAuthor}>{authorName}</Text>
+                  {postDate ? <Text style={styles.fbCardDate}>{postDate}</Text> : null}
+                </View>
+                <View style={[styles.fbChip, { backgroundColor: '#FFF3C4', marginLeft: 'auto' }]}>
+                  <MaterialIcons name="star" size={12} color="#92400E" />
+                  <Text style={[styles.fbChipText, { color: '#92400E' }]}>Highlighted</Text>
+                </View>
+              </View>
+
+              {/* ── Text body ── */}
+              {(post.title || post.description || post.content) ? (
+                <View style={styles.fbCardBody}>
+                  {post.title ? <Text style={styles.fbCardTitle}>{post.title}</Text> : null}
+                  {(post.description || post.content) ? (
+                    <Text style={styles.fbCardContent} numberOfLines={4}>{post.description || post.content}</Text>
+                  ) : null}
+                </View>
+              ) : null}
+
+              {/* ── Image collage (FB-style grid) ── */}
+              {allImages.length > 0 ? (
+                <View style={styles.fbCollageWrap}>
+                  {renderFbCollage(allImages, post)}
+                </View>
+              ) : null}
+
+              {/* ── Footer ── */}
+              <View style={styles.fbCardFooter}>
+                <TouchableOpacity
+                  style={styles.footerActionBtn}
+                  activeOpacity={0.7}
+                  onPress={() => setSelectedShowcasePost(post)}
+                >
+                  <Feather name="eye" size={14} color={COLORS.textSecondary} />
+                  <Text style={styles.footerActionText}>View post</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.footerActionBtn, { marginLeft: 8 }]}
+                  onPress={() => handleToggleHighlight(post.post_id, true)}
+                  disabled={highlightingPostId === post.post_id}
+                >
+                  {highlightingPostId === post.post_id
+                    ? <ActivityIndicator size="small" color={COLORS.textMuted} />
+                    : <>
+                        <Feather name="x" size={14} color={COLORS.textMuted} />
+                        <Text style={[styles.footerActionText, { color: COLORS.textMuted }]}>Remove</Text>
+                      </>
+                  }
+                </TouchableOpacity>
+              </View>
+            </View>
+          );
+        })}
       </View>
     );
   };
 
-  const renderPortfolioTab = () => renderPostsTab();
+  // ── Facebook-style image collage for showcase/highlight cards ──
+  const renderFbCollage = (images: string[], post: any) => {
+    if (!images || images.length === 0) return null;
+    const GAP = 5;
+    // Card has marginHorizontal:16 (×2=32) + wrap has margin:5 (×2=10) = 42
+    const W = SCREEN_WIDTH - 26; // card marginHorizontal 8×2=16 + collage margin 5×2=10
+    const half = Math.floor((W - GAP) / 2);
+    const twoThird = Math.floor(W * 0.66);
+    const oneThird = W - twoThird - GAP;
+    const singleH = Math.floor(W * 0.56);
+    const dualH = Math.floor(W * 0.42);
+    const triH = Math.floor(W * 0.52);
+    const gridCellH = Math.floor(W * 0.40);
+
+    const openAt = (idx: number) => {
+      setInitialShowcaseImageIndex(idx);
+      setSelectedShowcasePost(post);
+    };
+
+    const img = (uri: string, style: any, idx: number, extra?: number) => (
+      <TouchableOpacity key={idx} activeOpacity={0.9} onPress={() => openAt(idx)} style={style}>
+        <ImageFallback uri={uri} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+        {extra != null && extra > 0 ? (
+          <View style={styles.fbCollageOverlay}>
+            <Text style={styles.fbCollageOverlayText}>+{extra}</Text>
+          </View>
+        ) : null}
+      </TouchableOpacity>
+    );
+
+    // 1 image — full width
+    if (images.length === 1) {
+      return img(images[0], { width: W, height: singleH }, 0);
+    }
+
+    // 2 images — side by side equal halves
+    if (images.length === 2) {
+      return (
+        <View style={{ flexDirection: 'row' }}>
+          {img(images[0], { width: half, height: dualH, marginRight: GAP }, 0)}
+          {img(images[1], { width: half, height: dualH }, 1)}
+        </View>
+      );
+    }
+
+    // 3 images — 1 large left + 2 stacked right
+    // |      |[  ]|
+    // |      |[  ]|
+    if (images.length === 3) {
+      const cellH = Math.floor((triH - GAP) / 2);
+      return (
+        <View style={{ flexDirection: 'row' }}>
+          {img(images[0], { width: twoThird, height: triH, marginRight: GAP }, 0)}
+          <View style={{ width: oneThird, height: triH }}>
+            {img(images[1], { width: oneThird, height: cellH, marginBottom: GAP }, 1)}
+            {img(images[2], { width: oneThird, height: cellH }, 2)}
+          </View>
+        </View>
+      );
+    }
+
+    // 4 images — 2×2 grid (equal squares)
+    // [  ][  ]
+    // [  ][  ]
+    if (images.length === 4) {
+      return (
+        <View>
+          <View style={{ flexDirection: 'row', marginBottom: GAP }}>
+            {img(images[0], { width: half, height: gridCellH, marginRight: GAP }, 0)}
+            {img(images[1], { width: half, height: gridCellH }, 1)}
+          </View>
+          <View style={{ flexDirection: 'row' }}>
+            {img(images[2], { width: half, height: gridCellH, marginRight: GAP }, 2)}
+            {img(images[3], { width: half, height: gridCellH }, 3)}
+          </View>
+        </View>
+      );
+    }
+
+    // 5+ images — 2×2 grid showing first 3 + last slot is "+N" overlay
+    // [  ][  ]
+    // [  ][+6]
+    const extra = images.length - 4;
+    return (
+      <View>
+        <View style={{ flexDirection: 'row', marginBottom: GAP }}>
+          {img(images[0], { width: half, height: gridCellH, marginRight: GAP }, 0)}
+          {img(images[1], { width: half, height: gridCellH }, 1)}
+        </View>
+        <View style={{ flexDirection: 'row' }}>
+          {img(images[2], { width: half, height: gridCellH, marginRight: GAP }, 2)}
+          {img(images[3], { width: half, height: gridCellH }, 3, extra)}
+        </View>
+      </View>
+    );
+  };
+
+  const renderPortfolioTab = () => {
+    // Owners: fall back to the standard project posts tab
+    if (activeRoleState !== 'contractor') {
+      return renderPostsTab();
+    }
+
+    // Contractors: show own showcase posts only
+    const postInputBar = (
+      <TouchableOpacity
+        style={styles.postInputRow}
+        activeOpacity={0.7}
+        onPress={() => setShowCreateShowcase(true)}
+      >
+        <View style={styles.postInputAvatar}>
+          {profilePic ? (
+            <Image
+              source={{ uri: String(profilePic).startsWith('http') ? String(profilePic) : `${api_config.base_url}/storage/${profilePic}` }}
+              style={{ width: 38, height: 38, borderRadius: 19 }}
+            />
+          ) : (
+            <Feather name="user" size={20} color="#9ca3af" />
+          )}
+        </View>
+        <View style={styles.postInputBtn}>
+          <Text style={styles.postInputText}>Share your work...</Text>
+        </View>
+      </TouchableOpacity>
+    );
+
+    if (showcasePosts.length === 0) {
+      return (
+        <View style={styles.tabContent}>
+          {postInputBar}
+          <View style={styles.emptyState}>
+            <Feather name="camera" size={48} color={COLORS.border} />
+            <Text style={styles.emptyTitle}>No showcase posts yet</Text>
+            <Text style={styles.emptySubtext}>Tap above to share your first project!</Text>
+          </View>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.tabContent}>
+        {postInputBar}
+                {showcasePosts.map(post => {
+          const isHighlighted = !!post.is_highlighted;
+          const allImages = (post.images || []).map((img: any) => {
+            const p = String(img.file_path || img || '');
+            return p.startsWith('http') ? p : `${api_config.base_url}/storage/${p}`;
+          }).filter(Boolean);
+          const firstImage = allImages[0] || null;
+
+          const postDate = post.created_at ? formatDate(post.created_at) : '';
+          const authorName = displayName || userState?.username || 'Contractor';
+          const authorPicUrl = profilePic
+            ? (String(profilePic).startsWith('http') ? String(profilePic) : `${api_config.base_url}/storage/${profilePic}`)
+            : null;
+          const authorInitials = authorName.split(' ').map((p: string) => p[0]).join('').toUpperCase().slice(0, 2) || 'C';
+
+          return (
+            <View key={`sp-${post.post_id}`} style={styles.fbCard}>
+              {/* ── Header ── */}
+              <View style={styles.fbCardHeader}>
+                <View style={styles.fbCardAvatar}>
+                  {authorPicUrl ? (
+                    <Image source={{ uri: authorPicUrl }} style={styles.fbCardAvatarImg} />
+                  ) : (
+                    <View style={styles.fbCardAvatarPlaceholder}>
+                      <Text style={styles.fbCardAvatarText}>{authorInitials}</Text>
+                    </View>
+                  )}
+                </View>
+                <View style={styles.fbCardMeta}>
+                  <Text style={styles.fbCardAuthor}>{authorName}</Text>
+                  {postDate ? <Text style={styles.fbCardDate}>{postDate}</Text> : null}
+                </View>
+                <View style={styles.cardMenuWrap}>
+                  <TouchableOpacity
+                    onPress={(e) => {
+                      e.stopPropagation?.();
+                      setActivePostMenuId(prev => prev === post.post_id ? null : post.post_id);
+                    }}
+                    activeOpacity={0.7}
+                    style={styles.fbCardMenuBtn}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <MaterialIcons name="more-vert" size={20} color={COLORS.textSecondary} />
+                  </TouchableOpacity>
+                  {activePostMenuId === post.post_id && (
+                    <View style={styles.cardMenuDropdown}>
+                      <TouchableOpacity
+                        style={styles.cardMenuItem}
+                        onPress={(e) => {
+                          e.stopPropagation?.();
+                          setActivePostMenuId(null);
+                          handleToggleHighlight(post.post_id, isHighlighted);
+                        }}
+                        disabled={highlightingPostId === post.post_id}
+                      >
+                        {highlightingPostId === post.post_id
+                          ? <ActivityIndicator size="small" color={COLORS.primary} />
+                          : <Text style={styles.cardMenuItemText}>{isHighlighted ? 'Unhighlight' : 'Highlight'}</Text>
+                        }
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
+              </View>
+
+              {/* ── Text body ── */}
+              {(post.title || post.content) ? (
+                <View style={styles.fbCardBody}>
+                  {post.title ? <Text style={styles.fbCardTitle}>{post.title}</Text> : null}
+                  {post.content ? <Text style={styles.fbCardContent} numberOfLines={4}>{post.content}</Text> : null}
+                </View>
+              ) : null}
+
+              {/* ── Image collage (FB-style grid) ── */}
+              {allImages.length > 0 ? (
+                <View style={styles.fbCollageWrap}>
+                  {renderFbCollage(allImages, post)}
+                </View>
+              ) : null}
+
+              {/* ── chips row ── */}
+              {(isHighlighted || post.linked_project_id) ? (
+                <View style={styles.fbCardChips}>
+                  {isHighlighted ? (
+                    <View style={[styles.fbChip, { backgroundColor: '#FFF3C4' }]}>
+                      <MaterialIcons name="star" size={11} color="#92400E" />
+                      <Text style={[styles.fbChipText, { color: '#92400E' }]}>Highlighted</Text>
+                    </View>
+                  ) : null}
+                  {post.linked_project_id ? (
+                    <View style={styles.fbChip}>
+                      <Feather name="link" size={11} color={COLORS.textSecondary} />
+                      <Text style={styles.fbChipText}>{post.linked_project_title || 'Linked project'}</Text>
+                    </View>
+                  ) : null}
+                </View>
+              ) : null}
+
+              {/* ── Footer action ── */}
+              <View style={styles.fbCardFooter}>
+                <TouchableOpacity
+                  style={styles.footerActionBtn}
+                  activeOpacity={0.7}
+                  onPress={() => { setActivePostMenuId(null); setSelectedShowcasePost(post); }}
+                >
+                  <Feather name="eye" size={14} color={COLORS.textSecondary} />
+                  <Text style={styles.footerActionText}>View post</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          );
+        })}
+      </View>
+    );
+  };
 
   const renderContent = () => {
     switch (activeTab) {
@@ -1484,6 +2010,18 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
         return null;
     }
   };
+
+  // If viewing a showcase post detail, show full-screen detail view
+  if (selectedShowcasePost) {
+    return (
+      <ShowcasePostDetail
+        post={selectedShowcasePost}
+        onClose={() => { setSelectedShowcasePost(null); setInitialShowcaseImageIndex(0); }}
+        isOwner={true}
+        initialImageIndex={initialShowcaseImageIndex}
+      />
+    );
+  }
 
   // If viewing a project detail, show ProjectPostDetail screen
   if (selectedProject) {
@@ -1525,6 +2063,26 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
         {renderContent()}
         <View style={{ height: 24 }} />
       </ScrollView>
+
+      <CreateShowcase
+        visible={showCreateShowcase}
+        onClose={() => setShowCreateShowcase(false)}
+        onCreated={() => {
+          setShowCreateShowcase(false);
+          fetchProjects();
+          fetchShowcasePosts();
+        }}
+      />
+
+      <ReportPostModal
+        visible={!!reportingReview}
+        onClose={() => setReportingReview(null)}
+        onSubmit={async (reason, details, attachments) => {
+          const res = await post_service.report_review(Number(reportingReview!.review_id), reason, details, attachments);
+          return { success: !!res.success, message: res.message };
+        }}
+      />
+
     </View>
   );
 }
@@ -1584,14 +2142,9 @@ const styles = StyleSheet.create({
   // Hero Section
   heroSection: {
     backgroundColor: COLORS.surface,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
     paddingBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.borderLight,
   },
   coverWrapper: {
     height: COVER_HEIGHT,
@@ -1606,10 +2159,10 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 16,
     right: 16,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    padding: 10,
-    borderRadius: 24,
-    borderWidth: 2,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    padding: 8,
+    borderRadius: 6,
+    borderWidth: 1.5,
     borderColor: COLORS.surface,
   },
   profileInfoContainer: {
@@ -1639,8 +2192,8 @@ const styles = StyleSheet.create({
     bottom: 0,
     right: 0,
     backgroundColor: COLORS.primary,
-    padding: 8,
-    borderRadius: 20,
+    padding: 7,
+    borderRadius: 8,
     borderWidth: 2,
     borderColor: COLORS.surface,
   },
@@ -1742,42 +2295,161 @@ const styles = StyleSheet.create({
 
   // Tab Content
   tabContent: {
-    padding: 0,
+    paddingBottom: 16,
     width: '100%',
   },
 
-  // Portfolio/Project Card - Updated to match CheckProfile design
+  // Portfolio/Project Card - matches projectDetails card style
   projectCard: {
     backgroundColor: COLORS.surface,
+    marginHorizontal: 8,
+    marginTop: 6,
     marginBottom: 0,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    overflow: 'hidden',
+  },
+  // ProjectCard inner styles — matching homepage feed layout
+  pcHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
     paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.borderLight,
+    paddingTop: 14,
+    paddingBottom: 12,
+  },
+  pcOwnerInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  pcOwnerAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 10,
+  },
+  pcOwnerName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333333',
+  },
+  pcPostDate: {
+    fontSize: 12,
+    color: '#999999',
+    marginTop: 1,
+  },
+  pcDeadlineBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF5E5',
+    paddingHorizontal: 7,
+    paddingVertical: 4,
+    borderRadius: 8,
+    gap: 3,
+  },
+  pcDeadlineUrgent: {
+    backgroundColor: '#FFEBE5',
+  },
+  pcDeadlineText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#F39C12',
+  },
+  pcTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333333',
+    paddingHorizontal: 16,
+    marginBottom: 8,
+  },
+  pcDescription: {
+    fontSize: 14,
+    color: '#666666',
+    lineHeight: 20,
+    paddingHorizontal: 16,
+    marginBottom: 10,
+  },
+  pcTypeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: '#FFF3E6',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 5,
+    marginBottom: 10,
+    marginLeft: 16,
+  },
+  pcTypeText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#EC7E00',
+  },
+  pcDetails: {
+    gap: 7,
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+  },
+  pcDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+  },
+  pcDetailText: {
+    fontSize: 13,
+    color: '#666666',
+    flex: 1,
+  },
+  pcFooter: {
+    paddingHorizontal: 16,
+    paddingBottom: 14,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
+    marginTop: 4,
+  },
+  pcViewBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.primary,
+    paddingVertical: 12,
+    borderRadius: 8,
+    gap: 6,
+  },
+  pcViewBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
   },
   portfolioHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
+    paddingHorizontal: 14,
+    paddingTop: 14,
+    paddingBottom: 10,
   },
   portfolioAvatar: {
     marginRight: 10,
   },
   portfolioAvatarImage: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
   },
   portfolioAvatarPlaceholder: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     backgroundColor: COLORS.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
   },
   portfolioAvatarText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '700',
     color: COLORS.primary,
   },
@@ -1786,45 +2458,74 @@ const styles = StyleSheet.create({
   },
   portfolioCompany: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '700',
     color: COLORS.text,
   },
   portfolioUsername: {
-    fontSize: 13,
+    fontSize: 12,
     color: COLORS.textMuted,
+    marginTop: 1,
   },
   portfolioTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
     color: COLORS.text,
+    paddingHorizontal: 14,
     marginBottom: 4,
-  },
-  portfolioMoreDetails: {
-    fontSize: 14,
-    color: COLORS.primary,
-    marginBottom: 12,
   },
   portfolioDescription: {
     fontSize: 14,
     color: COLORS.textSecondary,
     lineHeight: 20,
-    marginTop: 12,
-    marginBottom: 12,
+    paddingHorizontal: 14,
+    marginBottom: 4,
   },
-  portfolioFooter: {
+  portfolioMeta: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingTop: 10,
+    paddingBottom: 2,
+  },
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  metaItemText: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    marginLeft: 4,
+    flex: 1,
+  },
+  portfolioFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
     borderTopWidth: 1,
     borderTopColor: COLORS.borderLight,
-    paddingTop: 12,
+    marginTop: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  footerActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  footerActionText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: COLORS.textSecondary,
   },
 
   // Status Badge
   statusBadge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: 4,
     marginLeft: 8,
   },
   statusOpen: {
@@ -1857,10 +2558,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   budgetText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
     color: COLORS.primary,
-    marginLeft: 12,
   },
   deadlineRow: {
     flexDirection: 'row',
@@ -1934,6 +2634,35 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 
+  // Review card ⋮ menu
+  reviewMenuWrap: {
+    position: 'relative',
+  },
+  reviewMenuBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reviewMenuDropdown: {
+    position: 'absolute',
+    top: 30,
+    right: 0,
+    minWidth: 130,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    paddingVertical: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.14,
+    shadowRadius: 8,
+    elevation: 8,
+    zIndex: 30,
+  },
+
   // About Card
   aboutCard: {
     backgroundColor: COLORS.surface,
@@ -1966,6 +2695,103 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
+  // checkProfile-style About cards
+  statsStrip: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    marginHorizontal: 8,
+    marginBottom: 16,
+    overflow: 'hidden',
+  },
+  statStripItem: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 14,
+  },
+  statStripValue: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: COLORS.primary,
+  },
+  statStripLabel: {
+    fontSize: 11,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+  },
+  statStripDivider: {
+    width: 1,
+    backgroundColor: COLORS.border,
+    marginVertical: 10,
+  },
+  aboutSectionCard: {
+    marginHorizontal: 8,
+    marginBottom: 12,
+    backgroundColor: '#fff',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    padding: 16,
+  },
+  aboutSectionTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 10,
+  },
+  aboutText: {
+    fontSize: 14,
+    color: COLORS.text,
+    lineHeight: 21,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 9,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
+    gap: 8,
+  },
+  detailLabel: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    width: 120,
+  },
+  detailValue: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: COLORS.text,
+    flex: 1,
+  },
+  tierBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+  },
+  tierBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  verificationBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  verificationText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+
   // Highlights Grid
   highlightsGrid: {
     flexDirection: 'row',
@@ -1976,7 +2802,9 @@ const styles = StyleSheet.create({
   highlightCard: {
     width: '48%',
     backgroundColor: COLORS.background,
-    borderRadius: 16,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
     padding: 16,
     alignItems: 'center',
     marginBottom: 12,
@@ -1984,7 +2812,7 @@ const styles = StyleSheet.create({
   highlightIcon: {
     width: 50,
     height: 50,
-    borderRadius: 25,
+    borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 10,
@@ -2003,7 +2831,9 @@ const styles = StyleSheet.create({
   servicesSection: {
     marginTop: 20,
     backgroundColor: COLORS.background,
-    borderRadius: 16,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
     padding: 16,
   },
   servicesSectionTitle: {
@@ -2025,7 +2855,9 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
     marginBottom: 16,
     marginHorizontal: 16,
-    borderRadius: 16,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
   },
   ratingBig: {
     alignItems: 'center',
@@ -2053,7 +2885,7 @@ const styles = StyleSheet.create({
   repCard: {
     borderWidth: 1,
     borderColor: COLORS.primary,
-    borderRadius: 12,
+    borderRadius: 6,
     padding: 14,
     backgroundColor: COLORS.surface,
   },
@@ -2101,7 +2933,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 10,
     backgroundColor: COLORS.primary,
-    borderRadius: 20,
+    borderRadius: 6,
   },
   retryButtonText: {
     color: COLORS.surface,
@@ -2138,5 +2970,261 @@ const styles = StyleSheet.create({
   skeletonText: {
     backgroundColor: COLORS.border,
     borderRadius: 4,
+  },
+
+  // Post input bar
+  postInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.borderLight,
+  },
+  postInputAvatar: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: COLORS.borderLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+    overflow: 'hidden',
+  },
+  postInputBtn: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+  },
+  postInputText: {
+    fontSize: 14,
+    color: COLORS.textMuted,
+  },
+
+  // Highlight post cards (Highlights tab) — now uses fbCard
+  highlightPostCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 0,
+    borderWidth: 0,
+    marginBottom: 0,
+    overflow: 'hidden',
+  },
+  highlightPostImg: {
+    width: '100%',
+    height: 220,
+    backgroundColor: COLORS.borderLight,
+  },
+  highlightPostBody: {
+    padding: 14,
+  },
+  highlightBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  highlightBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FFF3C4',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+  },
+  highlightBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#92400E',
+  },
+  highlightPostTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: 4,
+  },
+  highlightPostDesc: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    lineHeight: 18,
+  },
+
+  // Facebook-style feed card (Portfolio + Highlights tabs) - matches projectDetails card style
+  fbCard: {
+    backgroundColor: COLORS.surface,
+    marginHorizontal: 8,
+    marginTop: 6,
+    marginBottom: 0,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    overflow: 'hidden',
+  },
+  fbCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingTop: 14,
+    paddingBottom: 10,
+  },
+  fbCardAvatar: {
+    marginRight: 10,
+  },
+  fbCardAvatarImg: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+  },
+  fbCardAvatarPlaceholder: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: COLORS.primaryLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fbCardAvatarText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.primary,
+  },
+  fbCardMeta: {
+    flex: 1,
+  },
+  fbCardAuthor: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  fbCardDate: {
+    fontSize: 12,
+    color: COLORS.textMuted,
+    marginTop: 1,
+  },
+  fbCardMenuBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fbCardBody: {
+    paddingHorizontal: 14,
+    paddingBottom: 10,
+  },
+  fbCardTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: 4,
+  },
+  fbCardContent: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    lineHeight: 20,
+  },
+  // Collage wrapper (clips overflow for rounded card corners)
+  fbCollageWrap: {
+    overflow: 'hidden',
+    margin: 5,
+  },
+  fbCollageOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fbCollageOverlayText: {
+    color: '#fff',
+    fontSize: 22,
+    fontWeight: '700',
+  },
+  fbCardImage: {
+    width: '100%',
+    height: 260,
+    backgroundColor: COLORS.borderLight,
+  },
+  fbCardImageOverlay: {
+    position: 'absolute',
+    bottom: 10,
+    right: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  fbCardImageOverlayText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  fbCardChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingTop: 10,
+  },
+  fbChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: COLORS.background,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+  },
+  fbChipText: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: COLORS.textSecondary,
+  },
+  fbCardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: COLORS.borderLight,
+    marginTop: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 6,
+  },
+  cardMenuDropdown: {
+    position: 'absolute',
+    top: 34,
+    right: 0,
+    minWidth: 130,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    paddingVertical: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.14,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  cardMenuItem: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+  },
+  cardMenuItemText: {
+    fontSize: 13,
+    color: '#1F2937',
+    fontWeight: '500',
   },
 });

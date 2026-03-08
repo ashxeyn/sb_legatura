@@ -117,6 +117,7 @@ export interface OwnerAbout {
   first_name: string;
   middle_name: string | null;
   last_name: string;
+  bio: string | null;
   phone_number: string | null;
   address: string | null;
   date_of_birth: string | null;

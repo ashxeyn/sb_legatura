@@ -37,7 +37,7 @@ const BORDER  = '#E8EAED';
 const BG      = '#f0f2f5';
 const T1      = '#1a1a1a';
 const T2      = '#6b7280';
-const CARD_R  = 12;
+const CARD_R  = 6;
 const COLORS = {
   primary: BRAND, primaryLight: BRAND_L, surface: '#FFFFFF',
   text: T1, textSecondary: T2, textMuted: '#94A3B8',
@@ -155,57 +155,135 @@ export default function CheckOwnerProfile({ owner, onClose, onSendMessage }: Che
     { key: 'about',    label: 'About',    icon: 'info' },
   ];
 
+  /* ── Facebook-style image collage ── */
+  const renderFbCollage = (images: string[]) => {
+    if (!images || images.length === 0) return null;
+    const GAP = 5;
+    const W = SCREEN_WIDTH - 26; // card marginHorizontal 8×2=16 + collage margin 5×2=10
+    const half = Math.floor((W - GAP) / 2);
+    const twoThird = Math.floor(W * 0.66);
+    const oneThird = W - twoThird - GAP;
+    const singleH = Math.floor(W * 0.56);
+    const dualH = Math.floor(W * 0.42);
+    const triH = Math.floor(W * 0.52);
+    const gridCellH = Math.floor(W * 0.40);
+
+    const img = (uri: string, style: any, idx: number, extra?: number) => (
+      <View key={idx} style={[style, { overflow: 'hidden' }]}>
+        <ImageFallback uri={uri} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+        {extra != null && extra > 0 ? (
+          <View style={styles.fbCollageOverlay}>
+            <Text style={styles.fbCollageOverlayText}>+{extra}</Text>
+          </View>
+        ) : null}
+      </View>
+    );
+
+    if (images.length === 1) {
+      return img(images[0], { width: W, height: singleH }, 0);
+    }
+
+    if (images.length === 2) {
+      return (
+        <View style={{ flexDirection: 'row' }}>
+          {img(images[0], { width: half, height: dualH, marginRight: GAP }, 0)}
+          {img(images[1], { width: half, height: dualH }, 1)}
+        </View>
+      );
+    }
+
+    if (images.length === 3) {
+      const cellH = Math.floor((triH - GAP) / 2);
+      return (
+        <View style={{ flexDirection: 'row' }}>
+          {img(images[0], { width: twoThird, height: triH, marginRight: GAP }, 0)}
+          <View style={{ width: oneThird, height: triH }}>
+            {img(images[1], { width: oneThird, height: cellH, marginBottom: GAP }, 1)}
+            {img(images[2], { width: oneThird, height: cellH }, 2)}
+          </View>
+        </View>
+      );
+    }
+
+    if (images.length === 4) {
+      return (
+        <View>
+          <View style={{ flexDirection: 'row', marginBottom: GAP }}>
+            {img(images[0], { width: half, height: gridCellH, marginRight: GAP }, 0)}
+            {img(images[1], { width: half, height: gridCellH }, 1)}
+          </View>
+          <View style={{ flexDirection: 'row' }}>
+            {img(images[2], { width: half, height: gridCellH, marginRight: GAP }, 2)}
+            {img(images[3], { width: half, height: gridCellH }, 3)}
+          </View>
+        </View>
+      );
+    }
+
+    const extra = images.length - 4;
+    return (
+      <View>
+        <View style={{ flexDirection: 'row', marginBottom: GAP }}>
+          {img(images[0], { width: half, height: gridCellH, marginRight: GAP }, 0)}
+          {img(images[1], { width: half, height: gridCellH }, 1)}
+        </View>
+        <View style={{ flexDirection: 'row' }}>
+          {img(images[2], { width: half, height: gridCellH, marginRight: GAP }, 2)}
+          {img(images[3], { width: half, height: gridCellH }, 3, extra)}
+        </View>
+      </View>
+    );
+  };
+
   /* ═══════════════ Tabs ═══════════════ */
 
   const renderProjectsTab = () => {
     return (
       <View style={styles.tabContent}>
-        {/* Stats Strip */}
-        <View style={styles.statsStrip}>
-          {[
-            { label: 'Total', value: String(totalProjects) },
-            { label: 'Completed', value: String(completedProjects) },
-            { label: 'Ongoing', value: String(ongoingProjects) },
-            { label: 'Rating', value: avgRating ? avgRating.toFixed(1) : 'N/A' },
-          ].map((stat, i, arr) => (
-            <React.Fragment key={stat.label}>
-              <View style={styles.statStripItem}>
-                <Text style={styles.statStripValue}>{stat.value}</Text>
-                <Text style={styles.statStripLabel}>{stat.label}</Text>
-              </View>
-              {i < arr.length - 1 && <View style={styles.statStripDivider} />}
-            </React.Fragment>
-          ))}
-        </View>
-
         {/* Showcase posts (owners may also have posts) */}
         {(profile?.posts?.showcase_posts ?? []).length > 0 ? (
           (profile?.posts?.showcase_posts ?? []).map((post) => (
             <View key={`sp-${post.post_id}`} style={styles.postCard}>
-              {post.images && post.images.length > 0 ? (
-                <ImageFallback
-                  uri={resolveImageUrl(post.images[0]?.file_path)}
-                  style={styles.postCardImg}
-                  resizeMode="cover"
-                />
-              ) : (
-                <View style={styles.postCardImgPlaceholder}>
-                  <MaterialIcons name="image" size={28} color="#c8cbd0" />
-                </View>
-              )}
-              <View style={styles.postCardBody}>
-                <Text style={styles.postCardTitle} numberOfLines={1}>
-                  {post.title || 'Untitled Post'}
-                </Text>
-                <Text style={styles.postCardDesc} numberOfLines={3}>{post.content}</Text>
-                {post.location && (
-                  <View style={styles.metaChip}>
-                    <Ionicons name="location-outline" size={12} color={T2} />
-                    <Text style={styles.metaChipText}>{post.location}</Text>
+              {/* Header: owner avatar + name + date */}
+              <View style={styles.postCardHeader}>
+                <View style={styles.postOwnerInfo}>
+                  <ImageFallback
+                    uri={avatarUrl || undefined}
+                    defaultImage={defaultOwnerAvatar}
+                    style={styles.postOwnerAvatar}
+                    resizeMode="cover"
+                  />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.postOwnerName} numberOfLines={1}>{displayName}</Text>
+                    <Text style={styles.postOwnerDate}>
+                      Posted {new Date(post.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </Text>
                   </View>
-                )}
-                <Text style={styles.postCardDate}>{formatDate(post.created_at)}</Text>
+                </View>
               </View>
+
+              {/* Title */}
+              {post.title ? <Text style={styles.postTitleText}>{post.title}</Text> : null}
+
+              {/* Content */}
+              <Text style={styles.postContentText} numberOfLines={3}>{post.content}</Text>
+
+              {/* Images collage */}
+              {post.images && post.images.length > 0 ? (
+                <View style={styles.fbCollageWrap}>
+                  {renderFbCollage(post.images.map((i: any) => resolveImageUrl(i.file_path)).filter(Boolean))}
+                </View>
+              ) : null}
+
+              {/* Location or spacer */}
+              {post.location ? (
+                <View style={[styles.postDetailRow, { paddingHorizontal: 16, marginTop: 8, marginBottom: 14 }]}>
+                  <MaterialIcons name="location-on" size={16} color="#666666" />
+                  <Text style={styles.postDetailText}>{post.location}</Text>
+                </View>
+              ) : (
+                <View style={{ height: 14 }} />
+              )}
             </View>
           ))
         ) : !loading ? (
@@ -267,28 +345,31 @@ export default function CheckOwnerProfile({ owner, onClose, onSendMessage }: Che
         {reviews.length > 0 ? (
           reviews.map((rev) => (
             <View key={rev.review_id} style={styles.reviewCard}>
-              <View style={styles.reviewCardHeader}>
-                <View style={styles.reviewAvatar}>
-                  <Text style={styles.reviewAvatarText}>
-                    {(rev.reviewer_name || 'U').substring(0, 2).toUpperCase()}
-                  </Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.reviewerName}>{rev.reviewer_name || 'Anonymous'}</Text>
-                  <View style={styles.starsRow}>
-                    {[1,2,3,4,5].map((i) => (
-                      <MaterialIcons key={i} name={i <= rev.rating ? 'star' : 'star-border'} size={13} color={i <= rev.rating ? BRAND : '#d1d5db'} />
-                    ))}
+              {/* Header: avatar + name + stars on left / date on right */}
+              <View style={styles.postCardHeader}>
+                <View style={styles.postOwnerInfo}>
+                  <View style={styles.reviewAvatar}>
+                    <Text style={styles.reviewAvatarText}>
+                      {(rev.reviewer_name || 'U').substring(0, 2).toUpperCase()}
+                    </Text>
                   </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.postOwnerName}>{rev.reviewer_name || 'Anonymous'}</Text>
+                    <View style={[styles.starsRow, { marginTop: 2 }]}>
+                      {[1,2,3,4,5].map((i) => (
+                        <MaterialIcons key={i} name={i <= rev.rating ? 'star' : 'star-border'} size={13} color={i <= rev.rating ? BRAND : '#d1d5db'} />
+                      ))}
+                    </View>
+                  </View>
+                  <Text style={styles.reviewDate}>{formatDate(rev.created_at)}</Text>
                 </View>
-                <Text style={styles.reviewDate}>{formatDate(rev.created_at)}</Text>
               </View>
               {rev.project_title && (
                 <Text style={styles.reviewProjectTitle}>
                   <Feather name="briefcase" size={11} color={T2} /> {rev.project_title}
                 </Text>
               )}
-              <Text style={styles.reviewComment}>{rev.comment}</Text>
+              <Text style={styles.postContentText}>{rev.comment}</Text>
             </View>
           ))
         ) : (
@@ -304,6 +385,32 @@ export default function CheckOwnerProfile({ owner, onClose, onSendMessage }: Che
 
   const renderAboutTab = () => (
     <View style={styles.tabContent}>
+      {/* Stats Strip */}
+      <View style={styles.statsStrip}>
+        {[
+          { label: 'Total', value: String(totalProjects) },
+          { label: 'Completed', value: String(completedProjects) },
+          { label: 'Ongoing', value: String(ongoingProjects) },
+          { label: 'Rating', value: avgRating ? avgRating.toFixed(1) : 'N/A' },
+        ].map((stat, i, arr) => (
+          <React.Fragment key={stat.label}>
+            <View style={styles.statStripItem}>
+              <Text style={styles.statStripValue}>{stat.value}</Text>
+              <Text style={styles.statStripLabel}>{stat.label}</Text>
+            </View>
+            {i < arr.length - 1 && <View style={styles.statStripDivider} />}
+          </React.Fragment>
+        ))}
+      </View>
+
+      {/* Bio */}
+      <View style={styles.aboutSection}>
+        <Text style={styles.aboutSectionTitle}>Bio</Text>
+        <Text style={styles.aboutText}>
+          {ownerAbout?.bio || 'No bio added yet.'}
+        </Text>
+      </View>
+
       {/* Personal Info */}
       <View style={styles.aboutSection}>
         <Text style={styles.aboutSectionTitle}>Personal Info</Text>
@@ -354,35 +461,19 @@ export default function CheckOwnerProfile({ owner, onClose, onSendMessage }: Che
           <Text style={styles.detailLabel}>Member Since</Text>
           <Text style={styles.detailValue}>{formatDate(header?.member_since)}</Text>
         </View>
-      </View>
-
-      {/* Contact */}
-      <View style={styles.aboutSection}>
-        <Text style={styles.aboutSectionTitle}>Contact</Text>
-        <View style={styles.contactItem}>
-          <Feather name="map-pin" size={18} color={BRAND} />
-          <Text style={styles.contactText}>
-            {ownerAbout?.address || owner.address || 'Location not specified'}
+        <View style={styles.detailRow}>
+          <Text style={styles.detailLabel}>Address</Text>
+          <Text style={styles.detailValue}>
+            {ownerAbout?.address || owner.address || 'Not specified'}
           </Text>
         </View>
-        {ownerAbout?.phone_number && (
-          <View style={styles.contactItem}>
-            <Feather name="phone" size={18} color={BRAND} />
-            <Text style={styles.contactText}>{ownerAbout.phone_number}</Text>
-          </View>
-        )}
-        {profile?.about?.email && (
-          <View style={styles.contactItem}>
-            <Feather name="mail" size={18} color={BRAND} />
-            <Text style={styles.contactText}>{profile.about.email}</Text>
-          </View>
-        )}
-
-        <TouchableOpacity style={styles.ctaBtn} onPress={onSendMessage} activeOpacity={0.8}>
-          <Feather name="message-circle" size={18} color="#fff" />
-          <Text style={styles.ctaBtnText}>Send a Message</Text>
-        </TouchableOpacity>
       </View>
+
+      {/* Send Message */}
+      <TouchableOpacity style={styles.ctaBtn} onPress={onSendMessage} activeOpacity={0.8}>
+        <Feather name="message-circle" size={18} color="#fff" />
+        <Text style={styles.ctaBtnText}>Send a Message</Text>
+      </TouchableOpacity>
     </View>
   );
 
@@ -406,14 +497,6 @@ export default function CheckOwnerProfile({ owner, onClose, onSendMessage }: Che
         <TouchableOpacity onPress={onClose} style={styles.headerBtn} activeOpacity={0.7}>
           <Feather name="arrow-left" size={20} color={T1} />
         </TouchableOpacity>
-        <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.headerBtn} activeOpacity={0.7}>
-            <Feather name="share-2" size={18} color={T1} />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.headerBtn} activeOpacity={0.7}>
-            <Feather name="more-horizontal" size={20} color={T1} />
-          </TouchableOpacity>
-        </View>
       </View>
 
       <ScrollView
@@ -481,14 +564,16 @@ export default function CheckOwnerProfile({ owner, onClose, onSendMessage }: Che
             )}
           </View>
 
+          {/* Bio preview */}
+          <Text style={styles.descriptionPreview} numberOfLines={3}>
+            {ownerAbout?.bio || 'No bio added yet.'}
+          </Text>
+
           {/* CTA */}
           <View style={styles.actionRow}>
             <TouchableOpacity style={styles.messageBtn} activeOpacity={0.8} onPress={onSendMessage}>
               <Feather name="message-circle" size={16} color="#fff" />
               <Text style={styles.messageBtnText}>Send Message</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.shareBtn} activeOpacity={0.7}>
-              <Feather name="share-2" size={18} color={BRAND} />
             </TouchableOpacity>
           </View>
         </View>
@@ -542,7 +627,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12, paddingVertical: 8, backgroundColor: COLORS.surface,
   },
   headerBtn: {
-    width: 38, height: 38, borderRadius: 19, backgroundColor: '#f3f4f6',
+    width: 38, height: 38, borderRadius: 8, backgroundColor: '#f3f4f6',
     justifyContent: 'center', alignItems: 'center',
   },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
@@ -576,7 +661,7 @@ const styles = StyleSheet.create({
   roleBadge: {
     flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start',
     backgroundColor: BRAND_L, paddingHorizontal: 10, paddingVertical: 4,
-    borderRadius: 6, gap: 5, marginBottom: 8,
+    borderRadius: 4, gap: 5, marginBottom: 8,
   },
   roleBadgeText: { fontSize: 12, fontWeight: '600', color: BRAND },
   infoChipsRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 8 },
@@ -588,7 +673,7 @@ const styles = StyleSheet.create({
   actionRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 },
   messageBtn: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    paddingVertical: 12, borderRadius: CARD_R, backgroundColor: BRAND, gap: 8,
+    paddingVertical: 12, borderRadius: 8, backgroundColor: BRAND, gap: 8,
     shadowColor: BRAND, shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25, shadowRadius: 4, elevation: 3,
   },
@@ -611,12 +696,12 @@ const styles = StyleSheet.create({
   tabTextActive: { color: BRAND, fontWeight: '700' },
 
   /* Tab content */
-  tabContent: { padding: 16, backgroundColor: BG },
+  tabContent: { paddingTop: 6, paddingBottom: 20, backgroundColor: BG },
 
   /* Stats strip */
   statsStrip: {
     flexDirection: 'row', backgroundColor: '#fff', borderRadius: CARD_R,
-    borderWidth: 1, borderColor: BORDER, marginBottom: 16, overflow: 'hidden',
+    borderWidth: 1, borderColor: BORDER, marginHorizontal: 8, marginBottom: 16, overflow: 'hidden',
   },
   statStripItem: { flex: 1, alignItems: 'center', paddingVertical: 14 },
   statStripValue: { fontSize: 18, fontWeight: '800', color: BRAND },
@@ -625,10 +710,83 @@ const styles = StyleSheet.create({
 
   /* Post cards */
   postCard: {
-    backgroundColor: '#fff', borderRadius: CARD_R, borderWidth: 1,
-    borderColor: BORDER, marginBottom: 12, overflow: 'hidden',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06, shadowRadius: 3, elevation: 1,
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 8,
+    marginTop: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    overflow: 'hidden',
+  },
+  postCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+    paddingHorizontal: 16,
+    paddingTop: 14,
+  },
+  postOwnerInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  postOwnerAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 10,
+  },
+  postOwnerName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333333',
+  },
+  postOwnerDate: {
+    fontSize: 12,
+    color: '#999999',
+  },
+  postTitleText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333333',
+    marginBottom: 8,
+    paddingHorizontal: 16,
+  },
+  postContentText: {
+    fontSize: 14,
+    color: '#666666',
+    lineHeight: 20,
+    marginBottom: 12,
+    paddingHorizontal: 16,
+  },
+  postDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  postDetailText: {
+    fontSize: 13,
+    color: '#666666',
+  },
+  fbCollageWrap: {
+    overflow: 'hidden',
+    margin: 5,
+  },
+  fbCollageOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fbCollageOverlayText: {
+    color: '#fff',
+    fontSize: 22,
+    fontWeight: '700',
   },
   postCardImg: { width: '100%', height: 220, backgroundColor: '#f3f4f6' },
   postCardImgPlaceholder: {
@@ -650,7 +808,7 @@ const styles = StyleSheet.create({
   reviewsSummary: {
     flexDirection: 'row', alignItems: 'center', gap: 16, padding: 16,
     backgroundColor: '#fff', borderRadius: CARD_R, borderWidth: 1,
-    borderColor: BORDER, marginBottom: 8,
+    borderColor: BORDER, marginHorizontal: 8, marginBottom: 8,
   },
   reviewsSummaryLeft: {
     alignItems: 'center', paddingRight: 16, borderRightWidth: 1, borderRightColor: BORDER,
@@ -660,7 +818,7 @@ const styles = StyleSheet.create({
   reviewsSummaryRight: { flex: 1, gap: 4 },
   starsRow: { flexDirection: 'row', gap: 2 },
   reviewsCountText: { fontSize: 13, color: T2, marginTop: 4 },
-  divider: { height: 1, backgroundColor: BORDER, marginVertical: 10 },
+  divider: { height: 1, backgroundColor: BORDER, marginHorizontal: 8, marginVertical: 10 },
   distributionContainer: { marginTop: 8 },
   distRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4, gap: 6 },
   distLabel: { fontSize: 12, color: T2, width: 12, textAlign: 'right' },
@@ -668,10 +826,13 @@ const styles = StyleSheet.create({
   distBarFill: { height: '100%', backgroundColor: BRAND, borderRadius: 3 },
   distCount: { fontSize: 11, color: '#9ca3af', width: 24, textAlign: 'right' },
   reviewCard: {
-    backgroundColor: '#fff', borderRadius: CARD_R, borderWidth: 1,
-    borderColor: BORDER, padding: 12, marginBottom: 8,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05, shadowRadius: 3, elevation: 1,
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 8,
+    marginTop: 6,
+    borderRadius: CARD_R,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    overflow: 'hidden',
   },
   reviewCardHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
   reviewAvatar: {
@@ -681,18 +842,25 @@ const styles = StyleSheet.create({
   reviewAvatarText: { fontSize: 12, fontWeight: '700', color: BRAND },
   reviewerName: { fontSize: 13, fontWeight: '600', color: T1, marginBottom: 3 },
   reviewDate: { fontSize: 11, color: '#9ca3af' },
-  reviewProjectTitle: { fontSize: 11, color: BRAND, marginBottom: 4 },
+  reviewProjectTitle: {
+    fontSize: 11,
+    color: BRAND,
+    marginBottom: 4,
+    paddingHorizontal: 16,
+  },
   reviewComment: { fontSize: 13, color: T2, lineHeight: 18 },
 
   /* About */
   aboutSection: {
-    marginBottom: 12, backgroundColor: '#fff', borderRadius: CARD_R,
+    marginHorizontal: 8, marginBottom: 12, backgroundColor: '#fff', borderRadius: CARD_R,
     borderWidth: 1, borderColor: BORDER, padding: 16,
   },
   aboutSectionTitle: {
     fontSize: 13, fontWeight: '700', color: T2,
     textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10,
   },
+  aboutText: { fontSize: 14, color: T1, lineHeight: 21 },
+  descriptionPreview: { fontSize: 14, color: T2, lineHeight: 20, marginBottom: 12 },
   detailRow: {
     flexDirection: 'row', alignItems: 'center', paddingVertical: 9,
     borderBottomWidth: 1, borderBottomColor: '#f3f4f6', gap: 8,
@@ -712,14 +880,14 @@ const styles = StyleSheet.create({
   ctaBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     backgroundColor: BRAND, paddingVertical: 11, paddingHorizontal: 20,
-    borderRadius: CARD_R, marginTop: 14, gap: 8,
+    borderRadius: CARD_R, marginHorizontal: 8, marginTop: 14, gap: 8,
   },
   ctaBtnText: { fontSize: 14, fontWeight: '600', color: '#fff' },
 
   /* Empty */
   emptyState: {
     alignItems: 'center', paddingVertical: 48, backgroundColor: '#fff',
-    borderRadius: CARD_R, borderWidth: 1, borderColor: BORDER, marginBottom: 12,
+    borderRadius: CARD_R, borderWidth: 1, borderColor: BORDER, marginHorizontal: 8, marginBottom: 12,
   },
   emptyTitle: { fontSize: 15, fontWeight: '600', color: T2, marginTop: 16, marginBottom: 8 },
   emptySubtext: { fontSize: 13, color: '#9ca3af', textAlign: 'center', paddingHorizontal: 40 },

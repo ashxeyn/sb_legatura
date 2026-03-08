@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Schema;
 use App\Http\Requests\admin\rejectVerificationRequest;
 use App\Http\Requests\admin\propertyOwnerRequest;
 use App\Http\Requests\admin\contractorRequest;
+use App\Services\NotificationService;
 use App\Http\Requests\admin\contractorTeamMemberRequest;
 use App\Http\Requests\admin\updateContractorTeamMemberRequest;
 use App\Http\Requests\admin\changeContractorRepresentativeRequest;
@@ -1067,6 +1068,50 @@ class userManagementController extends authController
             \Log::warning('approveVerification: failed to reconcile users.user_type', ['user_id' => $id, 'error' => $e->getMessage()]);
         }
 
+        // Send notification + email to user
+        try {
+            $user = DB::table('users')->where('user_id', $id)->first();
+            $roleLabel = $targetRole === 'contractor' ? 'contractor' : 'property owner';
+
+            // Determine first name from the relevant profile table
+            $firstName = '';
+            if ($targetRole === 'contractor') {
+                $profile = DB::table('contractors')->where('user_id', $id)->first();
+                $firstName = $profile->first_name ?? ($profile->company_name ?? '');
+            } else {
+                $profile = DB::table('property_owners')->where('user_id', $id)->first();
+                $firstName = $profile->first_name ?? '';
+            }
+
+            // In-app notification
+            NotificationService::create(
+                (int) $id,
+                'project_update',
+                'Account Verified',
+                "Your {$roleLabel} account has been verified and approved. You can now access all platform features.",
+                'high',
+                null,
+                null,
+                ['screen' => 'Home', 'params' => []]
+            );
+
+            // Email notification
+            if (!empty($user->email)) {
+                $emailMessage = "Dear {$firstName},\n\n";
+                $emailMessage .= "Great news! Your {$roleLabel} account on Legatura has been verified and approved.\n\n";
+                $emailMessage .= "You can now log in and start using all platform features.\n\n";
+                $emailMessage .= "Thank you for choosing Legatura!\n\n";
+                $emailMessage .= "Best regards,\nThe Legatura Team";
+
+                Mail::raw($emailMessage, function ($mailMsg) use ($user) {
+                    $mailMsg->to($user->email)
+                            ->subject('Legatura - Account Approved');
+                });
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('approveVerification: failed to send notification/email', ['user_id' => $id, 'error' => $e->getMessage()]);
+        }
+
         return response()->json($result);
     }
 
@@ -1091,6 +1136,51 @@ class userManagementController extends authController
 
         if (!$result['success']) {
             return response()->json($result, 404);
+        }
+
+        // Send notification + email to user
+        try {
+            $user = DB::table('users')->where('user_id', $id)->first();
+            $roleLabel = $targetRole === 'contractor' ? 'contractor' : 'property owner';
+
+            $firstName = '';
+            if ($targetRole === 'contractor') {
+                $profile = DB::table('contractors')->where('user_id', $id)->first();
+                $firstName = $profile->first_name ?? ($profile->company_name ?? '');
+            } else {
+                $profile = DB::table('property_owners')->where('user_id', $id)->first();
+                $firstName = $profile->first_name ?? '';
+            }
+
+            $reason = $validated['reason'];
+
+            // In-app notification
+            NotificationService::create(
+                (int) $id,
+                'project_update',
+                'Account Verification Rejected',
+                "Your {$roleLabel} account verification has been rejected. Reason: {$reason}",
+                'high',
+                null,
+                null,
+                ['screen' => 'Home', 'params' => []]
+            );
+
+            // Email notification
+            if (!empty($user->email)) {
+                $emailMessage = "Dear {$firstName},\n\n";
+                $emailMessage .= "We regret to inform you that your {$roleLabel} account verification on Legatura has been rejected.\n\n";
+                $emailMessage .= "Reason: {$reason}\n\n";
+                $emailMessage .= "You may update your documents and resubmit for verification. If you have questions, please contact our support team.\n\n";
+                $emailMessage .= "Best regards,\nThe Legatura Team";
+
+                Mail::raw($emailMessage, function ($mailMsg) use ($user) {
+                    $mailMsg->to($user->email)
+                            ->subject('Legatura - Account Verification Rejected');
+                });
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('rejectVerification: failed to send notification/email', ['user_id' => $id, 'error' => $e->getMessage()]);
         }
 
         return response()->json($result);
