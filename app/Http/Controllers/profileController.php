@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Log;
 use App\Services\psgcApiService;
+use App\Services\UserActivityLogger;
 
 class profileController extends Controller
 {
@@ -38,6 +39,11 @@ class profileController extends Controller
         if (!$userId) {
             return response()->json(['success' => false, 'message' => 'Invalid user context'], 400);
         }
+
+        // After successful profile update, call:
+        // UserActivityLogger::profileUpdated($userId, 'profile');
+        // For email change: UserActivityLogger::profileUpdated($userId, 'email');
+        // For profile photo: UserActivityLogger::profileUpdated($userId, 'profile_photo');
 
         \Log::info('profileController.update called', [
             'user_id' => $userId,
@@ -223,6 +229,9 @@ class profileController extends Controller
             DB::commit();
 
             \Log::info('profileController.update committed', ['user_id' => $userId]);
+
+            // Log profile update activity
+            UserActivityLogger::profileUpdated($userId, 'profile');
 
             // Return refreshed user row and contractor row if any
             $updatedUser = DB::table('users')->where('user_id', $userId)->first();

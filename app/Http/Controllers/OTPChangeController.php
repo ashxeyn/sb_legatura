@@ -281,6 +281,10 @@ class OTPChangeController extends Controller
             Log::warning('Failed to refresh session user after OTP verify: ' . $e->getMessage());
         }
 
+        // Log email verified activity if purpose is email verification
+        if (($purpose === 'verify_email' || $purpose === 'email_verification') && isset($user->user_id)) {
+            \App\Services\UserActivityLogger::emailVerified($user->user_id);
+        }
         return response()->json(['success' => true, 'message' => 'Updated successfully'], 200);
     }
 }

@@ -21,6 +21,41 @@ use App\Http\Controllers\Admin\ProjectAdminController;
 use App\Http\Controllers\Admin\projectManagementController;
 use App\Http\Controllers\message\broadcastAuthController;
 use App\Http\Controllers\passwordController;
+use App\Http\Controllers\AdminController;
+
+Route::prefix('admin/notifications')
+    ->middleware([\App\Http\Middleware\AdminAuthMiddleware::class])
+    ->group(function () {
+
+        // Page (already exists — keep your existing view route)
+        // Route::get('/', [AdminController::class, 'notificationSettings']);
+
+        // Users list for targeted send dropdown
+        Route::get('/users', [\App\Http\Controllers\AdminController::class, 'getUsersForNotification']);
+
+        // Send actions
+        Route::post('/send-announcement', [\App\Http\Controllers\AdminController::class, 'sendAnnouncement'])
+            ->name('admin.sendAnnouncement');
+        Route::post('/send-targeted', [\App\Http\Controllers\AdminController::class, 'sendTargetedNotification'])
+            ->name('admin.sendTargetedNotification');
+
+        // Preferences
+        Route::get('/preferences',  [\App\Http\Controllers\AdminController::class, 'getPreferences']);
+        Route::post('/preferences', [\App\Http\Controllers\AdminController::class, 'savePreferences'])
+            ->name('admin.notifications.savePreferences');
+
+        // Sent log
+        Route::get('/sent-log', [\App\Http\Controllers\AdminController::class, 'getSentLog']);
+
+        // ── NEW: User Activity Feed ──────────────────────────────────────────
+        // Paginated list of user activity events (user_activity_logs table)
+        Route::get('/activity', [\App\Http\Controllers\AdminController::class, 'getUserActivityLogs']);
+
+        // Mark one, many, or all activity rows as read
+        Route::post('/activity/mark-read', [\App\Http\Controllers\AdminController::class, 'markActivityRead'])
+            ->name('admin.notifications.markActivityRead');
+    });
+
 
 Route::get('/admin/analytics/subscription', [analyticsController::class, 'subscriptionAnalytics'])->name('admin.analytics.subscription');
 Route::get('/admin/analytics/subscription/revenue', [analyticsController::class, 'subscriptionRevenue'])->name('admin.analytics.subscription.revenue');
@@ -124,7 +159,7 @@ Route::get('/intro', function () {
 // Owner web login screen
 Route::get('/login', function () {
     return view('accounts.login');
-});
+})->name('login');
 
 // Owner account type selection screen
 Route::get('/account-type', function () {
@@ -651,6 +686,13 @@ Route::prefix('/api/admin')->group(function () {
     Route::apiResource('bids', App\Http\Controllers\Admin\bidController::class);
     Route::apiResource('milestones', App\Http\Controllers\Admin\milestoneController::class);
     Route::apiResource('payments', App\Http\Controllers\Admin\paymentController::class);
+});
+
+// Admin Notification Actions
+
+Route::middleware(['web', 'auth', 'admin'])->group(function () {
+    Route::post('/admin/notifications/announcement', [AdminController::class, 'sendAnnouncement'])->name('admin.sendAnnouncement');
+    Route::post('/admin/notifications/targeted', [AdminController::class, 'sendTargetedNotification'])->name('admin.sendTargetedNotification');
 });
 
 

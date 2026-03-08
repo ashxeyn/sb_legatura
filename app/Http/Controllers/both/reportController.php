@@ -31,6 +31,7 @@ class reportController extends Controller
 
         // Multiple reports from the same reporter are allowed by product requirement.
 
+
         $reportId = DB::table('post_reports')->insertGetId([
             'reporter_user_id' => $userId,
             'post_type'        => $validated['post_type'],
@@ -41,6 +42,11 @@ class reportController extends Controller
             'created_at'       => now(),
             'updated_at'       => now(),
         ], 'report_id');
+
+        // Log project reported activity
+        if ($validated['post_type'] === 'project') {
+            \\App\Services\UserActivityLogger::projectReported($userId, $reportId, $validated['post_id']);
+        }
 
         return response()->json([
             'success' => true,

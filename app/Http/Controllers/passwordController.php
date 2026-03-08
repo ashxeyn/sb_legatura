@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Services\authService;
+use App\Services\UserActivityLogger;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
@@ -76,6 +77,8 @@ class passwordController extends Controller
         Cache::put('password_reset_otp_' . $email, $hashedOtp, now()->addMinutes(15));
 
         // Send OTP email
+        // After sending reset OTP:
+        // UserActivityLogger::passwordReset($user->user_id, 'requested');
         try {
             Mail::raw(
                 "Your password reset code is: {$otp}\n\nThis code will expire in 15 minutes. If you did not request a password reset, please ignore this email.",
@@ -96,6 +99,10 @@ class passwordController extends Controller
         }
 
         Log::info("Password reset OTP sent to {$email}");
+            // Log password reset requested event
+            if ($user && isset($user->user_id)) {
+                UserActivityLogger::passwordReset($user->user_id, 'requested');
+            }
 
         return response()->json([
             'success' => true,
@@ -196,10 +203,18 @@ class passwordController extends Controller
             ], 500);
         }
 
+        // After successful password reset:
+        // UserActivityLogger::passwordReset($user->user_id, 'completed');
+
         // Cleanup
         Cache::forget('password_reset_token_' . $email);
 
         Log::info("Password reset successful for {$email}");
+            // Log password reset completed event
+            $user = DB::table('users')->where('email', $email)->first();
+            if ($user && isset($user->user_id)) {
+                UserActivityLogger::passwordReset($user->user_id, 'completed');
+            }
 
         return response()->json([
             'success' => true,
