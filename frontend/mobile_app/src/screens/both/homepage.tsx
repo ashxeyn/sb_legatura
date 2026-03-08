@@ -21,7 +21,7 @@ import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import Feather from 'react-native-vector-icons/Feather';
 import { Image } from 'expo-image';
-import ImageFallback from '../../components/imageFallback';
+import ImageFallback from '../../components/ImageFallback';
 import { projects_service, ContractorType as ContractorTypeOption } from '../../services/projects_service';
 import { api_config } from '../../config/api';
 import { contractors_service } from '../../services/contractors_service';
@@ -107,9 +107,12 @@ interface UserData {
   user_id?: number;
   username?: string;
   email?: string;
+  first_name?: string;
+  middle_name?: string;
+  last_name?: string;
   profile_pic?: string;
   cover_photo?: string;
-  user_type?: 'property_owner' | 'contractor' | 'both';
+  user_type?: 'property_owner' | 'contractor' | 'both' | 'staff';
   // Contractor-specific fields
   company_name?: string;
   contractor_type?: string;
@@ -1905,6 +1908,9 @@ const renderProfileContent = () => {
           username: userData?.username,
           email: userData?.email,
           user_type: userData?.user_type,
+          first_name: userData?.first_name,
+          middle_name: userData?.middle_name,
+          last_name: userData?.last_name,
           profile_pic,
           cover_photo,
           company_name: userData?.company_name,

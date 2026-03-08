@@ -16,7 +16,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import ImageFallback from '../../components/imageFallback';
+import ImageFallback from '../../components/ImageFallback';
 import MilestoneSetup from './milestoneSetup';
 import ProjectView from '../both/projectView';
 import ContractorProjectDetails from './projectDetails';

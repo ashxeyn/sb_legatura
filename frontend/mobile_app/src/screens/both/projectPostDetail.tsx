@@ -18,7 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { WebView } from 'react-native-webview';
-import ImageFallback from '../../components/imageFallback';
+import ImageFallback from '../../components/ImageFallback';
 import ReportPostModal from '../../components/reportPostModal';
 import { api_config, api_request } from '../../config/api';
 import { storage_service } from '../../utils/storage';

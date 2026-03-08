@@ -16,7 +16,7 @@ import {
   FlatList,
 } from 'react-native';
 import { MaterialIcons, Ionicons, FontAwesome5, Feather } from '@expo/vector-icons';
-import ImageFallback from '../../components/imageFallback';
+import ImageFallback from '../../components/ImageFallback';
 import ProjectPostDetail from './projectPostDetail';
 import CreateShowcase from './createShowcase';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -556,6 +556,14 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
   const userId = useMemo(() => userState?.user_id, [userState?.user_id]);
 
   const displayName = useMemo(() => {
+    // Staff: always show their own name, not the contractor's company name
+    if (userState?.user_type === 'staff') {
+      const fn = userState?.first_name || '';
+      const mn = userState?.middle_name || '';
+      const ln = userState?.last_name || '';
+      const full = `${fn}${mn ? ' ' + mn : ''}${ln ? ' ' + ln : ''}`.trim();
+      return full || userState?.username || 'Staff';
+    }
     if (activeRoleState === 'contractor' && contractorInfo && contractorInfo.company_name) {
       return contractorInfo.company_name;
     }
@@ -748,11 +756,18 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
           const contractorBanner = data.contractor && (data.contractor.company_banner || data.contractor.cover_photo);
 
           const roleFromResponse = (data.role || '').toString().toLowerCase();
+          const isStaff = (data.user?.user_type || '').toString().toLowerCase() === 'staff';
 
           let candidateProfile;
           let candidateCover;
 
-          if (roleFromResponse === 'owner') {
+          if (isStaff) {
+            // Staff: use their own personal profile/cover photo from the users table
+            candidateProfile =
+              (data.user && (data.user.profile_pic || data.user.profilePic)) || undefined;
+            candidateCover =
+              (data.user && (data.user.cover_photo || data.user.coverPhoto)) || undefined;
+          } else if (roleFromResponse === 'owner') {
             // Strict: prefer user/owner images when preferred role is owner
             candidateProfile =
               (data.user && (data.user.profile_pic || data.user.profilePic)) ||
@@ -1156,6 +1171,7 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
             style={styles.coverImg}
             resizeMode="cover"
           />
+          {userState?.user_type !== 'staff' && (
           <TouchableOpacity
             style={styles.editCoverBtn}
             onPress={() => pickImage('cover')}
@@ -1163,6 +1179,7 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
           >
             <Feather name="camera" size={18} color={COLORS.surface} />
           </TouchableOpacity>
+          )}
         </View>
 
         <View style={styles.profileInfoContainer}>
@@ -1173,6 +1190,7 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
               style={styles.avatarImg}
               resizeMode="cover"
             />
+            {userState?.user_type !== 'staff' && (
             <TouchableOpacity
               style={styles.editAvatarBtn}
               onPress={() => pickImage('profile')}
@@ -1180,6 +1198,7 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
             >
               <Feather name="edit-2" size={14} color={COLORS.surface} />
             </TouchableOpacity>
+            )}
           </View>
 
           <Text style={styles.profileName}>{displayName}</Text>
@@ -1245,7 +1264,7 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
   );
 
   const renderPostsTab = () => {
-    const postInputBar = activeRoleState === 'contractor' ? (
+    const postInputBar = activeRoleState === 'contractor' && userState?.user_type !== 'staff' ? (
       <TouchableOpacity
         style={styles.postInputRow}
         activeOpacity={0.7}
@@ -1714,6 +1733,7 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
                   <Feather name="eye" size={14} color={COLORS.textSecondary} />
                   <Text style={styles.footerActionText}>View post</Text>
                 </TouchableOpacity>
+                {userState?.user_type !== 'staff' && (
                 <TouchableOpacity
                   style={[styles.footerActionBtn, { marginLeft: 8 }]}
                   onPress={() => handleToggleHighlight(post.post_id, true)}
@@ -1727,6 +1747,7 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
                       </>
                   }
                 </TouchableOpacity>
+                )}
               </View>
             </View>
           );
@@ -1839,7 +1860,7 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
     }
 
     // Contractors: show own showcase posts only
-    const postInputBar = (
+    const postInputBar = userState?.user_type !== 'staff' ? (
       <TouchableOpacity
         style={styles.postInputRow}
         activeOpacity={0.7}
@@ -1859,7 +1880,7 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
           <Text style={styles.postInputText}>Share your work...</Text>
         </View>
       </TouchableOpacity>
-    );
+    ) : null;
 
     if (showcasePosts.length === 0) {
       return (
@@ -1909,6 +1930,7 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
                   <Text style={styles.fbCardAuthor}>{authorName}</Text>
                   {postDate ? <Text style={styles.fbCardDate}>{postDate}</Text> : null}
                 </View>
+                {userState?.user_type !== 'staff' && (
                 <View style={styles.cardMenuWrap}>
                   <TouchableOpacity
                     onPress={(e) => {
@@ -1940,6 +1962,7 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
                     </View>
                   )}
                 </View>
+                )}
               </View>
 
               {/* ── Text body ── */}

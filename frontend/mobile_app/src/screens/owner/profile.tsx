@@ -17,7 +17,7 @@ import { useNavigation } from '@react-navigation/native';
 import { role_service } from '../../services/role_service';
 import { api_config, api_request } from '../../config/api';
 import { storage_service } from '../../utils/storage';
-import ImageFallback from '../../components/imageFallback';
+import ImageFallback from '../../components/ImageFallback';
 
 const defaultCoverPhoto = require('../../../assets/images/pictures/cp_default.jpg');
 const defaultOwnerAvatar = require('../../../assets/images/pictures/property_owner_default.png');

@@ -1926,6 +1926,11 @@ class authController extends Controller
             $profilePicPath = $request->file('profile_pic')->store('profiles', 'public');
         }
 
+        $coverPhotoPath = null;
+        if ($request->hasFile('cover_photo')) {
+            $coverPhotoPath = $request->file('cover_photo')->store('cover_photos', 'public');
+        }
+
         // Handle file uploads from mobile clients (stateless flow)
         // Mobile clients send all images in the final step since they don't have persistent sessions
         if ($request->hasFile('valid_id_photo')) {
@@ -2014,6 +2019,7 @@ class authController extends Controller
 
             $userId = $this->accountClass->createUser([
                 'profile_pic' => $profilePicPath,
+                'cover_photo' => $coverPhotoPath,
                 'username' => $step2['username'] ?? null,
                 'email' => $step2['email'] ?? null,
                 'password_hash' => isset($step2['password']) ? $this->authService->hashPassword($step2['password']) : null,
@@ -3487,6 +3493,19 @@ class authController extends Controller
 
                     // Always set determinedRole for contractor/staff users
                     $responseData['determinedRole'] = 'contractor';
+
+                    // For staff users, attach their real name from contractor_users to the user object
+                    if ($userData->user_type === 'staff') {
+                        $staffLink = \DB::table('contractor_users')
+                            ->where('user_id', $userId)
+                            ->first(['authorized_rep_fname', 'authorized_rep_mname', 'authorized_rep_lname']);
+                        if ($staffLink) {
+                            $userData->first_name  = $staffLink->authorized_rep_fname;
+                            $userData->middle_name = $staffLink->authorized_rep_mname;
+                            $userData->last_name   = $staffLink->authorized_rep_lname;
+                            $responseData['user']  = $userData;
+                        }
+                    }
 
                     if ($memberContext) {
                         $responseData['contractor_member'] = $memberContext;

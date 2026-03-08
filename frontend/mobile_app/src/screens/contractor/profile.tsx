@@ -14,7 +14,7 @@ import { View as SafeAreaView, StatusBar, Platform, AppState } from 'react-nativ
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import ImageFallback from '../../components/imageFallback';
+import ImageFallback from '../../components/ImageFallback';
 import { contractors_service } from '../../services/contractors_service';
 import { api_config } from '../../config/api';
 import { role_service } from '../../services/role_service';
@@ -37,6 +37,9 @@ interface ContractorProfileScreenProps {
     profile_pic?: string;
     cover_photo?: string;
     user_type?: string;
+    first_name?: string;
+    middle_name?: string;
+    last_name?: string;
     company_name?: string;
     contractor_type?: string;
     years_of_experience?: number;
@@ -175,12 +178,12 @@ export default function ContractorProfileScreen({ onLogout, onViewProfile, onOpe
             Alert.alert('Coming Soon', 'This feature is under development.');
           }
         },
-        {
-          id: 'switch_role',
+        {id: 'switch_role',
           icon: 'swap-horizontal-outline',
           label: 'Switch Role',
           subtitle: 'Manage your role settings',
           showArrow: true,
+          hidden: userData?.user_type === 'staff',
           onPress: onOpenSwitchRole || (() => Alert.alert('Coming Soon', 'This feature is under development.'))
         }
       ],
@@ -208,6 +211,7 @@ export default function ContractorProfileScreen({ onLogout, onViewProfile, onOpe
           icon: 'card-outline',
           label: 'Subscription',
           subtitle: 'Manage your subscription plan',
+          hidden: userData?.user_type === 'staff',
           showArrow: true,
           onPress: () => {
             if (typeof onOpenSubscription === 'function') { onOpenSubscription(); return; }
@@ -230,7 +234,9 @@ export default function ContractorProfileScreen({ onLogout, onViewProfile, onOpe
     }
   ];
 
-  const renderMenuItem = (item: MenuItem) => (
+  const renderMenuItem = (item: MenuItem) => {
+    if (item.hidden) return null;
+    return (
     <TouchableOpacity key={item.id} style={[styles.menuItem, item.danger && styles.menuItemDanger]} onPress={item.onPress} activeOpacity={0.7}>
       <View style={[styles.menuIconContainer, item.danger && styles.menuIconDanger]}>
         <Ionicons name={item.icon as any} size={22} color={item.danger ? '#E74C3C' : '#1877F2'} />
@@ -241,7 +247,8 @@ export default function ContractorProfileScreen({ onLogout, onViewProfile, onOpe
       </View>
       {item.showArrow && <MaterialIcons name="chevron-right" size={24} color="#CCCCCC" />}
     </TouchableOpacity>
-  );
+    );
+  };
 
   return (
     <SafeAreaView style={[styles.container, { paddingTop: statusBarHeight }]}>
@@ -266,7 +273,11 @@ export default function ContractorProfileScreen({ onLogout, onViewProfile, onOpe
               <ImageFallback uri={getStorageUrl(companyLogo || userData?.profile_pic || undefined)} defaultImage={defaultContractorAvatar} style={styles.avatar} resizeMode="cover" />
              </View>
 
-            <Text style={styles.companyName}>{companyName || userData?.company_name || 'Company Name'}</Text>
+            <Text style={styles.companyName}>
+              {userData?.user_type === 'staff'
+                ? `${userData?.first_name || ''} ${userData?.last_name || ''}`.trim() || userData?.username || 'Staff'
+                : companyName || userData?.company_name || 'Company Name'}
+            </Text>
             <Text style={styles.userName}>@{userData?.username || 'contractor'}</Text>
             <Text style={styles.userEmail}>{userData?.email || 'contractor@example.com'}</Text>
 
@@ -279,19 +290,23 @@ export default function ContractorProfileScreen({ onLogout, onViewProfile, onOpe
           </View>
         </View>
 
-        {menuSections.map((section) => (
+        {menuSections.map((section) => {
+          const visibleItems = section.items.filter(item => !item.hidden);
+          if (visibleItems.length === 0) return null;
+          return (
           <View key={section.title} style={styles.menuSection}>
             <Text style={styles.sectionTitle}>{section.title}</Text>
             <View style={styles.menuCard}>
-              {section.items.map((item, index) => (
+              {visibleItems.map((item, index) => (
                 <View key={item.id}>
                   {renderMenuItem(item)}
-                  {index < section.items.length - 1 && <View style={styles.menuDivider} />}
+                  {index < visibleItems.length - 1 && <View style={styles.menuDivider} />}
                 </View>
               ))}
             </View>
           </View>
-        ))}
+          );
+        })}
 
         <View style={styles.logoutSection}>
           <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} disabled={isLoggingOut} activeOpacity={0.8}>

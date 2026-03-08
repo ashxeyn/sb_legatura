@@ -98,6 +98,8 @@ export default function SubscriptionScreen({ onBack }: Props) {
 
     const selectedPlanData = plans.find(p => p.plan_key === selectedPlan);
     const isAlreadySubscribed = subscription && subscription.plan_key === selectedPlan;
+    const currentTierRank = subscription ? getTierRank(subscription.plan_key) : 0;
+    const availablePlans = plans.filter(plan => getTierRank(plan.plan_key) > currentTierRank);
 
     useEffect(() => {
         fetchSubscriptionData();
@@ -364,10 +366,6 @@ export default function SubscriptionScreen({ onBack }: Props) {
     const renderPlansTab = () => {
         const expandedPlanData = expandedPlan ? plans.find(p => p.plan_key === expandedPlan) : null;
 
-        // Filter plans to show only upgrade options based on current subscription
-        const currentTierRank = subscription ? getTierRank(subscription.plan_key) : 0;
-        const availablePlans = plans.filter(plan => getTierRank(plan.plan_key) > currentTierRank);
-
         return (
         <View style={styles.tabContent}>
             <View style={styles.plansHeader}>
@@ -549,7 +547,7 @@ export default function SubscriptionScreen({ onBack }: Props) {
                 </Animated.View>
             </View>
 
-            {activeTab === 'plans' && (
+            {activeTab === 'plans' && availablePlans.length > 0 && (
                 <View style={styles.footerWrapper}>
                     <TouchableOpacity
                         style={[
