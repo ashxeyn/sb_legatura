@@ -47,9 +47,20 @@ class notificationClass
             'project_completed',
             'project_halted',
             'project_terminated',
+            'subscription_expiring',
+            'subscription_expired',
+            // Reminder sub-types
+            'bid_deadline',
+            'milestone_item_due',
+            'milestone_item_overdue',
+            'payment_due',
+            'payment_overdue',
         ],
         'owner' => [
             'bid_received',
+            'milestone_submitted',
+            'milestone_resubmitted',
+            'milestone_updated',
             'progress_submitted',
             'progress_approved',
             'progress_rejected',
@@ -74,6 +85,11 @@ class notificationClass
             'dispute_under_review',
             'dispute_resolved',
             'dispute_rejected',
+            'boost_expiring',
+            'boost_expired',
+            // Reminder sub-types
+            'milestone_item_due',
+            'milestone_item_overdue',
         ],
     ];
     /**

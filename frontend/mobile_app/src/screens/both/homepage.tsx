@@ -21,7 +21,7 @@ import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import Feather from 'react-native-vector-icons/Feather';
 import { Image } from 'expo-image';
-import ImageFallback from '../../components/imageFallback';
+import ImageFallback from '../../components/ImageFallback';
 import { projects_service, ContractorType as ContractorTypeOption } from '../../services/projects_service';
 import { api_config } from '../../config/api';
 import { contractors_service } from '../../services/contractors_service';
@@ -88,6 +88,13 @@ import ShowcasePostDetail from './showcasePostDetail';
 import Notifications from './notifications';
 import { notifications_service } from '../../services/notifications_service';
 
+// Import profile sub-screens
+import ChangeOtpScreen from './changeOtpScreen';
+import HelpCenterScreen from './helpCenter';
+import EditProfileScreen from './editProfile';
+import ViewProfileScreen from './viewProfile';
+import SubscriptionScreen from '../contractor/subscriptionScreen';
+
 // Default cover photo
 const defaultCoverPhoto = require('../../../assets/images/pictures/cp_default.jpg');
 const defaultContractorAvatar = require('../../../assets/images/pictures/contractor_default.png');
@@ -100,9 +107,12 @@ interface UserData {
   user_id?: number;
   username?: string;
   email?: string;
+  first_name?: string;
+  middle_name?: string;
+  last_name?: string;
   profile_pic?: string;
   cover_photo?: string;
-  user_type?: 'property_owner' | 'contractor' | 'both';
+  user_type?: 'property_owner' | 'contractor' | 'both' | 'staff';
   // Contractor-specific fields
   company_name?: string;
   contractor_type?: string;
@@ -155,6 +165,8 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
   const [profileImageError, setProfileImageError] = useState(false);
   const [isFullScreenMode, setIsFullScreenMode] = useState(false);
   const [currentRole, setCurrentRole] = useState<'contractor' | 'owner' | null>(null);
+  const [profileSubScreen, setProfileSubScreen] = useState<null | 'change_otp' | 'help' | 'edit_profile' | 'subscription' | 'view_profile'>(null);
+  const [viewProfileRefreshKey, setViewProfileRefreshKey] = useState(0);
 
   // Pagination state
   const [contractorsPage, setContractorsPage] = useState(1);
@@ -861,7 +873,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
         <ImageFallback
           uri={coverPhotoUri || undefined}
           defaultImage={defaultCoverPhoto}
-          style={[styles.contractorCover, { width }]}
+          style={styles.contractorCover}
           resizeMode="cover"
         />
 
@@ -1017,19 +1029,18 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
     if (optionalFiles.length === 0) return null;
 
     // Collage sizing
-    const H_PADDING = 16;
-    const GAP = 2;
-    const usableWidth = width - H_PADDING * 2;
+    const GAP = 5;
+    const usableWidth = width - 26; // card marginHorizontal 8×2=16 + collage margin 5×2=10
     const halfSize = Math.floor((usableWidth - GAP) / 2);
     const singleHeight = Math.floor(usableWidth * 0.56);
 
     // 1 image → full-width
     if (optionalFiles.length === 1) {
       return (
-        <View style={[styles.imageCollageContainer, { paddingHorizontal: H_PADDING }]}>
+        <View style={styles.imageCollageContainer}>
           <Image
             source={{ uri: optionalFiles[0].url }}
-            style={{ width: usableWidth, height: singleHeight, borderRadius: 8 }}
+            style={{ width: usableWidth, height: singleHeight }}
             contentFit="cover"
             transition={200}
             cachePolicy="memory-disk"
@@ -1038,21 +1049,16 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
       );
     }
 
-    // 2 images → side-by-side
+    // 2 images → side by side
     if (optionalFiles.length === 2) {
       return (
-        <View style={[styles.imageCollageContainer, { paddingHorizontal: H_PADDING }]}>
+        <View style={styles.imageCollageContainer}>
           <View style={{ flexDirection: 'row' }}>
             {optionalFiles.map((f, i) => (
               <Image
                 key={i}
                 source={{ uri: f.url }}
-                style={{
-                  width: halfSize,
-                  height: halfSize,
-                  borderRadius: 8,
-                  marginLeft: i === 1 ? GAP : 0,
-                }}
+                style={{ width: halfSize, height: Math.floor(usableWidth * 0.42), marginLeft: i === 1 ? GAP : 0 }}
                 contentFit="cover"
                 transition={200}
                 cachePolicy="memory-disk"
@@ -1067,22 +1073,24 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
     if (optionalFiles.length === 3) {
       const largeW = Math.floor(usableWidth * 0.66);
       const smallW = usableWidth - largeW - GAP;
+      const triH = Math.floor(usableWidth * 0.52);
+      const cellH = Math.floor((triH - GAP) / 2);
       return (
-        <View style={[styles.imageCollageContainer, { paddingHorizontal: H_PADDING }]}>
+        <View style={styles.imageCollageContainer}>
           <View style={{ flexDirection: 'row' }}>
             <Image
               source={{ uri: optionalFiles[0].url }}
-              style={{ width: largeW, height: halfSize * 2 + GAP, borderRadius: 8, marginRight: GAP }}
+              style={{ width: largeW, height: triH, marginRight: GAP }}
               contentFit="cover"
               transition={200}
               cachePolicy="memory-disk"
             />
-            <View>
+            <View style={{ width: smallW, height: triH }}>
               {optionalFiles.slice(1).map((f, i) => (
                 <Image
                   key={i}
                   source={{ uri: f.url }}
-                  style={{ width: smallW, height: halfSize, borderRadius: 8, marginTop: i === 1 ? GAP : 0 }}
+                  style={{ width: smallW, height: cellH, marginTop: i === 1 ? GAP : 0 }}
                   contentFit="cover"
                   transition={200}
                   cachePolicy="memory-disk"
@@ -1097,32 +1105,23 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
     // 4+ images → 2×2 grid, +N overlay on 4th tile
     const grid = optionalFiles.slice(0, 4);
     const extra = optionalFiles.length - 4;
+    const gridCellH = Math.floor(usableWidth * 0.40);
     return (
-      <View style={[styles.imageCollageContainer, { paddingHorizontal: H_PADDING }]}>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', width: usableWidth }}>
-          {grid.map((f, i) => (
-            <View key={i} style={{
-              width: halfSize,
-              height: halfSize,
-              marginLeft: i % 2 === 1 ? GAP : 0,
-              marginTop: i >= 2 ? GAP : 0,
-              borderRadius: 8,
-              overflow: 'hidden',
-            }}>
-              <Image
-                source={{ uri: f.url }}
-                style={{ width: halfSize, height: halfSize }}
-                contentFit="cover"
-                transition={200}
-                cachePolicy="memory-disk"
-              />
-              {i === 3 && extra > 0 && (
-                <View style={styles.imageOverlay}>
-                  <Text style={styles.imageOverlayText}>+{extra}</Text>
-                </View>
-              )}
-            </View>
-          ))}
+      <View style={styles.imageCollageContainer}>
+        <View style={{ flexDirection: 'row', marginBottom: GAP }}>
+          <Image source={{ uri: grid[0].url }} style={{ width: halfSize, height: gridCellH, marginRight: GAP }} contentFit="cover" transition={200} cachePolicy="memory-disk" />
+          <Image source={{ uri: grid[1].url }} style={{ width: halfSize, height: gridCellH }} contentFit="cover" transition={200} cachePolicy="memory-disk" />
+        </View>
+        <View style={{ flexDirection: 'row' }}>
+          <Image source={{ uri: grid[2].url }} style={{ width: halfSize, height: gridCellH, marginRight: GAP }} contentFit="cover" transition={200} cachePolicy="memory-disk" />
+          <View style={{ width: halfSize, height: gridCellH }}>
+            {grid[3] && <Image source={{ uri: grid[3].url }} style={{ width: halfSize, height: gridCellH }} contentFit="cover" transition={200} cachePolicy="memory-disk" />}
+            {extra > 0 && (
+              <View style={styles.imageOverlay}>
+                <Text style={styles.imageOverlayText}>+{extra}</Text>
+              </View>
+            )}
+          </View>
         </View>
       </View>
     );
@@ -1417,18 +1416,17 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
   const renderShowcaseImages = (images: Array<{ url: string }>) => {
     if (images.length === 0) return null;
 
-    const H_PADDING = 2;
-    const GAP = 2;
-    const usableWidth = width - H_PADDING * 2;
+    const GAP = 5;
+    const usableWidth = width - 26; // card marginHorizontal 8×2=16 + collage margin 5×2=10
     const halfSize = Math.floor((usableWidth - GAP) / 2);
     const singleHeight = Math.floor(usableWidth * 0.56);
 
     if (images.length === 1) {
       return (
-        <View style={[styles.imageCollageContainer, { paddingHorizontal: H_PADDING }]}>
+        <View style={styles.imageCollageContainer}>
           <Image
             source={{ uri: images[0].url }}
-            style={{ width: usableWidth, height: singleHeight, borderRadius: 2 }}
+            style={{ width: usableWidth, height: singleHeight }}
             contentFit="cover"
             transition={200}
             cachePolicy="memory-disk"
@@ -1439,13 +1437,13 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
 
     if (images.length === 2) {
       return (
-        <View style={[styles.imageCollageContainer, { paddingHorizontal: H_PADDING }]}>
+        <View style={styles.imageCollageContainer}>
           <View style={{ flexDirection: 'row' }}>
             {images.map((img, i) => (
               <Image
                 key={i}
                 source={{ uri: img.url }}
-                style={{ width: halfSize, height: halfSize, borderRadius: 2, marginLeft: i === 1 ? GAP : 0 }}
+                style={{ width: halfSize, height: Math.floor(usableWidth * 0.42), marginLeft: i === 1 ? GAP : 0 }}
                 contentFit="cover"
                 transition={200}
                 cachePolicy="memory-disk"
@@ -1456,35 +1454,45 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
       );
     }
 
-    // 3+ images: 2x2 grid with +N overlay
+    // 3 images: large left + 2 stacked right
+    if (images.length === 3) {
+      const largeW = Math.floor(usableWidth * 0.66);
+      const smallW = usableWidth - largeW - GAP;
+      const triH = Math.floor(usableWidth * 0.52);
+      const cellH = Math.floor((triH - GAP) / 2);
+      return (
+        <View style={styles.imageCollageContainer}>
+          <View style={{ flexDirection: 'row' }}>
+            <Image source={{ uri: images[0].url }} style={{ width: largeW, height: triH, marginRight: GAP }} contentFit="cover" transition={200} cachePolicy="memory-disk" />
+            <View style={{ width: smallW, height: triH }}>
+              <Image source={{ uri: images[1].url }} style={{ width: smallW, height: cellH }} contentFit="cover" transition={200} cachePolicy="memory-disk" />
+              <Image source={{ uri: images[2].url }} style={{ width: smallW, height: cellH, marginTop: GAP }} contentFit="cover" transition={200} cachePolicy="memory-disk" />
+            </View>
+          </View>
+        </View>
+      );
+    }
+
+    // 4+ images: 2×2 grid with +N overlay
     const grid = images.slice(0, 4);
     const extra = images.length - 4;
+    const gridCellH = Math.floor(usableWidth * 0.40);
     return (
-      <View style={[styles.imageCollageContainer, { paddingHorizontal: H_PADDING }]}>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', width: usableWidth }}>
-          {grid.map((img, i) => (
-            <View key={i} style={{
-              width: halfSize,
-              height: halfSize,
-              marginLeft: i % 2 === 1 ? GAP : 0,
-              marginTop: i >= 2 ? GAP : 0,
-              borderRadius: 2,
-              overflow: 'hidden',
-            }}>
-              <Image
-                source={{ uri: img.url }}
-                style={{ width: halfSize, height: halfSize }}
-                contentFit="cover"
-                transition={200}
-                cachePolicy="memory-disk"
-              />
-              {i === 3 && extra > 0 && (
-                <View style={styles.imageOverlay}>
-                  <Text style={styles.imageOverlayText}>+{extra}</Text>
-                </View>
-              )}
-            </View>
-          ))}
+      <View style={styles.imageCollageContainer}>
+        <View style={{ flexDirection: 'row', marginBottom: GAP }}>
+          <Image source={{ uri: grid[0].url }} style={{ width: halfSize, height: gridCellH, marginRight: GAP }} contentFit="cover" transition={200} cachePolicy="memory-disk" />
+          <Image source={{ uri: grid[1].url }} style={{ width: halfSize, height: gridCellH }} contentFit="cover" transition={200} cachePolicy="memory-disk" />
+        </View>
+        <View style={{ flexDirection: 'row' }}>
+          <Image source={{ uri: grid[2].url }} style={{ width: halfSize, height: gridCellH, marginRight: GAP }} contentFit="cover" transition={200} cachePolicy="memory-disk" />
+          <View style={{ width: halfSize, height: gridCellH }}>
+            {grid[3] && <Image source={{ uri: grid[3].url }} style={{ width: halfSize, height: gridCellH }} contentFit="cover" transition={200} cachePolicy="memory-disk" />}
+            {extra > 0 && (
+              <View style={styles.imageOverlay}>
+                <Text style={styles.imageOverlayText}>+{extra}</Text>
+              </View>
+            )}
+          </View>
         </View>
       </View>
     );
@@ -1521,12 +1529,12 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
     }
   }, [highlightingPostId]);
 
-  const submitPostReport = useCallback(async (reason: string, details?: string) => {
+  const submitPostReport = useCallback(async (reason: string, details?: string, attachments?: import('../../../services/post_service').ReportAttachment[]) => {
     if (!reportTarget) {
       return { success: false, message: 'No report target selected.' };
     }
 
-    const res = await post_service.report_post(reportTarget.postType, reportTarget.postId, reason, details);
+    const res = await post_service.report_post(reportTarget.postType, reportTarget.postId, reason, details, attachments);
     return {
       success: !!res.success,
       message: res.message || (res.success ? 'Report submitted.' : 'Unable to submit report right now.'),
@@ -1691,11 +1699,13 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
         {postImages.length > 0 && renderShowcaseImages(postImages)}
 
         {/* Location (below images) */}
-        {post.location && (
-          <View style={[styles.detailRow, { marginTop: 8 }]}>
+        {post.location ? (
+          <View style={[styles.detailRow, { paddingHorizontal: 16, marginTop: 8, marginBottom: 14 }]}>
             <MaterialIcons name="location-on" size={16} color="#666666" />
             <Text style={styles.detailText}>{post.location}</Text>
           </View>
+        ) : (
+          <View style={{ height: 14 }} />
         )}
       </TouchableOpacity>
     );
@@ -1888,15 +1898,19 @@ const renderProfileContent = () => {
     return (
       <ContractorProfile
         onLogout={handleLogout}
-        onViewProfile={onViewProfile}
-        onOpenHelp={onOpenHelp}
+        onViewProfile={() => setProfileSubScreen('view_profile')}
+        onOpenHelp={() => setProfileSubScreen('help')}
         onOpenSwitchRole={onOpenSwitchRole}
-        onOpenSubscription={() => set_app_state('subscription')}
-        onEditProfile={onEditProfile}
+        onOpenSubscription={() => setProfileSubScreen('subscription')}
+        onOpenChangeOtp={() => setProfileSubScreen('change_otp')}
+        onEditProfile={() => setProfileSubScreen('edit_profile')}
         userData={{
           username: userData?.username,
           email: userData?.email,
           user_type: userData?.user_type,
+          first_name: userData?.first_name,
+          middle_name: userData?.middle_name,
+          last_name: userData?.last_name,
           profile_pic,
           cover_photo,
           company_name: userData?.company_name,
@@ -1913,18 +1927,18 @@ const renderProfileContent = () => {
     return (
       <PropertyOwnerProfile
         onLogout={handleLogout}
-        onViewProfile={onViewProfile}
-        onEditProfile={onEditProfile}
-        onOpenHelp={onOpenHelp}
+        onViewProfile={() => setProfileSubScreen('view_profile')}
+        onEditProfile={() => setProfileSubScreen('edit_profile')}
+        onOpenHelp={() => setProfileSubScreen('help')}
         onOpenSwitchRole={onOpenSwitchRole}
         onOpenBoosts={() => setShowBoosts(true)}
+        onOpenChangeOtp={() => setProfileSubScreen('change_otp')}
         userData={{
           username: userData?.username,
           email: userData?.email,
           user_type: userData?.user_type,
           profile_pic: userData?.profile_pic ? getStorageUrl(userData.profile_pic) : undefined,
           cover_photo: userData?.cover_photo ? getStorageUrl(userData.cover_photo) : undefined,
-          user_type: userData?.user_type,
         }}
       />
     );
@@ -1999,6 +2013,58 @@ const renderProfileContent = () => {
 
   // Render content based on active tab
   const renderContent = () => {
+    // Profile sub-screens render inside the tab (keeps bottom bar visible)
+    if (activeTab === 'profile' && profileSubScreen === 'change_otp') {
+      return (
+        <ChangeOtpScreen
+          token={userData?.token || userData?.api_token || ''}
+          purpose={'change_password'}
+          onBack={() => setProfileSubScreen(null)}
+          onSuccess={() => setProfileSubScreen(null)}
+        />
+      );
+    }
+    if (activeTab === 'profile' && profileSubScreen === 'help') {
+      return (
+        <HelpCenterScreen
+          onBack={() => setProfileSubScreen(null)}
+        />
+      );
+    }
+    if (activeTab === 'profile' && profileSubScreen === 'edit_profile') {
+      return (
+        <EditProfileScreen
+          userData={userData}
+          navigation={{ goBack: () => setProfileSubScreen(null) }}
+          onBackPress={() => setProfileSubScreen(null)}
+          onSaveSuccess={(updatedUser) => {
+            if (typeof onEditProfile === 'function') onEditProfile();
+            setViewProfileRefreshKey(k => k + 1);
+            setProfileSubScreen(null);
+          }}
+        />
+      );
+    }
+    if (activeTab === 'profile' && profileSubScreen === 'subscription') {
+      return (
+        <SubscriptionScreen
+          onBack={() => setProfileSubScreen(null)}
+        />
+      );
+    }
+    if (activeTab === 'profile' && profileSubScreen === 'view_profile') {
+      return (
+        <ViewProfileScreen
+          key={viewProfileRefreshKey}
+          onBack={() => setProfileSubScreen(null)}
+          userData={{
+            ...userData,
+            profile_pic: userData?.profile_pic ? getStorageUrl(userData.profile_pic) : undefined,
+            cover_photo: userData?.cover_photo ? getStorageUrl(userData.cover_photo) : undefined,
+          }}
+        />
+      );
+    }
     switch (activeTab) {
       case 'home':
         return renderHomeContent();
@@ -2100,8 +2166,12 @@ const renderProfileContent = () => {
         owner={selectedOwner}
         onClose={() => setSelectedOwner(null)}
         onSendMessage={() => {
+          const { user_id, name, profile_pic } = selectedOwner;
           setSelectedOwner(null);
           setActiveTab('messages');
+          setTimeout(() => {
+            DeviceEventEmitter.emit('openConversationWithUser', { user_id, name, avatar: profile_pic });
+          }, 200);
         }}
       />
     );
@@ -2129,8 +2199,12 @@ const renderProfileContent = () => {
         }}
         onClose={() => setSelectedContractor(null)}
         onSendMessage={() => {
+          const { user_id, company_name, logo_url } = selectedContractor;
           setSelectedContractor(null);
           setActiveTab('messages');
+          setTimeout(() => {
+            DeviceEventEmitter.emit('openConversationWithUser', { user_id, name: company_name, avatar: logo_url });
+          }, 200);
         }}
       />
     );
@@ -2241,9 +2315,9 @@ const renderProfileContent = () => {
             style={styles.navItem}
             onPress={() => setActiveTab('home')}
           >
-            <MaterialIcons
-              name="home"
-              size={26}
+            <Ionicons
+              name={activeTab === 'home' ? 'home' : 'home-outline'}
+              size={24}
               color={activeTab === 'home' ? '#EC7E00' : '#8E8E93'}
             />
             <Text style={[styles.navText, activeTab === 'home' && styles.navTextActive]}>
@@ -2546,23 +2620,21 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
   },
-  // Contractor Card styles (matching project card style)
+  // Contractor Card styles
   contractorCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 0,
-    padding: 16,
-    marginHorizontal: 0,
-    marginBottom: 0,
-    borderBottomWidth: 8,
-    borderBottomColor: '#F0F0F0',
+    marginHorizontal: 8,
+    marginTop: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    overflow: 'hidden',
     position: 'relative',
-    overflow: 'visible',
   },
   contractorCover: {
+    width: '100%',
     height: 110,
     backgroundColor: '#E5E5E5',
-    marginBottom: 12,
-    alignSelf: 'center',
   },
   contractorHeaderNew: {
     flexDirection: 'row',
@@ -2642,7 +2714,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   contractorInfoBlock: {
-    paddingHorizontal: 0,
+    paddingHorizontal: 16,
     marginTop: -8,
     marginBottom: 8,
   },
@@ -2666,7 +2738,7 @@ const styles = StyleSheet.create({
   badgeOverlap: {
     position: 'absolute',
     right: 12,
-    top: 140,
+    top: 122,
     zIndex: 20,
     elevation: 20,
   },
@@ -2681,11 +2753,15 @@ const styles = StyleSheet.create({
   },
   contractorDetailsContainer: {
     gap: 8,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
   },
   contractorCardFooter: {
     flexDirection: 'row',
-    marginTop: 16,
+    marginTop: 4,
     paddingTop: 12,
+    paddingHorizontal: 16,
+    paddingBottom: 14,
     borderTopWidth: 1,
     borderTopColor: '#F0F0F0',
   },
@@ -2895,21 +2971,23 @@ const styles = StyleSheet.create({
     color: '#999999',
     marginLeft: 10,
   },
-  // Project card styles (Dashboard style - full width)
+  // Project card styles
   projectCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 0,
-    padding: 16,
-    marginHorizontal: 0,
-    marginBottom: 0,
-    borderBottomWidth: 8,
-    borderBottomColor: '#F0F0F0',
+    marginHorizontal: 8,
+    marginTop: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    overflow: 'hidden',
   },
   projectHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     marginBottom: 12,
+    paddingHorizontal: 16,
+    paddingTop: 14,
   },
   ownerInfo: {
     flexDirection: 'row',
@@ -3018,6 +3096,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#333333',
     marginBottom: 8,
+    paddingHorizontal: 16,
   },
   projectTypeBadge: {
     flexDirection: 'row',
@@ -3029,6 +3108,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     gap: 6,
     marginBottom: 12,
+    marginLeft: 16,
   },
   projectTypeText: {
     fontSize: 12,
@@ -3040,9 +3120,12 @@ const styles = StyleSheet.create({
     color: '#666666',
     lineHeight: 20,
     marginBottom: 12,
+    paddingHorizontal: 16,
   },
   projectDetailsContainer: {
     gap: 8,
+    paddingHorizontal: 16,
+    paddingBottom: 12,
   },
   detailRow: {
     flexDirection: 'row',
@@ -3055,8 +3138,10 @@ const styles = StyleSheet.create({
   },
   projectCardFooter: {
     flexDirection: 'row',
-    marginTop: 16,
+    marginTop: 4,
     paddingTop: 12,
+    paddingHorizontal: 16,
+    paddingBottom: 14,
     borderTopWidth: 1,
     borderTopColor: '#F0F0F0',
     gap: 12,
@@ -3079,9 +3164,7 @@ const styles = StyleSheet.create({
   },
   // Project images collage styles
   imageCollageContainer: {
-    marginTop: 12,
-    marginBottom: 0,
-    borderRadius: 2,
+    margin: 5,
     overflow: 'hidden',
   },
   imageSingle: {

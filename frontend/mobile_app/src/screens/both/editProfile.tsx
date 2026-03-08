@@ -947,10 +947,20 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
         let updatedUser = { ...userData };
 
         if (returnedUser) {
-          updatedUser = { ...updatedUser, ...returnedUser };
+          // If the API returned { user: {...}, contractor: {...} }, flatten the user fields
+          // so profile_pic/cover_photo are stored at the top level (not nested under .user)
+          const userFlat = (returnedUser.user && typeof returnedUser.user === 'object')
+            ? returnedUser.user
+            : returnedUser;
+          updatedUser = { ...updatedUser, ...userFlat };
         }
 
         await storage_service.save_user_data(updatedUser);
+
+        // Notify parent (App.tsx) so its user_data stays fresh
+        if (typeof onSaveSuccess === 'function') {
+          try { onSaveSuccess(updatedUser); } catch (e) {}
+        }
 
         Alert.alert(
           'Profile Updated',

@@ -17,6 +17,10 @@ import { useNavigation } from '@react-navigation/native';
 import { role_service } from '../../services/role_service';
 import { api_config, api_request } from '../../config/api';
 import { storage_service } from '../../utils/storage';
+import ImageFallback from '../../components/ImageFallback';
+
+const defaultCoverPhoto = require('../../../assets/images/pictures/cp_default.jpg');
+const defaultOwnerAvatar = require('../../../assets/images/pictures/property_owner_default.png');
 
 interface ProfileScreenProps {
   onLogout: () => void;
@@ -47,7 +51,7 @@ interface MenuItem {
   danger?: boolean;
 }
 
-export default function ProfileScreen({ onLogout, onViewProfile, onEditProfile, onOpenHelp, onOpenSwitchRole, onOpenBoosts, userData }: ProfileScreenProps) {
+export default function ProfileScreen({ onLogout, onViewProfile, onEditProfile, onOpenHelp, onOpenSwitchRole, onOpenBoosts, onOpenChangeOtp, userData }: ProfileScreenProps) {
   const insets = useSafeAreaInsets();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [roleLabel, setRoleLabel] = useState<string>('Property Owner');
@@ -60,101 +64,37 @@ export default function ProfileScreen({ onLogout, onViewProfile, onEditProfile, 
     return name ? name.substring(0, 2).toUpperCase() : 'PO';
   };
 
-  // Resolve storage paths returned from the backend (e.g. "profiles/..." )
-  const getStorageUrl = (path: string | null | undefined) => {
-    if (!path) return null;
-    try {
-      const raw = String(path).trim();
-      // If an absolute URL is provided, attempt to extract the storage-relative path
-      if (raw.startsWith('http')) {
-        try {
-          const parsed = new URL(raw);
-          const storageIndex = parsed.pathname.indexOf('/storage/');
-          if (storageIndex !== -1) {
-            let p = parsed.pathname.substring(storageIndex + '/storage/'.length);
-            // remove leading slashes
-            p = p.replace(/^\/+/, '');
-            // normalize nested profiles/cover_photos -> cover_photos
-            if (p.startsWith('profiles/cover_photos/')) p = p.replace(/^profiles\/cover_photos\//, 'cover_photos/');
-            if (p.startsWith('storage/')) p = p.replace(/^storage\//, '');
-            const base = (api_config && api_config.base_url) || (global && (global.api_base || global.api_base_url)) || 'http://localhost:8000';
-            const url = `${String(base).replace(/\/+$/,'')}/storage/${p}`;
-            try { console.log('[getStorageUrl] normalized absolute url ->', url); } catch (e) {}
-            return url;
-          }
-          // If it doesn't include /storage/, return the absolute URL as-is
-          return raw;
-        } catch (e) {
-          // parsing failed, fallthrough to treat as relative path
-        }
-      }
-    } catch (e) {
-      return null;
-    }
-    // Normalize path to avoid double '/storage/storage/...' or leading slashes
-    let p = raw.replace(/^\/+/, '');
-    if (p.startsWith('storage/')) p = p.replace(/^storage\//, '');
-    // Some DB values include nested 'profiles/cover_photos' which maps to 'cover_photos' on disk
-    p = p.replace(/^profiles\/cover_photos\//, 'cover_photos/');
-    const base = (api_config && api_config.base_url) || (global && (global.api_base || global.api_base_url)) || 'http://localhost:8000';
-    const url = `${String(base).replace(/\/+$/,'')}/storage/${p}`;
-    try { console.log('[getStorageUrl] resolved', url); } catch (e) {}
-    return url;
+  // Resolve storage paths returned from the backend (e.g. "profiles/...")
+  const getStorageUrl = (path: string | null | undefined): string | undefined => {
+    if (!path) return undefined;
+    if (path.startsWith('http')) return path;
+    return `${api_config.base_url}/storage/${path}`;
   };
 
-  const [ownerCoverUrl, setOwnerCoverUrl] = useState<string | null>(null);
-  const [ownerProfileUrl, setOwnerProfileUrl] = useState<string | null>(null);
+  // Local image state — seeded from prop, then refreshed from API (mirrors contractor pattern)
+  const [ownerProfilePicPath, setOwnerProfilePicPath] = useState<string | null>(userData?.profile_pic || null);
+  const [ownerCoverPhotoPath, setOwnerCoverPhotoPath] = useState<string | null>(userData?.cover_photo || null);
 
   useEffect(() => {
-    let mounted = true;
-    const resolveOwnerImages = async () => {
+    let isMounted = true;
+    const loadProfile = async () => {
       try {
-        // If we already have a cover/profile from props, prefer that
-        if (ownerCoverPhotoPath) {
-          setOwnerCoverUrl(getStorageUrl(ownerCoverPhotoPath));
-        }
-        if (ownerProfilePicPath) {
-          setOwnerProfileUrl(getStorageUrl(ownerProfilePicPath));
-        }
-
-        // If cover missing, try fetching latest profile from API using stored user id
-        if (!ownerCoverPhotoPath) {
-          const stored = await storage_service.get_user_data();
-          const userId = stored?.user_id || stored?.id || null;
-          if (userId) {
-            const resp = await api_request(`/api/profile/fetch?user_id=${encodeURIComponent(userId)}`);
-            if (resp?.success && resp.data) {
-              const payload = resp.data.data || resp.data;
-              const u = payload.user || payload;
-              const cover = u?.cover_photo || null;
-              if (cover && mounted) setOwnerCoverUrl(getStorageUrl(cover));
-              const pic = u?.profile_pic || null;
-              if (pic && mounted) setOwnerProfileUrl(getStorageUrl(pic));
-            }
+        const res = await api_request('/api/profile/fetch', { method: 'GET' });
+        if (res?.success && res.data) {
+          const payload = res.data?.data ?? res.data;
+          const user = payload?.user ?? payload;
+          const pic = user?.profile_pic ?? null;
+          const cover = user?.cover_photo ?? null;
+          if (isMounted) {
+            if (pic) setOwnerProfilePicPath(pic);
+            if (cover) setOwnerCoverPhotoPath(cover);
           }
         }
-      } catch (e) {
-        console.warn('Could not resolve owner images:', e);
-      }
+      } catch (e) {}
     };
-    resolveOwnerImages();
-    return () => { mounted = false; };
-  }, [ownerCoverPhotoPath, ownerProfilePicPath]);
-
-  // Debug: log resolved URLs and source paths when they change
-  useEffect(() => {
-    try {
-      console.log('[owner/profile] ownerCoverUrl:', ownerCoverUrl, 'ownerProfileUrl:', ownerProfileUrl);
-      console.log('[owner/profile] ownerCoverPhotoPath:', ownerCoverPhotoPath, 'ownerProfilePicPath:', ownerProfilePicPath);
-    } catch (e) {
-      // no-op
-    }
-  }, [ownerCoverUrl, ownerProfileUrl, ownerCoverPhotoPath, ownerProfilePicPath]);
-
-  // Prefer images from the users table for owner screen.
-  // Use the `users` fields directly so owner cover/profile show correctly.
-  const ownerProfilePicPath = userData?.profile_pic || null;
-  const ownerCoverPhotoPath = userData?.cover_photo || null;
+    loadProfile();
+    return () => { isMounted = false; };
+  }, []);
 
   let navigation: any = null;
   try {
@@ -368,35 +308,20 @@ export default function ProfileScreen({ onLogout, onViewProfile, onEditProfile, 
         <View style={styles.profileCard}>
           {/* Cover Photo */}
           <View style={styles.coverPhotoContainer}>
-            {getStorageUrl(ownerCoverPhotoPath) ? (
+            <Image source={defaultCoverPhoto} style={styles.coverPhoto} resizeMode="cover" />
+            {(ownerCoverPhotoPath || userData?.cover_photo) && (
               <Image
-                source={{ uri: getStorageUrl(ownerCoverPhotoPath) as string }}
-                style={styles.coverPhoto}
+                source={{ uri: getStorageUrl(ownerCoverPhotoPath || userData?.cover_photo) }}
+                style={[styles.coverPhoto, { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }]}
                 resizeMode="cover"
               />
-            ) : (
-              <View style={styles.coverPhotoPlaceholder}>
-                <MaterialIcons name="photo-camera" size={24} color="#FFFFFF" />
-              </View>
             )}
           </View>
 
           {/* Profile Info */}
           <View style={styles.profileInfoContainer}>
             <View style={styles.avatarContainer}>
-              {getStorageUrl(ownerProfilePicPath) ? (
-                <Image
-                  source={{ uri: getStorageUrl(ownerProfilePicPath) as string }}
-                  style={styles.avatar}
-                  resizeMode="cover"
-                />
-              ) : (
-                <View style={styles.avatarPlaceholder}>
-                  <Text style={styles.avatarText}>
-                    {getInitials(userData?.username || 'User')}
-                  </Text>
-                </View>
-              )}
+              <ImageFallback uri={getStorageUrl(ownerProfilePicPath || userData?.profile_pic || undefined)} defaultImage={defaultOwnerAvatar} style={styles.avatar} resizeMode="cover" />
               <TouchableOpacity style={styles.editAvatarButton}>
                 <MaterialIcons name="camera-alt" size={16} color="#FFFFFF" />
               </TouchableOpacity>
@@ -483,17 +408,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     marginHorizontal: 16,
     marginTop: 16,
-    borderRadius: 16,
+    borderRadius: 10,
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 3,
   },
   coverPhotoContainer: {
     height: 100,
-    backgroundColor: '#EC7E00',
+    backgroundColor: '#E5E7EB',
+    overflow: 'hidden',
   },
   coverPhoto: {
     width: '100%',
@@ -563,9 +489,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFF5EB',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
     marginTop: 12,
     gap: 6,
   },
@@ -589,13 +515,13 @@ const styles = StyleSheet.create({
   },
   menuCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: 8,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowRadius: 3,
+    elevation: 1,
   },
   menuItem: {
     flexDirection: 'row',
@@ -607,13 +533,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF5F5',
   },
   menuIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 38,
+    height: 38,
+    borderRadius: 8,
     backgroundColor: '#FFF5EB',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 14,
+    marginRight: 12,
   },
   menuIconDanger: {
     backgroundColor: '#FFE5E5',
@@ -648,14 +574,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#E74C3C',
-    paddingVertical: 16,
-    borderRadius: 12,
+    paddingVertical: 14,
+    borderRadius: 8,
     gap: 10,
-    shadowColor: '#E74C3C',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
   },
   logoutButtonText: {
     fontSize: 16,

@@ -12,8 +12,14 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Services\UserActivityLogger;
 class authController extends Controller
 {
+    // UserActivityLogger integration examples:
+    // After user registration: UserActivityLogger::userRegistered($newUserId);
+    // After failed login: UserActivityLogger::failedLogin($userId, $attempts, $request->ip());
+    // After email verification: UserActivityLogger::emailVerified($userId);
+    // Add these calls in the relevant registration, login, and verification logic.
     // Resubmit (re-apply) for rejected contractor/owner
     public function resubmitRoleApplication(Request $request)
     {
@@ -119,8 +125,21 @@ class authController extends Controller
             $result = $this->authService->login($request->username, $request->password);
 
             if (!empty($result['success'])) {
-                // Persist session user for web flows
-                Session::put('user', $result['user'] ?? null);
+                $user = $result['user'] ?? null;
+                // --- Autofix: Ensure admin_id is set for admin accounts ---
+                if ($user && isset($result['userType']) && $result['userType'] === 'admin') {
+                    // If admin_id is missing but user_id exists, set admin_id = user_id
+                    if (is_object($user)) {
+                        if (!isset($user->admin_id) && isset($user->user_id)) {
+                            $user->admin_id = $user->user_id;
+                        }
+                    } elseif (is_array($user)) {
+                        if (!isset($user['admin_id']) && isset($user['user_id'])) {
+                            $user['admin_id'] = $user['user_id'];
+                        }
+                    }
+                }
+                Session::put('user', $user);
 
                 // Also store the high-level user type (e.g., 'user' or 'admin')
                 if (isset($result['userType'])) {
@@ -128,8 +147,9 @@ class authController extends Controller
                 }
 
                 // Default current role to user_type if present, else fall back to userType
-                if (!empty($result['user']) && isset($result['user']->user_type)) {
-                    Session::put('current_role', $result['user']->user_type);
+                if (!empty($user) && (is_object($user) ? isset($user->user_type) : isset($user['user_type']))) {
+                    $role = is_object($user) ? $user->user_type : $user['user_type'];
+                    Session::put('current_role', $role);
                 } elseif (!empty($result['userType'])) {
                     Session::put('current_role', $result['userType']);
                 }
@@ -168,12 +188,30 @@ class authController extends Controller
             if (!empty($result['errors'])) {
                 $hasUsernameError = array_key_exists('username', $result['errors']);
                 $hasPasswordError = array_key_exists('password', $result['errors']);
+
+                // Log failed login attempt if username exists
+                $user = DB::table('users')->where('email', $request->username)->orWhere('username', $request->username)->first();
+                $userId = $user->user_id ?? null;
+                // Track attempts in session by IP
+                $ip = $request->ip();
+                $attempts = Session::get('login_attempts_' . $ip, 0) + 1;
+                Session::put('login_attempts_' . $ip, $attempts);
+                UserActivityLogger::failedLogin($userId, $attempts, $ip);
+
                 if ($hasUsernameError && !$hasPasswordError) {
                     $request->session()->forget('_old_input');
                     return back()->withErrors($result['errors']);
                 }
                 return back()->withErrors($result['errors'])->withInput();
             }
+
+            // Log failed login for generic error (no specific errors array)
+            $user = DB::table('users')->where('email', $request->username)->orWhere('username', $request->username)->first();
+            $userId = $user->user_id ?? null;
+            $ip = $request->ip();
+            $attempts = Session::get('login_attempts_' . $ip, 0) + 1;
+            Session::put('login_attempts_' . $ip, $attempts);
+            UserActivityLogger::failedLogin($userId, $attempts, $ip);
 
             return back()->with('error', $result['message'] ?? 'Invalid credentials')->withInput();
         } catch (\Exception $e) {
@@ -1888,6 +1926,11 @@ class authController extends Controller
             $profilePicPath = $request->file('profile_pic')->store('profiles', 'public');
         }
 
+        $coverPhotoPath = null;
+        if ($request->hasFile('cover_photo')) {
+            $coverPhotoPath = $request->file('cover_photo')->store('cover_photos', 'public');
+        }
+
         // Handle file uploads from mobile clients (stateless flow)
         // Mobile clients send all images in the final step since they don't have persistent sessions
         if ($request->hasFile('valid_id_photo')) {
@@ -1976,6 +2019,7 @@ class authController extends Controller
 
             $userId = $this->accountClass->createUser([
                 'profile_pic' => $profilePicPath,
+                'cover_photo' => $coverPhotoPath,
                 'username' => $step2['username'] ?? null,
                 'email' => $step2['email'] ?? null,
                 'password_hash' => isset($step2['password']) ? $this->authService->hashPassword($step2['password']) : null,
@@ -3454,6 +3498,19 @@ class authController extends Controller
                     // Always set determinedRole for contractor/staff users
                     $responseData['determinedRole'] = 'contractor';
 
+                    // For staff users, attach their real name from contractor_users to the user object
+                    if ($userData->user_type === 'staff') {
+                        $staffLink = \DB::table('contractor_users')
+                            ->where('user_id', $userId)
+                            ->first(['authorized_rep_fname', 'authorized_rep_mname', 'authorized_rep_lname']);
+                        if ($staffLink) {
+                            $userData->first_name  = $staffLink->authorized_rep_fname;
+                            $userData->middle_name = $staffLink->authorized_rep_mname;
+                            $userData->last_name   = $staffLink->authorized_rep_lname;
+                            $responseData['user']  = $userData;
+                        }
+                    }
+
                     if ($memberContext) {
                         $responseData['contractor_member'] = $memberContext;
 
@@ -3533,6 +3590,11 @@ class authController extends Controller
                 'OTP_hash' => $otpHash,
                 'user_type' => 'property_owner' // Default to property_owner for mobile registration
             ]);
+
+            // Log user registration activity
+            if ($user && isset($user->user_id)) {
+                UserActivityLogger::userRegistered($user->user_id);
+            }
 
             return response()->json([
                 'success' => true,

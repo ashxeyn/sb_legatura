@@ -5,6 +5,7 @@ use App\Http\Controllers\Controller;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 
 class projectAdminController extends Controller
@@ -64,6 +65,25 @@ class projectAdminController extends Controller
                 (int) $projectId,
                 ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int) $projectId]]
             );
+
+            // Email notification
+            try {
+                $ownerEmail = DB::table('users')->where('user_id', $ownerUserId)->value('email');
+                $ownerName = DB::table('property_owners')->where('user_id', $ownerUserId)->value('first_name');
+                if ($ownerEmail) {
+                    $emailMessage = "Dear {$ownerName},\n\n";
+                    $emailMessage .= "Your project \"{$projTitle}\" has been approved and is now open for bidding.\n\n";
+                    $emailMessage .= "Contractors can now view and submit bids for your project. You will be notified when new bids are received.\n\n";
+                    $emailMessage .= "Best regards,\nThe Legatura Team";
+
+                    Mail::raw($emailMessage, function ($mailMsg) use ($ownerEmail) {
+                        $mailMsg->to($ownerEmail)
+                                ->subject('Legatura - Project Approved');
+                    });
+                }
+            } catch (\Throwable $e) {
+                \Log::warning('approve project: failed to send email', ['project_id' => $projectId, 'error' => $e->getMessage()]);
+            }
         }
 
         // create audit log
@@ -102,6 +122,26 @@ class projectAdminController extends Controller
                 (int) $projectId,
                 ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int) $projectId]]
             );
+
+            // Email notification
+            try {
+                $ownerEmail = DB::table('users')->where('user_id', $ownerUserId)->value('email');
+                $ownerName = DB::table('property_owners')->where('user_id', $ownerUserId)->value('first_name');
+                if ($ownerEmail) {
+                    $emailMessage = "Dear {$ownerName},\n\n";
+                    $emailMessage .= "We regret to inform you that your project \"{$projTitle}\" has been rejected.\n\n";
+                    $emailMessage .= "Reason: {$reason}\n\n";
+                    $emailMessage .= "You may update your project details and resubmit for review. If you have questions, please contact our support team.\n\n";
+                    $emailMessage .= "Best regards,\nThe Legatura Team";
+
+                    Mail::raw($emailMessage, function ($mailMsg) use ($ownerEmail) {
+                        $mailMsg->to($ownerEmail)
+                                ->subject('Legatura - Project Rejected');
+                    });
+                }
+            } catch (\Throwable $e) {
+                \Log::warning('reject project: failed to send email', ['project_id' => $projectId, 'error' => $e->getMessage()]);
+            }
         }
 
         $user = session('user');

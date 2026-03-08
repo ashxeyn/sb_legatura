@@ -30,6 +30,7 @@ export interface ExecutiveOverview {
   current_budget: number;
   payment_mode: string;
   downpayment: number;
+  downpayment_cleared: boolean;
   total_milestones: number;
   completed_milestones: number;
   total_paid: number;

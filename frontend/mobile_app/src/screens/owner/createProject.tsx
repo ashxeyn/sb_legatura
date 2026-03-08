@@ -21,7 +21,10 @@ import {
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
+import * as WebBrowser from 'expo-web-browser';
 import { projects_service } from '../../services/projects_service';
+import { auth_service } from '../../services/auth_service';
 
 interface CreateProjectScreenProps {
   onBackPress: () => void;
@@ -54,6 +57,15 @@ interface ProjectFormData {
   desired_design?: any[];
   others?: any[];
 }
+
+type UploadFile = {
+  uri: string;
+  fileName?: string;
+  name?: string;
+  mimeType?: string;
+  type?: string;
+  size?: number;
+};
 
 const PROPERTY_TYPES = [
   { id: 'Residential', name: 'Residential' },
@@ -99,6 +111,9 @@ export default function CreateProjectScreen({ onBackPress, onSubmit, contractorT
   const [imageViewerVisible, setImageViewerVisible] = useState(false);
   const [imageViewerIndex, setImageViewerIndex] = useState(0);
   const [imageViewerGallery, setImageViewerGallery] = useState<any[]>([]);
+  const [fileViewerVisible, setFileViewerVisible] = useState(false);
+  const [fileViewerFile, setFileViewerFile] = useState<UploadFile | null>(null);
+  const [fileViewerTitle, setFileViewerTitle] = useState('Document Preview');
 
   // Layout constants for FB-style collage
   const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -156,13 +171,9 @@ export default function CreateProjectScreen({ onBackPress, onSubmit, contractorT
     try {
       setLoadingBarangays(true);
       // Zamboanga City code: 097332000
-      const response = await fetch('https://psgc.gitlab.io/api/cities-municipalities/097332000/barangays/');
-      if (response.ok) {
-        const data = await response.json();
-        const sortedBarangays = data
-          .map((b: any) => ({ code: b.code, name: b.name }))
-          .sort((a: any, b: any) => a.name.localeCompare(b.name));
-        setBarangays(sortedBarangays);
+      const response = await auth_service.get_barangays_by_city('097332000');
+      if (response.success && response.data) {
+        setBarangays(response.data);
       }
     } catch (error) {
       console.error('Failed to load barangays:', error);
@@ -212,26 +223,74 @@ export default function CreateProjectScreen({ onBackPress, onSubmit, contractorT
     });
   };
 
-  // Image picker for required photos
-  const pickImage = async (setter: (value: any) => void) => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission Required', 'Please grant camera roll permissions to upload images.');
-      return;
+  const getFileName = (file?: UploadFile | null) =>
+    file?.fileName || file?.name || (file?.uri ? file.uri.split('/').pop() : '') || 'file';
+
+  const getFileMime = (file?: UploadFile | null) => file?.mimeType || file?.type || '';
+
+  const isImageFile = (file?: UploadFile | null) => {
+    const mime = getFileMime(file);
+    if (mime.startsWith('image/')) return true;
+    const n = getFileName(file).toLowerCase();
+    return ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp'].some(ext => n.endsWith(ext));
+  };
+
+  const getFileExt = (file?: UploadFile | null) => {
+    const n = getFileName(file).toLowerCase();
+    const idx = n.lastIndexOf('.');
+    return idx >= 0 ? n.substring(idx + 1) : '';
+  };
+
+  const getFileIcon = (file?: UploadFile | null) => {
+    const ext = getFileExt(file);
+    if (isImageFile(file)) return 'image';
+    if (ext === 'pdf') return 'picture-as-pdf';
+    if (ext === 'doc' || ext === 'docx') return 'description';
+    if (ext === 'xls' || ext === 'xlsx') return 'table-chart';
+    if (ext === 'txt') return 'notes';
+    return 'insert-drive-file';
+  };
+
+  const openFileViewer = (file: UploadFile, title: string) => {
+    setFileViewerFile(file);
+    setFileViewerTitle(title);
+    setFileViewerVisible(true);
+  };
+
+  const openFileExternally = async () => {
+    if (!fileViewerFile?.uri) return;
+    try {
+      await WebBrowser.openBrowserAsync(fileViewerFile.uri);
+    } catch (e) {
+      Alert.alert('Unable to open file', 'This file cannot be previewed on this device.');
     }
+  };
 
-    const MEDIA_IMAGES = (ImagePicker.MediaType && ImagePicker.MediaType.Images)
-      || (ImagePicker.MediaTypeOptions && ImagePicker.MediaTypeOptions.Images)
-      || 'Images';
+  // Picker for required docs: supports images and common document formats.
+  const pickRequiredDocument = async (setter: (value: any) => void) => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: [
+          'image/*',
+          'application/pdf',
+          'application/msword',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          'text/plain',
+        ],
+        copyToCacheDirectory: true,
+        multiple: false,
+      });
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: MEDIA_IMAGES,
-      allowsEditing: false,
-      quality: 0.8,
-    });
-
-    if (!result.canceled && result.assets[0]) {
-      setter(result.assets[0]);
+      if (!result.canceled && result.assets?.[0]) {
+        const asset = result.assets[0];
+        setter({
+          ...asset,
+          fileName: asset.name || asset.fileName,
+          mimeType: asset.mimeType || asset.type,
+        });
+      }
+    } catch (e) {
+      Alert.alert('Upload failed', 'Unable to pick the file. Please try again.');
     }
   };
 
@@ -718,12 +777,27 @@ export default function CreateProjectScreen({ onBackPress, onSubmit, contractorT
             <Text style={styles.label}>Building Permit <Text style={styles.required}>*</Text></Text>
             <TouchableOpacity
               style={styles.uploadButton}
-              onPress={() => pickImage(setBuildingPermit)}
+              onPress={() => pickRequiredDocument(setBuildingPermit)}
             >
               {buildingPermit ? (
                 <View style={styles.uploadedFile}>
-                  <Image source={{ uri: buildingPermit.uri }} style={styles.thumbnailImage} />
-                  <Text style={styles.fileName} numberOfLines={1}>{buildingPermit.fileName || 'Image selected'}</Text>
+                  <TouchableOpacity
+                    onPress={() => openFileViewer(buildingPermit, 'Building Permit')}
+                    style={styles.requiredFilePreview}
+                    activeOpacity={0.8}
+                  >
+                    {isImageFile(buildingPermit) ? (
+                      <Image source={{ uri: buildingPermit.uri }} style={styles.thumbnailImage} />
+                    ) : (
+                      <View style={styles.docThumb}>
+                        <MaterialIcons name={getFileIcon(buildingPermit)} size={26} color="#D97706" />
+                      </View>
+                    )}
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.fileName} numberOfLines={1}>{getFileName(buildingPermit)}</Text>
+                      <Text style={styles.fileSubText}>Tap to preview</Text>
+                    </View>
+                  </TouchableOpacity>
                   <TouchableOpacity onPress={() => setBuildingPermit(null)}>
                     <Ionicons name="close-circle" size={24} color="#E74C3C" />
                   </TouchableOpacity>
@@ -731,8 +805,8 @@ export default function CreateProjectScreen({ onBackPress, onSubmit, contractorT
               ) : (
                 <View style={styles.uploadPlaceholder}>
                   <Ionicons name="cloud-upload" size={32} color="#EC7E00" />
-                  <Text style={styles.uploadText}>Tap to upload image</Text>
-                  <Text style={styles.uploadHint}>JPG, JPEG, PNG (Max 10MB)</Text>
+                  <Text style={styles.uploadText}>Tap to upload file</Text>
+                  <Text style={styles.uploadHint}>JPG, PNG, PDF, DOC, DOCX (Max 10MB)</Text>
                 </View>
               )}
             </TouchableOpacity>
@@ -743,12 +817,27 @@ export default function CreateProjectScreen({ onBackPress, onSubmit, contractorT
             <Text style={styles.label}>Title of the Land <Text style={styles.required}>*</Text></Text>
             <TouchableOpacity
               style={styles.uploadButton}
-              onPress={() => pickImage(setTitleOfLand)}
+              onPress={() => pickRequiredDocument(setTitleOfLand)}
             >
               {titleOfLand ? (
                 <View style={styles.uploadedFile}>
-                  <Image source={{ uri: titleOfLand.uri }} style={styles.thumbnailImage} />
-                  <Text style={styles.fileName} numberOfLines={1}>{titleOfLand.fileName || 'Image selected'}</Text>
+                  <TouchableOpacity
+                    onPress={() => openFileViewer(titleOfLand, 'Title of the Land')}
+                    style={styles.requiredFilePreview}
+                    activeOpacity={0.8}
+                  >
+                    {isImageFile(titleOfLand) ? (
+                      <Image source={{ uri: titleOfLand.uri }} style={styles.thumbnailImage} />
+                    ) : (
+                      <View style={styles.docThumb}>
+                        <MaterialIcons name={getFileIcon(titleOfLand)} size={26} color="#D97706" />
+                      </View>
+                    )}
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.fileName} numberOfLines={1}>{getFileName(titleOfLand)}</Text>
+                      <Text style={styles.fileSubText}>Tap to preview</Text>
+                    </View>
+                  </TouchableOpacity>
                   <TouchableOpacity onPress={() => setTitleOfLand(null)}>
                     <Ionicons name="close-circle" size={24} color="#E74C3C" />
                   </TouchableOpacity>
@@ -756,8 +845,8 @@ export default function CreateProjectScreen({ onBackPress, onSubmit, contractorT
               ) : (
                 <View style={styles.uploadPlaceholder}>
                   <Ionicons name="cloud-upload" size={32} color="#EC7E00" />
-                  <Text style={styles.uploadText}>Tap to upload image</Text>
-                  <Text style={styles.uploadHint}>JPG, JPEG, PNG (Max 10MB)</Text>
+                  <Text style={styles.uploadText}>Tap to upload file</Text>
+                  <Text style={styles.uploadHint}>JPG, PNG, PDF, DOC, DOCX (Max 10MB)</Text>
                 </View>
               )}
             </TouchableOpacity>
@@ -996,6 +1085,42 @@ export default function CreateProjectScreen({ onBackPress, onSubmit, contractorT
           )}
         </View>
       </Modal>
+
+      {/* Required Document Viewer with Watermark */}
+      <Modal visible={fileViewerVisible} transparent animationType="fade">
+        <View style={styles.fileViewerOverlay}>
+          <View style={styles.fileViewerHeader}>
+            <Text style={styles.fileViewerTitle}>{fileViewerTitle}</Text>
+            <TouchableOpacity onPress={() => setFileViewerVisible(false)}>
+              <Ionicons name="close" size={28} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.fileViewerBody}>
+            {fileViewerFile && isImageFile(fileViewerFile) ? (
+              <View style={styles.fileViewerImageWrap}>
+                <Image source={{ uri: fileViewerFile.uri }} style={styles.fileViewerImage} resizeMode="contain" />
+              </View>
+            ) : (
+              <View style={styles.fileViewerDocCard}>
+                <MaterialIcons name={getFileIcon(fileViewerFile)} size={44} color="#D97706" />
+                <Text style={styles.fileViewerDocName} numberOfLines={2}>{getFileName(fileViewerFile)}</Text>
+                <Text style={styles.fileViewerDocHint}>In-app preview is limited for this file type.</Text>
+                <TouchableOpacity style={styles.fileViewerOpenBtn} onPress={openFileExternally}>
+                  <Ionicons name="open-outline" size={16} color="#FFFFFF" />
+                  <Text style={styles.fileViewerOpenBtnText}>Open File</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            <View pointerEvents="none" style={styles.watermarkOverlay}>
+              <Text style={[styles.watermarkText, styles.watermarkRow1]}>LEGATURA CONFIDENTIAL</Text>
+              <Text style={[styles.watermarkText, styles.watermarkRow2]}>LEGATURA CONFIDENTIAL</Text>
+              <Text style={[styles.watermarkText, styles.watermarkRow3]}>LEGATURA CONFIDENTIAL</Text>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -1124,11 +1249,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     width: '100%',
   },
+  requiredFilePreview: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 8,
+  },
   thumbnailImage: {
     width: 50,
     height: 50,
     borderRadius: 6,
     marginRight: 12,
+  },
+  docThumb: {
+    width: 50,
+    height: 50,
+    borderRadius: 8,
+    marginRight: 12,
+    backgroundColor: '#FFF6EA',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#F5D0A2',
   },
   thumbnailSmall: {
     width: 36,
@@ -1139,6 +1281,11 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     color: '#333333',
+  },
+  fileSubText: {
+    fontSize: 12,
+    color: '#8A8A8A',
+    marginTop: 2,
   },
   uploadButtonSmall: {
     flexDirection: 'row',
@@ -1233,6 +1380,110 @@ const styles = StyleSheet.create({
   emptyListText: {
     fontSize: 14,
     color: '#999999',
+  },
+  fileViewerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(10, 12, 16, 0.96)',
+    justifyContent: 'center',
+  },
+  fileViewerHeader: {
+    position: 'absolute',
+    top: 52,
+    left: 16,
+    right: 16,
+    zIndex: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  fileViewerTitle: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+    maxWidth: '85%',
+  },
+  fileViewerBody: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+    paddingTop: 80,
+    paddingBottom: 40,
+  },
+  fileViewerImageWrap: {
+    width: '100%',
+    height: '88%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fileViewerImage: {
+    width: '100%',
+    height: '100%',
+  },
+  fileViewerDocCard: {
+    width: '90%',
+    maxWidth: 420,
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E8E8E8',
+    paddingVertical: 24,
+    paddingHorizontal: 18,
+    alignItems: 'center',
+  },
+  fileViewerDocName: {
+    marginTop: 12,
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#222222',
+    textAlign: 'center',
+  },
+  fileViewerDocHint: {
+    marginTop: 6,
+    fontSize: 12,
+    color: '#666666',
+    textAlign: 'center',
+  },
+  fileViewerOpenBtn: {
+    marginTop: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EC7E00',
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    gap: 6,
+  },
+  fileViewerOpenBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  watermarkOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  watermarkText: {
+    position: 'absolute',
+    fontSize: 24,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.16)',
+    transform: [{ rotate: '-24deg' }],
+    letterSpacing: 1.3,
+  },
+  watermarkRow1: {
+    top: '28%',
+  },
+  watermarkRow2: {
+    top: '48%',
+  },
+  watermarkRow3: {
+    top: '68%',
   },
 });
 

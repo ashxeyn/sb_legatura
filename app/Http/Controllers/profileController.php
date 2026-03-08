@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Log;
 use App\Services\psgcApiService;
+use App\Services\UserActivityLogger;
 
 class profileController extends Controller
 {
@@ -38,6 +39,11 @@ class profileController extends Controller
         if (!$userId) {
             return response()->json(['success' => false, 'message' => 'Invalid user context'], 400);
         }
+
+        // After successful profile update, call:
+        // UserActivityLogger::profileUpdated($userId, 'profile');
+        // For email change: UserActivityLogger::profileUpdated($userId, 'email');
+        // For profile photo: UserActivityLogger::profileUpdated($userId, 'profile_photo');
 
         \Log::info('profileController.update called', [
             'user_id' => $userId,
@@ -224,6 +230,9 @@ class profileController extends Controller
 
             \Log::info('profileController.update committed', ['user_id' => $userId]);
 
+            // Log profile update activity
+            UserActivityLogger::profileUpdated($userId, 'profile');
+
             // Return refreshed user row and contractor row if any
             $updatedUser = DB::table('users')->where('user_id', $userId)->first();
             $updatedContractor = DB::table('contractors')->where('user_id', $userId)->first();
@@ -285,6 +294,18 @@ class profileController extends Controller
         $ownerRow = DB::table('property_owners')->where('user_id', $userId)->first();
         $contractorRow = DB::table('contractors')->where('user_id', $userId)->first();
 
+        // Staff users are linked to a contractor via contractor_users, not directly in contractors.
+        if (!$contractorRow && strtolower($user->user_type ?? '') === 'staff') {
+            $staffLink = DB::table('contractor_users')->where('user_id', $userId)->first();
+            if ($staffLink) {
+                $contractorRow = DB::table('contractors')->where('contractor_id', $staffLink->contractor_id)->first();
+                // Populate name fields on the user object from contractor_users
+                if (empty($user->first_name)) $user->first_name = $staffLink->authorized_rep_fname ?? null;
+                if (empty($user->middle_name)) $user->middle_name = $staffLink->authorized_rep_mname ?? null;
+                if (empty($user->last_name)) $user->last_name = $staffLink->authorized_rep_lname ?? null;
+            }
+        }
+
         // If the users.profile_pic is empty but property_owners has a profile_pic, prefer that
         if (($user->profile_pic === null || $user->profile_pic === '') && $ownerRow && !empty($ownerRow->profile_pic)) {
             $user->profile_pic = $ownerRow->profile_pic;
@@ -297,11 +318,13 @@ class profileController extends Controller
         }
 
         // If user images are still missing and contractor row exists, prefer contractor media
-        if (($user->profile_pic === null || $user->profile_pic === '') && $contractorRow && !empty($contractorRow->company_logo)) {
+        // Skip this for staff — they have their own profile/cover, not the company logo.
+        $isStaff = strtolower($user->user_type ?? '') === 'staff';
+        if (!$isStaff && ($user->profile_pic === null || $user->profile_pic === '') && $contractorRow && !empty($contractorRow->company_logo)) {
             $user->profile_pic = $contractorRow->company_logo;
             \Log::debug('profileController.apiGetProfile: populated user.profile_pic from contractors.company_logo', ['user_id' => $userId, 'company_logo' => $user->profile_pic]);
         }
-        if ((empty($user->cover_photo) || $user->cover_photo === null) && $contractorRow && !empty($contractorRow->company_banner)) {
+        if (!$isStaff && (empty($user->cover_photo) || $user->cover_photo === null) && $contractorRow && !empty($contractorRow->company_banner)) {
             $user->cover_photo = $contractorRow->company_banner;
             \Log::debug('profileController.apiGetProfile: populated user.cover_photo from contractors.company_banner', ['user_id' => $userId, 'company_banner' => $user->cover_photo]);
         }
@@ -357,8 +380,12 @@ class profileController extends Controller
             $activeRole = $userType ?: 'owner';
         }
 
-        // Normalize
-        $activeRole = strpos($activeRole, 'contractor') !== false ? 'contractor' : 'owner';
+        // Normalize — staff users belong to a contractor account
+        if ($userType === 'staff') {
+            $activeRole = 'contractor';
+        } else {
+            $activeRole = strpos($activeRole, 'contractor') !== false ? 'contractor' : 'owner';
+        }
 
         // Role-aware rating and review count
         $rating = null;
@@ -370,9 +397,16 @@ class profileController extends Controller
 
         if ($activeRole === 'contractor') {
             $contractor = DB::table('contractors')->where('user_id', $userId)->first();
+            // For staff, resolve their parent contractor
+            if (!$contractor && $userType === 'staff') {
+                $staffLink = DB::table('contractor_users')->where('user_id', $userId)->first();
+                if ($staffLink) {
+                    $contractor = DB::table('contractors')->where('contractor_id', $staffLink->contractor_id)->first();
+                }
+            }
             if ($contractor) {
                 $statsQuery->where('p.selected_contractor_id', $contractor->contractor_id)
-                           ->where('r.reviewee_user_id', $userId);
+                           ->where('r.reviewee_user_id', $contractor->user_id);
             } else {
                 // no contractor profile -> no reviews
                 $statsQuery->whereRaw('1=0');
@@ -551,10 +585,19 @@ class profileController extends Controller
             $responseData['ongoing_projects'] = $ongoing;
             $responseData['address_display'] = $address_display;
             // expose address verification flag if present for frontend
-            $responseData['owner']->address_verification_pending = $owner->address_verification_pending ?? ($owner->address_requires_verification ?? null);
+            if ($owner) {
+                $responseData['owner']->address_verification_pending = $owner->address_verification_pending ?? ($owner->address_requires_verification ?? null);
+            }
         } else {
-            // contractor
+            // contractor (or staff linked to a contractor)
             $contractor = DB::table('contractors')->where('user_id', $userId)->first();
+            // Staff: look up parent contractor via contractor_users
+            if (!$contractor && strtolower($user->user_type ?? '') === 'staff') {
+                $staffLink = DB::table('contractor_users')->where('user_id', $userId)->first();
+                if ($staffLink) {
+                    $contractor = DB::table('contractors')->where('contractor_id', $staffLink->contractor_id)->first();
+                }
+            }
             $projects = [];
             $finished = 0;
             $ongoing = 0;

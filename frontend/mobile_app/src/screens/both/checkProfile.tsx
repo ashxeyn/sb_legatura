@@ -16,7 +16,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { api_config } from '../../config/api';
-import ImageFallback from '../../components/imageFallback';
+import ImageFallback from '../../components/ImageFallback';
 import { storage_service } from '../../utils/storage';
 import CreateShowcase from './createShowcase';
 import ShowcasePostDetail from './showcasePostDetail';
@@ -45,7 +45,7 @@ const BORDER  = '#E8EAED';
 const BG      = '#f0f2f5';
 const T1      = '#1a1a1a';
 const T2      = '#6b7280';
-const CARD_R  = 12;
+const CARD_R  = 6;
 const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }> = {
   completed:      { label: 'Completed',      color: '#16a34a', bg: '#dcfce7' },
   in_progress:    { label: 'In Progress',    color: '#d97706', bg: '#fef3c7' },
@@ -130,6 +130,9 @@ export default function CheckProfile({ contractor, onClose, onSendMessage }: Che
   const [activePostMenuId, setActivePostMenuId] = useState<number | null>(null);
   const [reportModalVisible, setReportModalVisible] = useState(false);
   const [reportPostId, setReportPostId] = useState<number | null>(null);
+  const [reportType, setReportType] = useState<'showcase' | 'review'>('showcase');
+  const [reviewMenuOpenId, setReviewMenuOpenId] = useState<number | null>(null);
+  const [initialShowcaseImageIndex, setInitialShowcaseImageIndex] = useState<number>(0);
 
   // ── Check if viewing own profile ──
   useEffect(() => {
@@ -227,26 +230,120 @@ export default function CheckProfile({ contractor, onClose, onSendMessage }: Che
     }
   }, [highlightingPostId]);
 
-  const submitPostReport = useCallback(async (reason: string, details?: string) => {
+  const submitPostReport = useCallback(async (reason: string, details?: string, attachments?: import('../../../services/post_service').ReportAttachment[]) => {
     if (!reportPostId) {
       return { success: false, message: 'No report target selected.' };
     }
 
-    const res = await post_service.report_post('showcase', reportPostId, reason, details);
+    const res = reportType === 'review'
+      ? await post_service.report_review(reportPostId, reason, details, attachments)
+      : await post_service.report_post(reportType, reportPostId, reason, details, attachments);
     return {
       success: !!res.success,
       message: res.message || (res.success ? 'Report submitted.' : 'Unable to submit report right now.'),
     };
-  }, [reportPostId]);
+  }, [reportPostId, reportType]);
 
   const openReportReasons = useCallback((postId: number) => {
     setReportPostId(postId);
     setReportModalVisible(true);
   }, [submitPostReport]);
 
+  const openReviewReport = useCallback((reviewId: number) => {
+    setReviewMenuOpenId(null);
+    setReportType('review');
+    setReportPostId(reviewId);
+    setReportModalVisible(true);
+  }, []);
+
   const openShowcaseCardMenu = useCallback((postId: number) => {
     setActivePostMenuId(prev => (prev === postId ? null : postId));
   }, []);
+
+  // ── Facebook-style image collage for portfolio cards ──
+  const renderFbCollage = (images: string[], post: any) => {
+    if (!images || images.length === 0) return null;
+    const GAP = 5;
+    const W = SCREEN_WIDTH - 26; // card marginHorizontal 8×2=16 + collage margin 5×2=10
+    const half = Math.floor((W - GAP) / 2);
+    const twoThird = Math.floor(W * 0.66);
+    const oneThird = W - twoThird - GAP;
+    const singleH = Math.floor(W * 0.56);
+    const dualH = Math.floor(W * 0.42);
+    const triH = Math.floor(W * 0.52);
+    const gridCellH = Math.floor(W * 0.40);
+
+    const openAt = (idx: number) => {
+      setInitialShowcaseImageIndex(idx);
+      setSelectedShowcasePost(post);
+    };
+
+    const img = (uri: string, style: any, idx: number, extra?: number) => (
+      <TouchableOpacity key={idx} activeOpacity={0.9} onPress={() => openAt(idx)} style={style}>
+        <ImageFallback uri={uri} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+        {extra != null && extra > 0 ? (
+          <View style={styles.fbCollageOverlay}>
+            <Text style={styles.fbCollageOverlayText}>+{extra}</Text>
+          </View>
+        ) : null}
+      </TouchableOpacity>
+    );
+
+    if (images.length === 1) {
+      return img(images[0], { width: W, height: singleH }, 0);
+    }
+
+    if (images.length === 2) {
+      return (
+        <View style={{ flexDirection: 'row' }}>
+          {img(images[0], { width: half, height: dualH, marginRight: GAP }, 0)}
+          {img(images[1], { width: half, height: dualH }, 1)}
+        </View>
+      );
+    }
+
+    if (images.length === 3) {
+      const cellH = Math.floor((triH - GAP) / 2);
+      return (
+        <View style={{ flexDirection: 'row' }}>
+          {img(images[0], { width: twoThird, height: triH, marginRight: GAP }, 0)}
+          <View style={{ width: oneThird, height: triH }}>
+            {img(images[1], { width: oneThird, height: cellH, marginBottom: GAP }, 1)}
+            {img(images[2], { width: oneThird, height: cellH }, 2)}
+          </View>
+        </View>
+      );
+    }
+
+    if (images.length === 4) {
+      return (
+        <View>
+          <View style={{ flexDirection: 'row', marginBottom: GAP }}>
+            {img(images[0], { width: half, height: gridCellH, marginRight: GAP }, 0)}
+            {img(images[1], { width: half, height: gridCellH }, 1)}
+          </View>
+          <View style={{ flexDirection: 'row' }}>
+            {img(images[2], { width: half, height: gridCellH, marginRight: GAP }, 2)}
+            {img(images[3], { width: half, height: gridCellH }, 3)}
+          </View>
+        </View>
+      );
+    }
+
+    const extra = images.length - 4;
+    return (
+      <View>
+        <View style={{ flexDirection: 'row', marginBottom: GAP }}>
+          {img(images[0], { width: half, height: gridCellH, marginRight: GAP }, 0)}
+          {img(images[1], { width: half, height: gridCellH }, 1)}
+        </View>
+        <View style={{ flexDirection: 'row' }}>
+          {img(images[2], { width: half, height: gridCellH, marginRight: GAP }, 2)}
+          {img(images[3], { width: half, height: gridCellH }, 3, extra)}
+        </View>
+      </View>
+    );
+  };
 
   // About
   const contractorAbout = profile?.about?.contractor;
@@ -261,24 +358,6 @@ export default function CheckProfile({ contractor, onClose, onSendMessage }: Che
   const renderPortfolioTab = () => {
     return (
       <View style={styles.tabContent}>
-        {/* Quick Stats Strip */}
-        <View style={styles.statsStrip}>
-          {[
-            { label: 'Experience', value: `${contractorAbout?.years_of_experience ?? contractor.years_of_experience ?? 0} yrs` },
-            { label: 'Completed', value: String(completedProjects) },
-            { label: 'Rating', value: avgRating ? avgRating.toFixed(1) : 'N/A' },
-            { label: 'Reviews', value: String(totalReviews) },
-          ].map((stat, i, arr) => (
-            <React.Fragment key={stat.label}>
-              <View style={styles.statStripItem}>
-                <Text style={styles.statStripValue}>{stat.value}</Text>
-                <Text style={styles.statStripLabel}>{stat.label}</Text>
-              </View>
-              {i < arr.length - 1 && <View style={styles.statStripDivider} />}
-            </React.Fragment>
-          ))}
-        </View>
-
         {/* Add Showcase button (only on own profile) */}
         {isOwnProfile && (
           <TouchableOpacity
@@ -305,86 +384,100 @@ export default function CheckProfile({ contractor, onClose, onSendMessage }: Che
                   setSelectedShowcasePost(post);
                 }}
               >
-                <View style={styles.postMenuWrap}>
-                  <TouchableOpacity
-                    onPress={(e) => {
-                      e.stopPropagation?.();
-                      openShowcaseCardMenu(post.post_id);
-                    }}
-                    activeOpacity={0.7}
-                    disabled={highlightingPostId === post.post_id}
-                    style={styles.postMenuButton}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  >
-                    <MaterialIcons name="more-vert" size={18} color="#4B5563" />
-                  </TouchableOpacity>
+                {/* Header: contractor avatar + name + date + menu */}
+                <View style={styles.postCardHeader}>
+                  <View style={styles.postOwnerInfo}>
+                    <ImageFallback
+                      uri={logoUrl || undefined}
+                      defaultImage={defaultContractorAvatar}
+                      style={styles.postOwnerAvatar}
+                      resizeMode="cover"
+                    />
+                    <View style={{ flex: 1 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
+                        <Text style={styles.postOwnerName} numberOfLines={1}>{displayName}</Text>
+                        {post.linked_project_id && (
+                          <>
+                            <Text style={{ color: '#999', fontSize: 13 }}>—</Text>
+                            <MaterialIcons name="label" size={14} color="#1565C0" />
+                            <Text style={{ fontSize: 13, color: '#1565C0', fontWeight: '600' }} numberOfLines={1}>
+                              {post.linked_project_title || 'Linked project'}
+                            </Text>
+                          </>
+                        )}
+                      </View>
+                      <Text style={styles.postOwnerDate}>
+                        Posted {new Date(post.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </Text>
+                    </View>
+                  </View>
 
-                  {activePostMenuId === post.post_id && (
-                    <View style={styles.postMenuDropdown}>
-                      {isOwnProfile && (
+                  {/* ⋮ menu */}
+                  <View style={styles.postMenuWrap}>
+                    <TouchableOpacity
+                      onPress={(e) => {
+                        e.stopPropagation?.();
+                        openShowcaseCardMenu(post.post_id);
+                      }}
+                      activeOpacity={0.7}
+                      disabled={highlightingPostId === post.post_id}
+                      style={styles.postMenuButton}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <MaterialIcons name="more-vert" size={20} color="#4B5563" />
+                    </TouchableOpacity>
+
+                    {activePostMenuId === post.post_id && (
+                      <View style={styles.postMenuDropdown}>
+                        {isOwnProfile && (
+                          <TouchableOpacity
+                            style={styles.postMenuItem}
+                            onPress={(e) => {
+                              e.stopPropagation?.();
+                              setActivePostMenuId(null);
+                              handleToggleHighlight(post.post_id, isHighlighted);
+                            }}
+                          >
+                            <Text style={styles.postMenuItemText}>{isHighlighted ? 'Unhighlight' : 'Highlight'}</Text>
+                          </TouchableOpacity>
+                        )}
                         <TouchableOpacity
                           style={styles.postMenuItem}
                           onPress={(e) => {
                             e.stopPropagation?.();
                             setActivePostMenuId(null);
-                            handleToggleHighlight(post.post_id, isHighlighted);
+                            openReportReasons(post.post_id);
                           }}
                         >
-                          <Text style={styles.postMenuItemText}>{isHighlighted ? 'Unhighlight' : 'Highlight'}</Text>
+                          <Text style={styles.postMenuDangerText}>Report</Text>
                         </TouchableOpacity>
-                      )}
-                      <TouchableOpacity
-                        style={styles.postMenuItem}
-                        onPress={(e) => {
-                          e.stopPropagation?.();
-                          setActivePostMenuId(null);
-                          openReportReasons(post.post_id);
-                        }}
-                      >
-                        <Text style={styles.postMenuDangerText}>Report</Text>
-                      </TouchableOpacity>
-                    </View>
-                  )}
-                </View>
-                {post.images && post.images.length > 0 ? (
-                  <ImageFallback
-                    uri={resolveImageUrl(post.images[0]?.file_path)}
-                    style={styles.socialPostImg}
-                    resizeMode="cover"
-                  />
-                ) : (
-                  <View style={styles.portfolioCardImg}>
-                    <MaterialIcons name="image" size={28} color="#c8cbd0" />
-                  </View>
-                )}
-                <View style={styles.socialPostBody}>
-                  <Text style={styles.portfolioCardTitle} numberOfLines={1}>
-                    {post.title || 'Untitled Post'}
-                  </Text>
-
-                  {/* Linked project badge */}
-                  {post.linked_project_id && (
-                    <View style={styles.linkedBadge}>
-                      <MaterialIcons name="verified" size={13} color="#16a34a" />
-                      <Text style={styles.linkedBadgeText}>
-                        {post.linked_project_title || 'Linked to completed project'}
-                      </Text>
-                    </View>
-                  )}
-
-                  <Text style={styles.portfolioCardDesc} numberOfLines={3}>
-                    {post.content}
-                  </Text>
-                  <View style={styles.socialPostMeta}>
-                    {post.images && post.images.length > 1 && (
-                      <View style={styles.metaChip}>
-                        <Ionicons name="images-outline" size={12} color={T2} />
-                        <Text style={styles.metaChipText}>{post.images.length} photos</Text>
                       </View>
                     )}
                   </View>
-                  <Text style={styles.portfolioCardDate}>{formatDate(post.created_at)}</Text>
                 </View>
+
+                {/* Title */}
+                {post.title ? <Text style={styles.postTitleText}>{post.title}</Text> : null}
+
+                {/* Content */}
+                <Text style={styles.postContentText} numberOfLines={3}>{post.content}</Text>
+
+                {/* Images collage */}
+                {post.images && post.images.length > 0 ? (
+                  <View style={styles.fbCollageWrap}>
+                    {renderFbCollage(post.images.map((i: any) => resolveImageUrl(i.file_path)).filter(Boolean), post)}
+                  </View>
+                ) : null}
+
+                {/* Location or spacer */}
+                {post.location ? (
+                  <View style={[styles.postDetailRow, { paddingHorizontal: 16, marginTop: 8, marginBottom: 14 }]}>
+                    <MaterialIcons name="location-on" size={16} color="#666666" />
+                    <Text style={styles.postDetailText}>{post.location}</Text>
+                  </View>
+                ) : (
+                  <View style={{ height: 14 }} />
+                )}
               </TouchableOpacity>
             );
           })
@@ -401,14 +494,6 @@ export default function CheckProfile({ contractor, onClose, onSendMessage }: Che
         ) : null}
 
         {/* Services Offered */}
-        {(contractorAbout?.services_offered || contractor.services_offered) && (
-          <View style={styles.servicesSection}>
-            <Text style={styles.servicesSectionTitle}>Services Offered</Text>
-            <Text style={styles.servicesText}>
-              {contractorAbout?.services_offered || contractor.services_offered}
-            </Text>
-          </View>
-        )}
       </View>
     );
   };
@@ -417,71 +502,110 @@ export default function CheckProfile({ contractor, onClose, onSendMessage }: Che
     const avg = reviewStats.avg_rating || avgRating;
     const total = reviewStats.total_reviews || totalReviews;
     const dist = reviewStats.distribution || {};
+    const REVIEW_THRESHOLD = 5;
+    const hasRating = total >= REVIEW_THRESHOLD;
 
     return (
       <View style={styles.tabContent}>
         {/* Summary */}
         <View style={styles.reviewsSummary}>
-          <View style={styles.reviewsSummaryLeft}>
-            <Text style={styles.reviewsAvgVal}>{avg ? avg.toFixed(1) : '0.0'}</Text>
-            <Text style={styles.reviewsAvgSub}>out of 5</Text>
-          </View>
-          <View style={styles.reviewsSummaryRight}>
-            <View style={styles.starsRow}>
-              {[1,2,3,4,5].map((i) => (
-                <MaterialIcons key={i} name={i<=Math.round(avg)?'star':'star-border'} size={18} color={i<=Math.round(avg)?BRAND:'#d1d5db'} />
-              ))}
-            </View>
-            <Text style={styles.reviewsCountText}>{total} review{total!==1?'s':''}</Text>
-
-            {/* Distribution bars */}
-            {Object.keys(dist).length > 0 && (
-              <View style={styles.distributionContainer}>
-                {[5, 4, 3, 2, 1].map((star) => {
-                  const count = dist[String(star)] || 0;
-                  const pct = total > 0 ? (count / total) * 100 : 0;
-                  return (
-                    <View key={star} style={styles.distRow}>
-                      <Text style={styles.distLabel}>{star}</Text>
-                      <MaterialIcons name="star" size={11} color={BRAND} />
-                      <View style={styles.distBarBg}>
-                        <View style={[styles.distBarFill, { width: `${pct}%` }]} />
-                      </View>
-                      <Text style={styles.distCount}>{count}</Text>
-                    </View>
-                  );
-                })}
+          {hasRating ? (
+            <>
+              <View style={styles.reviewsSummaryLeft}>
+                <Text style={styles.reviewsAvgVal}>{avg ? avg.toFixed(1) : '0.0'}</Text>
+                <Text style={styles.reviewsAvgSub}>out of 5</Text>
               </View>
-            )}
-          </View>
+              <View style={styles.reviewsSummaryRight}>
+                <View style={styles.starsRow}>
+                  {[1,2,3,4,5].map((i) => (
+                    <MaterialIcons key={i} name={i<=Math.round(avg)?'star':'star-border'} size={18} color={i<=Math.round(avg)?BRAND:'#d1d5db'} />
+                  ))}
+                </View>
+                <Text style={styles.reviewsCountText}>{total} review{total!==1?'s':''}</Text>
+
+                {/* Distribution bars */}
+                {Object.keys(dist).length > 0 && (
+                  <View style={styles.distributionContainer}>
+                    {[5, 4, 3, 2, 1].map((star) => {
+                      const count = dist[String(star)] || 0;
+                      const pct = total > 0 ? (count / total) * 100 : 0;
+                      return (
+                        <View key={star} style={styles.distRow}>
+                          <Text style={styles.distLabel}>{star}</Text>
+                          <MaterialIcons name="star" size={11} color={BRAND} />
+                          <View style={styles.distBarBg}>
+                            <View style={[styles.distBarFill, { width: `${pct}%` }]} />
+                          </View>
+                          <Text style={styles.distCount}>{count}</Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                )}
+              </View>
+            </>
+          ) : (
+            <View style={{ alignItems: 'center', flex: 1, paddingVertical: 8 }}>
+              <MaterialIcons name="star-outline" size={36} color="#d1d5db" />
+              <Text style={[styles.reviewsCountText, { marginTop: 8, textAlign: 'center' }]}>
+                Rating visible after {REVIEW_THRESHOLD} reviews
+              </Text>
+              <Text style={[styles.reviewsCountText, { marginTop: 4, textAlign: 'center', color: '#9ca3af' }]}>
+                {total} of {REVIEW_THRESHOLD} received
+              </Text>
+            </View>
+          )}
         </View>
         <View style={styles.reviewsDivider} />
         {/* Cards */}
         {reviews.length > 0 ? (
           reviews.map((rev) => (
             <View key={rev.review_id} style={styles.reviewCard}>
-              <View style={styles.reviewCardHeader}>
-                <View style={styles.reviewAvatar}>
-                  <Text style={styles.reviewAvatarText}>
-                    {(rev.reviewer_name || 'U').substring(0,2).toUpperCase()}
-                  </Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.reviewerName}>{rev.reviewer_name || 'Anonymous'}</Text>
-                  <View style={styles.starsRow}>
-                    {[1,2,3,4,5].map((i) => (
-                      <MaterialIcons key={i} name={i<=rev.rating?'star':'star-border'} size={13} color={i<=rev.rating?BRAND:'#d1d5db'} />
-                    ))}
+              {/* Header: avatar + name + stars on left / date + menu on right */}
+              <View style={styles.postCardHeader}>
+                <View style={styles.postOwnerInfo}>
+                  <View style={styles.reviewAvatar}>
+                    <Text style={styles.reviewAvatarText}>
+                      {(rev.reviewer_name || 'U').substring(0, 2).toUpperCase()}
+                    </Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.postOwnerName}>{rev.reviewer_name || 'Anonymous'}</Text>
+                    <View style={[styles.starsRow, { marginTop: 2 }]}>
+                      {[1,2,3,4,5].map((i) => (
+                        <MaterialIcons key={i} name={i <= rev.rating ? 'star' : 'star-border'} size={13} color={i <= rev.rating ? BRAND : '#d1d5db'} />
+                      ))}
+                    </View>
                   </View>
                 </View>
-                <Text style={styles.reviewDate}>{formatDate(rev.created_at)}</Text>
+                <View style={{ alignItems: 'flex-end', gap: 4 }}>
+                  <View style={styles.reviewMenuWrap}>
+                    <TouchableOpacity
+                      onPress={() => setReviewMenuOpenId(prev => prev === rev.review_id ? null : rev.review_id)}
+                      style={styles.reviewMenuBtn}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <MaterialIcons name="more-vert" size={18} color="#9ca3af" />
+                    </TouchableOpacity>
+                    {reviewMenuOpenId === rev.review_id && (
+                      <View style={styles.reviewMenuDropdown}>
+                        <TouchableOpacity
+                          style={styles.postMenuItem}
+                          onPress={() => openReviewReport(rev.review_id)}
+                        >
+                          <Text style={styles.postMenuDangerText}>Report</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+                  </View>
+                </View>
               </View>
               {rev.project_title && (
                 <Text style={styles.reviewProjectTitle}>
                   <Feather name="briefcase" size={11} color={T2} /> {rev.project_title}
                 </Text>
               )}
-              <Text style={styles.reviewComment}>{rev.comment}</Text>
+              <Text style={styles.postContentText}>{rev.comment}</Text>
             </View>
           ))
         ) : (
@@ -497,11 +621,29 @@ export default function CheckProfile({ contractor, onClose, onSendMessage }: Che
 
   const renderAboutTab = () => (
     <View style={styles.tabContent}>
+      {/* Quick Stats Strip */}
+      <View style={styles.statsStrip}>
+        {[
+          { label: 'Experience', value: `${contractorAbout?.years_of_experience ?? contractor.years_of_experience ?? 0} yrs` },
+          { label: 'Completed', value: String(completedProjects) },
+          { label: 'Rating', value: avgRating ? avgRating.toFixed(1) : 'N/A' },
+          { label: 'Reviews', value: String(totalReviews) },
+        ].map((stat, i, arr) => (
+          <React.Fragment key={stat.label}>
+            <View style={styles.statStripItem}>
+              <Text style={styles.statStripValue}>{stat.value}</Text>
+              <Text style={styles.statStripLabel}>{stat.label}</Text>
+            </View>
+            {i < arr.length - 1 && <View style={styles.statStripDivider} />}
+          </React.Fragment>
+        ))}
+      </View>
+
       {/* Description */}
       <View style={styles.aboutSection}>
-        <Text style={styles.aboutSectionTitle}>About</Text>
+        <Text style={styles.aboutSectionTitle}>Bio</Text>
         <Text style={styles.aboutText}>
-          {description || 'No description available.'}
+          {description || 'No bio added yet.'}
         </Text>
       </View>
 
@@ -514,52 +656,6 @@ export default function CheckProfile({ contractor, onClose, onSendMessage }: Che
           </Text>
         </View>
       ) : null}
-
-      {/* Contact Info */}
-      <View style={styles.aboutSection}>
-        <Text style={styles.aboutSectionTitle}>Contact Information</Text>
-
-        <View style={styles.contactItem}>
-          <Feather name="map-pin" size={18} color={COLORS.primary} />
-          <Text style={styles.contactText}>
-            {contractorAbout?.business_address || contractor.location || 'Location not specified'}
-          </Text>
-        </View>
-
-        {(contractorAbout?.company_email || contractor.company_email) && (
-          <TouchableOpacity style={styles.contactItem} onPress={onSendMessage} activeOpacity={0.7}>
-            <Feather name="mail" size={18} color={COLORS.primary} />
-            <Text style={[styles.contactText, styles.contactClickable]}>
-              {contractorAbout?.company_email || contractor.company_email}
-            </Text>
-            <Feather name="chevron-right" size={16} color={COLORS.textMuted} style={{ marginLeft: 'auto' }} />
-          </TouchableOpacity>
-        )}
-
-        {(contractorAbout?.company_phone || contractor.company_phone) && (
-          <View style={styles.contactItem}>
-            <Feather name="phone" size={18} color={COLORS.primary} />
-            <Text style={styles.contactText}>
-              {contractorAbout?.company_phone || contractor.company_phone}
-            </Text>
-          </View>
-        )}
-
-        {(contractorAbout?.company_website || contractor.company_website) && (
-          <View style={styles.contactItem}>
-            <Feather name="globe" size={18} color={COLORS.primary} />
-            <Text style={styles.contactText}>
-              {contractorAbout?.company_website || contractor.company_website}
-            </Text>
-          </View>
-        )}
-
-        {/* Quick Message Button */}
-        <TouchableOpacity style={styles.contactMessageBtn} onPress={onSendMessage} activeOpacity={0.8}>
-          <Feather name="message-circle" size={18} color={COLORS.surface} />
-          <Text style={styles.contactMessageText}>Send a Message</Text>
-        </TouchableOpacity>
-      </View>
 
       {/* Business Details */}
       <View style={styles.aboutSection}>
@@ -661,7 +757,8 @@ export default function CheckProfile({ contractor, onClose, onSendMessage }: Che
       <ShowcasePostDetail
         post={selectedShowcasePost}
         isOwner={isOwn}
-        onClose={() => setSelectedShowcasePost(null)}
+        initialImageIndex={initialShowcaseImageIndex}
+        onClose={() => { setSelectedShowcasePost(null); setInitialShowcaseImageIndex(0); }}
         onViewProfile={(!isOwn && selectedShowcasePost.user_id) ? () => {
           const sp = selectedShowcasePost;
           setSelectedShowcasePost(null);
@@ -680,14 +777,6 @@ export default function CheckProfile({ contractor, onClose, onSendMessage }: Che
         <TouchableOpacity onPress={onClose} style={styles.headerBtn} activeOpacity={0.7}>
           <Feather name="arrow-left" size={20} color={T1} />
         </TouchableOpacity>
-        <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.headerBtn} activeOpacity={0.7}>
-            <Feather name="share-2" size={18} color={T1} />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.headerBtn} activeOpacity={0.7}>
-            <Feather name="more-horizontal" size={20} color={T1} />
-          </TouchableOpacity>
-        </View>
       </View>
 
       <ScrollView
@@ -766,9 +855,6 @@ export default function CheckProfile({ contractor, onClose, onSendMessage }: Che
               <Feather name="message-circle" size={16} color="#fff" />
               <Text style={styles.sendMessageText}>Send Message</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.shareProfileBtn} activeOpacity={0.7}>
-              <Feather name="share-2" size={18} color={BRAND} />
-            </TouchableOpacity>
           </View>
         </View>
 
@@ -815,6 +901,7 @@ export default function CheckProfile({ contractor, onClose, onSendMessage }: Che
         onClose={() => {
           setReportModalVisible(false);
           setReportPostId(null);
+          setReportType('showcase');
         }}
         onSubmit={submitPostReport}
       />
@@ -838,7 +925,7 @@ const styles = StyleSheet.create({
   headerBtn: {
     width: 38,
     height: 38,
-    borderRadius: 19,
+    borderRadius: 8,
     backgroundColor: '#f3f4f6',
     justifyContent: 'center',
     alignItems: 'center',
@@ -935,7 +1022,7 @@ const styles = StyleSheet.create({
     backgroundColor: BRAND_L,
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 6,
+    borderRadius: 4,
     gap: 5,
     marginBottom: 8,
   },
@@ -996,7 +1083,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 12,
-    borderRadius: CARD_R,
+    borderRadius: 8,
     backgroundColor: BRAND,
     gap: 8,
     shadowColor: BRAND,
@@ -1055,7 +1142,8 @@ const styles = StyleSheet.create({
 
   // Tab Content wrapper
   tabContent: {
-    padding: 16,
+    paddingTop: 6,
+    paddingBottom: 20,
     backgroundColor: BG,
   },
 
@@ -1069,6 +1157,7 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     borderRadius: CARD_R,
     paddingVertical: 12,
+    marginHorizontal: 8,
     marginBottom: 14,
     gap: 6,
   },
@@ -1122,6 +1211,7 @@ const styles = StyleSheet.create({
     borderRadius: CARD_R,
     borderWidth: 1,
     borderColor: BORDER,
+    marginHorizontal: 8,
     marginBottom: 16,
     overflow: 'hidden',
   },
@@ -1185,6 +1275,7 @@ const styles = StyleSheet.create({
     borderRadius: CARD_R,
     borderWidth: 1,
     borderColor: BORDER,
+    marginHorizontal: 8,
     marginBottom: 8,
   },
   reviewsSummaryLeft: {
@@ -1219,20 +1310,17 @@ const styles = StyleSheet.create({
   reviewsDivider: {
     height: 1,
     backgroundColor: BORDER,
+    marginHorizontal: 8,
     marginVertical: 10,
   },
   reviewCard: {
-    backgroundColor: '#fff',
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 8,
+    marginTop: 6,
     borderRadius: CARD_R,
     borderWidth: 1,
-    borderColor: BORDER,
-    padding: 12,
-    marginBottom: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 1,
+    borderColor: '#E5E7EB',
+    overflow: 'hidden',
   },
   reviewCardHeader: {
     flexDirection: 'row',
@@ -1271,6 +1359,7 @@ const styles = StyleSheet.create({
 
   // About Tab
   aboutSection: {
+    marginHorizontal: 8,
     marginBottom: 12,
     backgroundColor: '#fff',
     borderRadius: CARD_R,
@@ -1351,6 +1440,7 @@ const styles = StyleSheet.create({
     borderRadius: CARD_R,
     borderWidth: 1,
     borderColor: BORDER,
+    marginHorizontal: 8,
     marginBottom: 12,
   },
   emptyTitle: {
@@ -1367,34 +1457,98 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
   },
 
-  /* ── Social Post Cards (Portfolio) ──────── */
-  socialPostCard: {
-    backgroundColor: '#fff',
-    borderRadius: CARD_R,
-    borderWidth: 1,
-    borderColor: BORDER,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 3,
-    elevation: 1,
-    position: 'relative',
+  /* ── Collage ─────────────────────────────── */
+  fbCollageWrap: {
     overflow: 'hidden',
+    margin: 5,
   },
-  postMenuWrap: {
+  fbCollageOverlay: {
     position: 'absolute',
-    top: 8,
-    right: 8,
-    zIndex: 20,
-  },
-  postMenuButton: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.45)',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.92)',
+  },
+  fbCollageOverlayText: {
+    color: '#fff',
+    fontSize: 22,
+    fontWeight: '700',
+  },
+
+  /* ── Social Post Cards (Portfolio) ──────── */
+  socialPostCard: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 8,
+    marginTop: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    overflow: 'hidden',
+  },
+  postCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+    paddingHorizontal: 16,
+    paddingTop: 14,
+  },
+  postOwnerInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  postOwnerAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 10,
+  },
+  postOwnerName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333333',
+  },
+  postOwnerDate: {
+    fontSize: 12,
+    color: '#999999',
+  },
+  postTitleText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333333',
+    marginBottom: 8,
+    paddingHorizontal: 16,
+  },
+  postContentText: {
+    fontSize: 14,
+    color: '#666666',
+    lineHeight: 20,
+    marginBottom: 12,
+    paddingHorizontal: 16,
+  },
+  postDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  postDetailText: {
+    fontSize: 13,
+    color: '#666666',
+  },
+  postMenuWrap: {
+    position: 'relative',
+    zIndex: 30,
+  },
+  postMenuButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   postMenuDropdown: {
     position: 'absolute',
@@ -1412,6 +1566,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.14,
     shadowRadius: 8,
     elevation: 6,
+    zIndex: 20,
   },
   postMenuItem: {
     paddingVertical: 8,
@@ -1427,10 +1582,42 @@ const styles = StyleSheet.create({
     color: '#B91C1C',
     fontWeight: '600',
   },
+
+  // Review card ⋮ menu
+  reviewMenuWrap: {
+    position: 'relative',
+    marginLeft: 4,
+  },
+  reviewMenuBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reviewMenuDropdown: {
+    position: 'absolute',
+    top: 30,
+    right: 0,
+    minWidth: 120,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    paddingVertical: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.14,
+    shadowRadius: 8,
+    elevation: 8,
+    zIndex: 30,
+  },
   socialPostImg: {
     width: '100%',
     height: 220,
     backgroundColor: '#f3f4f6',
+    borderTopLeftRadius: CARD_R,
+    borderTopRightRadius: CARD_R,
   },
   socialPostBody: {
     padding: 14,
@@ -1494,6 +1681,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: BRAND,
     marginBottom: 4,
+    paddingHorizontal: 16,
   },
 
   /* ── Tier & Verification badges (About) ─ */

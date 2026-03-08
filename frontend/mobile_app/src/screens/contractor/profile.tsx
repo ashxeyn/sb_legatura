@@ -14,7 +14,7 @@ import { View as SafeAreaView, StatusBar, Platform, AppState } from 'react-nativ
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import ImageFallback from '../../components/imageFallback';
+import ImageFallback from '../../components/ImageFallback';
 import { contractors_service } from '../../services/contractors_service';
 import { api_config } from '../../config/api';
 import { role_service } from '../../services/role_service';
@@ -37,6 +37,9 @@ interface ContractorProfileScreenProps {
     profile_pic?: string;
     cover_photo?: string;
     user_type?: string;
+    first_name?: string;
+    middle_name?: string;
+    last_name?: string;
     company_name?: string;
     contractor_type?: string;
     years_of_experience?: number;
@@ -175,12 +178,12 @@ export default function ContractorProfileScreen({ onLogout, onViewProfile, onOpe
             Alert.alert('Coming Soon', 'This feature is under development.');
           }
         },
-        {
-          id: 'switch_role',
+        {id: 'switch_role',
           icon: 'swap-horizontal-outline',
           label: 'Switch Role',
           subtitle: 'Manage your role settings',
           showArrow: true,
+          hidden: userData?.user_type === 'staff',
           onPress: onOpenSwitchRole || (() => Alert.alert('Coming Soon', 'This feature is under development.'))
         }
       ],
@@ -208,6 +211,7 @@ export default function ContractorProfileScreen({ onLogout, onViewProfile, onOpe
           icon: 'card-outline',
           label: 'Subscription',
           subtitle: 'Manage your subscription plan',
+          hidden: userData?.user_type === 'staff',
           showArrow: true,
           onPress: () => {
             if (typeof onOpenSubscription === 'function') { onOpenSubscription(); return; }
@@ -230,7 +234,9 @@ export default function ContractorProfileScreen({ onLogout, onViewProfile, onOpe
     }
   ];
 
-  const renderMenuItem = (item: MenuItem) => (
+  const renderMenuItem = (item: MenuItem) => {
+    if (item.hidden) return null;
+    return (
     <TouchableOpacity key={item.id} style={[styles.menuItem, item.danger && styles.menuItemDanger]} onPress={item.onPress} activeOpacity={0.7}>
       <View style={[styles.menuIconContainer, item.danger && styles.menuIconDanger]}>
         <Ionicons name={item.icon as any} size={22} color={item.danger ? '#E74C3C' : '#1877F2'} />
@@ -241,7 +247,8 @@ export default function ContractorProfileScreen({ onLogout, onViewProfile, onOpe
       </View>
       {item.showArrow && <MaterialIcons name="chevron-right" size={24} color="#CCCCCC" />}
     </TouchableOpacity>
-  );
+    );
+  };
 
   return (
     <SafeAreaView style={[styles.container, { paddingTop: statusBarHeight }]}>
@@ -251,10 +258,13 @@ export default function ContractorProfileScreen({ onLogout, onViewProfile, onOpe
 
         <View style={styles.profileCard}>
           <View style={styles.coverPhotoContainer}>
-            {companyBanner || userData?.cover_photo ? (
-              <Image source={{ uri: getStorageUrl(companyBanner || userData?.cover_photo) }} style={styles.coverPhoto} resizeMode="cover" />
-            ) : (
-              <Image source={defaultCoverPhoto} style={styles.coverPhoto} resizeMode="cover" />
+            <Image source={defaultCoverPhoto} style={styles.coverPhoto} resizeMode="cover" />
+            {(companyBanner || userData?.cover_photo) && (
+              <Image
+                source={{ uri: getStorageUrl(companyBanner || userData?.cover_photo) }}
+                style={[styles.coverPhoto, { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }]}
+                resizeMode="cover"
+              />
             )}
           </View>
 
@@ -263,7 +273,11 @@ export default function ContractorProfileScreen({ onLogout, onViewProfile, onOpe
               <ImageFallback uri={getStorageUrl(companyLogo || userData?.profile_pic || undefined)} defaultImage={defaultContractorAvatar} style={styles.avatar} resizeMode="cover" />
              </View>
 
-            <Text style={styles.companyName}>{companyName || userData?.company_name || 'Company Name'}</Text>
+            <Text style={styles.companyName}>
+              {userData?.user_type === 'staff'
+                ? `${userData?.first_name || ''} ${userData?.last_name || ''}`.trim() || userData?.username || 'Staff'
+                : companyName || userData?.company_name || 'Company Name'}
+            </Text>
             <Text style={styles.userName}>@{userData?.username || 'contractor'}</Text>
             <Text style={styles.userEmail}>{userData?.email || 'contractor@example.com'}</Text>
 
@@ -276,19 +290,23 @@ export default function ContractorProfileScreen({ onLogout, onViewProfile, onOpe
           </View>
         </View>
 
-        {menuSections.map((section) => (
+        {menuSections.map((section) => {
+          const visibleItems = section.items.filter(item => !item.hidden);
+          if (visibleItems.length === 0) return null;
+          return (
           <View key={section.title} style={styles.menuSection}>
             <Text style={styles.sectionTitle}>{section.title}</Text>
             <View style={styles.menuCard}>
-              {section.items.map((item, index) => (
+              {visibleItems.map((item, index) => (
                 <View key={item.id}>
                   {renderMenuItem(item)}
-                  {index < section.items.length - 1 && <View style={styles.menuDivider} />}
+                  {index < visibleItems.length - 1 && <View style={styles.menuDivider} />}
                 </View>
               ))}
             </View>
           </View>
-        ))}
+          );
+        })}
 
         <View style={styles.logoutSection}>
           <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} disabled={isLoggingOut} activeOpacity={0.8}>
@@ -308,8 +326,8 @@ const styles = StyleSheet.create({
   scrollContent: { paddingBottom: 100 },
   header: { paddingHorizontal: 20, paddingVertical: 16, backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: '#E5E5E5' },
   headerTitle: { fontSize: 28, fontWeight: 'bold', color: '#333333' },
-  profileCard: { backgroundColor: '#FFFFFF', marginHorizontal: 16, marginTop: 16, borderRadius: 16, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 4 },
-  coverPhotoContainer: { height: 100, backgroundColor: '#1877F2' },
+  profileCard: { backgroundColor: '#FFFFFF', marginHorizontal: 16, marginTop: 16, borderRadius: 10, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 4, elevation: 3 },
+  coverPhotoContainer: { height: 100, backgroundColor: '#E5E7EB', overflow: 'hidden' },
   coverPhoto: { width: '100%', height: '100%' },
   profileInfoContainer: { alignItems: 'center', paddingBottom: 20, marginTop: -50 },
   avatarContainer: { position: 'relative' },
@@ -319,17 +337,17 @@ const styles = StyleSheet.create({
   userName: { fontSize: 14, color: '#1877F2', marginTop: 2 },
   userEmail: { fontSize: 14, color: '#666666', marginTop: 4 },
   badgeRow: { flexDirection: 'row', alignItems: 'center', marginTop: 12, gap: 8 },
-  userTypeBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#EBF5FF', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, gap: 6 },
+  userTypeBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#EBF5FF', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6, gap: 6 },
   userTypeText: { fontSize: 12, fontWeight: '600', color: '#1877F2' },
-  contractorTypeBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#E8F8F0', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, gap: 6 },
+  contractorTypeBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#E8F8F0', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6, gap: 6 },
   contractorTypeText: { fontSize: 12, fontWeight: '600', color: '#42B883' },
   experienceText: { fontSize: 13, color: '#666666', marginTop: 8 },
   menuSection: { marginTop: 24, paddingHorizontal: 16 },
   sectionTitle: { fontSize: 14, fontWeight: '600', color: '#999999', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8, marginLeft: 4 },
-  menuCard: { backgroundColor: '#FFFFFF', borderRadius: 16, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
+  menuCard: { backgroundColor: '#FFFFFF', borderRadius: 8, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 1 },
   menuItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 16 },
   menuItemDanger: { backgroundColor: '#FFF5F5' },
-  menuIconContainer: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#EBF5FF', justifyContent: 'center', alignItems: 'center', marginRight: 14 },
+  menuIconContainer: { width: 38, height: 38, borderRadius: 8, backgroundColor: '#EBF5FF', justifyContent: 'center', alignItems: 'center', marginRight: 12 },
   menuIconDanger: { backgroundColor: '#FFE5E5' },
   menuTextContainer: { flex: 1 },
   menuLabel: { fontSize: 16, fontWeight: '500', color: '#333333' },
@@ -337,7 +355,7 @@ const styles = StyleSheet.create({
   menuSubtitle: { fontSize: 13, color: '#999999', marginTop: 2 },
   menuDivider: { height: 1, backgroundColor: '#F0F0F0', marginLeft: 70 },
   logoutSection: { marginTop: 32, paddingHorizontal: 16 },
-  logoutButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#E74C3C', paddingVertical: 16, borderRadius: 12, gap: 10, shadowColor: '#E74C3C', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6 },
+  logoutButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#E74C3C', paddingVertical: 14, borderRadius: 8, gap: 10 },
   logoutButtonText: { fontSize: 16, fontWeight: '600', color: '#FFFFFF' },
   footer: { alignItems: 'center', marginTop: 32, paddingBottom: 20 },
   footerText: { fontSize: 14, color: '#999999' },

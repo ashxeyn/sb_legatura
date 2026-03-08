@@ -117,64 +117,83 @@ export class auth_service {
     return { success: true, status: 200, data: { user_type }, message: 'Role selected' };
   }
 
-  // Get provinces directly from PSGC API (bypassing backend for consistent codes)
+  // Get provinces via backend proxy
   static async get_provinces(): Promise<api_response<province[]>> {
     try {
-      console.log('Fetching provinces from PSGC API...');
-      const response = await fetch('https://psgc.gitlab.io/api/provinces/');
+      console.log('Fetching provinces from backend...');
+      const api_url = `${api_config.base_url}${api_config.endpoints.address.provinces}`;
+      const response = await fetch(api_url, {
+        headers: {
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      });
       if (response.ok) {
         const data = await response.json();
-        // Sort by name and map to simpler format
-        const provinces = data
+        const provincesData = Array.isArray(data) ? data : (data.data || data);
+        const provinces = provincesData
           .map((p: any) => ({ code: p.code, name: p.name }))
           .sort((a: province, b: province) => a.name.localeCompare(b.name));
-        console.log('Loaded', provinces.length, 'provinces from PSGC API');
+        console.log('Loaded', provinces.length, 'provinces from backend');
         return { success: true, data: provinces, status: 200 };
       }
       return { success: false, data: [], status: response.status, message: 'Failed to fetch provinces' };
     } catch (error) {
-      console.error('PSGC provinces fetch error:', error);
+      console.error('Provinces fetch error:', error);
       return { success: false, data: [], status: 0, message: 'Network error' };
     }
   }
 
-  // Get cities by province directly from PSGC API
+  // Get cities by province via backend proxy
   static async get_cities_by_province(province_code: string): Promise<api_response<city[]>> {
     try {
       console.log('Fetching cities for province:', province_code);
-      const response = await fetch(`https://psgc.gitlab.io/api/provinces/${province_code}/cities-municipalities/`);
+      const api_url = `${api_config.base_url}${api_config.endpoints.address.cities(province_code)}`;
+      const response = await fetch(api_url, {
+        headers: {
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      });
       if (response.ok) {
         const data = await response.json();
-        // Sort by name and map to simpler format
-        const cities = data
+        const citiesData = Array.isArray(data) ? data : (data.data || data);
+        const cities = citiesData
           .map((c: any) => ({ code: c.code, name: c.name }))
           .sort((a: city, b: city) => a.name.localeCompare(b.name));
-        console.log('Loaded', cities.length, 'cities from PSGC API');
+        console.log('Loaded', cities.length, 'cities from backend');
         return { success: true, data: cities, status: 200 };
       }
       return { success: false, data: [], status: response.status, message: 'Failed to fetch cities' };
     } catch (error) {
-      console.error('PSGC cities fetch error:', error);
+      console.error('Cities fetch error:', error);
       return { success: false, data: [], status: 0, message: 'Network error' };
     }
   }
 
-  // Get all cities/municipalities in the Philippines directly from PSGC API
+  // Get all cities/municipalities via backend proxy
   static async get_all_cities(): Promise<api_response<city[]>> {
     try {
-      console.log('Fetching all cities/municipalities from PSGC API...');
-      const response = await fetch('https://psgc.gitlab.io/api/cities-municipalities/');
+      console.log('Fetching all cities/municipalities from backend...');
+      const api_url = `${api_config.base_url}/api/psgc/cities`;
+      const response = await fetch(api_url, {
+        headers: {
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      });
       if (response.ok) {
         const data = await response.json();
-        const cities = data
+        const citiesData = Array.isArray(data) ? data : (data.data || data);
+        const cities = citiesData
           .map((c: any) => ({ code: c.code, name: c.name }))
           .sort((a: city, b: city) => a.name.localeCompare(b.name));
-        console.log('Loaded', cities.length, 'cities/municipalities from PSGC API');
+        console.log('Loaded', cities.length, 'cities/municipalities from backend');
         return { success: true, data: cities, status: 200 };
       }
       return { success: false, data: [], status: response.status, message: 'Failed to fetch cities' };
     } catch (error) {
-      console.error('PSGC all cities fetch error:', error);
+      console.error('All cities fetch error:', error);
       return { success: false, data: [], status: 0, message: 'Network error' };
     }
   }

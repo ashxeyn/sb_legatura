@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\authController;
+use App\Http\Controllers\TestNotificationsController;
 use App\Http\Controllers\subs\platformPaymentController;
 use App\Http\Controllers\subs\payMongoController;
 use App\Http\Controllers\contractor\cprocessController;
@@ -21,6 +22,41 @@ use App\Http\Controllers\Admin\ProjectAdminController;
 use App\Http\Controllers\Admin\projectManagementController;
 use App\Http\Controllers\message\broadcastAuthController;
 use App\Http\Controllers\passwordController;
+use App\Http\Controllers\AdminController;
+
+Route::prefix('admin/notifications')
+    ->middleware([\App\Http\Middleware\AdminAuthMiddleware::class])
+    ->group(function () {
+
+        // Page (already exists — keep your existing view route)
+        // Route::get('/', [AdminController::class, 'notificationSettings']);
+
+        // Users list for targeted send dropdown
+        Route::get('/users', [\App\Http\Controllers\AdminController::class, 'getUsersForNotification']);
+
+        // Send actions
+        Route::post('/send-announcement', [\App\Http\Controllers\AdminController::class, 'sendAnnouncement'])
+            ->name('admin.sendAnnouncement');
+        Route::post('/send-targeted', [\App\Http\Controllers\AdminController::class, 'sendTargetedNotification'])
+            ->name('admin.sendTargetedNotification');
+
+        // Preferences
+        Route::get('/preferences',  [\App\Http\Controllers\AdminController::class, 'getPreferences']);
+        Route::post('/preferences', [\App\Http\Controllers\AdminController::class, 'savePreferences'])
+            ->name('admin.notifications.savePreferences');
+
+        // Sent log
+        Route::get('/sent-log', [\App\Http\Controllers\AdminController::class, 'getSentLog']);
+
+        // ── NEW: User Activity Feed ──────────────────────────────────────────
+        // Paginated list of user activity events (user_activity_logs table)
+        Route::get('/activity', [\App\Http\Controllers\AdminController::class, 'getUserActivityLogs']);
+
+        // Mark one, many, or all activity rows as read
+        Route::post('/activity/mark-read', [\App\Http\Controllers\AdminController::class, 'markActivityRead'])
+            ->name('admin.notifications.markActivityRead');
+    });
+
 
 Route::get('/admin/analytics/subscription', [analyticsController::class, 'subscriptionAnalytics'])->name('admin.analytics.subscription');
 Route::get('/admin/analytics/subscription/revenue', [analyticsController::class, 'subscriptionRevenue'])->name('admin.analytics.subscription.revenue');
@@ -49,6 +85,59 @@ Route::prefix('admin/settings/security')
     });
 
 Route::post('/admin/global-management/ai-management/analyze/{id}', [globalManagementController::class, 'analyzeProject']);
+
+// Mobile document viewer (served as HTML so WebView has same-origin access to files)
+Route::get('/document-viewer', function () {
+    $file = request()->query('file', '');
+    $ext  = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+    $fileUrl = str_starts_with($file, 'http') ? $file : asset('storage/' . $file);
+
+    // Convert DOCX to PDF server-side for proper page rendering
+    if ($ext === 'docx' && !str_starts_with($file, 'http')) {
+        $sourcePath = storage_path('app/public/' . $file);
+        if (file_exists($sourcePath)) {
+            $cacheDir = storage_path('app/public/doc_cache');
+            if (!is_dir($cacheDir)) {
+                mkdir($cacheDir, 0755, true);
+            }
+            $hash = md5($file . filemtime($sourcePath));
+            $pdfName = $hash . '.pdf';
+            $pdfPath = $cacheDir . '/' . $pdfName;
+
+            if (!file_exists($pdfPath)) {
+                try {
+                    // Load DOCX with PhpWord and export as HTML
+                    $phpWord = \PhpOffice\PhpWord\IOFactory::load($sourcePath, 'Word2007');
+                    $htmlWriter = \PhpOffice\PhpWord\IOFactory::createWriter($phpWord, 'HTML');
+                    ob_start();
+                    $htmlWriter->save('php://output');
+                    $html = ob_get_clean();
+
+                    // Convert HTML to PDF with DomPDF for proper pagination
+                    $dompdf = new \Dompdf\Dompdf([
+                        'isHtml5ParserEnabled' => true,
+                        'isRemoteEnabled' => true,
+                        'defaultFont' => 'Arial',
+                    ]);
+                    $dompdf->setPaper('letter', 'portrait');
+                    $dompdf->loadHtml($html);
+                    $dompdf->render();
+                    file_put_contents($pdfPath, $dompdf->output());
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('DOCX→PDF conversion failed: ' . $e->getMessage());
+                }
+            }
+
+            if (file_exists($pdfPath)) {
+                $fileUrl = asset('storage/doc_cache/' . $pdfName);
+                $ext = 'pdf';
+            }
+        }
+    }
+
+    return response(view('document-viewer', compact('fileUrl', 'ext')))
+        ->header('Content-Type', 'text/html');
+});
 
 Route::get('/', function () {
     return view('signUp_logIN.landingPage');
@@ -659,5 +748,19 @@ Route::prefix('/api/admin')->group(function () {
     Route::apiResource('milestones', App\Http\Controllers\Admin\milestoneController::class);
     Route::apiResource('payments', App\Http\Controllers\Admin\paymentController::class);
 });
+
+// Admin Notification Actions
+
+Route::middleware(['web', 'auth', 'admin'])->group(function () {
+    Route::post('/admin/notifications/announcement', [AdminController::class, 'sendAnnouncement'])->name('admin.sendAnnouncement');
+    Route::post('/admin/notifications/targeted', [AdminController::class, 'sendTargetedNotification'])->name('admin.sendTargetedNotification');
+});
+
+// ---------------------------------------------------------------
+// DEV ONLY: Notification test panel (accessible without auth)
+// ---------------------------------------------------------------
+Route::get('/dev/test-notifications', [TestNotificationsController::class, 'index'])->name('test.notifications');
+Route::post('/dev/test-notifications/run', [TestNotificationsController::class, 'run'])->name('test.notifications.run');
+Route::post('/dev/test-notifications/clear-dedup', [TestNotificationsController::class, 'clearDedup'])->name('test.notifications.clear-dedup');
 
 

@@ -386,6 +386,11 @@ class milestoneController extends Controller
      */
     public function setSettlementDueDateOwner(Request $request, int $itemId)
     {
+        return response()->json(['success' => false, 'message' => 'Property owners cannot set or edit payment due dates.'], 403);
+    }
+
+    public function setSettlementDueDateOwner_disabled(Request $request, int $itemId)
+    {
         $userId = $request->input('user_id');
         if (!$userId) {
             return response()->json(['success' => false, 'message' => 'User ID is required.'], 400);

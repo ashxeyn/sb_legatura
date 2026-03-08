@@ -142,6 +142,7 @@ Route::post('/signup/owner/final', [authController::class, 'propertyOwnerFinalSt
 // PSGC API Routes (public)
 Route::get('/psgc/provinces', [authController::class, 'getProvinces']);
 Route::get('/psgc/provinces/{provinceCode}/cities', [authController::class, 'getCitiesByProvince']);
+Route::get('/psgc/cities', [authController::class, 'getAllCities']);
 Route::get('/psgc/cities/{cityCode}/barangays', [authController::class, 'getBarangaysByCity']);
 
 // Contractors endpoint for property owner feed
@@ -644,5 +645,11 @@ Route::get('/reports/mine', [reportController::class, 'mine']);
 Route::get('/admin/reports', [reportController::class, 'adminIndex']);
 Route::get('/admin/reports/{reportId}', [reportController::class, 'adminShow']);
 Route::post('/admin/reports/{reportId}/review', [reportController::class, 'adminReview']);
+
+// ── Review Reports (separate table) ──────────────────────────────────
+Route::post('/review-reports', [reportController::class, 'storeReviewReport']);
+Route::get('/review-reports/mine', [reportController::class, 'myReviewReports']);
+Route::get('/admin/review-reports', [reportController::class, 'adminReviewReportsIndex']);
+Route::post('/admin/review-reports/{reportId}/review', [reportController::class, 'adminReviewReportAction']);
 
 // NOTE: change-otp endpoints are registered publicly (do not rely on Sanctum middleware)

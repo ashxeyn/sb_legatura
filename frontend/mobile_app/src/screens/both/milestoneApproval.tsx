@@ -435,7 +435,21 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
   const completedCount = allMilestoneItems.filter(item => item.item_status === 'completed').length;
   const totalCount = allMilestoneItems.length;
   const progressPercentage = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
-  
+
+  // Sum of effective milestone item costs (Total Allocated)
+  const totalAllocated = allMilestoneItems.reduce(
+    (sum, item) => sum + ((item.adjusted_cost ?? item.milestone_item_cost) || 0),
+    0,
+  );
+
+  // Display value: if items are loaded use their sum; otherwise derive from payment plan
+  // (downpayment mode: contract value minus downpayment, else full contract value)
+  const displayAllocated = totalAllocated > 0
+    ? totalAllocated
+    : isDownpaymentMode
+      ? totalCost - downpaymentAmount
+      : totalCost;
+
   // Check if all milestone items are completed
   const allMilestoneItemsCompleted = totalCount > 0 && completedCount === totalCount;
 
@@ -881,8 +895,8 @@ export default function MilestoneApproval({ route, navigation }: MilestoneApprov
           {/* Key stats row: cost + timeline */}
           <View style={styles.summaryStatsRow}>
             <View style={styles.summaryStat}>
-              <Text style={styles.summaryStatValue}>{formatCurrency(totalCost)}</Text>
-              <Text style={styles.summaryStatLabel}>Total Cost</Text>
+              <Text style={styles.summaryStatValue}>{formatCurrency(displayAllocated)}</Text>
+              <Text style={styles.summaryStatLabel}>Total Allocated</Text>
             </View>
             {firstMilestone?.start_date && firstMilestone?.end_date && (
               <>

@@ -18,8 +18,8 @@ export interface ProjectFormData {
   type_id: string; // Contractor type ID
   if_others_ctype?: string; // Required if type_id is "Others"
   bidding_deadline: string; // Date format: YYYY-MM-DD
-  building_permit?: any; // Required - image file
-  title_of_land?: any; // Required - image file
+  building_permit?: any; // Required - supports image/pdf/doc/docx
+  title_of_land?: any; // Required - supports image/pdf/doc/docx
   blueprint?: any[]; // Optional - array of files
   desired_design?: any[]; // Optional - array of files
   others?: any[]; // Optional - array of files
@@ -91,6 +91,17 @@ export class projects_service {
    */
   static async create_project(projectData: ProjectFormData, userId: number): Promise<ApiResponse> {
     try {
+      const inferMimeType = (name: string) => {
+        const n = (name || '').toLowerCase();
+        if (n.endsWith('.png')) return 'image/png';
+        if (n.endsWith('.jpg') || n.endsWith('.jpeg')) return 'image/jpeg';
+        if (n.endsWith('.webp')) return 'image/webp';
+        if (n.endsWith('.pdf')) return 'application/pdf';
+        if (n.endsWith('.doc')) return 'application/msword';
+        if (n.endsWith('.docx')) return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+        return 'application/octet-stream';
+      };
+
       const formData = new FormData();
 
       // Add text fields
@@ -113,22 +124,30 @@ export class projects_service {
         formData.append('if_others_ctype', projectData.if_others_ctype);
       }
 
-      // Add building permit (required image)
+      // Add building permit (required document)
       if (projectData.building_permit) {
+        const permitName = projectData.building_permit.fileName
+          || projectData.building_permit.name
+          || projectData.building_permit.uri?.split('/').pop()
+          || 'building_permit';
         const permitFile = {
           uri: projectData.building_permit.uri,
-          type: projectData.building_permit.mimeType || 'image/jpeg',
-          name: projectData.building_permit.fileName || 'building_permit.jpg',
+          type: projectData.building_permit.mimeType || projectData.building_permit.type || inferMimeType(permitName),
+          name: permitName,
         };
         formData.append('building_permit', permitFile as any);
       }
 
-      // Add title of land (required image)
+      // Add title of land (required document)
       if (projectData.title_of_land) {
+        const titleName = projectData.title_of_land.fileName
+          || projectData.title_of_land.name
+          || projectData.title_of_land.uri?.split('/').pop()
+          || 'title_of_land';
         const titleFile = {
           uri: projectData.title_of_land.uri,
-          type: projectData.title_of_land.mimeType || 'image/jpeg',
-          name: projectData.title_of_land.fileName || 'title_of_land.jpg',
+          type: projectData.title_of_land.mimeType || projectData.title_of_land.type || inferMimeType(titleName),
+          name: titleName,
         };
         formData.append('title_of_land', titleFile as any);
       }

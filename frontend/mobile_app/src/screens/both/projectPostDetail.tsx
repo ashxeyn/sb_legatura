@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,14 +11,14 @@ import {
   Dimensions,
   StatusBar,
   Modal,
-  FlatList,
   NativeScrollEvent,
   NativeSyntheticEvent,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import ImageFallback from '../../components/imageFallback';
+import { WebView } from 'react-native-webview';
+import ImageFallback from '../../components/ImageFallback';
 import ReportPostModal from '../../components/reportPostModal';
 import { api_config, api_request } from '../../config/api';
 import { storage_service } from '../../utils/storage';
@@ -84,7 +84,6 @@ export default function ProjectPostDetail({ project, onClose, onPlaceBid, userRo
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [docViewerVisible, setDocViewerVisible] = useState(false);
   const [docViewerIndex, setDocViewerIndex] = useState(0);
-  const docFlatListRef = useRef<FlatList>(null);
   const [menuVisible, setMenuVisible] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [reportModalVisible, setReportModalVisible] = useState(false);
@@ -260,16 +259,11 @@ export default function ProjectPostDetail({ project, onClose, onPlaceBid, userRo
     keys: Object.keys(project || {}),
   });
 
-  // Check if file is an image by extension OR by known project file_type
+  // Check if file is an image by extension only (required docs can now be docs/pdf).
   const isImageFile = (path: string, fileType?: string) => {
     if (!path) return false;
-    // Files from project_files table are always images (form only accepts images)
-    if (fileType && ['building permit', 'title', 'blueprint', 'desired design', 'others'].includes(fileType.toLowerCase())) {
-      return true;
-    }
     const imagePath = path.toLowerCase();
-    return imagePath.match(/\.(jpg|jpeg|png|gif|webp|bmp)(\?|$)/i) !== null ||
-           (imagePath.startsWith('http') && !imagePath.includes('.pdf'));
+    return imagePath.match(/\.(jpg|jpeg|png|gif|webp|bmp)(\?|$)/i) !== null;
   };
 
   // Process files for display — classify into optional (design) and important (protected)
@@ -316,11 +310,11 @@ export default function ProjectPostDetail({ project, onClose, onPlaceBid, userRo
     });
   };
 
-  const allFiles = processFiles().filter(f => f.isImage);
+  const allFiles = processFiles();
   console.log('[ProjectPostDetail] allFiles:', allFiles.length, '| design:', allFiles.filter(f => f.isDesign).length, '| protected:', allFiles.filter(f => f.isProtected).length);
-  // Optional documents — shown in the main Facebook-style collage
-  const designImages = allFiles.filter(f => f.isDesign);
-  // Important/protected documents — shown ONLY in the expanded section with watermark
+  // Optional documents — shown in the main Facebook-style collage (images only)
+  const designImages = allFiles.filter(f => f.isDesign && f.isImage);
+  // Important/protected documents — can be images OR files
   const requiredDocuments = allFiles.filter(f => f.isProtected);
   const [currentGallery, setCurrentGallery] = useState<any[]>([]);
 
@@ -337,13 +331,6 @@ export default function ProjectPostDetail({ project, onClose, onPlaceBid, userRo
     setImageViewerVisible(true);
   };
 
-  /** Handle scroll in document viewer to track current page */
-  const onDocViewerScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const offsetX = e.nativeEvent.contentOffset.x;
-    const page = Math.round(offsetX / SCREEN_WIDTH);
-    setDocViewerIndex(page);
-  }, []);
-
   /** Get friendly label for a document based on fileType */
   const getDocumentLabel = (fileType: string): string => {
     const t = (fileType || '').toLowerCase();
@@ -351,6 +338,55 @@ export default function ProjectPostDetail({ project, onClose, onPlaceBid, userRo
     if (t.includes('title')) return 'Land Title';
     if (t.includes('permit')) return 'Building Permit';
     return 'Important Document';
+  };
+
+  const getFileExtension = (rawPath: string): string => {
+    const path = (rawPath || '').split('?')[0] || '';
+    const fileName = path.split('/').pop() || '';
+    const dotIdx = fileName.lastIndexOf('.');
+    return dotIdx >= 0 ? fileName.substring(dotIdx + 1).toLowerCase() : '';
+  };
+
+  const getDocumentIcon = (rawPath: string) => {
+    const ext = getFileExtension(rawPath);
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].includes(ext)) return 'image';
+    if (ext === 'pdf') return 'picture-as-pdf';
+    if (ext === 'doc' || ext === 'docx') return 'description';
+    if (ext === 'xls' || ext === 'xlsx') return 'table-chart';
+    if (ext === 'txt') return 'notes';
+    return 'insert-drive-file';
+  };
+
+  const getDocumentFileName = (rawPath: string): string => {
+    const path = (rawPath || '').split('?')[0] || '';
+    return path.split('/').pop() || 'document';
+  };
+
+  const getDocumentDisplayName = (fileType: string, rawPath: string): string => {
+    const ext = getFileExtension(rawPath);
+    const extText = ext ? ext.toUpperCase() : 'FILE';
+    const base = getDocumentLabel(fileType);
+    return `${base} (${extText})`;
+  };
+
+  /**
+   * Build a server-side viewer URL. The Laravel endpoint serves HTML that
+   * fetches the file from the same origin, avoiding WebView CORS issues.
+   * Returns null for unsupported extensions so the fallback card shows.
+   */
+  const getDocViewerUrl = (doc: any): string | null => {
+    const ext = getFileExtension(doc?.raw || '');
+    if (!doc?.raw) return null;
+    if (!['pdf', 'docx', 'doc', 'txt', 'csv', 'rtf'].includes(ext)) return null;
+    return `${api_config.base_url}/document-viewer?file=${encodeURIComponent(doc.raw)}`;
+  };
+
+  /** Navigate to prev/next document in the viewer */
+  const navigateDoc = (direction: 'prev' | 'next') => {
+    const newIndex = direction === 'next'
+      ? Math.min(docViewerIndex + 1, requiredDocuments.length - 1)
+      : Math.max(docViewerIndex - 1, 0);
+    setDocViewerIndex(newIndex);
   };
 
   // Collage sizing
@@ -361,10 +397,6 @@ export default function ProjectPostDetail({ project, onClose, onPlaceBid, userRo
   const largeWidth = Math.floor(usableWidth * 0.66);
   const smallColumnWidth = usableWidth - largeWidth - GAP;
   const singleHeight = Math.floor(usableWidth * 0.56);
-
-  // Document card sizing (explicit pixels so Image + watermark render reliably)
-  const DOC_GAP = 10;
-  const docCardSize = Math.floor((usableWidth - DOC_GAP) / 2);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -617,32 +649,46 @@ export default function ProjectPostDetail({ project, onClose, onPlaceBid, userRo
           <View style={styles.documentsSection}>
             <Text style={styles.sectionTitle}>Important Documents</Text>
             <Text style={styles.documentNotice}>
-              These documents are view-only and protected. Tap to view.
+              Protected files from project posting. Tap to view securely.
             </Text>
-            <View style={styles.documentsGrid}>
+            <View style={styles.importantDocsList}>
               {requiredDocuments.slice(0, 22).map((doc, index) => (
                 <TouchableOpacity
                   key={index}
-                  style={[styles.documentCard, { width: docCardSize }]}
+                  style={styles.importantDocCard}
                   onPress={() => openImageViewer(index, 'docs')}
                   activeOpacity={0.9}
                 >
-                  <View style={[styles.documentImageContainer, { width: docCardSize, height: docCardSize }]}>
-                    <Image source={{ uri: doc.url }} style={{ width: docCardSize, height: docCardSize }} contentFit="cover" transition={200} cachePolicy="memory-disk" />
-                    {/* Watermark always rendered on top */}
-                    <View style={styles.thumbnailWatermarkWrapper} pointerEvents="none">
-                      <Image source={watermarkImage} style={{ width: docCardSize, height: docCardSize, opacity: 0.45 }} contentFit="cover" />
+                  <View style={styles.importantDocPreview}>
+                    {doc.isImage ? (
+                      <View style={styles.importantDocImageWrap}>
+                        <Image source={{ uri: doc.url }} style={styles.importantDocImage} contentFit="cover" transition={200} cachePolicy="memory-disk" />
+                        <View style={styles.thumbnailWatermarkWrapper} pointerEvents="none">
+                          <Image source={watermarkImage} style={styles.importantDocWatermarkThumb} contentFit="cover" />
+                        </View>
+                      </View>
+                    ) : (
+                      <View style={styles.importantDocFileIconWrap}>
+                        <MaterialIcons name={getDocumentIcon(doc.raw)} size={30} color="#D97706" />
+                        <Text style={styles.importantDocExt}>{(getFileExtension(doc.raw) || 'FILE').toUpperCase()}</Text>
+                      </View>
+                    )}
+                  </View>
+
+                  <View style={styles.importantDocMeta}>
+                    <View style={styles.importantDocTitleRow}>
+                      <MaterialIcons name="lock-outline" size={14} color="#B45309" />
+                      <Text style={styles.importantDocType}>{getDocumentLabel(doc.fileType)}</Text>
                     </View>
-                    {/* Label overlay */}
-                    <View style={styles.documentLabelOverlay}>
-                      <MaterialIcons name="lock-outline" size={14} color="#FFFFFF" style={{ marginRight: 4 }} />
-                      <Text style={styles.documentLabelText}>
-                        {getDocumentLabel(doc.fileType)}
-                      </Text>
-                    </View>
-                    {/* View icon indicator */}
-                    <View style={styles.documentViewIcon}>
-                      <MaterialIcons name="visibility" size={20} color="#FFFFFF" />
+                    <Text style={styles.importantDocName} numberOfLines={1}>{getDocumentDisplayName(doc.fileType, doc.raw)}</Text>
+                    <View style={styles.importantDocActions}>
+                      <View style={styles.importantDocTag}>
+                        <Text style={styles.importantDocTagText}>Watermarked</Text>
+                      </View>
+                      <View style={styles.importantDocViewBtn}>
+                        <MaterialIcons name="visibility" size={16} color="#EC7E00" />
+                        <Text style={styles.importantDocViewText}>View</Text>
+                      </View>
                     </View>
                   </View>
                 </TouchableOpacity>
@@ -727,7 +773,7 @@ export default function ProjectPostDetail({ project, onClose, onPlaceBid, userRo
 
       {/* ============================================================ */}
       {/* Document Viewer Modal — overlay-style for important documents */}
-      {/* Supports up to 22 documents, paginated, view-only, watermark */}
+      {/* Single-doc view with prev/next navigation, view-only, watermark */}
       {/* ============================================================ */}
       <Modal
         visible={docViewerVisible}
@@ -761,65 +807,126 @@ export default function ProjectPostDetail({ project, onClose, onPlaceBid, userRo
           {/* View-only notice */}
           <View style={styles.docViewerNotice}>
             <MaterialIcons name="info-outline" size={14} color="rgba(255,255,255,0.7)" />
-            <Text style={styles.docViewerNoticeText}>View only — downloading is disabled</Text>
+            <Text style={styles.docViewerNoticeText}>Protected preview with watermark</Text>
           </View>
 
-          {/* Paginated document viewer — FlatList for performance with many images */}
-          <FlatList
-            ref={docFlatListRef}
-            data={requiredDocuments.slice(0, 22)}
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            initialScrollIndex={docViewerIndex}
-            getItemLayout={(_, index) => ({
-              length: SCREEN_WIDTH,
-              offset: SCREEN_WIDTH * index,
-              index,
-            })}
-            onMomentumScrollEnd={onDocViewerScroll}
-            keyExtractor={(_, i) => `doc-${i}`}
-            renderItem={({ item: doc }) => (
+          {/* Single document content area */}
+          {(() => {
+            const doc = requiredDocuments[docViewerIndex];
+            if (!doc) return null;
+
+            if (doc.isImage) {
+              return (
+                <View style={styles.docViewerPage}>
+                  <Image
+                    source={{ uri: doc.url }}
+                    style={styles.docViewerImage}
+                    contentFit="contain"
+                    transition={200}
+                    cachePolicy="memory-disk"
+                  />
+                  <Image
+                    source={watermarkImage}
+                    style={styles.docViewerWatermark}
+                    contentFit="cover"
+                  />
+                </View>
+              );
+            }
+
+            const viewerUrl = getDocViewerUrl(doc);
+            if (viewerUrl) {
+              return (
+                <View style={styles.docViewerPage}>
+                  <View style={styles.docViewerWebWrap}>
+                    <WebView
+                      key={`webview-${docViewerIndex}`}
+                      source={{ uri: viewerUrl }}
+                      style={styles.docViewerWebView}
+                      originWhitelist={['*']}
+                      javaScriptEnabled
+                      domStorageEnabled
+                      scalesPageToFit
+                      mixedContentMode="always"
+                      allowFileAccess
+                      allowUniversalAccessFromFileURLs
+                      startInLoadingState
+                      cacheEnabled
+                      setSupportMultipleWindows={false}
+                      renderLoading={() => (
+                        <View style={styles.docViewerWebLoading}>
+                          <ActivityIndicator size="large" color="#EC7E00" />
+                          <Text style={styles.docViewerWebLoadingText}>Loading document...</Text>
+                        </View>
+                      )}
+                      renderError={() => (
+                        <View style={styles.docViewerWebLoading}>
+                          <MaterialIcons name="error-outline" size={40} color="#D97706" />
+                          <Text style={styles.docViewerWebLoadingText}>Unable to load document</Text>
+                          <Text style={[styles.docViewerWebLoadingText, { fontSize: 11, marginTop: 4 }]}>Tap the arrows to view other files</Text>
+                        </View>
+                      )}
+                    />
+                    {/* Watermark overlay on top of WebView */}
+                    <View style={styles.docViewerWebWatermark} pointerEvents="none">
+                      <Text style={styles.docViewerTextWatermarkLine}>LEGATURA CONFIDENTIAL</Text>
+                      <Text style={styles.docViewerTextWatermarkLine}>LEGATURA CONFIDENTIAL</Text>
+                      <Text style={styles.docViewerTextWatermarkLine}>LEGATURA CONFIDENTIAL</Text>
+                      <Text style={styles.docViewerTextWatermarkLine}>LEGATURA CONFIDENTIAL</Text>
+                    </View>
+                  </View>
+                </View>
+              );
+            }
+
+            // Fallback for unsupported file types
+            return (
               <View style={styles.docViewerPage}>
-                {/* Document image */}
-                <Image
-                  source={{ uri: doc.url }}
-                  style={styles.docViewerImage}
-                  contentFit="contain"
-                  transition={200}
-                  cachePolicy="memory-disk"
-                />
-                {/* Watermark — always fixed on top, scales responsively */}
-                <Image
-                  source={watermarkImage}
-                  style={styles.docViewerWatermark}
-                  contentFit="cover"
-                />
+                <View style={styles.docViewerFileCard}>
+                  <MaterialIcons name={getDocumentIcon(doc.raw)} size={46} color="#D97706" />
+                  <Text style={styles.docViewerFileType}>{(getFileExtension(doc.raw) || 'FILE').toUpperCase()}</Text>
+                  <Text style={styles.docViewerFileName} numberOfLines={2}>{getDocumentDisplayName(doc.fileType, doc.raw)}</Text>
+                  <Text style={styles.docViewerFileHint}>Preview not available for this file type.</Text>
+                  <View style={styles.docViewerTextWatermark} pointerEvents="none">
+                    <Text style={styles.docViewerTextWatermarkLine}>LEGATURA CONFIDENTIAL</Text>
+                    <Text style={styles.docViewerTextWatermarkLine}>LEGATURA CONFIDENTIAL</Text>
+                  </View>
+                </View>
               </View>
-            )}
-          />
+            );
+          })()}
 
-          {/* Page counter */}
-          <View style={styles.docViewerCounter}>
-            <Text style={styles.docViewerCounterText}>
-              {Math.min(docViewerIndex + 1, requiredDocuments.length)} / {Math.min(requiredDocuments.length, 22)}
-            </Text>
-          </View>
+          {/* Bottom navigation bar */}
+          <View style={styles.docNavBar}>
+            {/* Previous button */}
+            <TouchableOpacity
+              style={[styles.docNavBtn, docViewerIndex === 0 && styles.docNavBtnDisabled]}
+              onPress={() => navigateDoc('prev')}
+              disabled={docViewerIndex === 0}
+              accessibilityLabel="Previous document"
+            >
+              <Ionicons name="chevron-back" size={22} color={docViewerIndex === 0 ? 'rgba(255,255,255,0.25)' : '#FFFFFF'} />
+              <Text style={[styles.docNavBtnText, docViewerIndex === 0 && styles.docNavBtnTextDisabled]}>Prev</Text>
+            </TouchableOpacity>
 
-          {/* Dot indicators for quick navigation (show max 12 dots, then compress) */}
-          {requiredDocuments.length > 1 && requiredDocuments.length <= 12 && (
-            <View style={styles.docViewerDots}>
-              {requiredDocuments.slice(0, 12).map((_, i) => (
-                <View
-                  key={i}
-                  style={[
-                    styles.docViewerDot,
-                    i === docViewerIndex && styles.docViewerDotActive,
-                  ]}
-                />
-              ))}
+            {/* Counter */}
+            <View style={styles.docNavCounter}>
+              <Text style={styles.docNavCounterText}>
+                {docViewerIndex + 1} / {requiredDocuments.length}
+              </Text>
             </View>
-          )}
+
+            {/* Next button */}
+            <TouchableOpacity
+              style={[styles.docNavBtn, docViewerIndex >= requiredDocuments.length - 1 && styles.docNavBtnDisabled]}
+              onPress={() => navigateDoc('next')}
+              disabled={docViewerIndex >= requiredDocuments.length - 1}
+              accessibilityLabel="Next document"
+            >
+              <Text style={[styles.docNavBtnText, docViewerIndex >= requiredDocuments.length - 1 && styles.docNavBtnTextDisabled]}>Next</Text>
+              <Ionicons name="chevron-forward" size={22} color={docViewerIndex >= requiredDocuments.length - 1 ? 'rgba(255,255,255,0.25)' : '#FFFFFF'} />
+            </TouchableOpacity>
+          </View>
         </View>
       </Modal>
 
@@ -1099,15 +1206,106 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 10,
   },
-  documentCard: {
-    backgroundColor: '#F8F9FA',
+  importantDocsList: {
+    gap: 10,
+  },
+  importantDocCard: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E7E7E7',
+    borderRadius: 10,
+    padding: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  importantDocPreview: {
+    width: 78,
+    height: 78,
     borderRadius: 8,
     overflow: 'hidden',
-    marginBottom: 4,
+    marginRight: 12,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#ECECEC',
   },
-  documentImageContainer: {
-    position: 'relative',
-    overflow: 'hidden',
+  importantDocImageWrap: {
+    width: '100%',
+    height: '100%',
+  },
+  importantDocImage: {
+    width: '100%',
+    height: '100%',
+  },
+  importantDocWatermarkThumb: {
+    width: '100%',
+    height: '100%',
+    opacity: 0.45,
+  },
+  importantDocFileIconWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFF6EA',
+  },
+  importantDocExt: {
+    marginTop: 4,
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#A15C1A',
+    letterSpacing: 0.3,
+  },
+  importantDocMeta: {
+    flex: 1,
+  },
+  importantDocTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  importantDocType: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1A1A1A',
+  },
+  importantDocName: {
+    marginTop: 4,
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  importantDocActions: {
+    marginTop: 9,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  importantDocTag: {
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  importantDocTagText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#92400E',
+  },
+  importantDocViewBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#FFF7ED',
+    borderWidth: 1,
+    borderColor: '#FDBA74',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  importantDocViewText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#C2410C',
   },
   documentLabel: {
     padding: 8,
@@ -1273,7 +1471,7 @@ const styles = StyleSheet.create({
   docViewerHeader: {
     position: 'absolute',
     top: 24,
-    left: 0,
+    left: 50,
     right: 70,
     flexDirection: 'row',
     alignItems: 'center',
@@ -1301,59 +1499,155 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   docViewerPage: {
-    width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT,
+    flex: 1,
+    marginTop: 76,
+    marginBottom: 70,
     justifyContent: 'center',
     alignItems: 'center',
   },
   docViewerImage: {
     width: SCREEN_WIDTH - 32,
-    height: SCREEN_HEIGHT * 0.7,
+    height: '100%',
+    maxHeight: SCREEN_HEIGHT * 0.72,
   },
   docViewerWatermark: {
     position: 'absolute',
-    top: '15%',
+    top: 0,
     left: 16,
     right: 16,
-    bottom: '15%',
+    bottom: 0,
     width: SCREEN_WIDTH - 32,
-    height: SCREEN_HEIGHT * 0.7,
     opacity: 0.2,
     zIndex: 5,
   },
-  docViewerCounter: {
+  docNavBar: {
     position: 'absolute',
-    bottom: 50,
-    alignSelf: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.65)',
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    borderRadius: 20,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    paddingBottom: 28,
+    backgroundColor: 'rgba(0,0,0,0.55)',
     zIndex: 10,
   },
-  docViewerCounterText: {
+  docNavBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    gap: 4,
+  },
+  docNavBtnDisabled: {
+    backgroundColor: 'rgba(255,255,255,0.06)',
+  },
+  docNavBtnText: {
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '600',
   },
-  docViewerDots: {
+  docNavBtnTextDisabled: {
+    color: 'rgba(255,255,255,0.25)',
+  },
+  docNavCounter: {
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  docNavCounterText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  docViewerFileCard: {
+    width: SCREEN_WIDTH - 44,
+    minHeight: SCREEN_HEIGHT * 0.46,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    paddingHorizontal: 22,
+    paddingVertical: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  docViewerFileType: {
+    marginTop: 10,
+    color: '#FFD29C',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.7,
+  },
+  docViewerFileName: {
+    marginTop: 8,
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  docViewerFileHint: {
+    marginTop: 6,
+    color: 'rgba(255,255,255,0.72)',
+    fontSize: 12,
+    textAlign: 'center',
+  },
+  docViewerWebWrap: {
+    width: SCREEN_WIDTH - 16,
+    flex: 1,
+    borderRadius: 10,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
+    backgroundColor: '#FFFFFF',
+  },
+  docViewerWebView: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  docViewerWebLoading: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  docViewerWebLoadingText: {
+    marginTop: 8,
+    color: '#6B7280',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  docViewerWebWatermark: {
     position: 'absolute',
-    bottom: 30,
-    alignSelf: 'center',
-    flexDirection: 'row',
-    gap: 6,
-    zIndex: 10,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  docViewerDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: 'rgba(255,255,255,0.3)',
+  docViewerTextWatermark: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  docViewerDotActive: {
-    backgroundColor: '#EC7E00',
-    width: 20,
-    borderRadius: 4,
+  docViewerTextWatermarkLine: {
+    color: 'rgba(255,255,255,0.12)',
+    fontSize: 20,
+    fontWeight: '700',
+    letterSpacing: 1.2,
+    transform: [{ rotate: '-22deg' }],
+    marginVertical: 12,
   },
   menuOverlay: {
     flex: 1,

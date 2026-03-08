@@ -67,8 +67,8 @@ const formatDate = (dateString: string | null | undefined) => {
 const formatDateTime = (dateString: string | null | undefined) => {
   if (!dateString) return '—';
   const date = new Date(dateString);
-  const d = date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
-  const t = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+  const d = date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  const t = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
   return `${d} ${t}`;
 };
 
@@ -189,8 +189,14 @@ export default function ProjectSummary({ route, navigation }: ProjectSummaryProp
     ? Math.round((overview.completed_milestones / overview.total_milestones) * 100)
     : 0;
 
+  const effectiveTotalPaid =
+    overview.total_paid +
+    (overview.payment_mode === 'downpayment' && overview.downpayment_cleared
+      ? overview.downpayment
+      : 0);
+
   const budgetUtilization = overview.current_budget > 0
-    ? Math.round((overview.total_paid / overview.current_budget) * 100)
+    ? Math.round((effectiveTotalPaid / overview.current_budget) * 100)
     : 0;
 
   return (
@@ -379,9 +385,12 @@ export default function ProjectSummary({ route, navigation }: ProjectSummaryProp
                   </View>
                 ) : null}
 
-                {/* Mini progress bar */}
+                {/* Mini progress bar — shows payment progress */}
                 <View style={[styles.progressBarTrack, { marginTop: 8, height: 4 }]}>
-                  <View style={[styles.progressBarFill, { width: `${m.percentage_progress}%`, backgroundColor: COLORS.info }]} />
+                  <View style={[styles.progressBarFill, {
+                    width: `${m.current_allocation > 0 ? Math.min(Math.round((m.total_paid / m.current_allocation) * 100), 100) : (m.status === 'completed' ? 100 : 0)}%`,
+                    backgroundColor: COLORS.info,
+                  }]} />
                 </View>
               </TouchableOpacity>
             ))}
@@ -480,8 +489,8 @@ export default function ProjectSummary({ route, navigation }: ProjectSummaryProp
             {payments.records.length === 0 ? (
               <Text style={styles.emptyText}>No payment records yet.</Text>
             ) : (
-              payments.records.map((p) => (
-                <View key={p.payment_id} style={styles.paymentRow}>
+              payments.records.map((p, idx) => (
+                <View key={`${p.payment_type}-${p.payment_id}-${p.transaction_date}-${idx}`} style={styles.paymentRow}>
                   <View style={styles.paymentRowTop}>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.paymentMilestone}>{p.milestone}</Text>

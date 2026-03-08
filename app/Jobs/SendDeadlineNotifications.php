@@ -27,6 +27,8 @@ class SendDeadlineNotifications implements ShouldQueue
         $this->checkSettlementDueDateReminders();
         $this->checkOverdueSettlementAlerts();
         $this->checkDisputeResponseDeadlines();
+        $this->checkSubscriptionExpiryReminders();
+        $this->checkBoostExpiryReminders();
 
         Log::info('SendDeadlineNotifications job finished');
     }
@@ -75,7 +77,7 @@ class SendDeadlineNotifications implements ShouldQueue
 
                 NotificationService::createForUsers(
                     $bidders,
-                    'bid_received',
+                    'bid_deadline',
                     "Bidding closes in {$window['label']}",
                     "The bidding deadline for \"{$project->project_title}\" is approaching. Make sure your bid is final.",
                     'high',
@@ -167,7 +169,7 @@ class SendDeadlineNotifications implements ShouldQueue
 
                 NotificationService::createForUsers(
                     $recipients,
-                    'milestone_completed',
+                    'milestone_item_due',
                     "Item due in {$window['label']}",
                     "Milestone item \"{$item->milestone_item_title}\" for \"{$item->project_title}\" is due in {$window['label']}.",
                     'high',
@@ -185,6 +187,8 @@ class SendDeadlineNotifications implements ShouldQueue
      */
     private function checkOverdueAlerts(): void
     {
+        $today = now()->format('Y-m-d');
+
         $items = DB::table('milestone_items as mi')
             ->join('milestones as m', 'mi.milestone_id', '=', 'm.milestone_id')
             ->join('projects as p', 'm.project_id', '=', 'p.project_id')
@@ -212,14 +216,14 @@ class SendDeadlineNotifications implements ShouldQueue
 
             NotificationService::createForUsers(
                 $recipients,
-                'milestone_completed',
+                'milestone_item_overdue',
                 'Milestone Item Overdue',
                 "Milestone item \"{$item->milestone_item_title}\" for \"{$item->project_title}\" is overdue.",
                 'critical',
                 'milestone_item',
                 $item->item_id,
                 ['screen' => 'ProjectDetails', 'params' => ['projectId' => $item->project_id, 'tab' => 'milestones']],
-                "item_overdue_{$item->item_id}"
+                "item_overdue_{$today}_{$item->item_id}"
             );
         }
     }
@@ -230,6 +234,7 @@ class SendDeadlineNotifications implements ShouldQueue
      */
     private function checkPaymentDueReminders(): void
     {
+        $today = now()->format('Y-m-d');
         $from = now()->subHours(25);
         $to   = now()->subHours(24);
 
@@ -263,7 +268,7 @@ class SendDeadlineNotifications implements ShouldQueue
                 'milestone_item',
                 $item->item_id,
                 ['screen' => 'ProjectDetails', 'params' => ['projectId' => $item->project_id, 'tab' => 'payments']],
-                "payment_due_{$item->item_id}"
+                "payment_due_{$today}_{$item->item_id}"
             );
         }
     }
@@ -422,6 +427,99 @@ class SendDeadlineNotifications implements ShouldQueue
                 ['screen' => 'ProjectDetails', 'params' => ['projectId' => $item->project_id, 'tab' => 'payments']],
                 "settlement_overdue_{$today}_{$item->item_id}"
             );
+        }
+    }
+
+    /**
+     * Remind contractors when their subscription is about to expire (7 days, 3 days, 1 day).
+     */
+    private function checkSubscriptionExpiryReminders(): void
+    {
+        $windows = [
+            ['hours' => 168, 'label' => '7 days',  'priority' => 'medium'],
+            ['hours' => 72,  'label' => '3 days',  'priority' => 'high'],
+            ['hours' => 24,  'label' => '24 hours','priority' => 'urgent'],
+        ];
+
+        foreach ($windows as $window) {
+            $from = now()->addHours($window['hours'] - 1);
+            $to   = now()->addHours($window['hours']);
+
+            $subs = DB::table('platform_payments as pp')
+                ->join('subscription_plans as sp', 'pp.subscriptionPlanId', '=', 'sp.id')
+                ->join('contractors as c', 'pp.contractor_id', '=', 'c.contractor_id')
+                ->where('pp.is_approved', 1)
+                ->where('sp.plan_key', '!=', 'boost')
+                ->whereBetween('pp.expiration_date', [$from, $to])
+                ->select(
+                    'pp.platform_payment_id',
+                    'pp.expiration_date',
+                    'sp.name as plan_name',
+                    'c.user_id'
+                )
+                ->get();
+
+            foreach ($subs as $sub) {
+                $expFormatted = date('M d, Y', strtotime($sub->expiration_date));
+                NotificationService::create(
+                    (int) $sub->user_id,
+                    'subscription_expiring',
+                    'Subscription Expiring Soon',
+                    "Your {$sub->plan_name} subscription expires in {$window['label']} on {$expFormatted}. Renew to keep your benefits.",
+                    $window['priority'],
+                    'subscription',
+                    $sub->platform_payment_id,
+                    ['screen' => 'Subscription'],
+                    "sub_expiring_{$window['hours']}h_{$sub->platform_payment_id}"
+                );
+            }
+        }
+    }
+
+    /**
+     * Remind property owners when a boosted project post is about to expire (3 days, 1 day).
+     */
+    private function checkBoostExpiryReminders(): void
+    {
+        $windows = [
+            ['hours' => 72, 'label' => '3 days',   'priority' => 'medium'],
+            ['hours' => 24, 'label' => '24 hours', 'priority' => 'high'],
+        ];
+
+        foreach ($windows as $window) {
+            $from = now()->addHours($window['hours'] - 1);
+            $to   = now()->addHours($window['hours']);
+
+            $boosts = DB::table('platform_payments as pp')
+                ->join('subscription_plans as sp', 'pp.subscriptionPlanId', '=', 'sp.id')
+                ->join('property_owners as po', 'pp.owner_id', '=', 'po.owner_id')
+                ->join('projects as p', 'pp.project_id', '=', 'p.project_id')
+                ->where('pp.is_approved', 1)
+                ->where('sp.plan_key', 'boost')
+                ->whereBetween('pp.expiration_date', [$from, $to])
+                ->select(
+                    'pp.platform_payment_id',
+                    'pp.expiration_date',
+                    'p.project_id',
+                    'p.project_title',
+                    'po.user_id'
+                )
+                ->get();
+
+            foreach ($boosts as $boost) {
+                $expFormatted = date('M d, Y', strtotime($boost->expiration_date));
+                NotificationService::create(
+                    (int) $boost->user_id,
+                    'boost_expiring',
+                    'Project Boost Expiring Soon',
+                    "The boost for \"${boost->project_title}\" expires in {$window['label']} on {$expFormatted}. Renew to keep your post highlighted.",
+                    $window['priority'],
+                    'project',
+                    $boost->project_id,
+                    ['screen' => 'ProjectDetails', 'params' => ['projectId' => $boost->project_id]],
+                    "boost_expiring_{$window['hours']}h_{$boost->platform_payment_id}"
+                );
+            }
         }
     }
 

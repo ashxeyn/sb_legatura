@@ -325,33 +325,17 @@ export default function PropertyOwnerDashboard({ userData, onNavigateToMessages 
             <Text style={styles.metaText} numberOfLines={1}>{project.project_location}</Text>
           </View>
           <View style={styles.metaItem}>
-            <Feather name="dollar-sign" size={14} color={COLORS.textMuted} />
+            <Feather name="credit-card" size={14} color={COLORS.textMuted} />
             <Text style={styles.metaText}>{formatBudget(project.budget_range_min, project.budget_range_max)}</Text>
           </View>
-        </View>
-
-        {/* Card Footer */}
-        <View style={styles.projectCardFooter}>
-          <View style={styles.footerLeft}>
-            {project.bids_count !== undefined && project.bids_count > 0 && (
-              <View style={styles.bidsInfo}>
-                <Feather name="users" size={14} color={COLORS.info} />
-                <Text style={styles.bidsText}>{project.bids_count} bids</Text>
-              </View>
-            )}
-            {daysRemaining !== null && daysRemaining > 0 && (
-              <View style={[styles.deadlineInfo, daysRemaining <= 3 && styles.deadlineUrgent]}>
-                <Feather name="clock" size={14} color={daysRemaining <= 3 ? COLORS.error : COLORS.textMuted} />
-                <Text style={[styles.deadlineText, daysRemaining <= 3 && styles.deadlineTextUrgent]}>
-                  {daysRemaining}d left
-                </Text>
-              </View>
-            )}
-          </View>
-          <TouchableOpacity style={styles.viewDetailsBtn}>
-            <Text style={styles.viewDetailsText}>View Details</Text>
-            <Feather name="arrow-right" size={16} color={COLORS.primary} />
-          </TouchableOpacity>
+          {daysRemaining !== null && daysRemaining > 0 && (
+            <View style={styles.metaItem}>
+              <Feather name="clock" size={14} color={daysRemaining <= 3 ? COLORS.error : COLORS.textMuted} />
+              <Text style={[styles.metaText, daysRemaining <= 3 && styles.deadlineTextUrgent]}>
+                Bidding ends in {daysRemaining}d
+              </Text>
+            </View>
+          )}
         </View>
       </TouchableOpacity>
     );
@@ -877,13 +861,10 @@ const styles = StyleSheet.create({
   },
   projectCard: {
     backgroundColor: COLORS.surface,
-    borderRadius: 16,
+    borderRadius: 12,
     padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 12,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   projectCardHeader: {
     flexDirection: 'row',
@@ -932,7 +913,7 @@ const styles = StyleSheet.create({
   },
   projectMeta: {
     gap: 8,
-    marginBottom: 12,
+    marginBottom: 2,
   },
   metaItem: {
     flexDirection: 'row',
@@ -944,52 +925,8 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     flex: 1,
   },
-  projectCardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.borderLight,
-  },
-  footerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  bidsInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  bidsText: {
-    fontSize: 12,
-    color: COLORS.info,
-    fontWeight: '600',
-  },
-  deadlineInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  deadlineUrgent: {},
-  deadlineText: {
-    fontSize: 12,
-    color: COLORS.textMuted,
-    fontWeight: '500',
-  },
   deadlineTextUrgent: {
     color: COLORS.error,
-  },
-  viewDetailsBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  viewDetailsText: {
-    fontSize: 13,
-    color: COLORS.primary,
-    fontWeight: '600',
   },
 
   // Error State

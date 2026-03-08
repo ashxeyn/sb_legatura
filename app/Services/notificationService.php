@@ -55,6 +55,17 @@ class notificationService
         'team_access_changed' => 'Team Update',
         'review_prompt'       => 'Project Alert',
         'review_submitted'    => 'Project Alert',
+
+        // Subscription & boost expiry
+        'subscription_expiring' => 'Payment Reminder',
+        'subscription_expired'  => 'Payment Reminder',
+        'boost_expiring'        => 'Payment Reminder',
+        'boost_expired'         => 'Payment Reminder',
+
+        // Reminder-specific sub-types (distinct from action/event sub-types)
+        'bid_deadline'           => 'Bid Status',
+        'milestone_item_due'     => 'Milestone Update',
+        'milestone_item_overdue' => 'Milestone Update',
     ];
 
     /**
@@ -73,15 +84,15 @@ class notificationService
         'bid_rejected'        => 'contractor',  // contractor's bid was rejected
         'bid_received'        => 'owner',       // owner received a new bid
 
-        // Milestone notifications — contractor is doing the work
-        'milestone_submitted'      => 'contractor',
+        // Milestone notifications — contractor does the work, owner reviews
+        'milestone_submitted'      => 'both',
         'milestone_approved'       => 'contractor',
         'milestone_rejected'       => 'contractor',
         'milestone_completed'      => 'contractor',
         'milestone_item_completed' => 'contractor',
         'milestone_deleted'        => 'contractor',
-        'milestone_resubmitted'    => 'contractor',
-        'milestone_updated'        => 'contractor',
+        'milestone_resubmitted'    => 'both',
+        'milestone_updated'        => 'both',
 
         // Progress notifications — owner reviews progress
         'progress_submitted'  => 'owner',
@@ -120,22 +131,21 @@ class notificationService
         'team_removed'        => 'contractor',
         'team_role_changed'   => 'contractor',
         'team_access_changed' => 'contractor',
+
+        // Subscription & boost expiry
+        'subscription_expiring' => 'contractor',
+        'subscription_expired'  => 'contractor',
+        'boost_expiring'        => 'owner',
+        'boost_expired'         => 'owner',
+
+        // Reminder-specific sub-types
+        'bid_deadline'           => 'contractor',
+        'milestone_item_due'     => 'both',
+        'milestone_item_overdue' => 'both',
     ];
 
     /**
-     * Create a single notification for one user.
-     *
-     * @param int         $userId        Recipient user_id
-     * @param string      $subType       Granular type key, e.g. 'bid_accepted'
-     * @param string      $title         Short headline
-     * @param string      $message       Full notification text
-     * @param string      $priority      'critical' | 'high' | 'normal'
-     * @param string|null $referenceType e.g. 'bid', 'milestone', 'payment', 'dispute'
-     * @param int|null    $referenceId   PK of the related record
-     * @param array|null  $actionData    Navigation metadata: ['screen' => ..., 'params' => [...]]
-     * @param string|null $dedupKey      Optional dedup key for scheduled notifications
-     *
-     * @return int|null notification_id or null if skipped (dedup)
+     * Create a single notification for one user, and send email if available.
      */
     public static function create(
         int     $userId,
@@ -187,6 +197,15 @@ class notificationService
                 'sub_type'        => $subType,
                 'priority'        => $priority,
             ]);
+
+            // Send email if user has email
+            $user = \App\Models\User::find($userId);
+            if ($user && $user->email) {
+                \Mail::raw($message, function($mailMessage) use ($user, $title) {
+                    $mailMessage->to($user->email)
+                               ->subject($title);
+                });
+            }
 
             return $notificationId;
         } catch (\Illuminate\Database\QueryException $e) {

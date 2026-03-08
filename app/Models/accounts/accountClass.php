@@ -120,6 +120,7 @@ class accountClass
     {
         $userId = DB::table('users')->insertGetId([
             'profile_pic' => $data['profile_pic'] ?? null,
+            'cover_photo' => $data['cover_photo'] ?? null,
             'username' => $data['username'],
             'email' => $data['email'],
             'password_hash' => $data['password_hash'],

@@ -210,7 +210,9 @@ class profileService
                     'company_name'         => $contractor->company_name,
                     'bio'                  => $contractor->bio,
                     'company_description'  => $contractor->company_description ?? null,
-                    'type_name'            => $contractor->type_name,
+                    'type_name'            => ($contractor->type_name === 'Others' || $contractor->type_name === null)
+                        ? ($contractor->contractor_type_other ?? $contractor->type_name)
+                        : $contractor->type_name,
                     'years_of_experience'  => $contractor->years_of_experience,
                     'completed_projects'   => $contractor->completed_projects ?? 0,
                     'services_offered'     => $contractor->services_offered ?? null,
@@ -235,6 +237,7 @@ class profileService
                     'first_name'          => $owner->first_name,
                     'middle_name'         => $owner->middle_name ?? null,
                     'last_name'           => $owner->last_name,
+                    'bio'                 => $owner->bio ?? null,
                     'phone_number'        => $owner->phone_number ?? null,
                     'address'             => $owner->address ?? null,
                     'date_of_birth'       => $owner->date_of_birth ?? null,

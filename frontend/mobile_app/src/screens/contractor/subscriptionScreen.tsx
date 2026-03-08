@@ -98,6 +98,8 @@ export default function SubscriptionScreen({ onBack }: Props) {
 
     const selectedPlanData = plans.find(p => p.plan_key === selectedPlan);
     const isAlreadySubscribed = subscription && subscription.plan_key === selectedPlan;
+    const currentTierRank = subscription ? getTierRank(subscription.plan_key) : 0;
+    const availablePlans = plans.filter(plan => getTierRank(plan.plan_key) > currentTierRank);
 
     useEffect(() => {
         fetchSubscriptionData();
@@ -364,10 +366,6 @@ export default function SubscriptionScreen({ onBack }: Props) {
     const renderPlansTab = () => {
         const expandedPlanData = expandedPlan ? plans.find(p => p.plan_key === expandedPlan) : null;
 
-        // Filter plans to show only upgrade options based on current subscription
-        const currentTierRank = subscription ? getTierRank(subscription.plan_key) : 0;
-        const availablePlans = plans.filter(plan => getTierRank(plan.plan_key) > currentTierRank);
-
         return (
         <View style={styles.tabContent}>
             <View style={styles.plansHeader}>
@@ -549,27 +547,22 @@ export default function SubscriptionScreen({ onBack }: Props) {
                 </Animated.View>
             </View>
 
-            {activeTab === 'plans' && (
+            {activeTab === 'plans' && availablePlans.length > 0 && (
                 <View style={styles.footerWrapper}>
                     <TouchableOpacity
                         style={[
-                            styles.cancelButtonLarge,
+                            styles.subscribeFooterBtn,
                             (loading || isAlreadySubscribed) && styles.subscribeButtonDisabled,
                         ]}
                         onPress={() => setShowConfirmSubscribe(true)}
                         disabled={loading || isAlreadySubscribed}
                     >
                         {loading ? (
-                            <View style={{ paddingVertical: 14 }}>
-                                <ActivityIndicator color={selectedPlanData ? getPlanStyle(selectedPlanData.plan_key).color : '#F59E0B'} />
-                            </View>
-                        ) : isAlreadySubscribed ? (
-                            <Text style={styles.cancelButtonLargeText}>Already Subscribed</Text>
+                            <ActivityIndicator color="#FFFFFF" />
                         ) : (
-                            <View style={{ alignItems: 'center' }}>
-                                <Text style={styles.cancelButtonLargeText}>{subscription ? 'Upgrade Now' : 'Subscribe Now'}</Text>
-
-                            </View>
+                            <Text style={styles.subscribeFooterBtnText}>
+                                {isAlreadySubscribed ? 'Already Subscribed' : subscription ? 'Upgrade Now' : 'Subscribe Now'}
+                            </Text>
                         )}
                     </TouchableOpacity>
                 </View>
@@ -754,16 +747,16 @@ const styles = StyleSheet.create({
     // Overview Tab Styles
     activeSubscriptionCard: {
         backgroundColor: '#FFFFFF',
-        borderRadius: 20,
+        borderRadius: 8,
         padding: 20,
         marginBottom: 24,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 15,
-        elevation: 3,
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.04,
+        shadowRadius: 4,
+        elevation: 2,
         borderWidth: 1,
-        borderColor: '#F3F4F6',
+        borderColor: '#E5E7EB',
     },
     activeSubscriptionHeader: {
         flexDirection: 'row',
@@ -773,7 +766,7 @@ const styles = StyleSheet.create({
     activeBadge: {
         width: 56,
         height: 56,
-        borderRadius: 16,
+        borderRadius: 8,
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 16,
@@ -790,9 +783,9 @@ const styles = StyleSheet.create({
         marginRight: 16,
     },
     activeTierIconContainer: {
-        width: 84,
-        height: 84,
-        borderRadius: 20,
+        width: 72,
+        height: 72,
+        borderRadius: 8,
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 16,
@@ -823,7 +816,7 @@ const styles = StyleSheet.create({
     },
     activeDates: {
         backgroundColor: '#F9FAFB',
-        borderRadius: 12,
+        borderRadius: 6,
         padding: 12,
         marginBottom: 16,
     },
@@ -875,9 +868,9 @@ const styles = StyleSheet.create({
     cancelButton: {
         paddingVertical: 14,
         alignItems: 'center',
-        borderRadius: 12,
+        borderRadius: 6,
         borderWidth: 1,
-        borderColor: '#FEE2E2',
+        borderColor: '#FECACA',
         backgroundColor: '#FEF2F2',
     },
     cancelButtonText: {
@@ -896,7 +889,7 @@ const styles = StyleSheet.create({
     },
     otherPlanCard: {
         backgroundColor: '#FFFFFF',
-        borderRadius: 16,
+        borderRadius: 6,
         padding: 16,
         marginRight: 12,
         width: width * 0.4,
@@ -911,7 +904,7 @@ const styles = StyleSheet.create({
     otherPlanGradient: {
         width: 48,
         height: 48,
-        borderRadius: 12,
+        borderRadius: 6,
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 12,
@@ -953,7 +946,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#F59E0B',
         paddingHorizontal: 24,
         paddingVertical: 12,
-        borderRadius: 12,
+        borderRadius: 6,
     },
     browsePlansButtonText: {
         fontSize: 16,
@@ -999,19 +992,19 @@ const styles = StyleSheet.create({
     },
     planCard: {
         backgroundColor: '#FFFFFF',
-        borderRadius: 16,
+        borderRadius: 6,
         paddingVertical: 16,
         paddingHorizontal: 16,
-        marginBottom: 12,
-        borderWidth: 2,
+        marginBottom: 10,
+        borderWidth: 1,
         borderColor: '#E5E7EB',
         flexDirection: 'row',
         alignItems: 'center',
         position: 'relative',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.04,
-        shadowRadius: 4,
+        shadowOpacity: 0.03,
+        shadowRadius: 2,
         elevation: 1,
     },
     selectedPlanCard: {
@@ -1021,9 +1014,9 @@ const styles = StyleSheet.create({
         shadowRadius: 8,
     },
     planIconContainer: {
-        width: 48,
-        height: 48,
-        borderRadius: 14,
+        width: 44,
+        height: 44,
+        borderRadius: 6,
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 14,
@@ -1062,10 +1055,10 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
     },
     planCheckBadge: {
-        width: 22,
-        height: 22,
-        borderRadius: 11,
-        backgroundColor: '#FFFFFF30',
+        width: 20,
+        height: 20,
+        borderRadius: 4,
+        backgroundColor: '#FFFFFF40',
         justifyContent: 'center',
         alignItems: 'center',
         marginTop: 4,
@@ -1074,27 +1067,22 @@ const styles = StyleSheet.create({
         position: 'absolute',
         right: -4,
         top: -4,
-        width: 24,
-        height: 24,
-        borderRadius: 12,
+        width: 20,
+        height: 20,
+        borderRadius: 4,
         alignItems: 'center',
         justifyContent: 'center',
-        elevation: 3,
+        elevation: 2,
         zIndex: 2,
     },
     benefitsPanel: {
         backgroundColor: '#FFFFFF',
-        borderRadius: 16,
-        padding: 20,
+        borderRadius: 6,
+        padding: 16,
         marginTop: 4,
         marginBottom: 16,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.04,
-        shadowRadius: 6,
-        elevation: 2,
         borderWidth: 1,
-        borderColor: '#F3F4F6',
+        borderColor: '#E5E7EB',
     },
     benefitsListCompact: {
         marginTop: 8,
@@ -1122,15 +1110,11 @@ const styles = StyleSheet.create({
     tierIconLarge: {
         width: 64,
         height: 64,
-        borderRadius: 18,
+        borderRadius: 8,
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 16,
-        shadowColor: '#F59E0B',
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.12,
-        shadowRadius: 15,
-        elevation: 4,
+        elevation: 2,
     },
     planInfo: {
         flex: 1,
@@ -1149,11 +1133,11 @@ const styles = StyleSheet.create({
     },
     dateContainer: {
         backgroundColor: '#F9FAFB',
-        borderRadius: 16,
-        padding: 16,
-        marginBottom: 20,
+        borderRadius: 6,
+        padding: 14,
+        marginBottom: 16,
         borderWidth: 1,
-        borderColor: '#F3F4F6',
+        borderColor: '#E5E7EB',
     },
     dateRow: {
         flexDirection: 'row',
@@ -1172,15 +1156,17 @@ const styles = StyleSheet.create({
         marginTop: 4,
     },
     benefitsCard: {
-        backgroundColor: '#F3F7FB',
-        borderRadius: 12,
-        padding: 16,
+        backgroundColor: '#F9FAFB',
+        borderRadius: 6,
+        padding: 14,
         marginBottom: 12,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
     },
     benefitIcon: {
-        width: 28,
-        height: 28,
-        borderRadius: 10,
+        width: 26,
+        height: 26,
+        borderRadius: 6,
         backgroundColor: '#FEF3C7',
         alignItems: 'center',
         justifyContent: 'center',
@@ -1198,45 +1184,61 @@ const styles = StyleSheet.create({
         marginBottom: 18,
     },
     otherPlanPill: {
-        backgroundColor: '#EEF6FF',
-        borderRadius: 16,
-        paddingVertical: 18,
-        paddingHorizontal: 20,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 6,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        paddingVertical: 14,
+        paddingHorizontal: 16,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
     },
     otherPlanNamePill: {
-        fontSize: 16,
-        fontWeight: '700',
-        color: '#0F172A',
+        fontSize: 15,
+        fontWeight: '600',
+        color: '#1F2937',
     },
     otherPlanPricePill: {
-        fontSize: 20,
-        fontWeight: '800',
-        color: '#0F172A',
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#F59E0B',
     },
     cancelButtonLarge: {
         width: '100%',
-        padding: 16,
-        borderRadius: 16,
-        borderWidth: 2,
-        borderColor: '#F59E0B',
-        backgroundColor: '#FFFFFF',
+        paddingVertical: 14,
+        borderRadius: 6,
+        borderWidth: 1,
+        borderColor: '#FECACA',
+        backgroundColor: '#FEF2F2',
         alignItems: 'center',
         marginTop: 8,
     },
     cancelButtonLargeText: {
-        color: '#F59E0B',
-        fontSize: 16,
-        fontWeight: '700',
+        color: '#DC2626',
+        fontSize: 15,
+        fontWeight: '600',
     },
     subscribeGradient: {
         paddingVertical: 18,
         alignItems: 'center',
     },
     subscribeButtonDisabled: {
-        opacity: 0.9,
+        opacity: 0.6,
+    },
+    subscribeFooterBtn: {
+        width: '100%',
+        paddingVertical: 16,
+        borderRadius: 6,
+        backgroundColor: '#F59E0B',
+        alignItems: 'center',
+        marginTop: 8,
+    },
+    subscribeFooterBtnText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: '700',
+        letterSpacing: 0.3,
     },
     subscribeDisabledContent: {
         paddingVertical: 18,
@@ -1266,7 +1268,7 @@ const styles = StyleSheet.create({
     },
     modalContent: {
         backgroundColor: '#FFFFFF',
-        borderRadius: 24,
+        borderRadius: 10,
         padding: 24,
         width: '100%',
         maxWidth: 340,
@@ -1276,16 +1278,16 @@ const styles = StyleSheet.create({
         marginBottom: 16,
     },
     modalIcon: {
-        width: 64,
-        height: 64,
-        borderRadius: 32,
+        width: 60,
+        height: 60,
+        borderRadius: 8,
         justifyContent: 'center',
         alignItems: 'center',
     },
     warningIcon: {
-        width: 64,
-        height: 64,
-        borderRadius: 32,
+        width: 60,
+        height: 60,
+        borderRadius: 8,
         backgroundColor: '#FEF2F2',
         justifyContent: 'center',
         alignItems: 'center',
@@ -1315,7 +1317,7 @@ const styles = StyleSheet.create({
     modalCancelButton: {
         flex: 1,
         paddingVertical: 14,
-        borderRadius: 12,
+        borderRadius: 6,
         borderWidth: 1,
         borderColor: '#E5E7EB',
         alignItems: 'center',
@@ -1327,7 +1329,7 @@ const styles = StyleSheet.create({
     },
     modalConfirmButton: {
         flex: 1,
-        borderRadius: 12,
+        borderRadius: 6,
         overflow: 'hidden',
     },
     modalConfirmGradient: {
@@ -1369,7 +1371,7 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(255,255,255,0.12)',
         paddingHorizontal: 10,
         paddingVertical: 6,
-        borderRadius: 12,
+        borderRadius: 4,
     },
     priceBadgeText: {
         color: '#FFF',
@@ -1422,7 +1424,7 @@ const styles = StyleSheet.create({
     },
     gotItButton: {
         width: '100%',
-        borderRadius: 12,
+        borderRadius: 6,
         overflow: 'hidden',
     },
     gotItGradient: {

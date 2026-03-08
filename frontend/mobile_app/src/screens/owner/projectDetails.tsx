@@ -121,6 +121,9 @@ export default function ProjectDetails({ project, userId, onClose, onProjectUpda
 
   const hasContractor = !!currentProject.selected_contractor_id || !!currentProject.accepted_bid;
   const milestones: Milestone[] = currentProject.milestones || [];
+  const approvedMilestoneTitle = milestones.find(m => m.setup_status === 'approved' && !!m.milestone_name)?.milestone_name;
+  const summaryPrimaryTitle = approvedMilestoneTitle || currentProject.project_title;
+  const showSummaryPostTitle = summaryPrimaryTitle !== currentProject.project_title;
 
   // â”€â”€ Formatters â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -264,7 +267,10 @@ export default function ProjectDetails({ project, userId, onClose, onProjectUpda
                 <View style={styles.typePill}>
                   <Text style={styles.typePillText}>{currentProject.type_name}</Text>
                 </View>
-                <Text style={styles.summaryTitle}>{currentProject.project_title}</Text>
+                <Text style={styles.summaryTitle}>{summaryPrimaryTitle}</Text>
+                {showSummaryPostTitle && (
+                  <Text style={styles.summaryPostTitle} numberOfLines={1}>Post: {currentProject.project_title}</Text>
+                )}
                 <View style={styles.locRow}>
                   <Feather name="map-pin" size={12} color="rgba(255,255,255,0.8)" />
                   <Text style={styles.locText}>{currentProject.project_location}</Text>
@@ -518,6 +524,7 @@ const styles = StyleSheet.create({
   },
   typePillText: { fontSize: 11, fontWeight: '600', color: '#FFFFFF', letterSpacing: 0.5 },
   summaryTitle: { fontSize: 20, fontWeight: '700', color: '#FFFFFF', lineHeight: 26, marginBottom: 6 },
+  summaryPostTitle: { fontSize: 12, color: 'rgba(255,255,255,0.85)', marginBottom: 6 },
   locRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   locText: { fontSize: 13, color: 'rgba(255,255,255,0.85)', flex: 1 },
   pillRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },

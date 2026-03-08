@@ -16,11 +16,16 @@ class globalManagementController extends Controller
     /**
      * Display the bid management page
      */
-    public function bidManagement()
+    public function bidManagement(Request $request)
     {
-        $bids = $this->getAllBids();
+        $bids = $this->getAllBids(
+            $request->query('search'),
+            $request->query('status'),
+            $request->query('page', 1)
+        );
+
         return view('admin.globalManagement.bidManagement', [
-            'bids' => $bids
+            'bids' => $bids,
         ]);
     }
 

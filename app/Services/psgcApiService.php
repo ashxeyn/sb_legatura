@@ -124,15 +124,10 @@ class psgcApiService
                 // For cities, we need to search all cities since we might not know the province
                 $items = $this->getAllCities();
             } elseif ($type === 'barangay') {
-                // Try fetching barangays — we extrapolate the city code from the barangay code
-                // PSGC barangay codes: first 7 digits = city code + trailing zeroes
-                $cityCode = substr($code, 0, 7) . '000';
+                // PSGC codes are 9 digits. City code = first 6 digits + '000'.
+                // e.g. barangay '013319001' → city '013319000'
+                $cityCode = substr($code, 0, 6) . '000';
                 $items = $this->getBarangaysByCity($cityCode);
-                if (empty($items)) {
-                    // If that fails, try with first 6 digits
-                    $cityCode = substr($code, 0, 6) . '0000';
-                    $items = $this->getBarangaysByCity($cityCode);
-                }
             } else {
                 return $code;
             }
