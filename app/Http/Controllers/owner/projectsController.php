@@ -394,7 +394,7 @@ class projectsController extends Controller
 
             // Apply ranking scores
             try {
-                $ranker = app(\App\Services\BidRankingService::class);
+                $ranker = app(\App\Services\bidRankingService::class);
                 $bids   = $ranker->rankBids((int) $projectId, $bids);
             } catch (\Exception $re) {
                 // Ranking failure is non-fatal — fall back to cost order
