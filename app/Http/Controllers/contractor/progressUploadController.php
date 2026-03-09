@@ -342,7 +342,7 @@ class progressUploadController extends Controller
                     'files_count' => count($uploadedFiles)
                 ], 201);
             }
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             $userId = null;
             $contractorId = null;
             $itemId = null;
@@ -361,7 +361,7 @@ class progressUploadController extends Controller
                 'user_id' => $userId,
                 'contractor_id' => $contractorId,
                 'item_id' => $itemId,
-                'request_data' => $request->except(['progress_files']), // Exclude files from log
+                'request_data' => $request->except(['progress_files']),
                 'file_count' => $request->hasFile('progress_files') ? (is_array($request->file('progress_files')) ? count($request->file('progress_files')) : 1) : 0,
                 'trace' => $e->getTraceAsString()
             ]);
