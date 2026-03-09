@@ -140,15 +140,7 @@
                 Tools designed to keep every project clear, competitive, and on track
             </p>
             <div class="features-track grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 px-4 md:px-8 lg:px-16 text-left" id="featuresTrack">
-                <div class="feature-card p-6 rounded-lg">
-                    <div class="feature-icon">
-                        <i class="ri-briefcase-4-line"></i>
-                    </div>
-                    <h4 class="text-lg md:text-xl font-bold mb-3 text-white">Smart Project Posting</h4>
-                    <p class="text-sm md:text-base text-white/85">
-                        Define scope, budget, timeline, and requirements in minutes.
-                    </p>
-                </div>
+               
                 <div class="feature-card p-6 rounded-lg">
                     <div class="feature-icon">
                         <i class="ri-auction-line"></i>
@@ -176,23 +168,25 @@
                         Stay updated with milestones, progress, and deliverables.
                     </p>
                 </div>
-                <div class="feature-card p-6 rounded-lg">
-                    <div class="feature-icon">
-                        <i class="ri-bank-card-line"></i>
+                <div class="col-span-1 md:col-span-2 lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 lg:w-2/3 mx-auto">
+                    <div class="feature-card p-6 rounded-lg">
+                        <div class="feature-icon">
+                            <i class="ri-bank-card-line"></i>
+                        </div>
+                        <h4 class="text-lg md:text-xl font-bold mb-3 text-white">Secure Payments</h4>
+                        <p class="text-sm md:text-base text-white/85">
+                            Transparent payment handling tied to project progress.
+                        </p>
                     </div>
-                    <h4 class="text-lg md:text-xl font-bold mb-3 text-white">Secure Payments</h4>
-                    <p class="text-sm md:text-base text-white/85">
-                        Transparent payment handling tied to project progress.
-                    </p>
-                </div>
-                <div class="feature-card p-6 rounded-lg">
-                    <div class="feature-icon">
-                        <i class="ri-star-smile-line"></i>
+                    <div class="feature-card p-6 rounded-lg">
+                        <div class="feature-icon">
+                            <i class="ri-star-smile-line"></i>
+                        </div>
+                        <h4 class="text-lg md:text-xl font-bold mb-3 text-white">Ratings and Reviews</h4>
+                        <p class="text-sm md:text-base text-white/85">
+                            Build trust through verified feedback and work history.
+                        </p>
                     </div>
-                    <h4 class="text-lg md:text-xl font-bold mb-3 text-white">Ratings and Reviews</h4>
-                    <p class="text-sm md:text-base text-white/85">
-                        Build trust through verified feedback and work history.
-                    </p>
                 </div>
             </div>
             <div class="features-dots" id="featuresDots" aria-label="Features carousel pagination"></div>
@@ -395,46 +389,33 @@
                     </ul>
                 </div>
 
-                <!-- Feature 4: Smart Matching -->
-                <div class="feature-card p-6 rounded-lg">
-                    <div class="feature-icon">
-                        <i class="ri-robot-line"></i>
+                <div class="col-span-1 md:col-span-2 lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 lg:w-2/3 mx-auto">
+                    <!-- Feature 5: Secure Payments -->
+                    <div class="feature-card p-6 rounded-lg">
+                        <div class="feature-icon">
+                            <i class="ri-shield-check-line"></i>
+                        </div>
+                        <h4 class="text-lg md:text-xl font-bold mb-3 text-white">Secure Payments</h4>
+                        <p class="text-sm md:text-base text-white/85">Protected payment system with escrow services ensures secure transactions for both clients and contractors.</p>
+                        <ul class="feature-card-list">
+                            <li><i class="ri-check-line"></i> Escrow protection</li>
+                            <li><i class="ri-check-line"></i> Milestone-based payments</li>
+                            <li><i class="ri-check-line"></i> Dispute resolution</li>
+                        </ul>
                     </div>
-                    <h4 class="text-lg md:text-xl font-bold mb-3 text-white">Smart Matching</h4>
-                    <p class="text-sm md:text-base text-white/85">Our AI-powered matching system connects you with the perfect contractors based on your project requirements and preferences.</p>
-                    <ul class="feature-card-list">
-                        <li><i class="ri-check-line"></i> AI-powered recommendations</li>
-                        <li><i class="ri-check-line"></i> Skill &amp; specialty matching</li>
-                        <li><i class="ri-check-line"></i> Budget &amp; timeline alignment</li>
-                    </ul>
-                </div>
 
-                <!-- Feature 5: Secure Payments -->
-                <div class="feature-card p-6 rounded-lg">
-                    <div class="feature-icon">
-                        <i class="ri-shield-check-line"></i>
+                    <!-- Feature 6: Communication Hub -->
+                    <div class="feature-card p-6 rounded-lg">
+                        <div class="feature-icon">
+                            <i class="ri-message-2-line"></i>
+                        </div>
+                        <h4 class="text-lg md:text-xl font-bold mb-3 text-white">Communication Hub</h4>
+                        <p class="text-sm md:text-base text-white/85">Integrated messaging, video calls, and file sharing keep everyone connected throughout your project lifecycle.</p>
+                        <ul class="feature-card-list">
+                            <li><i class="ri-check-line"></i> In-app messaging</li>
+                            <li><i class="ri-check-line"></i> File &amp; photo sharing</li>
+                        </ul>
                     </div>
-                    <h4 class="text-lg md:text-xl font-bold mb-3 text-white">Secure Payments</h4>
-                    <p class="text-sm md:text-base text-white/85">Protected payment system with escrow services ensures secure transactions for both clients and contractors.</p>
-                    <ul class="feature-card-list">
-                        <li><i class="ri-check-line"></i> Escrow protection</li>
-                        <li><i class="ri-check-line"></i> Milestone-based payments</li>
-                        <li><i class="ri-check-line"></i> Dispute resolution</li>
-                    </ul>
-                </div>
-
-                <!-- Feature 6: Communication Hub -->
-                <div class="feature-card p-6 rounded-lg">
-                    <div class="feature-icon">
-                        <i class="ri-message-2-line"></i>
-                    </div>
-                    <h4 class="text-lg md:text-xl font-bold mb-3 text-white">Communication Hub</h4>
-                    <p class="text-sm md:text-base text-white/85">Integrated messaging, video calls, and file sharing keep everyone connected throughout your project lifecycle.</p>
-                    <ul class="feature-card-list">
-                        <li><i class="ri-check-line"></i> In-app messaging</li>
-                        <li><i class="ri-check-line"></i> Video conferencing</li>
-                        <li><i class="ri-check-line"></i> File &amp; photo sharing</li>
-                    </ul>
                 </div>
 
             </div>
