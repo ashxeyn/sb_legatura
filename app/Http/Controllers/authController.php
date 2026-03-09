@@ -2840,7 +2840,7 @@ class authController extends Controller
                 if ($bearer) {
                     $pat = \Laravel\Sanctum\PersonalAccessToken::findToken($bearer);
                     if ($pat) {
-                        $userModel = \App\Models\User::find($pat->tokenable_id);
+                        $userModel = \App\Models\user::find($pat->tokenable_id);
                         if ($userModel) {
                             $user = $userModel;
                         }
@@ -2884,7 +2884,7 @@ class authController extends Controller
                 if ($bearer) {
                     $pat = \Laravel\Sanctum\PersonalAccessToken::findToken($bearer);
                     if ($pat) {
-                        $userModel = \App\Models\User::find($pat->tokenable_id);
+                        $userModel = \App\Models\user::find($pat->tokenable_id);
                         if ($userModel) {
                             $user = $userModel;
                         }
@@ -2949,7 +2949,7 @@ class authController extends Controller
                 if ($bearer) {
                     $pat = \Laravel\Sanctum\PersonalAccessToken::findToken($bearer);
                     if ($pat) {
-                        $userModel = \App\Models\User::find($pat->tokenable_id);
+                        $userModel = \App\Models\user::find($pat->tokenable_id);
                         if ($userModel) {
                             $user = $userModel;
                         }
@@ -3559,7 +3559,7 @@ class authController extends Controller
                 $userData = $result['user'];
 
                 // Convert stdClass to Eloquent User model for Sanctum token creation
-                $eloquentUser = \App\Models\User::find($userData->user_id ?? $userData->id ?? null);
+                $eloquentUser = \App\Models\user::find($userData->user_id ?? $userData->id ?? null);
 
                 if (!$eloquentUser) {
                     return response()->json([
@@ -3700,7 +3700,7 @@ class authController extends Controller
             $otpHash = bcrypt('123456'); // You can implement proper OTP generation later
 
             // Create user using your database structure
-            $user = \App\Models\User::create([
+            $user = \App\Models\user::create([
                 'username' => $request->name,
                 'email' => $request->email,
                 'password_hash' => bcrypt($request->password),
@@ -3788,7 +3788,7 @@ class authController extends Controller
             }
 
             // Check user exists and still has the default password
-            $user = \App\Models\User::find($userId);
+            $user = \App\Models\user::find($userId);
             if (!$user) {
                 return response()->json([
                     'success' => false,

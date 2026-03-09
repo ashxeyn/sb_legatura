@@ -656,8 +656,8 @@ Route::post('/admin/project-management/showcase-management/{id}/approve', [proje
 Route::post('/admin/project-management/showcase-management/{id}/reject', [projectManagementController::class, 'rejectShowcase'])->name('admin.projectManagement.rejectShowcase');
 Route::post('/admin/project-management/showcase-management/{id}/delete', [projectManagementController::class, 'deleteShowcase'])->name('admin.projectManagement.deleteShowcase');
 Route::post('/admin/project-management/showcase-management/{id}/restore', [projectManagementController::class, 'restoreShowcase'])->name('admin.projectManagement.restoreShowcase');
-Route::get('/admin/progress-feed', [\App\Http\Controllers\Admin\ProgressFeedController::class, 'index'])->name('admin.progressFeed');
-Route::get('/admin/progress-feed/data', [\App\Http\Controllers\Admin\ProgressFeedController::class, 'fetch'])->name('admin.progressFeed.fetch');
+Route::get('/admin/progress-feed', [\App\Http\Controllers\Admin\progressFeedController::class, 'index'])->name('admin.progressFeed');
+Route::get('/admin/progress-feed/data', [\App\Http\Controllers\Admin\progressFeedController::class, 'fetch'])->name('admin.progressFeed.fetch');
 
 // Admin Messages API (Session-based for web dashboard)
 Route::prefix('admin/messages')->group(function () {

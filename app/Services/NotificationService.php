@@ -201,7 +201,7 @@ class NotificationService
             // Send email if user has email (wrapped in isolated try-catch so
             // a mail transport failure never crashes the PHP built-in server)
             try {
-                $user = \App\Models\User::find($userId);
+                $user = \App\Models\user::find($userId);
                 if ($user && $user->email) {
                     \Mail::raw($message, function($mailMessage) use ($user, $title) {
                         $mailMessage->to($user->email)

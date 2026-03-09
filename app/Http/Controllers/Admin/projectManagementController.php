@@ -35,7 +35,7 @@ class projectManagementController extends Controller
             ]);
         }
 
-        return view('admin.projectManagement.listOfProjects', [
+        return view('admin.projectManagement.listOfprojects', [
             'projects' => $projects
         ]);
     }
