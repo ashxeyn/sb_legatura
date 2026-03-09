@@ -23,7 +23,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         // Use custom PersonalAccessToken model to handle user_id primary key
-        Sanctum::usePersonalAccessTokenModel(\App\Models\PersonalAccessToken::class);
+        Sanctum::usePersonalAccessTokenModel(\App\Models\personalAccessToken::class);
 
         // DO NOT register default Broadcast::routes() - using custom implementation
         // Share subscription modal data with the subscription partial so it can render server-side

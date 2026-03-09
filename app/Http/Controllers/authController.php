@@ -829,7 +829,7 @@ class authController extends Controller
         // Authenticated users (Bearer token present) must use /api/role/add/contractor/final instead.
         if ($request->bearerToken()) {
             try {
-                $tokenModel = \Laravel\Sanctum\PersonalAccessToken::findToken($request->bearerToken());
+                $tokenModel = \Laravel\Sanctum\personalAccessToken::findToken($request->bearerToken());
                 if ($tokenModel && $tokenModel->tokenable) {
                     return response()->json([
                         'success'        => false,
@@ -1789,7 +1789,7 @@ class authController extends Controller
         // Authenticated users (Bearer token present) must use /api/role/add/owner/final instead.
         if ($request->bearerToken()) {
             try {
-                $tokenModel = \Laravel\Sanctum\PersonalAccessToken::findToken($request->bearerToken());
+                $tokenModel = \Laravel\Sanctum\personalAccessToken::findToken($request->bearerToken());
                 if ($tokenModel && $tokenModel->tokenable) {
                     return response()->json([
                         'success'      => false,
@@ -2286,7 +2286,7 @@ class authController extends Controller
             // If still no user, try to get from token manually
             if (!$user && request()->bearerToken()) {
                 try {
-                    $token = \Laravel\Sanctum\PersonalAccessToken::findToken(request()->bearerToken());
+                    $token = \Laravel\Sanctum\personalAccessToken::findToken(request()->bearerToken());
                     if ($token && $token->tokenable) {
                         $user = $token->tokenable;
                     }
@@ -2467,7 +2467,7 @@ class authController extends Controller
         // Fallback: resolve user from Bearer token if middleware/user failed
         if (!$user && $request->bearerToken()) {
             try {
-                $token = \Laravel\Sanctum\PersonalAccessToken::findToken($request->bearerToken());
+                $token = \Laravel\Sanctum\personalAccessToken::findToken($request->bearerToken());
                 if ($token && $token->tokenable) {
                     $user = $token->tokenable;
                 }
@@ -2557,7 +2557,7 @@ class authController extends Controller
         // Fallback: resolve user from Bearer token if middleware/user failed
         if (!$user && $request->bearerToken()) {
             try {
-                $token = \Laravel\Sanctum\PersonalAccessToken::findToken($request->bearerToken());
+                $token = \Laravel\Sanctum\personalAccessToken::findToken($request->bearerToken());
                 if ($token && $token->tokenable) {
                     $user = $token->tokenable;
                 }
@@ -2604,7 +2604,7 @@ class authController extends Controller
         // Fallback: resolve user from Bearer token if middleware/user failed
         if (!$user && $request->bearerToken()) {
             try {
-                $token = \Laravel\Sanctum\PersonalAccessToken::findToken($request->bearerToken());
+                $token = \Laravel\Sanctum\personalAccessToken::findToken($request->bearerToken());
                 if ($token && $token->tokenable) {
                     $user = $token->tokenable;
                 }
@@ -2838,7 +2838,7 @@ class authController extends Controller
             try {
                 $bearer = $request->bearerToken();
                 if ($bearer) {
-                    $pat = \Laravel\Sanctum\PersonalAccessToken::findToken($bearer);
+                    $pat = \Laravel\Sanctum\personalAccessToken::findToken($bearer);
                     if ($pat) {
                         $userModel = \App\Models\user::find($pat->tokenable_id);
                         if ($userModel) {
@@ -2882,7 +2882,7 @@ class authController extends Controller
             try {
                 $bearer = $request->bearerToken();
                 if ($bearer) {
-                    $pat = \Laravel\Sanctum\PersonalAccessToken::findToken($bearer);
+                    $pat = \Laravel\Sanctum\personalAccessToken::findToken($bearer);
                     if ($pat) {
                         $userModel = \App\Models\user::find($pat->tokenable_id);
                         if ($userModel) {
@@ -2947,7 +2947,7 @@ class authController extends Controller
             try {
                 $bearer = $request->bearerToken();
                 if ($bearer) {
-                    $pat = \Laravel\Sanctum\PersonalAccessToken::findToken($bearer);
+                    $pat = \Laravel\Sanctum\personalAccessToken::findToken($bearer);
                     if ($pat) {
                         $userModel = \App\Models\user::find($pat->tokenable_id);
                         if ($userModel) {
