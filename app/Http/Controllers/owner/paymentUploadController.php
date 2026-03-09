@@ -205,7 +205,7 @@ class paymentUploadController extends Controller
 
 			// ── Downpayment gate: block milestone item payments if downpayment not yet cleared ──
 			if ($validated['item_id'] != -1) {
-				if (!\App\Services\milestoneService::isDownpaymentCleared($validated['project_id'])) {
+				if (!\App\Services\MilestoneService::isDownpaymentCleared($validated['project_id'])) {
 					return response()->json([
 						'success' => false,
 						'message' => 'The downpayment must be paid and confirmed by the contractor before you can upload payments for milestone items.'
@@ -613,7 +613,7 @@ class paymentUploadController extends Controller
 				->get();
 
 			// Calculate payment summary using centralized service
-			$milestoneService = new \App\Services\milestoneService();
+			$milestoneService = new \App\Services\MilestoneService();
 			$summary = $milestoneService->getItemPaymentSummary((int) $itemId);
 
 			return response()->json([

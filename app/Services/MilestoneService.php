@@ -4,6 +4,7 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Services\NotificationService;
 
 /**
  * milestoneService — Unified business logic for milestone setup, approval,
@@ -99,7 +100,7 @@ class MilestoneService
             ->value('user_id');
         if ($cUserId) {
             $msName = $milestone->milestone_name ?? 'Milestone';
-            notificationService::create(
+            NotificationService::create(
                 $cUserId,
                 'milestone_approved',
                 'Milestone Approved',
@@ -154,7 +155,7 @@ class MilestoneService
         if ($cUserId) {
             $msName     = $milestone->milestone_name ?? 'Milestone';
             $reasonNote = $reason ? " Reason: {$reason}" : '';
-            notificationService::create(
+            NotificationService::create(
                 $cUserId,
                 'milestone_rejected',
                 'Milestone Rejected',
@@ -201,7 +202,7 @@ class MilestoneService
                 ->where('is_deleted', 0)
                 ->value('user_id');
             if ($cUserId) {
-                notificationService::create(
+                NotificationService::create(
                     $cUserId,
                     'milestone_completed',
                     'Milestone Completed',
@@ -299,7 +300,7 @@ class MilestoneService
                 ->where('is_deleted', 0)
                 ->value('user_id');
             if ($cUserId) {
-                notificationService::create(
+                NotificationService::create(
                     $cUserId,
                     'milestone_item_completed',
                     'Milestone Complete',
@@ -531,7 +532,7 @@ class MilestoneService
                 ->where('p.project_id', $projectId)
                 ->value('po.user_id');
             if ($ownerUserId) {
-                notificationService::create(
+                NotificationService::create(
                     $ownerUserId,
                     'milestone_submitted',
                     'Milestone Submitted',
@@ -646,7 +647,7 @@ class MilestoneService
                 $projTitle = DB::table('projects')->where('project_id', $projectId)->value('project_title');
 
                 if ($wasRejected) {
-                    notificationService::create(
+                    NotificationService::create(
                         $ownerUserId,
                         'milestone_resubmitted',
                         'Milestone Resubmitted',
@@ -657,7 +658,7 @@ class MilestoneService
                         ['screen' => 'ProjectDetails', 'params' => ['projectId' => $projectId, 'tab' => 'milestones']]
                     );
                 } else {
-                    notificationService::create(
+                    NotificationService::create(
                         $ownerUserId,
                         'milestone_updated',
                         'Milestone Updated',
@@ -723,7 +724,7 @@ class MilestoneService
                 ->value('po.user_id');
             if ($ownerUserId) {
                 $projTitle = DB::table('projects')->where('project_id', $milestone->project_id)->value('project_title');
-                notificationService::create(
+                NotificationService::create(
                     $ownerUserId,
                     'milestone_deleted',
                     'Milestone Deleted',
@@ -923,7 +924,7 @@ class MilestoneService
 
             if ($ownerUserId) {
                 $reasonNote = $reason ? " Reason: {$reason}" : '';
-                notificationService::create(
+                NotificationService::create(
                     (int) $ownerUserId,
                     'payment_rejected',
                     'Payment Rejected',
@@ -1177,7 +1178,7 @@ class MilestoneService
 
         // Notify owner: payment approved
         if ($ownerUserId) {
-            notificationService::create(
+            NotificationService::create(
                 (int) $ownerUserId,
                 'payment_approved',
                 'Payment Approved',
@@ -1194,7 +1195,7 @@ class MilestoneService
             $milestoneItem = DB::table('milestone_items')->where('item_id', $payment->item_id)->first();
             $itemTitle = $milestoneItem->milestone_item_title ?? 'Milestone item';
 
-            notificationService::create(
+            NotificationService::create(
                 (int) $contractorUserId,
                 'payment_fully_paid',
                 'Fully Paid',
@@ -1207,7 +1208,7 @@ class MilestoneService
             );
 
             if ($ownerUserId) {
-                notificationService::create(
+                NotificationService::create(
                     (int) $ownerUserId,
                     'payment_fully_paid',
                     'Fully Paid',
@@ -1223,7 +1224,7 @@ class MilestoneService
             // If overpaid, also add an informational note
             if ($allocation['status'] === 'overpaid' && $ownerUserId) {
                 $overAmt = number_format($allocation['over_amount'] ?? 0, 2);
-                notificationService::create(
+                NotificationService::create(
                     (int) $ownerUserId,
                     'payment_overpaid',
                     'Overpayment Recorded',
@@ -1243,7 +1244,7 @@ class MilestoneService
             $newAdj = number_format($allocation['new_adjusted_cost'] ?? 0, 2);
 
             if ($ownerUserId) {
-                notificationService::create(
+                NotificationService::create(
                     (int) $ownerUserId,
                     'payment_underpaid_carry',
                     'Payment Shortfall Carried',
@@ -1255,7 +1256,7 @@ class MilestoneService
                 );
             }
 
-            notificationService::create(
+            NotificationService::create(
                 (int) $contractorUserId,
                 'payment_underpaid_carry',
                 'Payment Shortfall Carried',

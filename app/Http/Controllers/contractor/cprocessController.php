@@ -1393,7 +1393,7 @@ class cprocessController extends Controller
                     // Attach computed downpayment-cleared flag so front-ends can gate milestone items
                     if ($milestone->payment_plan) {
                         $milestone->payment_plan->downpayment_cleared =
-                            milestoneService::isDownpaymentCleared($project->project_id);
+                            MilestoneService::isDownpaymentCleared($project->project_id);
                     }
                 }
 
