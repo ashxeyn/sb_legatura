@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Log;
 use App\Services\psgcApiService;
-use App\Services\UserActivityLogger;
+use App\Services\userActivityLogger;
 
 class profileController extends Controller
 {

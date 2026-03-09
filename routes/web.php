@@ -18,7 +18,7 @@ use App\Http\Controllers\Admin\dashboardController;
 use App\Http\Controllers\Admin\analyticsController;
 use App\Http\Controllers\Admin\userManagementController;
 use App\Http\Controllers\Admin\globalManagementController;
-use App\Http\Controllers\Admin\ProjectAdminController;
+use App\Http\Controllers\Admin\projectAdminController;
 use App\Http\Controllers\Admin\projectManagementController;
 use App\Http\Controllers\message\broadcastAuthController;
 use App\Http\Controllers\passwordController;

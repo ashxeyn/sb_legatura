@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use App\Models\contractor\contractorClass;
 use App\Models\contractor\progressUploadClass;
-use App\Services\NotificationService;
+use App\Services\notificationService;
 use App\Services\milestoneService;
 
 class cprocessController extends Controller

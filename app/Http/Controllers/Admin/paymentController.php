@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\admin\storePaymentRequest;
-use App\Models\admin\milestonePayment;
+use App\Models\admin\MilestonePayment;
 use Illuminate\Http\Request;
 
 class paymentController extends Controller

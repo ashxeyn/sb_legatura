@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use App\Services\UserActivityLogger;
+use App\Services\userActivityLogger;
 class authController extends Controller
 {
     // UserActivityLogger integration examples:

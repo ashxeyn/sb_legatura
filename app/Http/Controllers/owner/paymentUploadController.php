@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\PersonalAccessToken;
-use App\Services\NotificationService;
+use App\Services\notificationService;
 
 class paymentUploadController extends Controller
 {

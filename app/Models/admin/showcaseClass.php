@@ -147,7 +147,7 @@ class showcaseClass
                 ]);
 
             if ($updated) {
-                \App\Services\NotificationService::create(
+                \App\Services\notificationService::create(
                     (int) $post->user_id,
                     'project_update',
                     'Showcase Approved',
@@ -201,7 +201,7 @@ class showcaseClass
                 ]);
 
             if ($updated) {
-                \App\Services\NotificationService::create(
+                \App\Services\notificationService::create(
                     (int) $post->user_id,
                     'project_update',
                     'Showcase Rejected',
@@ -252,7 +252,7 @@ class showcaseClass
                 ]);
 
             if ($updated) {
-                \App\Services\NotificationService::create(
+                \App\Services\notificationService::create(
                     (int) $post->user_id,
                     'project_update',
                     'Showcase Deleted',
@@ -290,7 +290,7 @@ class showcaseClass
                 ]);
 
             if ($updated) {
-                \App\Services\NotificationService::create(
+                \App\Services\notificationService::create(
                     (int) $post->user_id,
                     'project_update',
                     'Showcase Restored',

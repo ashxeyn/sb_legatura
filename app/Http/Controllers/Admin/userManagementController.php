@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Schema;
 use App\Http\Requests\admin\rejectVerificationRequest;
 use App\Http\Requests\admin\propertyOwnerRequest;
 use App\Http\Requests\admin\contractorRequest;
-use App\Services\NotificationService;
+use App\Services\notificationService;
 use App\Http\Requests\admin\contractorTeamMemberRequest;
 use App\Http\Requests\admin\updateContractorTeamMemberRequest;
 use App\Http\Requests\admin\changeContractorRepresentativeRequest;

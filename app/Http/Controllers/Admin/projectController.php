@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\admin\storeProjectRequest;
 use App\Http\Requests\admin\updateProjectRequest;
-use App\Models\admin\project;
+use App\Models\admin\Project;
 use Illuminate\Http\Request;
 
 class projectController extends Controller

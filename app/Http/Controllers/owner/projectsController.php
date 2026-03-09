@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\App;
 use Laravel\Sanctum\PersonalAccessToken;
-use App\Services\NotificationService;
+use App\Services\notificationService;
 use App\Services\milestoneService;
 
 class projectsController extends Controller

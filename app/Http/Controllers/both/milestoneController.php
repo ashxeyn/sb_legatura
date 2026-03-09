@@ -4,7 +4,7 @@ namespace App\Http\Controllers\both;
 
 use App\Http\Controllers\Controller;
 use App\Services\milestoneService;
-use App\Services\ContractorAuthorizationService;
+use App\Services\contractorAuthorizationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Session;
@@ -351,7 +351,7 @@ class milestoneController extends Controller
 
         if ($ownerUserId) {
             $dueFormatted = date('M d, Y', strtotime($validated['settlement_due_date']));
-            \App\Services\NotificationService::create(
+            \App\Services\notificationService::create(
                 (int) $ownerUserId,
                 'payment_due',
                 'Payment Due Date Set',
@@ -449,7 +449,7 @@ class milestoneController extends Controller
 
             if ($contractorUserId) {
                 $dueFormatted = date('M d, Y', strtotime($validated['settlement_due_date']));
-                \App\Services\NotificationService::create(
+                \App\Services\notificationService::create(
                     (int) $contractorUserId,
                     'payment_due',
                     'Payment Due Date Set',

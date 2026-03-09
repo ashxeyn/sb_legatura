@@ -5,7 +5,7 @@ namespace App\Http\Controllers\both;
 use App\Http\Controllers\Controller;
 use App\Models\both\notificationClass;
 use App\Services\notificationService;
-use App\Services\notificationRedirectService;
+use App\Services\NotificationRedirectService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;

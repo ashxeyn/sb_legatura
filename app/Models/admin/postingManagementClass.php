@@ -5,8 +5,6 @@ namespace App\Models\admin;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Mail;
-use App\Mail\PostApproved;
-use App\Mail\PostRejected;
 
 class postingManagementClass
 {
@@ -157,7 +155,7 @@ class postingManagementClass
                     ->where('pr.rel_id', $project->relationship_id)
                     ->value('po.user_id');
                 if ($ownerUserId) {
-                    \App\Services\NotificationService::create(
+                    \App\Services\notificationService::create(
                         (int) $ownerUserId,
                         'project_update',
                         'Project Post Approved',
@@ -197,7 +195,7 @@ class postingManagementClass
                     ->where('pr.rel_id', $project->relationship_id)
                     ->value('po.user_id');
                 if ($ownerUserId) {
-                    \App\Services\NotificationService::create(
+                    \App\Services\notificationService::create(
                         (int) $ownerUserId,
                         'project_update',
                         'Project Post Rejected',
