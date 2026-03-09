@@ -11,8 +11,8 @@ use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use App\Services\NotificationService;
-use App\Services\BidRankingService;
+use App\Services\notificationService;
+use App\Services\bidRankingService;
 
 class biddingController extends Controller
 {
@@ -360,7 +360,7 @@ class biddingController extends Controller
             }
 
             // Authorization check: Only owner/representative can cancel bids
-            $authService = app(\App\Services\ContractorAuthorizationService::class);
+            $authService = app(\App\Services\contractorAuthorizationService::class);
             $authError = $authService->validateBiddingAccess((int) $userId);
             if ($authError) {
                 return response()->json([
@@ -595,7 +595,7 @@ class biddingController extends Controller
             }
 
             // Authorization check: Only owner/representative can place bids
-            $authService = app(\App\Services\ContractorAuthorizationService::class);
+            $authService = app(\App\Services\contractorAuthorizationService::class);
             $authError = $authService->validateBiddingAccess($userId);
             if ($authError) {
                 return response()->json([

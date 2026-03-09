@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Storage;
 use Exception;
 use Laravel\Sanctum\PersonalAccessToken;
-use App\Services\NotificationService;
+use App\Services\notificationService;
 
 class disputeController extends Controller
 {

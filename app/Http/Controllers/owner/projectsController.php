@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\App;
 use Laravel\Sanctum\PersonalAccessToken;
-use App\Services\NotificationService;
+use App\Services\notificationService;
 use App\Services\milestoneService;
 
 class projectsController extends Controller
@@ -394,7 +394,7 @@ class projectsController extends Controller
 
             // Apply ranking scores
             try {
-                $ranker = app(\App\Services\BidRankingService::class);
+                $ranker = app(\App\Services\bidRankingService::class);
                 $bids   = $ranker->rankBids((int) $projectId, $bids);
             } catch (\Exception $re) {
                 // Ranking failure is non-fatal — fall back to cost order

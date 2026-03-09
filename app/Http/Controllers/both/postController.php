@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\DB;
-use App\Services\postService;
+use App\Services\PostService;
 
 /**
  * postController — CRUD + Feed for Facebook-style project posts.

@@ -461,8 +461,40 @@ class authService
 
     }
 
-    public function login($username, $password)
+    public function login($username, $password, $adminOnly = false)
     {
+        // If admin-only login, skip user table check
+        if ($adminOnly) {
+            $adminLogin = $this->attemptAdminLogin($username, $password);
+            
+            // If admin login failed, check if this username exists in users table
+            if (!$adminLogin['success']) {
+                try {
+                    $user = DB::table('users')
+                        ->where(function ($query) use ($username) {
+                            $query->whereRaw('BINARY username = ?', [$username])
+                                  ->orWhere('email', $username);
+                        })
+                        ->first();
+                    
+                    // If user exists in users table, return admin-only error
+                    if ($user) {
+                        return [
+                            'success' => false,
+                            'errors' => [
+                                'username' => 'Access Restricted: Admin Access Only'
+                            ]
+                        ];
+                    }
+                } catch (\Exception $e) {
+                    \Log::warning('Admin-only login user check failed: ' . $e->getMessage());
+                }
+            }
+            
+            return $adminLogin;
+        }
+
+        // Regular login flow (check users first, SKIP admin check for mobile)
         $userLogin = $this->attemptUserLogin($username, $password);
         if ($userLogin['success']) {
             return $userLogin;
@@ -477,19 +509,21 @@ class authService
                 ->first();
 
             if ($user) {
+                // User exists but login failed - return the user login error
                 return $userLogin;
             }
         } catch (\Exception $e) {
             \Log::warning('login user existence lookup failed: ' . $e->getMessage());
-            // proceed to admin lookup; treat as non-existent user on DB error
         }
 
-        $adminLogin = $this->attemptAdminLogin($username, $password);
-        if ($adminLogin['success']) {
-            return $adminLogin;
-        }
-
-        return $adminLogin;
+        // For non-admin-only login (mobile), do NOT check admin table
+        // Return generic error instead
+        return [
+            'success' => false,
+            'errors' => [
+                'username' => 'Invalid username or password'
+            ]
+        ];
     }
 
     public function validatePasswordStrength($password)

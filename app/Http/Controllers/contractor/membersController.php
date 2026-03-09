@@ -3,12 +3,12 @@
 namespace App\Http\Controllers\contractor;
 
 use App\Http\Controllers\Controller;
-use App\Services\ContractorAuthorizationService;
+use App\Services\contractorAuthorizationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
-use App\Services\NotificationService;
+use App\Services\notificationService;
 
 class membersController extends Controller
 {

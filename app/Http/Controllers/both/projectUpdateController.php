@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\both;
 
 use App\Http\Controllers\Controller;
-use App\Services\ProjectUpdateService;
+use App\Services\projectUpdateService;
 use Illuminate\Http\Request;
 
 /**

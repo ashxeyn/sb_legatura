@@ -126,7 +126,7 @@ class dashboardService
         $isOwner = in_array($userType, ['property_owner', 'both'])
                 && in_array($currentRole, ['owner', 'property_owner']);
 
-        $feedService = app(\App\Services\feedService::class);
+        $feedService = app(\App\Services\FeedService::class);
         $feedItems = [];
         $feedType = 'projects';
         $contractorProjectsForMilestone = [];

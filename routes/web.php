@@ -18,7 +18,7 @@ use App\Http\Controllers\Admin\dashboardController;
 use App\Http\Controllers\Admin\analyticsController;
 use App\Http\Controllers\Admin\userManagementController;
 use App\Http\Controllers\Admin\globalManagementController;
-use App\Http\Controllers\Admin\ProjectAdminController;
+use App\Http\Controllers\Admin\projectAdminController;
 use App\Http\Controllers\Admin\projectManagementController;
 use App\Http\Controllers\message\broadcastAuthController;
 use App\Http\Controllers\passwordController;
@@ -164,12 +164,30 @@ Route::get('/login', function () {
 
 // Owner account type selection screen — guarded, direct access returns 404
 Route::get('/account-type', function () {
+    $token = session('auth_entry_token');
+    $expiry = session('auth_entry_expiry', 0);
+    
+    if (!$token || time() > $expiry) {
+        session()->forget(['auth_entry_token', 'auth_entry_expiry']);
+        abort(404);
+    }
+    
+    session()->forget(['auth_entry_token', 'auth_entry_expiry']);
     return view('signUp_logIN.accountType');
-})->middleware('auth.entry');
+});
 // Owner account setup screen — guarded, direct access returns 404
-Route::get('/propertyOwner/account-setup', [authController::class, 'showOwnerAccountSetup'])
-    ->middleware('auth.entry')
-    ->name('owner.account-setup');
+Route::get('/propertyOwner/account-setup', function() {
+    $token = session('auth_entry_token');
+    $expiry = session('auth_entry_expiry', 0);
+    
+    if (!$token || time() > $expiry) {
+        session()->forget(['auth_entry_token', 'auth_entry_expiry']);
+        abort(404);
+    }
+    
+    session()->forget(['auth_entry_token', 'auth_entry_expiry']);
+    return app(\App\Http\Controllers\authController::class)->showOwnerAccountSetup();
+})->name('owner.account-setup');
 Route::post('/propertyOwner/account-setup', [authController::class, 'showOwnerAccountSetup']);
 
 // Back-compat: keep old path working (goes through gate)
@@ -178,9 +196,18 @@ Route::get('/account-setup', function () {
 });
 
 // Contractor account setup screen — guarded, direct access returns 404
-Route::get('/contractor/account-setup', [authController::class, 'showContractorSetup'])
-    ->middleware('auth.entry')
-    ->name('contractor.account-setup');
+Route::get('/contractor/account-setup', function() {
+    $token = session('auth_entry_token');
+    $expiry = session('auth_entry_expiry', 0);
+    
+    if (!$token || time() > $expiry) {
+        session()->forget(['auth_entry_token', 'auth_entry_expiry']);
+        abort(404);
+    }
+    
+    session()->forget(['auth_entry_token', 'auth_entry_expiry']);
+    return app(\App\Http\Controllers\authController::class)->showContractorSetup();
+})->name('contractor.account-setup');
 Route::post('/contractor/account-setup', [authController::class, 'showContractorSetup']);
 
 // OTP Verification screen
@@ -371,58 +398,93 @@ Route::get('/auth/gate/forgot-password', function () {
 
 // Authentication Routes
 // GET pages are guarded: direct URL access returns 404
-Route::get('/accounts/login', [authController::class, 'showLoginForm'])->middleware('auth.entry');
-Route::post('/accounts/login', [authController::class, 'login']);
-Route::get('/accounts/signup', [authController::class, 'showSignupForm'])->middleware('auth.entry');
+Route::get('/accounts/login', function() {
+    $token = session('auth_entry_token');
+    $expiry = session('auth_entry_expiry', 0);
+    
+    if (!$token || time() > $expiry) {
+        session()->forget(['auth_entry_token', 'auth_entry_expiry']);
+        abort(404);
+    }
+    
+    session()->forget(['auth_entry_token', 'auth_entry_expiry']);
+    return app(\App\Http\Controllers\authController::class)->showLoginForm();
+});
+Route::post('/accounts/login', [authController::class, 'login'])->middleware('throttle:5,1');
+
+Route::get('/accounts/signup', function() {
+    $token = session('auth_entry_token');
+    $expiry = session('auth_entry_expiry', 0);
+    
+    if (!$token || time() > $expiry) {
+        session()->forget(['auth_entry_token', 'auth_entry_expiry']);
+        abort(404);
+    }
+    
+    session()->forget(['auth_entry_token', 'auth_entry_expiry']);
+    return app(\App\Http\Controllers\authController::class)->showSignupForm();
+});
+
 Route::get('/owner/signup', function () {
     return redirect('/auth/gate/account-type');
 })->name('owner.signup');
-Route::post('/accounts/signup/select-role', [authController::class, 'selectRole']);
+Route::post('/accounts/signup/select-role', [authController::class, 'selectRole'])->middleware('throttle:10,1');
 Route::post('/accounts/logout', [authController::class, 'logout']);
 Route::get('/accounts/logout', [authController::class, 'logout']);
 
 // Forgot Password Routes
-Route::get('/accounts/forgot-password', [passwordController::class, 'showForgotForm'])->middleware('auth.entry')->name('password.forgot');
-Route::post('/accounts/password/send-otp', [passwordController::class, 'sendResetOtp'])->name('password.send-otp');
-Route::post('/accounts/password/verify-otp', [passwordController::class, 'verifyResetOtp'])->name('password.verify-otp');
-Route::post('/accounts/password/reset', [passwordController::class, 'resetPassword'])->name('password.reset');
+Route::get('/accounts/forgot-password', function() {
+    $token = session('auth_entry_token');
+    $expiry = session('auth_entry_expiry', 0);
+    
+    if (!$token || time() > $expiry) {
+        session()->forget(['auth_entry_token', 'auth_entry_expiry']);
+        abort(404);
+    }
+    
+    session()->forget(['auth_entry_token', 'auth_entry_expiry']);
+    return app(\App\Http\Controllers\passwordController::class)->showForgotForm();
+})->name('password.forgot');
+Route::post('/accounts/password/send-otp', [passwordController::class, 'sendResetOtp'])->middleware('throttle:3,1')->name('password.send-otp');
+Route::post('/accounts/password/verify-otp', [passwordController::class, 'verifyResetOtp'])->middleware('throttle:5,1')->name('password.verify-otp');
+Route::post('/accounts/password/reset', [passwordController::class, 'resetPassword'])->middleware('throttle:5,1')->name('password.reset');
 
 // Admin Authentication Routes
 // GET pages abort(404) for direct URL access; the secret modal uses POST only
 Route::get('/admin/login', function () {
     abort(404);
 })->name('admin.login');
-Route::post('/admin/login', [authController::class, 'login'])->name('admin.login.post');
+Route::post('/admin/login', [authController::class, 'login'])->middleware('throttle:3,1')->name('admin.login.post');
 
 Route::get('/admin/signup', function () {
     abort(404);
 })->name('admin.signup');
-Route::post('/admin/signup', [authController::class, 'adminSignup'])->name('admin.signup.post');
+Route::post('/admin/signup', [authController::class, 'adminSignup'])->middleware('throttle:3,1')->name('admin.signup.post');
 
 Route::post('/admin/logout', [authController::class, 'logout'])->name('admin.logout');
 
-// Contractor Signup Routes
-Route::post('/accounts/signup/contractor/step1', [authController::class, 'contractorStep1']);
-Route::post('/accounts/signup/contractor/step2', [authController::class, 'contractorStep2']);
-Route::post('/accounts/signup/contractor/step3/verify-otp', [authController::class, 'contractorVerifyOtp']);
-Route::post('/accounts/signup/contractor/step4', [authController::class, 'contractorStep4']);
-Route::post('/accounts/signup/contractor/final', [authController::class, 'contractorFinalStep']);
+// Contractor Signup Routes - Protected from direct POST access
+Route::post('/accounts/signup/contractor/step1', [authController::class, 'contractorStep1'])->middleware('throttle:10,1');
+Route::post('/accounts/signup/contractor/step2', [authController::class, 'contractorStep2'])->middleware('throttle:5,1');
+Route::post('/accounts/signup/contractor/step3/verify-otp', [authController::class, 'contractorVerifyOtp'])->middleware('throttle:5,1');
+Route::post('/accounts/signup/contractor/step4', [authController::class, 'contractorStep4'])->middleware('throttle:10,1');
+Route::post('/accounts/signup/contractor/final', [authController::class, 'contractorFinalStep'])->middleware('throttle:10,1');
 
-// Property Owner Signup Routes
-Route::post('/accounts/signup/owner/step1', [authController::class, 'propertyOwnerStep1']);
-Route::post('/accounts/signup/owner/step2', [authController::class, 'propertyOwnerStep2']);
-Route::post('/accounts/signup/owner/step3/verify-otp', [authController::class, 'propertyOwnerVerifyOtp']);
-Route::post('/accounts/signup/owner/step4', [authController::class, 'propertyOwnerStep4']);
-Route::post('/accounts/signup/owner/final', [authController::class, 'propertyOwnerFinalStep']);
+// Property Owner Signup Routes - Protected from direct POST access
+Route::post('/accounts/signup/owner/step1', [authController::class, 'propertyOwnerStep1'])->middleware('throttle:10,1');
+Route::post('/accounts/signup/owner/step2', [authController::class, 'propertyOwnerStep2'])->middleware('throttle:5,1');
+Route::post('/accounts/signup/owner/step3/verify-otp', [authController::class, 'propertyOwnerVerifyOtp'])->middleware('throttle:5,1');
+Route::post('/accounts/signup/owner/step4', [authController::class, 'propertyOwnerStep4'])->middleware('throttle:10,1');
+Route::post('/accounts/signup/owner/final', [authController::class, 'propertyOwnerFinalStep'])->middleware('throttle:10,1');
 
 // Role Switch Routes
 Route::get('/accounts/switch', [authController::class, 'showSwitchForm']);
-Route::post('/accounts/switch/contractor/step1', [authController::class, 'switchContractorStep1']);
-Route::post('/accounts/switch/contractor/step2', [authController::class, 'switchContractorStep2']);
-Route::post('/accounts/switch/contractor/final', [authController::class, 'switchContractorFinal']);
-Route::post('/accounts/switch/owner/step1', [authController::class, 'switchOwnerStep1']);
-Route::post('/accounts/switch/owner/step2', [authController::class, 'switchOwnerStep2']);
-Route::post('/accounts/switch/owner/final', [authController::class, 'switchOwnerFinal']);
+Route::post('/accounts/switch/contractor/step1', [authController::class, 'switchContractorStep1'])->middleware('throttle:10,1');
+Route::post('/accounts/switch/contractor/step2', [authController::class, 'switchContractorStep2'])->middleware('throttle:10,1');
+Route::post('/accounts/switch/contractor/final', [authController::class, 'switchContractorFinal'])->middleware('throttle:10,1');
+Route::post('/accounts/switch/owner/step1', [authController::class, 'switchOwnerStep1'])->middleware('throttle:10,1');
+Route::post('/accounts/switch/owner/step2', [authController::class, 'switchOwnerStep2'])->middleware('throttle:10,1');
+Route::post('/accounts/switch/owner/final', [authController::class, 'switchOwnerFinal'])->middleware('throttle:10,1');
 
 // Web POST endpoint for role switching (session-aware) so frontend can switch roles without bearer token
 Route::post('/accounts/switch-role', [cprocessController::class, 'switchRole'])->name('accounts.switch.role');
@@ -780,4 +842,33 @@ Route::get('/dev/test-notifications', [TestNotificationsController::class, 'inde
 Route::post('/dev/test-notifications/run', [TestNotificationsController::class, 'run'])->name('test.notifications.run');
 Route::post('/dev/test-notifications/clear-dedup', [TestNotificationsController::class, 'clearDedup'])->name('test.notifications.clear-dedup');
 
+// ---------------------------------------------------------------
+// DEV ONLY: Error page testing routes
+// ---------------------------------------------------------------
+Route::get('/dev/test-404', function () {
+    abort(404);
+})->name('test.404');
 
+Route::get('/dev/test-403', function () {
+    abort(403);
+})->name('test.403');
+
+Route::get('/dev/test-500', function () {
+    abort(500);
+})->name('test.500');
+
+
+
+// ── Fallback Route - Catch all undefined routes ──────────────────
+// This must be the LAST route defined
+Route::fallback(function () {
+    // Log suspicious access attempts for security monitoring
+    \Log::warning('404 - Route not found', [
+        'url' => request()->fullUrl(),
+        'method' => request()->method(),
+        'ip' => request()->ip(),
+        'user_agent' => request()->userAgent()
+    ]);
+    
+    abort(404);
+});
