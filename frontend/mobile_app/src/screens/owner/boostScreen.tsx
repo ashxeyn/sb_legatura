@@ -18,26 +18,27 @@ import { Ionicons, Feather } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 
-// Color palette (local copy)
+// Color palette (milestoneDetail style)
 const COLORS = {
-	primary: '#EC7E00',
-	primaryLight: '#FFF3E6',
-	primaryDark: '#C96A00',
+	primary: '#1E3A5F',
+	primaryLight: '#E8EEF4',
+	accent: '#EC7E00',
+	accentLight: '#FFF3E6',
 	success: '#10B981',
 	successLight: '#D1FAE5',
 	warning: '#F59E0B',
 	warningLight: '#FEF3C7',
 	error: '#EF4444',
+	errorLight: '#FEE2E2',
 	info: '#3B82F6',
 	infoLight: '#DBEAFE',
 	background: '#F8FAFC',
 	surface: '#FFFFFF',
-	text: '#0F172A',
+	text: '#1E3A5F',
 	textSecondary: '#64748B',
 	textMuted: '#94A3B8',
 	border: '#E2E8F0',
 	borderLight: '#F1F5F9',
-	star: '#FFC107',
 };
 import { api_request, api_config } from '../../config/api';
 
@@ -294,57 +295,90 @@ export default function BoostScreen({ navigation }: any) {
 
 			const loadFailed = !!(imgUrl && failedImages[imgUrl]);
 
-			return (
-				<View style={styles.boostCard}>
-					{imgUrl && !loadFailed ? (
-						<View style={styles.thumb}>
-							<Image
-								source={{ uri: imgUrl }}
-								style={{ width: '100%', height: '100%', borderRadius: 8 }}
-								resizeMode="cover"
-								onLoad={() => console.log('Boost image loaded:', imgUrl)}
-								onError={(e) => {
-									console.warn('Boost image load error:', imgUrl, e.nativeEvent || e);
-									setFailedImages(prev => ({ ...prev, [imgUrl]: true }));
-								}}
-							/>
-						</View>
-					) : (
-						<View style={[styles.thumb, { justifyContent: 'center', alignItems: 'center' }]}>
-							<Text style={{ color: '#999' }}>No image</Text>
-						</View>
-					)}
-				<View style={styles.boostContent}>
-					<Text style={styles.projectTitle}>{item.title || item.project_title || 'Untitled'}</Text>
-					<Text style={styles.infoLine}>{item.owner_name || item.owner || 'Only me'}</Text>
-					<Text style={styles.infoLine}>{item.address || item.location || 'Unknown location'}</Text>
+		return (
+			<View style={styles.fdCard}>
+				{/* Project image */}
+				{imgUrl && !loadFailed ? (
+					<View style={styles.cardImgWrap}>
+						<Image
+							source={{ uri: imgUrl }}
+							style={styles.cardImg}
+							resizeMode="cover"
+							onLoad={() => console.log('Boost image loaded:', imgUrl)}
+							onError={(e) => {
+								console.warn('Boost image load error:', imgUrl, e.nativeEvent || e);
+								setFailedImages(prev => ({ ...prev, [imgUrl]: true }));
+							}}
+						/>
+					</View>
+				) : (
+					<View style={[styles.cardImgWrap, styles.cardImgPlaceholder]}>
+						<Feather name="image" size={28} color={COLORS.textMuted} />
+						<Text style={styles.cardImgPlaceholderText}>No design image</Text>
+					</View>
+				)}
 
+				{/* Card body */}
+				<View style={styles.cardBody}>
+					<Text style={styles.cardLabel}>PROJECT</Text>
+					<Text style={styles.cardTitle} numberOfLines={2}>
+						{item.title || item.project_title || 'Untitled Project'}
+					</Text>
+
+					{/* Meta badges */}
+					<View style={styles.cardMeta}>
+						{(item.address || item.location) ? (
+							<View style={[styles.metaBadge, { backgroundColor: COLORS.primaryLight }]}>
+								<Feather name="map-pin" size={9} color={COLORS.primary} />
+								<Text style={[styles.metaBadgeText, { color: COLORS.primary }]} numberOfLines={1}>
+									{item.address || item.location}
+								</Text>
+							</View>
+						) : null}
+						{(item.category || item.project_type) ? (
+							<View style={[styles.metaBadge, { backgroundColor: COLORS.accentLight }]}>
+								<Text style={[styles.metaBadgeText, { color: COLORS.accent }]}>
+									{item.category || item.project_type}
+								</Text>
+							</View>
+						) : null}
+					</View>
+
+					{/* Boost button — Available tab */}
 					{selectedTab === 'active' && (
-						(processingId === Number(item.id || item.project_id || item.projectId || 0)) ? (
-							<View style={styles.actionButton}>
-								<ActivityIndicator size="small" color="#FFF" />
-								<Text style={[styles.actionButtonText, { marginLeft: 8 }]}>Processing...</Text>
-							</View>
-						) : (
-							<TouchableOpacity style={styles.actionButton} onPress={() => handleBoost(Number(item.id || item.project_id || item.projectId || 0))}>
-								<Text style={styles.actionButtonText}>Boost Now</Text>
-							</TouchableOpacity>
-						)
-					)}
-
-					{selectedTab === 'dashboard' ? (
-						<View style={styles.progressRow}>
-							<View style={[styles.progressBarBackground, { backgroundColor: getProgressBg(daysLeft) }]}>
-								<View style={[styles.progressBarFill, { width: fillWidth, backgroundColor: getProgressColor(daysLeft), zIndex: 2 }]} />
-							</View>
-							<Text style={styles.progressPercent}>{Number.isFinite(pct) ? `${pct}%` : '0%'}</Text>
+						<View style={styles.cardActions}>
+							{processingId === Number(item.id || item.project_id || item.projectId || 0) ? (
+								<View style={[styles.boostBtn, { opacity: 0.75 }]}>
+									<ActivityIndicator size="small" color="#FFF" style={{ marginRight: 8 }} />
+									<Text style={styles.boostBtnText}>Processing…</Text>
+								</View>
+							) : (
+								<TouchableOpacity
+									style={styles.boostBtn}
+									onPress={() => handleBoost(Number(item.id || item.project_id || item.projectId || 0))}
+								>
+									<Feather name="zap" size={14} color="#FFF" style={{ marginRight: 6 }} />
+									<Text style={styles.boostBtnText}>Boost Now  ·  ₱49</Text>
+								</TouchableOpacity>
+							)}
 						</View>
-					) : (
-						<Text style={styles.dueText}>{endsAt ? `Due: ${endsAtText}` : (item.date ? `Due: ${item.date}` : 'Due date: N/A')}</Text>
 					)}
 
+					{/* Progress — Dashboard tab */}
 					{selectedTab === 'dashboard' && (
-						<Text style={styles.expireText}>Boost will end in: {endsAtText}</Text>
+						<View style={styles.progressSection}>
+							<View style={styles.progressLabelRow}>
+								<Text style={styles.progressLabel}>BOOST PROGRESS</Text>
+								<Text style={styles.progressPct}>{Number.isFinite(pct) ? `${pct}%` : '0%'}</Text>
+							</View>
+							<View style={[styles.progressBg, { backgroundColor: getProgressBg(daysLeft) }]}>
+								<View style={[styles.progressFill, { width: fillWidth, backgroundColor: getProgressColor(daysLeft) }]} />
+							</View>
+							<View style={styles.expireRow}>
+								<Feather name="clock" size={11} color={COLORS.textMuted} />
+								<Text style={styles.expireText}>Ends {endsAtText}</Text>
+							</View>
+						</View>
 					)}
 				</View>
 			</View>
@@ -358,86 +392,78 @@ export default function BoostScreen({ navigation }: any) {
 
 	return (
 		<SafeAreaView style={styles.container}>
-			<StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+			<StatusBar barStyle="dark-content" backgroundColor={COLORS.surface} />
 
-					{/* Header (white) */}
-					<View style={styles.headerGradient}>
-				<View style={styles.headerContent}>
-					<TouchableOpacity onPress={() => {
-						try { navigation.navigate('Profile'); } catch (e) { navigation.goBack(); }
-					}} style={styles.backButton}>
-						<Feather name="chevron-left" size={24} color={COLORS.text} />
-						<Text style={styles.backText}>Back</Text>
-					</TouchableOpacity>
-
-
+			{/* ── Header ── */}
+			<View style={styles.header}>
+				<TouchableOpacity
+					onPress={() => { try { navigation.navigate('Profile'); } catch (e) { navigation.goBack(); } }}
+					style={styles.backBtn}
+				>
+					<Feather name="chevron-left" size={24} color={COLORS.text} />
+					<Text style={styles.backText}>Back</Text>
+				</TouchableOpacity>
+				<View style={styles.headerCenter}>
+					<Text style={styles.headerTitle}>Boost Your Project</Text>
+					<Text style={styles.headerSub}>Get more contractor bids</Text>
 				</View>
+				<View style={{ width: 56 }} />
+			</View>
 
-				{/* Stats Preview Card */}
-				<View style={styles.statsPreviewCard}>
-					<View style={styles.statItem}>
-						<Text style={styles.statValue}>{boostedPosts.length}</Text>
-						<Text style={styles.statLabel}>Active Boosts</Text>
-					</View>
-					<View style={styles.statDivider} />
-					<View style={styles.statItem}>
-						<Text style={styles.statValue}>{projects.length}</Text>
-						<Text style={styles.statLabel}>Available</Text>
-					</View>
-					<View style={styles.statDivider} />
-					<View style={styles.statItem}>
-						<Text style={styles.statValue}>49</Text>
-						<Text style={styles.statLabel}>Price (₱)</Text>
-					</View>
+			{/* ── Stats Banner ── */}
+			<View style={styles.statsBanner}>
+				<View style={styles.statItem}>
+					<Text style={styles.statNum}>{boostedPosts.length}</Text>
+					<Text style={styles.statLbl}>Active</Text>
+				</View>
+				<View style={styles.statDiv} />
+				<View style={styles.statItem}>
+					<Text style={styles.statNum}>{projects.length}</Text>
+					<Text style={styles.statLbl}>Available</Text>
+				</View>
+				<View style={styles.statDiv} />
+				<View style={styles.statItem}>
+					<Text style={[styles.statNum, { color: COLORS.accent }]}>₱49</Text>
+					<Text style={styles.statLbl}>Per Boost</Text>
 				</View>
 			</View>
 
-			{/* Tab Bar */}
+			{/* ── Tab Bar ── */}
 			<View style={styles.tabBar}>
 				<TouchableOpacity
-					style={[styles.tabButton, selectedTab === 'active' && styles.tabButtonActive]}
+					style={[styles.tabBtn, selectedTab === 'active' && styles.tabBtnActive]}
 					onPress={() => setSelectedTab('active')}
 				>
-					<Ionicons
-						name={selectedTab === 'active' ? "rocket" : "rocket-outline"}
-						size={18}
-						color={selectedTab === 'active' ? '#FFF' : '#666'}
-						style={styles.tabIcon}
-					/>
+					<Feather name="zap" size={14} color={selectedTab === 'active' ? COLORS.accent : COLORS.textMuted} style={{ marginRight: 6 }} />
 					<Text style={[styles.tabText, selectedTab === 'active' && styles.tabTextActive]}>Available</Text>
 				</TouchableOpacity>
-
 				<TouchableOpacity
-					style={[styles.tabButton, selectedTab === 'dashboard' && styles.tabButtonActive]}
+					style={[styles.tabBtn, selectedTab === 'dashboard' && styles.tabBtnActive]}
 					onPress={() => setSelectedTab('dashboard')}
 				>
-					<Ionicons
-						name={selectedTab === 'dashboard' ? "bar-chart" : "bar-chart-outline"}
-						size={18}
-						color={selectedTab === 'dashboard' ? '#FFF' : '#666'}
-						style={styles.tabIcon}
-					/>
+					<Feather name="bar-chart-2" size={14} color={selectedTab === 'dashboard' ? COLORS.accent : COLORS.textMuted} style={{ marginRight: 6 }} />
 					<Text style={[styles.tabText, selectedTab === 'dashboard' && styles.tabTextActive]}>Dashboard</Text>
 				</TouchableOpacity>
 			</View>
 
 			{loading ? (
-				<ActivityIndicator size="large" color="#EC7E00" style={{ marginTop: 50 }} />
+				<ActivityIndicator size="large" color={COLORS.accent} style={{ marginTop: 60 }} />
 			) : selectedTab === 'active' ? (
 				<>
-					<View style={styles.searchContainer}>
-						<Ionicons name="search" size={20} color="#999" style={styles.searchIcon} />
+					{/* Search */}
+					<View style={styles.searchWrap}>
+						<Feather name="search" size={15} color={COLORS.textMuted} style={{ marginRight: 8 }} />
 						<TextInput
 							style={styles.searchInput}
-							placeholder="Search projects by title or location..."
-							placeholderTextColor="#999"
+							placeholder="Search by title or location…"
+							placeholderTextColor={COLORS.textMuted}
 							value={searchQuery}
 							onChangeText={setSearchQuery}
 							returnKeyType="search"
 						/>
 						{searchQuery.length > 0 && (
 							<TouchableOpacity onPress={() => setSearchQuery('')}>
-								<Ionicons name="close-circle" size={20} color="#999" />
+								<Feather name="x" size={15} color={COLORS.textMuted} />
 							</TouchableOpacity>
 						)}
 					</View>
@@ -454,42 +480,52 @@ export default function BoostScreen({ navigation }: any) {
 						keyExtractor={(item, index) => `boost-${item.id || item.project_id || index}`}
 						renderItem={renderItem}
 						contentContainerStyle={styles.listContent}
-						refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchModalData(true)} tintColor="#EC7E00" />}
+						refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchModalData(true)} tintColor={COLORS.accent} />}
 						ListEmptyComponent={
-							<View style={styles.emptyContainer}>
-								<Ionicons name="rocket-outline" size={48} color="#DDD" />
-								<Text style={styles.emptyText}>No projects available to boost</Text>
-								<Text style={styles.emptySubtext}>Create a project first to boost it</Text>
+							<View style={styles.emptyWrap}>
+								<View style={styles.emptyIcon}>
+									<Feather name="zap" size={28} color={COLORS.textMuted} />
+								</View>
+								<Text style={styles.emptyTitle}>No projects to boost</Text>
+								<Text style={styles.emptyDesc}>Create a project first, then boost it to attract more bids.</Text>
 							</View>
 						}
 					/>
 				</>
 			) : (
-				<ScrollView contentContainerStyle={{ padding: 12 }}>
+				<ScrollView contentContainerStyle={{ padding: 16 }}>
+					{/* Analytics */}
+					<Text style={styles.sectionLabel}>PERFORMANCE · LAST 7 DAYS</Text>
 					<View style={styles.analyticsRow}>
 						<View style={styles.analyticsCard}>
-							<Ionicons name="eye-outline" size={24} color="#EC7E00" />
-							<Text style={styles.analyticsLabel}>Post reach</Text>
+							<View style={styles.analyticsIcon}>
+								<Feather name="eye" size={18} color={COLORS.accent} />
+							</View>
 							<Text style={styles.analyticsValue}>0</Text>
-							<Text style={styles.analyticsMeta}>0% • 7d</Text>
+							<Text style={styles.analyticsLabel}>Reach</Text>
 						</View>
 						<View style={styles.analyticsCard}>
-							<Ionicons name="chatbubble-outline" size={24} color="#EC7E00" />
+							<View style={styles.analyticsIcon}>
+								<Feather name="message-square" size={18} color={COLORS.accent} />
+							</View>
+							<Text style={styles.analyticsValue}>0</Text>
 							<Text style={styles.analyticsLabel}>Bids</Text>
-							<Text style={styles.analyticsValue}>0</Text>
-							<Text style={styles.analyticsMeta}>0% • 7d</Text>
 						</View>
 						<View style={styles.analyticsCard}>
-							<Ionicons name="hand-right-outline" size={24} color="#EC7E00" />
-							<Text style={styles.analyticsLabel}>Clicks</Text>
+							<View style={styles.analyticsIcon}>
+								<Feather name="mouse-pointer" size={18} color={COLORS.accent} />
+							</View>
 							<Text style={styles.analyticsValue}>0</Text>
-							<Text style={styles.analyticsMeta}>0% • 7d</Text>
+							<Text style={styles.analyticsLabel}>Clicks</Text>
 						</View>
 					</View>
 
-					<View style={styles.sectionHeader}>
-						<Text style={styles.sectionTitle}>Boosted posts</Text>
-						<Text style={styles.sectionCount}>{boostedPosts.length}</Text>
+					{/* Boosted posts */}
+					<View style={styles.sectionHeaderRow}>
+						<Text style={styles.sectionLabel}>BOOSTED POSTS</Text>
+						<View style={styles.sectionCountBadge}>
+							<Text style={styles.sectionCountText}>{boostedPosts.length}</Text>
+						</View>
 					</View>
 
 					{boostedPosts && boostedPosts.length > 0 ? (
@@ -499,10 +535,12 @@ export default function BoostScreen({ navigation }: any) {
 							</View>
 						))
 					) : (
-						<View style={styles.emptyContainer}>
-							<Ionicons name="trending-up-outline" size={48} color="#DDD" />
-							<Text style={styles.emptyText}>No boosted posts yet</Text>
-							<Text style={styles.emptySubtext}>Switch to Available tab to boost your first project</Text>
+						<View style={styles.emptyWrap}>
+							<View style={styles.emptyIcon}>
+								<Feather name="trending-up" size={28} color={COLORS.textMuted} />
+							</View>
+							<Text style={styles.emptyTitle}>No active boosts</Text>
+							<Text style={styles.emptyDesc}>Switch to Available to boost your first project.</Text>
 						</View>
 					)}
 				</ScrollView>
@@ -512,269 +550,351 @@ export default function BoostScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
+	// ── Layout ──
 	container: {
 		flex: 1,
-		backgroundColor: '#F8F9FA'
+		backgroundColor: COLORS.background,
 	},
-	headerGradient: {
-		paddingTop: 20,
-		paddingBottom: 30,
-		borderBottomLeftRadius: 30,
-		borderBottomRightRadius: 30,
-		elevation: 8,
-		backgroundColor: '#FFFFFF',
-		shadowColor: '#000',
-		shadowOffset: { width: 0, height: 4 },
-		shadowOpacity: 0.08,
-		shadowRadius: 8,
-	},
-	headerContent: {
+
+	// ── Header ──
+	header: {
 		flexDirection: 'row',
 		alignItems: 'center',
-		justifyContent: 'space-between',
-		paddingHorizontal: 20,
-		paddingBottom: 20,
+		paddingHorizontal: 16,
+		paddingTop: 48,
+		paddingBottom: 14,
+		backgroundColor: COLORS.surface,
+		borderBottomWidth: 1,
+		borderBottomColor: COLORS.border,
 	},
-	backButton: {
+	backBtn: {
 		flexDirection: 'row',
 		alignItems: 'center',
+		width: 56,
 	},
 	backText: {
-		fontSize: 16,
+		fontSize: 14,
 		color: COLORS.text,
-		marginLeft: 4,
+		fontWeight: '600',
+		marginLeft: 2,
 	},
-	headerTextContainer: {
+	headerCenter: {
 		flex: 1,
-		marginLeft: 12,
+		alignItems: 'center',
 	},
 	headerTitle: {
-		fontSize: 20,
-		fontWeight: '800',
+		fontSize: 16,
+		fontWeight: '700',
 		color: COLORS.text,
 	},
-	headerSubtitle: {
-		fontSize: 13,
+	headerSub: {
+		fontSize: 11,
 		color: COLORS.textMuted,
-		marginTop: 2,
+		marginTop: 1,
 	},
-	headerRight: {
-		alignItems: 'flex-end',
-	},
-	priceBadge: {
-		backgroundColor: '#FFF',
-		paddingHorizontal: 12,
-		paddingVertical: 6,
-		borderRadius: 20,
-	},
-	priceBadgeText: {
-		color: '#EC7E00',
-		fontWeight: '800',
-		fontSize: 16,
-	},
-	statsPreviewCard: {
+
+	// ── Stats Banner ──
+	statsBanner: {
 		flexDirection: 'row',
-		backgroundColor: '#FFF',
-		marginHorizontal: 20,
-		paddingVertical: 16,
+		alignItems: 'center',
+		backgroundColor: COLORS.surface,
+		borderBottomWidth: 1,
+		borderBottomColor: COLORS.border,
+		paddingVertical: 14,
 		paddingHorizontal: 12,
-		borderRadius: 16,
-		elevation: 4,
-		shadowColor: '#000',
-		shadowOffset: { width: 0, height: 2 },
-		shadowOpacity: 0.1,
-		shadowRadius: 8,
 	},
 	statItem: {
 		flex: 1,
 		alignItems: 'center',
 	},
-	statValue: {
+	statNum: {
 		fontSize: 20,
 		fontWeight: '800',
-		color: '#333',
+		color: COLORS.text,
 	},
-	statLabel: {
-		fontSize: 12,
-		color: '#999',
-		marginTop: 4,
+	statLbl: {
+		fontSize: 11,
+		color: COLORS.textMuted,
+		marginTop: 2,
+		letterSpacing: 0.3,
 	},
-	statDivider: {
+	statDiv: {
 		width: 1,
-		height: '70%',
-		backgroundColor: '#EEE',
-		alignSelf: 'center',
+		height: 28,
+		backgroundColor: COLORS.border,
 	},
+
+	// ── Tab Bar ──
 	tabBar: {
 		flexDirection: 'row',
-		padding: 16,
-		justifyContent: 'center',
-		backgroundColor: '#FFF',
-		marginHorizontal: 16,
-		marginTop: -20,
-		borderRadius: 30,
-		elevation: 4,
-		shadowColor: '#000',
-		shadowOffset: { width: 0, height: 2 },
-		shadowOpacity: 0.05,
-		shadowRadius: 8,
+		backgroundColor: COLORS.surface,
+		borderBottomWidth: 1,
+		borderBottomColor: COLORS.border,
+		paddingHorizontal: 16,
 	},
-	tabButton: {
+	tabBtn: {
 		flexDirection: 'row',
 		alignItems: 'center',
-		paddingHorizontal: 20,
-		paddingVertical: 10,
-		borderRadius: 25,
-		marginHorizontal: 8,
+		paddingVertical: 12,
+		paddingHorizontal: 16,
+		marginRight: 8,
+		borderBottomWidth: 2,
+		borderBottomColor: 'transparent',
 	},
-	tabIcon: {
-		marginRight: 6,
-	},
-	tabButtonActive: {
-		backgroundColor: '#EC7E00',
-		elevation: 2,
+	tabBtnActive: {
+		borderBottomColor: COLORS.accent,
 	},
 	tabText: {
-		color: '#666',
-		fontWeight: '600',
 		fontSize: 14,
+		fontWeight: '600',
+		color: COLORS.textMuted,
 	},
 	tabTextActive: {
-		color: '#FFF'
+		color: COLORS.accent,
 	},
-	searchContainer: {
+
+	// ── Search ──
+	searchWrap: {
 		flexDirection: 'row',
 		alignItems: 'center',
-		backgroundColor: '#FFF',
+		backgroundColor: COLORS.surface,
 		marginHorizontal: 16,
-		marginVertical: 12,
-		paddingHorizontal: 16,
-		paddingVertical: 8,
-		borderRadius: 12,
+		marginTop: 14,
+		marginBottom: 6,
+		paddingHorizontal: 14,
+		paddingVertical: 10,
+		borderRadius: 8,
 		borderWidth: 1,
-		borderColor: '#EFEFEF',
-		elevation: 2,
-		shadowColor: '#000',
-		shadowOffset: { width: 0, height: 1 },
-		shadowOpacity: 0.05,
-		shadowRadius: 4,
-	},
-	searchIcon: {
-		marginRight: 8,
+		borderColor: COLORS.border,
 	},
 	searchInput: {
 		flex: 1,
 		fontSize: 14,
-		color: '#333',
-		paddingVertical: 8,
+		color: COLORS.text,
+		paddingVertical: 0,
 	},
+
+	// ── List ──
 	listContent: {
 		padding: 16,
-		paddingTop: 8,
+		paddingTop: 10,
 	},
-	title: { fontSize: 22, fontWeight: '800', color: '#1A1A1A', marginBottom: 8 },
-	headerSection: { backgroundColor: '#FFF', padding: 24, borderBottomWidth: 1, borderBottomColor: '#EEE', alignItems: 'center' },
-	priceTag: { backgroundColor: '#FFF3E0', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20, borderWidth: 1, borderColor: '#FFE0B2', marginBottom: 12 },
-	priceText: { color: '#E65100', fontWeight: '700', fontSize: 14 },
-	description: { textAlign: 'center', color: '#666', lineHeight: 20, fontSize: 14 },
-	card: { backgroundColor: '#FFF', borderRadius: 16, padding: 16, marginBottom: 16, flexDirection: 'row', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
-	cardContent: { flex: 1 },
-	projectTitle: { fontSize: 16, fontWeight: '700', color: '#333' },
-	projectStatus: { fontSize: 12, color: '#999', marginTop: 4 },
-	actionButton: {
-		backgroundColor: '#EC7E00',
-		paddingHorizontal: 16,
-		paddingVertical: 10,
-		borderRadius: 20,
-		minWidth: 100,
+
+	// ── Project Card (fdInfoCard style) ──
+	fdCard: {
+		backgroundColor: COLORS.surface,
+		borderRadius: 6,
+		borderWidth: 1,
+		borderColor: COLORS.border,
+		marginBottom: 12,
+		overflow: 'hidden',
+	},
+	cardImgWrap: {
+		height: 160,
+		backgroundColor: COLORS.borderLight,
+	},
+	cardImg: {
+		width: '100%',
+		height: '100%',
+	},
+	cardImgPlaceholder: {
+		justifyContent: 'center',
+		alignItems: 'center',
+		gap: 6,
+	},
+	cardImgPlaceholderText: {
+		fontSize: 12,
+		color: COLORS.textMuted,
+	},
+	cardBody: {
+		padding: 16,
+	},
+	cardLabel: {
+		fontSize: 10,
+		fontWeight: '700',
+		color: COLORS.textMuted,
+		letterSpacing: 1.2,
+		textTransform: 'uppercase',
+		marginBottom: 6,
+	},
+	cardTitle: {
+		fontSize: 17,
+		fontWeight: '700',
+		color: COLORS.text,
+		lineHeight: 23,
+		marginBottom: 10,
+	},
+	cardMeta: {
+		flexDirection: 'row',
+		flexWrap: 'wrap',
+		gap: 6,
+		marginBottom: 4,
+	},
+	metaBadge: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 4,
+		paddingHorizontal: 8,
+		paddingVertical: 4,
+		borderRadius: 4,
+	},
+	metaBadgeText: {
+		fontSize: 11,
+		fontWeight: '600',
+		maxWidth: 140,
+	},
+	cardActions: {
+		borderTopWidth: 1,
+		borderTopColor: COLORS.borderLight,
+		paddingTop: 12,
+		marginTop: 10,
+	},
+	boostBtn: {
 		flexDirection: 'row',
 		alignItems: 'center',
 		justifyContent: 'center',
-		marginTop: 8,
-		elevation: 2,
+		backgroundColor: COLORS.accent,
+		paddingVertical: 11,
+		borderRadius: 6,
 	},
-	disabledButton: { backgroundColor: '#FFCC80' },
-	actionButtonText: { color: '#FFF', fontWeight: '700', fontSize: 14 },
-	emptyContainer: {
-		marginTop: 60,
-		alignItems: 'center',
-		paddingHorizontal: 40,
-	},
-	emptyText: {
-		color: '#666',
-		fontSize: 16,
-		fontWeight: '600',
-		marginTop: 12,
-	},
-	emptySubtext: {
-		color: '#999',
+	boostBtnText: {
+		color: '#FFF',
+		fontWeight: '700',
 		fontSize: 14,
-		textAlign: 'center',
+	},
+
+	// ── Progress Section (Dashboard) ──
+	progressSection: {
+		borderTopWidth: 1,
+		borderTopColor: COLORS.borderLight,
+		paddingTop: 12,
+		marginTop: 10,
+	},
+	progressLabelRow: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+		marginBottom: 8,
+	},
+	progressLabel: {
+		fontSize: 10,
+		fontWeight: '700',
+		color: COLORS.textMuted,
+		letterSpacing: 0.8,
+		textTransform: 'uppercase',
+	},
+	progressPct: {
+		fontSize: 13,
+		fontWeight: '700',
+		color: COLORS.text,
+	},
+	progressBg: {
+		height: 6,
+		borderRadius: 3,
+		backgroundColor: COLORS.borderLight,
+		overflow: 'hidden',
+	},
+	progressFill: {
+		height: 6,
+		borderRadius: 3,
+	},
+	expireRow: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 5,
+		marginTop: 8,
+	},
+	expireText: {
+		fontSize: 12,
+		color: COLORS.textMuted,
+	},
+
+	// ── Dashboard ──
+	sectionLabel: {
+		fontSize: 10,
+		fontWeight: '700',
+		color: COLORS.textMuted,
+		letterSpacing: 1.2,
+		textTransform: 'uppercase',
+		marginBottom: 10,
 		marginTop: 4,
 	},
-	infoBox: { marginTop: 8 },
-	infoLineBold: { color: '#444', fontWeight: '700', fontSize: 13, marginBottom: 4 },
-	infoLine: { color: '#666', fontSize: 13, marginBottom: 2 },
-	infoLineDate: { color: '#777', fontSize: 12, marginTop: 6 },
 	analyticsRow: {
 		flexDirection: 'row',
-		justifyContent: 'space-between',
-		marginBottom: 16,
+		gap: 10,
+		marginBottom: 20,
 	},
 	analyticsCard: {
 		flex: 1,
-		backgroundColor: '#FFF',
-		padding: 16,
-		borderRadius: 16,
-		marginHorizontal: 4,
+		backgroundColor: COLORS.surface,
+		borderRadius: 6,
+		borderWidth: 1,
+		borderColor: COLORS.border,
+		padding: 14,
 		alignItems: 'center',
-		elevation: 2,
-		shadowColor: '#000',
-		shadowOffset: { width: 0, height: 2 },
-		shadowOpacity: 0.05,
-		shadowRadius: 8,
 	},
-	analyticsLabel: { fontSize: 12, color: '#666', marginTop: 4 },
-	analyticsValue: { fontSize: 24, fontWeight: '800', color: '#333', marginTop: 4 },
-	analyticsMeta: { fontSize: 11, color: '#999', marginTop: 4 },
-	boostCard: {
-		backgroundColor: '#FFF',
-		borderRadius: 16,
-		padding: 16,
-		marginBottom: 12,
-		flexDirection: 'row',
+	analyticsIcon: {
+		width: 40,
+		height: 40,
+		borderRadius: 20,
+		backgroundColor: COLORS.accentLight,
 		alignItems: 'center',
-		elevation: 2,
-		shadowColor: '#000',
-		shadowOffset: { width: 0, height: 1 },
-		shadowOpacity: 0.05,
-		shadowRadius: 4,
+		justifyContent: 'center',
+		marginBottom: 8,
 	},
-	thumb: { width: 80, height: 80, borderRadius: 12, overflow: 'hidden', marginRight: 16, backgroundColor: '#F5F5F5' },
-	boostContent: { flex: 1 },
-	progressRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8 },
-	progressBarBackground: { height: 8, backgroundColor: '#EEE', borderRadius: 4, flex: 1, overflow: 'hidden', position: 'relative' },
-	progressBarFill: { height: 8, backgroundColor: '#EC7E00', borderRadius: 4, position: 'absolute', left: 0, top: 0, bottom: 0 },
-	progressPercent: { marginLeft: 8, fontWeight: '700', color: '#333', fontSize: 13 },
-	expireText: { marginTop: 6, color: '#777', fontSize: 11 },
-	dueText: { marginTop: 8, color: '#333', fontSize: 13, fontWeight: '600' },
-	sectionHeader: {
+	analyticsValue: {
+		fontSize: 22,
+		fontWeight: '800',
+		color: COLORS.text,
+	},
+	analyticsLabel: {
+		fontSize: 11,
+		color: COLORS.textMuted,
+		marginTop: 3,
+	},
+	sectionHeaderRow: {
 		flexDirection: 'row',
 		alignItems: 'center',
 		justifyContent: 'space-between',
-		marginBottom: 12,
+		marginBottom: 10,
 	},
-	sectionTitle: {
+	sectionCountBadge: {
+		backgroundColor: COLORS.primaryLight,
+		paddingHorizontal: 8,
+		paddingVertical: 3,
+		borderRadius: 10,
+	},
+	sectionCountText: {
+		fontSize: 12,
+		fontWeight: '700',
+		color: COLORS.primary,
+	},
+
+	// ── Empty State ──
+	emptyWrap: {
+		marginTop: 48,
+		alignItems: 'center',
+		paddingHorizontal: 40,
+	},
+	emptyIcon: {
+		width: 64,
+		height: 64,
+		borderRadius: 32,
+		backgroundColor: COLORS.borderLight,
+		alignItems: 'center',
+		justifyContent: 'center',
+		marginBottom: 16,
+	},
+	emptyTitle: {
 		fontSize: 16,
 		fontWeight: '700',
-		color: '#333',
+		color: COLORS.text,
+		marginBottom: 6,
 	},
-	sectionCount: {
-		backgroundColor: '#F0F0F0',
-		paddingHorizontal: 8,
-		paddingVertical: 4,
-		borderRadius: 12,
-		fontSize: 12,
-		color: '#666',
+	emptyDesc: {
+		fontSize: 13,
+		color: COLORS.textMuted,
+		textAlign: 'center',
+		lineHeight: 19,
 	},
 });
