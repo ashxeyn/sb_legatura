@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\both\ProjectUpdate;
+use App\Models\both\projectUpdate;
 use App\Services\notificationService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;

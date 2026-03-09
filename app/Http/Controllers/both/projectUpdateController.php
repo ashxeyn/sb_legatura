@@ -26,7 +26,7 @@ use Illuminate\Http\Request;
  */
 class projectUpdateController extends Controller
 {
-    public function __construct(private ProjectUpdateService $service) {}
+    public function __construct(private projectUpdateService $service) {}
 
     // ── context ──────────────────────────────────────────────────────────
     public function context(Request $request, int $projectId)

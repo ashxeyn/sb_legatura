@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\contractor;
 
 use App\Http\Controllers\Controller;
-use App\Services\AiService;
+use App\Services\aiService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Log;
@@ -17,9 +17,9 @@ use Illuminate\Support\Facades\Log;
  *
  * Uses AiService for business logic and data access.
  */
-class AiController extends Controller
+class aiController extends Controller
 {
-    protected AiService $aiService;
+    protected aiService $aiService;
 
     public function __construct(AiService $aiService)
     {

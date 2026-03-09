@@ -5,7 +5,7 @@ namespace App\Models\admin;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\subs\subscriptionPlan;
 
-class PlatformPayment extends Model
+class platformPayment extends Model
 {
     protected $primaryKey = 'platform_payment_id';
     public $incrementing = true;

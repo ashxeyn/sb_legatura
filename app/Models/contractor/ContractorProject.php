@@ -2,13 +2,13 @@
 
 namespace App\Models\contractor;
 
-use App\Models\User;
+use App\Models\user;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 
 // Contractor Model (using existing table structure)
-class Contractor extends Model
+class contractor extends Model
 {
     use HasFactory;
 
@@ -47,17 +47,17 @@ class Contractor extends Model
     // Relationships
     public function user()
     {
-        return $this->belongsTo(User::class, 'user_id', 'user_id');
+        return $this->belongsTo(user::class, 'user_id', 'user_id');
     }
 
     public function projects()
     {
-        return $this->hasMany(Project::class, 'selected_contractor_id', 'contractor_id');
+        return $this->hasMany(project::class, 'selected_contractor_id', 'contractor_id');
     }
 }
 
 // Project Model (for contractor posting)
-class Project extends Model
+class project extends Model
 {
     use HasFactory;
 
@@ -91,23 +91,23 @@ class Project extends Model
     // Relationships
     public function contractor()
     {
-        return $this->belongsTo(Contractor::class, 'selected_contractor_id', 'contractor_id');
+        return $this->belongsTo(contractor::class, 'selected_contractor_id', 'contractor_id');
     }
 
     public function contractorType()
     {
-        return $this->belongsTo(ContractorType::class, 'type_id', 'type_id');
+        return $this->belongsTo(contractorType::class, 'type_id', 'type_id');
     }
 
     public function files()
     {
-        return $this->hasMany(ProjectFile::class, 'project_id', 'project_id');
+        return $this->hasMany(projectFile::class, 'project_id', 'project_id');
     }
 }
 
 
 // Project File Model
-class ProjectFile extends Model
+class projectFile extends Model
 {
     use HasFactory;
 
@@ -131,12 +131,12 @@ class ProjectFile extends Model
     // Relationship
     public function project()
     {
-        return $this->belongsTo(Project::class, 'project_id', 'project_id');
+        return $this->belongsTo(project::class, 'project_id', 'project_id');
     }
 }
 
 // Contractor Type Model
-class ContractorType extends Model
+class contractorType extends Model
 {
     use HasFactory;
 
@@ -151,18 +151,18 @@ class ContractorType extends Model
     // Relationships
     public function projects()
     {
-        return $this->hasMany(Project::class, 'type_id', 'type_id');
+        return $this->hasMany(project::class, 'type_id', 'type_id');
     }
 }
 
 // Contractor Project Service
-class ContractorProjectService
+class contractorProjectService
 {
 
     // Get all contractor types
     public function getContractorTypes()
     {
-        return ContractorType::query()
+        return contractorType::query()
             ->orderBy('type_name')
             ->get(['type_id', 'type_name']);
     }

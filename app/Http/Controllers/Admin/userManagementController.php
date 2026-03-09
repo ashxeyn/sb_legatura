@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\authController;
-use App\Models\User;
+use App\Models\user;
 use App\Models\admin\propertyOwnerClass;
 use App\Models\admin\contractorClass;
 use App\Models\admin\userVerificationClass;

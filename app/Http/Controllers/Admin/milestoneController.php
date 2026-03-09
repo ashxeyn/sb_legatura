@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\admin\storeMilestoneRequest;
 use App\Http\Requests\admin\updateMilestoneRequest;
-use App\Models\admin\Milestone;
+use App\Models\admin\milestone;
 use Illuminate\Http\Request;
 
 class milestoneController extends Controller

@@ -2,13 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Jobs\SendDeadlineNotifications;
+use App\Jobs\sendDeadlineNotifications;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 
-class TestNotificationsController extends Controller
+class testNotificationsController extends Controller
 {
     private array $checks = [
         'all'                              => 'Run ALL checks',
@@ -60,7 +60,7 @@ class TestNotificationsController extends Controller
                 $job->handle();
                 $logs[] = 'Ran ALL checks.';
             } elseif (isset($this->checks[$checkKey])) {
-                $ref = new \ReflectionMethod(SendDeadlineNotifications::class, $checkKey);
+                $ref = new \ReflectionMethod(sendDeadlineNotifications::class, $checkKey);
                 $ref->setAccessible(true);
                 $ref->invoke($job);
                 $logs[] = 'Ran: ' . $this->checks[$checkKey];

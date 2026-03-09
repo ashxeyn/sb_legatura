@@ -18,7 +18,7 @@ require_once __DIR__ . '/../../../Models/Contractor/ContractorProject.php';
 use App\Models\PropertyOwner\PropertyOwnerProjectService;
 use App\Models\Contractor\ContractorProjectService;
 
-class ProjectWebController extends Controller
+class projectWebController extends Controller
 {
     protected $projectService;
     protected $contractorService;

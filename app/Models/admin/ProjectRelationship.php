@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class ProjectRelationship extends Model
+class projectRelationship extends Model
 {
     protected $primaryKey = 'rel_id';
     public $incrementing = true;

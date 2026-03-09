@@ -7,7 +7,7 @@ use App\Http\Controllers\subs\platformPaymentController;
 use App\Http\Controllers\subs\payMongoController;
 use App\Http\Controllers\contractor\cprocessController;
 use App\Http\Controllers\contractor\membersController;
-use App\Http\Controllers\contractor\AiController;
+use App\Http\Controllers\contractor\aiController;
 use App\Http\Controllers\both\disputeController;
 use App\Http\Controllers\both\milestoneController;
 use App\Http\Controllers\both\homepageController;

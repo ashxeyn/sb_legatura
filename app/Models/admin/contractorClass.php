@@ -4,7 +4,7 @@ namespace App\Models\admin;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use App\Models\User;
+use App\Models\user;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 

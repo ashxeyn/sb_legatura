@@ -1,6 +1,6 @@
 <?php
 
-use App\Jobs\SendDeadlineNotifications;
+use App\Jobs\sendDeadlineNotifications;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;

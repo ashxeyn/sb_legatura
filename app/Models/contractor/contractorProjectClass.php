@@ -2,7 +2,7 @@
 
 namespace App\Models\contractor;
 
-use App\Models\User;
+use App\Models\user;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;

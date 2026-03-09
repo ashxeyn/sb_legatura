@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
-use App\Services\HighlightService;
+use App\Services\highlightService;
 
 /**
  * highlightController — Manage pinned/highlighted posts and projects.

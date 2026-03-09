@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\contractor;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Contractor\cProcessRequest;
+use App\Http\Requests\contractor\cProcessRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\DB;

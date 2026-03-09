@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
 use App\Events\messageSentEvent;
-use App\Models\User;
+use App\Models\user;
 
 class messageClass extends Model
 {

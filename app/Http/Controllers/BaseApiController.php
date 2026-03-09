@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
-abstract class BaseApiController extends Controller
+class baseApiController extends Controller
 {
     /**
      * Return a success JSON response

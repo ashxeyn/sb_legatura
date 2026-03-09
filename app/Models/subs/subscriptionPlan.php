@@ -3,7 +3,7 @@
 namespace App\Models\subs;
 
 use Illuminate\Database\Eloquent\Model;
-use App\Models\admin\PlatformPayment;
+use App\Models\admin\platformPayment;
 
 class subscriptionPlan extends Model
 {

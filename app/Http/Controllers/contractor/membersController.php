@@ -12,7 +12,7 @@ use App\Services\notificationService;
 
 class membersController extends Controller
 {
-    protected ContractorAuthorizationService $authService;
+    protected contractorAuthorizationService $authService;
 
     public function __construct(ContractorAuthorizationService $authService)
     {

@@ -4,7 +4,7 @@ namespace App\Models\both;
 
 use Illuminate\Database\Eloquent\Model;
 
-class ProjectUpdate extends Model
+class projectUpdate extends Model
 {
     protected $table = 'project_updates';
     protected $primaryKey = 'extension_id';
