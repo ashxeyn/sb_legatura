@@ -194,7 +194,7 @@ Route::post('/downpayment/{id}/reject', [downpaymentController::class, 'reject']
 // These routes use optional Sanctum auth - controller handles both session and token auth
 Route::get('/both/progress/files/{itemId}', [progressUploadController::class, 'getProgressFilesForBoth']);
 Route::get('/contractor/progress/files/{itemId}', [progressUploadController::class, 'getProgressFiles']);
-Route::post('/contractor/progress/upload', [progressUploadController::class, 'uploadProgress']);
+Route::post('/contractor/progress/upload', [progressUploadController::class, 'uploadProgress'])->middleware('auth:sanctum');
 
 // Contractor endpoints - for contractor feed
 Route::get('/contractor/projects', [\App\Http\Controllers\both\homepageController::class, 'apiGetApprovedProjects']);
@@ -564,9 +564,11 @@ Route::prefix('disputes')->group(function () {
     Route::delete('/{id}', [disputeController::class, 'cancelDispute']);
 });
 
-// Progress approve/reject routes - outside middleware group so controller can handle auth manually
-Route::post('/progress/{id}/approve', [progressUploadController::class, 'approveProgress']);
-Route::post('/progress/{id}/reject', [progressUploadController::class, 'rejectProgress']);
+// Progress approve/reject routes — auth:sanctum enforced; role read from X-Current-Role header
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/progress/{id}/approve', [progressUploadController::class, 'approveProgress']);
+    Route::post('/progress/{id}/reject', [progressUploadController::class, 'rejectProgress']);
+});
 
 // Accessible at http://192.168.100.27:8000/api/boost/checkout
 // No CSRF required (because it's in api.php)

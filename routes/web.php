@@ -594,6 +594,8 @@ Route::post('/admin/project-management/showcase-management/{id}/approve', [proje
 Route::post('/admin/project-management/showcase-management/{id}/reject', [projectManagementController::class, 'rejectShowcase'])->name('admin.projectManagement.rejectShowcase');
 Route::post('/admin/project-management/showcase-management/{id}/delete', [projectManagementController::class, 'deleteShowcase'])->name('admin.projectManagement.deleteShowcase');
 Route::post('/admin/project-management/showcase-management/{id}/restore', [projectManagementController::class, 'restoreShowcase'])->name('admin.projectManagement.restoreShowcase');
+Route::get('/admin/progress-feed', [\App\Http\Controllers\Admin\ProgressFeedController::class, 'index'])->name('admin.progressFeed');
+Route::get('/admin/progress-feed/data', [\App\Http\Controllers\Admin\ProgressFeedController::class, 'fetch'])->name('admin.progressFeed.fetch');
 
 // Admin Messages API (Session-based for web dashboard)
 Route::prefix('admin/messages')->group(function () {
@@ -649,6 +651,21 @@ Route::put('/admin/project-management/{id}', [projectManagementController::class
 Route::delete('/admin/project-management/{id}', [projectManagementController::class, 'deleteProject'])->name('admin.projectManagement.deleteProject');
 Route::post('/admin/project-management/{id}/restore', [projectManagementController::class, 'restoreProject'])->name('admin.projectManagement.restoreProject');
 Route::put('/admin/project-management/milestone-item/{itemId}', [projectManagementController::class, 'updateMilestoneItem'])->name('admin.projectManagement.updateMilestoneItem');
+
+// Timeline extension routes
+Route::post('/admin/projects/{id}/extend-timeline', [projectManagementController::class, 'extendTimeline'])->name('admin.projects.extendTimeline');
+Route::get('/admin/projects/{id}/affected-milestones', [projectManagementController::class, 'getAffectedMilestones'])->name('admin.projects.affectedMilestones');
+Route::get('/admin/projects/{id}/pending-extensions', [projectManagementController::class, 'getPendingExtensions'])->name('admin.projects.pendingExtensions');
+Route::post('/admin/projects/extensions/{extensionId}/approve', [projectManagementController::class, 'approveExtension'])->name('admin.projects.approveExtension');
+Route::post('/admin/projects/extensions/{extensionId}/reject', [projectManagementController::class, 'rejectExtension'])->name('admin.projects.rejectExtension');
+Route::post('/admin/projects/extensions/{extensionId}/request-revision', [projectManagementController::class, 'requestRevision'])->name('admin.projects.requestRevision');
+
+// Bulk date adjustment routes
+Route::post('/admin/projects/{id}/bulk-adjust-dates', [projectManagementController::class, 'bulkAdjustDates'])->name('admin.projects.bulkAdjustDates');
+Route::get('/admin/projects/{id}/preview-bulk-adjustment', [projectManagementController::class, 'previewBulkAdjustment'])->name('admin.projects.previewBulkAdjustment');
+
+// Payment history route
+Route::get('/admin/projects/{id}/payment-history', [projectManagementController::class, 'getPaymentHistory'])->name('admin.projects.paymentHistory');
 
 // Notification redirect — marks as read and 302s to the contextual page
 Route::get('/notifications/{id}/redirect', [\App\Http\Controllers\both\notificationController::class, 'redirect'])->name('notifications.redirect');

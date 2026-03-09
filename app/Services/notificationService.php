@@ -94,11 +94,11 @@ class notificationService
         'milestone_resubmitted'    => 'both',
         'milestone_updated'        => 'both',
 
-        // Progress notifications — owner reviews progress
+        // Progress notifications — owner sees submission; contractor receives the outcome
         'progress_submitted'  => 'owner',
-        'progress_approved'   => 'owner',
-        'progress_rejected'   => 'owner',
-        'progress_updated'    => 'owner',
+        'progress_approved'   => 'contractor',
+        'progress_rejected'   => 'contractor',
+        'progress_updated'    => 'contractor',
 
         // Payment notifications — both roles are involved
         'payment_submitted'       => 'both',
@@ -198,13 +198,21 @@ class notificationService
                 'priority'        => $priority,
             ]);
 
-            // Send email if user has email
-            $user = \App\Models\User::find($userId);
-            if ($user && $user->email) {
-                \Mail::raw($message, function($mailMessage) use ($user, $title) {
-                    $mailMessage->to($user->email)
-                               ->subject($title);
-                });
+            // Send email if user has email (wrapped in isolated try-catch so
+            // a mail transport failure never crashes the PHP built-in server)
+            try {
+                $user = \App\Models\User::find($userId);
+                if ($user && $user->email) {
+                    \Mail::raw($message, function($mailMessage) use ($user, $title) {
+                        $mailMessage->to($user->email)
+                                   ->subject($title);
+                    });
+                }
+            } catch (\Throwable $mailError) {
+                Log::warning('NotificationService: email send failed (non-fatal)', [
+                    'user_id' => $userId,
+                    'error'   => $mailError->getMessage(),
+                ]);
             }
 
             return $notificationId;
@@ -220,7 +228,7 @@ class notificationService
                 'type'    => $subType,
             ]);
             return null;
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('NotificationService::create failed', [
                 'error'   => $e->getMessage(),
                 'user_id' => $userId,

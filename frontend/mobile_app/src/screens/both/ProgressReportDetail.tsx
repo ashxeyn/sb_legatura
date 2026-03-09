@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -13,7 +13,14 @@ import {
   Modal,
   TextInput,
   ActivityIndicator,
+  Animated,
 } from 'react-native';
+import {
+  PinchGestureHandler,
+  PanGestureHandler,
+  State,
+  GestureHandlerRootView,
+} from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { api_config } from '../../config/api';
@@ -81,6 +88,55 @@ export default function progressReportDetail({
   const isProjectHalted = projectStatus === 'halt' || projectStatus === 'on_hold' || projectStatus === 'halted';
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [showMenu, setShowMenu] = useState(false);
+
+  // Zoom / pan state for image preview
+  const scale = useRef(new Animated.Value(1)).current;
+  const scaleRef = useRef(1);
+  const translateX = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(0)).current;
+  const panOffsetX = useRef(0);
+  const panOffsetY = useRef(0);
+
+  const resetZoom = () => {
+    scaleRef.current = 1;
+    Animated.parallel([
+      Animated.spring(scale, { toValue: 1, useNativeDriver: true }),
+      Animated.spring(translateX, { toValue: 0, useNativeDriver: true }),
+      Animated.spring(translateY, { toValue: 0, useNativeDriver: true }),
+    ]).start();
+    panOffsetX.current = 0;
+    panOffsetY.current = 0;
+  };
+
+  const onPinchEvent = Animated.event(
+    [{ nativeEvent: { scale } }],
+    { useNativeDriver: true }
+  );
+
+  const onPinchStateChange = (event: any) => {
+    if (event.nativeEvent.oldState === State.ACTIVE) {
+      scaleRef.current *= event.nativeEvent.scale;
+      if (scaleRef.current < 1) scaleRef.current = 1;
+      if (scaleRef.current > 5) scaleRef.current = 5;
+      Animated.spring(scale, { toValue: scaleRef.current, useNativeDriver: true }).start();
+    }
+  };
+
+  const onPanEvent = Animated.event(
+    [{ nativeEvent: { translationX: translateX, translationY: translateY } }],
+    { useNativeDriver: true }
+  );
+
+  const onPanStateChange = (event: any) => {
+    if (event.nativeEvent.oldState === State.ACTIVE) {
+      panOffsetX.current += event.nativeEvent.translationX;
+      panOffsetY.current += event.nativeEvent.translationY;
+      translateX.setOffset(panOffsetX.current);
+      translateX.setValue(0);
+      translateY.setOffset(panOffsetY.current);
+      translateY.setValue(0);
+    }
+  };
   const [showDisputeHistory, setShowDisputeHistory] = useState(false);
 
   const formatDate = (dateString: string) => {
@@ -209,6 +265,7 @@ export default function progressReportDetail({
     }
 
     if (isImageFile(file.original_name)) {
+      resetZoom();
       setSelectedImage(fileUrl);
     } else {
       // Open in browser for other file types
@@ -234,28 +291,75 @@ export default function progressReportDetail({
   console.log('progressReportDetail - files:', JSON.stringify(files));
   console.log('progressReportDetail - imageFiles:', imageFiles.length, 'otherFiles:', otherFiles.length);
 
-  // Image preview modal
+  // Image preview modal (zoomable + pannable)
   if (selectedImage) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <StatusBar barStyle="light-content" backgroundColor="#000" />
-        <View style={styles.imagePreviewHeader}>
-          <TouchableOpacity onPress={() => setSelectedImage(null)} style={styles.closeButton}>
-            <Feather name="x" size={28} color="#FFF" />
-          </TouchableOpacity>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <View style={[styles.previewScreen, { paddingTop: insets.top }]}>
+          <StatusBar barStyle="light-content" backgroundColor="#000" />
+
+          {/* Backdrop tap-to-close hint + pinch gesture wrapper */}
+          <PanGestureHandler
+            onGestureEvent={onPanEvent}
+            onHandlerStateChange={onPanStateChange}
+            minPointers={1}
+            maxPointers={1}
+          >
+            <Animated.View style={{ flex: 1 }}>
+              <PinchGestureHandler
+                onGestureEvent={onPinchEvent}
+                onHandlerStateChange={onPinchStateChange}
+              >
+                <Animated.View style={styles.imagePreviewContainer}>
+                  <Animated.Image
+                    source={{ uri: selectedImage }}
+                    style={[
+                      styles.previewImage,
+                      {
+                        transform: [
+                          { scale },
+                          { translateX },
+                          { translateY },
+                        ],
+                      },
+                    ]}
+                    resizeMode="contain"
+                    onError={(e) => {
+                      console.error('Image preview failed to load', e.nativeEvent?.error);
+                      Alert.alert('Preview error', 'Could not load image preview');
+                    }}
+                  />
+                </Animated.View>
+              </PinchGestureHandler>
+            </Animated.View>
+          </PanGestureHandler>
+
+          {/* Top bar: close + reset zoom */}
+          <View style={[styles.previewTopBar, { top: insets.top + 8 }]}>
+            <TouchableOpacity
+              onPress={() => { setSelectedImage(null); resetZoom(); }}
+              style={styles.previewCloseBtn}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            >
+              <Feather name="x" size={22} color="#FFF" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={resetZoom}
+              style={styles.previewResetBtn}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            >
+              <Feather name="maximize" size={18} color="#FFF" />
+              <Text style={styles.previewResetText}>Reset</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Bottom hint */}
+          <View style={[styles.previewHint, { bottom: insets.bottom + 16 }]}>
+            <Text style={styles.previewHintText}>Pinch to zoom · Drag to pan · Tap ✕ to close</Text>
+          </View>
         </View>
-        <View style={styles.imagePreviewContainer}>
-          <Image
-            source={{ uri: selectedImage }}
-            style={styles.previewImage}
-            resizeMode="contain"
-            onError={(e) => {
-              console.error('Image preview failed to load', e.nativeEvent?.error);
-              Alert.alert('Preview error', 'Could not load image preview');
-            }}
-          />
-        </View>
-      </View>
+      </GestureHandlerRootView>
     );
   }
 
@@ -273,13 +377,8 @@ export default function progressReportDetail({
           <Feather name="more-vertical" size={24} color={COLORS.text} />
         </TouchableOpacity>
 
-        {/* Menu Dropdown */}
         {showMenu && (
           <View style={styles.menuDropdown}>
-            <TouchableOpacity style={styles.menuItem} onPress={handleSendReport}>
-              <Feather name="file-text" size={18} color={COLORS.text} />
-              <Text style={styles.menuItemText}>Send Report</Text>
-            </TouchableOpacity>
             <TouchableOpacity style={styles.menuItem} onPress={handleReportHistory}>
               <Feather name="clock" size={18} color={COLORS.text} />
               <Text style={styles.menuItemText}>Report History</Text>
@@ -290,272 +389,265 @@ export default function progressReportDetail({
 
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={styles.fullDetailScrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Status Badge */}
-        <View style={[styles.statusBadge, { backgroundColor: statusColors.bg }]}>
-          <View style={[styles.statusDot, { backgroundColor: statusColors.text }]} />
-          {/* Icon to make status explicit */}
-          <View style={{ marginRight: 8 }}>
-            {progressReport.progress_status === 'approved' ? (
-              <Feather name="check" size={14} color={statusColors.text} />
-            ) : progressReport.progress_status === 'rejected' ? (
-              <Feather name="x" size={14} color={statusColors.text} />
-            ) : (
-              <Feather name="clock" size={14} color={statusColors.text} />
-            )}
-          </View>
-          <Text style={[styles.statusText, { color: statusColors.text }]}>
-            {getStatusLabel(progressReport.progress_status)}
-          </Text>
-        </View>
+        {/* ── Main Info Card ── */}
+        <View style={styles.fdInfoCard}>
+          <Text style={styles.fdInfoLabel}>PROGRESS REPORT</Text>
 
-        {/* Hero card: emphasize project and milestone */}
-        <View style={styles.heroCard}>
-          <Text style={styles.heroProjectTitle} numberOfLines={1}>{projectTitle}</Text>
-          <Text style={styles.heroMilestoneTitle} numberOfLines={2}>{milestoneTitle}</Text>
-          <View style={styles.heroMetaRow}>
-            <Feather name="calendar" size={12} color={COLORS.textMuted} style={{ marginRight: 6 }} />
-            <Text style={styles.heroMetaText}>{formatDate(progressReport.submitted_at)}</Text>
+          {/* Status badge */}
+          <View style={[styles.fdInfoBadge, { backgroundColor: statusColors.bg, alignSelf: 'flex-start', marginBottom: 14, gap: 5 }]}>
+            <View style={[styles.fdInfoBadgeDot, { backgroundColor: statusColors.text }]} />
+            <Feather
+              name={progressReport.progress_status === 'approved' ? 'check' : progressReport.progress_status === 'rejected' ? 'x' : 'clock'}
+              size={11}
+              color={statusColors.text}
+            />
+            <Text style={[styles.fdInfoBadgeText, { color: statusColors.text }]}>
+              {getStatusLabel(progressReport.progress_status)}
+            </Text>
           </View>
-        </View>
 
-        {/* Purpose/Description Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Description</Text>
-          <View style={styles.purposeContainer}>
-            <Text style={styles.purposeText}>
+          {/* Milestone title & project */}
+          <Text style={styles.fdInfoTitle}>{milestoneTitle}</Text>
+          <Text style={styles.fdInfoProject}>{projectTitle}</Text>
+
+          {/* Submitted date */}
+          <View style={styles.fdInfoDescSection}>
+            <Text style={styles.fdInfoDescLabel}>Submitted</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Feather name="calendar" size={13} color={COLORS.textMuted} />
+              <Text style={styles.fdInfoDescText}>{formatDate(progressReport.submitted_at)}</Text>
+            </View>
+          </View>
+
+          {/* Description */}
+          <View style={styles.fdInfoDescSection}>
+            <Text style={styles.fdInfoDescLabel}>Description</Text>
+            <Text style={[styles.fdInfoDescText, !progressReport.purpose && { color: COLORS.textMuted, fontStyle: 'italic' }]}>
               {progressReport.purpose || 'No description provided.'}
             </Text>
           </View>
-        </View>
 
-        {/* Attachments Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>
-            Attachments {files.length > 0 && `(${files.length})`}
-          </Text>
-
-          {files.length === 0 ? (
-            <View style={styles.noAttachmentsContainer}>
-              <View style={styles.noAttachmentsIcon}>
-                <Feather name="paperclip" size={24} color={COLORS.textMuted} />
+          {/* Rejection reason (if rejected) */}
+          {localStatus === 'rejected' && deleteReason ? (
+            <View style={styles.fdInfoDescSection}>
+              <Text style={[styles.fdInfoDescLabel, { color: COLORS.error }]}>Rejection Reason</Text>
+              <View style={{ backgroundColor: COLORS.errorLight, borderRadius: 6, padding: 10 }}>
+                <Text style={{ fontSize: 14, color: COLORS.error, lineHeight: 20 }}>{deleteReason}</Text>
               </View>
-              <Text style={styles.noAttachmentsText}>No attachments</Text>
             </View>
-          ) : (
-            <>
-              {/* Image Gallery */}
-              {imageFiles.length > 0 && (
-                <View style={styles.imageGallery}>
-                  {imageFiles.map((file) => {
-                    const imageUrl = getFileUrl(file.file_path);
-                    return (
+          ) : null}
+
+          {/* Attachments */}
+          <View style={styles.fdInfoAttachSection}>
+            <Text style={styles.fdInfoDescLabel}>
+              Attachments{files.length > 0 ? ` (${files.length})` : ''}
+            </Text>
+
+            {files.length === 0 ? (
+              <View style={styles.fdInfoNoAttach}>
+                <Feather name="paperclip" size={16} color={COLORS.textMuted} />
+                <Text style={{ fontSize: 13, color: COLORS.textMuted }}>No attachments</Text>
+              </View>
+            ) : (
+              <>
+                {/* Image Gallery */}
+                {imageFiles.length > 0 && (
+                  <View style={styles.imageGallery}>
+                    {imageFiles.map((file) => {
+                      const imageUrl = getFileUrl(file.file_path);
+                      return (
+                        <TouchableOpacity
+                          key={file.file_id}
+                          style={styles.imageThumbnail}
+                          onPress={() => handleFilePress(file)}
+                        >
+                          <Image
+                            source={{ uri: imageUrl }}
+                            style={styles.thumbnailImage}
+                            resizeMode="cover"
+                            onError={(e) => {
+                              console.error('Thumbnail failed to load:', imageUrl, e.nativeEvent?.error);
+                            }}
+                            onLoad={() => {
+                              console.log('Thumbnail loaded successfully:', imageUrl);
+                            }}
+                          />
+                          <View style={styles.imageOverlay}>
+                            <Feather name="maximize-2" size={16} color="#FFF" />
+                          </View>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                )}
+
+                {/* Other Files */}
+                {otherFiles.length > 0 && (
+                  <View style={{ gap: 8, marginTop: imageFiles.length > 0 ? 8 : 0 }}>
+                    {otherFiles.map((file) => (
                       <TouchableOpacity
                         key={file.file_id}
-                        style={styles.imageThumbnail}
+                        style={styles.fdInfoAttachItem}
                         onPress={() => handleFilePress(file)}
                       >
-                        <Image
-                          source={{ uri: imageUrl }}
-                          style={styles.thumbnailImage}
-                          resizeMode="cover"
-                          onError={(e) => {
-                            console.error('Thumbnail failed to load:', imageUrl, e.nativeEvent?.error);
-                          }}
-                          onLoad={() => {
-                            console.log('Thumbnail loaded successfully:', imageUrl);
-                          }}
-                        />
-                        <View style={styles.imageOverlay}>
-                          <Feather name="maximize-2" size={16} color="#FFF" />
+                        <View style={styles.fdInfoAttachIcon}>
+                          <Feather name={getFileIcon(file.original_name)} size={18} color={COLORS.accent} />
                         </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.fdInfoAttachName} numberOfLines={1}>
+                            {file.original_name}
+                          </Text>
+                          <Text style={styles.fdInfoAttachType}>
+                            {getFileExtension(file.original_name).toUpperCase()} file
+                          </Text>
+                        </View>
+                        <Feather name="external-link" size={18} color={COLORS.textSecondary} />
                       </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              )}
-
-              {/* Other Files List */}
-              {otherFiles.length > 0 && (
-                <View style={styles.filesList}>
-                  {otherFiles.map((file) => (
-                    <TouchableOpacity
-                      key={file.file_id}
-                      style={styles.fileItem}
-                      onPress={() => handleFilePress(file)}
-                    >
-                      <View style={styles.fileIcon}>
-                        <Feather name={getFileIcon(file.original_name)} size={20} color={COLORS.primary} />
-                      </View>
-                      <View style={styles.fileInfo}>
-                        <Text style={styles.fileName} numberOfLines={1}>
-                          {file.original_name}
-                        </Text>
-                        <Text style={styles.fileType}>
-                          {getFileExtension(file.original_name).toUpperCase()} file
-                        </Text>
-                      </View>
-                      <Feather name="download" size={20} color={COLORS.textSecondary} />
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              )}
-            </>
-          )}
+                    ))}
+                  </View>
+                )}
+              </>
+            )}
+          </View>
         </View>
 
-        <View style={{ height: 40 }} />
+        <View style={{ height: 20 }} />
+      </ScrollView>
 
-        {/* Owner actions: Approve / Reject (Reject opens modal) */}
-        {!isProjectHalted && userRole === 'owner' && localStatus === 'submitted' && (
-          <View style={styles.actionsContainer}>
-            <TouchableOpacity
-              style={[styles.actionButton, styles.rejectButton]}
-              onPress={() => {
-                setRejectReason('');
-                setShowRejectModal(true);
-              }}
-            >
-              <Text style={styles.actionButtonText}>Reject</Text>
-            </TouchableOpacity>
+      {/* Owner actions: Approve / Reject — fixed at bottom */}
+      {!isProjectHalted && userRole === 'owner' && localStatus === 'submitted' && (
+        <View style={styles.actionsContainer}>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.rejectButton]}
+            onPress={() => {
+              setRejectReason('');
+              setShowRejectModal(true);
+            }}
+          >
+            <Text style={styles.actionButtonText}>Reject</Text>
+          </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.actionButton, styles.approveButton]}
-              onPress={() => {
-                Alert.alert('Approve Progress', 'Are you sure you want to approve this progress report?', [
-                  { text: 'Cancel', style: 'cancel' },
-                  {
-                    text: 'Approve',
-                    onPress: async () => {
-                      try {
-                        setActionLoading(true);
-                        const res = await progress_service.approve_progress(progressReport.progress_id);
-                        if (res.success) {
-                          setLocalStatus('approved');
-                          Alert.alert('Approved', 'Progress report approved.');
-                        } else {
-                          // If backend returned 409, show a nicer modal explaining sequential approval requirement
-                          if (res.status === 409 || (res.message && res.message.toLowerCase().includes('previous'))) {
-                            setApproveBlockedModal({ visible: true, message: res.message || 'Previous progress must be approved first.' });
-                          } else {
-                            Alert.alert('Error', res.message || 'Failed to approve progress');
-                          }
-                        }
-                      } catch (e) {
-                        Alert.alert('Error', 'Unexpected error approving progress');
-                      } finally {
-                        setActionLoading(false);
-                      }
-                    }
-                  }
-                ]);
-              }}
-            >
-              {actionLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.actionButtonText}>Approve</Text>}
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* After rejection show badge and reason */}
-        {localStatus === 'rejected' && (
-          <View style={styles.rejectionWrapper}>
-            <View style={styles.rejectionBadge}>
-              <Text style={styles.rejectionBadgeText}>Rejection reason sent</Text>
-            </View>
-            {deleteReason ? (
-              <View style={styles.rejectionReasonBox}>
-                <Text style={styles.rejectionReasonLabel}>Reason</Text>
-                <Text style={styles.rejectionReasonText}>{deleteReason}</Text>
-              </View>
-            ) : null}
-          </View>
-        )}
-
-        {/* Reject reason modal */}
-        <Modal
-          visible={showRejectModal}
-          animationType="slide"
-          transparent={true}
-          onRequestClose={() => setShowRejectModal(false)}
-        >
-          <View style={styles.rejectBackdrop}>
-            <View style={styles.rejectContainer}>
-              <Text style={styles.rejectTitle}>Reject Progress Report</Text>
-              <Text style={styles.rejectLabel}>Reason (visible to contractor)</Text>
-              <TextInput
-                value={rejectReason}
-                onChangeText={setRejectReason}
-                placeholder="Enter reason for rejection"
-                multiline
-                style={styles.rejectInput}
-              />
-              <View style={styles.rejectButtonsRow}>
-                <TouchableOpacity style={styles.rejectCancelBtn} onPress={() => setShowRejectModal(false)}>
-                  <Text style={styles.rejectCancelText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.rejectConfirmBtn}
-                  onPress={async () => {
+          <TouchableOpacity
+            style={[styles.actionButton, styles.approveButton]}
+            onPress={() => {
+              Alert.alert('Approve Progress', 'Are you sure you want to approve this progress report?', [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Approve',
+                  onPress: async () => {
                     try {
                       setActionLoading(true);
-                      const reasonToSend = rejectReason || 'Rejected by owner';
-                      const res = await progress_service.reject_progress(progressReport.progress_id, reasonToSend);
+                      const res = await progress_service.approve_progress(progressReport.progress_id);
                       if (res.success) {
-                        setLocalStatus('rejected');
-                        setDeleteReason(reasonToSend);
-                        setShowRejectModal(false);
-                        Alert.alert('Rejected', 'Progress report rejected.');
+                        setLocalStatus('approved');
+                        Alert.alert('Approved', 'Progress report approved.');
                       } else {
-                        Alert.alert('Error', res.message || 'Failed to reject progress');
+                        if (res.status === 409 || (res.message && res.message.toLowerCase().includes('previous'))) {
+                          setApproveBlockedModal({ visible: true, message: res.message || 'Previous progress must be approved first.' });
+                        } else {
+                          Alert.alert('Error', res.message || 'Failed to approve progress');
+                        }
                       }
                     } catch (e) {
-                      Alert.alert('Error', 'Unexpected error rejecting progress');
+                      Alert.alert('Error', 'Unexpected error approving progress');
                     } finally {
                       setActionLoading(false);
                     }
-                  }}
-                >
-                  {actionLoading ? (
-                    <ActivityIndicator color="#fff" />
-                  ) : (
-                    <Text style={styles.rejectConfirmText}>Reject</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </Modal>
+                  }
+                }
+              ]);
+            }}
+          >
+            {actionLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.actionButtonText}>Approve</Text>}
+          </TouchableOpacity>
+        </View>
+      )}
 
-        {/* Approval blocked modal (sequential approval) */}
-        <Modal
-          visible={approveBlockedModal.visible}
-          transparent={true}
-          animationType="fade"
-          onRequestClose={() => setApproveBlockedModal({ visible: false, message: '' })}
-        >
-          <View style={styles.blockBackdrop}>
-            <View style={styles.blockContainer}>
-              <Text style={styles.blockTitle}>Cannot Approve</Text>
-              <Text style={styles.blockMessage}>{approveBlockedModal.message}</Text>
-              <TouchableOpacity style={styles.blockOkBtn} onPress={() => setApproveBlockedModal({ visible: false, message: '' })}>
-                <Text style={styles.blockOkText}>OK</Text>
+      {/* Reject reason modal */}
+      <Modal
+        visible={showRejectModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowRejectModal(false)}
+      >
+        <View style={styles.rejectBackdrop}>
+          <View style={styles.rejectContainer}>
+            <Text style={styles.rejectTitle}>Reject Progress Report</Text>
+            <Text style={styles.rejectLabel}>Reason (visible to contractor)</Text>
+            <TextInput
+              value={rejectReason}
+              onChangeText={setRejectReason}
+              placeholder="Enter reason for rejection"
+              multiline
+              style={styles.rejectInput}
+            />
+            <View style={styles.rejectButtonsRow}>
+              <TouchableOpacity style={styles.rejectCancelBtn} onPress={() => setShowRejectModal(false)}>
+                <Text style={styles.rejectCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.rejectConfirmBtn}
+                onPress={async () => {
+                  try {
+                    setActionLoading(true);
+                    const reasonToSend = rejectReason || 'Rejected by owner';
+                    const res = await progress_service.reject_progress(progressReport.progress_id, reasonToSend);
+                    if (res.success) {
+                      setLocalStatus('rejected');
+                      setDeleteReason(reasonToSend);
+                      setShowRejectModal(false);
+                      Alert.alert('Rejected', 'Progress report rejected.');
+                    } else {
+                      Alert.alert('Error', res.message || 'Failed to reject progress');
+                    }
+                  } catch (e) {
+                    Alert.alert('Error', 'Unexpected error rejecting progress');
+                  } finally {
+                    setActionLoading(false);
+                  }
+                }}
+              >
+                {actionLoading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.rejectConfirmText}>Reject</Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>
-        </Modal>
+        </View>
+      </Modal>
 
-        {/* Dispute History Modal */}
-        <Modal
-          visible={showDisputeHistory}
-          animationType="slide"
-          presentationStyle="fullScreen"
-          onRequestClose={() => setShowDisputeHistory(false)}
-        >
-          <DisputeHistory onClose={() => setShowDisputeHistory(false)} />
-        </Modal>
-      </ScrollView>
+      {/* Approval blocked modal */}
+      <Modal
+        visible={approveBlockedModal.visible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setApproveBlockedModal({ visible: false, message: '' })}
+      >
+        <View style={styles.blockBackdrop}>
+          <View style={styles.blockContainer}>
+            <Text style={styles.blockTitle}>Cannot Approve</Text>
+            <Text style={styles.blockMessage}>{approveBlockedModal.message}</Text>
+            <TouchableOpacity style={styles.blockOkBtn} onPress={() => setApproveBlockedModal({ visible: false, message: '' })}>
+              <Text style={styles.blockOkText}>OK</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Dispute History Modal */}
+      <Modal
+        visible={showDisputeHistory}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        onRequestClose={() => setShowDisputeHistory(false)}
+      >
+        <DisputeHistory onClose={() => setShowDisputeHistory(false)} />
+      </Modal>
     </View>
   );
 }
@@ -594,115 +686,134 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
-  scrollContent: {
-    padding: 24,
+  fullDetailScrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 20,
   },
 
-  // Status Badge
-  statusBadge: {
+  // ── Info Card (mirrors milestoneDetail fdInfoCard) ──
+  fdInfoCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 6,
+    padding: 18,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  fdInfoLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: COLORS.textMuted,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    marginBottom: 10,
+  },
+  fdInfoBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'flex-start',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    marginBottom: 20,
-  },
-  statusDot: {
-    width: 8,
-    height: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: 4,
-    marginRight: 8,
   },
-  statusText: {
-    fontSize: 14,
+  fdInfoBadgeDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 5,
+  },
+  fdInfoBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginLeft: 4,
+  },
+  fdInfoTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: COLORS.text,
+    lineHeight: 26,
+    marginBottom: 4,
+  },
+  fdInfoProject: {
+    fontSize: 12,
+    color: COLORS.accent,
     fontWeight: '600',
+    marginBottom: 4,
   },
-
-  // Info Section
-  infoSection: {
-    backgroundColor: COLORS.borderLight,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 24,
-    gap: 12,
+  fdInfoDescSection: {
+    borderTopWidth: 1,
+    borderTopColor: COLORS.borderLight,
+    paddingTop: 14,
+    marginTop: 14,
   },
-  infoRow: {
+  fdInfoDescLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: COLORS.textMuted,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    marginBottom: 8,
+  },
+  fdInfoDescText: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    lineHeight: 22,
+  },
+  fdInfoAttachSection: {
+    borderTopWidth: 1,
+    borderTopColor: COLORS.borderLight,
+    paddingTop: 14,
+    marginTop: 14,
+  },
+  fdInfoNoAttach: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    paddingVertical: 8,
   },
-  infoLabel: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-    fontWeight: '500',
-  },
-  infoValue: {
-    flex: 1,
-    fontSize: 14,
-    color: COLORS.text,
-    fontWeight: '600',
-  },
-
-  // Sections
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: COLORS.text,
-    marginBottom: 12,
-  },
-
-  // Purpose
-  purposeContainer: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 0,
-  },
-  purposeText: {
-    fontSize: 15,
-    color: COLORS.textSecondary,
-    lineHeight: 24,
-  },
-
-  // No Attachments
-  noAttachmentsContainer: {
+  fdInfoAttachItem: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 32,
-    backgroundColor: COLORS.borderLight,
-    borderRadius: 12,
+    gap: 10,
+    backgroundColor: COLORS.accent + '08',
+    borderRadius: 6,
+    padding: 12,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    borderStyle: 'dashed',
+    borderColor: COLORS.accent + '20',
+    marginBottom: 6,
   },
-  noAttachmentsIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: COLORS.surface,
-    justifyContent: 'center',
+  fdInfoAttachIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 6,
+    backgroundColor: COLORS.accent + '15',
     alignItems: 'center',
-    marginBottom: 12,
+    justifyContent: 'center',
   },
-  noAttachmentsText: {
-    fontSize: 14,
+  fdInfoAttachName: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  fdInfoAttachType: {
+    fontSize: 11,
     color: COLORS.textMuted,
+    marginTop: 1,
   },
 
   // Image Gallery
   imageGallery: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: 16,
+    gap: 10,
+    marginBottom: 4,
   },
   imageThumbnail: {
-    width: 100,
-    height: 100,
-    borderRadius: 12,
+    width: 90,
+    height: 90,
+    borderRadius: 8,
     overflow: 'hidden',
     position: 'relative',
     backgroundColor: COLORS.borderLight,
@@ -716,65 +827,17 @@ const styles = StyleSheet.create({
     bottom: 0,
     right: 0,
     backgroundColor: 'rgba(0,0,0,0.5)',
-    padding: 6,
-    borderTopLeftRadius: 8,
+    padding: 5,
+    borderTopLeftRadius: 6,
   },
 
-  // Files List
-  filesList: {
-    gap: 8,
-  },
-  fileItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.surface,
-    borderRadius: 12,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  fileIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    backgroundColor: COLORS.primaryLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  fileInfo: {
+  // Image Preview (full-screen zoomable)
+  previewScreen: {
     flex: 1,
-  },
-  fileName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.text,
-    marginBottom: 2,
-  },
-  fileType: {
-    fontSize: 12,
-    color: COLORS.textMuted,
-  },
-
-  // Image Preview
-  imagePreviewHeader: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 10,
-    padding: 16,
-    paddingTop: 50,
-  },
-  closeButton: {
-    width: 44,
-    height: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: '#000',
   },
   imagePreviewContainer: {
     flex: 1,
-    backgroundColor: '#000',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -782,16 +845,72 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+  previewTopBar: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    zIndex: 20,
+  },
+  previewCloseBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.35)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  previewResetBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
+  },
+  previewResetText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#FFF',
+  },
+  previewHint: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 20,
+  },
+  previewHintText: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+
+  // Action Buttons (fixed bottom)
   actionsContainer: {
     flexDirection: 'row',
     gap: 12,
-    paddingHorizontal: 24,
-    paddingBottom: 24,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    backgroundColor: COLORS.surface,
   },
   actionButton: {
     flex: 1,
     paddingVertical: 14,
-    borderRadius: 12,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -806,59 +925,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
-  rejectionWrapper: {
-    paddingHorizontal: 24,
-    paddingBottom: 24,
-  },
-  rejectionBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: COLORS.errorLight,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
-    marginBottom: 12,
-  },
-  rejectionBadgeText: {
-    color: COLORS.error,
-    fontWeight: '700',
-  },
-  rejectionReasonBox: {
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 12,
-    padding: 12,
-  },
-  rejectionReasonLabel: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-    marginBottom: 6,
-    fontWeight: '600',
-  },
-  rejectionReasonText: {
-    fontSize: 14,
-    color: COLORS.text,
-  },
 
-  // Approval badge
-  approvalWrapper: {
-    paddingHorizontal: 24,
-    paddingBottom: 24,
-  },
-  approvalBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: COLORS.successLight,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
-    marginBottom: 12,
-  },
-  approvalBadgeText: {
-    color: COLORS.success,
-    fontWeight: '700',
-  },
-
-  // Approval-blocked modal styles
+  // Approval-blocked modal
   blockBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.4)',
@@ -956,37 +1024,8 @@ const styles = StyleSheet.create({
     color: COLORS.surface,
     fontWeight: '700',
   },
-  // Hero card to emphasize project/milestone
-  heroCard: {
-    backgroundColor: COLORS.primaryLight,
-    borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    marginBottom: 16,
-  },
-  heroProjectTitle: {
-    fontSize: 13,
-    color: COLORS.textMuted,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  heroMilestoneTitle: {
-    fontSize: 18,
-    color: COLORS.text,
-    fontWeight: '800',
-    marginBottom: 8,
-    lineHeight: 22,
-  },
-  heroMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  heroMetaText: {
-    fontSize: 12,
-    color: COLORS.textMuted,
-  },
 
-  // Menu Dropdown Styles
+  // Menu Dropdown
   menuDropdown: {
     position: 'absolute',
     top: 50,

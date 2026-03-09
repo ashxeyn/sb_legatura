@@ -5,7 +5,7 @@
       @isset($project)
       <!-- Header -->
       <div class="relative px-6 py-10 bg-gradient-to-r from-gray-600 to-gray-700 text-white flex-shrink-0">
-        <button onclick="hideCancelledProjectModal()" class="absolute top-6 right-6 w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 backdrop-blur-sm flex items-center justify-center transition-all duration-200">
+        <button type="button" onclick="hideCancelledProjectModal()" class="absolute top-6 right-6 w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 backdrop-blur-sm flex items-center justify-center transition-all duration-200">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
           </svg>
@@ -214,21 +214,37 @@
               </h3>
               <div class="space-y-0">
                 @php
-                  $totalPercentage = array_sum(array_column($project->milestone_items, 'percentage_progress'));
-                  $cumulative = $totalPercentage;
-                  $reversedItems = array_reverse($project->milestone_items);
+                  // Calculate CUMULATIVE percentages (sum from bottom to top)
+                  // Bottom milestone = its own %
+                  // Top milestone = 100% (sum of all)
+                  $itemsWithCumulative = [];
+                  $cumulative = 0;
+                  
+                  // First, calculate cumulative for each item
+                  foreach($project->milestone_items as $item) {
+                    $cumulative += ($item->percentage_progress ?? 0);
+                    $itemsWithCumulative[] = [
+                      'item' => $item,
+                      'cumulative' => $cumulative
+                    ];
+                  }
+                  
+                  // Reverse to show last milestone (100%) at top
+                  $reversedItems = array_reverse($itemsWithCumulative);
                   $totalItems = count($reversedItems);
                 @endphp
-                @forelse($reversedItems as $index => $item)
+                @forelse($reversedItems as $index => $itemData)
                   @php
+                    $item = $itemData['item'];
                     $isLast = ($index == $totalItems - 1);
+                    $cumulative = round($itemData['cumulative']);
                   @endphp
                   <div class="flex items-start gap-4">
                     <!-- Timeline left side -->
                     <div class="flex flex-col items-center">
                       <!-- Percentage badge -->
                       <div class="flex-shrink-0 w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center text-gray-700 font-bold text-xs">
-                        {{ min(round($cumulative), 100) }}%
+                        {{ $cumulative }}%
                       </div>
                       <!-- Vertical line and checkmark -->
                       @if(!$isLast)
@@ -281,7 +297,7 @@
                         @if($item->milestone_item_description)
                           <p class="text-sm text-gray-600 mb-3 line-clamp-2">{{ $item->milestone_item_description }}</p>
                         @endif
-                        <button class="text-gray-600 hover:text-gray-700 text-sm font-semibold flex items-center gap-1">
+                        <button type="button" class="text-gray-600 hover:text-gray-700 text-sm font-semibold flex items-center gap-1">
                           View Details
                           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
@@ -290,7 +306,6 @@
                       </div>
                     </div>
                   </div>
-                  @php $cumulative -= $item->percentage_progress; @endphp
                 @empty
                   <p class="text-sm text-gray-500 text-center py-8">No milestone items available</p>
                 @endforelse
@@ -506,7 +521,7 @@
 
         <!-- Footer -->
         <div class="border-t border-gray-200 px-6 py-4 bg-gray-50 rounded-b-2xl flex justify-end flex-shrink-0">
-          <button onclick="hideCancelledProjectModal()" class="px-6 py-2.5 text-sm font-semibold rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700 transition">
+          <button type="button" onclick="hideCancelledProjectModal()" class="px-6 py-2.5 text-sm font-semibold rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700 transition">
             Close
           </button>
         </div>

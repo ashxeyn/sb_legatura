@@ -614,13 +614,61 @@ class globalManagementController extends Controller
      */
     public function verifyPayment($id)
     {
-        $updated = DB::table('milestone_payments')
-            ->where('payment_id', $id)
-            ->update(['payment_status' => 'approved', 'updated_at' => now()]);
+        try {
+            DB::beginTransaction();
 
-        return $updated
-            ? response()->json(['success' => true, 'message' => 'Payment approved.'])
-            : response()->json(['success' => false, 'message' => 'Failed to approve payment.'], 400);
+            // Get payment details before approval
+            $payment = DB::table('milestone_payments')
+                ->where('payment_id', $id)
+                ->first();
+
+            if (!$payment) {
+                return response()->json(['success' => false, 'message' => 'Payment not found.'], 404);
+            }
+
+            // Update payment status to approved
+            $updated = DB::table('milestone_payments')
+                ->where('payment_id', $id)
+                ->update(['payment_status' => 'approved', 'updated_at' => now()]);
+
+            if (!$updated) {
+                DB::rollBack();
+                return response()->json(['success' => false, 'message' => 'Failed to approve payment.'], 400);
+            }
+
+            // Process payment allocation (overpayment/underpayment logic)
+            $allocation = \App\Models\admin\paymentAdjustmentClass::processPaymentAllocation(
+                $id,
+                $payment->item_id,
+                $payment->project_id
+            );
+
+            DB::commit();
+
+            // Build response message based on allocation status
+            $message = 'Payment approved.';
+            if ($allocation['status'] === 'overpaid') {
+                $message .= ' Overpayment of ₱' . number_format($allocation['over_amount'], 2) . ' recorded.';
+            } elseif ($allocation['status'] === 'underpaid' && isset($allocation['carried_to_title'])) {
+                $message .= ' Shortfall of ₱' . number_format($allocation['shortfall'], 2) . ' carried forward to "' . $allocation['carried_to_title'] . '".';
+            } elseif ($allocation['status'] === 'underpaid') {
+                $message .= ' Shortfall of ₱' . number_format($allocation['shortfall'], 2) . ' recorded (last milestone).';
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'allocation' => $allocation
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Payment verification error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error approving payment: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     /**

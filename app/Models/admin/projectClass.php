@@ -351,6 +351,17 @@ class projectClass
         $project->timeline_start = $timelineData->timeline_start ?? null;
         $project->timeline_end = $timelineData->timeline_end ?? null;
 
+        // Check if timeline has been extended by looking at milestone items
+        $originalEndDate = DB::table('milestone_items')
+            ->join('milestones', 'milestone_items.milestone_id', '=', 'milestones.milestone_id')
+            ->where('milestones.project_id', $id)
+            ->where('milestone_items.was_extended', 1)
+            ->whereNotNull('milestone_items.original_date_to_finish')
+            ->max('milestone_items.original_date_to_finish');
+
+        $project->original_timeline_end = $originalEndDate;
+        $project->timeline_was_extended = !empty($originalEndDate) && $originalEndDate !== $project->timeline_end;
+
         // Get milestone items with progress files
         $milestoneItems = DB::table('milestone_items')
             ->leftJoin('milestones', 'milestone_items.milestone_id', '=', 'milestones.milestone_id')
@@ -456,16 +467,159 @@ class projectClass
         // Get payment records for table
         $payments = DB::table('milestone_payments')
             ->leftJoin('milestone_items', 'milestone_payments.item_id', '=', 'milestone_items.item_id')
+            ->leftJoin('milestones', 'milestone_items.milestone_id', '=', 'milestones.milestone_id')
             ->select(
                 'milestone_payments.*',
                 'milestone_items.sequence_order',
-                'milestone_items.date_to_finish'
+                'milestone_items.date_to_finish',
+                'milestone_items.milestone_item_title',
+                'milestones.start_date',
+                'milestones.end_date',
+                DB::raw("CASE 
+                    WHEN milestones.start_date IS NOT NULL AND milestones.end_date IS NOT NULL 
+                    THEN CONCAT(DATE_FORMAT(milestones.start_date, '%b %d, %Y'), ' - ', DATE_FORMAT(milestones.end_date, '%b %d, %Y'))
+                    ELSE 'N/A'
+                END as milestone_period")
             )
             ->where('milestone_payments.project_id', $id)
             ->orderBy('milestone_items.sequence_order', 'asc')
             ->get();
 
         $project->payments = $payments;
+
+        // ── NEW: Payment Mode and Downpayment Status ──
+        $paymentPlan = DB::table('payment_plans')
+            ->where('project_id', $id)
+            ->orderByDesc('plan_id')
+            ->first();
+
+        $project->payment_mode = $paymentPlan->payment_mode ?? 'full_payment';
+        $project->downpayment_amount = $paymentPlan->downpayment_amount ?? 0;
+        
+        // Check if downpayment is cleared
+        if ($project->payment_mode === 'staggered' && $project->downpayment_amount > 0) {
+            $downpaymentCleared = DB::table('downpayment_payments')
+                ->where('project_id', $id)
+                ->where('payment_status', 'approved')
+                ->sum('amount');
+            $project->downpayment_cleared = $downpaymentCleared >= $project->downpayment_amount;
+        } else {
+            $project->downpayment_cleared = false;
+        }
+
+        // ── NEW: Budget History ──
+        $budgetHistory = DB::table('project_updates')
+            ->where('project_id', $id)
+            ->whereNotNull('proposed_budget')
+            ->whereIn('status', ['approved', 'rejected', 'pending'])
+            ->orderBy('created_at', 'asc')
+            ->get()
+            ->map(function ($update) {
+                return [
+                    'change_type' => $update->proposed_budget > ($update->previous_budget ?? 0) ? 'increase' : 'decrease',
+                    'previous_budget' => $update->previous_budget ?? 0,
+                    'updated_budget' => $update->proposed_budget,
+                    'reason' => $update->reason,
+                    'status' => $update->status,
+                    'date_proposed' => $update->created_at,
+                    'date_approved' => $update->status === 'approved' ? $update->updated_at : null
+                ];
+            })
+            ->toArray();
+
+        $project->budget_history = $budgetHistory;
+
+        // ── NEW: Timeline Extensions ──
+        $timelineExtensions = DB::table('project_updates')
+            ->where('project_id', $id)
+            ->whereNotNull('proposed_end_date')
+            ->whereIn('status', ['approved', 'rejected', 'pending'])
+            ->orderBy('created_at', 'asc')
+            ->get()
+            ->map(function ($update) {
+                return [
+                    'previous_end_date' => $update->previous_end_date,
+                    'proposed_end_date' => $update->proposed_end_date,
+                    'reason' => $update->reason,
+                    'status' => $update->status,
+                    'date_proposed' => $update->created_at,
+                    'date_approved' => $update->status === 'approved' ? $update->updated_at : null
+                ];
+            })
+            ->toArray();
+
+        $project->timeline_extensions = $timelineExtensions;
+
+        // ── NEW: Change Audit Log ──
+        $auditLog = [];
+
+        // Get project updates
+        $projectUpdates = DB::table('project_updates as pu')
+            ->leftJoin('contractors as c', 'pu.contractor_user_id', '=', 'c.user_id')
+            ->leftJoin('property_owners as po', 'pu.owner_user_id', '=', 'po.user_id')
+            ->select(
+                'pu.extension_id',
+                'pu.created_at',
+                'pu.status',
+                'pu.reason',
+                'pu.proposed_budget',
+                'pu.proposed_end_date',
+                DB::raw("COALESCE(c.company_name, CONCAT(po.first_name, ' ', po.last_name)) as performed_by")
+            )
+            ->where('pu.project_id', $id)
+            ->get();
+
+        foreach ($projectUpdates as $update) {
+            $action = '';
+            if ($update->proposed_budget) {
+                $action = 'Budget Change Request';
+            }
+            if ($update->proposed_end_date) {
+                $action .= ($action ? ' & ' : '') . 'Timeline Extension Request';
+            }
+
+            $auditLog[] = [
+                'date' => $update->created_at,
+                'action' => $action . ' - ' . ucfirst($update->status),
+                'performed_by' => $update->performed_by ?? 'System',
+                'notes' => $update->reason,
+                'reference' => 'EXT-' . $update->extension_id
+            ];
+        }
+
+        // Get milestone date changes
+        $dateChanges = DB::table('milestone_date_histories as h')
+            ->leftJoin('milestone_items as mi', 'h.item_id', '=', 'mi.item_id')
+            ->leftJoin('milestones as m', 'mi.milestone_id', '=', 'm.milestone_id')
+            ->leftJoin('property_owners as po', 'h.changed_by', '=', 'po.user_id')
+            ->leftJoin('contractors as c', 'h.changed_by', '=', 'c.user_id')
+            ->select(
+                'h.changed_at',
+                'h.previous_date',
+                'h.new_date',
+                'h.change_reason',
+                'mi.milestone_item_title',
+                DB::raw("COALESCE(CONCAT(po.first_name, ' ', po.last_name), c.company_name) as performed_by")
+            )
+            ->where('m.project_id', $id)
+            ->get();
+
+        foreach ($dateChanges as $change) {
+            $auditLog[] = [
+                'date' => $change->changed_at,
+                'action' => 'Milestone Date Changed',
+                'performed_by' => $change->performed_by ?? 'System',
+                'notes' => $change->milestone_item_title . ': ' . ($change->change_reason ?? 'Date updated'),
+                'reference' => 'DATE-CHANGE'
+            ];
+        }
+
+        // Sort audit log by date descending
+        usort($auditLog, function ($a, $b) {
+            return strtotime($b['date']) - strtotime($a['date']);
+        });
+
+        $project->change_audit_log = $auditLog;
 
         return $project;
     }
@@ -676,6 +830,8 @@ class projectClass
                 'milestone_items.sequence_order',
                 'milestone_items.milestone_item_cost as amount',
                 'milestones.milestone_name',
+                'milestones.start_date as milestone_start_date',
+                'milestones.end_date as milestone_end_date',
                 'progress.progress_id',
                 'progress.purpose',
                 'progress.progress_status',
@@ -693,6 +849,24 @@ class projectClass
         foreach ($milestoneItems as $item) {
             $itemId = $item->item_id;
             if (!isset($groupedItems[$itemId])) {
+                // Get date history for this item
+                $dateHistory = DB::table('milestone_date_histories')
+                    ->where('item_id', $itemId)
+                    ->orderBy('changed_at', 'asc')
+                    ->get();
+                
+                // Determine original date (first previous_date in history, or milestone start_date)
+                $originalDate = null;
+                if ($dateHistory->isNotEmpty()) {
+                    $originalDate = $dateHistory->first()->previous_date;
+                } else {
+                    $originalDate = $item->milestone_start_date;
+                }
+                
+                // Check if date was extended
+                $wasExtended = $dateHistory->isNotEmpty();
+                $extensionCount = $dateHistory->count();
+                
                 $groupedItems[$itemId] = (object) [
                     'item_id' => $item->item_id,
                     'milestone_id' => $item->milestone_id,
@@ -701,6 +875,10 @@ class projectClass
                     'item_description' => $item->item_description,
                     'sequence_order' => $item->sequence_order,
                     'date_to_finish' => $item->date_to_finish,
+                    'original_date_to_finish' => $originalDate,
+                    'was_extended' => $wasExtended,
+                    'extension_count' => $extensionCount,
+                    'date_history' => $dateHistory,
                     'percentage_progress' => $item->percentage_progress ?? 0,
                     'item_status' => $item->item_status,
                     'amount' => $item->amount,
@@ -762,15 +940,23 @@ class projectClass
         // Get all payments for the table
         $payments = DB::table('milestone_payments')
             ->leftJoin('milestone_items', 'milestone_payments.item_id', '=', 'milestone_items.item_id')
+            ->leftJoin('milestones', 'milestone_items.milestone_id', '=', 'milestones.milestone_id')
             ->select(
                 'milestone_payments.payment_id',
                 'milestone_payments.amount',
                 'milestone_payments.transaction_date',
                 'milestone_payments.payment_status',
                 'milestone_payments.receipt_photo as proof_attachment',
+                'milestone_payments.payment_type',
                 'milestone_items.milestone_item_title as item_title',
                 'milestone_items.sequence_order',
-                DB::raw("'N/A' as milestone_period"),
+                'milestones.start_date',
+                'milestones.end_date',
+                DB::raw("CASE 
+                    WHEN milestones.start_date IS NOT NULL AND milestones.end_date IS NOT NULL 
+                    THEN CONCAT(DATE_FORMAT(milestones.start_date, '%b %d, %Y'), ' - ', DATE_FORMAT(milestones.end_date, '%b %d, %Y'))
+                    ELSE 'N/A'
+                END as milestone_period"),
                 DB::raw("'Owner' as uploaded_by")
             )
             ->where('milestone_payments.project_id', $id)
@@ -778,6 +964,44 @@ class projectClass
             ->get();
 
         $project->payments = $payments;
+
+        // ── NEW: Payment Mode and Downpayment Status ──
+        $paymentPlan = DB::table('payment_plans')
+            ->where('project_id', $id)
+            ->orderByDesc('plan_id')
+            ->first();
+
+        $project->payment_mode = $paymentPlan->payment_mode ?? 'full_payment';
+        $project->downpayment_amount = $paymentPlan->downpayment_amount ?? 0;
+        $project->current_budget = $paymentPlan->total_project_cost ?? $project->budget_range_min ?? 0;
+        
+        // Check if downpayment is cleared
+        if ($project->payment_mode === 'staggered' && $project->downpayment_amount > 0) {
+            $downpaymentCleared = DB::table('downpayment_payments')
+                ->where('project_id', $id)
+                ->where('payment_status', 'approved')
+                ->sum('amount');
+            $project->downpayment_cleared = $downpaymentCleared >= $project->downpayment_amount;
+        } else {
+            $project->downpayment_cleared = false;
+        }
+
+        // ── NEW: Milestone Completion Stats ──
+        $completedMilestones = DB::table('milestone_items')
+            ->leftJoin('milestones', 'milestone_items.milestone_id', '=', 'milestones.milestone_id')
+            ->where('milestones.project_id', $id)
+            ->where('milestone_items.item_status', 'completed')
+            ->count();
+
+        $project->completed_milestones = $completedMilestones;
+
+        // ── NEW: Pending Payments ──
+        $pendingPayments = DB::table('milestone_payments')
+            ->where('project_id', $id)
+            ->where('payment_status', 'pending')
+            ->sum('amount');
+
+        $project->pending_payment_amount = $pendingPayments;
 
         return $project;
     }
@@ -1090,14 +1314,13 @@ class projectClass
                      ->on('contractors.user_id', '=', 'contractor_users.user_id');
             })
             ->leftJoin('users as contractor_user_email', 'contractors.user_id', '=', 'contractor_user_email.user_id')
-            ->leftJoin('admin_users', 'contract_terminations.id', '=', 'admin_users.admin_id')
             ->select(
                 'projects.*',
                 'contract_terminations.id as termination_id',
                 'contract_terminations.reason',
                 'contract_terminations.remarks',
                 'contract_terminations.terminated_at',
-                'admin_users.username as terminated_by',
+                DB::raw("'Admin' as terminated_by"),  // Default to 'Admin' since we don't have the user tracking
                 // Contractor info
                 DB::raw("CONCAT(contractor_users.authorized_rep_fname, ' ', contractor_users.authorized_rep_lname) as contractor_name"),
                 'contractors.company_name',
@@ -1258,11 +1481,19 @@ class projectClass
         // Get payment records for table - filter to approved/paid only
         $payments = DB::table('milestone_payments')
             ->leftJoin('milestone_items', 'milestone_payments.item_id', '=', 'milestone_items.item_id')
+            ->leftJoin('milestones', 'milestone_items.milestone_id', '=', 'milestones.milestone_id')
             ->select(
                 'milestone_payments.*',
                 'milestone_items.sequence_order',
                 'milestone_items.date_to_finish',
-                'milestone_items.milestone_item_title'
+                'milestone_items.milestone_item_title',
+                'milestones.start_date',
+                'milestones.end_date',
+                DB::raw("CASE 
+                    WHEN milestones.start_date IS NOT NULL AND milestones.end_date IS NOT NULL 
+                    THEN CONCAT(DATE_FORMAT(milestones.start_date, '%b %d, %Y'), ' - ', DATE_FORMAT(milestones.end_date, '%b %d, %Y'))
+                    ELSE 'N/A'
+                END as milestone_period")
             )
             ->where('milestone_payments.project_id', $id)
             ->whereIn('milestone_payments.payment_status', ['approved', 'paid'])
@@ -1332,6 +1563,17 @@ class projectClass
 
         $project->timeline_start = $timelineData->timeline_start ?? null;
         $project->timeline_end = $timelineData->timeline_end ?? null;
+
+        // Check if timeline has been extended by looking at milestone items
+        $originalEndDate = DB::table('milestone_items')
+            ->join('milestones', 'milestone_items.milestone_id', '=', 'milestones.milestone_id')
+            ->where('milestones.project_id', $id)
+            ->where('milestone_items.was_extended', 1)
+            ->whereNotNull('milestone_items.original_date_to_finish')
+            ->max('milestone_items.original_date_to_finish');
+
+        $project->original_timeline_end = $originalEndDate;
+        $project->timeline_was_extended = !empty($originalEndDate) && $originalEndDate !== $project->timeline_end;
 
         // Get project files
         $projectFiles = DB::table('project_files')
@@ -1426,12 +1668,74 @@ class projectClass
                 'milestone_items.sequence_order',
                 'milestone_items.date_to_finish',
                 'milestones.start_date',
-                'milestones.end_date'
+                'milestones.end_date',
+                DB::raw("CASE 
+                    WHEN milestones.start_date IS NOT NULL AND milestones.end_date IS NOT NULL 
+                    THEN CONCAT(DATE_FORMAT(milestones.start_date, '%b %d, %Y'), ' - ', DATE_FORMAT(milestones.end_date, '%b %d, %Y'))
+                    ELSE 'N/A'
+                END as milestone_period")
             )
             ->orderBy('milestone_items.sequence_order', 'asc')
             ->get();
 
         $project->payments = $payments;
+
+        // ── NEW: Halt Impact Analysis ──
+        // Calculate halt duration (as integer days)
+        $haltedDate = $project->halted_at ? \Carbon\Carbon::parse($project->halted_at) : null;
+        $today = \Carbon\Carbon::now();
+        $project->halt_duration_days = $haltedDate ? (int) $haltedDate->diffInDays($today) : 0;
+
+        // Count affected milestones (incomplete milestones)
+        $affectedMilestones = DB::table('milestone_items')
+            ->leftJoin('milestones', 'milestone_items.milestone_id', '=', 'milestones.milestone_id')
+            ->where('milestones.project_id', $id)
+            ->whereIn('milestone_items.item_status', ['pending', 'in_progress'])
+            ->count();
+
+        $project->affected_milestones = (int) $affectedMilestones;
+
+        // Calculate financial impact (remaining budget)
+        $paymentPlan = DB::table('payment_plans')
+            ->where('project_id', $id)
+            ->orderByDesc('plan_id')
+            ->first();
+
+        $currentBudget = (float) ($paymentPlan->total_project_cost ?? $project->budget_range_min ?? 0);
+        $project->current_budget = $currentBudget;
+        $project->financial_impact = round($currentBudget - ($project->total_amount_paid ?? 0), 2);
+
+        // Estimate timeline impact (days halted = days extension needed)
+        $project->timeline_impact_days = $project->halt_duration_days;
+
+        // Count payments affected (pending payments)
+        $paymentsAffected = DB::table('milestone_payments')
+            ->where('project_id', $id)
+            ->where('payment_status', 'pending')
+            ->count();
+
+        $project->payments_affected = (int) $paymentsAffected;
+
+        // ── NEW: Pre-Halt Status ──
+        $project->pre_halt_status = 'In Progress';
+        $project->pre_halt_completed = (int) DB::table('milestone_items')
+            ->leftJoin('milestones', 'milestone_items.milestone_id', '=', 'milestones.milestone_id')
+            ->where('milestones.project_id', $id)
+            ->where('milestone_items.item_status', 'completed')
+            ->count();
+
+        $project->pre_halt_budget_used = $currentBudget > 0 ? round((($project->total_amount_paid ?? 0) / $currentBudget) * 100, 1) : 0;
+
+        // Calculate timeline progress before halt
+        if ($project->timeline_start && $project->timeline_end && $haltedDate) {
+            $startDate = \Carbon\Carbon::parse($project->timeline_start);
+            $endDate = \Carbon\Carbon::parse($project->timeline_end);
+            $totalDays = (int) $startDate->diffInDays($endDate);
+            $daysElapsed = (int) $startDate->diffInDays($haltedDate);
+            $project->pre_halt_timeline_progress = $totalDays > 0 ? round(($daysElapsed / $totalDays) * 100, 1) : 0;
+        } else {
+            $project->pre_halt_timeline_progress = 0;
+        }
 
         return $project;
     }
@@ -1439,6 +1743,7 @@ class projectClass
     public function fetchHaltDetails($id)
     {
         // Get the most recent dispute for this project that caused the halt
+        // Look for any dispute, not just open/under_review
         $haltDispute = DB::table('disputes')
             ->leftJoin('users as raised_user', 'disputes.raised_by_user_id', '=', 'raised_user.user_id')
             ->leftJoin('property_owners', 'raised_user.user_id', '=', 'property_owners.user_id')
@@ -1446,7 +1751,7 @@ class projectClass
             ->leftJoin('milestone_items', 'disputes.milestone_item_id', '=', 'milestone_items.item_id')
             ->leftJoin('projects', 'disputes.project_id', '=', 'projects.project_id')
             ->where('disputes.project_id', $id)
-            ->whereIn('disputes.dispute_status', ['open', 'under_review'])
+            ->where('disputes.dispute_type', 'Halt')
             ->select(
                 'disputes.*',
                 'disputes.project_id',
@@ -1460,8 +1765,33 @@ class projectClass
             ->orderBy('disputes.created_at', 'desc')
             ->first();
 
+        // If no dispute found, create a basic halt details object from project data
         if (!$haltDispute) {
-            return null;
+            $project = DB::table('projects')
+                ->where('project_id', $id)
+                ->where('project_status', 'halt')
+                ->first();
+            
+            if (!$project) {
+                return null;
+            }
+
+            // Create a basic halt details object
+            $haltDispute = (object) [
+                'project_id' => $project->project_id,
+                'dispute_id' => null,
+                'dispute_desc' => $project->stat_reason ?? 'Project halted by administrator',
+                'dispute_status' => 'under_review',
+                'dispute_type' => 'Halt',
+                'created_at' => $project->updated_at ?? now(),
+                'initiated_by' => 'Administrator',
+                'milestone_item_title' => null,
+                'project_remarks' => $project->remarks ?? '',
+                'user_type' => 'admin',
+                'supporting_files' => collect([])
+            ];
+
+            return $haltDispute;
         }
 
         // Format initiated_by based on user_type
@@ -1729,10 +2059,37 @@ class projectClass
             ->join('milestones', 'milestone_items.milestone_id', '=', 'milestones.milestone_id')
             ->select(
                 'milestone_items.*',
-                'milestones.milestone_name'
+                'milestones.milestone_name',
+                'milestones.project_id'
             )
             ->where('milestone_items.item_id', $itemId)
             ->first();
+
+        if (!$item) {
+            return null;
+        }
+
+        // Get date change history
+        $item->date_history = DB::table('milestone_date_histories as h')
+            ->leftJoin('project_updates as pu', 'h.extension_id', '=', 'pu.extension_id')
+            ->where('h.item_id', $itemId)
+            ->orderBy('h.changed_at', 'desc')
+            ->select(
+                'h.id',
+                'h.previous_date',
+                'h.new_date',
+                'h.extension_id',
+                'h.changed_by',
+                'h.changed_at',
+                'h.change_reason',
+                'pu.reason as extension_reason',
+                'pu.status as extension_status'
+            )
+            ->get();
+
+        // Get payment summary using paymentAdjustmentClass
+        $paymentSummary = \App\Models\admin\paymentAdjustmentClass::getItemPaymentSummary($itemId);
+        $item->payment_summary = $paymentSummary;
 
         return $item;
     }
@@ -1951,26 +2308,73 @@ class projectClass
         }
     }
 
-    public function updateMilestoneItem($itemId, $data)
+    public function updateMilestoneItem($itemId, $data, $changedByUserId = null)
     {
         try {
             DB::beginTransaction();
 
+            // Get current item data before update
+            $currentItem = DB::table('milestone_items')
+                ->where('item_id', $itemId)
+                ->first();
+
+            if (!$currentItem) {
+                DB::rollBack();
+                return [
+                    'success' => false,
+                    'message' => 'Milestone item not found'
+                ];
+            }
+
+            // Check if date is being changed
+            $dateChanged = false;
+            if (isset($data['date_to_finish']) && $data['date_to_finish'] != $currentItem->date_to_finish) {
+                $dateChanged = true;
+            }
+
+            // Prepare update data
+            $updateData = [
+                'milestone_item_title' => $data['milestone_item_title'],
+                'milestone_item_description' => $data['milestone_item_description'],
+                'date_to_finish' => $data['date_to_finish'],
+                'milestone_item_cost' => $data['milestone_item_cost'],
+                'item_status' => $data['item_status']
+            ];
+
+            // If date changed, update extension tracking fields
+            if ($dateChanged) {
+                // Set original_date_to_finish if not already set
+                if (empty($currentItem->original_date_to_finish)) {
+                    $updateData['original_date_to_finish'] = $currentItem->date_to_finish;
+                }
+                
+                // Mark as extended and increment count
+                $updateData['was_extended'] = 1;
+                $updateData['extension_count'] = ($currentItem->extension_count ?? 0) + 1;
+
+                // Insert into milestone_date_histories
+                // Use provided changedByUserId or default to 1 (system/admin)
+                DB::table('milestone_date_histories')->insert([
+                    'item_id' => $itemId,
+                    'previous_date' => $currentItem->date_to_finish,
+                    'new_date' => $data['date_to_finish'],
+                    'changed_by' => $changedByUserId ?? 1,
+                    'changed_at' => now(),
+                    'change_reason' => 'Manual date adjustment by admin',
+                    'extension_id' => null // Will be set if part of formal extension request
+                ]);
+            }
+
+            // Update the milestone item
             $updated = DB::table('milestone_items')
                 ->where('item_id', $itemId)
-                ->update([
-                    'milestone_item_title' => $data['milestone_item_title'],
-                    'milestone_item_description' => $data['milestone_item_description'],
-                    'date_to_finish' => $data['date_to_finish'],
-                    'milestone_item_cost' => $data['milestone_item_cost'],
-                    'item_status' => $data['item_status']
-                ]);
+                ->update($updateData);
 
             DB::commit();
 
             return [
                 'success' => true,
-                'message' => 'Milestone item updated successfully'
+                'message' => 'Milestone item updated successfully' . ($dateChanged ? ' (date change recorded in history)' : '')
             ];
 
         } catch (\Exception $e) {
@@ -2159,6 +2563,1035 @@ class projectClass
             return [
                 'success' => false,
                 'message' => 'Error updating project: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Admin extend project timeline
+     * Allows admin to extend project end date with two modes:
+     * - admin_override: Immediate effect, no approval needed
+     * - request_behalf: Creates request that requires owner approval
+     */
+    public function adminExtendTimeline($projectId, $data, $adminUserId)
+    {
+        try {
+            DB::beginTransaction();
+
+            // Get project details with contractor and owner user IDs
+            $project = DB::table('projects')
+                ->leftJoin('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
+                ->leftJoin('property_owners', 'project_relationships.owner_id', '=', 'property_owners.owner_id')
+                ->leftJoin('contractors', 'projects.selected_contractor_id', '=', 'contractors.contractor_id')
+                ->select(
+                    'projects.*',
+                    'contractors.user_id as contractor_user_id',
+                    'property_owners.user_id as property_owner_user_id'
+                )
+                ->where('projects.project_id', $projectId)
+                ->first();
+            
+            if (!$project) {
+                return ['success' => false, 'message' => 'Project not found'];
+            }
+
+            // Validate project status
+            if (!in_array($project->project_status, ['in_progress', 'halt'])) {
+                return ['success' => false, 'message' => 'Timeline can only be extended for in-progress or halted projects'];
+            }
+
+            // Get current budget from payment plan
+            $paymentPlan = DB::table('payment_plans')
+                ->where('project_id', $projectId)
+                ->orderByDesc('plan_id')
+                ->first();
+            
+            $currentBudget = $paymentPlan ? $paymentPlan->total_project_cost : 0;
+
+            // Get current end date from milestones
+            $currentEndDate = DB::table('milestone_items')
+                ->join('milestones', 'milestone_items.milestone_id', '=', 'milestones.milestone_id')
+                ->where('milestones.project_id', $projectId)
+                ->max('milestone_items.date_to_finish');
+
+            if (!$currentEndDate) {
+                return ['success' => false, 'message' => 'Cannot determine project end date. No milestones found.'];
+            }
+
+            // Validate new end date
+            $newEndDate = $data['new_end_date'];
+            if (strtotime($newEndDate) <= strtotime($currentEndDate)) {
+                return ['success' => false, 'message' => 'New end date must be after current end date (' . date('M d, Y', strtotime($currentEndDate)) . ')'];
+            }
+
+            // Check for existing pending requests
+            $pendingRequest = DB::table('project_updates')
+                ->where('project_id', $projectId)
+                ->where('status', 'pending')
+                ->first();
+
+            if ($pendingRequest) {
+                return ['success' => false, 'message' => 'There is already a pending extension request for this project'];
+            }
+
+            // Validate reason
+            if (strlen($data['reason']) < 10) {
+                return ['success' => false, 'message' => 'Reason must be at least 10 characters'];
+            }
+
+            $extensionType = $data['extension_type'] ?? 'admin_override';
+            
+            // Get affected milestones (those with due dates after current end date or near it)
+            $affectedMilestones = DB::table('milestone_items')
+                ->join('milestones', 'milestone_items.milestone_id', '=', 'milestones.milestone_id')
+                ->where('milestones.project_id', $projectId)
+                ->where('milestone_items.date_to_finish', '>=', $currentEndDate)
+                ->select('milestone_items.*')
+                ->get();
+
+            // Calculate extension days
+            $extensionDays = (int)((strtotime($newEndDate) - strtotime($currentEndDate)) / 86400);
+
+            if ($extensionType === 'admin_override') {
+                // Admin override - apply immediately
+                
+                // Create project_updates record first to get extension_id
+                $extensionId = DB::table('project_updates')->insertGetId([
+                    'project_id' => $projectId,
+                    'contractor_user_id' => $project->contractor_user_id,
+                    'owner_user_id' => $project->property_owner_user_id,
+                    'current_end_date' => $currentEndDate,
+                    'proposed_end_date' => $newEndDate,
+                    'reason' => $data['reason'],
+                    'current_budget' => $currentBudget,
+                    'proposed_budget' => $currentBudget,
+                    'budget_change_type' => 'none',
+                    'has_additional_cost' => 0,
+                    'additional_amount' => null,
+                    'milestone_changes' => null,
+                    'allocation_mode' => null,
+                    'status' => 'approved',
+                    'owner_response' => 'Admin override extension',
+                    'applied_at' => now(),
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+                
+                // Update milestone dates
+                foreach ($affectedMilestones as $milestone) {
+                    $oldDate = $milestone->date_to_finish;
+                    $newMilestoneDate = date('Y-m-d', strtotime($oldDate . " +{$extensionDays} days"));
+                    
+                    // Prepare update data
+                    $updateData = ['date_to_finish' => $newMilestoneDate];
+                    
+                    // Set original_date_to_finish if not already set
+                    if (empty($milestone->original_date_to_finish)) {
+                        $updateData['original_date_to_finish'] = $oldDate;
+                    }
+                    
+                    // Mark as extended and increment count
+                    $updateData['was_extended'] = 1;
+                    $updateData['extension_count'] = ($milestone->extension_count ?? 0) + 1;
+                    
+                    DB::table('milestone_items')
+                        ->where('item_id', $milestone->item_id)
+                        ->update($updateData);
+
+                    // Record in milestone_date_histories with extension_id link
+                    // Use owner's user_id as changed_by (admin acting on behalf of project owner)
+                    DB::table('milestone_date_histories')->insert([
+                        'item_id' => $milestone->item_id,
+                        'previous_date' => $oldDate,
+                        'new_date' => $newMilestoneDate,
+                        'extension_id' => $extensionId,  // Link to project_updates
+                        'changed_by' => $project->property_owner_user_id,  // Owner's user_id
+                        'changed_at' => now(),
+                        'change_reason' => $data['reason'],
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]);
+                }
+
+                // Update the milestones.end_date for affected milestones
+                // Group milestone items by milestone_id and update each milestone's end_date
+                $milestoneIds = collect($affectedMilestones)->pluck('milestone_id')->unique();
+                foreach ($milestoneIds as $milestoneId) {
+                    // Get the latest date_to_finish for this milestone
+                    $latestDate = DB::table('milestone_items')
+                        ->where('milestone_id', $milestoneId)
+                        ->max('date_to_finish');
+                    
+                    if ($latestDate) {
+                        // Ensure date format is consistent (Y-m-d H:i:s for datetime fields)
+                        $formattedDate = date('Y-m-d H:i:s', strtotime($latestDate));
+                        DB::table('milestones')
+                            ->where('milestone_id', $milestoneId)
+                            ->update([
+                                'end_date' => $formattedDate,
+                                'updated_at' => now()
+                            ]);
+                    }
+                }
+
+                // Also update ALL milestones for this project to ensure consistency
+                $allMilestones = DB::table('milestones')
+                    ->where('project_id', $projectId)
+                    ->whereNull('is_deleted')
+                    ->get();
+                
+                foreach ($allMilestones as $ms) {
+                    $maxItemDate = DB::table('milestone_items')
+                        ->where('milestone_id', $ms->milestone_id)
+                        ->max('date_to_finish');
+                    
+                    if ($maxItemDate) {
+                        $formattedDate = date('Y-m-d H:i:s', strtotime($maxItemDate));
+                        DB::table('milestones')
+                            ->where('milestone_id', $ms->milestone_id)
+                            ->update([
+                                'end_date' => $formattedDate,
+                                'updated_at' => now()
+                            ]);
+                    }
+                }
+
+                // Send notifications to contractor and owner
+                $this->sendExtensionNotifications($projectId, $project, 'admin_override', $extensionDays);
+
+                DB::commit();
+
+                return [
+                    'success' => true,
+                    'message' => 'Timeline extended successfully. All milestone dates have been updated.',
+                    'extension_id' => $extensionId,
+                    'affected_milestones' => count($affectedMilestones)
+                ];
+
+            } else {
+                // Request on behalf - requires owner approval
+                
+                $extensionId = DB::table('project_updates')->insertGetId([
+                    'project_id' => $projectId,
+                    'contractor_user_id' => $project->contractor_user_id,
+                    'owner_user_id' => $project->property_owner_user_id,
+                    'current_end_date' => $currentEndDate,
+                    'proposed_end_date' => $newEndDate,
+                    'reason' => $data['reason'],
+                    'current_budget' => $currentBudget,
+                    'proposed_budget' => $currentBudget,
+                    'budget_change_type' => 'none',
+                    'has_additional_cost' => 0,
+                    'additional_amount' => null,
+                    'milestone_changes' => null,
+                    'allocation_mode' => null,
+                    'status' => 'pending',
+                    'owner_response' => 'Extension request submitted by admin on behalf of contractor',
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+
+                // Send notifications
+                $this->sendExtensionNotifications($projectId, $project, 'request_behalf', $extensionDays);
+
+                DB::commit();
+
+                return [
+                    'success' => true,
+                    'message' => 'Extension request submitted successfully. Property owner will be notified for approval.',
+                    'extension_id' => $extensionId,
+                    'affected_milestones' => count($affectedMilestones)
+                ];
+            }
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return [
+                'success' => false,
+                'message' => 'Error extending timeline: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Get affected milestones for timeline extension
+     */
+    public function getAffectedMilestones($projectId, $newEndDate)
+    {
+        try {
+            // Get current end date
+            $currentEndDate = DB::table('milestone_items')
+                ->join('milestones', 'milestone_items.milestone_id', '=', 'milestones.milestone_id')
+                ->where('milestones.project_id', $projectId)
+                ->max('milestone_items.date_to_finish');
+
+            if (!$currentEndDate) {
+                return ['success' => false, 'message' => 'No milestones found'];
+            }
+
+            // Calculate extension days
+            $extensionDays = (int)((strtotime($newEndDate) - strtotime($currentEndDate)) / 86400);
+
+            // Get milestones that will be affected
+            $milestones = DB::table('milestone_items')
+                ->join('milestones', 'milestone_items.milestone_id', '=', 'milestones.milestone_id')
+                ->where('milestones.project_id', $projectId)
+                ->where('milestone_items.date_to_finish', '>=', $currentEndDate)
+                ->select('milestone_items.item_id', 'milestone_items.milestone_item_title as title', 'milestone_items.date_to_finish as current_date')
+                ->get();
+
+            $affectedMilestones = [];
+            foreach ($milestones as $milestone) {
+                $newDate = date('Y-m-d', strtotime($milestone->current_date . " +{$extensionDays} days"));
+                $affectedMilestones[] = [
+                    'item_id' => $milestone->item_id,
+                    'title' => $milestone->title,
+                    'current_date' => $milestone->current_date,
+                    'new_date' => $newDate
+                ];
+            }
+
+            return [
+                'success' => true,
+                'affected_milestones' => $affectedMilestones,
+                'extension_days' => $extensionDays
+            ];
+
+        } catch (\Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Error fetching affected milestones: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Send notifications for timeline extension
+     */
+    private function sendExtensionNotifications($projectId, $project, $type, $extensionDays)
+    {
+        try {
+            $projectTitle = $project->project_title ?? 'Project #' . $projectId;
+
+            if ($type === 'admin_override') {
+                // Notify contractor
+                if ($project->contractor_user_id) {
+                    DB::table('notifications')->insert([
+                        'user_id' => $project->contractor_user_id,
+                        'type' => 'Project Alert',
+                        'title' => 'Project Timeline Extended',
+                        'message' => "The timeline for \"{$projectTitle}\" has been extended by {$extensionDays} days by admin.",
+                        'priority' => 'high',
+                        'is_read' => 0,
+                        'created_at' => now()
+                    ]);
+                }
+
+                // Notify owner
+                if ($project->property_owner_user_id) {
+                    DB::table('notifications')->insert([
+                        'user_id' => $project->property_owner_user_id,
+                        'type' => 'Project Alert',
+                        'title' => 'Project Timeline Extended',
+                        'message' => "The timeline for \"{$projectTitle}\" has been extended by {$extensionDays} days by admin.",
+                        'priority' => 'high',
+                        'is_read' => 0,
+                        'created_at' => now()
+                    ]);
+                }
+            } else {
+                // Notify owner for approval
+                if ($project->property_owner_user_id) {
+                    DB::table('notifications')->insert([
+                        'user_id' => $project->property_owner_user_id,
+                        'type' => 'Project Alert',
+                        'title' => 'Extension Request Submitted',
+                        'message' => "An extension request for \"{$projectTitle}\" has been submitted by admin. Please review and approve.",
+                        'priority' => 'high',
+                        'is_read' => 0,
+                        'created_at' => now()
+                    ]);
+                }
+
+                // Notify contractor
+                if ($project->contractor_user_id) {
+                    DB::table('notifications')->insert([
+                        'user_id' => $project->contractor_user_id,
+                        'type' => 'Project Alert',
+                        'title' => 'Extension Request Submitted',
+                        'message' => "An extension request for \"{$projectTitle}\" has been submitted on your behalf by admin.",
+                        'priority' => 'medium',
+                        'is_read' => 0,
+                        'created_at' => now()
+                    ]);
+                }
+            }
+        } catch (\Exception $e) {
+            // Log error but don't fail the main operation
+            \Log::error('Error sending extension notifications: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Get pending extension requests for a project
+     */
+    public function getPendingExtensions($projectId)
+    {
+        try {
+            $requests = DB::table('project_updates')
+                ->leftJoin('users as contractor_users', 'project_updates.contractor_user_id', '=', 'contractor_users.user_id')
+                ->leftJoin('contractors', 'contractor_users.user_id', '=', 'contractors.user_id')
+                ->select(
+                    'project_updates.*',
+                    DB::raw("COALESCE(contractors.company_name, CONCAT(contractor_users.first_name, ' ', contractor_users.last_name)) as requester_name")
+                )
+                ->where('project_updates.project_id', $projectId)
+                ->where('project_updates.status', 'pending')
+                ->orderBy('project_updates.created_at', 'desc')
+                ->get();
+
+            return [
+                'success' => true,
+                'requests' => $requests
+            ];
+
+        } catch (\Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Error fetching pending extensions: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Admin approve extension request
+     */
+    public function adminApproveExtension($extensionId, $adminUserId, $notes = null)
+    {
+        try {
+            DB::beginTransaction();
+
+            // Get extension request
+            $extension = DB::table('project_updates')->where('extension_id', $extensionId)->first();
+            
+            if (!$extension) {
+                return ['success' => false, 'message' => 'Extension request not found'];
+            }
+
+            if ($extension->status !== 'pending') {
+                return ['success' => false, 'message' => 'Extension request is not pending'];
+            }
+
+            // Get project
+            $project = DB::table('projects')->where('project_id', $extension->project_id)->first();
+            
+            if (!$project) {
+                return ['success' => false, 'message' => 'Project not found'];
+            }
+
+            // Calculate extension days
+            $extensionDays = (int)((strtotime($extension->proposed_end_date) - strtotime($extension->current_end_date)) / 86400);
+
+            // Get affected milestones
+            $affectedMilestones = DB::table('milestone_items')
+                ->where('project_id', $extension->project_id)
+                ->where('date_to_finish', '>=', $extension->current_end_date)
+                ->get();
+
+            // Update milestone dates
+            foreach ($affectedMilestones as $milestone) {
+                $oldDate = $milestone->date_to_finish;
+                $newMilestoneDate = date('Y-m-d', strtotime($oldDate . " +{$extensionDays} days"));
+                
+                DB::table('milestone_items')
+                    ->where('item_id', $milestone->item_id)
+                    ->update(['date_to_finish' => $newMilestoneDate]);
+
+                // Record in milestone_date_histories
+                DB::table('milestone_date_histories')->insert([
+                    'item_id' => $milestone->item_id,
+                    'previous_date' => $oldDate,
+                    'new_date' => $newMilestoneDate,
+                    'extension_id' => $extensionId,
+                    'changed_by' => $adminUserId,
+                    'changed_at' => now(),
+                    'change_reason' => 'Extension request approved by admin',
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+            }
+
+            // Update extension request status
+            DB::table('project_updates')
+                ->where('extension_id', $extensionId)
+                ->update([
+                    'status' => 'approved',
+                    'admin_notes' => $notes,
+                    'approved_at' => now(),
+                    'approved_by' => $adminUserId,
+                    'updated_at' => now()
+                ]);
+
+            // Send notifications
+            $projectTitle = $project->project_title ?? 'Project #' . $extension->project_id;
+
+            // Notify contractor
+            if ($extension->contractor_user_id) {
+                DB::table('notifications')->insert([
+                    'user_id' => $extension->contractor_user_id,
+                    'type' => 'Project Alert',
+                    'title' => 'Extension Request Approved',
+                    'message' => "Your extension request for \"{$projectTitle}\" has been approved by admin. Timeline extended by {$extensionDays} days.",
+                    'priority' => 'high',
+                    'is_read' => 0,
+                    'created_at' => now()
+                ]);
+            }
+
+            // Notify owner
+            if ($extension->owner_user_id) {
+                DB::table('notifications')->insert([
+                    'user_id' => $extension->owner_user_id,
+                    'type' => 'Project Alert',
+                    'title' => 'Extension Request Approved',
+                    'message' => "The extension request for \"{$projectTitle}\" has been approved by admin. Timeline extended by {$extensionDays} days.",
+                    'priority' => 'high',
+                    'is_read' => 0,
+                    'created_at' => now()
+                ]);
+            }
+
+            DB::commit();
+
+            return [
+                'success' => true,
+                'message' => 'Extension request approved successfully. Milestone dates have been updated.',
+                'affected_milestones' => count($affectedMilestones)
+            ];
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return [
+                'success' => false,
+                'message' => 'Error approving extension: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Admin reject extension request
+     */
+    public function adminRejectExtension($extensionId, $adminUserId, $reason)
+    {
+        try {
+            DB::beginTransaction();
+
+            // Get extension request
+            $extension = DB::table('project_updates')->where('extension_id', $extensionId)->first();
+            
+            if (!$extension) {
+                return ['success' => false, 'message' => 'Extension request not found'];
+            }
+
+            if ($extension->status !== 'pending') {
+                return ['success' => false, 'message' => 'Extension request is not pending'];
+            }
+
+            // Get project
+            $project = DB::table('projects')->where('project_id', $extension->project_id)->first();
+
+            // Update extension request status
+            DB::table('project_updates')
+                ->where('extension_id', $extensionId)
+                ->update([
+                    'status' => 'rejected',
+                    'admin_notes' => $reason,
+                    'rejected_at' => now(),
+                    'rejected_by' => $adminUserId,
+                    'updated_at' => now()
+                ]);
+
+            // Send notifications
+            $projectTitle = $project->project_title ?? 'Project #' . $extension->project_id;
+
+            // Notify contractor
+            if ($extension->contractor_user_id) {
+                DB::table('notifications')->insert([
+                    'user_id' => $extension->contractor_user_id,
+                    'type' => 'Project Alert',
+                    'title' => 'Extension Request Rejected',
+                    'message' => "Your extension request for \"{$projectTitle}\" has been rejected by admin. Reason: {$reason}",
+                    'priority' => 'high',
+                    'is_read' => 0,
+                    'created_at' => now()
+                ]);
+            }
+
+            // Notify owner
+            if ($extension->owner_user_id) {
+                DB::table('notifications')->insert([
+                    'user_id' => $extension->owner_user_id,
+                    'type' => 'Project Alert',
+                    'title' => 'Extension Request Rejected',
+                    'message' => "The extension request for \"{$projectTitle}\" has been rejected by admin.",
+                    'priority' => 'medium',
+                    'is_read' => 0,
+                    'created_at' => now()
+                ]);
+            }
+
+            DB::commit();
+
+            return [
+                'success' => true,
+                'message' => 'Extension request rejected successfully.'
+            ];
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return [
+                'success' => false,
+                'message' => 'Error rejecting extension: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Admin request revision on extension request
+     */
+    public function adminRequestRevision($extensionId, $adminUserId, $feedback)
+    {
+        try {
+            DB::beginTransaction();
+
+            // Get extension request
+            $extension = DB::table('project_updates')->where('extension_id', $extensionId)->first();
+            
+            if (!$extension) {
+                return ['success' => false, 'message' => 'Extension request not found'];
+            }
+
+            if ($extension->status !== 'pending') {
+                return ['success' => false, 'message' => 'Extension request is not pending'];
+            }
+
+            // Get project
+            $project = DB::table('projects')->where('project_id', $extension->project_id)->first();
+
+            // Update extension request status
+            DB::table('project_updates')
+                ->where('extension_id', $extensionId)
+                ->update([
+                    'status' => 'revision_requested',
+                    'revision_notes' => $feedback,
+                    'admin_notes' => 'Revision requested by admin',
+                    'updated_at' => now()
+                ]);
+
+            // Send notification to contractor
+            $projectTitle = $project->project_title ?? 'Project #' . $extension->project_id;
+
+            if ($extension->contractor_user_id) {
+                DB::table('notifications')->insert([
+                    'user_id' => $extension->contractor_user_id,
+                    'type' => 'Project Alert',
+                    'title' => 'Extension Request - Revision Needed',
+                    'message' => "Your extension request for \"{$projectTitle}\" requires revision. Admin feedback: {$feedback}",
+                    'priority' => 'high',
+                    'is_read' => 0,
+                    'created_at' => now()
+                ]);
+            }
+
+            // Notify owner (informational)
+            if ($extension->owner_user_id) {
+                DB::table('notifications')->insert([
+                    'user_id' => $extension->owner_user_id,
+                    'type' => 'Project Alert',
+                    'title' => 'Extension Request - Revision Requested',
+                    'message' => "The extension request for \"{$projectTitle}\" has been sent back for revision by admin.",
+                    'priority' => 'medium',
+                    'is_read' => 0,
+                    'created_at' => now()
+                ]);
+            }
+
+            DB::commit();
+
+            return [
+                'success' => true,
+                'message' => 'Revision request sent successfully. Contractor will be notified.'
+            ];
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return [
+                'success' => false,
+                'message' => 'Error requesting revision: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Bulk adjust milestone dates
+     * Shifts all incomplete milestone dates by specified number of days
+     */
+    public function bulkAdjustMilestoneDates($projectId, $days, $direction, $reason, $adminUserId)
+    {
+        try {
+            DB::beginTransaction();
+
+            // Validate inputs
+            if ($days <= 0) {
+                return ['success' => false, 'message' => 'Days must be greater than 0'];
+            }
+
+            if (!in_array($direction, ['forward', 'backward'])) {
+                return ['success' => false, 'message' => 'Direction must be forward or backward'];
+            }
+
+            if (strlen($reason) < 10) {
+                return ['success' => false, 'message' => 'Reason must be at least 10 characters'];
+            }
+
+            // Get project with user IDs
+            $project = DB::table('projects')
+                ->leftJoin('contractors', 'projects.selected_contractor_id', '=', 'contractors.contractor_id')
+                ->leftJoin('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
+                ->leftJoin('property_owners', 'project_relationships.owner_id', '=', 'property_owners.owner_id')
+                ->where('projects.project_id', $projectId)
+                ->select(
+                    'projects.*',
+                    'contractors.user_id as contractor_user_id',
+                    'property_owners.user_id as property_owner_user_id'
+                )
+                ->first();
+            
+            if (!$project) {
+                return ['success' => false, 'message' => 'Project not found'];
+            }
+
+            // Validate project status
+            if (!in_array($project->project_status, ['in_progress', 'halt'])) {
+                return ['success' => false, 'message' => 'Bulk adjustment can only be done for in-progress or halted projects'];
+            }
+
+            // Get all incomplete milestones
+            $milestones = DB::table('milestone_items')
+                ->leftJoin('milestones', 'milestone_items.milestone_id', '=', 'milestones.milestone_id')
+                ->where('milestones.project_id', $projectId)
+                ->whereIn('milestone_items.item_status', ['pending', 'in_progress'])
+                ->select('milestone_items.*')
+                ->orderBy('milestone_items.sequence_order')
+                ->get();
+
+            if ($milestones->isEmpty()) {
+                return ['success' => false, 'message' => 'No incomplete milestones found to adjust'];
+            }
+
+            // Calculate adjustment
+            $adjustmentDays = $direction === 'forward' ? $days : -$days;
+            $affectedCount = 0;
+
+            // Update each milestone date
+            foreach ($milestones as $milestone) {
+                $oldDate = $milestone->date_to_finish;
+                
+                if (!$oldDate) continue; // Skip if no date set
+                
+                $newDate = date('Y-m-d', strtotime($oldDate . " {$adjustmentDays} days"));
+                
+                // Validate new date is not in the past (for forward adjustments)
+                if ($direction === 'forward' && strtotime($newDate) < strtotime('today')) {
+                    continue; // Skip this milestone
+                }
+
+                // Prepare update data
+                $updateData = ['date_to_finish' => $newDate];
+                
+                // Set original_date_to_finish if not already set
+                if (empty($milestone->original_date_to_finish)) {
+                    $updateData['original_date_to_finish'] = $oldDate;
+                }
+                
+                // Mark as extended and increment count
+                $updateData['was_extended'] = 1;
+                $updateData['extension_count'] = ($milestone->extension_count ?? 0) + 1;
+
+                // Update milestone date
+                DB::table('milestone_items')
+                    ->where('item_id', $milestone->item_id)
+                    ->update($updateData);
+
+                // Record in milestone_date_histories
+                DB::table('milestone_date_histories')->insert([
+                    'item_id' => $milestone->item_id,
+                    'previous_date' => $oldDate,
+                    'new_date' => $newDate,
+                    'changed_by' => $adminUserId,
+                    'changed_at' => now(),
+                    'change_reason' => "Bulk adjustment: {$reason}",
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+
+                $affectedCount++;
+            }
+
+            if ($affectedCount === 0) {
+                DB::rollBack();
+                return ['success' => false, 'message' => 'No milestones were adjusted'];
+            }
+
+            // Get new project end date
+            $newEndDate = DB::table('milestone_items')
+                ->leftJoin('milestones', 'milestone_items.milestone_id', '=', 'milestones.milestone_id')
+                ->where('milestones.project_id', $projectId)
+                ->max('milestone_items.date_to_finish');
+
+            // Send notifications
+            $projectTitle = $project->project_title ?? 'Project #' . $projectId;
+            $directionText = $direction === 'forward' ? 'extended' : 'shortened';
+
+            // Notify contractor
+            if ($project->contractor_user_id) {
+                DB::table('notifications')->insert([
+                    'user_id' => $project->contractor_user_id,
+                    'type' => 'Project Alert',
+                    'title' => 'Project Timeline Adjusted',
+                    'message' => "All milestone dates for \"{$projectTitle}\" have been {$directionText} by {$days} days by admin. Reason: {$reason}",
+                    'priority' => 'high',
+                    'is_read' => 0,
+                    'created_at' => now()
+                ]);
+            }
+
+            // Notify owner
+            if ($project->property_owner_user_id) {
+                DB::table('notifications')->insert([
+                    'user_id' => $project->property_owner_user_id,
+                    'type' => 'Project Alert',
+                    'title' => 'Project Timeline Adjusted',
+                    'message' => "All milestone dates for \"{$projectTitle}\" have been {$directionText} by {$days} days by admin.",
+                    'priority' => 'high',
+                    'is_read' => 0,
+                    'created_at' => now()
+                ]);
+            }
+
+            DB::commit();
+
+            return [
+                'success' => true,
+                'message' => "Successfully adjusted {$affectedCount} milestone(s). Timeline {$directionText} by {$days} days.",
+                'affected_count' => $affectedCount,
+                'new_end_date' => $newEndDate
+            ];
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return [
+                'success' => false,
+                'message' => 'Error adjusting milestone dates: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Preview bulk date adjustment
+     * Shows what changes will be made without applying them
+     */
+    public function previewBulkAdjustment($projectId, $days, $direction)
+    {
+        try {
+            // Validate inputs
+            if ($days <= 0) {
+                return ['success' => false, 'message' => 'Days must be greater than 0'];
+            }
+
+            if (!in_array($direction, ['forward', 'backward'])) {
+                return ['success' => false, 'message' => 'Direction must be forward or backward'];
+            }
+
+            // Get all incomplete milestones
+            $milestones = DB::table('milestone_items')
+                ->leftJoin('milestones', 'milestone_items.milestone_id', '=', 'milestones.milestone_id')
+                ->where('milestones.project_id', $projectId)
+                ->whereIn('milestone_items.item_status', ['pending', 'in_progress'])
+                ->select(
+                    'milestone_items.item_id',
+                    'milestone_items.milestone_item_title as title',
+                    'milestone_items.date_to_finish as current_date',
+                    'milestone_items.sequence_order'
+                )
+                ->orderBy('milestone_items.sequence_order')
+                ->get();
+
+            if ($milestones->isEmpty()) {
+                return ['success' => false, 'message' => 'No incomplete milestones found'];
+            }
+
+            // Calculate adjustment
+            $adjustmentDays = $direction === 'forward' ? $days : -$days;
+            $preview = [];
+
+            foreach ($milestones as $milestone) {
+                if (!$milestone->current_date) continue;
+                
+                $newDate = date('Y-m-d', strtotime($milestone->current_date . " {$adjustmentDays} days"));
+                
+                $preview[] = [
+                    'item_id' => $milestone->item_id,
+                    'title' => $milestone->title,
+                    'current_date' => $milestone->current_date,
+                    'new_date' => $newDate,
+                    'sequence_order' => $milestone->sequence_order
+                ];
+            }
+
+            // Calculate new project end date
+            $newEndDate = !empty($preview) ? end($preview)['new_date'] : null;
+
+            return [
+                'success' => true,
+                'preview' => $preview,
+                'affected_count' => count($preview),
+                'new_end_date' => $newEndDate,
+                'adjustment_days' => $days,
+                'direction' => $direction
+            ];
+
+        } catch (\Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Error previewing adjustment: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Fetch comprehensive payment history for a project
+     * Includes milestone payments with carry-forward amounts
+     */
+    public function fetchPaymentHistory($projectId)
+    {
+        try {
+            // Get project details
+            $project = DB::table('projects')->where('project_id', $projectId)->first();
+            
+            if (!$project) {
+                return ['success' => false, 'message' => 'Project not found'];
+            }
+
+            // Get accepted bid for total cost
+            $acceptedBid = DB::table('bids')
+                ->where('project_id', $projectId)
+                ->where('bid_status', 'accepted')
+                ->first();
+
+            $totalCost = $acceptedBid ? floatval($acceptedBid->proposed_cost) : 0;
+
+            // Get all milestone payments with details
+            $payments = DB::table('milestone_payments as mp')
+                ->join('milestone_items as mi', 'mp.item_id', '=', 'mi.item_id')
+                ->join('milestones as m', 'mi.milestone_id', '=', 'm.milestone_id')
+                ->leftJoin('property_owners as po', 'mp.owner_id', '=', 'po.owner_id')
+                ->where('mp.project_id', $projectId)
+                ->where(function ($q) {
+                    $q->whereNull('mp.payment_status')
+                      ->orWhereNotIn('mp.payment_status', ['deleted']);
+                })
+                ->select(
+                    'mp.payment_id',
+                    'mp.item_id',
+                    'mp.amount',
+                    'mp.payment_type',
+                    'mp.transaction_number',
+                    'mp.transaction_date',
+                    'mp.payment_status',
+                    'mp.reason',
+                    'mi.milestone_item_title',
+                    'mi.milestone_item_cost',
+                    'mi.sequence_order',
+                    'mi.date_to_finish',
+                    'm.milestone_name',
+                    'm.start_date as milestone_start_date',
+                    DB::raw('CONCAT(COALESCE(po.first_name, ""), " ", COALESCE(po.last_name, "")) as owner_name')
+                )
+                ->orderBy('mi.sequence_order')
+                ->orderBy('mp.transaction_date')
+                ->get();
+
+            // Calculate totals and balances for each milestone
+            $paymentData = [];
+            $totalPaid = 0;
+
+            foreach ($payments as $payment) {
+                // Get all payments for this milestone item
+                $itemPayments = DB::table('milestone_payments')
+                    ->where('item_id', $payment->item_id)
+                    ->where(function ($q) {
+                        $q->where('payment_status', 'approved')
+                          ->orWhereNull('payment_status');
+                    })
+                    ->sum('amount');
+
+                // Get carry forward amount for this milestone
+                $carryForward = DB::table('milestone_items')
+                    ->where('item_id', $payment->item_id)
+                    ->value('carry_forward_amount') ?? 0;
+
+                $milestoneCost = floatval($payment->milestone_item_cost);
+                $paidAmount = floatval($itemPayments);
+                $balance = $milestoneCost - $paidAmount - floatval($carryForward);
+
+                // Format milestone period
+                $period = 'N/A';
+                if ($payment->milestone_start_date && $payment->date_to_finish) {
+                    $startDate = \Carbon\Carbon::parse($payment->milestone_start_date);
+                    $endDate = \Carbon\Carbon::parse($payment->date_to_finish);
+                    $period = $startDate->format('M d, Y') . ' - ' . $endDate->format('M d, Y');
+                }
+
+                $paymentData[] = [
+                    'payment_id' => $payment->payment_id,
+                    'milestone_title' => $payment->milestone_item_title,
+                    'milestone_period' => $period,
+                    'milestone_cost' => $milestoneCost,
+                    'amount' => floatval($payment->amount),
+                    'total_paid' => $paidAmount,
+                    'carry_forward_amount' => floatval($carryForward),
+                    'balance' => $balance,
+                    'payment_type' => $payment->payment_type,
+                    'transaction_number' => $payment->transaction_number,
+                    'transaction_date' => $payment->transaction_date,
+                    'payment_status' => $payment->payment_status ?? 'pending',
+                    'reason' => $payment->reason,
+                    'owner_name' => $payment->owner_name
+                ];
+
+                if ($payment->payment_status === 'approved' || !$payment->payment_status) {
+                    $totalPaid += floatval($payment->amount);
+                }
+            }
+
+            $remainingBalance = $totalCost - $totalPaid;
+
+            return [
+                'success' => true,
+                'data' => [
+                    'total_cost' => $totalCost,
+                    'total_paid' => $totalPaid,
+                    'remaining_balance' => $remainingBalance,
+                    'payments' => $paymentData
+                ]
+            ];
+
+        } catch (\Exception $e) {
+            \Log::error('Error fetching payment history: ' . $e->getMessage());
+            return [
+                'success' => false,
+                'message' => 'Error fetching payment history: ' . $e->getMessage()
             ];
         }
     }

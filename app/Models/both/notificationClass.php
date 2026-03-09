@@ -49,6 +49,10 @@ class notificationClass
             'project_terminated',
             'subscription_expiring',
             'subscription_expired',
+            // Progress outcomes are sent to the contractor, not the owner
+            'progress_approved',
+            'progress_rejected',
+            'progress_updated',
             // Reminder sub-types
             'bid_deadline',
             'milestone_item_due',

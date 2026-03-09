@@ -127,6 +127,8 @@ User card reads from session('user').
         <a href="{{ route('admin.projectManagement.showcaseManagement') }}"
           class="submenu-link {{ request()->routeIs('admin.projectManagement.showcaseManagement') ? 'active' : '' }}">Showcase
           Management</a>
+        <a href="{{ route('admin.progressFeed') }}"
+          class="submenu-link {{ request()->routeIs('admin.progressFeed') ? 'active' : '' }}">Progress Feed</a>
       </div>
     </div>
 

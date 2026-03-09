@@ -196,7 +196,7 @@
       try {
         return await api_request('/api/role/add/contractor/final', {
           method: 'POST',
-          body: JSON.stringify(payload),
+          body: JSON.stringify({ ...payload, is_role_addition: true }),
         });
       } catch (error) {
         console.error('add_contractor_final error:', error);
@@ -233,7 +233,7 @@
       try {
         return await api_request('/api/role/add/owner/final', {
           method: 'POST',
-          body: JSON.stringify(payload),
+          body: JSON.stringify({ ...payload, is_role_addition: true }),
         });
       } catch (error) {
         console.error('add_owner_final error:', error);
