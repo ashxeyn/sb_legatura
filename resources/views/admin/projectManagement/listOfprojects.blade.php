@@ -111,6 +111,8 @@
   @include('admin.projectManagement.partials.completionDetailsModal')
   @include('admin.projectManagement.partials.editProgressReportModal')
   @include('admin.projectManagement.partials.cancelledProjectModal')
+  @include('admin.projectManagement.partials.extendTimelineModal')
+  @include('admin.projectManagement.partials.bulkAdjustDatesModal')
 
   <!-- Edit Milestone Modal Container -->
   <div id="editMilestoneModalContainer">
@@ -141,8 +143,11 @@
     <!-- Modal content loaded via AJAX -->
   </div>
 
+  @include('admin.projectManagement.partials.paymentHistoryModal')
+
   <script src="{{ asset('js/admin/reusables/filters.js') }}"></script>
   <script src="{{ asset('js/admin/projectManagement/listOfprojects.js') }}"></script>
+  <script src="{{ asset('js/admin/projectManagement/paymentHistoryModal.js') }}"></script>
 
 </body>
 

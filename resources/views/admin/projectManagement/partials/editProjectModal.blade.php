@@ -95,16 +95,11 @@
               </select>
             </div>
 
-            <div>
+            <div class="col-span-2">
               <label class="block text-xs text-gray-600 mb-1">Barangay</label>
               <select id="editBarangay" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent" disabled>
                 <option value="">Select Barangay</option>
               </select>
-            </div>
-
-            <div>
-              <label class="block text-xs text-gray-600 mb-1">Postal Code</label>
-              <input type="text" id="editPostalCode" placeholder="e.g., 1000" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent">
             </div>
           </div>
 

@@ -219,6 +219,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // Populate payment summary
     populatePaymentTable('ongoingPaymentTable', data.payments);
 
+    // Load pending extension requests
+    if (data.projectId) {
+      loadPendingExtensions(data.projectId);
+    }
+
     // Show modal
     showModal(modal);
   }
@@ -559,6 +564,9 @@ document.addEventListener('DOMContentLoaded', function() {
             if (typeof window.attachActionListeners === 'function') {
               window.attachActionListeners();
             }
+            
+            // Load pending extension requests
+            loadPendingExtensions(projectId);
           }
         }
       } else {
@@ -1017,21 +1025,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   };
 
-  // Show milestone details for completed project modal
-  window.showMilestoneDetails = function(itemId) {
-    // Store the selected item ID globally
-    window.selectedMilestoneItemId = itemId;
-
-    // Show the edit button
-    const editBtn = document.getElementById('editMilestoneBtn');
-    if (editBtn) {
-      editBtn.classList.remove('hidden');
-    }
-
-    // Note: The details are already rendered in the completedModalContent template
-    // This function just enables the edit button for the selected milestone
-  };
-
   // Show ongoing milestone details (toggle visibility)
   window.showOngoingMilestoneDetails = function(itemId) {
     // Store the selected item ID globally
@@ -1147,6 +1140,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Show the modal by removing the 'hidden' class
             existingModal.classList.remove('hidden');
+            
+            // Load pending extension requests
+            loadPendingExtensions(projectId);
           }
         }
       } else {
@@ -1167,25 +1163,6 @@ document.addEventListener('DOMContentLoaded', function() {
   };
 
   // Show halted milestone details (interactive timeline)
-  window.showHaltedMilestoneDetail = function(itemId) {
-    // Hide the default message if exists
-    const container = document.getElementById('haltedDetailsContent');
-    if (container) {
-      const defaultMsg = container.querySelector('.text-gray-500');
-      if (defaultMsg) defaultMsg.classList.add('hidden');
-    }
-
-    // Hide all milestone detail divs
-    const allDetails = document.querySelectorAll('[id^="halted-milestone-detail-"]');
-    allDetails.forEach(detail => detail.classList.add('hidden'));
-
-    // Show the selected milestone detail
-    const selectedDetail = document.getElementById(`halted-milestone-detail-${itemId}`);
-    if (selectedDetail) {
-      selectedDetail.classList.remove('hidden');
-    }
-  };
-
   // Show halt details modal (administrative information)
   window.showHaltDetailsModal = async function(projectId) {
     try {
@@ -1450,10 +1427,16 @@ document.addEventListener('DOMContentLoaded', function() {
         attachContractorPreviewHandler();
 
         // Initialize PSGC location dropdowns
-        initializeEditLocationDropdowns();
+        await initializeEditLocationDropdowns();
 
         // Show modal
         modal.classList.remove('hidden');
+        
+        // Prevent scroll reset by ensuring modal content doesn't trigger reflows
+        const modalContent = modal.querySelector('.overflow-y-auto');
+        if (modalContent) {
+          modalContent.scrollTop = 0; // Start at top
+        }
       } else {
         showNotification('Failed to load project details', 'error');
       }
@@ -1607,23 +1590,26 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     // Build location string from dropdowns
+    // Format: "Street, Barangay, City, Province" (actual format in database)
     const province = document.getElementById('editProvince');
     const city = document.getElementById('editCity');
     const barangay = document.getElementById('editBarangay');
     const street = document.getElementById('editStreet')?.value || '';
-    const postalCode = document.getElementById('editPostalCode')?.value || '';
 
     const locationParts = [];
-    if (street) locationParts.push(street);
-    if (barangay?.selectedOptions[0]?.text && barangay.value) locationParts.push(barangay.selectedOptions[0].text);
-    if (city?.selectedOptions[0]?.text && city.value) locationParts.push(city.selectedOptions[0].text);
-
-    // Combine province and postal code in last part
+    
+    // Order: Street, Barangay, City, Province (actual database format)
+    if (street) {
+      locationParts.push(street);
+    }
+    if (barangay?.selectedOptions[0]?.text && barangay.value) {
+      locationParts.push(barangay.selectedOptions[0].text);
+    }
+    if (city?.selectedOptions[0]?.text && city.value) {
+      locationParts.push(city.selectedOptions[0].text);
+    }
     if (province?.selectedOptions[0]?.text && province.value) {
-      const provinceName = province.selectedOptions[0].text;
-      locationParts.push(postalCode ? `${provinceName} ${postalCode}` : provinceName);
-    } else if (postalCode) {
-      locationParts.push(postalCode);
+      locationParts.push(province.selectedOptions[0].text);
     }
 
     projectData.project_location = locationParts.join(', ');
@@ -1675,79 +1661,87 @@ document.addEventListener('DOMContentLoaded', function() {
     const citySelect = document.getElementById('editCity');
     const barangaySelect = document.getElementById('editBarangay');
     const streetInput = document.getElementById('editStreet');
-    const postalCodeInput = document.getElementById('editPostalCode');
 
-    if (!provinceSelect) return;
+    if (!provinceSelect) {
+      console.error('Province select not found');
+      return;
+    }
 
-    // Parse existing location from hidden input or data attribute
-    const existingLocation = document.getElementById('editProjectTitle')?.closest('.bg-white')?.dataset?.location || '';
+    // Parse existing location from data attribute on the modal content
+    const modalContent = document.querySelector('#editProjectModal .bg-white');
+    const existingLocation = modalContent?.dataset?.location || '';
+    
+    console.log('=== ADDRESS PARSING DEBUG ===');
+    console.log('Modal content element:', modalContent);
+    console.log('Raw location from database:', existingLocation);
+    console.log('Location length:', existingLocation.length);
+
+    if (!existingLocation || existingLocation.trim() === '') {
+      console.warn('No location data found in modal');
+      return;
+    }
+
+    // Split by comma and trim each part
     const locationParts = existingLocation.split(',').map(part => part.trim()).filter(Boolean);
+    console.log('Location parts after split:', locationParts);
+    console.log('Number of parts:', locationParts.length);
 
-    // Extract parts: street, barangay, city, "province postalcode"
-    let street = '', barangay = '', city = '', province = '', postalCode = '';
+    // Extract parts based on format: "Street, Barangay, City, Province"
+    // Example: "Purok 365 Atuphai Street, Baluno, Zamboanga City, Zamboanga del Sur"
+    let street = '', barangay = '', city = '', province = '';
 
     if (locationParts.length >= 4) {
+      // Full format: Street, Barangay, City, Province
       street = locationParts[0];
       barangay = locationParts[1];
       city = locationParts[2];
-
-      // Last part contains "Province Name PostalCode"
-      const provinceAndPostal = locationParts[3];
-      const lastSpaceIndex = provinceAndPostal.lastIndexOf(' ');
-
-      if (lastSpaceIndex > -1) {
-        province = provinceAndPostal.substring(0, lastSpaceIndex).trim();
-        postalCode = provinceAndPostal.substring(lastSpaceIndex + 1).trim();
-      } else {
-        province = provinceAndPostal;
-      }
+      province = locationParts[3];
     } else if (locationParts.length === 3) {
+      // Format: Barangay, City, Province (no street)
       barangay = locationParts[0];
       city = locationParts[1];
-
-      const provinceAndPostal = locationParts[2];
-      const lastSpaceIndex = provinceAndPostal.lastIndexOf(' ');
-
-      if (lastSpaceIndex > -1) {
-        province = provinceAndPostal.substring(0, lastSpaceIndex).trim();
-        postalCode = provinceAndPostal.substring(lastSpaceIndex + 1).trim();
-      } else {
-        province = provinceAndPostal;
-      }
+      province = locationParts[2];
     } else if (locationParts.length === 2) {
+      // Format: City, Province
       city = locationParts[0];
-
-      const provinceAndPostal = locationParts[1];
-      const lastSpaceIndex = provinceAndPostal.lastIndexOf(' ');
-
-      if (lastSpaceIndex > -1) {
-        province = provinceAndPostal.substring(0, lastSpaceIndex).trim();
-        postalCode = provinceAndPostal.substring(lastSpaceIndex + 1).trim();
-      } else {
-        province = provinceAndPostal;
-      }
+      province = locationParts[1];
     } else if (locationParts.length === 1) {
-      const provinceAndPostal = locationParts[0];
-      const lastSpaceIndex = provinceAndPostal.lastIndexOf(' ');
-
-      if (lastSpaceIndex > -1) {
-        province = provinceAndPostal.substring(0, lastSpaceIndex).trim();
-        postalCode = provinceAndPostal.substring(lastSpaceIndex + 1).trim();
-      } else {
-        province = provinceAndPostal;
-      }
+      // Format: Province only
+      province = locationParts[0];
     }
 
-    // Populate text fields immediately
-    if (streetInput) streetInput.value = street;
-    if (postalCodeInput) postalCodeInput.value = postalCode;
+    // Normalize city name for PSGC matching
+    // "Zamboanga City" in DB → "City of Zamboanga" in PSGC
+    if (city.toLowerCase().includes('zamboanga') && city.toLowerCase().includes('city')) {
+      city = 'City of Zamboanga';
+    }
 
-    console.log('Parsed location:', { street, barangay, city, province, postalCode });
+    // Populate street field immediately
+    if (streetInput) streetInput.value = street;
+
+    console.log('=== PARSED VALUES ===');
+    console.log('Street:', street);
+    console.log('Barangay:', barangay);
+    console.log('City:', city);
+    console.log('Province:', province);
+    console.log('=====================');
 
     // Load provinces
     try {
+      console.log('Fetching provinces from API...');
       const response = await fetch('/api/psgc/provinces');
-      const provinces = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const provincesData = await response.json();
+      console.log('Provinces API response:', provincesData);
+      
+      // Handle different response formats
+      const provinces = Array.isArray(provincesData) ? provincesData : (provincesData.data || []);
+      console.log('Provinces array:', provinces);
+      console.log('Number of provinces:', provinces.length);
 
       provinceSelect.innerHTML = '<option value="">Select Province</option>';
       let selectedProvinceCode = null;
@@ -1766,30 +1760,46 @@ document.addEventListener('DOMContentLoaded', function() {
                         normalizedSearchName.includes(normalizedProvName))) {
           option.selected = true;
           selectedProvinceCode = prov.code;
-          console.log('Matched province:', prov.name, 'with code:', prov.code);
+          console.log('✓ Matched province:', prov.name, 'with code:', prov.code);
         }
 
         provinceSelect.appendChild(option);
       });
 
+      console.log('Selected province code:', selectedProvinceCode);
+
       // If province was selected, load cities
       if (selectedProvinceCode) {
         await loadCities(selectedProvinceCode, city, barangay);
       } else if (province) {
-        console.warn('Province not matched:', province);
+        console.warn('⚠ Province not matched:', province);
+        console.warn('Available provinces:', provinces.map(p => p.name).join(', '));
       }
     } catch (error) {
-      console.error('Error loading provinces:', error);
+      console.error('❌ Error loading provinces:', error);
     }
 
     // Helper function to load cities
     async function loadCities(provinceCode, cityToSelect = '', barangayToSelect = '') {
+      console.log('Loading cities for province:', provinceCode, '| City to select:', cityToSelect);
       citySelect.innerHTML = '<option value="">Select City</option>';
       citySelect.disabled = false;
 
       try {
         const response = await fetch(`/api/psgc/provinces/${provinceCode}/cities`);
-        const cities = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const citiesData = await response.json();
+        console.log('Cities API response:', citiesData);
+        
+        // Handle different response formats
+        const cities = Array.isArray(citiesData) ? citiesData : (citiesData.data || []);
+        console.log('Cities array:', cities);
+        console.log('Number of cities:', cities.length);
+        
         let selectedCityCode = null;
 
         cities.forEach(cty => {
@@ -1806,31 +1816,46 @@ document.addEventListener('DOMContentLoaded', function() {
                               normalizedSearchName.includes(normalizedCityName))) {
             option.selected = true;
             selectedCityCode = cty.code;
-            console.log('Matched city:', cty.name, 'with code:', cty.code);
+            console.log('✓ Matched city:', cty.name, 'with code:', cty.code);
           }
 
           citySelect.appendChild(option);
         });
 
+        console.log('Selected city code:', selectedCityCode);
+
         // If city was selected, load barangays
         if (selectedCityCode) {
           await loadBarangays(selectedCityCode, barangayToSelect);
         } else if (cityToSelect) {
-          console.warn('City not matched:', cityToSelect);
+          console.warn('⚠ City not matched:', cityToSelect);
+          console.warn('Available cities:', cities.map(c => c.name).join(', '));
         }
       } catch (error) {
-        console.error('Error loading cities:', error);
+        console.error('❌ Error loading cities:', error);
       }
     }
 
     // Helper function to load barangays
     async function loadBarangays(cityCode, barangayToSelect = '') {
+      console.log('Loading barangays for city:', cityCode, '| Barangay to select:', barangayToSelect);
       barangaySelect.innerHTML = '<option value="">Select Barangay</option>';
       barangaySelect.disabled = false;
 
       try {
         const response = await fetch(`/api/psgc/cities/${cityCode}/barangays`);
-        const barangays = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const barangaysData = await response.json();
+        console.log('Barangays API response:', barangaysData);
+        
+        // Handle different response formats
+        const barangays = Array.isArray(barangaysData) ? barangaysData : (barangaysData.data || []);
+        console.log('Barangays array:', barangays);
+        console.log('Number of barangays:', barangays.length);
 
         barangays.forEach(brgy => {
           const option = document.createElement('option');
@@ -1845,17 +1870,18 @@ document.addEventListener('DOMContentLoaded', function() {
                                   normalizedBrgyName.includes(normalizedSearchName) ||
                                   normalizedSearchName.includes(normalizedBrgyName))) {
             option.selected = true;
-            console.log('Matched barangay:', brgy.name, 'with code:', brgy.code);
+            console.log('✓ Matched barangay:', brgy.name, 'with code:', brgy.code);
           }
 
           barangaySelect.appendChild(option);
         });
 
         if (barangayToSelect && !barangaySelect.value) {
-          console.warn('Barangay not matched:', barangayToSelect);
+          console.warn('⚠ Barangay not matched:', barangayToSelect);
+          console.warn('Available barangays:', barangays.map(b => b.name).slice(0, 10).join(', '), '...');
         }
       } catch (error) {
-        console.error('Error loading barangays:', error);
+        console.error('❌ Error loading barangays:', error);
       }
     }
 
@@ -2201,3 +2227,1113 @@ document.addEventListener('DOMContentLoaded', function() {
   };
 
 });
+
+
+// ============================================================================
+// COLLAPSIBLE SECTIONS - Budget History & Change Audit Log
+// ============================================================================
+
+/**
+ * Toggle Budget History section
+ */
+window.toggleBudgetHistory = function() {
+  const content = document.getElementById('budgetHistoryContent');
+  const chevron = document.getElementById('budgetHistoryChevron');
+  
+  if (content && chevron) {
+    if (content.classList.contains('hidden')) {
+      content.classList.remove('hidden');
+      chevron.style.transform = 'rotate(180deg)';
+    } else {
+      content.classList.add('hidden');
+      chevron.style.transform = 'rotate(0deg)';
+    }
+  }
+};
+
+/**
+ * Toggle Change Audit Log section
+ */
+window.toggleChangeAuditLog = function() {
+  const content = document.getElementById('auditLogContent');
+  const chevron = document.getElementById('auditLogChevron');
+  
+  if (content && chevron) {
+    if (content.classList.contains('hidden')) {
+      content.classList.remove('hidden');
+      chevron.style.transform = 'rotate(180deg)';
+    } else {
+      content.classList.add('hidden');
+      chevron.style.transform = 'rotate(0deg)';
+    }
+  }
+};
+
+/**
+ * Show milestone details in the completed project modal
+ * Enhanced to show financial information
+ */
+window.showMilestoneDetails = function(itemId) {
+  console.log('showMilestoneDetails called with itemId:', itemId);
+  
+  // Hide all milestone details
+  const allDetails = document.querySelectorAll('[id^="milestone-detail-"]');
+  console.log('Found milestone detail panels:', allDetails.length);
+  allDetails.forEach(detail => {
+    detail.classList.add('hidden');
+    console.log('Hiding panel:', detail.id);
+  });
+
+  // Hide the "Select a milestone" message
+  const noSelection = document.querySelector('#completedDetailsContent > div.text-sm.text-gray-500');
+  if (noSelection) {
+    noSelection.classList.add('hidden');
+    console.log('Hiding "Select a milestone" message');
+  }
+
+  // Show the selected milestone details
+  const selectedDetail = document.getElementById(`milestone-detail-${itemId}`);
+  console.log('Looking for panel:', `milestone-detail-${itemId}`, 'Found:', selectedDetail);
+  if (selectedDetail) {
+    selectedDetail.classList.remove('hidden');
+    console.log('Showing panel:', selectedDetail.id);
+  } else {
+    console.error('Milestone detail panel not found for itemId:', itemId);
+  }
+
+  // Store selected milestone ID for edit button
+  window.selectedMilestoneItemId = itemId;
+
+  // Show edit button if it exists
+  const editBtn = document.getElementById('editMilestoneBtn');
+  if (editBtn) {
+    editBtn.classList.remove('hidden');
+  }
+};
+
+/**
+ * Format currency for display
+ */
+function formatCurrency(amount) {
+  return new Intl.NumberFormat('en-PH', {
+    style: 'currency',
+    currency: 'PHP',
+    minimumFractionDigits: 2
+  }).format(amount);
+}
+
+/**
+ * Calculate budget variance percentage
+ */
+function calculateVariance(original, final) {
+  if (original === 0) return 0;
+  return ((final - original) / original) * 100;
+}
+
+/**
+ * Get variance color class
+ */
+function getVarianceColorClass(variance) {
+  if (variance > 0) return 'text-red-600';
+  if (variance < 0) return 'text-green-600';
+  return 'text-gray-500';
+}
+
+/**
+ * Initialize collapsible sections on modal load
+ */
+function initializeCollapsibleSections() {
+  // Ensure all collapsible sections start collapsed
+  const budgetContent = document.getElementById('budgetHistoryContent');
+  const auditContent = document.getElementById('auditLogContent');
+  const budgetChevron = document.getElementById('budgetHistoryChevron');
+  const auditChevron = document.getElementById('auditLogChevron');
+
+  if (budgetContent) budgetContent.classList.add('hidden');
+  if (auditContent) auditContent.classList.add('hidden');
+  if (budgetChevron) budgetChevron.style.transform = 'rotate(0deg)';
+  if (auditChevron) auditChevron.style.transform = 'rotate(0deg)';
+}
+
+// Initialize when modal is shown
+document.addEventListener('DOMContentLoaded', function() {
+  // Listen for modal show events
+  const observer = new MutationObserver(function(mutations) {
+    mutations.forEach(function(mutation) {
+      if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+        const modal = mutation.target;
+        if (modal.id === 'completedProjectModal' && !modal.classList.contains('hidden')) {
+          initializeCollapsibleSections();
+        }
+      }
+    });
+  });
+
+  const completedModal = document.getElementById('completedProjectModal');
+  if (completedModal) {
+    observer.observe(completedModal, { attributes: true });
+  }
+});
+
+
+// ============================================================================
+// ONGOING PROJECT MODAL - Collapsible Sections
+// ============================================================================
+
+/**
+ * Toggle Budget Tracking section in ongoing modal
+ */
+window.toggleOngoingBudgetTracking = function() {
+  const content = document.getElementById('ongoingBudgetContent');
+  const chevron = document.getElementById('ongoingBudgetChevron');
+  
+  if (content && chevron) {
+    if (content.classList.contains('hidden')) {
+      content.classList.remove('hidden');
+      chevron.style.transform = 'rotate(180deg)';
+    } else {
+      content.classList.add('hidden');
+      chevron.style.transform = 'rotate(0deg)';
+    }
+  }
+};
+
+/**
+ * Show milestone details in the ongoing project modal
+ */
+window.showOngoingMilestoneDetails = function(itemId) {
+  // Hide all milestone details
+  const allDetails = document.querySelectorAll('[id^="ongoing-milestone-detail-"]');
+  allDetails.forEach(detail => {
+    detail.classList.add('hidden');
+  });
+
+  // Hide the "Select a milestone" message
+  const noSelection = document.querySelector('#ongoingDetailsContent > div.text-sm.text-gray-500');
+  if (noSelection) {
+    noSelection.classList.add('hidden');
+  }
+
+  // Show the selected milestone details
+  const selectedDetail = document.getElementById(`ongoing-milestone-detail-${itemId}`);
+  if (selectedDetail) {
+    selectedDetail.classList.remove('hidden');
+  }
+
+  // Store selected milestone ID for edit button
+  window.selectedMilestoneItemId = itemId;
+
+  // Show edit button if it exists
+  const editBtn = document.getElementById('editOngoingMilestoneBtn');
+  if (editBtn) {
+    editBtn.classList.remove('hidden');
+  }
+};
+
+
+// ============================================================================
+// HALTED PROJECT MODAL - Collapsible Sections
+// ============================================================================
+
+/**
+ * Toggle Halt Comparison section in halted modal
+ */
+window.toggleHaltComparison = function() {
+  const content = document.getElementById('haltComparisonContent');
+  const chevron = document.getElementById('haltComparisonChevron');
+  
+  if (content && chevron) {
+    if (content.classList.contains('hidden')) {
+      content.classList.remove('hidden');
+      chevron.style.transform = 'rotate(180deg)';
+    } else {
+      content.classList.add('hidden');
+      chevron.style.transform = 'rotate(0deg)';
+    }
+  }
+};
+
+/**
+ * Show milestone details in the halted project modal
+ */
+window.showHaltedMilestoneDetail = function(itemId) {
+  // Store the selected item ID globally
+  window.selectedMilestoneItemId = itemId;
+
+  // Hide all milestone details
+  const allDetails = document.querySelectorAll('[id^="halted-milestone-detail-"]');
+  allDetails.forEach(detail => {
+    detail.classList.add('hidden');
+  });
+
+  // Hide the "Select a milestone" message
+  const noSelection = document.querySelector('#haltedDetailsContent > div.text-sm.text-gray-500');
+  if (noSelection) {
+    noSelection.classList.add('hidden');
+  }
+
+  // Show the selected milestone details
+  const selectedDetail = document.getElementById(`halted-milestone-detail-${itemId}`);
+  if (selectedDetail) {
+    selectedDetail.classList.remove('hidden');
+  }
+
+  // Show the edit button
+  const editBtn = document.getElementById('editHaltedMilestoneBtn');
+  if (editBtn) {
+    editBtn.classList.remove('hidden');
+  }
+};
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TIMELINE EXTENSION FUNCTIONS
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Show extend timeline modal
+ */
+function showExtendTimelineModal(projectId, currentEndDate, currentStartDate) {
+  const modal = document.getElementById('extendTimelineModal');
+  if (!modal) return;
+
+  // Set project data
+  document.getElementById('extendProjectId').value = projectId;
+  document.getElementById('extendCurrentEndDate').value = currentEndDate;
+  
+  // Display current timeline
+  if (currentStartDate) {
+    document.getElementById('extendCurrentStart').textContent = formatDate(currentStartDate);
+  }
+  if (currentEndDate) {
+    document.getElementById('extendCurrentEnd').textContent = formatDate(currentEndDate);
+    
+    // Calculate and display duration
+    const start = new Date(currentStartDate);
+    const end = new Date(currentEndDate);
+    const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+    document.getElementById('extendCurrentDuration').textContent = days + ' days';
+    
+    // Set min date for new end date (must be after current)
+    const tomorrow = new Date(currentEndDate);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    document.getElementById('extendNewEndDate').min = tomorrow.toISOString().split('T')[0];
+  }
+  
+  // Reset form
+  document.getElementById('extendTimelineForm').reset();
+  document.getElementById('extendTimelineError').classList.add('hidden');
+  document.getElementById('extensionDurationDisplay').classList.add('hidden');
+  document.getElementById('affectedMilestonesSection').classList.add('hidden');
+  document.getElementById('reasonCharCount').textContent = '0';
+  
+  // Show modal
+  modal.classList.remove('hidden');
+  setTimeout(() => modal.classList.add('opacity-100'), 10);
+}
+
+/**
+ * Hide extend timeline modal
+ */
+function hideExtendTimelineModal() {
+  const modal = document.getElementById('extendTimelineModal');
+  if (!modal) return;
+  
+  modal.classList.remove('opacity-100');
+  setTimeout(() => {
+    modal.classList.add('hidden');
+    document.getElementById('extendTimelineForm').reset();
+  }, 300);
+}
+
+/**
+ * Calculate extension duration when new date is selected
+ */
+document.addEventListener('DOMContentLoaded', function() {
+  const newEndDateInput = document.getElementById('extendNewEndDate');
+  const reasonTextarea = document.getElementById('extendReason');
+  
+  if (newEndDateInput) {
+    newEndDateInput.addEventListener('change', function() {
+      const currentEndDate = document.getElementById('extendCurrentEndDate').value;
+      const newEndDate = this.value;
+      
+      if (currentEndDate && newEndDate) {
+        const current = new Date(currentEndDate);
+        const newDate = new Date(newEndDate);
+        const days = Math.ceil((newDate - current) / (1000 * 60 * 60 * 24));
+        
+        if (days > 0) {
+          document.getElementById('extensionDays').textContent = days;
+          document.getElementById('extensionDurationDisplay').classList.remove('hidden');
+          
+          // Fetch affected milestones
+          const projectId = document.getElementById('extendProjectId').value;
+          fetchAffectedMilestones(projectId, newEndDate);
+        } else {
+          document.getElementById('extensionDurationDisplay').classList.add('hidden');
+          showExtensionError('New end date must be after the current end date');
+        }
+      }
+    });
+  }
+  
+  // Character count for reason
+  if (reasonTextarea) {
+    reasonTextarea.addEventListener('input', function() {
+      const count = this.value.length;
+      document.getElementById('reasonCharCount').textContent = count;
+      
+      if (count < 10) {
+        document.getElementById('reasonCharCount').classList.add('text-red-500');
+      } else {
+        document.getElementById('reasonCharCount').classList.remove('text-red-500');
+      }
+    });
+  }
+  
+  // Form submission
+  const form = document.getElementById('extendTimelineForm');
+  if (form) {
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+      submitTimelineExtension();
+    });
+  }
+});
+
+/**
+ * Fetch affected milestones
+ */
+async function fetchAffectedMilestones(projectId, newEndDate) {
+  try {
+    const response = await fetch(`/admin/projects/${projectId}/affected-milestones?new_end_date=${newEndDate}`, {
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+      }
+    });
+    
+    if (!response.ok) throw new Error('Failed to fetch affected milestones');
+    
+    const data = await response.json();
+    
+    if (data.success && data.affected_milestones && data.affected_milestones.length > 0) {
+      displayAffectedMilestones(data.affected_milestones);
+    } else {
+      document.getElementById('affectedMilestonesSection').classList.add('hidden');
+    }
+  } catch (error) {
+    console.error('Error fetching affected milestones:', error);
+  }
+}
+
+/**
+ * Display affected milestones
+ */
+function displayAffectedMilestones(milestones) {
+  const section = document.getElementById('affectedMilestonesSection');
+  const list = document.getElementById('affectedMilestonesList');
+  const count = document.getElementById('affectedMilestonesCount');
+  
+  count.textContent = milestones.length;
+  
+  let html = '<div class="space-y-2 text-sm">';
+  milestones.forEach(milestone => {
+    html += `
+      <div class="flex items-center justify-between py-2 border-b border-amber-200 last:border-0">
+        <div class="flex items-center gap-2">
+          <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+          </svg>
+          <span class="font-medium text-gray-900">${milestone.title}</span>
+        </div>
+        <div class="text-xs text-gray-600">
+          ${formatDate(milestone.current_date)} → ${formatDate(milestone.new_date)}
+        </div>
+      </div>
+    `;
+  });
+  html += '</div>';
+  
+  list.innerHTML = html;
+  section.classList.remove('hidden');
+}
+
+/**
+ * Submit timeline extension
+ */
+async function submitTimelineExtension() {
+  const form = document.getElementById('extendTimelineForm');
+  const submitBtn = document.getElementById('submitExtensionBtn');
+  const formData = new FormData(form);
+  
+  // Disable submit button
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = `
+    <svg class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+    </svg>
+    <span>Submitting...</span>
+  `;
+  
+  try {
+    const projectId = formData.get('project_id');
+    const response = await fetch(`/admin/projects/${projectId}/extend-timeline`, {
+      method: 'POST',
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+      },
+      body: formData
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      // Show success message
+      showSuccessToast(data.message || 'Timeline extended successfully');
+      
+      // Hide modal
+      hideExtendTimelineModal();
+      
+      // Refresh project details if modal is open
+      const projectId = formData.get('project_id');
+      if (projectId && window.currentProjectId) {
+        // Determine which modal to refresh based on which one is currently open
+        const ongoingModal = document.getElementById('ongoingProjectModal');
+        const haltedModal = document.getElementById('haltedProjectModal');
+        
+        if (ongoingModal && !ongoingModal.classList.contains('hidden')) {
+          // Refresh ongoing project modal
+          await showOngoingProjectModal(projectId);
+        } else if (haltedModal && !haltedModal.classList.contains('hidden')) {
+          // Refresh halted project modal
+          await showHaltedProjectModal(projectId);
+        }
+      }
+      
+      // Refresh table
+      if (typeof window.refreshProjectsTable === 'function') {
+        window.refreshProjectsTable();
+      }
+    } else {
+      showExtensionError(data.message || 'Failed to extend timeline');
+    }
+  } catch (error) {
+    console.error('Error submitting extension:', error);
+    showExtensionError('An error occurred while submitting the extension request');
+  } finally {
+    // Re-enable submit button
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = `
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+      </svg>
+      <span>Submit Extension</span>
+    `;
+  }
+}
+
+/**
+ * Show extension error
+ */
+function showExtensionError(message) {
+  const errorDiv = document.getElementById('extendTimelineError');
+  const errorMessage = document.getElementById('extendTimelineErrorMessage');
+  
+  errorMessage.textContent = message;
+  errorDiv.classList.remove('hidden');
+  
+  // Scroll to error
+  errorDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+/**
+ * Show success toast notification
+ */
+function showSuccessToast(message) {
+  // Create toast element
+  const toast = document.createElement('div');
+  toast.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-4 rounded-lg shadow-lg z-50 flex items-center gap-3 animate-slide-in';
+  toast.innerHTML = `
+    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+    </svg>
+    <span class="font-semibold">${message}</span>
+  `;
+  
+  document.body.appendChild(toast);
+  
+  // Remove after 3 seconds
+  setTimeout(() => {
+    toast.classList.add('animate-slide-out');
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
+}
+
+/**
+ * Format date for display
+ */
+function formatDate(dateString) {
+  if (!dateString) return '—';
+  const date = new Date(dateString);
+  const options = { year: 'numeric', month: 'short', day: 'numeric' };
+  return date.toLocaleDateString('en-US', options);
+}
+
+// Make functions globally accessible
+window.showExtendTimelineModal = showExtendTimelineModal;
+window.hideExtendTimelineModal = hideExtendTimelineModal;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PENDING EXTENSION REQUESTS FUNCTIONS (PHASE 2)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Load and display pending extension requests
+ */
+async function loadPendingExtensions(projectId) {
+  try {
+    const response = await fetch(`/admin/projects/${projectId}/pending-extensions`, {
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+      }
+    });
+    
+    if (!response.ok) throw new Error('Failed to fetch pending extensions');
+    
+    const data = await response.json();
+    
+    if (data.success && data.requests && data.requests.length > 0) {
+      displayPendingExtensions(data.requests);
+    } else {
+      hidePendingExtensionsSection();
+    }
+  } catch (error) {
+    console.error('Error loading pending extensions:', error);
+  }
+}
+
+/**
+ * Display pending extension requests in modal
+ */
+function displayPendingExtensions(requests) {
+  const section = document.getElementById('pendingExtensionsSection');
+  const container = document.getElementById('pendingExtensionsContainer');
+  const count = document.getElementById('pendingExtensionsCount');
+  
+  if (!section || !container || !count) return;
+  
+  count.textContent = requests.length;
+  
+  let html = '';
+  requests.forEach(request => {
+    const extensionDays = Math.ceil((new Date(request.proposed_end_date) - new Date(request.current_end_date)) / (1000 * 60 * 60 * 24));
+    const submittedDate = new Date(request.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    
+    html += `
+      <div class="bg-white border-2 border-blue-200 rounded-lg p-5 hover:shadow-md transition-all duration-200">
+        <div class="flex items-start justify-between mb-3">
+          <div>
+            <h4 class="font-bold text-gray-900 text-sm">Request #EXT-${request.extension_id}</h4>
+            <p class="text-xs text-gray-600 mt-1">Submitted: ${submittedDate} by ${request.requester_name || 'Unknown'}</p>
+          </div>
+          <span class="px-2.5 py-1 bg-amber-100 text-amber-800 text-xs font-semibold rounded-full">Pending</span>
+        </div>
+        
+        <div class="grid grid-cols-2 gap-3 mb-3 text-sm">
+          <div class="bg-gray-50 rounded-lg p-3">
+            <p class="text-xs text-gray-600 mb-1">Current End Date</p>
+            <p class="font-semibold text-gray-900">${formatDate(request.current_end_date)}</p>
+          </div>
+          <div class="bg-blue-50 rounded-lg p-3">
+            <p class="text-xs text-gray-600 mb-1">Proposed End Date</p>
+            <p class="font-semibold text-blue-700">${formatDate(request.proposed_end_date)} <span class="text-xs">(+${extensionDays} days)</span></p>
+          </div>
+        </div>
+        
+        <div class="mb-4">
+          <p class="text-xs text-gray-600 font-semibold mb-1">Reason:</p>
+          <p class="text-sm text-gray-700 italic bg-gray-50 rounded p-2">"${request.reason}"</p>
+        </div>
+        
+        <div class="flex items-center gap-2">
+          <button 
+            onclick="approveExtensionRequest(${request.extension_id}, ${request.project_id})"
+            class="flex-1 px-3 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white text-xs font-semibold rounded-lg hover:from-green-600 hover:to-emerald-700 transition-all duration-200 shadow-sm hover:shadow-md flex items-center justify-center gap-1"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>
+            Approve
+          </button>
+          <button 
+            onclick="showRejectExtensionModal(${request.extension_id}, ${request.project_id})"
+            class="flex-1 px-3 py-2 bg-gradient-to-r from-red-500 to-rose-600 text-white text-xs font-semibold rounded-lg hover:from-red-600 hover:to-rose-700 transition-all duration-200 shadow-sm hover:shadow-md flex items-center justify-center gap-1"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+            Reject
+          </button>
+          <button 
+            onclick="showRevisionRequestModal(${request.extension_id}, ${request.project_id})"
+            class="flex-1 px-3 py-2 bg-gradient-to-r from-amber-500 to-orange-600 text-white text-xs font-semibold rounded-lg hover:from-amber-600 hover:to-orange-700 transition-all duration-200 shadow-sm hover:shadow-md flex items-center justify-center gap-1"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+            </svg>
+            Revise
+          </button>
+        </div>
+      </div>
+    `;
+  });
+  
+  container.innerHTML = html;
+  section.classList.remove('hidden');
+}
+
+/**
+ * Hide pending extensions section
+ */
+function hidePendingExtensionsSection() {
+  const section = document.getElementById('pendingExtensionsSection');
+  if (section) {
+    section.classList.add('hidden');
+  }
+}
+
+/**
+ * Approve extension request
+ */
+async function approveExtensionRequest(extensionId, projectId) {
+  if (!confirm('Are you sure you want to approve this extension request? Milestone dates will be updated immediately.')) {
+    return;
+  }
+  
+  try {
+    const response = await fetch(`/admin/projects/extensions/${extensionId}/approve`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+      },
+      body: JSON.stringify({ notes: null })
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      showSuccessToast(data.message || 'Extension request approved successfully');
+      
+      // Reload pending extensions
+      await loadPendingExtensions(projectId);
+      
+      // Refresh project details if modal is open
+      if (typeof refreshCurrentProjectModal === 'function') {
+        refreshCurrentProjectModal();
+      }
+    } else {
+      alert(data.message || 'Failed to approve extension request');
+    }
+  } catch (error) {
+    console.error('Error approving extension:', error);
+    alert('An error occurred while approving the extension request');
+  }
+}
+
+/**
+ * Show reject extension modal
+ */
+function showRejectExtensionModal(extensionId, projectId) {
+  const reason = prompt('Please provide a reason for rejecting this extension request (minimum 10 characters):');
+  
+  if (reason === null) return; // User cancelled
+  
+  if (reason.length < 10) {
+    alert('Reason must be at least 10 characters long');
+    return;
+  }
+  
+  rejectExtensionRequest(extensionId, projectId, reason);
+}
+
+/**
+ * Reject extension request
+ */
+async function rejectExtensionRequest(extensionId, projectId, reason) {
+  try {
+    const response = await fetch(`/admin/projects/extensions/${extensionId}/reject`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+      },
+      body: JSON.stringify({ reason })
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      showSuccessToast(data.message || 'Extension request rejected successfully');
+      
+      // Reload pending extensions
+      await loadPendingExtensions(projectId);
+      
+      // Refresh project details if modal is open
+      if (typeof refreshCurrentProjectModal === 'function') {
+        refreshCurrentProjectModal();
+      }
+    } else {
+      alert(data.message || 'Failed to reject extension request');
+    }
+  } catch (error) {
+    console.error('Error rejecting extension:', error);
+    alert('An error occurred while rejecting the extension request');
+  }
+}
+
+/**
+ * Show revision request modal
+ */
+function showRevisionRequestModal(extensionId, projectId) {
+  const feedback = prompt('Please provide feedback for revision (minimum 10 characters):');
+  
+  if (feedback === null) return; // User cancelled
+  
+  if (feedback.length < 10) {
+    alert('Feedback must be at least 10 characters long');
+    return;
+  }
+  
+  requestExtensionRevision(extensionId, projectId, feedback);
+}
+
+/**
+ * Request revision on extension request
+ */
+async function requestExtensionRevision(extensionId, projectId, feedback) {
+  try {
+    const response = await fetch(`/admin/projects/extensions/${extensionId}/request-revision`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+      },
+      body: JSON.stringify({ feedback })
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      showSuccessToast(data.message || 'Revision request sent successfully');
+      
+      // Reload pending extensions
+      await loadPendingExtensions(projectId);
+      
+      // Refresh project details if modal is open
+      if (typeof refreshCurrentProjectModal === 'function') {
+        refreshCurrentProjectModal();
+      }
+    } else {
+      alert(data.message || 'Failed to send revision request');
+    }
+  } catch (error) {
+    console.error('Error requesting revision:', error);
+    alert('An error occurred while requesting revision');
+  }
+}
+
+/**
+ * Toggle pending extensions section
+ */
+function togglePendingExtensions() {
+  const content = document.getElementById('pendingExtensionsContent');
+  const chevron = document.getElementById('pendingExtensionsChevron');
+  
+  if (content && chevron) {
+    content.classList.toggle('hidden');
+    chevron.classList.toggle('rotate-180');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BULK DATE ADJUSTMENT FUNCTIONS (PHASE 4)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Show bulk adjust dates modal
+ */
+function showBulkAdjustDatesModal(projectId) {
+  const modal = document.getElementById('bulkAdjustDatesModal');
+  if (!modal) return;
+
+  // Set project ID
+  document.getElementById('bulkAdjustProjectId').value = projectId;
+  
+  // Reset form
+  document.getElementById('bulkAdjustDatesForm').reset();
+  document.getElementById('bulkAdjustError').classList.add('hidden');
+  document.getElementById('bulkAdjustPreviewSection').classList.add('hidden');
+  document.getElementById('bulkReasonCharCount').textContent = '0';
+  
+  // Show modal
+  modal.classList.remove('hidden');
+  setTimeout(() => modal.classList.add('opacity-100'), 10);
+}
+
+/**
+ * Hide bulk adjust dates modal
+ */
+function hideBulkAdjustDatesModal() {
+  const modal = document.getElementById('bulkAdjustDatesModal');
+  if (!modal) return;
+  
+  modal.classList.remove('opacity-100');
+  setTimeout(() => {
+    modal.classList.add('hidden');
+    document.getElementById('bulkAdjustDatesForm').reset();
+  }, 300);
+}
+
+/**
+ * Preview bulk adjustment
+ */
+async function previewBulkAdjustment() {
+  const projectId = document.getElementById('bulkAdjustProjectId').value;
+  const days = document.getElementById('bulkAdjustDays').value;
+  const direction = document.querySelector('input[name="direction"]:checked').value;
+  
+  // Validate inputs
+  if (!days || days < 1) {
+    showBulkAdjustError('Please enter a valid number of days');
+    return;
+  }
+  
+  const previewBtn = document.getElementById('previewBulkAdjustBtn');
+  previewBtn.disabled = true;
+  previewBtn.innerHTML = `
+    <svg class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+    </svg>
+    <span>Loading...</span>
+  `;
+  
+  try {
+    const response = await fetch(`/admin/projects/${projectId}/preview-bulk-adjustment?days=${days}&direction=${direction}`, {
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+      }
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      displayBulkAdjustmentPreview(data);
+      document.getElementById('bulkAdjustError').classList.add('hidden');
+    } else {
+      showBulkAdjustError(data.message || 'Failed to preview adjustment');
+    }
+  } catch (error) {
+    console.error('Error previewing bulk adjustment:', error);
+    showBulkAdjustError('An error occurred while previewing changes');
+  } finally {
+    previewBtn.disabled = false;
+    previewBtn.innerHTML = `
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+      </svg>
+      <span>Preview Changes</span>
+    `;
+  }
+}
+
+/**
+ * Display bulk adjustment preview
+ */
+function displayBulkAdjustmentPreview(data) {
+  const section = document.getElementById('bulkAdjustPreviewSection');
+  const list = document.getElementById('bulkPreviewList');
+  const count = document.getElementById('bulkAffectedCount');
+  const endDate = document.getElementById('bulkNewEndDate');
+  
+  count.textContent = data.affected_count;
+  endDate.textContent = formatDate(data.new_end_date);
+  
+  let html = '';
+  data.preview.forEach(item => {
+    html += `
+      <div class="flex items-center justify-between py-2 border-b border-gray-200 last:border-0">
+        <div class="flex items-center gap-2">
+          <span class="w-6 h-6 rounded-full bg-purple-100 text-purple-700 text-xs font-bold flex items-center justify-center">${item.sequence_order}</span>
+          <span class="font-medium text-gray-900 text-sm">${item.title}</span>
+        </div>
+        <div class="text-xs text-gray-600">
+          ${formatDate(item.current_date)} → ${formatDate(item.new_date)}
+        </div>
+      </div>
+    `;
+  });
+  
+  list.innerHTML = html;
+  section.classList.remove('hidden');
+}
+
+/**
+ * Show bulk adjust error
+ */
+function showBulkAdjustError(message) {
+  const errorDiv = document.getElementById('bulkAdjustError');
+  const errorMessage = document.getElementById('bulkAdjustErrorMessage');
+  
+  errorMessage.textContent = message;
+  errorDiv.classList.remove('hidden');
+  
+  // Scroll to error
+  errorDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+/**
+ * Submit bulk adjustment
+ */
+document.addEventListener('DOMContentLoaded', function() {
+  const reasonTextarea = document.getElementById('bulkAdjustReason');
+  
+  // Character count for reason
+  if (reasonTextarea) {
+    reasonTextarea.addEventListener('input', function() {
+      const count = this.value.length;
+      document.getElementById('bulkReasonCharCount').textContent = count;
+      
+      if (count < 10) {
+        document.getElementById('bulkReasonCharCount').classList.add('text-red-500');
+      } else {
+        document.getElementById('bulkReasonCharCount').classList.remove('text-red-500');
+      }
+    });
+  }
+  
+  // Form submission
+  const form = document.getElementById('bulkAdjustDatesForm');
+  if (form) {
+    form.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      
+      // Show confirmation modal instead of browser alert
+      showBulkAdjustConfirmModal();
+    });
+  }
+});
+
+// Show bulk adjust confirmation modal
+window.showBulkAdjustConfirmModal = function() {
+  const formData = new FormData(document.getElementById('bulkAdjustDatesForm'));
+  const days = parseInt(formData.get('days'));
+  const direction = formData.get('direction');
+  const reason = formData.get('reason');
+  
+  // Validate minimum days
+  if (!days || days < 1) {
+    alert('Please enter at least 1 day for the adjustment.');
+    return;
+  }
+  
+  // Get affected count from preview if available
+  const affectedCountEl = document.getElementById('bulkAffectedCount');
+  const affectedCount = affectedCountEl ? affectedCountEl.textContent : '0';
+  
+  // Populate confirmation modal
+  document.getElementById('confirmAffectedCount').textContent = affectedCount;
+  document.getElementById('confirmDaysCount').textContent = days;
+  document.getElementById('confirmDirection').textContent = direction;
+  document.getElementById('confirmReason').textContent = reason;
+  
+  // Show modal
+  const modal = document.getElementById('bulkAdjustConfirmModal');
+  if (modal) {
+    modal.classList.remove('hidden');
+  }
+};
+
+// Hide bulk adjust confirmation modal
+window.hideBulkAdjustConfirmModal = function() {
+  const modal = document.getElementById('bulkAdjustConfirmModal');
+  if (modal) {
+    modal.classList.add('hidden');
+  }
+};
+
+// Confirm and execute bulk adjustment
+window.confirmBulkAdjustment = async function() {
+  // Hide confirmation modal
+  hideBulkAdjustConfirmModal();
+  
+  const form = document.getElementById('bulkAdjustDatesForm');
+  const submitBtn = document.getElementById('submitBulkAdjustBtn');
+  const formData = new FormData(form);
+  const projectId = formData.get('project_id');
+  
+  // Disable submit button
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = `
+    <svg class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+    </svg>
+    <span>Applying...</span>
+  `;
+  
+  try {
+    const response = await fetch(`/admin/projects/${projectId}/bulk-adjust-dates`, {
+      method: 'POST',
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+      },
+      body: formData
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      showSuccessToast(data.message || 'Milestone dates adjusted successfully');
+      
+      // Hide modal
+      hideBulkAdjustDatesModal();
+      
+      // Refresh project details if modal is open
+      if (typeof refreshCurrentProjectModal === 'function') {
+        refreshCurrentProjectModal();
+      }
+      
+      // Refresh table
+      if (typeof window.refreshProjectsTable === 'function') {
+        window.refreshProjectsTable();
+      }
+    } else {
+      showBulkAdjustError(data.message || 'Failed to adjust milestone dates');
+    }
+  } catch (error) {
+    console.error('Error submitting bulk adjustment:', error);
+    showBulkAdjustError('An error occurred while applying changes');
+  } finally {
+    // Re-enable submit button
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = `
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+      </svg>
+      <span>Apply Changes</span>
+    `;
+  }
+};

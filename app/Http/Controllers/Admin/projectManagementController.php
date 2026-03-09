@@ -5,6 +5,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Session;
 use App\Models\admin\disputeClass;
 use App\Models\admin\projectClass;
 use Illuminate\Support\Facades\Mail;
@@ -1019,6 +1020,10 @@ class projectManagementController extends Controller
     public function updateMilestoneItem(\App\Http\Requests\admin\editMilestoneRequest $request, $itemId)
     {
         try {
+            // Get admin user ID from session
+            $adminUser = Session::get('admin');
+            $adminUserId = $adminUser && isset($adminUser->admin_id) ? $adminUser->admin_id : 1;
+
             $projectModel = new projectClass();
             $result = $projectModel->updateMilestoneItem($itemId, [
                 'milestone_item_title' => $request->milestone_item_title,
@@ -1026,7 +1031,7 @@ class projectManagementController extends Controller
                 'date_to_finish' => $request->date_to_finish,
                 'milestone_item_cost' => $request->milestone_item_cost,
                 'item_status' => $request->item_status
-            ]);
+            ], $adminUserId);
 
             return response()->json($result);
 
@@ -1251,5 +1256,212 @@ class projectManagementController extends Controller
         }
 
         return response()->json(['success' => false, 'message' => 'Failed to restore showcase.'], 400);
+    }
+
+    /**
+     * Extend project timeline (admin)
+     */
+    public function extendTimeline(Request $request, $id)
+    {
+        $request->validate([
+            'new_end_date' => 'required|date|after:today',
+            'reason' => 'required|string|min:10|max:500',
+            'extension_type' => 'required|in:admin_override,request_behalf'
+        ]);
+
+        $model = new projectClass();
+        $adminUserId = auth()->id();
+
+        $result = $model->adminExtendTimeline($id, [
+            'new_end_date' => $request->new_end_date,
+            'reason' => $request->reason,
+            'extension_type' => $request->extension_type
+        ], $adminUserId);
+
+        if ($result['success']) {
+            return response()->json($result);
+        }
+
+        return response()->json($result, 400);
+    }
+
+    /**
+     * Get affected milestones for timeline extension
+     */
+    public function getAffectedMilestones(Request $request, $id)
+    {
+        $request->validate([
+            'new_end_date' => 'required|date'
+        ]);
+
+        $model = new projectClass();
+        $result = $model->getAffectedMilestones($id, $request->new_end_date);
+
+        if ($result['success']) {
+            return response()->json($result);
+        }
+
+        return response()->json($result, 400);
+    }
+
+    /**
+     * Get pending extension requests for a project
+     */
+    public function getPendingExtensions($id)
+    {
+        $model = new projectClass();
+        $result = $model->getPendingExtensions($id);
+
+        if ($result['success']) {
+            return response()->json($result);
+        }
+
+        return response()->json($result, 400);
+    }
+
+    /**
+     * Approve extension request
+     */
+    public function approveExtension(Request $request, $extensionId)
+    {
+        $request->validate([
+            'notes' => 'nullable|string|max:500'
+        ]);
+
+        $model = new projectClass();
+        $adminUserId = auth()->id();
+
+        $result = $model->adminApproveExtension($extensionId, $adminUserId, $request->notes);
+
+        if ($result['success']) {
+            return response()->json($result);
+        }
+
+        return response()->json($result, 400);
+    }
+
+    /**
+     * Reject extension request
+     */
+    public function rejectExtension(Request $request, $extensionId)
+    {
+        $request->validate([
+            'reason' => 'required|string|min:10|max:500'
+        ]);
+
+        $model = new projectClass();
+        $adminUserId = auth()->id();
+
+        $result = $model->adminRejectExtension($extensionId, $adminUserId, $request->reason);
+
+        if ($result['success']) {
+            return response()->json($result);
+        }
+
+        return response()->json($result, 400);
+    }
+
+    /**
+     * Request revision on extension request
+     */
+    public function requestRevision(Request $request, $extensionId)
+    {
+        $request->validate([
+            'feedback' => 'required|string|min:10|max:500'
+        ]);
+
+        $model = new projectClass();
+        $adminUserId = auth()->id();
+
+        $result = $model->adminRequestRevision($extensionId, $adminUserId, $request->feedback);
+
+        if ($result['success']) {
+            return response()->json($result);
+        }
+
+        return response()->json($result, 400);
+    }
+
+    /**
+     * Bulk adjust milestone dates
+     */
+    public function bulkAdjustDates(Request $request, $id)
+    {
+        $request->validate([
+            'days' => 'required|integer|min:1|max:365',
+            'direction' => 'required|in:forward,backward',
+            'reason' => 'required|string|min:10|max:500'
+        ]);
+
+        $model = new projectClass();
+        
+        // Get admin user ID from session
+        $adminUser = Session::get('admin');
+        $adminUserId = $adminUser && isset($adminUser->admin_id) ? $adminUser->admin_id : 1;
+
+        $result = $model->bulkAdjustMilestoneDates(
+            $id,
+            $request->days,
+            $request->direction,
+            $request->reason,
+            $adminUserId
+        );
+
+        if ($result['success']) {
+            return response()->json($result);
+        }
+
+        return response()->json($result, 400);
+    }
+
+    /**
+     * Preview bulk date adjustment
+     */
+    public function previewBulkAdjustment(Request $request, $id)
+    {
+        $request->validate([
+            'days' => 'required|integer|min:1|max:365',
+            'direction' => 'required|in:forward,backward'
+        ]);
+
+        $model = new projectClass();
+
+        $result = $model->previewBulkAdjustment(
+            $id,
+            $request->days,
+            $request->direction
+        );
+
+        if ($result['success']) {
+            return response()->json($result);
+        }
+
+        return response()->json($result, 400);
+    }
+
+    public function getPaymentHistory($id)
+    {
+        try {
+            \Log::info('Fetching payment history for project: ' . $id);
+            
+            $model = new projectClass();
+            $result = $model->fetchPaymentHistory($id);
+
+            \Log::info('Payment history result:', $result);
+
+            if ($result['success']) {
+                return response()->json($result);
+            }
+
+            return response()->json($result, 400);
+        } catch (\Exception $e) {
+            \Log::error('Payment history error: ' . $e->getMessage());
+            \Log::error('Stack trace: ' . $e->getTraceAsString());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Error fetching payment history: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }
