@@ -4,7 +4,7 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use App\Services\notificationService;
+use App\Services\NotificationService;
 
 /**
  * reviewService — Business logic for bidirectional star reviews.
@@ -16,7 +16,7 @@ use App\Services\notificationService;
  *   - One review per reviewer per project (UNIQUE constraint enforced)
  *   - Cannot review self
  */
-class reviewService
+class ReviewService
 {
     /**
      * Submit a review for a completed project.

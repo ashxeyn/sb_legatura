@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
-use App\Services\authService;
+use App\Services\AuthService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Session;
 use Laravel\Sanctum\PersonalAccessToken;
@@ -16,7 +16,7 @@ class otpChangeController extends Controller
 
     public function __construct()
     {
-        $this->authService = new authService();
+        $this->authService = new AuthService();
     }
 
     public function sendOtp(Request $request)

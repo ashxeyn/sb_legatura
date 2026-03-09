@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Services\authService;
-use App\Services\userActivityLogger;
+use App\Services\AuthService;
+use App\Services\UserActivityLogger;
 use App\Models\user;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
@@ -19,7 +19,7 @@ class passwordController extends Controller
 
     public function __construct()
     {
-        $this->authService = new authService();
+        $this->authService = new AuthService();
     }
 
     /**

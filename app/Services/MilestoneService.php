@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Log;
  *                                    deleteMilestone)
  *   • both\disputeController    (approveMilestone, rejectMilestone)
  */
-class milestoneService
+class MilestoneService
 {
     // ─────────────────────────────────────────────────────────────────────────
     // DOWNPAYMENT GATE — checks whether the downpayment has been fully paid

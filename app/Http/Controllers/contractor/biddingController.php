@@ -11,8 +11,8 @@ use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use App\Services\notificationService;
-use App\Services\bidRankingService;
+use App\Services\NotificationService;
+use App\Services\BidRankingService;
 
 class biddingController extends Controller
 {

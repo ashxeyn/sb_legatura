@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\both;
 
 use App\Http\Controllers\Controller;
-use App\Services\summaryService;
+use App\Services\SummaryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\DB;
  */
 class summaryController extends Controller
 {
-    public function __construct(protected summaryService $summaryService) {}
+    public function __construct(protected SummaryService $summaryService) {}
 
     /**
      * Full project lifecycle summary.

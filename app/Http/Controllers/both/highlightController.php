@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
-use App\Services\highlightService;
+use App\Services\HighlightService;
 
 /**
  * highlightController — Manage pinned/highlighted posts and projects.
@@ -20,9 +20,9 @@ use App\Services\highlightService;
  */
 class highlightController extends Controller
 {
-    protected highlightService $highlightService;
+    protected HighlightService $highlightService;
 
-    public function __construct(highlightService $highlightService)
+    public function __construct(HighlightService $highlightService)
     {
         $this->highlightService = $highlightService;
     }

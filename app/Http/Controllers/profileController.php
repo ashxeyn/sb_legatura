@@ -7,8 +7,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Log;
-use App\Services\psgcApiService;
-use App\Services\userActivityLogger;
+use App\Services\PsgcApiService;
+use App\Services\UserActivityLogger;
 
 class profileController extends Controller
 {
@@ -523,7 +523,7 @@ class profileController extends Controller
             $address_display = null;
             if ($owner && !empty($owner->address)) {
                 try {
-                    $psgc = new psgcApiService();
+                    $psgc = new PsgcApiService();
                     $parts = array_map('trim', explode(',', $owner->address));
                     $street = $parts[0] ?? null;
                     $barangayCode = $parts[1] ?? null;

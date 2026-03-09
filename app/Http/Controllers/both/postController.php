@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\DB;
-use App\Services\postService;
+use App\Services\PostService;
 
 /**
  * postController — CRUD + Feed for Facebook-style project posts.
@@ -22,9 +22,9 @@ use App\Services\postService;
  */
 class postController extends Controller
 {
-    protected postService $postService;
+    protected PostService $postService;
 
-    public function __construct(postService $postService)
+    public function __construct(PostService $postService)
     {
         $this->postService = $postService;
     }

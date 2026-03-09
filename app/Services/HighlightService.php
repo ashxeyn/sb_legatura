@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Log;
  *   - showcases (Facebook-style social posts)
  *   - projects (traditional project posts — via projects.is_highlighted)
  */
-class highlightService
+class HighlightService
 {
     private const MAX_HIGHLIGHTS = 3;
 

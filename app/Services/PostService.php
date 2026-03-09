@@ -15,7 +15,7 @@ use Illuminate\Support\Collection;
  *   2. User-specific posts (profile Posts tab)
  *   3. Simple feed with freshness + boost ordering
  */
-class postService
+class PostService
 {
     /* ═══════════════════════════════════════════════════════════════════
      * CRUD

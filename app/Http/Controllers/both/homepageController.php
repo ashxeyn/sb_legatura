@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\both;
 
 use App\Http\Controllers\Controller;
-use App\Services\feedService;
+use App\Services\FeedService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -23,9 +23,9 @@ use Laravel\Sanctum\PersonalAccessToken;
  */
 class homepageController extends Controller
 {
-    protected feedService $feedService;
+    protected FeedService $feedService;
 
-    public function __construct(feedService $feedService)
+    public function __construct(FeedService $feedService)
     {
         $this->feedService = $feedService;
     }

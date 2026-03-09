@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
-use App\Services\reviewService;
+use App\Services\ReviewService;
 
 /**
  * reviewController — API endpoints for the bidirectional star review system.
@@ -18,9 +18,9 @@ use App\Services\reviewService;
  */
 class reviewController extends Controller
 {
-    protected reviewService $reviewService;
+    protected ReviewService $reviewService;
 
-    public function __construct(reviewService $reviewService)
+    public function __construct(ReviewService $reviewService)
     {
         $this->reviewService = $reviewService;
     }

@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
-use App\Services\profileService;
+use App\Services\ProfileService;
 
 /**
  * profileApiController — Full profile page API (aggregated, tabbed data).
@@ -17,9 +17,9 @@ use App\Services\profileService;
  */
 class profileApiController extends Controller
 {
-    protected profileService $profileService;
+    protected ProfileService $profileService;
 
-    public function __construct(profileService $profileService)
+    public function __construct(ProfileService $profileService)
     {
         $this->profileService = $profileService;
     }

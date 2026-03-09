@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\both;
 
 use App\Http\Controllers\Controller;
-use App\Services\projectUpdateService;
+use App\Services\ProjectUpdateService;
 use Illuminate\Http\Request;
 
 /**
@@ -26,7 +26,7 @@ use Illuminate\Http\Request;
  */
 class projectUpdateController extends Controller
 {
-    public function __construct(private projectUpdateService $service) {}
+    public function __construct(private ProjectUpdateService $service) {}
 
     // ── context ──────────────────────────────────────────────────────────
     public function context(Request $request, int $projectId)

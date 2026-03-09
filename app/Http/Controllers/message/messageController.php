@@ -286,10 +286,10 @@ class messageController extends Controller
     /**
      * Store a new message and broadcast via Pusher
      *
-     * @param MessageRequest $request
+     * @param messageRequest $request
      * @return JsonResponse
      */
-    public function store(MessageRequest $request): JsonResponse
+    public function store(messageRequest $request): JsonResponse
     {
         try {
             $userId = $this->getAuthUserId();

@@ -4,15 +4,15 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Http\Requests\accounts\accountRequest;
-use App\Services\authService;
-use App\Services\psgcApiService;
+use App\Services\AuthService;
+use App\Services\PsgcApiService;
 use App\Models\accounts\accountClass;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use App\Services\userActivityLogger;
+use App\Services\UserActivityLogger;
 class authController extends Controller
 {
     // UserActivityLogger integration examples:
@@ -72,9 +72,9 @@ class authController extends Controller
 
     public function __construct()
     {
-        $this->authService = new authService();
+        $this->authService = new AuthService();
         $this->accountClass = new accountClass();
-        $this->psgcService = new psgcApiService();
+        $this->psgcService = new PsgcApiService();
     }
 
 

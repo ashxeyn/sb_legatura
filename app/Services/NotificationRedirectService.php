@@ -24,7 +24,7 @@ use Illuminate\Support\Facades\Log;
  * 2. If it needs parent-ID lookup, add a private resolve*() helper.
  * 3. That's it — the controller and frontend need no changes.
  */
-class notificationRedirectService
+class NotificationRedirectService
 {
     // ─── Public entry point ────────────────────────────────────────────
 

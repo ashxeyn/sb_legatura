@@ -16,13 +16,13 @@ use Illuminate\Support\Facades\Log;
  *
  * Avoids N+1: uses aggregation queries and batch loading.
  */
-class profileService
+class ProfileService
 {
-    protected reviewService $reviewService;
+    protected ReviewService $reviewService;
 
-    public function __construct(?reviewService $reviewService = null)
+    public function __construct(?ReviewService $reviewService = null)
     {
-        $this->reviewService = $reviewService ?? new reviewService();
+        $this->reviewService = $reviewService ?? new ReviewService();
     }
 
     /**

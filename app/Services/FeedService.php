@@ -3,7 +3,7 @@
 namespace App\Services;
 
 use App\Models\both\feedClass;
-use App\Services\feedRankingService;
+use App\Services\FeedRankingService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -16,15 +16,15 @@ use Illuminate\Support\Facades\Log;
  * Contractor project feed now uses feedRankingService for scored ordering:
  *   feedClass (filter + fetch) → feedRankingService (score + sort) → paginate → hydrate
  */
-class feedService
+class FeedService
 {
     protected feedClass $feed;
-    protected feedRankingService $ranker;
+    protected FeedRankingService $ranker;
 
-    public function __construct(feedClass $feed, ?feedRankingService $ranker = null)
+    public function __construct(feedClass $feed, ?FeedRankingService $ranker = null)
     {
         $this->feed   = $feed;
-        $this->ranker = $ranker ?? new feedRankingService();
+        $this->ranker = $ranker ?? new FeedRankingService();
     }
 
     /* =====================================================================

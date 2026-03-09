@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\both;
 
 use App\Http\Controllers\Controller;
-use App\Services\dashboardService;
+use App\Services\DashboardService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\DB;
@@ -25,9 +25,9 @@ use Illuminate\Support\Facades\Session;
  */
 class dashboardController extends Controller
 {
-    protected dashboardService $dashboardService;
+    protected DashboardService $dashboardService;
 
-    public function __construct(dashboardService $dashboardService)
+    public function __construct(DashboardService $dashboardService)
     {
         $this->dashboardService = $dashboardService;
     }

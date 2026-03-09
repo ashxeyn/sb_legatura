@@ -5,7 +5,7 @@ namespace App\Services;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Cache;
 
-class psgcApiService
+class PsgcApiService
 {
     protected $baseUrl = 'https://psgc.gitlab.io/api';
 

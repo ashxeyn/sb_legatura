@@ -33,7 +33,7 @@ use Illuminate\Support\Facades\Cache;
  *   - Modular: each scorer is a standalone method, easy to extend
  *   - Efficient: batch-loads boost data, bid counts, and contractor context
  */
-class feedRankingService
+class FeedRankingService
 {
     // ─── Configurable weights (must sum to 1.0) ────────────────────────
 

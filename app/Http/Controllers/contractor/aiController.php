@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\contractor;
 
 use App\Http\Controllers\Controller;
-use App\Services\aiService;
+use App\Services\AiService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Log;
@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Log;
  */
 class aiController extends Controller
 {
-    protected aiService $aiService;
+    protected AiService $aiService;
 
     public function __construct(AiService $aiService)
     {

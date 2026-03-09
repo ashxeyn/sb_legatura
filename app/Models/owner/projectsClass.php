@@ -3,7 +3,7 @@
 namespace App\Models\owner;
 
 use Illuminate\Support\Facades\DB;
-use App\Services\bidRankingService;
+use App\Services\BidRankingService;
 
 class projectsClass
 {

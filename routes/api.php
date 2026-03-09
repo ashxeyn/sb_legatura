@@ -118,8 +118,8 @@ Route::post('/forgot-password/verify-otp', [passwordController::class, 'verifyRe
 Route::post('/forgot-password/reset', [passwordController::class, 'resetPassword']);
 
 // Change OTP endpoints (public; controller will resolve user via bearer token if provided)
-Route::post('/change-otp/send', [\App\Http\Controllers\OTPChangeController::class, 'sendOtp']);
-Route::post('/change-otp/verify', [\App\Http\Controllers\OTPChangeController::class, 'verifyOtp']);
+Route::post('/change-otp/send', [\App\Http\Controllers\otpChangeController::class, 'sendOtp']);
+Route::post('/change-otp/verify', [\App\Http\Controllers\otpChangeController::class, 'verifyOtp']);
 
 // Mobile API signup routes (mirror web signup but stateless API paths for mobile clients)
 Route::post('/signup/contractor/step1', [authController::class, 'contractorStep1']);

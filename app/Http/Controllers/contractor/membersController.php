@@ -3,16 +3,16 @@
 namespace App\Http\Controllers\contractor;
 
 use App\Http\Controllers\Controller;
-use App\Services\contractorAuthorizationService;
+use App\Services\ContractorAuthorizationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
-use App\Services\notificationService;
+use App\Services\NotificationService;
 
 class membersController extends Controller
 {
-    protected contractorAuthorizationService $authService;
+    protected ContractorAuthorizationService $authService;
 
     public function __construct(ContractorAuthorizationService $authService)
     {

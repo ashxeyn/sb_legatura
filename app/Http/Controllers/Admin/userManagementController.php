@@ -14,13 +14,13 @@ use Illuminate\Support\Facades\Schema;
 use App\Http\Requests\admin\rejectVerificationRequest;
 use App\Http\Requests\admin\propertyOwnerRequest;
 use App\Http\Requests\admin\contractorRequest;
-use App\Services\notificationService;
+use App\Services\NotificationService;
 use App\Http\Requests\admin\contractorTeamMemberRequest;
 use App\Http\Requests\admin\updateContractorTeamMemberRequest;
 use App\Http\Requests\admin\changeContractorRepresentativeRequest;
 use App\Http\Requests\admin\deactivateContractorTeamMemberRequest;
 use App\Http\Requests\admin\reactivateContractorTeamMemberRequest;
-use App\Services\psgcApiService;
+use App\Services\PsgcApiService;
 use Illuminate\Support\Facades\Mail;
 
 class userManagementController extends authController
@@ -44,7 +44,7 @@ class userManagementController extends authController
         }
 
         $accountModel = new accountClass();
-        $psgcService = new psgcApiService();
+        $psgcService = new PsgcApiService();
 
         $occupations = $accountModel->getOccupations();
         $validIds = $accountModel->getValidIds();
@@ -497,7 +497,7 @@ class userManagementController extends authController
         }
 
         $accountModel = new accountClass();
-        $psgcService = new psgcApiService();
+        $psgcService = new PsgcApiService();
 
         $occupations = $accountModel->getOccupations();
         $validIds = $accountModel->getValidIds();
@@ -531,7 +531,7 @@ class userManagementController extends authController
         }
 
         $accountModel = new accountClass();
-        $psgcService = new psgcApiService();
+        $psgcService = new PsgcApiService();
 
         $occupations = $accountModel->getOccupations();
         $validIds = $accountModel->getValidIds();
@@ -576,7 +576,7 @@ class userManagementController extends authController
         }
 
         $accountModel = new accountClass();
-        $psgcService = new psgcApiService();
+        $psgcService = new PsgcApiService();
 
         $picabCategories = $accountModel->getPicabCategories();
         $provinces = $psgcService->getProvinces();
@@ -1697,3 +1697,4 @@ class userManagementController extends authController
         return response()->json(['data' => $accounts]);
     }
 }
+

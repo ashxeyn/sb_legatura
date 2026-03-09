@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\both;
 
 use App\Http\Controllers\Controller;
-use App\Services\milestoneService;
-use App\Services\contractorAuthorizationService;
+use App\Services\MilestoneService;
+use App\Services\ContractorAuthorizationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Session;
@@ -34,7 +34,7 @@ use Illuminate\Support\Facades\Session;
 class milestoneController extends Controller
 {
     public function __construct(
-        protected milestoneService $milestoneService,
+        protected MilestoneService $milestoneService,
         protected ContractorAuthorizationService $authService,
     ) {}
 

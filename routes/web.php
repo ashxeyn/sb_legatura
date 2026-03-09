@@ -325,8 +325,8 @@ Route::get('/contractor/profile/reviews', [\App\Http\Controllers\profileControll
 Route::post('/contractor/profile/update', [\App\Http\Controllers\profileController::class, 'update'])->name('contractor.profile.update');
 
 // Security Settings – OTP change endpoints (web session-based)
-Route::post('/security/change-otp/send', [\App\Http\Controllers\OTPChangeController::class, 'sendOtp'])->name('security.otp.send');
-Route::post('/security/change-otp/verify', [\App\Http\Controllers\OTPChangeController::class, 'verifyOtp'])->name('security.otp.verify');
+Route::post('/security/change-otp/send', [\App\Http\Controllers\otpChangeController::class, 'sendOtp'])->name('security.otp.send');
+Route::post('/security/change-otp/verify', [\App\Http\Controllers\otpChangeController::class, 'verifyOtp'])->name('security.otp.verify');
 
 // Contractor AI Analytics
 Route::get('/contractor/ai-analytics', [AiController::class, 'showAnalytics'])->name('contractor.ai-analytics');

@@ -3,7 +3,7 @@
 namespace App\Services;
 
 use App\Models\both\projectUpdate;
-use App\Services\notificationService;
+use App\Services\NotificationService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;

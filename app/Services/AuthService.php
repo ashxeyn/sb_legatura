@@ -7,9 +7,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
-use App\Services\smsService;
+use App\Services\SmsService;
 
-class authService
+class AuthService
 {
     // Generate a 6-digit OTP
     public function generateOtp()
