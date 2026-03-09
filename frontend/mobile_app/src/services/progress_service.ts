@@ -150,7 +150,7 @@ export class progress_service {
         method: 'PUT',
         headers: {
           'Accept': 'application/json',
-          'Content-Type': 'multipart/form-data',
+          // Do not set Content-Type for FormData — fetch sets it with the correct multipart boundary
         },
         body: formData,
       });
@@ -197,13 +197,14 @@ export class progress_service {
   /**
    * Approve a progress report (Owner)
    */
-  static async approve_progress(progressId: number): Promise<ApiResponse> {
+  static async approve_progress(progressId: number, currentRole: string = 'owner'): Promise<ApiResponse> {
     try {
       const response = await api_request(`/api/progress/${progressId}/approve`, {
         method: 'POST',
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
+          'X-Current-Role': currentRole,
         },
         body: JSON.stringify({}),
       });
@@ -222,13 +223,14 @@ export class progress_service {
   /**
    * Reject a progress report (Owner)
    */
-  static async reject_progress(progressId: number, reason?: string): Promise<ApiResponse> {
+  static async reject_progress(progressId: number, reason?: string, currentRole: string = 'owner'): Promise<ApiResponse> {
     try {
       const response = await api_request(`/api/progress/${progressId}/reject`, {
         method: 'POST',
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
+          'X-Current-Role': currentRole,
         },
         body: JSON.stringify({ reason: reason || '' }),
       });

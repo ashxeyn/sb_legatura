@@ -125,7 +125,7 @@ class progressUploadController extends Controller
         }
 
         if ($user->user_type === 'both') {
-            $currentRole = Session::get('current_role', 'contractor');
+            $currentRole = $request->header('X-Current-Role', Session::get('current_role', 'contractor'));
             if ($currentRole !== 'contractor') {
                 if ($request->expectsJson()) {
                     return response()->json([
@@ -250,88 +250,64 @@ class progressUploadController extends Controller
                 ], 400);
             }
 
-            if (count($files) === 0) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Please upload at least one progress file'
-                ], 400);
-            }
-
-            // Create progress entry first
-            $progressId = $this->progressUploadClass->createProgress([
-                'item_id' => $validated['item_id'],
-                'purpose' => $validated['purpose'],
-                'progress_status' => 'submitted'
-            ]);
-
-            // Auto-advance item_status from not_started to in_progress
-            DB::table('milestone_items')
-                ->where('item_id', $validated['item_id'])
-                ->where('item_status', 'not_started')
-                ->update(['item_status' => 'in_progress', 'updated_at' => now()]);
-
             // Ensure the progress_uploads directory exists
             if (!Storage::disk('public')->exists('progress_uploads')) {
                 Storage::disk('public')->makeDirectory('progress_uploads');
             }
 
-            // Handle multiple progress files
+            // Pre-store all files to disk first, then commit all DB records atomically.
             $uploadedFiles = [];
             $uploadedFilePaths = [];
 
+            foreach ($files as $file) {
+                if (!$file->isValid()) {
+                    throw new \Exception('Invalid file uploaded: ' . $file->getClientOriginalName());
+                }
+                $fileName    = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+                $storagePath = $file->storeAs('progress_uploads', $fileName, 'public');
+                if (!$storagePath) {
+                    throw new \Exception('Failed to store file: ' . $file->getClientOriginalName());
+                }
+                $uploadedFilePaths[] = ['path' => $storagePath, 'original' => $file->getClientOriginalName()];
+            }
+
             try {
-                foreach ($files as $file) {
-                    if (!$file->isValid()) {
-                        throw new \Exception('Invalid file uploaded: ' . $file->getClientOriginalName());
-                    }
-
-                    $fileExtension = $file->getClientOriginalExtension();
-                    $fileName = time() . '_' . uniqid() . '.' . $fileExtension;
-                    $storagePath = $file->storeAs('progress_uploads', $fileName, 'public');
-
-                    if (!$storagePath) {
-                        throw new \Exception('Failed to store file: ' . $file->getClientOriginalName());
-                    }
-
-                    // Use original file name for display
-                    $originalFileName = $file->getClientOriginalName();
-
-                    $fileId = $this->progressUploadClass->createProgressFile([
-                        'progress_id' => $progressId,
-                        'file_path' => $storagePath,
-                        'original_name' => $originalFileName
+                DB::transaction(function () use (&$progressId, &$uploadedFiles, $validated, $uploadedFilePaths) {
+                    $progressId = $this->progressUploadClass->createProgress([
+                        'item_id'         => $validated['item_id'],
+                        'purpose'         => $validated['purpose'],
+                        'progress_status' => 'submitted',
                     ]);
 
-                    if (!$fileId) {
-                        // If database insert fails, delete the uploaded file
-                        if (Storage::disk('public')->exists($storagePath)) {
-                            Storage::disk('public')->delete($storagePath);
+                    DB::table('milestone_items')
+                        ->where('item_id', $validated['item_id'])
+                        ->where('item_status', 'not_started')
+                        ->update(['item_status' => 'in_progress', 'updated_at' => now()]);
+
+                    foreach ($uploadedFilePaths as $fp) {
+                        $fileId = $this->progressUploadClass->createProgressFile([
+                            'progress_id'   => $progressId,
+                            'file_path'     => $fp['path'],
+                            'original_name' => $fp['original'],
+                        ]);
+                        if (!$fileId) {
+                            throw new \Exception('Failed to save file record: ' . $fp['original']);
                         }
-                        throw new \Exception('Failed to save file record to database: ' . $originalFileName);
+                        $uploadedFiles[] = [
+                            'file_id'   => $fileId,
+                            'file_name' => $fp['original'],
+                            'file_path' => $fp['path'],
+                        ];
                     }
-
-                    $uploadedFiles[] = [
-                        'file_id' => $fileId,
-                        'file_name' => $originalFileName,
-                        'file_path' => $storagePath
-                    ];
-
-                    $uploadedFilePaths[] = $storagePath;
-                }
-            } catch (\Exception $fileException) {
-                // If file upload fails, delete the progress entry and uploaded files
-                if ($progressId) {
-                    $this->progressUploadClass->updateProgressStatus($progressId, 'deleted');
-                }
-
-                // Delete any uploaded files
-                foreach ($uploadedFilePaths as $path) {
-                    if (Storage::disk('public')->exists($path)) {
-                        Storage::disk('public')->delete($path);
+                });
+            } catch (\Exception $txException) {
+                // DB rolled back automatically; clean up any files already stored to disk.
+                foreach ($uploadedFilePaths as $fp) {
+                    if (Storage::disk('public')->exists($fp['path'])) {
+                        Storage::disk('public')->delete($fp['path']);
                     }
                 }
-
-                throw $fileException;
+                throw $txException;
             }
 
             // Notify project owner about progress upload
@@ -937,7 +913,7 @@ class progressUploadController extends Controller
                 ], 403);
             }
             if ($user->user_type === 'both') {
-                $currentRole = Session::get('current_role', 'owner');
+                $currentRole = $request->header('X-Current-Role', Session::get('current_role', 'owner'));
                 if ($currentRole !== 'owner') {
                     return response()->json([
                         'success' => false,
@@ -999,6 +975,8 @@ class progressUploadController extends Controller
                 if ($cUserId) {
                     NotificationService::create($cUserId, 'progress_approved', 'Progress Approved', "Your progress for \"{$progInfo->milestone_item_title}\" on \"{$progInfo->project_title}\" was approved.", 'normal', 'progress', (int) $progressId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int) $progInfo->project_id, 'tab' => 'progress']]);
                 }
+                // Remind owner to mark the milestone item complete (required next step)
+                NotificationService::create((int) $user->user_id, 'progress_updated', 'Action Required', "Progress for \"{$progInfo->milestone_item_title}\" on \"{$progInfo->project_title}\" was approved. Mark the milestone item as complete to proceed.", 'normal', 'progress', (int) $progressId, ['screen' => 'ProjectDetails', 'params' => ['projectId' => (int) $progInfo->project_id, 'tab' => 'milestones']]);
             }
 
             return response()->json([
@@ -1086,7 +1064,7 @@ class progressUploadController extends Controller
                 ], 403);
             }
             if ($user->user_type === 'both') {
-                $currentRole = Session::get('current_role', 'owner');
+                $currentRole = $request->header('X-Current-Role', Session::get('current_role', 'owner'));
                 if ($currentRole !== 'owner') {
                     return response()->json([
                         'success' => false,

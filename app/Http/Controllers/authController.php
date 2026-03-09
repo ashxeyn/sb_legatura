@@ -790,6 +790,33 @@ class authController extends Controller
     // Handle Contractor Final Step
     public function contractorFinalStep(accountRequest $request)
     {
+        // Guard: this endpoint is for NEW account registration only.
+        // Authenticated users (Bearer token present) must use /api/role/add/contractor/final instead.
+        if ($request->bearerToken()) {
+            try {
+                $tokenModel = \Laravel\Sanctum\PersonalAccessToken::findToken($request->bearerToken());
+                if ($tokenModel && $tokenModel->tokenable) {
+                    return response()->json([
+                        'success'        => false,
+                        'message'        => 'You are already logged in. To add a contractor role to your existing account, use POST /api/role/add/contractor/final.',
+                        'use_endpoint'   => '/api/role/add/contractor/final',
+                        'error_code'     => 'use_role_addition_endpoint',
+                    ], 403);
+                }
+            } catch (\Throwable $e) {
+                \Log::warning('contractorFinalStep auth-guard check failed: ' . $e->getMessage());
+            }
+        }
+        // Belt-and-suspenders: also reject if the caller explicitly set the is_role_addition flag.
+        if ($request->input('is_role_addition')) {
+            return response()->json([
+                'success'      => false,
+                'message'      => 'This endpoint is for new account registration only. Use POST /api/role/add/contractor/final for role additions.',
+                'use_endpoint' => '/api/role/add/contractor/final',
+                'error_code'   => 'use_role_addition_endpoint',
+            ], 403);
+        }
+
         // Get all session data (web flow)
         $step1 = Session::get('contractor_step1');
         $step2 = Session::get('contractor_step2');
@@ -1723,6 +1750,33 @@ class authController extends Controller
     // Handle Property Owner Final Step
     public function propertyOwnerFinalStep(accountRequest $request)
     {
+        // Guard: this endpoint is for NEW account registration only.
+        // Authenticated users (Bearer token present) must use /api/role/add/owner/final instead.
+        if ($request->bearerToken()) {
+            try {
+                $tokenModel = \Laravel\Sanctum\PersonalAccessToken::findToken($request->bearerToken());
+                if ($tokenModel && $tokenModel->tokenable) {
+                    return response()->json([
+                        'success'      => false,
+                        'message'      => 'You are already logged in. To add an owner role to your existing account, use POST /api/role/add/owner/final.',
+                        'use_endpoint' => '/api/role/add/owner/final',
+                        'error_code'   => 'use_role_addition_endpoint',
+                    ], 403);
+                }
+            } catch (\Throwable $e) {
+                \Log::warning('propertyOwnerFinalStep auth-guard check failed: ' . $e->getMessage());
+            }
+        }
+        // Belt-and-suspenders: also reject if the caller explicitly set the is_role_addition flag.
+        if ($request->input('is_role_addition')) {
+            return response()->json([
+                'success'      => false,
+                'message'      => 'This endpoint is for new account registration only. Use POST /api/role/add/owner/final for role additions.',
+                'use_endpoint' => '/api/role/add/owner/final',
+                'error_code'   => 'use_role_addition_endpoint',
+            ], 403);
+        }
+
         // Get all session data (web flow)
         $step1 = Session::get('owner_step1');
         $step2 = Session::get('owner_step2');
@@ -2533,6 +2587,21 @@ class authController extends Controller
         $step1 = $request->input('step1_data') ?: Session::get('switch_contractor_step1');
         $step2 = $request->input('step2_data') ?: Session::get('switch_contractor_step2');
 
+        // Decode JSON strings sent by multipart/form-data clients
+        // (application/json clients are already decoded by Laravel automatically)
+        if (is_string($step1)) {
+            $decoded = json_decode($step1, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $step1 = $decoded;
+            }
+        }
+        if (is_string($step2)) {
+            $decoded = json_decode($step2, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $step2 = $decoded;
+            }
+        }
+
         // Normalize step arrays
         if (!is_array($step1)) {
             $step1 = is_object($step1) ? (array) $step1 : [];
@@ -2709,12 +2778,13 @@ class authController extends Controller
 
             DB::commit();
             return response()->json([
-                'success' => true,
-                'message' => 'Role application submitted. Please wait for admin approval.',
-                'user_type' => $updatedUser->user_type ?? null,
-                'current_role' => 'contractor',
-                'pending_role_request' => true,
-                'redirect_url' => '/dashboard'
+                'success'             => true,
+                'message'             => 'Role application submitted. Please wait for admin approval.',
+                'user_type'           => $updatedUser->user_type ?? null,
+                'current_role'        => 'contractor',
+                'is_role_addition'    => true,
+                'pending_role_request'=> true,
+                'redirect_url'        => '/dashboard'
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -2995,11 +3065,13 @@ class authController extends Controller
 
             if ($request->expectsJson()) {
                 return response()->json([
-                    'success' => true,
-                    'message' => 'Request submitted — awaiting admin approval',
-                    'user_type' => $updatedUser->user_type ?? ($user->user_type ?? 'property_owner'),
-                    'current_role' => 'owner',
-                    'redirect_url' => '/contractor/homepage'
+                    'success'              => true,
+                    'message'              => 'Request submitted — awaiting admin approval',
+                    'user_type'            => $updatedUser->user_type ?? ($user->user_type ?? 'property_owner'),
+                    'current_role'         => 'owner',
+                    'is_role_addition'     => true,
+                    'pending_role_request' => true,
+                    'redirect_url'         => '/contractor/homepage'
                 ], 201);
             } else {
                 return response()->json(['success' => true, 'message' => 'Request submitted — awaiting admin approval', 'redirect' => '/contractor/homepage']);

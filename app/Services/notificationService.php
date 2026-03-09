@@ -94,11 +94,11 @@ class notificationService
         'milestone_resubmitted'    => 'both',
         'milestone_updated'        => 'both',
 
-        // Progress notifications — owner reviews progress
+        // Progress notifications — owner sees submission; contractor receives the outcome
         'progress_submitted'  => 'owner',
-        'progress_approved'   => 'owner',
-        'progress_rejected'   => 'owner',
-        'progress_updated'    => 'owner',
+        'progress_approved'   => 'contractor',
+        'progress_rejected'   => 'contractor',
+        'progress_updated'    => 'contractor',
 
         // Payment notifications — both roles are involved
         'payment_submitted'       => 'both',
