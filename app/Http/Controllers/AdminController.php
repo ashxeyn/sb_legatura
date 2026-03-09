@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use App\Models\User;
+use App\Models\user;
 use App\Services\notificationService;
 use App\Services\userActivityLogger;
 use Illuminate\Support\Facades\DB;
@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Session;
 
-class AdminController extends Controller
+class adminController extends Controller
 {
 
     // ─── Account Suspension Example (Integration) ─────────────────────────────
