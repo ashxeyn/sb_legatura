@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\App;
+use Illuminate\Support\Facades\Schema;
 use Laravel\Sanctum\PersonalAccessToken;
 use App\Services\notificationService;
 use App\Services\milestoneService;
@@ -2324,14 +2325,30 @@ class projectsController extends Controller
                 ], 404);
             }
 
-            // Update bid status to rejected
+            // Save rejection reason and update bid status (guard columns against DB schema)
+            $reason = $request->input('reason') ?? null;
+
+            $updatePayload = ['bid_status' => 'rejected'];
+
+            // Save textual reason when column exists
+            if (Schema::hasColumn('bids', 'reason')) {
+                $updatePayload['reason'] = $reason;
+            }
+
+            // Save decision_date if present in schema
+            if (Schema::hasColumn('bids', 'decision_date')) {
+                $updatePayload['decision_date'] = now();
+            }
+
+            // Optionally update the updated_at timestamp if present
+            if (Schema::hasColumn('bids', 'updated_at')) {
+                $updatePayload['updated_at'] = now();
+            }
+
             DB::table('bids')
                 ->where('bid_id', $bidId)
                 ->where('project_id', $projectId)
-                ->update([
-                    'bid_status' => 'rejected',
-                    'updated_at' => now()
-                ]);
+                ->update($updatePayload);
 
             // Notify contractor whose bid was rejected
             $rejBid = DB::table('bids')->where('bid_id', $bidId)->first();
