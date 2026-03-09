@@ -841,6 +841,48 @@
     </footer>
     </div><!-- /.main-content -->
 
+    <!-- ── Admin Access Code Modal (first step) ─────────────────────── -->
+    <div id="adminCodeModal" class="admin-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="adminCodeTitle">
+        <div class="admin-modal-card">
+            <button type="button" class="admin-modal-close" id="adminCodeModalClose" aria-label="Close">
+                <i class="ri-close-line"></i>
+            </button>
+
+            <div class="admin-modal-body">
+                <!-- Logo -->
+                <div class="admin-modal-logo-wrap">
+                    <div class="admin-modal-logo-ring"></div>
+                    <img src="{{ asset('img/logo2.0.svg') }}" alt="Legatura" class="admin-modal-logo" loading="eager">
+                </div>
+
+                <!-- Header -->
+                <div class="admin-modal-header">
+                    <h2 id="adminCodeTitle" class="admin-modal-title">Admin Access</h2>
+                    <p class="admin-modal-subtitle">Enter access code to continue</p>
+                </div>
+
+                <div class="admin-modal-divider"></div>
+
+                <div id="adminCodeError" class="admin-alert admin-alert-error" style="display: none;">
+                    <span class="admin-alert-icon"><i class="ri-error-warning-line"></i></span>
+                    <p>Invalid access code. Please try again.</p>
+                </div>
+
+                <form class="admin-modal-form" id="adminCodeForm" autocomplete="off">
+                    <div class="admin-form-group">
+                        <span class="admin-field-message" id="adminCodeFieldError" style="display: none;">Access code is required</span>
+                        <label class="admin-field">
+                            <span class="admin-field-icon"><i class="ri-key-line"></i></span>
+                            <input type="text" id="adminCodeInput" name="access_code" placeholder="Enter Access Code"
+                                autocomplete="off" maxlength="20">
+                        </label>
+                    </div>
+                    <button type="submit" class="admin-modal-btn">Verify Code</button>
+                </form>
+            </div><!-- /.admin-modal-body -->
+        </div>
+    </div>
+
     <!-- ── Admin Login Modal (secret access) ─────────────────────── -->
     <div id="adminLoginModal" class="admin-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="adminModalTitle"
         data-auto-open="{{ (session('error') || $errors->any()) ? 'true' : 'false' }}">
@@ -880,7 +922,7 @@
                         <label class="admin-field">
                             <span class="admin-field-icon"><i class="ri-mail-line"></i></span>
                             <input type="text" name="username" placeholder="Username or Email"
-                                value="{{ old('username') }}" required autocomplete="off"
+                                value="{{ old('username') }}" autocomplete="off"
                                 class="@if($errors->has('username')) admin-input-error @endif">
                         </label>
                     </div>
@@ -891,7 +933,7 @@
                         <label class="admin-field">
                             <span class="admin-field-icon"><i class="ri-lock-line"></i></span>
                             <input type="password" name="password" placeholder="Password"
-                                required autocomplete="new-password"
+                                autocomplete="new-password"
                                 class="@if($errors->has('password')) admin-input-error @endif">
                             <button type="button" class="admin-toggle-pw" aria-label="Toggle password visibility">
                                 <i class="ri-eye-line"></i>

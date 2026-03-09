@@ -32,11 +32,12 @@ class Kernel extends HttpKernel
         ],
     ];
 
-    protected $routeMiddleware = [
+    protected $middlewareAliases = [
         'auth' => \App\Http\Middleware\Authenticate::class,
         'guest' => \App\Http\Middleware\RedirectIfAuthenticated::class,
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         'admin.session' => \App\Http\Middleware\AdminSessionGuard::class,
+        'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
 
         // IMPORTANT → your admin middleware
         'admin.auth' => \App\Http\Middleware\AdminAuthMiddleware::class,

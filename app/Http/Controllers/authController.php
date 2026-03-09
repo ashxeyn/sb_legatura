@@ -115,14 +115,28 @@ class authController extends Controller
             return $this->apiLogin($request);
         }
 
-        // Validate basic fields
-        $request->validate([
-            'username' => 'required|string',
-            'password' => 'required|string',
-        ]);
+        // Check if this is an admin-only login request (from /admin/login route)
+        $isAdminRoute = $request->is('admin/login');
+
+        // Validate basic fields with custom messages
+        try {
+            $request->validate([
+                'username' => 'required|string',
+                'password' => 'required|string',
+            ], [
+                'username.required' => 'Username or email is required',
+                'password.required' => 'Password is required',
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // For admin login route, redirect to landing page
+            if ($isAdminRoute) {
+                return redirect('/')->withErrors($e->validator)->withInput();
+            }
+            throw $e;
+        }
 
         try {
-            $result = $this->authService->login($request->username, $request->password);
+            $result = $this->authService->login($request->username, $request->password, $isAdminRoute);
 
             if (!empty($result['success'])) {
                 $user = $result['user'] ?? null;
@@ -198,6 +212,16 @@ class authController extends Controller
                 Session::put('login_attempts_' . $ip, $attempts);
                 UserActivityLogger::failedLogin($userId, $attempts, $ip);
 
+                // For admin login route, redirect to landing page
+                if ($isAdminRoute) {
+                    if ($hasUsernameError && !$hasPasswordError) {
+                        $request->session()->forget('_old_input');
+                        return redirect('/')->withErrors($result['errors']);
+                    }
+                    return redirect('/')->withErrors($result['errors'])->withInput();
+                }
+
+                // For regular login, use back()
                 if ($hasUsernameError && !$hasPasswordError) {
                     $request->session()->forget('_old_input');
                     return back()->withErrors($result['errors']);
@@ -213,9 +237,20 @@ class authController extends Controller
             Session::put('login_attempts_' . $ip, $attempts);
             UserActivityLogger::failedLogin($userId, $attempts, $ip);
 
+            // For admin login route, redirect to landing page
+            if ($isAdminRoute) {
+                return redirect('/')->with('error', $result['message'] ?? 'Invalid credentials')->withInput();
+            }
+
             return back()->with('error', $result['message'] ?? 'Invalid credentials')->withInput();
         } catch (\Exception $e) {
             \Log::error('Web login error: ' . $e->getMessage());
+            
+            // For admin login route, redirect to landing page
+            if ($isAdminRoute) {
+                return redirect('/')->with('error', 'An error occurred during login')->withInput();
+            }
+            
             return back()->with('error', 'An error occurred during login')->withInput();
         }
     }
@@ -3508,9 +3543,19 @@ class authController extends Controller
                 'password' => 'required|string'
             ]);
 
-            $result = $this->authService->login($request->username, $request->password);
+            // Mobile API login - block admin accounts
+            $result = $this->authService->login($request->username, $request->password, false);
 
             if ($result['success']) {
+                // Check if this is an admin account trying to login via mobile
+                if (isset($result['userType']) && $result['userType'] === 'admin') {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Admin accounts cannot login via mobile app. Please use the web portal.',
+                        'error_code' => 'admin_not_allowed'
+                    ], 403);
+                }
+
                 $userData = $result['user'];
 
                 // Convert stdClass to Eloquent User model for Sanctum token creation

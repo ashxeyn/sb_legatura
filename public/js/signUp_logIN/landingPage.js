@@ -533,52 +533,143 @@ if (hero && heroImg) {
 (function () {
     const isDesktop = () => window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 
-    const overlay  = document.getElementById('adminLoginModal');
-    const closeBtn = document.getElementById('adminModalClose');
+    const codeOverlay = document.getElementById('adminCodeModal');
+    const codeCloseBtn = document.getElementById('adminCodeModalClose');
+    const codeForm = document.getElementById('adminCodeForm');
+    const codeInput = document.getElementById('adminCodeInput');
+    const codeError = document.getElementById('adminCodeError');
+    const codeFieldError = document.getElementById('adminCodeFieldError');
 
-    function openAdminModal() {
-        if (!overlay) return;
-        overlay.classList.add('is-open');
+    const loginOverlay = document.getElementById('adminLoginModal');
+    const loginCloseBtn = document.getElementById('adminModalClose');
+
+    const ADMIN_ACCESS_CODE = '202689723';
+    let codeVerified = false;
+
+    function openCodeModal() {
+        if (!codeOverlay) return;
+        codeOverlay.classList.add('is-open');
         document.body.style.overflow = 'hidden';
         document.documentElement.style.overflow = 'hidden';
-        const firstInput = overlay.querySelector('input');
-        if (firstInput) setTimeout(() => firstInput.focus(), 280);
+        if (codeInput) {
+            codeInput.value = '';
+            codeInput.classList.remove('admin-input-error');
+            setTimeout(() => codeInput.focus(), 280);
+        }
+        if (codeError) codeError.style.display = 'none';
+        if (codeFieldError) codeFieldError.style.display = 'none';
     }
 
-    function closeAdminModal() {
-        if (!overlay) return;
-        overlay.classList.remove('is-open');
+    function closeCodeModal() {
+        if (!codeOverlay) return;
+        codeOverlay.classList.remove('is-open');
         document.body.style.overflow = '';
         document.documentElement.style.overflow = '';
     }
 
-    // Auto-open if the page was redirected back with errors
-    if (overlay && overlay.dataset.autoOpen === 'true') {
-        openAdminModal();
+    function openAdminModal() {
+        if (!loginOverlay) return;
+        loginOverlay.classList.add('is-open');
+        document.body.style.overflow = 'hidden';
+        document.documentElement.style.overflow = 'hidden';
+        const firstInput = loginOverlay.querySelector('input');
+        if (firstInput) setTimeout(() => firstInput.focus(), 280);
     }
 
-    // Close on backdrop click
-    if (overlay) {
-        overlay.addEventListener('click', (e) => {
-            if (e.target === overlay) closeAdminModal();
+    function closeAdminModal() {
+        if (!loginOverlay) return;
+        loginOverlay.classList.remove('is-open');
+        document.body.style.overflow = '';
+        document.documentElement.style.overflow = '';
+    }
+
+    // Code form submission
+    if (codeForm) {
+        codeForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+
+            const enteredCode = codeInput.value.trim();
+
+            // Validate empty
+            if (!enteredCode) {
+                if (codeFieldError) codeFieldError.style.display = 'flex';
+                if (codeInput) codeInput.classList.add('admin-input-error');
+                if (codeError) codeError.style.display = 'none';
+                return;
+            }
+
+            // Validate code
+            if (enteredCode === ADMIN_ACCESS_CODE) {
+                codeVerified = true;
+                closeCodeModal();
+                setTimeout(() => openAdminModal(), 300);
+            } else {
+                if (codeError) codeError.style.display = 'flex';
+                if (codeInput) {
+                    codeInput.classList.add('admin-input-error');
+                    codeInput.value = '';
+                    codeInput.focus();
+                }
+                if (codeFieldError) codeFieldError.style.display = 'none';
+            }
         });
     }
 
-    // Close button
-    if (closeBtn) {
-        closeBtn.addEventListener('click', closeAdminModal);
+    // Clear errors on input
+    if (codeInput) {
+        codeInput.addEventListener('input', () => {
+            if (codeInput.value.trim()) {
+                codeInput.classList.remove('admin-input-error');
+                if (codeFieldError) codeFieldError.style.display = 'none';
+                if (codeError) codeError.style.display = 'none';
+            }
+        });
+    }
+
+    // Auto-open login modal if page was redirected back with errors
+    if (loginOverlay && loginOverlay.dataset.autoOpen === 'true') {
+        codeVerified = true; // Skip code verification if coming back with errors
+        openAdminModal();
+    }
+
+    // Close code modal on backdrop click
+    if (codeOverlay) {
+        codeOverlay.addEventListener('click', (e) => {
+            if (e.target === codeOverlay) closeCodeModal();
+        });
+    }
+
+    // Close code modal button
+    if (codeCloseBtn) {
+        codeCloseBtn.addEventListener('click', closeCodeModal);
+    }
+
+    // Close login modal on backdrop click
+    if (loginOverlay) {
+        loginOverlay.addEventListener('click', (e) => {
+            if (e.target === loginOverlay) closeAdminModal();
+        });
+    }
+
+    // Close login modal button
+    if (loginCloseBtn) {
+        loginCloseBtn.addEventListener('click', closeAdminModal);
     }
 
     // Close on Escape
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && overlay && overlay.classList.contains('is-open')) {
-            closeAdminModal();
+        if (e.key === 'Escape') {
+            if (codeOverlay && codeOverlay.classList.contains('is-open')) {
+                closeCodeModal();
+            } else if (loginOverlay && loginOverlay.classList.contains('is-open')) {
+                closeAdminModal();
+            }
         }
     });
 
-    // Password toggle inside modal
-    if (overlay) {
-        overlay.querySelectorAll('.admin-toggle-pw').forEach(btn => {
+    // Password toggle inside login modal
+    if (loginOverlay) {
+        loginOverlay.querySelectorAll('.admin-toggle-pw').forEach(btn => {
             btn.addEventListener('click', () => {
                 const input = btn.closest('.admin-field').querySelector('input');
                 const icon  = btn.querySelector('i');
@@ -592,6 +683,96 @@ if (hero && heroImg) {
                 }
             });
         });
+    }
+
+    // Client-side validation for admin login form
+    if (loginOverlay) {
+        const form = loginOverlay.querySelector('.admin-modal-form');
+        const usernameInput = form?.querySelector('input[name="username"]');
+        const passwordInput = form?.querySelector('input[name="password"]');
+
+        // Helper function to show error
+        function showError(input, message) {
+            const formGroup = input.closest('.admin-form-group');
+            if (!formGroup) return;
+
+            // Remove existing error message
+            const existingError = formGroup.querySelector('.admin-field-message');
+            if (existingError) existingError.remove();
+
+            // Add error class to input
+            input.classList.add('admin-input-error');
+
+            // Create and insert error message
+            const errorSpan = document.createElement('span');
+            errorSpan.className = 'admin-field-message';
+            errorSpan.textContent = message;
+            formGroup.insertBefore(errorSpan, formGroup.querySelector('.admin-field'));
+        }
+
+        // Helper function to clear error
+        function clearError(input) {
+            const formGroup = input.closest('.admin-form-group');
+            if (!formGroup) return;
+
+            // Remove error message
+            const errorMsg = formGroup.querySelector('.admin-field-message');
+            if (errorMsg) errorMsg.remove();
+
+            // Remove error class
+            input.classList.remove('admin-input-error');
+        }
+
+        // Clear errors on input
+        if (usernameInput) {
+            usernameInput.addEventListener('input', () => {
+                if (usernameInput.value.trim()) {
+                    clearError(usernameInput);
+                }
+            });
+        }
+
+        if (passwordInput) {
+            passwordInput.addEventListener('input', () => {
+                if (passwordInput.value.trim()) {
+                    clearError(passwordInput);
+                }
+            });
+        }
+
+        // Form submission validation
+        if (form) {
+            form.addEventListener('submit', (e) => {
+                let hasError = false;
+
+                // Validate username
+                if (!usernameInput.value.trim()) {
+                    e.preventDefault();
+                    showError(usernameInput, 'Username or email is required');
+                    hasError = true;
+                } else {
+                    clearError(usernameInput);
+                }
+
+                // Validate password
+                if (!passwordInput.value.trim()) {
+                    e.preventDefault();
+                    showError(passwordInput, 'Password is required');
+                    hasError = true;
+                } else {
+                    clearError(passwordInput);
+                }
+
+                // Focus first error field
+                if (hasError) {
+                    if (!usernameInput.value.trim()) {
+                        usernameInput.focus();
+                    } else if (!passwordInput.value.trim()) {
+                        passwordInput.focus();
+                    }
+                }
+            });
+        }
     }
 
     // Method 1: Logo multi-click (5 times within 3 seconds)
@@ -608,7 +789,12 @@ if (hero && heroImg) {
             if (clickCount === 5) {
                 clickCount = 0;
                 clearTimeout(clickTimer);
-                openAdminModal();
+                // Open code modal first if not verified
+                if (!codeVerified) {
+                    openCodeModal();
+                } else {
+                    openAdminModal();
+                }
                 return;
             }
 
@@ -623,7 +809,12 @@ if (hero && heroImg) {
     document.addEventListener('keydown', (e) => {
         if (!isDesktop()) return;
         if (e.ctrlKey && e.shiftKey && e.key === 'A') {
-            openAdminModal();
+            // Open code modal first if not verified
+            if (!codeVerified) {
+                openCodeModal();
+            } else {
+                openAdminModal();
+            }
         }
     });
 })();
