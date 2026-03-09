@@ -1304,6 +1304,7 @@ html, body {
         overscroll-behavior-x: contain;
         scroll-snap-type: x mandatory;
         -webkit-overflow-scrolling: touch;
+        align-items: flex-start;
         gap: 12px !important;
         padding-inline: 6px !important;
         scroll-padding-inline: 6px;
@@ -1313,6 +1314,11 @@ html, body {
     .features-track::-webkit-scrollbar {
         display: none;
     }
+    /* Wrapper becomes invisible in flex layout — its cards are individual flex items */
+    .features-track > div:not(.feature-card) {
+        display: contents !important;
+    }
+    /* All feature-cards (incl. formerly-wrapped) are full-width carousel slides */
     .features-track .feature-card {
         flex: 0 0 calc(100% - 8px) !important;
         max-width: calc(100% - 8px) !important;
@@ -2097,6 +2103,7 @@ html, body {
         overscroll-behavior-x: contain;
         scroll-snap-type: x mandatory;
         -webkit-overflow-scrolling: touch;
+        align-items: flex-start;
         gap: 12px !important;
         padding-inline: 6px !important;
         scroll-padding-inline: 6px;
@@ -2105,6 +2112,10 @@ html, body {
     }
     #featuresHighlightTrack::-webkit-scrollbar {
         display: none;
+    }
+    /* Wrapper div dissolves — its cards become individual flex slides */
+    #featuresHighlightTrack > div:not(.feature-card) {
+        display: contents !important;
     }
     #featuresHighlightTrack .feature-card {
         flex: 0 0 calc(100% - 8px) !important;

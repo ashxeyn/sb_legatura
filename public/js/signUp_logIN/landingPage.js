@@ -178,7 +178,15 @@ if (hero && heroImg) {
     const dotsWrap = document.getElementById('featuresDots');
     if (!track || !dotsWrap) return;
 
-    const slides = Array.from(track.querySelectorAll('.feature-card'));
+    // Expand wrapper children so each feature-card is an individual slide
+    const slides = [];
+    Array.from(track.children).forEach(child => {
+        if (child.classList.contains('feature-card')) {
+            slides.push(child);
+        } else {
+            Array.from(child.querySelectorAll('.feature-card')).forEach(c => slides.push(c));
+        }
+    });
     if (!slides.length) return;
 
     const isMobile = () => window.matchMedia('(max-width: 768px)').matches;
@@ -320,7 +328,15 @@ if (hero && heroImg) {
     const dotsWrap = document.getElementById('featuresHighlightDots');
     if (!track || !dotsWrap) return;
 
-    const slides = Array.from(track.querySelectorAll('.feature-card'));
+    // Expand wrapper children so each feature-card is an individual slide
+    const slides = [];
+    Array.from(track.children).forEach(child => {
+        if (child.classList.contains('feature-card')) {
+            slides.push(child);
+        } else {
+            Array.from(child.querySelectorAll('.feature-card')).forEach(c => slides.push(c));
+        }
+    });
     if (!slides.length) return;
 
     const isMobile = () => window.matchMedia('(max-width: 768px)').matches;
