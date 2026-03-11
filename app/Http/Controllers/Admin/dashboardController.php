@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use App\Http\Controllers\authController;
@@ -13,10 +14,15 @@ class dashboardController extends authController
      */
     public function index()
     {
+        // Default period matches the "This Year" pill that is active on page load
+        $defaultRange = $this->getRangeStartEnd('thisyear');
+        $defaultStart = $defaultRange['start'];
+        $defaultEnd   = $defaultRange['end'];
+
         $topContractors = $this->getTopContractors();
         $topPropertyOwners = $this->getTopPropertyOwners();
-        $activeUsersData = $this->getActiveUsersData();
-        $dashboardStats = $this->getDashboardStats();
+        $activeUsersData = $this->getActiveUsersData($defaultStart, $defaultEnd);
+        $dashboardStats = $this->getDashboardStats($defaultStart, $defaultEnd);
 
         // Get chart data for all filters
         $totalUsersChartData = $this->getTotalUsersChartData();
@@ -29,11 +35,11 @@ class dashboardController extends authController
         $activeBidsMetrics = $this->getActiveBidsMetrics();
         $revenueMetrics = $this->getRevenueMetrics();
 
-        // Get breakdown data for stat cards
-        $totalUsersBreakdown = $this->getTotalUsersBreakdown();
-        $newUsersBreakdown = $this->getNewUsersBreakdown();
-        $activeUsersBreakdown = $this->getActiveUsersBreakdownData();
-        $pendingReviewsBreakdown = $this->getPendingReviewsBreakdown();
+        // Get breakdown data for stat cards (all scoped to the default period)
+        $totalUsersBreakdown     = $this->getTotalUsersBreakdown($defaultStart, $defaultEnd);
+        $newUsersBreakdown       = $this->getNewUsersBreakdown($defaultStart, $defaultEnd);
+        $activeUsersBreakdown    = $this->getActiveUsersBreakdownData($defaultStart, $defaultEnd);
+        $pendingReviewsBreakdown = $this->getPendingReviewsBreakdown($defaultStart, $defaultEnd);
 
         // Top Projects with Bids
         $topProjects = $this->getTopProjectsWithBids();
@@ -63,33 +69,78 @@ class dashboardController extends authController
     }
 
     /**
-     * Get earnings data for AJAX request (JSON response)
+     * Get earnings data for AJAX request.
+     * Accepts either ?range=<key> (server computes dates) or ?start=Y-m-d&end=Y-m-d.
      */
-    public function getEarnings(\Illuminate\Http\Request $request)
+    public function getEarnings(Request $request)
     {
-        $startDate = $request->input('start');
-        $endDate = $request->input('end');
-
-        if (!$startDate || !$endDate) {
-            return response()->json(['error' => 'Invalid date range'], 400);
+        if ($request->filled('range')) {
+            ['start' => $startDate, 'end' => $endDate] =
+                $this->resolveEarningsRange($request->input('range'));
+        } elseif ($request->filled('start') && $request->filled('end')) {
+            $startDate = $request->input('start');
+            $endDate   = $request->input('end');
+            if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $startDate)
+                || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $endDate)
+                || $startDate > $endDate) {
+                return response()->json(['error' => 'Invalid date range'], 422);
+            }
+        } else {
+            return response()->json(['error' => 'Missing range or start/end parameters'], 400);
         }
 
-        $earningsData = $this->getEarningsMetricsForRange($startDate, $endDate);
-
-        return response()->json($earningsData);
+        return response()->json($this->getEarningsForGlobalRange($startDate, $endDate));
     }
 
     /**
-     * Get top projects with most bids (limit 4)
+     * Map a named earnings range key to concrete start / end dates (server-side).
      */
-    private function getTopProjectsWithBids($limit = 4)
+    private function resolveEarningsRange(string $range): array
     {
-        // Join projects, property_owners, and count bids
-        $projects = DB::table('projects')
+        $today = new \DateTime('today');
+        switch ($range) {
+            case 'today':
+                $start = $end = $today->format('Y-m-d');
+                break;
+            case 'yesterday':
+                $start = $end = (clone $today)->modify('-1 day')->format('Y-m-d');
+                break;
+            case 'last7days':
+                $start = (clone $today)->modify('-6 days')->format('Y-m-d');
+                $end   = $today->format('Y-m-d');
+                break;
+            case 'thismonth':
+                $start = (clone $today)->modify('first day of this month')->format('Y-m-d');
+                $end   = (clone $today)->modify('last day of this month')->format('Y-m-d');
+                break;
+            case 'lastmonth':
+                $start = (clone $today)->modify('first day of last month')->format('Y-m-d');
+                $end   = (clone $today)->modify('last day of last month')->format('Y-m-d');
+                break;
+            case 'last3months':
+                $start = (clone $today)->modify('first day of -2 months')->format('Y-m-d');
+                $end   = $today->format('Y-m-d');
+                break;
+            case 'thisyear':
+                $start = $today->format('Y-01-01');
+                $end   = $today->format('Y-12-31');
+                break;
+            default:
+                $start = (clone $today)->modify('first day of this month')->format('Y-m-d');
+                $end   = (clone $today)->modify('last day of this month')->format('Y-m-d');
+        }
+        return compact('start', 'end');
+    }
+
+    /**
+     * Get top projects with most bids (limit 4), optionally filtered by date range.
+     */
+    private function getTopProjectsWithBids($limit = 4, ?string $start = null, ?string $end = null)
+    {
+        $qb = DB::table('projects')
             ->select(
                 'projects.project_id',
                 'projects.project_title',
-                // No project_image in schema, use NULL as placeholder
                 DB::raw('NULL as project_image'),
                 'projects.project_status',
                 DB::raw("COALESCE(property_owners.first_name, '') as first_name"),
@@ -98,8 +149,13 @@ class dashboardController extends authController
             )
             ->leftJoin('project_relationships', 'projects.relationship_id', '=', 'project_relationships.rel_id')
             ->leftJoin('property_owners', 'project_relationships.owner_id', '=', 'property_owners.owner_id')
-            ->leftJoin('bids', 'projects.project_id', '=', 'bids.project_id')
-            ->groupBy(
+            ->leftJoin('bids', 'projects.project_id', '=', 'bids.project_id');
+
+        if ($start !== null && $end !== null) {
+            $qb->whereBetween('project_relationships.created_at', [$start, $end . ' 23:59:59']);
+        }
+
+        $projects = $qb->groupBy(
                 'projects.project_id',
                 'projects.project_title',
                 'projects.project_status',
@@ -110,7 +166,6 @@ class dashboardController extends authController
             ->limit($limit)
             ->get();
 
-        // Map status to label (example: 'on_bid' => 'On Bid')
         foreach ($projects as $p) {
             $p->status_label = $this->mapProjectStatus($p->project_status);
         }
@@ -137,42 +192,42 @@ class dashboardController extends authController
     /**
      * Get projects metrics and monthly series
      */
-    private function getProjectsMetrics()
+    private function getProjectsMetrics(?string $start = null, ?string $end = null)
     {
+        [$start, $end] = $this->resolveRange($start, $end);
+
         $totalProjects = DB::table('projects')->count();
+
+        $buckets = $this->buildMonthBuckets($start, $end);
 
         // projects table has no created_at; use project_relationships.created_at instead
         $monthlyData = DB::table('project_relationships')
             ->select(
-                DB::raw('MONTH(created_at) as month'),
+                DB::raw("DATE_FORMAT(created_at, '%Y-%m') as ym"),
                 DB::raw('COUNT(*) as count')
             )
-            ->whereRaw('YEAR(created_at) = YEAR(CURRENT_DATE)')
-            ->groupBy(DB::raw('MONTH(created_at)'))
-            ->orderBy(DB::raw('MONTH(created_at)'))
-            ->get();
+            ->whereBetween('created_at', [$start, $end . ' 23:59:59'])
+            ->groupBy(DB::raw("DATE_FORMAT(created_at, '%Y-%m')"))
+            ->orderBy(DB::raw("DATE_FORMAT(created_at, '%Y-%m')"))
+            ->get()
+            ->pluck('count', 'ym');
 
-        $months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-        $monthlyArray = array_fill(0, 12, 0);
-        foreach ($monthlyData as $d) {
-            $monthlyArray[$d->month - 1] = $d->count;
+        $months = array_values($buckets);
+        $data   = [];
+        foreach (array_keys($buckets) as $ym) {
+            $data[] = (int) ($monthlyData[$ym] ?? 0);
         }
 
-        $curMonthIndex = (int)date('n') - 1;
-        $cur = $monthlyArray[$curMonthIndex];
-        $prev = $curMonthIndex > 0 ? $monthlyArray[$curMonthIndex - 1] : 0;
-        $pctChange = 0;
-        if ($prev == 0) {
-            $pctChange = $cur > 0 ? round(100.0, 2) : 0;
-        } else {
-            $pctChange = round((($cur - $prev) / $prev) * 100, 2);
-        }
+        $n          = count($data);
+        $cur        = $n > 0 ? $data[$n - 1] : 0;
+        $prev       = $n > 1 ? $data[$n - 2] : 0;
+        $pctChange  = $prev == 0 ? ($cur > 0 ? 100.0 : 0.0) : round((($cur - $prev) / $prev) * 100, 2);
 
         return [
-            'total' => $totalProjects,
-            'months' => $months,
-            'data' => $monthlyArray,
-            'label' => 'Total Projects',
+            'total'     => $totalProjects,
+            'months'    => $months,
+            'data'      => $data,
+            'label'     => 'Total Projects',
             'pctChange' => $pctChange,
         ];
     }
@@ -180,45 +235,43 @@ class dashboardController extends authController
     /**
      * Get active bids metrics and monthly series
      */
-    private function getActiveBidsMetrics()
+    private function getActiveBidsMetrics(?string $start = null, ?string $end = null)
     {
-        $activeStatuses = ['submitted','under_review'];
-        $totalActiveBids = DB::table('bids')
-            ->whereIn('bid_status', $activeStatuses)
-            ->count();
+        [$start, $end] = $this->resolveRange($start, $end);
+
+        $activeStatuses  = ['submitted', 'under_review'];
+        $totalActiveBids = DB::table('bids')->whereIn('bid_status', $activeStatuses)->count();
+
+        $buckets = $this->buildMonthBuckets($start, $end);
 
         $monthlyData = DB::table('bids')
             ->select(
-                DB::raw('MONTH(submitted_at) as month'),
+                DB::raw("DATE_FORMAT(submitted_at, '%Y-%m') as ym"),
                 DB::raw('COUNT(*) as count')
             )
             ->whereIn('bid_status', $activeStatuses)
-            ->whereRaw('YEAR(submitted_at) = YEAR(CURRENT_DATE)')
-            ->groupBy(DB::raw('MONTH(submitted_at)'))
-            ->orderBy(DB::raw('MONTH(submitted_at)'))
-            ->get();
+            ->whereBetween('submitted_at', [$start, $end . ' 23:59:59'])
+            ->groupBy(DB::raw("DATE_FORMAT(submitted_at, '%Y-%m')"))
+            ->orderBy(DB::raw("DATE_FORMAT(submitted_at, '%Y-%m')"))
+            ->get()
+            ->pluck('count', 'ym');
 
-        $months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-        $monthlyArray = array_fill(0, 12, 0);
-        foreach ($monthlyData as $d) {
-            $monthlyArray[$d->month - 1] = $d->count;
+        $months = array_values($buckets);
+        $data   = [];
+        foreach (array_keys($buckets) as $ym) {
+            $data[] = (int) ($monthlyData[$ym] ?? 0);
         }
 
-        $curMonthIndex = (int)date('n') - 1;
-        $cur = $monthlyArray[$curMonthIndex];
-        $prev = $curMonthIndex > 0 ? $monthlyArray[$curMonthIndex - 1] : 0;
-        $pctChange = 0;
-        if ($prev == 0) {
-            $pctChange = $cur > 0 ? round(100.0, 2) : 0;
-        } else {
-            $pctChange = round((($cur - $prev) / $prev) * 100, 2);
-        }
+        $n         = count($data);
+        $cur       = $n > 0 ? $data[$n - 1] : 0;
+        $prev      = $n > 1 ? $data[$n - 2] : 0;
+        $pctChange = $prev == 0 ? ($cur > 0 ? 100.0 : 0.0) : round((($cur - $prev) / $prev) * 100, 2);
 
         return [
-            'total' => $totalActiveBids,
-            'months' => $months,
-            'data' => $monthlyArray,
-            'label' => 'Active Bids',
+            'total'     => $totalActiveBids,
+            'months'    => $months,
+            'data'      => $data,
+            'label'     => 'Active Bids',
             'pctChange' => $pctChange,
         ];
     }
@@ -226,59 +279,57 @@ class dashboardController extends authController
     /**
      * Get revenue metrics and monthly series (milestone + platform payments, approved)
      */
-    private function getRevenueMetrics()
+    private function getRevenueMetrics(?string $start = null, ?string $end = null)
     {
+        [$start, $end] = $this->resolveRange($start, $end);
+        $endWithTime   = $end . ' 23:59:59';
+
+        $buckets = $this->buildMonthBuckets($start, $end);
+
         // milestone payments approved (payment_status = 'approved')
         $milestoneMonthly = DB::table('milestone_payments')
             ->select(
-                DB::raw('MONTH(transaction_date) as month'),
+                DB::raw("DATE_FORMAT(transaction_date, '%Y-%m') as ym"),
                 DB::raw('IFNULL(SUM(amount),0) as sum')
             )
             ->where('payment_status', 'approved')
-            ->whereRaw('YEAR(transaction_date) = YEAR(CURRENT_DATE)')
-            ->groupBy(DB::raw('MONTH(transaction_date)'))
-            ->orderBy(DB::raw('MONTH(transaction_date)'))
-            ->get();
+            ->whereBetween('transaction_date', [$start, $endWithTime])
+            ->groupBy(DB::raw("DATE_FORMAT(transaction_date, '%Y-%m')"))
+            ->orderBy(DB::raw("DATE_FORMAT(transaction_date, '%Y-%m')"))
+            ->get()
+            ->pluck('sum', 'ym');
 
         // platform payments approved (is_approved = 1)
         $platformMonthly = DB::table('platform_payments')
             ->select(
-                DB::raw('MONTH(transaction_date) as month'),
+                DB::raw("DATE_FORMAT(transaction_date, '%Y-%m') as ym"),
                 DB::raw('IFNULL(SUM(amount),0) as sum')
             )
             ->where('is_approved', 1)
-            ->whereRaw('YEAR(transaction_date) = YEAR(CURRENT_DATE)')
-            ->groupBy(DB::raw('MONTH(transaction_date)'))
-            ->orderBy(DB::raw('MONTH(transaction_date)'))
-            ->get();
+            ->whereBetween('transaction_date', [$start, $endWithTime])
+            ->groupBy(DB::raw("DATE_FORMAT(transaction_date, '%Y-%m')"))
+            ->orderBy(DB::raw("DATE_FORMAT(transaction_date, '%Y-%m')"))
+            ->get()
+            ->pluck('sum', 'ym');
 
-        $months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-        $monthlyArray = array_fill(0, 12, 0.0);
-
-        foreach ($milestoneMonthly as $m) {
-            $monthlyArray[$m->month - 1] += floatval($m->sum);
-        }
-        foreach ($platformMonthly as $p) {
-            $monthlyArray[$p->month - 1] += floatval($p->sum);
+        $months = array_values($buckets);
+        $data   = [];
+        foreach (array_keys($buckets) as $ym) {
+            $data[] = floatval($milestoneMonthly[$ym] ?? 0) + floatval($platformMonthly[$ym] ?? 0);
         }
 
-        $totalRevenue = array_sum($monthlyArray);
+        $totalRevenue = array_sum($data);
 
-        $curMonthIndex = (int)date('n') - 1;
-        $cur = $monthlyArray[$curMonthIndex];
-        $prev = $curMonthIndex > 0 ? $monthlyArray[$curMonthIndex - 1] : 0;
-        $pctChange = 0;
-        if ($prev == 0) {
-            $pctChange = $cur > 0 ? round(100.0, 2) : 0;
-        } else {
-            $pctChange = round((($cur - $prev) / $prev) * 100, 2);
-        }
+        $n         = count($data);
+        $cur       = $n > 0 ? $data[$n - 1] : 0;
+        $prev      = $n > 1 ? $data[$n - 2] : 0;
+        $pctChange = $prev == 0 ? ($cur > 0 ? 100.0 : 0.0) : round((($cur - $prev) / $prev) * 100, 2);
 
         return [
-            'total' => $totalRevenue,
-            'months' => $months,
-            'data' => $monthlyArray,
-            'label' => 'Revenue',
+            'total'     => $totalRevenue,
+            'months'    => $months,
+            'data'      => $data,
+            'label'     => 'Revenue',
             'pctChange' => $pctChange,
         ];
     }
@@ -286,18 +337,31 @@ class dashboardController extends authController
     /**
      * Get dashboard statistics (Total Users, New Users, Active Users, Pending Reviews)
      */
-    private function getDashboardStats()
+    private function getDashboardStats(?string $start = null, ?string $end = null)
     {
-        // Total users
-        $totalUsers = DB::table('users')->count();
+        $hasPeriod = $start && $end;
+        $endTime   = $hasPeriod ? $end . ' 23:59:59' : null;
 
-        // New users (created today)
-        $newUsers = DB::table('users')
-            ->whereDate('created_at', DB::raw('CURDATE()'))
-            ->count();
+        // Total users = cumulative count up to (and including) the period end date.
+        // This reflects "how many users existed by the end of the selected window".
+        $totalUsersQb = DB::table('users');
+        if ($hasPeriod) {
+            $totalUsersQb->where('created_at', '<=', $endTime);
+        }
+        $totalUsers = $totalUsersQb->count();
 
-        // Active users (is_active = 1)
-        $activeUsers = DB::table('users')
+        // New users = registered strictly within the period window.
+        $newUsersQb = DB::table('users');
+        if ($hasPeriod) {
+            $newUsersQb->whereBetween('created_at', [$start, $endTime]);
+        } else {
+            $newUsersQb->whereDate('created_at', DB::raw('CURDATE()'));
+        }
+        $newUsers = $newUsersQb->count();
+
+        // Active users: account is_active = 1, cumulative up to the period end date.
+        // Answers: "how many accounts have the Active status as of the end of this window?"
+        $activeUsersQb = DB::table('users')
             ->where(function ($query) {
                 $query->whereExists(function ($sub) {
                     $sub->select(DB::raw(1))
@@ -311,18 +375,25 @@ class dashboardController extends authController
                         ->whereColumn('property_owners.user_id', 'users.user_id')
                         ->where('property_owners.is_active', 1);
                 });
-            })
-            ->count();
+            });
+        if ($hasPeriod) {
+            $activeUsersQb->where('users.created_at', '<=', $endTime);
+        }
+        $activeUsers = $activeUsersQb->count();
 
-        // Pending reviews (contractors with pending verification)
-        $pendingReviews = DB::table('contractors')
-            ->where('verification_status', 'pending')
-            ->count();
+        // Pending reviews: contractors still pending verification as of the period end date.
+        // Cumulative: includes anyone who applied before the end date and hasn't been resolved.
+        $pendingQb = DB::table('contractors')
+            ->where('verification_status', 'pending');
+        if ($hasPeriod) {
+            $pendingQb->where('created_at', '<=', $endTime);
+        }
+        $pendingReviews = $pendingQb->count();
 
         return [
-            'totalUsers' => $totalUsers,
-            'newUsers' => $newUsers,
-            'activeUsers' => $activeUsers,
+            'totalUsers'     => $totalUsers,
+            'newUsers'       => $newUsers,
+            'activeUsers'    => $activeUsers,
             'pendingReviews' => $pendingReviews,
         ];
     }
@@ -330,108 +401,113 @@ class dashboardController extends authController
     /**
      * Get top contractors based on completed projects
      */
-    private function getTopContractors($limit = 5)
+    private function getTopContractors(?string $start = null, ?string $end = null, $limit = 5)
     {
+        // Initial page load (no explicit dates): order by all-time completed_projects
+        if ($start === null && $end === null) {
+            return DB::table('contractors')
+                ->select(
+                    'contractors.contractor_id',
+                    'contractors.company_name',
+                    'contractors.completed_projects',
+                    'users.profile_pic',
+                    'contractor_types.type_name',
+                    DB::raw('contractors.completed_projects as period_count')
+                )
+                ->join('users', 'contractors.user_id', '=', 'users.user_id')
+                ->join('contractor_types', 'contractors.type_id', '=', 'contractor_types.type_id')
+                ->orderByDesc('contractors.completed_projects')
+                ->limit($limit)
+                ->get();
+        }
+
+        // Date-filtered: count projects created in the period assigned to each contractor
+        $periodCounts = DB::table('projects')
+            ->join('project_relationships', 'project_relationships.rel_id', '=', 'projects.relationship_id')
+            ->select(
+                'projects.selected_contractor_id',
+                DB::raw('COUNT(projects.project_id) as period_count')
+            )
+            ->whereNotNull('projects.selected_contractor_id')
+            ->whereBetween('project_relationships.created_at', [$start, $end . ' 23:59:59'])
+            ->groupBy('projects.selected_contractor_id');
+
         return DB::table('contractors')
             ->select(
                 'contractors.contractor_id',
                 'contractors.company_name',
                 'contractors.completed_projects',
                 'users.profile_pic',
-                'contractor_types.type_name'
+                'contractor_types.type_name',
+                DB::raw('IFNULL(pc.period_count, 0) as period_count')
             )
             ->join('users', 'contractors.user_id', '=', 'users.user_id')
             ->join('contractor_types', 'contractors.type_id', '=', 'contractor_types.type_id')
-            ->orderBy('contractors.completed_projects', 'desc')
+            ->leftJoinSub($periodCounts, 'pc', 'pc.selected_contractor_id', '=', 'contractors.contractor_id')
+            ->orderByDesc('pc.period_count')
+            ->orderByDesc('contractors.completed_projects')
             ->limit($limit)
             ->get();
     }
 
     /**
-     * Get top property owners based on completed projects
+     * Get top property owners based on projects in the selected period.
      */
-    private function getTopPropertyOwners($limit = 5)
+    private function getTopPropertyOwners(?string $start = null, ?string $end = null, $limit = 5)
     {
-        // Build a robust query that adapts to actual DB column names.
-        // Some environments use `user_id`/`owner_id` while others use `id`.
-        $propTable = 'property_owners';
-        $usersTable = 'users';
-        $projectsTable = 'projects';
+        $hasPic    = Schema::hasColumn('users', 'profile_pic');
+        $hasUserFk = Schema::hasColumn('property_owners', 'user_id');
 
-        // Decide user PK column
-        $userPk = Schema::hasColumn($usersTable, 'user_id') ? 'user_id' : 'id';
+        // Count projects per owner in the period (via project_relationships)
+        $periodCounts = DB::table('project_relationships')
+            ->select('owner_id', DB::raw('COUNT(*) as period_projects'));
 
-        // Decide property owner PK and FK names
-        $ownerPk = Schema::hasColumn($propTable, 'owner_id') ? 'owner_id' : 'id';
-        $ownerUserFk = Schema::hasColumn($propTable, 'user_id') ? 'user_id' : null;
+        if ($start !== null && $end !== null) {
+            $periodCounts->whereBetween('created_at', [$start, $end . ' 23:59:59']);
+        }
 
-        // Decide projects foreign key to property_owners
-        $projectsOwnerFk = Schema::hasColumn($projectsTable, 'owner_id') ? 'owner_id' : null;
+        $periodCounts->groupBy('owner_id');
 
         $selects = [
-            "$propTable.$ownerPk as owner_id",
-            "$propTable.first_name",
-            "$propTable.last_name",
+            'property_owners.owner_id',
+            'property_owners.first_name',
+            'property_owners.last_name',
+            DB::raw('IFNULL(pc.period_projects, 0) as completed_projects'),
         ];
 
-        // profile_pic may live on users table
-        if (Schema::hasColumn($usersTable, 'profile_pic') && $ownerUserFk) {
-            $selects[] = "$usersTable.profile_pic";
+        if ($hasPic && $hasUserFk) {
+            $selects[] = 'users.profile_pic';
         } else {
-            // fallback: null as profile_pic
             $selects[] = DB::raw('NULL as profile_pic');
         }
 
-        // Determine if we can count projects.project_id and how to join projects
-        $hasProjectId = Schema::hasColumn($projectsTable, 'project_id');
-        $countExpr = '0';
+        $qb = DB::table('property_owners')
+            ->leftJoinSub($periodCounts, 'pc', 'pc.owner_id', '=', 'property_owners.owner_id')
+            ->select($selects);
 
-        $qb = DB::table($propTable)->select($selects);
-
-        // join users if possible
-        if ($ownerUserFk && Schema::hasColumn($usersTable, $userPk)) {
-            $qb->join($usersTable, "$propTable.$ownerUserFk", '=', "$usersTable.$userPk");
+        if ($hasPic && $hasUserFk) {
+            $qb->join('users', 'property_owners.user_id', '=', 'users.user_id');
         }
 
-        if ($hasProjectId) {
-            // Prefer direct owner_id on projects if available
-            if (Schema::hasColumn($projectsTable, 'owner_id')) {
-                $qb->leftJoin($projectsTable, "$propTable.$ownerPk", '=', "$projectsTable.owner_id");
-                $countExpr = "COUNT($projectsTable.project_id)";
-            } elseif (Schema::hasColumn($projectsTable, 'relationship_id') && Schema::hasColumn('project_relationships', 'rel_id') && Schema::hasColumn('project_relationships', 'owner_id')) {
-                // join through project_relationships
-                $qb->leftJoin('project_relationships', "project_relationships.owner_id", '=', "$propTable.$ownerPk");
-                $qb->leftJoin($projectsTable, "$projectsTable.relationship_id", '=', "project_relationships.rel_id");
-                $countExpr = "COUNT($projectsTable.project_id)";
-            }
-        }
-
-        // Add completed_projects selection
-        if ($countExpr === '0') {
-            $qb->addSelect(DB::raw('0 as completed_projects'));
-        } else {
-            $qb->addSelect(DB::raw($countExpr . ' as completed_projects'));
-        }
-
-        $qb->groupBy("$propTable.$ownerPk", "$propTable.first_name", "$propTable.last_name");
-
-        // include users.profile_pic in groupBy when joined
-        if ($ownerUserFk && Schema::hasColumn($usersTable, $userPk) && Schema::hasColumn($usersTable, 'profile_pic')) {
-            $qb->groupBy("$usersTable.profile_pic");
-        }
-
-        $qb->orderBy('completed_projects', 'desc')->limit($limit);
-
-        return $qb->get();
+        // No outer GROUP BY needed: the subquery already produces one row per owner_id
+        // and both joins are 1-to-1, so ONLY_FULL_GROUP_BY is not triggered.
+        return $qb->orderBy('completed_projects', 'desc')
+            ->limit($limit)
+            ->get();
     }
 
     /**
      * Get active users data with monthly breakdown
      */
-    private function getActiveUsersData()
+    private function getActiveUsersData(?string $start = null, ?string $end = null)
     {
-        // Get total active users
+        [$start, $end] = $this->resolveRange($start, $end);
+
+        // Cumulative active-user counts: accounts with is_active=1 registered up to the period end date
+        $endTime = $end . ' 23:59:59';
+
         $totalActiveUsers = DB::table('users')
+            ->where('users.created_at', '<=', $endTime)
             ->where(function ($query) {
                 $query->whereExists(function ($sub) {
                     $sub->select(DB::raw(1))
@@ -448,8 +524,8 @@ class dashboardController extends authController
             })
             ->count();
 
-        // Get contractors count
         $contractorsCount = DB::table('users')
+            ->where('users.created_at', '<=', $endTime)
             ->where(function($query) {
                 $query->where('user_type', 'contractor')
                       ->orWhere('user_type', 'both');
@@ -462,8 +538,8 @@ class dashboardController extends authController
             })
             ->count();
 
-        // Get property owners count
         $propertyOwnersCount = DB::table('users')
+            ->where('users.created_at', '<=', $endTime)
             ->where(function($query) {
                 $query->where('user_type', 'property_owner')
                       ->orWhere('user_type', 'both');
@@ -476,100 +552,110 @@ class dashboardController extends authController
             })
             ->count();
 
-        // Get monthly user registrations for the last 12 months
+        // Monthly user registrations for the selected period
+        $buckets = $this->buildMonthBuckets($start, $end);
+
         $monthlyData = DB::table('users')
             ->select(
-                DB::raw('MONTH(created_at) as month'),
+                DB::raw("DATE_FORMAT(created_at, '%Y-%m') as ym"),
                 DB::raw('COUNT(*) as count')
             )
-            ->whereRaw('YEAR(created_at) = YEAR(CURRENT_DATE)')
-            ->groupBy(DB::raw('MONTH(created_at)'))
-            ->orderBy(DB::raw('MONTH(created_at)'))
-            ->get();
+            ->whereBetween('created_at', [$start, $end . ' 23:59:59'])
+            ->groupBy(DB::raw("DATE_FORMAT(created_at, '%Y-%m')"))
+            ->orderBy(DB::raw("DATE_FORMAT(created_at, '%Y-%m')"))
+            ->get()
+            ->pluck('count', 'ym');
 
-        // Create array with all 12 months, filling missing data with 0
-        $months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        $monthlyArray = array_fill(0, 12, 0);
-
-        foreach ($monthlyData as $data) {
-            $monthlyArray[$data->month - 1] = $data->count;
+        $months = array_values($buckets);
+        $data   = [];
+        foreach (array_keys($buckets) as $ym) {
+            $data[] = (int) ($monthlyData[$ym] ?? 0);
         }
 
         return [
-            'total' => $totalActiveUsers,
-            'contractors' => $contractorsCount,
+            'total'           => $totalActiveUsers,
+            'contractors'     => $contractorsCount,
             'property_owners' => $propertyOwnersCount,
-            'months' => $months,
-            'data' => $monthlyArray,
+            'months'          => $months,
+            'data'            => $data,
         ];
     }
 
     /**
      * Get monthly total users chart data
      */
-    private function getTotalUsersChartData()
+    private function getTotalUsersChartData(?string $start = null, ?string $end = null)
     {
+        [$start, $end] = $this->resolveRange($start, $end);
+        $buckets = $this->buildMonthBuckets($start, $end);
+
         $monthlyData = DB::table('users')
             ->select(
-                DB::raw('MONTH(created_at) as month'),
+                DB::raw("DATE_FORMAT(created_at, '%Y-%m') as ym"),
                 DB::raw('COUNT(*) as count')
             )
-            ->whereRaw('YEAR(created_at) = YEAR(CURRENT_DATE)')
-            ->groupBy(DB::raw('MONTH(created_at)'))
-            ->orderBy(DB::raw('MONTH(created_at)'))
-            ->get();
+            ->whereBetween('created_at', [$start, $end . ' 23:59:59'])
+            ->groupBy(DB::raw("DATE_FORMAT(created_at, '%Y-%m')"))
+            ->orderBy(DB::raw("DATE_FORMAT(created_at, '%Y-%m')"))
+            ->get()
+            ->pluck('count', 'ym');
 
-        $months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        $monthlyArray = array_fill(0, 12, 0);
-
-        foreach ($monthlyData as $data) {
-            $monthlyArray[$data->month - 1] = $data->count;
+        $months = array_values($buckets);
+        $data   = [];
+        foreach (array_keys($buckets) as $ym) {
+            $data[] = (int) ($monthlyData[$ym] ?? 0);
         }
 
         return [
             'months' => $months,
-            'data' => $monthlyArray,
-            'label' => 'Total Users',
+            'data'   => $data,
+            'label'  => 'Total Users',
         ];
     }
 
     /**
-     * Get monthly new users (created that month) chart data - same as total users monthly breakdown
+     * Get monthly new user registrations chart data for the selected period
      */
-    private function getNewUsersChartData()
+    private function getNewUsersChartData(?string $start = null, ?string $end = null)
     {
+        [$start, $end] = $this->resolveRange($start, $end);
+        $buckets = $this->buildMonthBuckets($start, $end);
+
         $monthlyData = DB::table('users')
             ->select(
-                DB::raw('MONTH(created_at) as month'),
+                DB::raw("DATE_FORMAT(created_at, '%Y-%m') as ym"),
                 DB::raw('COUNT(*) as count')
             )
-            ->whereRaw('YEAR(created_at) = YEAR(CURRENT_DATE)')
-            ->groupBy(DB::raw('MONTH(created_at)'))
-            ->orderBy(DB::raw('MONTH(created_at)'))
-            ->get();
+            ->whereBetween('created_at', [$start, $end . ' 23:59:59'])
+            ->groupBy(DB::raw("DATE_FORMAT(created_at, '%Y-%m')"))
+            ->orderBy(DB::raw("DATE_FORMAT(created_at, '%Y-%m')"))
+            ->get()
+            ->pluck('count', 'ym');
 
-        $months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        $monthlyArray = array_fill(0, 12, 0);
-
-        foreach ($monthlyData as $data) {
-            $monthlyArray[$data->month - 1] = $data->count;
+        $months = array_values($buckets);
+        $data   = [];
+        foreach (array_keys($buckets) as $ym) {
+            $data[] = (int) ($monthlyData[$ym] ?? 0);
         }
 
         return [
             'months' => $months,
-            'data' => $monthlyArray,
-            'label' => 'New Users (Monthly)',
+            'data'   => $data,
+            'label'  => 'New Users (Monthly)',
         ];
     }
 
     /**
      * Get monthly active users (is_active = 1) chart data
      */
-    private function getActiveUsersChartData()
+    private function getActiveUsersChartData(?string $start = null, ?string $end = null)
     {
+        [$start, $end] = $this->resolveRange($start, $end);
+        $buckets = $this->buildMonthBuckets($start, $end);
+
         $monthlyData = DB::table('users')
             ->select(
-                DB::raw('MONTH(created_at) as month'),
+                DB::raw("DATE_FORMAT(created_at, '%Y-%m') as ym"),
                 DB::raw('COUNT(*) as count')
             )
             ->where(function ($query) {
@@ -586,143 +672,168 @@ class dashboardController extends authController
                         ->where('property_owners.is_active', 1);
                 });
             })
-            ->whereRaw('YEAR(created_at) = YEAR(CURRENT_DATE)')
-            ->groupBy(DB::raw('MONTH(created_at)'))
-            ->orderBy(DB::raw('MONTH(created_at)'))
-            ->get();
+            ->whereBetween('created_at', [$start, $end . ' 23:59:59'])
+            ->groupBy(DB::raw("DATE_FORMAT(created_at, '%Y-%m')"))
+            ->orderBy(DB::raw("DATE_FORMAT(created_at, '%Y-%m')"))
+            ->get()
+            ->pluck('count', 'ym');
 
-        $months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        $monthlyArray = array_fill(0, 12, 0);
-
-        foreach ($monthlyData as $data) {
-            $monthlyArray[$data->month - 1] = $data->count;
+        $months = array_values($buckets);
+        $data   = [];
+        foreach (array_keys($buckets) as $ym) {
+            $data[] = (int) ($monthlyData[$ym] ?? 0);
         }
 
         return [
             'months' => $months,
-            'data' => $monthlyArray,
-            'label' => 'Active Users',
+            'data'   => $data,
+            'label'  => 'Active Users',
         ];
     }
 
     /**
      * Get monthly pending reviews (contractors pending verification) chart data
      */
-    private function getPendingReviewsChartData()
+    private function getPendingReviewsChartData(?string $start = null, ?string $end = null)
     {
+        [$start, $end] = $this->resolveRange($start, $end);
+        $buckets = $this->buildMonthBuckets($start, $end);
+
         $monthlyData = DB::table('contractors')
             ->select(
-                DB::raw('MONTH(created_at) as month'),
+                DB::raw("DATE_FORMAT(created_at, '%Y-%m') as ym"),
                 DB::raw('COUNT(*) as count')
             )
             ->where('verification_status', 'pending')
-            ->whereRaw('YEAR(created_at) = YEAR(CURRENT_DATE)')
-            ->groupBy(DB::raw('MONTH(created_at)'))
-            ->orderBy(DB::raw('MONTH(created_at)'))
-            ->get();
+            ->whereBetween('created_at', [$start, $end . ' 23:59:59'])
+            ->groupBy(DB::raw("DATE_FORMAT(created_at, '%Y-%m')"))
+            ->orderBy(DB::raw("DATE_FORMAT(created_at, '%Y-%m')"))
+            ->get()
+            ->pluck('count', 'ym');
 
-        $months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        $monthlyArray = array_fill(0, 12, 0);
-
-        foreach ($monthlyData as $data) {
-            $monthlyArray[$data->month - 1] = $data->count;
+        $months = array_values($buckets);
+        $data   = [];
+        foreach (array_keys($buckets) as $ym) {
+            $data[] = (int) ($monthlyData[$ym] ?? 0);
         }
 
         return [
             'months' => $months,
-            'data' => $monthlyArray,
-            'label' => 'Pending Reviews',
+            'data'   => $data,
+            'label'  => 'Pending Reviews',
         ];
     }
 
     /**
      * Get total users breakdown (by user type)
      */
-    private function getTotalUsersBreakdown()
+    private function getTotalUsersBreakdown(?string $start = null, ?string $end = null)
     {
-        $totalUsers = DB::table('users')->count();
+        // Cumulative: all users registered up to and including the period end date
+        $applyCumulative = function ($qb) use ($end) {
+            if ($end) {
+                $qb->where('created_at', '<=', $end . ' 23:59:59');
+            }
+        };
 
-        $contractorsCount = DB::table('users')
-            ->where(function($query) {
-                $query->where('user_type', 'contractor')
-                      ->orWhere('user_type', 'both');
-            })
-            ->count();
+        $totalQb = DB::table('users');
+        $applyCumulative($totalQb);
+        $totalUsers = $totalQb->count();
 
-        $propertyOwnersCount = DB::table('users')
-            ->where(function($query) {
-                $query->where('user_type', 'property_owner')
-                      ->orWhere('user_type', 'both');
-            })
-            ->count();
+        $contractorsQb = DB::table('users')->where(function ($q) {
+            $q->where('user_type', 'contractor')->orWhere('user_type', 'both');
+        });
+        $applyCumulative($contractorsQb);
+        $contractorsCount = $contractorsQb->count();
+
+        $ownersQb = DB::table('users')->where(function ($q) {
+            $q->where('user_type', 'property_owner')->orWhere('user_type', 'both');
+        });
+        $applyCumulative($ownersQb);
+        $propertyOwnersCount = $ownersQb->count();
 
         return [
-            'total' => $totalUsers,
-            'contractors' => $contractorsCount,
+            'total'           => $totalUsers,
+            'contractors'     => $contractorsCount,
             'property_owners' => $propertyOwnersCount,
-            'type' => 'total-users',
+            'type'            => 'total-users',
         ];
     }
 
     /**
-     * Get new users breakdown (created today, by type)
+     * Get new users breakdown, scoped to the selected period (or today if no period given).
      */
-    private function getNewUsersBreakdown()
+    private function getNewUsersBreakdown(?string $start = null, ?string $end = null)
     {
-        $totalNewUsers = DB::table('users')
-            ->whereDate('created_at', DB::raw('CURDATE()'))
-            ->count();
+        $applyPeriod = function ($qb) use ($start, $end) {
+            if ($start && $end) {
+                $qb->whereBetween('created_at', [$start, $end . ' 23:59:59']);
+            } else {
+                $qb->whereDate('created_at', DB::raw('CURDATE()'));
+            }
+        };
 
-        $contractorsCount = DB::table('users')
-            ->whereDate('created_at', DB::raw('CURDATE()'))
-            ->where(function($query) {
-                $query->where('user_type', 'contractor')
-                      ->orWhere('user_type', 'both');
-            })
-            ->count();
+        $totalQb = DB::table('users');
+        $applyPeriod($totalQb);
+        $totalNewUsers = $totalQb->count();
 
-        $propertyOwnersCount = DB::table('users')
-            ->whereDate('created_at', DB::raw('CURDATE()'))
-            ->where(function($query) {
-                $query->where('user_type', 'property_owner')
-                      ->orWhere('user_type', 'both');
-            })
-            ->count();
+        $contractorsQb = DB::table('users')->where(function ($q) {
+            $q->where('user_type', 'contractor')->orWhere('user_type', 'both');
+        });
+        $applyPeriod($contractorsQb);
+        $contractorsCount = $contractorsQb->count();
+
+        $ownersQb = DB::table('users')->where(function ($q) {
+            $q->where('user_type', 'property_owner')->orWhere('user_type', 'both');
+        });
+        $applyPeriod($ownersQb);
+        $propertyOwnersCount = $ownersQb->count();
 
         return [
-            'total' => $totalNewUsers,
-            'contractors' => $contractorsCount,
+            'total'           => $totalNewUsers,
+            'contractors'     => $contractorsCount,
             'property_owners' => $propertyOwnersCount,
-            'type' => 'new-users',
+            'type'            => 'new-users',
         ];
     }
 
     /**
-     * Get active users breakdown (by type)
+     * Get active users breakdown (by type), scoped to the selected period.
+     * Active = registered in period AND currently has is_active = 1 in contractor_users / property_owners.
      */
-    private function getActiveUsersBreakdownData()
+    private function getActiveUsersBreakdownData(?string $start = null, ?string $end = null)
     {
-        $totalActiveUsers = DB::table('users')
-            ->where(function ($query) {
-                $query->whereExists(function ($sub) {
-                    $sub->select(DB::raw(1))
-                        ->from('contractor_users')
-                        ->whereColumn('contractor_users.user_id', 'users.user_id')
-                        ->where('contractor_users.is_active', 1);
-                })
-                ->orWhereExists(function ($sub) {
-                    $sub->select(DB::raw(1))
-                        ->from('property_owners')
-                        ->whereColumn('property_owners.user_id', 'users.user_id')
-                        ->where('property_owners.is_active', 1);
+        $hasPeriod = $start && $end;
+        $endTime   = $hasPeriod ? $end . ' 23:59:59' : null;
+
+        // Cumulative: all accounts with is_active=1 that existed by the end of the period
+        $baseQuery = function () use ($hasPeriod, $endTime) {
+            $qb = DB::table('users')
+                ->where(function ($q) {
+                    $q->whereExists(function ($sub) {
+                        $sub->select(DB::raw(1))
+                            ->from('contractor_users')
+                            ->whereColumn('contractor_users.user_id', 'users.user_id')
+                            ->where('contractor_users.is_active', 1);
+                    })
+                    ->orWhereExists(function ($sub) {
+                        $sub->select(DB::raw(1))
+                            ->from('property_owners')
+                            ->whereColumn('property_owners.user_id', 'users.user_id')
+                            ->where('property_owners.is_active', 1);
+                    });
                 });
-            })
-            ->count();
+            if ($hasPeriod) {
+                $qb->where('users.created_at', '<=', $endTime);
+            }
+            return $qb;
+        };
 
-        $contractorsCount = DB::table('users')
-            ->where(function($query) {
-                $query->where('user_type', 'contractor')
-                      ->orWhere('user_type', 'both');
+        $totalActiveUsers = (clone $baseQuery())->count();
+
+        $contractorsCount = (clone $baseQuery())
+            ->where(function ($q) {
+                $q->where('user_type', 'contractor')->orWhere('user_type', 'both');
             })
             ->whereExists(function ($sub) {
                 $sub->select(DB::raw(1))
@@ -732,10 +843,9 @@ class dashboardController extends authController
             })
             ->count();
 
-        $propertyOwnersCount = DB::table('users')
-            ->where(function($query) {
-                $query->where('user_type', 'property_owner')
-                      ->orWhere('user_type', 'both');
+        $propertyOwnersCount = (clone $baseQuery())
+            ->where(function ($q) {
+                $q->where('user_type', 'property_owner')->orWhere('user_type', 'both');
             })
             ->whereExists(function ($sub) {
                 $sub->select(DB::raw(1))
@@ -746,27 +856,30 @@ class dashboardController extends authController
             ->count();
 
         return [
-            'total' => $totalActiveUsers,
-            'contractors' => $contractorsCount,
+            'total'           => $totalActiveUsers,
+            'contractors'     => $contractorsCount,
             'property_owners' => $propertyOwnersCount,
-            'type' => 'active-users',
+            'type'            => 'active-users',
         ];
     }
 
     /**
-     * Get pending reviews breakdown
+     * Get pending reviews breakdown, scoped to the selected period.
      */
-    private function getPendingReviewsBreakdown()
+    private function getPendingReviewsBreakdown(?string $start = null, ?string $end = null)
     {
-        $totalPending = DB::table('contractors')
-            ->where('verification_status', 'pending')
-            ->count();
+        // Cumulative: all contractors still in 'pending' state who applied up to the period end date
+        $qb = DB::table('contractors')->where('verification_status', 'pending');
+        if ($end) {
+            $qb->where('created_at', '<=', $end . ' 23:59:59');
+        }
+        $totalPending = $qb->count();
 
         return [
-            'total' => $totalPending,
-            'contractors' => $totalPending,
+            'total'           => $totalPending,
+            'contractors'     => $totalPending,
             'property_owners' => 0,
-            'type' => 'pending-reviews',
+            'type'            => 'pending-reviews',
         ];
     }
 
@@ -784,55 +897,222 @@ class dashboardController extends authController
     }
 
     /**
-     * Get earnings metrics for a specific date range
+     * Get earnings metrics for a specific date range (daily granularity).
+     * Uses DATE() keying to avoid the DAY()-across-month-boundary bug.
      */
     private function getEarningsMetricsForRange($startDate, $endDate)
     {
-        // Get daily earnings from platform_payments (approved only)
-        $dailyEarnings = DB::table('platform_payments')
-            ->leftJoin('subscription_plans', 'platform_payments.subscriptionPlanId', '=', 'subscription_plans.id')
+        // Key earnings by calendar date (not just day-of-month)
+        $earningsByDate = DB::table('platform_payments')
             ->select(
-                DB::raw('DAY(transaction_date) as day'),
-                DB::raw('SUM(CASE WHEN subscription_plans.plan_key != "boost" THEN platform_payments.amount ELSE 0 END) as subscription_amount'),
-                DB::raw('SUM(CASE WHEN subscription_plans.plan_key = "boost" THEN platform_payments.amount ELSE 0 END) as boost_amount'),
-                DB::raw('SUM(platform_payments.amount) as total_amount')
+                DB::raw('DATE(transaction_date) as date_key'),
+                DB::raw('SUM(amount) as total_amount')
             )
-            ->where('platform_payments.is_approved', 1)
-            ->whereBetween('platform_payments.transaction_date', [$startDate, $endDate])
-            ->groupBy(DB::raw('DAY(transaction_date)'))
-            ->orderBy(DB::raw('DAY(transaction_date)'))
-            ->get();
+            ->where('is_approved', 1)
+            ->whereBetween('transaction_date', [$startDate, $endDate . ' 23:59:59'])
+            ->groupBy(DB::raw('DATE(transaction_date)'))
+            ->orderBy(DB::raw('DATE(transaction_date)'))
+            ->get()
+            ->pluck('total_amount', 'date_key');
 
-        // Get total earnings for the period
         $totalEarnings = DB::table('platform_payments')
             ->where('is_approved', 1)
-            ->whereBetween('transaction_date', [$startDate, $endDate])
+            ->whereBetween('transaction_date', [$startDate, $endDate . ' 23:59:59'])
             ->sum('amount');
 
-        // Calculate number of days in range
-        $start = new \DateTime($startDate);
-        $end = new \DateTime($endDate);
-        $interval = $start->diff($end);
-        $daysInRange = $interval->days + 1;
+        $startDt    = new \DateTime($startDate);
+        $endDt      = new \DateTime($endDate);
+        $spanMonths = $startDt->format('Y-m') !== $endDt->format('Y-m');
 
-        // Create array with all days in the range
-        $days = range(1, $daysInRange);
-        $dailyArray = array_fill(0, $daysInRange, 0.0);
-
-        foreach ($dailyEarnings as $earning) {
-            $dailyArray[$earning->day - 1] = floatval($earning->total_amount);
+        $days       = [];
+        $dailyArray = [];
+        $current    = clone $startDt;
+        while ($current <= $endDt) {
+            $dateStr      = $current->format('Y-m-d');
+            // Same month → plain day number; cross-month → "M d" string
+            $days[]       = $spanMonths ? $current->format('M d') : (int) $current->format('j');
+            $dailyArray[] = floatval($earningsByDate[$dateStr] ?? 0);
+            $current->modify('+1 day');
         }
 
-        // Format date range for display
-        $dateRange = date('M d', strtotime($startDate)) . ' - ' . date('d Y', strtotime($endDate));
+        $dateRange = date('M d, Y', strtotime($startDate)) . ' – ' . date('M d, Y', strtotime($endDate));
 
         return [
-            'total' => $totalEarnings,
-            'days' => $days,
-            'data' => $dailyArray,
+            'total'     => floatval($totalEarnings),
+            'days'      => $days,
+            'data'      => $dailyArray,
             'dateRange' => $dateRange,
             'startDate' => $startDate,
-            'endDate' => $endDate,
+            'endDate'   => $endDate,
+            'format'    => $spanMonths ? 'dated' : 'daily',
+        ];
+    }
+
+    // =========================================================================
+    // GLOBAL DATE FILTER HELPERS & AJAX ENDPOINT
+    // =========================================================================
+
+    /**
+     * Resolve optional start/end to the current year when not provided.
+     */
+    private function resolveRange(?string $start, ?string $end): array
+    {
+        if ($start === null || $end === null) {
+            $year = (int) date('Y');
+            return ["{$year}-01-01", "{$year}-12-31"];
+        }
+        return [$start, $end];
+    }
+
+    /**
+     * Build an ordered map of 'YYYY-MM' => 'Mon YYYY' for every calendar month
+     * that exists between $start and $end (inclusive).
+     */
+    private function buildMonthBuckets(string $start, string $end): array
+    {
+        $buckets = [];
+        $cur     = new \DateTime(date('Y-m-01', strtotime($start)));
+        $last    = new \DateTime(date('Y-m-01', strtotime($end)));
+        while ($cur <= $last) {
+            $buckets[$cur->format('Y-m')] = $cur->format('M Y');
+            $cur->modify('+1 month');
+        }
+        return $buckets;
+    }
+
+    /**
+     * Convert a named range string into concrete start / end dates and a display label.
+     * Accepted ranges: thisyear | lastyear | last6months | last3months
+     */
+    private function getRangeStartEnd(string $range): array
+    {
+        $today = new \DateTime('today');
+        switch ($range) {
+            case 'last3months':
+                $start = (clone $today)->modify('first day of -2 months')->format('Y-m-d');
+                $end   = $today->format('Y-m-d');
+                $label = 'Last 3 Months';
+                break;
+            case 'last6months':
+                $start = (clone $today)->modify('first day of -5 months')->format('Y-m-d');
+                $end   = $today->format('Y-m-d');
+                $label = 'Last 6 Months';
+                break;
+            case 'lastyear':
+                $year  = ((int) $today->format('Y')) - 1;
+                $start = "{$year}-01-01";
+                $end   = "{$year}-12-31";
+                $label = "Year {$year}";
+                break;
+            case 'thisyear':
+            default:
+                $year  = (int) $today->format('Y');
+                $start = "{$year}-01-01";
+                $end   = "{$year}-12-31";
+                $label = "Year {$year}";
+                break;
+        }
+        return ['start' => $start, 'end' => $end, 'label' => $label];
+    }
+
+    /**
+     * AJAX endpoint — return all dashboard chart data for the requested date range.
+     * Route: GET /admin/dashboard/data?range=thisyear|lastyear|last6months|last3months
+     */
+    public function getDashboardData(Request $request)
+    {
+        // Custom date range (?start and ?end) takes precedence over named ?range
+        if ($request->filled('start') && $request->filled('end')) {
+            $start = $request->input('start');
+            $end   = $request->input('end');
+            if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $start)
+                || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $end)
+                || $start > $end) {
+                return response()->json(['error' => 'Invalid date range'], 422);
+            }
+            $label = date('M d, Y', strtotime($start)) . ' – ' . date('M d, Y', strtotime($end));
+        } else {
+            $range   = $request->input('range', 'thisyear');
+            $allowed = ['thisyear', 'lastyear', 'last6months', 'last3months'];
+            if (!in_array($range, $allowed)) {
+                $range = 'thisyear';
+            }
+            $rangeInfo = $this->getRangeStartEnd($range);
+            $start     = $rangeInfo['start'];
+            $end       = $rangeInfo['end'];
+            $label     = $rangeInfo['label'];
+        }
+
+        return response()->json([
+            'projectsMetrics'         => $this->getProjectsMetrics($start, $end),
+            'activeBidsMetrics'       => $this->getActiveBidsMetrics($start, $end),
+            'revenueMetrics'          => $this->getRevenueMetrics($start, $end),
+            'activeUsersData'         => $this->getActiveUsersData($start, $end),
+            'totalUsersChartData'     => $this->getTotalUsersChartData($start, $end),
+            'newUsersChartData'       => $this->getNewUsersChartData($start, $end),
+            'activeUsersChartData'    => $this->getActiveUsersChartData($start, $end),
+            'pendingReviewsChartData' => $this->getPendingReviewsChartData($start, $end),
+            'dashboardStats'          => $this->getDashboardStats($start, $end),
+            'totalUsersBreakdown'     => $this->getTotalUsersBreakdown($start, $end),
+            'newUsersBreakdown'       => $this->getNewUsersBreakdown($start, $end),
+            'activeUsersBreakdown'    => $this->getActiveUsersBreakdownData($start, $end),
+            'pendingReviewsBreakdown' => $this->getPendingReviewsBreakdown($start, $end),
+            'topContractors'          => $this->getTopContractors($start, $end)->toArray(),
+            'topPropertyOwners'       => $this->getTopPropertyOwners($start, $end)->toArray(),
+            'topProjects'             => $this->getTopProjectsWithBids(4, $start, $end)->toArray(),
+            'earningsMetrics'         => $this->getEarningsForGlobalRange($start, $end),
+            'rangeLabel'              => $label,
+        ]);
+    }
+
+    /**
+     * Earnings aggregated for the global date filter range.
+     * ≤ 31-day spans use daily grouping; longer spans use monthly grouping.
+     */
+    private function getEarningsForGlobalRange(string $start, string $end): array
+    {
+        $dayCount = (new \DateTime($start))->diff(new \DateTime($end))->days + 1;
+
+        if ($dayCount <= 31) {
+            return $this->getEarningsMetricsForRange($start, $end);
+        }
+
+        // Monthly aggregation for multi-month ranges
+        $buckets         = $this->buildMonthBuckets($start, $end);
+        $monthlyEarnings = DB::table('platform_payments')
+            ->select(
+                DB::raw("DATE_FORMAT(transaction_date, '%Y-%m') as ym"),
+                DB::raw('SUM(amount) as total_amount')
+            )
+            ->where('is_approved', 1)
+            ->whereBetween('transaction_date', [$start, $end . ' 23:59:59'])
+            ->groupBy(DB::raw("DATE_FORMAT(transaction_date, '%Y-%m')"))
+            ->orderBy(DB::raw("DATE_FORMAT(transaction_date, '%Y-%m')"))
+            ->get()
+            ->pluck('total_amount', 'ym');
+
+        $totalEarnings = DB::table('platform_payments')
+            ->where('is_approved', 1)
+            ->whereBetween('transaction_date', [$start, $end . ' 23:59:59'])
+            ->sum('amount');
+
+        $labels = [];
+        $data   = [];
+        foreach ($buckets as $ym => $label) {
+            $labels[] = $label;
+            $data[]   = floatval($monthlyEarnings[$ym] ?? 0);
+        }
+
+        $dateRange = date('M d', strtotime($start)) . ' – ' . date('d Y', strtotime($end));
+
+        return [
+            'total'     => floatval($totalEarnings),
+            'days'      => $labels,
+            'data'      => $data,
+            'dateRange' => $dateRange,
+            'startDate' => $start,
+            'endDate'   => $end,
+            'format'    => 'monthly',
         ];
     }
 }

@@ -1,6 +1,18 @@
 // Initialize Active Users Chart
 let activeChart = null;
 
+// Registry of all mini sparkline Chart instances keyed by their container index
+const miniChartInstances = [];
+
+/** Escape a value for safe insertion into HTML */
+function escHtml(str) {
+  return String(str == null ? '' : str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 document.addEventListener('DOMContentLoaded', function() {
   const ctx = document.getElementById('activeUsersChart');
   
@@ -106,7 +118,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Initialize mini sparkline charts for the new mini stat cards
   const miniCards = document.querySelectorAll('.mini-stat-card');
-  miniCards.forEach(card => {
+  miniCards.forEach((card, idx) => {
     const canvas = card.querySelector('.mini-chart');
     if (!canvas) return;
 
@@ -116,8 +128,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const color = pct >= 0 ? '#10b981' : '#ef4444';
 
-    // create tiny chart
-    new Chart(canvas, {
+    const instance = new Chart(canvas, {
       type: 'line',
       data: {
         labels: months,
@@ -143,12 +154,346 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     });
 
+    miniChartInstances[idx] = instance;
+
     // color percentage text
     const pctEl = card.querySelector('.mini-change');
     if (pctEl) {
       pctEl.style.color = pct >= 0 ? '#059669' : '#dc2626';
     }
   });
+
+  // ── Global Date Filter ───────────────────────────────────────────────────
+  const globalFilterBtns = document.querySelectorAll('#globalFilterOptions .global-filter-btn');
+  const globalFilterLoading = document.getElementById('globalFilterLoading');
+  const customRangeBtn     = document.getElementById('globalCustomRangeBtn');
+  const customPicker       = document.getElementById('globalCustomPicker');
+  const customRangeStart   = document.getElementById('customRangeStart');
+  const customRangeEnd     = document.getElementById('customRangeEnd');
+  let currentRange = 'thisyear';
+
+  // Seed default values (current year)
+  if (customRangeStart && customRangeEnd) {
+    const now  = new Date();
+    const yyyy = now.getFullYear();
+    const pad  = n => String(n).padStart(2, '0');
+    customRangeStart.value = yyyy + '-01-01';
+    customRangeEnd.value   = yyyy + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate());
+    // Keep date inputs within valid bounds
+    const todayStr = yyyy + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate());
+    customRangeEnd.max = todayStr;
+  }
+
+  // Preset pill buttons
+  globalFilterBtns.forEach(btn => {
+    btn.addEventListener('click', function () {
+      const range = this.dataset.range;
+      if (range === currentRange) return;
+
+      globalFilterBtns.forEach(b => b.classList.remove('active'));
+      if (customRangeBtn) customRangeBtn.classList.remove('active');
+      this.classList.add('active');
+      currentRange = range;
+
+      if (customPicker) customPicker.classList.remove('open');
+      if (globalFilterLoading) globalFilterLoading.classList.add('visible');
+
+      fetchDashboardData(range);
+    });
+  });
+
+  // Custom range picker toggle
+  if (customRangeBtn && customPicker) {
+    customRangeBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      customPicker.classList.toggle('open');
+    });
+
+    document.getElementById('customPickerCancel').addEventListener('click', function (e) {
+      e.stopPropagation();
+      customPicker.classList.remove('open');
+    });
+
+    document.getElementById('customPickerApply').addEventListener('click', function (e) {
+      e.stopPropagation();
+      var start = customRangeStart.value;
+      var end   = customRangeEnd.value;
+
+      if (!start || !end) {
+        alert('Please select both a start and an end date.');
+        return;
+      }
+      if (start > end) {
+        alert('"From" date must be before or equal to "To" date.');
+        return;
+      }
+
+      // Activate the custom button, deactivate presets
+      globalFilterBtns.forEach(b => b.classList.remove('active'));
+      customRangeBtn.classList.add('active');
+      currentRange = 'custom';
+
+      customPicker.classList.remove('open');
+      if (globalFilterLoading) globalFilterLoading.classList.add('visible');
+
+      fetchDashboardData('custom', start, end);
+    });
+
+    // Close picker when clicking anywhere outside
+    document.addEventListener('click', function (e) {
+      if (customPicker && !customPicker.contains(e.target) && e.target !== customRangeBtn) {
+        customPicker.classList.remove('open');
+      }
+    });
+  }
+
+  /**
+   * Fetch all chart data for the selected range and update every chart on the page.
+   * For named ranges pass range key; for custom pass range='custom' + startDate + endDate.
+   */
+  function fetchDashboardData(range, startDate, endDate) {
+    var url;
+    if (range === 'custom' && startDate && endDate) {
+      url = '/admin/dashboard/data?start=' + encodeURIComponent(startDate)
+          + '&end=' + encodeURIComponent(endDate);
+    } else {
+      url = '/admin/dashboard/data?range=' + encodeURIComponent(range);
+    }
+    fetch(url)
+      .then(function (response) {
+        if (!response.ok) throw new Error('Network error: ' + response.status);
+        return response.json();
+      })
+      .then(function (payload) {
+        updateAllCharts(payload);
+      })
+      .catch(function (err) {
+        console.error('[Dashboard] Failed to load dashboard data:', err);
+      })
+      .finally(function () {
+        if (globalFilterLoading) globalFilterLoading.classList.remove('visible');
+      });
+  }
+
+  /**
+   * Apply fresh server payload to every chart and stat on the page.
+   */
+  function updateAllCharts(payload) {
+    // ── 1. Mini stat cards (Projects / Bids / Revenue) ──────────────────────
+    const miniCardDefs = [
+      { key: 'projectsMetrics',   isCurrency: false },
+      { key: 'activeBidsMetrics', isCurrency: false },
+      { key: 'revenueMetrics',    isCurrency: true  },
+    ];
+
+    const miniCardEls = document.querySelectorAll('.mini-stat-card');
+    miniCardDefs.forEach(function (def, idx) {
+      const metrics = payload[def.key];
+      if (!metrics || !miniCardEls[idx]) return;
+
+      const card    = miniCardEls[idx];
+      const pct     = parseFloat(metrics.pctChange || 0);
+      const color   = pct >= 0 ? '#10b981' : '#ef4444';
+
+      // Update data attributes (for re-use)
+      card.dataset.months = JSON.stringify(metrics.months);
+      card.dataset.data   = JSON.stringify(metrics.data);
+      card.dataset.pct    = pct;
+
+      // Update displayed number
+      const numEl = card.querySelector('.mini-number');
+      if (numEl) {
+        numEl.textContent = def.isCurrency
+          ? '₱' + parseFloat(metrics.total).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+          : metrics.total;
+      }
+
+      // Update pct change text
+      const pctEl = card.querySelector('.mini-change');
+      if (pctEl) {
+        pctEl.textContent = (pct >= 0 ? '+' : '') + pct + '%';
+        pctEl.style.color = pct >= 0 ? '#059669' : '#dc2626';
+      }
+
+      // Update mini sparkline chart
+      const chartInst = miniChartInstances[idx];
+      if (chartInst) {
+        chartInst.data.labels                       = metrics.months;
+        chartInst.data.datasets[0].data             = metrics.data;
+        chartInst.data.datasets[0].borderColor      = color;
+        chartInst.update('none');
+      }
+    });
+
+    // ── 2. Active Users chart + left-panel numbers ───────────────────────────
+    const activeData = payload.activeUsersData;
+    if (activeData && activeChart) {
+      // Use the activeUsersData series (monthly registration trend for the period)
+      if (activeData.months && activeData.data) {
+        activeChart.data.labels               = activeData.months;
+        activeChart.data.datasets[0].data     = activeData.data;
+        activeChart.data.datasets[0].label    = 'Active Users';
+        activeChart.update('none');
+      }
+
+      // Update left panel count numbers
+      const totalNumEl = document.querySelector('.total-number');
+      if (totalNumEl) totalNumEl.textContent = activeData.total;
+
+      const statItems = document.querySelectorAll('.stats-list .stat-item');
+      if (statItems[0]) statItems[0].querySelector('.stat-value').textContent = activeData.contractors;
+      if (statItems[1]) statItems[1].querySelector('.stat-value').textContent = activeData.property_owners;
+    }
+
+    // ── 3. "Big" stat cards (Total / New / Active users, Pending Reviews) ───
+    const statCardDefs = [
+      { chartType: 'total-users',     payloadKey: 'totalUsersChartData',     countKey: 'totalUsers',    breakdownKey: 'totalUsersBreakdown'     },
+      { chartType: 'new-users',       payloadKey: 'newUsersChartData',        countKey: 'newUsers',      breakdownKey: 'newUsersBreakdown'       },
+      { chartType: 'active-users',    payloadKey: 'activeUsersChartData',     countKey: 'activeUsers',   breakdownKey: 'activeUsersBreakdown'    },
+      { chartType: 'pending-reviews', payloadKey: 'pendingReviewsChartData',  countKey: 'pendingReviews',breakdownKey: 'pendingReviewsBreakdown' },
+    ];
+
+    statCardDefs.forEach(function (def) {
+      const cardEl   = document.querySelector('.stat-card[data-chart-type="' + def.chartType + '"]');
+      const chartCD  = payload[def.payloadKey];
+      const stats    = payload.dashboardStats;
+      const breakdown= payload[def.breakdownKey];
+
+      if (!cardEl || !chartCD) return;
+
+      // Update data attributes so click-to-expand still works
+      cardEl.dataset.months    = JSON.stringify(chartCD.months);
+      cardEl.dataset.data      = JSON.stringify(chartCD.data);
+      cardEl.dataset.label     = chartCD.label;
+      if (breakdown) cardEl.dataset.breakdown = JSON.stringify(breakdown);
+
+      // Update visible number in the card
+      if (stats && stats[def.countKey] !== undefined) {
+        const numEl = cardEl.querySelector('.stat-card-number');
+        if (numEl) numEl.textContent = stats[def.countKey];
+      }
+    });
+
+    // If the active-users chart is currently showing one of the stat-card views,
+    // also refresh it with the new data matching the active tab
+    const highlightedCard = document.querySelector('.stat-card[style*="border-bottom"]');
+    if (highlightedCard && activeChart) {
+      const months    = JSON.parse(highlightedCard.dataset.months || '[]');
+      const chartData = JSON.parse(highlightedCard.dataset.data   || '[]');
+      const label     = highlightedCard.dataset.label || '';
+      activeChart.data.labels               = months;
+      activeChart.data.datasets[0].data     = chartData;
+      activeChart.data.datasets[0].label    = label;
+      activeChart.update('none');
+    }
+
+    // ── 4. Top Contractors list ────────────────────────────────────────────
+    var contractorsContainer = document.querySelector('[data-list="top-contractors"]');
+    if (contractorsContainer && Array.isArray(payload.topContractors)) {
+      if (!payload.topContractors.length) {
+        contractorsContainer.innerHTML = '<p class="empty-state">No contractors found for this period</p>';
+      } else {
+        contractorsContainer.innerHTML = payload.topContractors.map(function (c) {
+          var initial = c.company_name ? c.company_name.charAt(0).toUpperCase() : '?';
+          var avatar  = (c.profile_pic && c.profile_pic.trim())
+            ? '<img src="' + escHtml((window.storageBaseUrl || '/storage') + '/' + c.profile_pic) + '" alt="' + escHtml(c.company_name) + '">'
+            : escHtml(initial);
+          var count = (c.period_count !== undefined && c.period_count !== null) ? c.period_count : c.completed_projects;
+          return '<div class="item-card">'
+            + '<div class="item-left">'
+            +   '<div class="item-avatar avatar-contractor">' + avatar + '</div>'
+            +   '<div class="item-info">'
+            +     '<h3 class="item-name">' + escHtml(c.company_name) + '</h3>'
+            +     '<p class="item-type">' + escHtml(c.type_name) + '</p>'
+            +   '</div>'
+            + '</div>'
+            + '<div class="item-right">'
+            +   '<p class="item-count">' + count + '</p>'
+            +   '<p class="item-label">Projects in Period</p>'
+            + '</div>'
+            + '</div>';
+        }).join('');
+      }
+    }
+
+    // ── 5. Top Property Owners list ───────────────────────────────────────
+    var ownersContainer = document.querySelector('[data-list="top-owners"]');
+    if (ownersContainer && Array.isArray(payload.topPropertyOwners)) {
+      if (!payload.topPropertyOwners.length) {
+        ownersContainer.innerHTML = '<p class="empty-state">No property owners found for this period</p>';
+      } else {
+        ownersContainer.innerHTML = payload.topPropertyOwners.map(function (o) {
+          var name    = escHtml(((o.first_name || '') + ' ' + (o.last_name || '')).trim());
+          var initial = o.first_name ? o.first_name.charAt(0).toUpperCase() : '?';
+          var avatar  = (o.profile_pic && o.profile_pic.trim())
+            ? '<img src="' + escHtml((window.storageBaseUrl || '/storage') + '/' + o.profile_pic) + '" alt="' + name + '">'
+            : escHtml(initial);
+          return '<div class="item-card">'
+            + '<div class="item-left">'
+            +   '<div class="item-avatar avatar-owner">' + avatar + '</div>'
+            +   '<div class="item-info">'
+            +     '<h3 class="item-name">' + name + '</h3>'
+            +     '<p class="item-type">Property Owner</p>'
+            +   '</div>'
+            + '</div>'
+            + '<div class="item-right">'
+            +   '<p class="item-count">' + (o.completed_projects || 0) + '</p>'
+            +   '<p class="item-label">Projects in Period</p>'
+            + '</div>'
+            + '</div>';
+        }).join('');
+      }
+    }
+
+    // ── 6. Top Projects with Bids table ───────────────────────────────────
+    var projectsTbody = document.getElementById('topProjectsTbody');
+    if (projectsTbody && Array.isArray(payload.topProjects)) {
+      if (!payload.topProjects.length) {
+        projectsTbody.innerHTML = '<tr><td colspan="4" class="empty-state">No projects found for this period</td></tr>';
+      } else {
+        projectsTbody.innerHTML = payload.topProjects.map(function (p) {
+          var initial     = p.project_title ? p.project_title.charAt(0).toUpperCase() : '?';
+          var statusClass = escHtml((p.project_status || '').toString().toLowerCase());
+          return '<tr>'
+            + '<td><div class="project-info">'
+            +   '<span class="project-avatar">' + escHtml(initial) + '</span>'
+            +   '<span class="project-name">'  + escHtml(p.project_title || '') + '</span>'
+            + '</div></td>'
+            + '<td><span class="project-owner">' + escHtml(((p.first_name || '') + ' ' + (p.last_name || '')).trim()) + '</span></td>'
+            + '<td><span class="project-bid-count">' + (p.bid_count || 0) + '</span></td>'
+            + '<td><span class="project-status ' + statusClass + '">' + escHtml(p.status_label || '') + '</span></td>'
+            + '</tr>';
+        }).join('');
+      }
+    }
+
+    // ── 7. Earnings chart & totals ─────────────────────────────────────────
+    var earningsMx = payload.earningsMetrics;
+    if (earningsMx && window.earningsChartInstance) {
+      window.earningsChartInstance.data.labels           = earningsMx.days || [];
+      window.earningsChartInstance.data.datasets[0].data = earningsMx.data || [];
+
+      // Adapt tooltip title: monthly/cross-month ranges show label as-is; daily show "Day X"
+      window.earningsChartInstance.options.plugins.tooltip.callbacks.title =
+        (earningsMx.format === 'monthly' || earningsMx.format === 'dated')
+          ? function (ctx) { return ctx[0].label; }
+          : function (ctx) { return 'Day ' + ctx[0].label; };
+
+      window.earningsChartInstance.update('none');
+
+      var earningsTotalEl = document.querySelector('.earnings-total-amount');
+      if (earningsTotalEl) {
+        earningsTotalEl.textContent = '₱' + parseFloat(earningsMx.total || 0)
+          .toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
+
+      var earningsDateRangeEl = document.querySelector('.earnings-date-range');
+      if (earningsDateRangeEl && earningsMx.dateRange) {
+        earningsDateRangeEl.textContent = earningsMx.dateRange;
+      }
+    }
+  }
+  // ── End Global Date Filter ───────────────────────────────────────────────
 
   // Earnings Dropdown Toggle
   const earningsDropdownBtn = document.getElementById('earningsDropdownBtn');
@@ -173,90 +518,50 @@ document.addEventListener('DOMContentLoaded', function() {
     const dropdownItems = earningsDropdownMenu.querySelectorAll('.earnings-dropdown-item');
     dropdownItems.forEach(item => {
       item.addEventListener('click', function() {
-        // Remove active class from all items
         dropdownItems.forEach(i => i.classList.remove('active'));
-        // Add active class to clicked item
         this.classList.add('active');
-        
+
         const range = this.dataset.range;
-        const rangeText = this.textContent;
-        
-        // Update displayed date range
-        document.querySelector('.earnings-date-range').textContent = rangeText;
-        
+
         // Close dropdown
         earningsDropdownMenu.classList.remove('active');
         earningsDropdownBtn.classList.remove('active');
-        
-        // Fetch new data and update chart
+
+        // Date-range text and chart are updated by fetchEarningsData once the server responds
         fetchEarningsData(range);
       });
     });
   }
 
   // Function to fetch earnings data for selected range
+  // Sends the named range key to the server — no JS date arithmetic needed.
   function fetchEarningsData(range) {
-    // Show loading state
     const earningsTotal = document.querySelector('.earnings-total-amount');
-    const originalText = earningsTotal.textContent;
+    const originalText  = earningsTotal.textContent;
     earningsTotal.style.opacity = '0.5';
 
-    // Calculate date range
-    const today = new Date();
-    let startDate, endDate;
-    
-    switch(range) {
-      case 'today':
-        startDate = endDate = today.toISOString().split('T')[0];
-        break;
-      case 'yesterday':
-        const yesterday = new Date(today);
-        yesterday.setDate(yesterday.getDate() - 1);
-        startDate = endDate = yesterday.toISOString().split('T')[0];
-        break;
-      case 'last7days':
-        const last7 = new Date(today);
-        last7.setDate(last7.getDate() - 7);
-        startDate = last7.toISOString().split('T')[0];
-        endDate = today.toISOString().split('T')[0];
-        break;
-      case 'thismonth':
-        startDate = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
-        endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().split('T')[0];
-        break;
-      case 'lastmonth':
-        startDate = new Date(today.getFullYear(), today.getMonth() - 1, 1).toISOString().split('T')[0];
-        endDate = new Date(today.getFullYear(), today.getMonth(), 0).toISOString().split('T')[0];
-        break;
-      case 'last3months':
-        const last3m = new Date(today);
-        last3m.setMonth(last3m.getMonth() - 3);
-        startDate = last3m.toISOString().split('T')[0];
-        endDate = today.toISOString().split('T')[0];
-        break;
-      case 'thisyear':
-        startDate = new Date(today.getFullYear(), 0, 1).toISOString().split('T')[0];
-        endDate = new Date(today.getFullYear(), 11, 31).toISOString().split('T')[0];
-        break;
-      default:
-        startDate = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
-        endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().split('T')[0];
-    }
-
-    // Fetch data via AJAX (you'll need to create a route for this)
-    fetch(`/admin/dashboard/earnings?start=${startDate}&end=${endDate}`)
+    fetch('/admin/dashboard/earnings?range=' + encodeURIComponent(range))
       .then(response => response.json())
       .then(data => {
-        // Update chart
         if (window.earningsChartInstance) {
-          window.earningsChartInstance.data.labels = data.days;
-          window.earningsChartInstance.data.datasets[0].data = data.data;
-          window.earningsChartInstance.update();
+          window.earningsChartInstance.data.labels           = data.days || [];
+          window.earningsChartInstance.data.datasets[0].data = data.data || [];
+
+          // Tooltip title: day numbers → "Day X"; date/month strings → label as-is
+          window.earningsChartInstance.options.plugins.tooltip.callbacks.title =
+            (data.format === 'monthly' || data.format === 'dated')
+              ? function (ctx) { return ctx[0].label; }
+              : function (ctx) { return 'Day ' + ctx[0].label; };
+
+          window.earningsChartInstance.update('none');
         }
-        
-        // Update total
-        earningsTotal.textContent = '₱' + parseFloat(data.total).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+        earningsTotal.textContent = '₱' + parseFloat(data.total || 0)
+          .toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         earningsTotal.style.opacity = '1';
+
+        var dateRangeEl = document.querySelector('.earnings-date-range');
+        if (dateRangeEl && data.dateRange) dateRangeEl.textContent = data.dateRange;
       })
       .catch(error => {
         console.error('Error fetching earnings data:', error);

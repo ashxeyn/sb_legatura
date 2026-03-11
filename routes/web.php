@@ -501,11 +501,6 @@ Route::get('/api/contractor/setup-data', [authController::class, 'getContractorS
 // NOTE: Contractor members API routes are in routes/api.php (not here)
 // Mobile app uses /api/contractor/members endpoints with Bearer token auth
 
-// Dashboard Routes
-Route::get('/admin/dashboard', function () {
-    return view('admin.dashboard');
-});
-
 Route::get('/dashboard', [BothDashboardController::class, 'unifiedDashboard']);
 
 // Contractor Milestone Setup Routes
@@ -584,6 +579,7 @@ Route::post('/contractor/bids/{bidId}/cancel', [\App\Http\Controllers\contractor
 // Dashboard Routes
 Route::get('/admin/dashboard', [dashboardController::class, 'index'])->name('admin.dashboard');
 Route::get('/admin/dashboard/earnings', [dashboardController::class, 'getEarnings'])->name('admin.dashboard.earnings');
+Route::get('/admin/dashboard/data', [dashboardController::class, 'getDashboardData'])->name('admin.dashboard.data');
 
 // Analytics Routes
 Route::get('/admin/analytics', [analyticsController::class, 'analytics'])->name('admin.analytics');
@@ -632,7 +628,7 @@ Route::post('/admin/global-management/proof-of-payments/{id}/verify', [globalMan
 Route::post('/admin/global-management/proof-of-payments/{id}/reject', [globalManagementController::class, 'rejectPayment'])->name('admin.globalManagement.proofOfpayments.reject');
 // Soft-delete a payment (sets status = 'deleted')
 Route::delete('/admin/global-management/proof-of-payments/{id}', [globalManagementController::class, 'deletePayment'])->name('admin.globalManagement.proofOfpayments.delete');
-Route::put('/{id}', [GlobalManagementController::class, 'updatePayment']);
+Route::put('/admin/global-management/proof-of-payments/{id}', [globalManagementController::class, 'updatePayment'])->name('admin.globalManagement.proofOfpayments.update');
 
 Route::get('/admin/global-management/ai-management', [globalManagementController::class, 'aiManagement'])->name('admin.globalManagement.aiManagement');
 Route::get('/admin/global-management/posting-management', [globalManagementController::class, 'postingManagement'])->name('admin.globalManagement.postingManagement');

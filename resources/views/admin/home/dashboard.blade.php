@@ -32,6 +32,52 @@
 
       <div class="dashboard-container">
 
+        <!-- ── Global Date Filter ─────────────────────────────────────────── -->
+        <div class="global-date-filter">
+          <div class="global-filter-inner">
+            <span class="global-filter-label">
+              <i class="fi fi-sr-calendar" style="font-size:1rem; vertical-align:middle; margin-right:.35rem;"></i>
+              Dashboard Period:
+            </span>
+            <div class="global-filter-options" id="globalFilterOptions">
+              <button class="global-filter-btn active" data-range="thisyear">This Year</button>
+              <button class="global-filter-btn" data-range="lastyear">Last Year</button>
+              <button class="global-filter-btn" data-range="last6months">Last 6 Months</button>
+              <button class="global-filter-btn" data-range="last3months">Last 3 Months</button>
+            </div>
+
+            <!-- Custom date-range picker -->
+            <div class="global-filter-custom-wrap" id="globalCustomWrap">
+              <button class="global-filter-btn" id="globalCustomRangeBtn">
+                <i class="fi fi-sr-calendar" style="font-size:.75rem;vertical-align:middle;margin-right:.25rem;"></i>
+                Custom
+              </button>
+              <div class="global-filter-custom-picker" id="globalCustomPicker">
+                <div class="custom-picker-row">
+                  <div class="custom-picker-field">
+                    <label class="custom-picker-label">From</label>
+                    <input type="date" id="customRangeStart" class="custom-picker-input">
+                  </div>
+                  <div class="custom-picker-field">
+                    <label class="custom-picker-label">To</label>
+                    <input type="date" id="customRangeEnd" class="custom-picker-input">
+                  </div>
+                </div>
+                <div class="custom-picker-footer">
+                  <button class="custom-picker-cancel" id="customPickerCancel">Cancel</button>
+                  <button class="custom-picker-apply" id="customPickerApply">Apply</button>
+                </div>
+              </div>
+            </div>
+            <div class="global-filter-loading" id="globalFilterLoading">
+              <span class="filter-loading-dot"></span>
+              <span class="filter-loading-dot"></span>
+              <span class="filter-loading-dot"></span>
+            </div>
+          </div>
+        </div>
+        <!-- ────────────────────────────────────────────────────────────────── -->
+
         <!-- Mini Stats Container (floating row) -->
         <div class="mini-stats-container">
           <div class="mini-stats-card">
@@ -167,7 +213,7 @@
           </div>
 
           <!-- Contractors List -->
-          <div class="items-container">
+          <div class="items-container" data-list="top-contractors">
             @forelse($topContractors as $contractor)
             <div class="item-card">
               <div class="item-left">
@@ -207,7 +253,7 @@
           </div>
 
           <!-- Property Owners List -->
-          <div class="items-container">
+          <div class="items-container" data-list="top-owners">
             @forelse($topPropertyOwners as $owner)
             <div class="item-card">
               <div class="item-left">
@@ -254,7 +300,7 @@
                   <th>Status</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody id="topProjectsTbody">
                 @forelse($topProjects as $project)
                 <tr>
                   <td>
@@ -330,6 +376,9 @@
   </div>
 
   <script src="{{ asset('js/admin/home/dashboard.js') }}" defer></script>
+  <script>
+    window.storageBaseUrl = '{{ asset("storage") }}';
+  </script>
 
 </body>
 
