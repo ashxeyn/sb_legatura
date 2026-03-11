@@ -11,7 +11,7 @@ class userVerificationClass
     /**
      * Get verification request details with profile data
      */
-    public function getVerificationDetails($userId)
+    public function getVerificationDetails($userId, $type = null)
     {
         $user = User::find($userId);
 
@@ -25,36 +25,145 @@ class userVerificationClass
             'representative' => null
         ];
 
-        // Try fetching contractor profile first regardless of user_type (helps when user_type is out-of-sync)
-        $profile = DB::table('contractors')
+        // If type is explicitly specified, fetch that profile type first
+        if ($type === 'property_owner') {
+            // Fetch property owner profile
+            $profile = DB::table('property_owners')
+                ->leftJoin('valid_ids', 'property_owners.valid_id_id', '=', 'valid_ids.id')
+                ->leftJoin('occupations', 'property_owners.occupation_id', '=', 'occupations.id')
+                ->leftJoin('users', 'property_owners.user_id', '=', 'users.user_id')
+                ->where('property_owners.user_id', $userId)
+                ->select(
+                    'property_owners.*',
+                    'valid_ids.valid_id_name as valid_id_type',
+                    'occupations.occupation_name',
+                    'users.first_name',
+                    'users.middle_name',
+                    'users.last_name'
+                )
+                ->first();
+
+            if ($profile) {
+                // Set birthdate for compatibility
+                $profile->birthdate = $profile->date_of_birth ?? null;
+                
+                // Set occupation - prioritize occupation_name from join, fallback to occupation_other
+                $profile->occupation = $profile->occupation_name ?? $profile->occupation_other ?? null;
+                
+                // Set valid_id_number (not stored, so N/A)
+                $profile->valid_id_number = 'N/A';
+                
+                // Ensure all required fields exist
+                $profile->first_name = $profile->first_name ?? null;
+                $profile->middle_name = $profile->middle_name ?? null;
+                $profile->last_name = $profile->last_name ?? null;
+            }
+            $data['profile'] = $profile;
+            
+            return $data;
+        } elseif ($type === 'contractor') {
+            // Fetch contractor profile
+            $contractor = DB::table('contractors')
+                ->leftJoin('contractor_types', 'contractors.type_id', '=', 'contractor_types.type_id')
+                ->leftJoin('property_owners', 'contractors.owner_id', '=', 'property_owners.owner_id')
+                ->leftJoin('users as owner_users', 'property_owners.user_id', '=', 'owner_users.user_id')
+                ->where('property_owners.user_id', $userId)
+                ->select(
+                    'contractors.*',
+                    'contractor_types.type_name as contractor_type',
+                    'owner_users.first_name',
+                    'owner_users.middle_name',
+                    'owner_users.last_name',
+                    'owner_users.email as owner_email'
+                )
+                ->first();
+
+            if ($contractor) {
+                $contractor->pcab_license_number = $contractor->picab_number ?? null;
+                $contractor->pcab_category = $contractor->picab_category ?? null;
+                $contractor->pcab_validity = $contractor->picab_expiration_date ?? null;
+                $contractor->tin_number = $contractor->tin_business_reg_number ?? null;
+                $contractor->experience_years = $contractor->years_of_experience ?? null;
+                $contractor->business_permit_validity = $contractor->business_permit_expiration ?? null;
+
+                $data['profile'] = $contractor;
+                
+                // Representative info is now from the owner
+                $data['representative'] = (object)[
+                    'authorized_rep_fname' => $contractor->first_name,
+                    'authorized_rep_mname' => $contractor->middle_name,
+                    'authorized_rep_lname' => $contractor->last_name,
+                    'email' => $contractor->owner_email
+                ];
+            }
+            
+            return $data;
+        }
+
+        // No type specified or unknown type: Try fetching contractor profile first (legacy behavior)
+        $contractor = DB::table('contractors')
             ->leftJoin('contractor_types', 'contractors.type_id', '=', 'contractor_types.type_id')
-            ->where('contractors.user_id', $userId)
-            ->select('contractors.*', 'contractor_types.type_name as contractor_type')
+            ->leftJoin('property_owners', 'contractors.owner_id', '=', 'property_owners.owner_id')
+            ->leftJoin('users as owner_users', 'property_owners.user_id', '=', 'owner_users.user_id')
+            ->where('property_owners.user_id', $userId)
+            ->select(
+                'contractors.*',
+                'contractor_types.type_name as contractor_type',
+                'owner_users.first_name',
+                'owner_users.middle_name',
+                'owner_users.last_name',
+                'owner_users.email as owner_email'
+            )
             ->first();
 
-        if ($profile) {
-            $profile->pcab_license_number = $profile->picab_number ?? null;
-            $profile->pcab_category = $profile->picab_category ?? null;
-            $profile->pcab_validity = $profile->picab_expiration_date ?? null;
-            $profile->tin_number = $profile->tin_business_reg_number ?? null;
-            $profile->experience_years = $profile->years_of_experience ?? null;
-            $profile->business_permit_validity = $profile->business_permit_expiration ?? null;
+        if ($contractor) {
+            $contractor->pcab_license_number = $contractor->picab_number ?? null;
+            $contractor->pcab_category = $contractor->picab_category ?? null;
+            $contractor->pcab_validity = $contractor->picab_expiration_date ?? null;
+            $contractor->tin_number = $contractor->tin_business_reg_number ?? null;
+            $contractor->experience_years = $contractor->years_of_experience ?? null;
+            $contractor->business_permit_validity = $contractor->business_permit_expiration ?? null;
 
-            $data['profile'] = $profile;
-            $data['representative'] = DB::table('contractor_users')->where('user_id', $userId)->first();
+            $data['profile'] = $contractor;
+            
+            // Representative info is now from the owner
+            $data['representative'] = (object)[
+                'authorized_rep_fname' => $contractor->first_name,
+                'authorized_rep_mname' => $contractor->middle_name,
+                'authorized_rep_lname' => $contractor->last_name,
+                'email' => $contractor->owner_email
+            ];
         } else {
             // Fallback: try property owner profile
             $profile = DB::table('property_owners')
                 ->leftJoin('valid_ids', 'property_owners.valid_id_id', '=', 'valid_ids.id')
                 ->leftJoin('occupations', 'property_owners.occupation_id', '=', 'occupations.id')
+                ->leftJoin('users', 'property_owners.user_id', '=', 'users.user_id')
                 ->where('property_owners.user_id', $userId)
-                ->select('property_owners.*', 'valid_ids.valid_id_name as valid_id_type', 'occupations.occupation_name')
+                ->select(
+                    'property_owners.*',
+                    'valid_ids.valid_id_name as valid_id_type',
+                    'occupations.occupation_name',
+                    'users.first_name',
+                    'users.middle_name',
+                    'users.last_name'
+                )
                 ->first();
 
             if ($profile) {
+                // Set birthdate for compatibility
                 $profile->birthdate = $profile->date_of_birth ?? null;
+                
+                // Set occupation - prioritize occupation_name from join, fallback to occupation_other
                 $profile->occupation = $profile->occupation_name ?? $profile->occupation_other ?? null;
+                
+                // Set valid_id_number (not stored, so N/A)
                 $profile->valid_id_number = 'N/A';
+                
+                // Ensure all required fields exist
+                $profile->first_name = $profile->first_name ?? null;
+                $profile->middle_name = $profile->middle_name ?? null;
+                $profile->last_name = $profile->last_name ?? null;
             }
             $data['profile'] = $profile;
         }
@@ -79,6 +188,17 @@ class userVerificationClass
 
         // If a specific role was requested, only update that profile table
         if ($targetRole === 'contractor') {
+            // Find contractor_id by joining through property_owners
+            $contractorId = DB::table('contractors')
+                ->join('property_owners', 'contractors.owner_id', '=', 'property_owners.owner_id')
+                ->where('property_owners.user_id', $userId)
+                ->value('contractors.contractor_id');
+
+            if (!$contractorId) {
+                \Log::warning("ApproveVerification: No contractor found for user_id {$userId}");
+                return ['success' => false, 'message' => 'Contractor profile not found'];
+            }
+
             // Approve contractor profile and mark contractor as active
             $updatePayload = [
                 'verification_status' => 'approved',
@@ -91,23 +211,11 @@ class userVerificationClass
             }
 
             $affected = DB::table('contractors')
-                ->where('user_id', $userId)
+                ->where('contractor_id', $contractorId)
                 ->update($updatePayload);
 
-            \Log::info('ApproveVerification: contractors update', ['user_id' => $userId, 'affected_rows' => $affected]);
+            \Log::info('ApproveVerification: contractors update', ['user_id' => $userId, 'contractor_id' => $contractorId, 'affected_rows' => $affected]);
 
-            // Also activate any contractor_users record that represents this user for the contractor
-            try {
-                $contractorId = DB::table('contractors')->where('user_id', $userId)->value('contractor_id');
-                if ($contractorId) {
-                    DB::table('contractor_users')
-                        ->where('contractor_id', $contractorId)
-                        ->where('user_id', $userId)
-                        ->update(['is_active' => 1, 'is_deleted' => 0]);
-                }
-            } catch (\Throwable $e) {
-                \Log::warning('ApproveVerification: failed to activate contractor_users', ['user_id' => $userId, 'error' => $e->getMessage()]);
-            }
             // Ensure users.user_type reflects contractor (unless both)
             if ($user->user_type !== 'both' && $user->user_type !== 'contractor') {
                 DB::table('users')->where('user_id', $userId)->update(['user_type' => 'contractor']);
@@ -136,10 +244,14 @@ class userVerificationClass
             }
         } else {
             // No explicit targetRole: detect which profile rows exist and update them
-            $hasContractor = DB::table('contractors')->where('user_id', $userId)->exists();
+            $contractorId = DB::table('contractors')
+                ->join('property_owners', 'contractors.owner_id', '=', 'property_owners.owner_id')
+                ->where('property_owners.user_id', $userId)
+                ->value('contractors.contractor_id');
+            
             $hasOwner = DB::table('property_owners')->where('user_id', $userId)->exists();
 
-            if ($hasContractor) {
+            if ($contractorId) {
                 $updatePayload = [
                     'verification_status' => 'approved',
                     'verification_date' => now(),
@@ -148,22 +260,9 @@ class userVerificationClass
                     $updatePayload['is_active'] = 1;
                 }
                 $affected = DB::table('contractors')
-                    ->where('user_id', $userId)
+                    ->where('contractor_id', $contractorId)
                     ->update($updatePayload);
-                \Log::info('ApproveVerification: contractors update', ['user_id' => $userId, 'affected_rows' => $affected]);
-
-                // Activate any contractor_users record linking this user to the contractor
-                try {
-                    $contractorId = DB::table('contractors')->where('user_id', $userId)->value('contractor_id');
-                    if ($contractorId) {
-                        DB::table('contractor_users')
-                            ->where('contractor_id', $contractorId)
-                            ->where('user_id', $userId)
-                            ->update(['is_active' => 1, 'is_deleted' => 0]);
-                    }
-                } catch (\Throwable $e) {
-                    \Log::warning('ApproveVerification (auto): failed to activate contractor_users', ['user_id' => $userId, 'error' => $e->getMessage()]);
-                }
+                \Log::info('ApproveVerification: contractors update', ['user_id' => $userId, 'contractor_id' => $contractorId, 'affected_rows' => $affected]);
             }
 
             if ($hasOwner) {
@@ -180,7 +279,7 @@ class userVerificationClass
             }
 
             // Update users.user_type to reflect available profiles
-            if ($hasContractor && $hasOwner) {
+            if ($contractorId && $hasOwner) {
                 $updateData = ['user_type' => 'both'];
 
                 // Preserve the user's current active role so they are NOT auto-switched
@@ -195,7 +294,7 @@ class userVerificationClass
                 }
 
                 DB::table('users')->where('user_id', $userId)->update($updateData);
-            } elseif ($hasContractor) {
+            } elseif ($contractorId) {
                 DB::table('users')->where('user_id', $userId)->update(['user_type' => 'contractor']);
             } elseif ($hasOwner) {
                 DB::table('users')->where('user_id', $userId)->update(['user_type' => 'property_owner']);
@@ -221,6 +320,17 @@ class userVerificationClass
 
         // If target is contractor, ONLY update contractors table
         if ($targetRole === 'contractor') {
+            // Find contractor_id by joining through property_owners
+            $contractorId = DB::table('contractors')
+                ->join('property_owners', 'contractors.owner_id', '=', 'property_owners.owner_id')
+                ->where('property_owners.user_id', $userId)
+                ->value('contractors.contractor_id');
+
+            if (!$contractorId) {
+                \Log::warning("RejectVerification: No contractor found for user_id {$userId}");
+                return ['success' => false, 'message' => 'Contractor profile not found'];
+            }
+
             // Update contractors table only (verification fields moved here)
             $rejectPayload = [
                 'verification_status' => 'rejected',
@@ -229,23 +339,14 @@ class userVerificationClass
             if (Schema::hasColumn('contractors', 'is_active')) {
                 $rejectPayload['is_active'] = 0;
             }
-            $affectedContractors = DB::table('contractors')->where('user_id', $userId)->update($rejectPayload);
+            $affectedContractors = DB::table('contractors')
+                ->where('contractor_id', $contractorId)
+                ->update($rejectPayload);
             \Log::info('RejectVerification: contractors update', [
                 'user_id' => $userId,
+                'contractor_id' => $contractorId,
                 'affected_rows' => $affectedContractors
             ]);
-            // Also deactivate any contractor_users records for this user under the contractor
-            try {
-                $contractorId = DB::table('contractors')->where('user_id', $userId)->value('contractor_id');
-                if ($contractorId) {
-                    DB::table('contractor_users')
-                        ->where('contractor_id', $contractorId)
-                        ->where('user_id', $userId)
-                        ->update(['is_active' => 0]);
-                }
-            } catch (\Throwable $e) {
-                \Log::warning('RejectVerification: failed to deactivate contractor_users', ['user_id' => $userId, 'error' => $e->getMessage()]);
-            }
         }
         // If target is owner, ONLY update property_owners table
         elseif ($targetRole === 'property_owner') {
@@ -272,13 +373,32 @@ class userVerificationClass
      */
     public function prepareReapply($userId, $role)
     {
-        $table = ($role === 'contractor') ? 'contractors' : 'property_owners';
-        return DB::table($table)
-            ->where('user_id', $userId)
-            ->update([
-                'verification_status' => 'pending', // Set back to pending
-                'rejection_reason' => null,        // Clear the old reason
-                'verification_date' => null         // Reset the date
-            ]);
+        if ($role === 'contractor') {
+            // Find contractor_id by joining through property_owners
+            $contractorId = DB::table('contractors')
+                ->join('property_owners', 'contractors.owner_id', '=', 'property_owners.owner_id')
+                ->where('property_owners.user_id', $userId)
+                ->value('contractors.contractor_id');
+
+            if (!$contractorId) {
+                return 0;
+            }
+
+            return DB::table('contractors')
+                ->where('contractor_id', $contractorId)
+                ->update([
+                    'verification_status' => 'pending',
+                    'rejection_reason' => null,
+                    'verification_date' => null
+                ]);
+        } else {
+            return DB::table('property_owners')
+                ->where('user_id', $userId)
+                ->update([
+                    'verification_status' => 'pending',
+                    'rejection_reason' => null,
+                    'verification_date' => null
+                ]);
+        }
     }
 }

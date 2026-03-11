@@ -1,27 +1,42 @@
 (function(){
 	const cTab = document.getElementById('saTabContractors');
 	const oTab = document.getElementById('saTabOwners');
+	const sTab = document.getElementById('saTabStaff');
 	const cWrap = document.getElementById('contractorsTableWrap');
 	const oWrap = document.getElementById('ownersTableWrap');
+	const sWrap = document.getElementById('staffTableWrap');
+	
 	function activate(which){
+		// Remove active classes from all tabs
+		[cTab, oTab, sTab].forEach(tab => {
+			tab?.classList.remove('text-orange-600','border-orange-500');
+			tab?.classList.add('text-gray-600','border-transparent');
+		});
+		
+		// Hide all wraps
+		[cWrap, oWrap, sWrap].forEach(wrap => {
+			wrap?.classList.add('hidden');
+		});
+		
+		// Activate selected tab
 		if(which==='contractors'){
 			cTab?.classList.add('text-orange-600','border-orange-500');
 			cTab?.classList.remove('text-gray-600','border-transparent');
-			oTab?.classList.remove('text-orange-600','border-orange-500');
-			oTab?.classList.add('text-gray-600');
 			cWrap?.classList.remove('hidden');
-			oWrap?.classList.add('hidden');
-		} else {
+		} else if(which==='owners') {
 			oTab?.classList.add('text-orange-600','border-orange-500');
 			oTab?.classList.remove('text-gray-600','border-transparent');
-			cTab?.classList.remove('text-orange-600','border-orange-500');
-			cTab?.classList.add('text-gray-600');
 			oWrap?.classList.remove('hidden');
-			cWrap?.classList.add('hidden');
+		} else if(which==='staff') {
+			sTab?.classList.add('text-orange-600','border-orange-500');
+			sTab?.classList.remove('text-gray-600','border-transparent');
+			sWrap?.classList.remove('hidden');
 		}
 	}
+	
 	cTab?.addEventListener('click', ()=>activate('contractors'));
 	oTab?.addEventListener('click', ()=>activate('owners'));
+	sTab?.addEventListener('click', ()=>activate('staff'));
 })();
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -781,7 +796,17 @@ function confirmReactivateSuspendedAccount() {
 			user_type: currentReactivateUserType
 		})
 	})
-	.then(response => response.json())
+	.then(response => {
+		// Check if response is OK before parsing
+		if (!response.ok) {
+			// Parse error response
+			return response.json().then(data => {
+				throw new Error(data.message || 'Failed to reactivate account');
+			});
+		}
+		// Parse success response
+		return response.json();
+	})
 	.then(data => {
 		if (data.success) {
 
@@ -789,9 +814,15 @@ function confirmReactivateSuspendedAccount() {
 
 			showNotification(data.message || 'Account reactivated successfully!', 'success');
 
-			const tableWrap = currentReactivateUserType === 'contractor' ?
-				document.getElementById('contractorsTableWrap') :
-				document.getElementById('ownersTableWrap');
+			// Determine which table wrap to use based on user type
+			let tableWrap;
+			if (currentReactivateUserType === 'contractor') {
+				tableWrap = document.getElementById('contractorsTableWrap');
+			} else if (currentReactivateUserType === 'property_owner') {
+				tableWrap = document.getElementById('ownersTableWrap');
+			} else if (currentReactivateUserType === 'staff') {
+				tableWrap = document.getElementById('staffTableWrap');
+			}
 
 			if (tableWrap) {
 				const row = tableWrap.querySelector(`button[data-id="${currentReactivateUserId}"]`)?.closest('tr');
@@ -817,7 +848,7 @@ function confirmReactivateSuspendedAccount() {
 	})
 	.catch(error => {
 		console.error('Error:', error);
-		showNotification('An error occurred. Please try again.', 'error');
+		showNotification(error.message || 'An error occurred. Please try again.', 'error');
 	})
 	.finally(() => {
 

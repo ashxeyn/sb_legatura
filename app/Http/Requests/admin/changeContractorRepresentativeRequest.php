@@ -23,7 +23,7 @@ class changeContractorRepresentativeRequest extends FormRequest
     {
         return [
             'contractor_id' => 'required|exists:contractors,contractor_id',
-            'new_representative_id' => 'required|exists:contractor_users,contractor_user_id',
+            'new_representative_id' => 'required|exists:contractor_staff,staff_id',
         ];
     }
 

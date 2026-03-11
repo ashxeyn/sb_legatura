@@ -23,7 +23,7 @@
                     </td>
                     <td class="px-6 py-4 text-left">
                         <div class="text-sm text-gray-900 font-medium">
-                            {{ $request->authorized_rep_fname ? $request->authorized_rep_fname . ' ' . $request->authorized_rep_lname : $request->username }}
+                            {{ $request->first_name ? $request->first_name . ' ' . $request->last_name : $request->username }}
                         </div>
                     </td>
                     <td class="px-6 py-4 text-left"><div class="text-sm text-gray-600">{{ $request->email }}</div></td>

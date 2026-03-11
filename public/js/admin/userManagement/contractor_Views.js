@@ -1,3 +1,7 @@
+// ============================================
+// TEAM MEMBERS TABLE AJAX REFRESH (Following propertyOwner.js pattern)
+// ============================================
+
 async function fetchAndUpdateTeamMembers() {
     const contractorId = document.body.dataset.contractorId;
     if (!contractorId) {
@@ -6,7 +10,7 @@ async function fetchAndUpdateTeamMembers() {
     }
 
     const url = `/admin/user-management/contractor/view?id=${contractorId}`;
-
+    
     try {
         const response = await fetch(url, {
             headers: {
@@ -23,8 +27,10 @@ async function fetchAndUpdateTeamMembers() {
             teamMembersTable.innerHTML = data.html;
         }
 
+        // Re-attach team member action listeners
         attachTeamMemberListeners();
 
+        // Also refresh the change representative modal list
         refreshRepresentativeModalList();
 
     } catch (error) {
@@ -33,18 +39,22 @@ async function fetchAndUpdateTeamMembers() {
     }
 }
 
+// Refresh contractor details after edit (called from contractor.js)
+// Using location.replace to refresh without adding to browser history
 function refreshContractorDetails() {
     const contractorId = document.body.dataset.contractorId;
     if (!contractorId) {
         console.error('Contractor ID not found');
         return;
     }
-
+    
+    // Use replace to refresh page without affecting browser history
     setTimeout(() => {
         window.location.replace(`/admin/user-management/contractor/view?id=${contractorId}`);
     }, 500);
 }
 
+// Make it globally accessible for contractor.js
 window.refreshContractorDetails = refreshContractorDetails;
 
 function refreshRepresentativeModalList() {
@@ -68,8 +78,17 @@ function refreshRepresentativeModalList() {
     });
 }
 
-function attachTeamMemberListeners() {
+function attachRepresentativeSelectionListeners() {
+    // Since we're using event delegation on document, we don't need to re-attach
+    // But we should re-initialize the search functionality
+    const searchTeamMemberInput = document.getElementById('searchTeamMember');
+    if (searchTeamMemberInput) {
+        searchTeamMemberInput.value = '';
+    }
+}
 
+function attachTeamMemberListeners() {
+    // Re-attach edit button listeners
     document.querySelectorAll('.team-edit-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             const memberId = this.dataset.memberId;
@@ -77,6 +96,7 @@ function attachTeamMemberListeners() {
         });
     });
 
+    // Re-attach deactivate button listeners
     document.querySelectorAll('.team-deactivate-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             const memberId = this.dataset.memberId;
@@ -85,6 +105,7 @@ function attachTeamMemberListeners() {
         });
     });
 
+    // Re-attach reactivate button listeners
     document.querySelectorAll('.team-reactivate-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             const memberId = this.dataset.memberId;
@@ -94,10 +115,16 @@ function attachTeamMemberListeners() {
     });
 }
 
+// Initial attachment on page load
 document.addEventListener('DOMContentLoaded', function() {
     attachTeamMemberListeners();
 });
 
+// ============================================
+// SUSPEND MODAL FUNCTIONS
+// ============================================
+
+// Suspend Modal Elements
 const suspendBtn = document.getElementById('suspendContractorBtn');
 const suspendModal = document.getElementById('suspendAccountModal');
 const suspendModalContent = suspendModal ? suspendModal.querySelector('.modal-content') : null;
@@ -109,6 +136,11 @@ const suspensionDateContainer = document.getElementById('suspensionDateContainer
 const suspensionDateInput = document.getElementById('suspensionDate');
 const radioButtons = document.querySelectorAll('input[name="suspensionDuration"]');
 
+// ============================================
+// SUSPEND MODAL FUNCTIONS
+// ============================================
+
+// Toggle date picker visibility
 radioButtons.forEach(radio => {
     radio.addEventListener('change', function() {
         if (this.value === 'temporary') {
@@ -147,6 +179,7 @@ function closeSuspendModal() {
         suspendModal.classList.remove('flex');
         document.body.style.overflow = 'auto';
 
+        // Reset form
         if (suspendReasonTextarea) {
             suspendReasonTextarea.value = '';
         }
@@ -189,6 +222,7 @@ function confirmSuspend() {
     let suspensionDate = null;
     let hasError = false;
 
+    // Reset errors
     suspendReasonTextarea.classList.remove('border-red-500', 'shake');
     document.getElementById('suspendReasonError').classList.add('hidden');
     document.getElementById('suspendReasonError').textContent = '';
@@ -228,6 +262,7 @@ function confirmSuspend() {
 
     if (hasError) return;
 
+    // Add loading state
     const originalContent = confirmSuspendBtn.innerHTML;
     confirmSuspendBtn.innerHTML = '<i class="fi fi-rr-spinner animate-spin"></i> Suspending...';
     confirmSuspendBtn.disabled = true;
@@ -252,13 +287,15 @@ function confirmSuspend() {
         if (data.success) {
             showNotification('Contractor account suspended successfully!', 'success');
             closeSuspendModal();
-
+            
+            // Update status badge instantly
             const statusBadge = document.querySelector('.text-xs.font-medium.px-2\\.5.py-1');
             if (statusBadge) {
                 statusBadge.className = 'text-xs font-medium px-2.5 py-1 rounded-full bg-red-100 text-red-600';
                 statusBadge.textContent = 'Suspended';
             }
-
+            
+            // Hide suspend button
             if (suspendBtn) {
                 suspendBtn.style.display = 'none';
             }
@@ -294,6 +331,10 @@ function confirmSuspend() {
     });
 }
 
+// ============================================
+// TEAM MEMBERS MODAL ELEMENTS
+// ============================================
+
 const addTeamMemberBtn = document.getElementById('addTeamMemberBtn');
 const addTeamMemberModal = document.getElementById('addTeamMemberModal');
 const closeAddTeamMemberBtn = document.getElementById('closeAddTeamMemberBtn');
@@ -324,6 +365,10 @@ let currentEditingRow = null;
 let currentDeactivatingRow = null;
 let currentReactivatingRow = null;
 
+// ============================================
+// TEAM MEMBERS TAB SWITCHING
+// ============================================
+
 function initTeamMemberTabs() {
     const tabs = document.querySelectorAll('.team-tab');
     const statusHeader = document.getElementById('statusColumnHeader');
@@ -332,6 +377,7 @@ function initTeamMemberTabs() {
         tab.addEventListener('click', function() {
             const tabName = this.dataset.tab;
 
+            // Update active tab styles
             tabs.forEach(t => {
                 t.classList.remove('border-orange-500', 'text-orange-600');
                 t.classList.add('border-transparent', 'text-gray-600');
@@ -339,9 +385,10 @@ function initTeamMemberTabs() {
             this.classList.remove('border-transparent', 'text-gray-600');
             this.classList.add('border-orange-500', 'text-orange-600');
 
+            // Update column header and visibility based on tab
             if (tabName === 'deactivated') {
                 if (statusHeader) statusHeader.textContent = 'Reason';
-
+                // Show deletion reason, hide status badge
                 document.querySelectorAll('.status-cell').forEach(cell => {
                     const badge = cell.querySelector('.status-badge');
                     const reason = cell.querySelector('.deletion-reason');
@@ -350,7 +397,7 @@ function initTeamMemberTabs() {
                 });
             } else {
                 if (statusHeader) statusHeader.textContent = 'Status';
-
+                // Show status badge, hide deletion reason
                 document.querySelectorAll('.status-cell').forEach(cell => {
                     const badge = cell.querySelector('.status-badge');
                     const reason = cell.querySelector('.deletion-reason');
@@ -359,18 +406,33 @@ function initTeamMemberTabs() {
                 });
             }
 
+            // Filter table rows
             const tableRows = document.querySelectorAll('.team-member-row');
             tableRows.forEach(row => {
                 const rowStatus = row.dataset.status;
-                if (tabName === 'all') {
-
+                if (tabName === 'active') {
+                    // Show only active members
                     if (rowStatus === 'active') {
                         row.classList.remove('hidden');
                     } else {
                         row.classList.add('hidden');
                     }
+                } else if (tabName === 'pending') {
+                    // Show only pending invitations
+                    if (rowStatus === 'pending') {
+                        row.classList.remove('hidden');
+                    } else {
+                        row.classList.add('hidden');
+                    }
+                } else if (tabName === 'cancelled') {
+                    // Show only cancelled invitations
+                    if (rowStatus === 'cancelled') {
+                        row.classList.remove('hidden');
+                    } else {
+                        row.classList.add('hidden');
+                    }
                 } else if (tabName === 'deactivated') {
-
+                    // Show only deactivated members
                     if (rowStatus === 'deactivated') {
                         row.classList.remove('hidden');
                     } else {
@@ -382,11 +444,16 @@ function initTeamMemberTabs() {
     });
 }
 
-function openAddTeamMemberModal(isRepresentative = false, fromChangeRepModal = false) {
+// ============================================
+// ADD TEAM MEMBER MODAL FUNCTIONS
+// ============================================
 
+function openAddTeamMemberModal(isRepresentative = false, fromChangeRepModal = false) {
+    // Store context in modal dataset
     addTeamMemberModal.dataset.isRepresentative = isRepresentative;
     addTeamMemberModal.dataset.fromChangeRepModal = fromChangeRepModal;
 
+    // Show/hide back button based on context
     const backBtn = document.getElementById('backToRepresentativeModalBtn');
     if (backBtn) {
         if (fromChangeRepModal) {
@@ -396,18 +463,18 @@ function openAddTeamMemberModal(isRepresentative = false, fromChangeRepModal = f
         }
     }
 
-    const roleGroup = document.getElementById('teamMemberRole').closest('.form-group');
     const roleSelect = document.getElementById('teamMemberRole');
+    const roleGroup = roleSelect ? roleSelect.closest('.form-group') : null;
 
-    if (isRepresentative) {
-
+    if (isRepresentative && roleSelect && roleGroup) {
+        // Hide role selection for representative
         roleGroup.classList.add('hidden');
-
+        // Auto-set role to representative
         roleSelect.value = 'representative';
-    } else {
-
+    } else if (roleSelect && roleGroup) {
+        // Show role selection for regular member
         roleGroup.classList.remove('hidden');
-
+        // Remove owner and representative options
         const options = roleSelect.querySelectorAll('option');
         options.forEach(option => {
             if (option.value === 'owner' || option.value === 'representative') {
@@ -439,399 +506,428 @@ function closeAddTeamMemberModal() {
 }
 
 function resetAddTeamMemberForm() {
-    document.getElementById('teamMemberFirstName').value = '';
-    document.getElementById('teamMemberMiddleName').value = '';
-    document.getElementById('teamMemberLastName').value = '';
-    document.getElementById('teamMemberEmail').value = '';
-    document.getElementById('teamMemberRole').value = '';
-    document.getElementById('teamMemberRoleOther').value = '';
-    document.getElementById('teamMemberContact').value = '';
-    document.getElementById('teamMemberRoleOtherGroup').classList.add('hidden');
-    teamMemberUpload.value = '';
-    teamMemberPhotoPreview.classList.add('hidden');
-    teamMemberCameraIcon.classList.remove('hidden');
+    // Clear search input
+    if (teamMemberOwnerSearch) {
+        teamMemberOwnerSearch.value = '';
+    }
 
-    const roleGroup = document.getElementById('teamMemberRole').closest('.form-group');
-    roleGroup.classList.remove('hidden');
+    // Hide dropdown
+    if (teamMemberOwnerDropdown) {
+        teamMemberOwnerDropdown.classList.add('hidden');
+    }
 
+    // Clear selected property owners
+    selectedPropertyOwners = [];
+    updateSelectedMembersList();
+
+    // Reset role selection
     const roleSelect = document.getElementById('teamMemberRole');
-    const options = roleSelect.querySelectorAll('option');
-    options.forEach(option => {
-        option.style.display = '';
+    const roleOtherInput = document.getElementById('teamMemberRoleOther');
+    const roleOtherGroup = document.getElementById('teamMemberRoleOtherGroup');
+    const roleSelectionSection = document.getElementById('roleSelectionSection');
+
+    if (roleSelect) roleSelect.value = '';
+    if (roleOtherInput) roleOtherInput.value = '';
+    if (roleOtherGroup) roleOtherGroup.classList.add('hidden');
+    if (roleSelectionSection) roleSelectionSection.classList.add('hidden');
+
+    // Clear error states
+    if (roleSelect) roleSelect.classList.remove('border-red-500');
+    if (roleOtherInput) roleOtherInput.classList.remove('border-red-500');
+    
+    const roleError = document.getElementById('teamMemberRoleError');
+    const roleOtherError = document.getElementById('teamMemberRoleOtherError');
+    if (roleError) roleError.classList.add('hidden');
+    if (roleOtherError) roleOtherError.classList.add('hidden');
+}
+
+// ============================================
+// PROPERTY OWNER SEARCH FOR ADD TEAM MEMBER
+// ============================================
+
+let selectedPropertyOwners = [];
+const teamMemberOwnerSearch = document.getElementById('teamMemberOwnerSearch');
+const teamMemberOwnerDropdown = document.getElementById('teamMemberOwnerDropdown');
+const teamMemberOwnerList = document.getElementById('teamMemberOwnerList');
+const teamMemberOwnerLoading = document.getElementById('teamMemberOwnerLoading');
+const teamMemberOwnerEmpty = document.getElementById('teamMemberOwnerEmpty');
+const selectedMembersList = document.getElementById('selectedMembersList');
+const selectedMembersContainer = document.getElementById('selectedMembersContainer');
+const selectedMembersCount = document.getElementById('selectedMembersCount');
+
+// Debounce function
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const context = this;
+        const later = function() {
+            clearTimeout(timeout);
+            func.apply(context, args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+// Search property owners
+async function searchPropertyOwners(searchTerm) {
+    if (!teamMemberOwnerLoading || !teamMemberOwnerList || !teamMemberOwnerEmpty) return;
+
+    // Show loading
+    teamMemberOwnerLoading.classList.remove('hidden');
+    teamMemberOwnerList.innerHTML = '';
+    teamMemberOwnerEmpty.classList.add('hidden');
+
+    try {
+        const response = await fetch(`/admin/user-management/contractor/available-owners?search=${encodeURIComponent(searchTerm)}`, {
+            headers: {
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+            }
+        });
+
+        const result = await response.json();
+
+        // Hide loading
+        teamMemberOwnerLoading.classList.add('hidden');
+
+        if (result.success && result.data && result.data.length > 0) {
+            // Filter out already selected owners
+            const selectedOwnerIds = selectedPropertyOwners.map(o => o.owner_id);
+            const availableOwners = result.data.filter(owner => !selectedOwnerIds.includes(owner.owner_id));
+
+            if (availableOwners.length === 0) {
+                teamMemberOwnerEmpty.classList.remove('hidden');
+                return;
+            }
+
+            // Populate dropdown
+            teamMemberOwnerList.innerHTML = availableOwners.map(owner => {
+                const fullName = `${owner.first_name || ''} ${owner.middle_name || ''} ${owner.last_name || ''}`.trim();
+                const initials = `${owner.first_name?.[0] || ''}${owner.last_name?.[0] || ''}`.toUpperCase();
+                
+                return `
+                    <div class="owner-option px-4 py-3 hover:bg-orange-50 cursor-pointer transition-colors border-b border-gray-100 last:border-b-0"
+                         data-owner-id="${owner.owner_id}"
+                         data-owner-name="${fullName}"
+                         data-owner-email="${owner.email}"
+                         data-owner-username="${owner.username}"
+                         data-owner-pic="${owner.profile_pic || ''}">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white font-bold overflow-hidden">
+                                ${owner.profile_pic ? 
+                                    `<img src="/storage/${owner.profile_pic}" alt="${fullName}" class="w-full h-full object-cover">` :
+                                    initials
+                                }
+                            </div>
+                            <div class="flex-1">
+                                <p class="font-semibold text-gray-800">${fullName}</p>
+                                <p class="text-sm text-gray-500">${owner.email}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Add click listeners to options
+            document.querySelectorAll('.owner-option').forEach(option => {
+                option.addEventListener('click', function() {
+                    selectPropertyOwner(this);
+                });
+            });
+        } else {
+            teamMemberOwnerEmpty.classList.remove('hidden');
+        }
+    } catch (error) {
+        console.error('Error searching property owners:', error);
+        teamMemberOwnerLoading.classList.add('hidden');
+        teamMemberOwnerEmpty.classList.remove('hidden');
+    }
+}
+
+// Select a property owner
+function selectPropertyOwner(optionElement) {
+    const owner = {
+        owner_id: optionElement.dataset.ownerId,
+        name: optionElement.dataset.ownerName,
+        email: optionElement.dataset.ownerEmail,
+        username: optionElement.dataset.ownerUsername,
+        profile_pic: optionElement.dataset.ownerPic
+    };
+
+    // Add to selected list
+    selectedPropertyOwners.push(owner);
+
+    // Update UI
+    updateSelectedMembersList();
+
+    // Clear search and hide dropdown
+    if (teamMemberOwnerSearch) teamMemberOwnerSearch.value = '';
+    if (teamMemberOwnerDropdown) teamMemberOwnerDropdown.classList.add('hidden');
+}
+
+// Remove a selected property owner
+function removeSelectedOwner(ownerId) {
+    selectedPropertyOwners = selectedPropertyOwners.filter(o => o.owner_id !== ownerId);
+    updateSelectedMembersList();
+}
+
+// Update the selected members list UI
+function updateSelectedMembersList() {
+    if (!selectedMembersContainer || !selectedMembersCount || !selectedMembersList) return;
+
+    const roleSelectionSection = document.getElementById('roleSelectionSection');
+
+    if (selectedPropertyOwners.length === 0) {
+        selectedMembersList.classList.add('hidden');
+        if (roleSelectionSection) roleSelectionSection.classList.add('hidden');
+        return;
+    }
+
+    selectedMembersList.classList.remove('hidden');
+    if (roleSelectionSection) roleSelectionSection.classList.add('hidden'); // Hide the global role section
+    selectedMembersCount.textContent = selectedPropertyOwners.length;
+
+    selectedMembersContainer.innerHTML = selectedPropertyOwners.map((owner, index) => {
+        const initials = owner.name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+        
+        return `
+            <div class="flex items-start gap-3 p-3 bg-white rounded-lg border border-gray-200 hover:border-orange-300 transition-colors">
+                <div class="flex items-center gap-3 flex-1">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white font-bold text-sm overflow-hidden flex-shrink-0">
+                        ${owner.profile_pic ? 
+                            `<img src="/storage/${owner.profile_pic}" alt="${owner.name}" class="w-full h-full object-cover">` :
+                            initials
+                        }
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="font-semibold text-gray-800 text-sm truncate">${owner.name}</p>
+                        <p class="text-xs text-gray-500 truncate">${owner.email}</p>
+                        
+                        <!-- Role Selection for this member -->
+                        <div class="mt-2 space-y-2">
+                            <select class="member-role-select w-full text-sm px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500" 
+                                    data-owner-id="${owner.owner_id}"
+                                    data-index="${index}">
+                                <option value="" disabled ${!owner.role ? 'selected' : ''}>Select Role</option>
+                                <option value="manager" ${owner.role === 'manager' ? 'selected' : ''}>Manager</option>
+                                <option value="engineer" ${owner.role === 'engineer' ? 'selected' : ''}>Engineer</option>
+                                <option value="architect" ${owner.role === 'architect' ? 'selected' : ''}>Architect</option>
+                                <option value="others" ${owner.role === 'others' ? 'selected' : ''}>Others</option>
+                            </select>
+                            
+                            <!-- Others input field -->
+                            <input type="text" 
+                                   class="member-role-other-input w-full text-sm px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 ${owner.role === 'others' ? '' : 'hidden'}"
+                                   data-owner-id="${owner.owner_id}"
+                                   data-index="${index}"
+                                   placeholder="Specify role (e.g., Consultant, Surveyor)"
+                                   value="${owner.role_other || ''}">
+                            
+                            <span class="member-role-error text-xs text-red-500 hidden" data-index="${index}"></span>
+                        </div>
+                    </div>
+                </div>
+                <button type="button" class="remove-owner-btn text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg transition-colors flex-shrink-0"
+                        data-owner-id="${owner.owner_id}">
+                    <i class="fi fi-rr-cross text-lg"></i>
+                </button>
+            </div>
+        `;
+    }).join('');
+
+    // Add remove button listeners
+    document.querySelectorAll('.remove-owner-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            removeSelectedOwner(this.dataset.ownerId);
+        });
     });
 
-    const inputs = ['teamMemberFirstName', 'teamMemberMiddleName', 'teamMemberLastName', 'teamMemberEmail', 'teamMemberRole', 'teamMemberRoleOther', 'teamMemberContact'];
-    inputs.forEach(id => {
-        const element = document.getElementById(id);
-        const errorElement = document.getElementById(id + 'Error');
-        if (element) {
-            element.classList.remove('border-red-500');
+    // Add role select listeners
+    document.querySelectorAll('.member-role-select').forEach(select => {
+        select.addEventListener('change', function() {
+            const ownerId = this.dataset.ownerId;
+            const index = parseInt(this.dataset.index);
+            const owner = selectedPropertyOwners.find(o => o.owner_id === ownerId);
+            
+            if (owner) {
+                owner.role = this.value;
+                
+                // Show/hide the "others" input field
+                const otherInput = document.querySelector(`.member-role-other-input[data-index="${index}"]`);
+                if (otherInput) {
+                    if (this.value === 'others') {
+                        otherInput.classList.remove('hidden');
+                    } else {
+                        otherInput.classList.add('hidden');
+                        owner.role_other = '';
+                        otherInput.value = '';
+                    }
+                }
+            }
+        });
+    });
+
+    // Add role other input listeners
+    document.querySelectorAll('.member-role-other-input').forEach(input => {
+        input.addEventListener('input', function() {
+            const ownerId = this.dataset.ownerId;
+            const owner = selectedPropertyOwners.find(o => o.owner_id === ownerId);
+            
+            if (owner) {
+                owner.role_other = this.value.trim();
+            }
+        });
+    });
+}
+
+// Event listeners for search
+if (teamMemberOwnerSearch) {
+    // Show dropdown on focus
+    teamMemberOwnerSearch.addEventListener('focus', function() {
+        if (this.value.trim().length >= 2 && teamMemberOwnerDropdown) {
+            teamMemberOwnerDropdown.classList.remove('hidden');
         }
-        if (errorElement) {
-            errorElement.textContent = '';
-            errorElement.classList.add('hidden');
+    });
+
+    // Search on input with debounce
+    teamMemberOwnerSearch.addEventListener('input', debounce(function() {
+        const searchTerm = this.value.trim();
+        
+        if (searchTerm.length >= 2) {
+            if (teamMemberOwnerDropdown) teamMemberOwnerDropdown.classList.remove('hidden');
+            searchPropertyOwners(searchTerm);
+        } else {
+            if (teamMemberOwnerDropdown) teamMemberOwnerDropdown.classList.add('hidden');
+        }
+    }, 300));
+
+    // Hide dropdown when clicking outside
+    document.addEventListener('click', function(e) {
+        if (teamMemberOwnerSearch && teamMemberOwnerDropdown && 
+            !teamMemberOwnerSearch.contains(e.target) && 
+            !teamMemberOwnerDropdown.contains(e.target)) {
+            teamMemberOwnerDropdown.classList.add('hidden');
         }
     });
 }
 
 function saveAddTeamMember() {
-    const firstName = document.getElementById('teamMemberFirstName').value.trim();
-    const middleName = document.getElementById('teamMemberMiddleName').value.trim();
-    const lastName = document.getElementById('teamMemberLastName').value.trim();
-    const email = document.getElementById('teamMemberEmail').value.trim();
-    const role = document.getElementById('teamMemberRole').value.trim();
-    const roleOther = document.getElementById('teamMemberRoleOther').value.trim();
-    const contact = document.getElementById('teamMemberContact').value.trim();
     const contractorId = document.body.dataset.contractorId;
 
-    const inputs = ['teamMemberFirstName', 'teamMemberMiddleName', 'teamMemberLastName', 'teamMemberEmail', 'teamMemberRole', 'teamMemberRoleOther', 'teamMemberContact'];
-    inputs.forEach(id => {
-        const element = document.getElementById(id);
-        const errorElement = document.getElementById(id + 'Error');
-        if (element) {
-            element.classList.remove('border-red-500');
-        }
-        if (errorElement) {
-            errorElement.textContent = '';
-            errorElement.classList.add('hidden');
+    // Validate that at least one property owner is selected
+    if (selectedPropertyOwners.length === 0) {
+        showNotification('Please select at least one property owner to add as team member', 'error');
+        return;
+    }
+
+    // Validate that all members have roles assigned
+    let hasErrors = false;
+    selectedPropertyOwners.forEach((owner, index) => {
+        const errorSpan = document.querySelector(`.member-role-error[data-index="${index}"]`);
+        const roleSelect = document.querySelector(`.member-role-select[data-index="${index}"]`);
+        const roleOtherInput = document.querySelector(`.member-role-other-input[data-index="${index}"]`);
+        
+        // Clear previous errors
+        if (errorSpan) errorSpan.classList.add('hidden');
+        if (roleSelect) roleSelect.classList.remove('border-red-500');
+        if (roleOtherInput) roleOtherInput.classList.remove('border-red-500');
+
+        if (!owner.role) {
+            hasErrors = true;
+            if (roleSelect) roleSelect.classList.add('border-red-500');
+            if (errorSpan) {
+                errorSpan.textContent = 'Please select a role';
+                errorSpan.classList.remove('hidden');
+            }
+        } else if (owner.role === 'others' && !owner.role_other) {
+            hasErrors = true;
+            if (roleOtherInput) roleOtherInput.classList.add('border-red-500');
+            if (errorSpan) {
+                errorSpan.textContent = 'Please specify the role';
+                errorSpan.classList.remove('hidden');
+            }
         }
     });
 
-    const formData = new FormData();
-    formData.append('first_name', firstName);
-    if (middleName) formData.append('middle_name', middleName);
-    formData.append('last_name', lastName);
-    if (email) formData.append('email', email);
-    formData.append('role', role);
-    if (role === 'others' && roleOther) formData.append('role_other', roleOther);
-    formData.append('phone_number', contact);
-    formData.append('contractor_id', contractorId);
-
-    const profilePicFile = teamMemberUpload.files[0];
-    if (profilePicFile) {
-        formData.append('profile_pic', profilePicFile);
+    if (hasErrors) {
+        showNotification('Please assign roles to all selected members', 'error');
+        return;
     }
 
+    // Get CSRF token
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
 
-    if (csrfToken) {
-        formData.append('_token', csrfToken);
-    }
-
+    // Disable save button
     const saveBtn = document.getElementById('saveTeamMemberBtn');
+    if (!saveBtn) return;
+    
     const originalBtnText = saveBtn.innerHTML;
     saveBtn.disabled = true;
     saveBtn.innerHTML = '<i class="fi fi-rr-spinner animate-spin"></i> Adding...';
 
-    fetch('/admin/user-management/contractor/team-member/store', {
-        method: 'POST',
-        headers: {
-            'X-CSRF-TOKEN': csrfToken,
-            'Accept': 'application/json'
-        },
-        body: formData
-    })
-    .then(response => {
-
-        return response.json().then(data => ({
-            ok: response.ok,
-            status: response.status,
-            data: data
-        }));
-    })
-    .then(({ok, status, data}) => {
-        if (ok && data.success === true) {
-            showNotification(data.message || 'Team member added successfully!', 'success');
-            closeAddTeamMemberModal();
-
-            fetchAndUpdateTeamMembers();
-        } else {
-
-            if (status === 422 && data.errors) {
-                Object.keys(data.errors).forEach(field => {
-
-                    const fieldMap = {
-                        'first_name': 'teamMemberFirstName',
-                        'middle_name': 'teamMemberMiddleName',
-                        'last_name': 'teamMemberLastName',
-                        'email': 'teamMemberEmail',
-                        'role': 'teamMemberRole',
-                        'role_other': 'teamMemberRoleOther',
-                        'phone_number': 'teamMemberContact',
-                        'contractor_id': null
-                    };
-
-                    const elementId = fieldMap[field];
-                    if (elementId) {
-                        const element = document.getElementById(elementId);
-                        const errorElement = document.getElementById(elementId + 'Error');
-
-                        if (element) {
-                            element.classList.add('border-red-500');
-                        }
-
-                        if (errorElement) {
-                            errorElement.textContent = data.errors[field][0];
-                            errorElement.classList.remove('hidden');
-                        }
-                    }
-                });
-
-            } else {
-
-                showNotification(data.message || 'Failed to add team member.', 'error');
-            }
+    // Add each selected property owner as a team member with their individual role
+    const addPromises = selectedPropertyOwners.map(owner => {
+        const formData = new FormData();
+        formData.append('owner_id', owner.owner_id);
+        formData.append('role', owner.role);
+        if (owner.role === 'others' && owner.role_other) {
+            formData.append('role_other', owner.role_other);
         }
-    })
-    .catch(error => {
-        console.error('Error:', error);
+        formData.append('contractor_id', contractorId);
+        formData.append('_token', csrfToken);
 
-        showNotification('An error occurred. Please try again.', 'error');
-    })
-    .finally(() => {
-
-        saveBtn.disabled = false;
-        saveBtn.innerHTML = originalBtnText;
+        return fetch('/admin/user-management/contractor/team-member/store', {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': csrfToken,
+                'Accept': 'application/json'
+            },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => ({
+            owner: owner,
+            success: data.success,
+            message: data.message,
+            errors: data.errors
+        }));
     });
+
+    // Wait for all additions to complete
+    Promise.all(addPromises)
+        .then(results => {
+            const successCount = results.filter(r => r.success).length;
+            const failCount = results.length - successCount;
+
+            if (successCount > 0) {
+                showNotification(`${successCount} team member(s) added successfully!`, 'success');
+                closeAddTeamMemberModal();
+                fetchAndUpdateTeamMembers();
+            }
+
+            if (failCount > 0) {
+                const failedNames = results
+                    .filter(r => !r.success)
+                    .map(r => r.owner.name)
+                    .join(', ');
+                showNotification(`Failed to add: ${failedNames}`, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('An error occurred. Please try again.', 'error');
+        })
+        .finally(() => {
+            // Re-enable save button
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = originalBtnText;
+        });
 }
 
-function openEditTeamMemberModal(row) {
-    currentEditingRow = row;
-
-    const nameElement = row.querySelector('.font-medium');
-    const fullName = nameElement.textContent.trim();
-    const nameParts = fullName.split(' ');
-    const firstName = nameParts[0] || '';
-    const lastName = nameParts.slice(1).join(' ') || '';
-
-    const positionElement = row.querySelectorAll('td')[1];
-    const position = positionElement ? positionElement.textContent.trim() : '';
-
-    const initials = firstName.charAt(0).toUpperCase() + (lastName ? lastName.charAt(0).toUpperCase() : '');
-    editTeamMemberInitials.textContent = initials;
-
-    const avatarElement = row.querySelector('.w-10');
-    const avatarClasses = avatarElement.className;
-    const gradientMatch = avatarClasses.match(/from-(\w+)-\d+\s+to-(\w+)-\d+/);
-    if (gradientMatch) {
-        const modalAvatar = editTeamMemberModal.querySelector('.w-20.h-20');
-        modalAvatar.className = `w-20 h-20 rounded-full bg-gradient-to-br ${gradientMatch[0]} flex items-center justify-center overflow-hidden shadow-md`;
-    }
-
-    editTeamMemberPhotoPreview.classList.add('hidden');
-    editTeamMemberInitials.classList.remove('hidden');
-
-    document.getElementById('editTeamMemberFirstName').value = firstName;
-    document.getElementById('editTeamMemberLastName').value = lastName;
-    document.getElementById('editTeamMemberPosition').value = position;
-
-    const email = row.dataset.email || `${firstName.toLowerCase()}.${lastName.toLowerCase().replace(/\s+/g, '')}@jlois.com`;
-    const contact = row.dataset.contact || '+63 912 345 6789';
-
-    document.getElementById('editTeamMemberEmail').value = email;
-    document.getElementById('editTeamMemberContact').value = contact;
-
-    editTeamMemberModal.classList.remove('hidden');
-    editTeamMemberModal.classList.add('flex');
-    setTimeout(() => {
-        const modalContent = editTeamMemberModal.querySelector('.modal-content');
-        modalContent.classList.remove('scale-95', 'opacity-0');
-        modalContent.classList.add('scale-100', 'opacity-100');
-    }, 10);
-}
-
-function closeEditTeamMemberModal() {
-    const modalContent = editTeamMemberModal.querySelector('.modal-content');
-    modalContent.classList.remove('scale-100', 'opacity-100');
-    modalContent.classList.add('scale-95', 'opacity-0');
-    setTimeout(() => {
-        editTeamMemberModal.classList.remove('flex');
-        editTeamMemberModal.classList.add('hidden');
-        currentEditingRow = null;
-        editTeamMemberUpload.value = '';
-        editTeamMemberPhotoPreview.classList.add('hidden');
-        editTeamMemberInitials.classList.remove('hidden');
-    }, 300);
-}
-
-function saveEditTeamMember() {
-    if (!currentEditingRow) return;
-
-    const firstName = document.getElementById('editTeamMemberFirstName').value.trim();
-    const lastName = document.getElementById('editTeamMemberLastName').value.trim();
-    const position = document.getElementById('editTeamMemberPosition').value.trim();
-    const email = document.getElementById('editTeamMemberEmail').value.trim();
-
-    if (!firstName || !lastName || !position || !email) {
-        alert('Please fill in all required fields.');
-        return;
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-        alert('Please enter a valid email address.');
-        return;
-    }
-
-    const nameElement = currentEditingRow.querySelector('.font-medium');
-    const emailElement = currentEditingRow.querySelector('.text-gray-500');
-    const positionElement = currentEditingRow.querySelectorAll('td')[1].querySelector('span');
-
-    nameElement.textContent = `${firstName} ${lastName}`;
-    emailElement.textContent = email;
-    positionElement.textContent = position;
-
-    const avatarElement = currentEditingRow.querySelector('.w-10');
-    const initials = firstName.charAt(0).toUpperCase() + lastName.charAt(0).toUpperCase();
-    avatarElement.textContent = initials;
-
-    showNotification('Team member updated successfully!', 'success');
-
-    closeEditTeamMemberModal();
-}
-
-function openDeactivateTeamMemberModal(row) {
-    currentDeactivatingRow = row;
-
-    const nameElement = row.querySelector('.font-medium');
-    const memberName = nameElement.textContent.trim();
-
-    document.getElementById('deactivateTeamMemberName').textContent = memberName;
-
-    deactivateTeamMemberModal.classList.remove('hidden');
-    deactivateTeamMemberModal.classList.add('flex');
-    setTimeout(() => {
-        const modalContent = deactivateTeamMemberModal.querySelector('.modal-content');
-        modalContent.classList.remove('scale-95', 'opacity-0');
-        modalContent.classList.add('scale-100', 'opacity-100');
-    }, 10);
-}
-
-function closeDeactivateTeamMemberModal() {
-    const modalContent = deactivateTeamMemberModal.querySelector('.modal-content');
-    modalContent.classList.remove('scale-100', 'opacity-100');
-    modalContent.classList.add('scale-95', 'opacity-0');
-    setTimeout(() => {
-        deactivateTeamMemberModal.classList.remove('flex');
-        deactivateTeamMemberModal.classList.add('hidden');
-        currentDeactivatingRow = null;
-    }, 300);
-}
-
-function confirmDeactivateTeamMember() {
-    if (!currentDeactivatingRow) return;
-
-    currentDeactivatingRow.dataset.status = 'deactivated';
-
-    const statusBadge = currentDeactivatingRow.querySelectorAll('td')[3].querySelector('span');
-    statusBadge.className = 'inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600';
-    statusBadge.textContent = 'Deactivated';
-
-    const actionsCell = currentDeactivatingRow.querySelectorAll('td')[4];
-    actionsCell.innerHTML = `
-        <div class="flex items-center justify-center gap-2">
-            <button class="team-reactivate-btn p-2 rounded-lg hover:bg-green-50 transition-all group/btn" title="Reactivate Account">
-                <i class="fi fi-rr-check-circle text-green-600 group-hover/btn:scale-110 transition-transform"></i>
-            </button>
-        </div>
-    `;
-
-    currentDeactivatingRow.querySelector('.flex.items-center.gap-3').classList.add('opacity-60');
-    const nameSpan = currentDeactivatingRow.querySelector('.font-medium');
-    nameSpan.classList.remove('text-gray-800');
-    nameSpan.classList.add('text-gray-600');
-
-    const activeTab = document.querySelector('.team-tab.border-orange-500');
-    if (activeTab && activeTab.dataset.tab === 'all') {
-        currentDeactivatingRow.classList.add('hidden');
-    }
-
-    showNotification('Team member deactivated successfully!', 'success');
-
-    closeDeactivateTeamMemberModal();
-}
-
-function openReactivateTeamMemberModal(row) {
-    currentReactivatingRow = row;
-
-    const nameElement = row.querySelector('.font-medium');
-    const memberName = nameElement.textContent.trim();
-
-    document.getElementById('reactivateTeamMemberName').textContent = memberName;
-
-    reactivateTeamMemberModal.classList.remove('hidden');
-    reactivateTeamMemberModal.classList.add('flex');
-    setTimeout(() => {
-        const modalContent = reactivateTeamMemberModal.querySelector('.modal-content');
-        modalContent.classList.remove('scale-95', 'opacity-0');
-        modalContent.classList.add('scale-100', 'opacity-100');
-    }, 10);
-}
-
-function closeReactivateTeamMemberModal() {
-    const modalContent = reactivateTeamMemberModal.querySelector('.modal-content');
-    modalContent.classList.remove('scale-100', 'opacity-100');
-    modalContent.classList.add('scale-95', 'opacity-0');
-    setTimeout(() => {
-        reactivateTeamMemberModal.classList.remove('flex');
-        reactivateTeamMemberModal.classList.add('hidden');
-        currentReactivatingRow = null;
-    }, 300);
-}
-
-function confirmReactivateTeamMember() {
-    if (!currentReactivatingRow) return;
-
-    const row = currentReactivatingRow;
-
-    row.dataset.status = 'active';
-
-    const statusBadge = row.querySelectorAll('td')[3].querySelector('span');
-    statusBadge.className = 'inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 transition-all duration-200 hover:scale-110 hover:shadow-md';
-    statusBadge.textContent = 'Active';
-
-    const actionsCell = row.querySelectorAll('td')[4];
-    actionsCell.innerHTML = `
-        <div class="flex items-center justify-center gap-2">
-            <button class="team-edit-btn p-2 rounded-lg hover:bg-orange-50 transition-all group/btn" title="Edit Member">
-                <i class="fi fi-rr-pencil text-orange-600 group-hover/btn:scale-110 transition-transform"></i>
-            </button>
-            <button class="team-deactivate-btn p-2 rounded-lg hover:bg-red-50 transition-all group/btn" title="Deactivate Account">
-                <i class="fi fi-rr-ban text-red-600 group-hover/btn:scale-110 transition-transform"></i>
-            </button>
-        </div>
-    `;
-
-    row.querySelector('.flex.items-center.gap-3').classList.remove('opacity-60');
-    const nameSpan = row.querySelector('.font-medium');
-    nameSpan.classList.remove('text-gray-600');
-    nameSpan.classList.add('text-gray-800');
-
-    const memberName = nameSpan.textContent.trim();
-    const nameParts = memberName.split(' ');
-    const firstName = nameParts[0] || '';
-    const lastName = nameParts[nameParts.length - 1] || '';
-
-    const avatarElement = row.querySelector('.w-10');
-    const gradients = [
-        'from-purple-400 to-purple-600',
-        'from-blue-400 to-blue-600',
-        'from-green-400 to-green-600',
-        'from-yellow-400 to-yellow-600',
-        'from-pink-400 to-pink-600'
-    ];
-    const randomGradient = gradients[Math.floor(Math.random() * gradients.length)];
-    avatarElement.className = `w-10 h-10 rounded-full bg-gradient-to-br ${randomGradient} flex items-center justify-center overflow-hidden shadow-md group-hover:shadow-lg transition-all group-hover:scale-110`;
-
-    const activeTab = document.querySelector('.team-tab.border-orange-500');
-    if (activeTab && activeTab.dataset.tab === 'deactivated') {
-        row.classList.add('hidden');
-    }
-
-    showNotification('Team member reactivated successfully!', 'success');
-
-    closeReactivateTeamMemberModal();
-}
+// ============================================
+// TEAM MEMBER IMAGE PREVIEW HANDLERS
+// ============================================
 
 if (teamMemberUpload) {
     teamMemberUpload.addEventListener('change', function(e) {
@@ -863,55 +959,72 @@ if (editTeamMemberUpload) {
     });
 }
 
-function showNotification(message, type = 'success') {
-    const notification = document.createElement('div');
-    notification.className = `fixed top-4 right-4 z-[60] px-6 py-4 rounded-lg shadow-2xl transform transition-all duration-300 translate-x-full ${
-        type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
-    }`;
-    notification.innerHTML = `
-        <div class="flex items-center space-x-2">
-            <i class="fi ${type === 'success' ? 'fi-sr-check-circle' : 'fi-sr-cross-circle'} text-lg"></i>
-            <span class="font-medium">${message}</span>
-        </div>
-    `;
-
-    document.body.appendChild(notification);
-
-    setTimeout(() => {
-        notification.style.transform = 'translateX(0)';
-    }, 10);
-
-    setTimeout(() => {
-        notification.style.transform = 'translateX(150%)';
-        setTimeout(() => {
-            notification.remove();
-        }, 300);
-    }, 3000);
-}
+// ============================================
+// TEAM MEMBERS EVENT DELEGATION
+// ============================================
 
 document.addEventListener('click', function(e) {
-
+    // Edit button clicked
     if (e.target.closest('.team-edit-btn')) {
-        const row = e.target.closest('.team-member-row');
-        openEditTeamMemberModal(row);
+        const btn = e.target.closest('.team-edit-btn');
+        const memberId = btn.dataset.memberId;
+        if (memberId) {
+            openEditTeamMemberModal(memberId);
+        }
     }
 
+    // Deactivate button clicked
     if (e.target.closest('.team-deactivate-btn')) {
-        const row = e.target.closest('.team-member-row');
-        openDeactivateTeamMemberModal(row);
+        const btn = e.target.closest('.team-deactivate-btn');
+        const memberId = btn.dataset.memberId;
+        const memberName = btn.dataset.memberName;
+        if (memberId && memberName) {
+            openDeactivateTeamMemberModal(memberId, memberName);
+        }
     }
 
+    // Reactivate button clicked
     if (e.target.closest('.team-reactivate-btn')) {
-        const row = e.target.closest('.team-member-row');
-        openReactivateTeamMemberModal(row);
+        const btn = e.target.closest('.team-reactivate-btn');
+        const memberId = btn.dataset.memberId;
+        const memberName = btn.dataset.memberName;
+        if (memberId && memberName) {
+            openReactivateTeamMemberModal(memberId, memberName);
+        }
+    }
+
+    // Cancel invitation button clicked
+    if (e.target.closest('.team-cancel-invitation-btn')) {
+        const btn = e.target.closest('.team-cancel-invitation-btn');
+        const memberId = btn.dataset.memberId;
+        const memberName = btn.dataset.memberName;
+        if (memberId && memberName) {
+            openCancelInvitationModal(memberId, memberName);
+        }
+    }
+
+    // Reapply invitation button clicked
+    if (e.target.closest('.team-reapply-invitation-btn')) {
+        const btn = e.target.closest('.team-reapply-invitation-btn');
+        const memberId = btn.dataset.memberId;
+        const memberName = btn.dataset.memberName;
+        if (memberId && memberName) {
+            openReapplyInvitationModal(memberId, memberName);
+        }
     }
 });
 
+// ============================================
+// EVENT LISTENERS
+// ============================================
+
+// Suspend Modal Events
 if (suspendBtn) suspendBtn.addEventListener('click', openSuspendModal);
 if (closeSuspendBtn) closeSuspendBtn.addEventListener('click', closeSuspendModal);
 if (cancelSuspendBtn) cancelSuspendBtn.addEventListener('click', closeSuspendModal);
 if (confirmSuspendBtn) confirmSuspendBtn.addEventListener('click', confirmSuspend);
 
+// Close modals when clicking outside
 if (suspendModal) {
     suspendModal.addEventListener('click', function(e) {
         if (e.target === suspendModal) {
@@ -920,12 +1033,14 @@ if (suspendModal) {
     });
 }
 
+// Prevent modal content click from closing
 if (suspendModalContent) {
     suspendModalContent.addEventListener('click', function(e) {
         e.stopPropagation();
     });
 }
 
+// Add textarea focus effect
 if (suspendReasonTextarea) {
     suspendReasonTextarea.addEventListener('focus', function() {
         this.classList.add('ring-2', 'ring-red-200');
@@ -936,6 +1051,7 @@ if (suspendReasonTextarea) {
     });
 }
 
+// Close modals on ESC key
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
         if (!suspendModal.classList.contains('hidden')) {
@@ -959,6 +1075,10 @@ document.addEventListener('keydown', function(e) {
         }
     }
 });
+
+// ============================================
+// CHANGE REPRESENTATIVE MODAL
+// ============================================
 
 const changeRepresentativeBtn = document.getElementById('changeRepresentativeBtn');
 const changeRepresentativeModal = document.getElementById('changeRepresentativeModal');
@@ -988,26 +1108,28 @@ function closeChangeRepresentativeModal() {
         changeRepresentativeModal.classList.add('hidden');
         selectedMember = null;
         confirmChangeRepresentativeBtn.disabled = true;
-
+        // Clear selection styles
         document.querySelectorAll('.team-member-option').forEach(option => {
             option.classList.remove('border-blue-500', 'bg-blue-50');
             option.classList.add('border-gray-200');
         });
-
+        // Clear search
         if (searchTeamMemberInput) searchTeamMemberInput.value = '';
     }, 300);
 }
 
 function selectTeamMember(memberElement) {
-
+    // Remove selection from all options
     document.querySelectorAll('.team-member-option').forEach(option => {
         option.classList.remove('border-blue-500', 'bg-blue-50');
         option.classList.add('border-gray-200');
     });
 
+    // Add selection to clicked option
     memberElement.classList.remove('border-gray-200');
     memberElement.classList.add('border-blue-500', 'bg-blue-50');
 
+    // Store selected member data
     selectedMember = {
         id: memberElement.dataset.memberId,
         name: memberElement.dataset.memberName,
@@ -1015,6 +1137,7 @@ function selectTeamMember(memberElement) {
         phone: memberElement.dataset.memberPhone
     };
 
+    // Enable confirm button
     confirmChangeRepresentativeBtn.disabled = false;
 }
 
@@ -1023,12 +1146,15 @@ function confirmChangeRepresentative() {
 
     const contractorId = document.body.dataset.contractorId;
 
+    // Get CSRF token
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
 
+    // Disable button and show loading state
     const originalBtnText = confirmChangeRepresentativeBtn.innerHTML;
     confirmChangeRepresentativeBtn.disabled = true;
     confirmChangeRepresentativeBtn.innerHTML = '<i class="fi fi-rr-spinner animate-spin"></i> Changing...';
 
+    // Send AJAX request
     fetch('/admin/user-management/contractor/representative/change', {
         method: 'POST',
         headers: {
@@ -1053,15 +1179,17 @@ function confirmChangeRepresentative() {
         if (ok && data.success === true) {
             showNotification(data.message || `Company representative changed to ${selectedMember.name}`, 'success');
             closeChangeRepresentativeModal();
-
+            
+            // Update representative info instantly if elements exist
             const repNameEl = document.querySelector('[data-representative-name]');
             if (repNameEl) {
                 repNameEl.textContent = selectedMember.name;
             }
-
+            
+            // Refresh team members table to update roles
             fetchAndUpdateTeamMembers();
         } else {
-
+            // Show error in toast for major errors
             showNotification(data.message || 'Failed to change representative.', 'error');
         }
     })
@@ -1070,14 +1198,18 @@ function confirmChangeRepresentative() {
         showNotification('An error occurred. Please try again.', 'error');
     })
     .finally(() => {
-
+        // Re-enable button
         confirmChangeRepresentativeBtn.disabled = false;
         confirmChangeRepresentativeBtn.innerHTML = originalBtnText;
     });
 }
 
-function openEditTeamMemberModal(memberId) {
+// ============================================
+// EDIT TEAM MEMBER FUNCTIONALITY
+// ============================================
 
+function openEditTeamMemberModal(memberId) {
+    // Fetch team member data
     fetch(`/admin/user-management/contractor/team-member/${memberId}/edit`, {
         method: 'GET',
         headers: {
@@ -1089,128 +1221,153 @@ function openEditTeamMemberModal(memberId) {
     .then(data => {
         if (data.success && data.data) {
             const member = data.data;
+            const hasActiveRepresentative = data.has_active_representative || false;
 
-            document.getElementById('editTeamMemberContractorUserId').value = member.contractor_user_id;
+            // Store member ID in hidden input
+            const contractorUserIdInput = document.getElementById('editTeamMemberContractorUserId');
+            if (contractorUserIdInput) {
+                contractorUserIdInput.value = member.staff_id || member.contractor_user_id;
+            }
 
-            document.getElementById('editTeamMemberFirstName').value = member.first_name || '';
-            document.getElementById('editTeamMemberMiddleName').value = member.middle_name || '';
-            document.getElementById('editTeamMemberLastName').value = member.last_name || '';
-            document.getElementById('editTeamMemberContact').value = member.phone_number || '';
-            document.getElementById('editTeamMemberUsername').value = member.username || '';
-            document.getElementById('editTeamMemberEmail').value = member.email || '';
-            document.getElementById('editTeamMemberPassword').value = ''; // Always blank for security
-            document.getElementById('editTeamMemberRole').value = member.role || '';
+            // Populate display-only fields (read-only)
+            const firstNameDisplay = document.getElementById('editTeamMemberFirstNameDisplay');
+            const middleNameDisplay = document.getElementById('editTeamMemberMiddleNameDisplay');
+            const lastNameDisplay = document.getElementById('editTeamMemberLastNameDisplay');
+            const emailDisplay = document.getElementById('editTeamMemberEmailDisplay');
+            const usernameDisplay = document.getElementById('editTeamMemberUsernameDisplay');
 
+            if (firstNameDisplay) firstNameDisplay.textContent = member.first_name || '-';
+            if (middleNameDisplay) middleNameDisplay.textContent = member.middle_name || '-';
+            if (lastNameDisplay) lastNameDisplay.textContent = member.last_name || '-';
+            if (emailDisplay) emailDisplay.textContent = member.email || '-';
+            if (usernameDisplay) usernameDisplay.textContent = member.username || '-';
+
+            // Populate editable role field
+            const roleSelect = document.getElementById('editTeamMemberRole');
+            if (roleSelect) {
+                // Disable/hide representative option if there's already an active representative
+                // and this member is not currently the representative
+                const representativeOption = roleSelect.querySelector('option[value="representative"]');
+                if (representativeOption) {
+                    if (hasActiveRepresentative && member.company_role !== 'representative') {
+                        // Disable and add note
+                        representativeOption.disabled = true;
+                        representativeOption.textContent = 'Representative (Already assigned)';
+                        representativeOption.style.color = '#9CA3AF'; // gray-400
+                    } else {
+                        // Enable if no active representative or this member is the current representative
+                        representativeOption.disabled = false;
+                        representativeOption.textContent = 'Representative';
+                        representativeOption.style.color = '';
+                    }
+                }
+                
+                roleSelect.value = member.company_role || member.role || '';
+            }
+
+            // Show/hide role_other field based on role
             const roleOtherDiv = document.getElementById('editRoleOtherDiv');
             const roleOtherInput = document.getElementById('editTeamMemberRoleOther');
-            if (member.role === 'others') {
-                roleOtherDiv.classList.remove('hidden');
-                roleOtherInput.value = member.if_others || '';
-            } else {
-                roleOtherDiv.classList.add('hidden');
-                roleOtherInput.value = '';
-            }
-
-            const previewImg = document.getElementById('editTeamMemberPreview');
-            const initialsSpan = document.getElementById('editTeamMemberInitials');
-
-            if (member.profile_pic) {
-                previewImg.src = `/${member.profile_pic}`;
-                previewImg.classList.remove('hidden');
-                initialsSpan.classList.add('hidden');
-            } else {
-                previewImg.classList.add('hidden');
-                initialsSpan.classList.remove('hidden');
-                const initials = (member.first_name?.[0] || '') + (member.last_name?.[0] || '');
-                initialsSpan.textContent = initials.toUpperCase();
-            }
-
-            const inputs = ['editTeamMemberFirstName', 'editTeamMemberMiddleName', 'editTeamMemberLastName',
-                          'editTeamMemberContact', 'editTeamMemberUsername', 'editTeamMemberEmail',
-                          'editTeamMemberPassword', 'editTeamMemberRole', 'editTeamMemberRoleOther'];
-            inputs.forEach(id => {
-                const element = document.getElementById(id);
-                const errorElement = document.getElementById(id.replace('editTeamMember', 'edit') + 'Error');
-                if (element) {
-                    element.classList.remove('border-red-500');
+            if (roleOtherDiv && roleOtherInput) {
+                if ((member.company_role === 'others' || member.role === 'others')) {
+                    roleOtherDiv.classList.remove('hidden');
+                    roleOtherInput.value = member.role_if_others || member.if_others || '';
+                } else {
+                    roleOtherDiv.classList.add('hidden');
+                    roleOtherInput.value = '';
                 }
+            }
+
+            // Clear any previous error states
+            const errorIds = ['editRoleError', 'editRoleOtherError'];
+            errorIds.forEach(id => {
+                const errorElement = document.getElementById(id);
                 if (errorElement) {
                     errorElement.textContent = '';
                     errorElement.classList.add('hidden');
                 }
             });
 
+            if (roleSelect) {
+                roleSelect.classList.remove('border-red-500');
+            }
+            if (roleOtherInput) {
+                roleOtherInput.classList.remove('border-red-500');
+            }
+
+            // Show modal
             const modal = document.getElementById('editTeamMemberModal');
-            const modalContent = modal.querySelector('.modal-content');
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
-            setTimeout(() => {
-                modalContent.classList.remove('scale-95', 'opacity-0');
-                modalContent.classList.add('scale-100', 'opacity-100');
-            }, 10);
+            if (modal) {
+                const modalContent = modal.querySelector('.modal-content');
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                setTimeout(() => {
+                    if (modalContent) {
+                        modalContent.classList.remove('scale-95', 'opacity-0');
+                        modalContent.classList.add('scale-100', 'opacity-100');
+                    }
+                }, 10);
+            }
         }
     })
     .catch(error => {
         console.error('Error:', error);
+        showNotification('Failed to load team member data', 'error');
     });
 }
 
 function saveEditTeamMember() {
-    const memberId = document.getElementById('editTeamMemberContractorUserId').value;
-    const firstName = document.getElementById('editTeamMemberFirstName').value.trim();
-    const middleName = document.getElementById('editTeamMemberMiddleName').value.trim();
-    const lastName = document.getElementById('editTeamMemberLastName').value.trim();
-    const contact = document.getElementById('editTeamMemberContact').value.trim();
-    const username = document.getElementById('editTeamMemberUsername').value.trim();
-    const email = document.getElementById('editTeamMemberEmail').value.trim();
-    const password = document.getElementById('editTeamMemberPassword').value.trim();
-    const role = document.getElementById('editTeamMemberRole').value.trim();
-    const roleOther = document.getElementById('editTeamMemberRoleOther').value.trim();
+    const memberId = document.getElementById('editTeamMemberContractorUserId')?.value;
+    const roleSelect = document.getElementById('editTeamMemberRole');
+    const roleOtherInput = document.getElementById('editTeamMemberRoleOther');
+    
+    if (!memberId) {
+        showNotification('Member ID is missing', 'error');
+        return;
+    }
 
-    const inputs = ['editTeamMemberFirstName', 'editTeamMemberMiddleName', 'editTeamMemberLastName',
-                  'editTeamMemberContact', 'editTeamMemberUsername', 'editTeamMemberEmail',
-                  'editTeamMemberPassword', 'editTeamMemberRole', 'editTeamMemberRoleOther'];
-    inputs.forEach(id => {
-        const element = document.getElementById(id);
-        const errorElement = document.getElementById(id.replace('editTeamMember', 'edit') + 'Error');
-        if (element) {
-            element.classList.remove('border-red-500');
-        }
+    const role = roleSelect ? roleSelect.value.trim() : '';
+    const roleOther = roleOtherInput ? roleOtherInput.value.trim() : '';
+
+    // Clear previous error states
+    const errorIds = ['editRoleError', 'editRoleOtherError'];
+    errorIds.forEach(id => {
+        const errorElement = document.getElementById(id);
         if (errorElement) {
             errorElement.textContent = '';
             errorElement.classList.add('hidden');
         }
     });
 
-    const formData = new FormData();
-    formData.append('contractor_user_id', memberId);
-    formData.append('first_name', firstName);
-    if (middleName) formData.append('middle_name', middleName);
-    formData.append('last_name', lastName);
-    formData.append('phone_number', contact);
-    formData.append('username', username);
-    formData.append('email', email);
-    if (password) formData.append('password', password); // Only add if not empty
-    formData.append('role', role);
-    if (role === 'others' && roleOther) formData.append('role_other', roleOther);
+    if (roleSelect) roleSelect.classList.remove('border-red-500');
+    if (roleOtherInput) roleOtherInput.classList.remove('border-red-500');
 
-    const profilePicFile = document.getElementById('editTeamMemberUpload').files[0];
-    if (profilePicFile) {
-        formData.append('profile_pic', profilePicFile);
+    // Create FormData - only send role data
+    const formData = new FormData();
+    formData.append('staff_id', memberId);
+    formData.append('role', role); // Changed from company_role to role
+    if (role === 'others' && roleOther) {
+        formData.append('role_other', roleOther); // Changed from role_if_others to role_other
     }
 
+    // Laravel method spoofing for PUT request
     formData.append('_method', 'PUT');
 
+    // Get CSRF token
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
     if (csrfToken) {
         formData.append('_token', csrfToken);
     }
 
+    // Disable save button
     const saveBtn = document.getElementById('saveEditTeamMemberBtn');
+    if (!saveBtn) return;
+    
     const originalBtnText = saveBtn.innerHTML;
     saveBtn.disabled = true;
     saveBtn.innerHTML = '<i class="fi fi-rr-spinner animate-spin"></i> Saving...';
 
+    // Send AJAX request
     fetch(`/admin/user-management/contractor/team-member/update/${memberId}`, {
         method: 'POST', // Using POST with _method spoofing
         headers: {
@@ -1228,48 +1385,33 @@ function saveEditTeamMember() {
     })
     .then(({ok, status, data}) => {
         if (ok && data.success === true) {
-            showNotification(data.message || 'Team member updated successfully!', 'success');
+            showNotification(data.message || 'Team member role updated successfully!', 'success');
             closeEditTeamMemberModal();
-
+            
+            // Refresh team members table instantly
             fetchAndUpdateTeamMembers();
         } else {
-
+            // Handle validation errors (422 status)
             if (status === 422 && data.errors) {
-                Object.keys(data.errors).forEach(field => {
-
-                    const fieldMap = {
-                        'first_name': 'editTeamMemberFirstName',
-                        'middle_name': 'editTeamMemberMiddleName',
-                        'last_name': 'editTeamMemberLastName',
-                        'phone_number': 'editTeamMemberContact',
-                        'username': 'editTeamMemberUsername',
-                        'email': 'editTeamMemberEmail',
-                        'password': 'editTeamMemberPassword',
-                        'role': 'editTeamMemberRole',
-                        'role_other': 'editTeamMemberRoleOther',
-                        'contractor_user_id': null
-                    };
-
-                    const elementId = fieldMap[field];
-                    if (elementId) {
-                        const element = document.getElementById(elementId);
-                        const errorId = elementId.replace('editTeamMember', 'edit') + 'Error';
-                        const errorElement = document.getElementById(errorId);
-
-                        if (element) {
-                            element.classList.add('border-red-500');
-                        }
-
-                        if (errorElement) {
-                            errorElement.textContent = data.errors[field][0];
-                            errorElement.classList.remove('hidden');
-                        }
+                if (data.errors.role) {
+                    if (roleSelect) roleSelect.classList.add('border-red-500');
+                    const errorEl = document.getElementById('editRoleError');
+                    if (errorEl) {
+                        errorEl.textContent = data.errors.role[0];
+                        errorEl.classList.remove('hidden');
                     }
-                });
-
+                }
+                if (data.errors.role_other) {
+                    if (roleOtherInput) roleOtherInput.classList.add('border-red-500');
+                    const errorEl = document.getElementById('editRoleOtherError');
+                    if (errorEl) {
+                        errorEl.textContent = data.errors.role_other[0];
+                        errorEl.classList.remove('hidden');
+                    }
+                }
             } else {
-
-                showNotification(data.message || 'Failed to update team member.', 'error');
+                // Show toast only for major errors (non-validation)
+                showNotification(data.message || 'Failed to update team member role.', 'error');
             }
         }
     })
@@ -1278,7 +1420,7 @@ function saveEditTeamMember() {
         showNotification('An error occurred. Please try again.', 'error');
     })
     .finally(() => {
-
+        // Re-enable save button
         saveBtn.disabled = false;
         saveBtn.innerHTML = originalBtnText;
     });
@@ -1286,52 +1428,91 @@ function saveEditTeamMember() {
 
 function closeEditTeamMemberModal() {
     const modal = document.getElementById('editTeamMemberModal');
+    if (!modal) return;
+    
     const modalContent = modal.querySelector('.modal-content');
-
-    modalContent.classList.remove('scale-100', 'opacity-100');
-    modalContent.classList.add('scale-95', 'opacity-0');
+    if (modalContent) {
+        modalContent.classList.remove('scale-100', 'opacity-100');
+        modalContent.classList.add('scale-95', 'opacity-0');
+    }
 
     setTimeout(() => {
         modal.classList.add('hidden');
         modal.classList.remove('flex');
 
-        document.getElementById('editTeamMemberFirstName').value = '';
-        document.getElementById('editTeamMemberMiddleName').value = '';
-        document.getElementById('editTeamMemberLastName').value = '';
-        document.getElementById('editTeamMemberContact').value = '';
-        document.getElementById('editTeamMemberUsername').value = '';
-        document.getElementById('editTeamMemberEmail').value = '';
-        document.getElementById('editTeamMemberPassword').value = '';
-        document.getElementById('editTeamMemberRole').value = '';
-        document.getElementById('editTeamMemberRoleOther').value = '';
-        document.getElementById('editRoleOtherDiv').classList.add('hidden');
+        // Clear display fields
+        const firstNameDisplay = document.getElementById('editTeamMemberFirstNameDisplay');
+        const middleNameDisplay = document.getElementById('editTeamMemberMiddleNameDisplay');
+        const lastNameDisplay = document.getElementById('editTeamMemberLastNameDisplay');
+        const emailDisplay = document.getElementById('editTeamMemberEmailDisplay');
+        const usernameDisplay = document.getElementById('editTeamMemberUsernameDisplay');
 
-        const previewImg = document.getElementById('editTeamMemberPreview');
-        const initialsSpan = document.getElementById('editTeamMemberInitials');
-        previewImg.src = '';
-        previewImg.classList.add('hidden');
-        initialsSpan.classList.remove('hidden');
-        initialsSpan.textContent = 'TM';
+        if (firstNameDisplay) firstNameDisplay.textContent = '-';
+        if (middleNameDisplay) middleNameDisplay.textContent = '-';
+        if (lastNameDisplay) lastNameDisplay.textContent = '-';
+        if (emailDisplay) emailDisplay.textContent = '-';
+        if (usernameDisplay) usernameDisplay.textContent = '-';
 
-        document.getElementById('editTeamMemberUpload').value = '';
+        // Clear role fields
+        const roleSelect = document.getElementById('editTeamMemberRole');
+        const roleOtherInput = document.getElementById('editTeamMemberRoleOther');
+        const roleOtherDiv = document.getElementById('editRoleOtherDiv');
+
+        if (roleSelect) roleSelect.value = '';
+        if (roleOtherInput) roleOtherInput.value = '';
+        if (roleOtherDiv) roleOtherDiv.classList.add('hidden');
+
+        // Clear hidden input
+        const contractorUserIdInput = document.getElementById('editTeamMemberContractorUserId');
+        if (contractorUserIdInput) contractorUserIdInput.value = '';
     }, 300);
 }
+
+// ============================================
+// DEACTIVATE TEAM MEMBER FUNCTIONALITY
+// ============================================
 
 let currentDeactivateMemberId = null;
 
 function openDeactivateTeamMemberModal(memberId, memberName) {
     currentDeactivateMemberId = memberId;
 
+    // Set member name in modal
     document.getElementById('deactivateTeamMemberName').textContent = memberName;
 
+    // Clear previous reason and error
     const reasonTextarea = document.getElementById('deactivateTeamMemberReason');
     const errorElement = document.getElementById('deactivateReasonError');
+    const suspensionDateInput = document.getElementById('suspensionDateTeamMember');
+    const suspensionDateError = document.getElementById('suspensionDateErrorTeamMember');
 
     reasonTextarea.value = '';
     reasonTextarea.classList.remove('border-red-500');
     errorElement.textContent = '';
     errorElement.classList.add('hidden');
 
+    if (suspensionDateInput) {
+        suspensionDateInput.value = '';
+        suspensionDateInput.classList.remove('border-red-500');
+    }
+    if (suspensionDateError) {
+        suspensionDateError.textContent = '';
+        suspensionDateError.classList.add('hidden');
+    }
+
+    // Reset radio buttons to temporary
+    const radioButtons = document.querySelectorAll('input[name="suspensionDurationTeamMember"]');
+    if (radioButtons.length > 0) {
+        radioButtons[0].checked = true;
+        // Show date picker for temporary
+        const dateContainer = document.getElementById('suspensionDateContainerTeamMember');
+        if (dateContainer) {
+            dateContainer.classList.remove('opacity-0', 'invisible');
+            dateContainer.classList.add('opacity-100', 'visible');
+        }
+    }
+
+    // Show modal
     const modal = document.getElementById('deactivateTeamMemberModal');
     const modalContent = modal.querySelector('.modal-content');
     modal.classList.remove('hidden');
@@ -1354,8 +1535,20 @@ function closeDeactivateTeamMemberModal() {
         modal.classList.remove('flex');
         currentDeactivateMemberId = null;
 
+        // Clear form
         document.getElementById('deactivateTeamMemberReason').value = '';
         document.getElementById('deactivateReasonError').classList.add('hidden');
+        
+        const suspensionDateInput = document.getElementById('suspensionDateTeamMember');
+        const suspensionDateError = document.getElementById('suspensionDateErrorTeamMember');
+        if (suspensionDateInput) suspensionDateInput.value = '';
+        if (suspensionDateError) suspensionDateError.classList.add('hidden');
+
+        // Reset radio buttons
+        const radioButtons = document.querySelectorAll('input[name="suspensionDurationTeamMember"]');
+        if (radioButtons.length > 0) {
+            radioButtons[0].checked = true;
+        }
     }, 300);
 }
 
@@ -1363,41 +1556,78 @@ function confirmDeactivateTeamMember() {
     const reason = document.getElementById('deactivateTeamMemberReason').value.trim();
     const reasonTextarea = document.getElementById('deactivateTeamMemberReason');
     const errorElement = document.getElementById('deactivateReasonError');
+    const selectedDuration = document.querySelector('input[name="suspensionDurationTeamMember"]:checked');
+    const duration = selectedDuration ? selectedDuration.value : 'temporary';
+    const suspensionDateInput = document.getElementById('suspensionDateTeamMember');
+    const suspensionDateError = document.getElementById('suspensionDateErrorTeamMember');
+    let suspensionDate = null;
+    let hasError = false;
 
+    // Clear previous errors
     reasonTextarea.classList.remove('border-red-500');
     errorElement.classList.add('hidden');
     errorElement.textContent = '';
 
-    if (!reason) {
-        reasonTextarea.classList.add('border-red-500');
-        errorElement.textContent = 'Deactivation reason is required.';
-        errorElement.classList.remove('hidden');
-        return;
+    if (suspensionDateInput) {
+        suspensionDateInput.classList.remove('border-red-500');
+    }
+    if (suspensionDateError) {
+        suspensionDateError.classList.add('hidden');
+        suspensionDateError.textContent = '';
     }
 
-    if (reason.length < 10) {
+    // Validate reason
+    if (!reason) {
+        reasonTextarea.classList.add('border-red-500');
+        errorElement.textContent = 'Suspension reason is required.';
+        errorElement.classList.remove('hidden');
+        hasError = true;
+    } else if (reason.length < 10) {
         reasonTextarea.classList.add('border-red-500');
         errorElement.textContent = 'Reason must be at least 10 characters.';
         errorElement.classList.remove('hidden');
-        return;
+        hasError = true;
     }
 
-    const formData = new FormData();
-    formData.append('contractor_user_id', currentDeactivateMemberId);
-    formData.append('deletion_reason', reason);
-    formData.append('_method', 'DELETE');
+    // Validate suspension date for temporary suspension
+    if (duration === 'temporary') {
+        suspensionDate = suspensionDateInput ? suspensionDateInput.value : '';
+        if (!suspensionDate) {
+            if (suspensionDateInput) suspensionDateInput.classList.add('border-red-500');
+            if (suspensionDateError) {
+                suspensionDateError.textContent = 'Please select a suspension date.';
+                suspensionDateError.classList.remove('hidden');
+            }
+            hasError = true;
+        }
+    }
 
+    if (hasError) return;
+
+    // Create FormData
+    const formData = new FormData();
+    formData.append('staff_id', currentDeactivateMemberId);
+    formData.append('suspension_reason', reason);
+    formData.append('duration', duration);
+    if (suspensionDate) {
+        formData.append('suspension_until', suspensionDate);
+    }
+    formData.append('_method', 'POST');
+
+    // Get CSRF token
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
     if (csrfToken) {
         formData.append('_token', csrfToken);
     }
 
+    // Disable button
     const confirmBtn = document.getElementById('confirmDeactivateTeamMemberBtn');
     const originalBtnText = confirmBtn.innerHTML;
     confirmBtn.disabled = true;
-    confirmBtn.innerHTML = '<i class="fi fi-rr-spinner animate-spin"></i> Deactivating...';
+    confirmBtn.innerHTML = '<i class="fi fi-rr-spinner animate-spin"></i> Suspending...';
 
-    fetch(`/admin/user-management/contractor/team-member/deactivate/${currentDeactivateMemberId}`, {
+    // Send AJAX request
+    fetch(`/admin/user-management/contractor/team-member/${currentDeactivateMemberId}/suspend`, {
         method: 'POST',
         headers: {
             'X-CSRF-TOKEN': csrfToken,
@@ -1414,21 +1644,27 @@ function confirmDeactivateTeamMember() {
     })
     .then(({ok, status, data}) => {
         if (ok && data.success === true) {
-            showNotification(data.message || 'Team member deactivated successfully!', 'success');
+            showNotification(data.message || 'Team member suspended successfully!', 'success');
             closeDeactivateTeamMemberModal();
-
+            
+            // Refresh team members table instantly
             fetchAndUpdateTeamMembers();
         } else {
-
+            // Handle validation errors (422 status)
             if (status === 422 && data.errors) {
-                if (data.errors.deletion_reason) {
+                if (data.errors.suspension_reason) {
                     reasonTextarea.classList.add('border-red-500');
-                    errorElement.textContent = data.errors.deletion_reason[0];
+                    errorElement.textContent = data.errors.suspension_reason[0];
                     errorElement.classList.remove('hidden');
                 }
+                if (data.errors.suspension_until && suspensionDateInput && suspensionDateError) {
+                    suspensionDateInput.classList.add('border-red-500');
+                    suspensionDateError.textContent = data.errors.suspension_until[0];
+                    suspensionDateError.classList.remove('hidden');
+                }
             } else {
-
-                showNotification(data.message || 'Failed to deactivate team member.', 'error');
+                // Show toast for other errors
+                showNotification(data.message || 'Failed to suspend team member.', 'error');
             }
         }
     })
@@ -1437,19 +1673,25 @@ function confirmDeactivateTeamMember() {
         showNotification('An error occurred. Please try again.', 'error');
     })
     .finally(() => {
-
+        // Re-enable button
         confirmBtn.disabled = false;
         confirmBtn.innerHTML = originalBtnText;
     });
 }
+
+// ============================================
+// REACTIVATE TEAM MEMBER FUNCTIONALITY
+// ============================================
 
 let currentReactivateMemberId = null;
 
 function openReactivateTeamMemberModal(memberId, memberName) {
     currentReactivateMemberId = memberId;
 
+    // Set member name in modal
     document.getElementById('reactivateTeamMemberName').textContent = memberName;
 
+    // Show modal
     const modal = document.getElementById('reactivateTeamMemberModal');
     const modalContent = modal.querySelector('.modal-content');
     modal.classList.remove('hidden');
@@ -1475,21 +1717,24 @@ function closeReactivateTeamMemberModal() {
 }
 
 function confirmReactivateTeamMember() {
-
+    // Create FormData
     const formData = new FormData();
-    formData.append('contractor_user_id', currentReactivateMemberId);
+    formData.append('staff_id', currentReactivateMemberId);
     formData.append('_method', 'PATCH');
 
+    // Get CSRF token
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
     if (csrfToken) {
         formData.append('_token', csrfToken);
     }
 
+    // Disable button
     const confirmBtn = document.getElementById('confirmReactivateTeamMemberBtn');
     const originalBtnText = confirmBtn.innerHTML;
     confirmBtn.disabled = true;
     confirmBtn.innerHTML = '<i class="fi fi-rr-spinner animate-spin"></i> Reactivating...';
 
+    // Send AJAX request
     fetch(`/admin/user-management/contractor/team-member/reactivate/${currentReactivateMemberId}`, {
         method: 'POST',
         headers: {
@@ -1509,10 +1754,11 @@ function confirmReactivateTeamMember() {
         if (ok && data.success === true) {
             showNotification(data.message || 'Team member reactivated successfully!', 'success');
             closeReactivateTeamMemberModal();
-
+            
+            // Refresh team members table instantly
             fetchAndUpdateTeamMembers();
         } else {
-
+            // Show error toast
             showNotification(data.message || 'Failed to reactivate team member.', 'error');
         }
     })
@@ -1521,7 +1767,233 @@ function confirmReactivateTeamMember() {
         showNotification('An error occurred. Please try again.', 'error');
     })
     .finally(() => {
+        // Re-enable button
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = originalBtnText;
+    });
+}
 
+// ============================================
+// CANCEL INVITATION FUNCTIONALITY
+// ============================================
+
+const cancelInvitationModal = document.getElementById('cancelInvitationModal');
+const closeCancelInvitationBtn = document.getElementById('closeCancelInvitationBtn');
+const confirmCancelInvitationBtn = document.getElementById('confirmCancelInvitationBtn');
+let currentCancelMemberId = null;
+
+function openCancelInvitationModal(memberId, memberName) {
+    currentCancelMemberId = memberId;
+
+    // Set member name in modal
+    const memberNameEl = document.getElementById('cancelMemberName');
+    if (memberNameEl) memberNameEl.textContent = memberName;
+
+    // Clear previous reason and error
+    const reasonTextarea = document.getElementById('cancelInvitationReason');
+    const errorElement = document.getElementById('cancelReasonError');
+
+    if (reasonTextarea) {
+        reasonTextarea.value = '';
+        reasonTextarea.classList.remove('border-red-500');
+    }
+    if (errorElement) {
+        errorElement.textContent = '';
+        errorElement.classList.add('hidden');
+    }
+
+    // Show modal
+    if (cancelInvitationModal) {
+        const modalContent = cancelInvitationModal.querySelector('.modal-content');
+        cancelInvitationModal.classList.remove('hidden');
+        cancelInvitationModal.classList.add('flex');
+        setTimeout(() => {
+            if (modalContent) {
+                modalContent.classList.remove('scale-95', 'opacity-0');
+                modalContent.classList.add('scale-100', 'opacity-100');
+            }
+        }, 10);
+    }
+}
+
+function closeCancelInvitationModal() {
+    if (!cancelInvitationModal) return;
+    
+    const modalContent = cancelInvitationModal.querySelector('.modal-content');
+    if (modalContent) {
+        modalContent.classList.remove('scale-100', 'opacity-100');
+        modalContent.classList.add('scale-95', 'opacity-0');
+    }
+
+    setTimeout(() => {
+        cancelInvitationModal.classList.add('hidden');
+        cancelInvitationModal.classList.remove('flex');
+        currentCancelMemberId = null;
+
+        // Clear form
+        const reasonTextarea = document.getElementById('cancelInvitationReason');
+        const errorElement = document.getElementById('cancelReasonError');
+        if (reasonTextarea) reasonTextarea.value = '';
+        if (errorElement) errorElement.classList.add('hidden');
+    }, 300);
+}
+
+function confirmCancelInvitation() {
+    const reasonTextarea = document.getElementById('cancelInvitationReason');
+    const errorElement = document.getElementById('cancelReasonError');
+    const reason = reasonTextarea ? reasonTextarea.value.trim() : '';
+
+    // Clear previous error
+    if (reasonTextarea) reasonTextarea.classList.remove('border-red-500');
+    if (errorElement) errorElement.classList.add('hidden');
+
+    // Client-side validation
+    if (!reason) {
+        if (reasonTextarea) reasonTextarea.classList.add('border-red-500');
+        if (errorElement) {
+            errorElement.textContent = 'Cancellation reason is required.';
+            errorElement.classList.remove('hidden');
+        }
+        return;
+    }
+
+    if (reason.length < 10) {
+        if (reasonTextarea) reasonTextarea.classList.add('border-red-500');
+        if (errorElement) {
+            errorElement.textContent = 'Reason must be at least 10 characters.';
+            errorElement.classList.remove('hidden');
+        }
+        return;
+    }
+
+    // Get CSRF token
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+    // Disable button
+    const confirmBtn = confirmCancelInvitationBtn;
+    if (!confirmBtn) return;
+    
+    const originalBtnText = confirmBtn.innerHTML;
+    confirmBtn.disabled = true;
+    confirmBtn.innerHTML = '<i class="fi fi-rr-spinner animate-spin"></i> Canceling...';
+
+    // Send AJAX request
+    fetch(`/admin/user-management/contractor/team-member/${currentCancelMemberId}/cancel-invitation`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrfToken,
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+            reason: reason
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(data.message || 'Invitation canceled successfully!', 'success');
+            closeCancelInvitationModal();
+            fetchAndUpdateTeamMembers();
+        } else {
+            showNotification(data.message || 'Failed to cancel invitation.', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('An error occurred. Please try again.', 'error');
+    })
+    .finally(() => {
+        // Re-enable button
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = originalBtnText;
+    });
+}
+
+// ============================================
+// REAPPLY INVITATION FUNCTIONALITY
+// ============================================
+
+const reapplyInvitationModal = document.getElementById('reapplyInvitationModal');
+const closeReapplyInvitationBtn = document.getElementById('closeReapplyInvitationBtn');
+const confirmReapplyInvitationBtn = document.getElementById('confirmReapplyInvitationBtn');
+let currentReapplyMemberId = null;
+
+function openReapplyInvitationModal(memberId, memberName) {
+    currentReapplyMemberId = memberId;
+
+    // Set member name in modal
+    const memberNameEl = document.getElementById('reapplyMemberName');
+    if (memberNameEl) memberNameEl.textContent = memberName;
+
+    // Show modal
+    if (reapplyInvitationModal) {
+        const modalContent = reapplyInvitationModal.querySelector('.modal-content');
+        reapplyInvitationModal.classList.remove('hidden');
+        reapplyInvitationModal.classList.add('flex');
+        setTimeout(() => {
+            if (modalContent) {
+                modalContent.classList.remove('scale-95', 'opacity-0');
+                modalContent.classList.add('scale-100', 'opacity-100');
+            }
+        }, 10);
+    }
+}
+
+function closeReapplyInvitationModal() {
+    if (!reapplyInvitationModal) return;
+    
+    const modalContent = reapplyInvitationModal.querySelector('.modal-content');
+    if (modalContent) {
+        modalContent.classList.remove('scale-100', 'opacity-100');
+        modalContent.classList.add('scale-95', 'opacity-0');
+    }
+
+    setTimeout(() => {
+        reapplyInvitationModal.classList.add('hidden');
+        reapplyInvitationModal.classList.remove('flex');
+        currentReapplyMemberId = null;
+    }, 300);
+}
+
+function confirmReapplyInvitation() {
+    // Get CSRF token
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+    // Disable button
+    const confirmBtn = confirmReapplyInvitationBtn;
+    if (!confirmBtn) return;
+    
+    const originalBtnText = confirmBtn.innerHTML;
+    confirmBtn.disabled = true;
+    confirmBtn.innerHTML = '<i class="fi fi-rr-spinner animate-spin"></i> Reapplying...';
+
+    // Send AJAX request
+    fetch(`/admin/user-management/contractor/team-member/${currentReapplyMemberId}/reapply-invitation`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrfToken,
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify({})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(data.message || 'Invitation reapplied successfully!', 'success');
+            closeReapplyInvitationModal();
+            fetchAndUpdateTeamMembers();
+        } else {
+            showNotification(data.message || 'Failed to reapply invitation.', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('An error occurred. Please try again.', 'error');
+    })
+    .finally(() => {
+        // Re-enable button
         confirmBtn.disabled = false;
         confirmBtn.innerHTML = originalBtnText;
     });
@@ -1543,9 +2015,10 @@ function filterTeamMembers() {
     });
 }
 
+// Event listeners for Change Representative modal
 if (changeRepresentativeBtn) {
     changeRepresentativeBtn.addEventListener('click', function() {
-
+        // Always open the change representative modal (it now has option to add new or select existing)
         openChangeRepresentativeModal();
     });
 }
@@ -1566,6 +2039,7 @@ if (searchTeamMemberInput) {
     searchTeamMemberInput.addEventListener('input', filterTeamMembers);
 }
 
+// Delegate click events to team member options
 document.addEventListener('click', function(e) {
     const memberOption = e.target.closest('.team-member-option');
     if (memberOption) {
@@ -1573,30 +2047,33 @@ document.addEventListener('click', function(e) {
     }
 });
 
+// Add New Representative button inside the Change Representative modal
 const addNewRepresentativeBtn = document.getElementById('addNewRepresentativeBtn');
 if (addNewRepresentativeBtn) {
     addNewRepresentativeBtn.addEventListener('click', function() {
-
+        // Close the change representative modal
         closeChangeRepresentativeModal();
-
+        // Open the add team member modal with representative flag and track it came from change rep modal
         setTimeout(() => {
             openAddTeamMemberModal(true, true);
         }, 300);
     });
 }
 
+// Back button in Add Team Member modal to return to Change Representative modal
 const backToRepresentativeModalBtn = document.getElementById('backToRepresentativeModalBtn');
 if (backToRepresentativeModalBtn) {
     backToRepresentativeModalBtn.addEventListener('click', function() {
-
+        // Close the add team member modal
         closeAddTeamMemberModal();
-
+        // Reopen the change representative modal
         setTimeout(() => {
             openChangeRepresentativeModal();
         }, 300);
     });
 }
 
+// Close modal when clicking outside
 if (changeRepresentativeModal) {
     changeRepresentativeModal.addEventListener('click', function(e) {
         if (e.target === changeRepresentativeModal) {
@@ -1605,15 +2082,22 @@ if (changeRepresentativeModal) {
     });
 }
 
+// ============================================
+// TEAM MEMBERS INITIALIZATION
+// ============================================
+
+// Initialize team member tabs on page load
 if (document.querySelector('.team-tab')) {
     initTeamMemberTabs();
 }
 
+// Team Members Modal Events
 if (addTeamMemberBtn) addTeamMemberBtn.addEventListener('click', () => openAddTeamMemberModal(false));
 if (closeAddTeamMemberBtn) closeAddTeamMemberBtn.addEventListener('click', closeAddTeamMemberModal);
 if (cancelAddTeamMemberBtn) cancelAddTeamMemberBtn.addEventListener('click', closeAddTeamMemberModal);
 if (saveTeamMemberBtn) saveTeamMemberBtn.addEventListener('click', saveAddTeamMember);
 
+// Role dropdown change event for "Others" field
 const teamMemberRoleSelect = document.getElementById('teamMemberRole');
 const teamMemberRoleOtherGroup = document.getElementById('teamMemberRoleOtherGroup');
 if (teamMemberRoleSelect && teamMemberRoleOtherGroup) {
@@ -1627,6 +2111,7 @@ if (teamMemberRoleSelect && teamMemberRoleOtherGroup) {
     });
 }
 
+// Role dropdown change event for Edit modal "Others" field
 const editTeamMemberRoleSelect = document.getElementById('editTeamMemberRole');
 const editRoleOtherDiv = document.getElementById('editRoleOtherDiv');
 if (editTeamMemberRoleSelect && editRoleOtherDiv) {
@@ -1640,6 +2125,7 @@ if (editTeamMemberRoleSelect && editRoleOtherDiv) {
     });
 }
 
+// Event delegation for team member edit buttons
 document.addEventListener('click', function(e) {
     const editBtn = e.target.closest('.team-edit-btn');
     if (editBtn) {
@@ -1649,6 +2135,7 @@ document.addEventListener('click', function(e) {
         }
     }
 
+    // Event delegation for team member deactivate buttons
     const deactivateBtn = e.target.closest('.team-deactivate-btn');
     if (deactivateBtn) {
         const memberId = deactivateBtn.getAttribute('data-member-id');
@@ -1658,6 +2145,7 @@ document.addEventListener('click', function(e) {
         }
     }
 
+    // Event delegation for team member reactivate buttons
     const reactivateBtn = e.target.closest('.team-reactivate-btn');
     if (reactivateBtn) {
         const memberId = reactivateBtn.getAttribute('data-member-id');
@@ -1676,9 +2164,35 @@ if (closeDeactivateTeamMemberBtn) closeDeactivateTeamMemberBtn.addEventListener(
 if (cancelDeactivateTeamMemberBtn) cancelDeactivateTeamMemberBtn.addEventListener('click', closeDeactivateTeamMemberModal);
 if (confirmDeactivateTeamMemberBtn) confirmDeactivateTeamMemberBtn.addEventListener('click', confirmDeactivateTeamMember);
 
+// Radio button listener for suspension duration (team member)
+const teamMemberRadioButtons = document.querySelectorAll('input[name="suspensionDurationTeamMember"]');
+teamMemberRadioButtons.forEach(radio => {
+    radio.addEventListener('change', function() {
+        const dateContainer = document.getElementById('suspensionDateContainerTeamMember');
+        if (dateContainer) {
+            if (this.value === 'temporary') {
+                dateContainer.classList.remove('opacity-0', 'invisible');
+                dateContainer.classList.add('opacity-100', 'visible');
+            } else {
+                dateContainer.classList.remove('opacity-100', 'visible');
+                dateContainer.classList.add('opacity-0', 'invisible');
+            }
+        }
+    });
+});
+
 if (cancelReactivateTeamMemberBtn) cancelReactivateTeamMemberBtn.addEventListener('click', closeReactivateTeamMemberModal);
 if (confirmReactivateTeamMemberBtn) confirmReactivateTeamMemberBtn.addEventListener('click', confirmReactivateTeamMember);
 
+// Cancel Invitation Modal Events
+if (closeCancelInvitationBtn) closeCancelInvitationBtn.addEventListener('click', closeCancelInvitationModal);
+if (confirmCancelInvitationBtn) confirmCancelInvitationBtn.addEventListener('click', confirmCancelInvitation);
+
+// Reapply Invitation Modal Events
+if (closeReapplyInvitationBtn) closeReapplyInvitationBtn.addEventListener('click', closeReapplyInvitationModal);
+if (confirmReapplyInvitationBtn) confirmReapplyInvitationBtn.addEventListener('click', confirmReapplyInvitation);
+
+// Close team member modals when clicking outside
 if (addTeamMemberModal) {
     addTeamMemberModal.addEventListener('click', function(e) {
         if (e.target === addTeamMemberModal) {
@@ -1711,10 +2225,15 @@ if (reactivateTeamMemberModal) {
     });
 }
 
+// ============================================
+// SMOOTH SCROLL ANIMATIONS
+// ============================================
+
+// Add smooth scroll behavior to all anchor links
 document.querySelectorAll('a[href^="#"]').forEach(anchor => {
     anchor.addEventListener('click', function (e) {
         const href = this.getAttribute('href');
-
+        // Only handle hash links that start with # and are valid CSS selectors
         if (href && href.startsWith('#') && href.length > 1) {
             try {
                 const target = document.querySelector(href);
@@ -1726,7 +2245,7 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
                     });
                 }
             } catch (err) {
-
+                // Invalid selector, ignore
                 console.warn('Invalid selector:', href);
             }
         }

@@ -89,6 +89,10 @@ document.addEventListener('DOMContentLoaded', function () {
         dateFromInput.addEventListener('change', function () {
             if (this.value) {
                 dateToInput.min = this.value;
+                // If dateTo is already set and is before dateFrom, clear it
+                if (dateToInput.value && dateToInput.value < this.value) {
+                    dateToInput.value = '';
+                }
             }
             handleFilterChange();
         });
@@ -97,6 +101,10 @@ document.addEventListener('DOMContentLoaded', function () {
         dateToInput.addEventListener('change', function () {
             if (this.value) {
                 dateFromInput.max = this.value;
+                // If dateFrom is already set and is after dateTo, clear it
+                if (dateFromInput.value && dateFromInput.value > this.value) {
+                    dateFromInput.value = '';
+                }
             }
             handleFilterChange();
         });
@@ -611,7 +619,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
             document.getElementById('edit_user_id').value = data.user_id;
             document.getElementById('edit_company_name').value = data.company_name || '';
-            document.getElementById('edit_company_phone').value = data.company_phone || '';
             document.getElementById('edit_company_start_date').value = data.company_start_date || '';
 
             const typeSelect = document.getElementById('edit_contractorTypeSelect');
@@ -630,9 +637,9 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('edit_company_website').value = data.company_website || '';
             document.getElementById('edit_company_social_media').value = data.company_social_media || '';
 
-            document.getElementById('edit_first_name').value = data.authorized_rep_fname || '';
-            document.getElementById('edit_middle_name').value = data.authorized_rep_mname || '';
-            document.getElementById('edit_last_name').value = data.authorized_rep_lname || '';
+            document.getElementById('edit_first_name').value = data.first_name || '';
+            document.getElementById('edit_middle_name').value = data.middle_name || '';
+            document.getElementById('edit_last_name').value = data.last_name || '';
             document.getElementById('edit_company_email').value = data.email || '';
             document.getElementById('edit_username').value = data.username || '';
 
@@ -852,7 +859,8 @@ document.addEventListener('DOMContentLoaded', function () {
             if (provinceCode) {
                 fetch(`/api/psgc/provinces/${provinceCode}/cities`)
                     .then(response => response.json())
-                    .then(data => {
+                    .then(json => {
+                        const data = Array.isArray(json) ? json : (json.data || []);
                         editCity.innerHTML = '<option value="">Select City/Municipality</option>';
                         data.forEach(city => {
                             const option = document.createElement('option');
@@ -864,6 +872,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         editCity.disabled = false;
                     })
                     .catch(error => {
+                        console.error('Error fetching cities:', error);
                         editCity.innerHTML = '<option value="">Error loading cities</option>';
                     });
             } else {
@@ -882,7 +891,8 @@ document.addEventListener('DOMContentLoaded', function () {
             if (cityCode) {
                 fetch(`/api/psgc/cities/${cityCode}/barangays`)
                     .then(response => response.json())
-                    .then(data => {
+                    .then(json => {
+                        const data = Array.isArray(json) ? json : (json.data || []);
                         editBarangay.innerHTML = '<option value="">Select Barangay</option>';
                         data.forEach(barangay => {
                             const option = document.createElement('option');
@@ -894,6 +904,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         editBarangay.disabled = false;
                     })
                     .catch(error => {
+                        console.error('Error fetching barangays:', error);
                         editBarangay.innerHTML = '<option value="">Error loading barangays</option>';
                     });
             } else {

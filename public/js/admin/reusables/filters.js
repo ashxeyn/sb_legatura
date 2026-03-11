@@ -5,15 +5,33 @@ document.addEventListener("DOMContentLoaded", function () {
     const searchInput = document.getElementById("searchInput") || document.getElementById("topNavSearch");
     const resetBtn = document.getElementById("resetFilterBtn");
 
+    // Contractor filter for suspended accounts staff tab
+    const contractorFilter = document.getElementById("contractorFilter");
+    const contractorFilterWrap = document.getElementById("contractorFilterWrap");
+
     // Dynamic Date Boundaries
     if (dateFromInput && dateToInput) {
         dateFromInput.addEventListener('change', function () {
-            if (this.value) dateToInput.min = this.value;
-            else dateToInput.removeAttribute('min');
+            if (this.value) {
+                dateToInput.min = this.value;
+                // If dateTo is already set and is before dateFrom, clear it
+                if (dateToInput.value && dateToInput.value < this.value) {
+                    dateToInput.value = '';
+                }
+            } else {
+                dateToInput.removeAttribute('min');
+            }
         });
         dateToInput.addEventListener('change', function () {
-            if (this.value) dateFromInput.max = this.value;
-            else dateFromInput.removeAttribute('max');
+            if (this.value) {
+                dateFromInput.max = this.value;
+                // If dateFrom is already set and is after dateTo, clear it
+                if (dateFromInput.value && dateFromInput.value > this.value) {
+                    dateFromInput.value = '';
+                }
+            } else {
+                dateFromInput.removeAttribute('max');
+            }
         });
     }
 
@@ -27,9 +45,51 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const contractorsWrap = document.getElementById("contractorsTableWrap");
     const ownersWrap = document.getElementById("ownersTableWrap");
+    const staffWrap = document.getElementById("staffTableWrap");
     const projectsWrap = document.getElementById("projectsTableWrap");
 
+    // Tab buttons for suspended accounts
+    const saTabStaff = document.getElementById("saTabStaff");
+    const saTabContractors = document.getElementById("saTabContractors");
+    const saTabOwners = document.getElementById("saTabOwners");
+
     let debounceTimer;
+
+    // Show/hide contractor filter based on active tab
+    function updateContractorFilterVisibility() {
+        if (contractorFilterWrap && saTabStaff) {
+            const isStaffTabActive = saTabStaff.classList.contains('text-orange-600');
+            if (isStaffTabActive) {
+                contractorFilterWrap.classList.remove('hidden');
+                contractorFilterWrap.classList.add('flex');
+            } else {
+                contractorFilterWrap.classList.add('hidden');
+                contractorFilterWrap.classList.remove('flex');
+                // Clear contractor filter when switching away from staff tab
+                if (contractorFilter) contractorFilter.value = '';
+            }
+        }
+    }
+
+    // Attach tab click listeners to update filter visibility
+    if (saTabStaff) {
+        saTabStaff.addEventListener('click', function() {
+            setTimeout(updateContractorFilterVisibility, 50);
+        });
+    }
+    if (saTabContractors) {
+        saTabContractors.addEventListener('click', function() {
+            setTimeout(updateContractorFilterVisibility, 50);
+        });
+    }
+    if (saTabOwners) {
+        saTabOwners.addEventListener('click', function() {
+            setTimeout(updateContractorFilterVisibility, 50);
+        });
+    }
+
+    // Initial visibility check
+    updateContractorFilterVisibility();
 
     // Function to fetch and update data
     async function fetchAndUpdate(url) {
@@ -49,6 +109,9 @@ document.addEventListener("DOMContentLoaded", function () {
             }
             if (ownersWrap && data.owners_html) {
                 ownersWrap.innerHTML = data.owners_html;
+            }
+            if (staffWrap && data.staff_html) {
+                staffWrap.innerHTML = data.staff_html;
             }
             if (projectsWrap && data.html) {
                 projectsWrap.innerHTML = data.html;
@@ -105,6 +168,13 @@ document.addEventListener("DOMContentLoaded", function () {
             params.delete("search");
         }
 
+        // Contractor filter (only add if staff tab is active)
+        if (contractorFilter && contractorFilter.value && saTabStaff && saTabStaff.classList.contains('text-orange-600')) {
+            params.set("contractor_id", contractorFilter.value);
+        } else {
+            params.delete("contractor_id");
+        }
+
         // New params
         if (statusFilter && statusFilter.value) {
             params.set("status", statusFilter.value);
@@ -148,7 +218,7 @@ document.addEventListener("DOMContentLoaded", function () {
     function attachPaginationListeners() {
         // Target pagination links inside the wrappers
         const paginationLinks = document.querySelectorAll(
-            "#contractorsTableWrap .pagination a, #ownersTableWrap .pagination a, #projectsTableWrap .pagination a"
+            "#contractorsTableWrap .pagination a, #ownersTableWrap .pagination a, #staffTableWrap .pagination a, #projectsTableWrap .pagination a"
         );
         paginationLinks.forEach((link) => {
             link.addEventListener("click", function (e) {
@@ -170,6 +240,9 @@ document.addEventListener("DOMContentLoaded", function () {
     if (searchInput && urlParams.has("search")) {
         searchInput.value = urlParams.get("search");
     }
+    if (contractorFilter && urlParams.has("contractor_id")) {
+        contractorFilter.value = urlParams.get("contractor_id");
+    }
     if (statusFilter && urlParams.has("status")) {
         statusFilter.value = urlParams.get("status");
     }
@@ -186,6 +259,9 @@ document.addEventListener("DOMContentLoaded", function () {
     if (dateToInput) dateToInput.addEventListener("change", handleFilterChange);
     if (searchInput) searchInput.addEventListener("input", handleSearchInput);
 
+    if (contractorFilter)
+        contractorFilter.addEventListener("change", handleFilterChange);
+
     if (statusFilter)
         statusFilter.addEventListener("change", handleFilterChange);
 
@@ -200,6 +276,7 @@ document.addEventListener("DOMContentLoaded", function () {
             if (dateFromInput) dateFromInput.value = "";
             if (dateToInput) dateToInput.value = "";
             if (searchInput) searchInput.value = "";
+            if (contractorFilter) contractorFilter.value = "";
             if (verificationFilter) verificationFilter.value = "";
             if (progressFilter) progressFilter.value = "";
             handleFilterChange();
@@ -212,6 +289,7 @@ document.addEventListener("DOMContentLoaded", function () {
             if (dateToInput) dateToInput.value = "";
             if (statusFilter) statusFilter.value = "";
             if (searchInput) searchInput.value = "";
+            if (contractorFilter) contractorFilter.value = "";
             handleFilterChange();
         });
     }

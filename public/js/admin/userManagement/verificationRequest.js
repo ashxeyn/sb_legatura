@@ -86,6 +86,15 @@
         return Math.abs(age_dt.getUTCFullYear() - 1970);
     }
 
+    function formatDate(dateString) {
+        if (!dateString) return "N/A";
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return "N/A";
+        
+        const options = { year: 'numeric', month: 'long', day: '2-digit' };
+        return date.toLocaleDateString('en-US', options);
+    }
+
     // Notification helper (matches propertyOwner style)
     function showNotification(message, type = "success") {
         const notification = document.createElement("div");
@@ -159,7 +168,7 @@
         currentUserType = type;
         try {
             const response = await fetch(
-                `/api/admin/users/verification-requests/${id}`
+                `/api/admin/users/verification-requests/${id}?type=${type}`
             );
             if (!response.ok) throw new Error("Failed to fetch details");
             const data = await response.json();
@@ -256,7 +265,7 @@
             "poOccupation",
             profile.occupation || profile.occupation_other || "N/A"
         );
-        setText("poDob", profile.birthdate || profile.date_of_birth || "N/A");
+        setText("poDob", formatDate(profile.birthdate || profile.date_of_birth));
         setText(
             "poAge",
             calculateAge(profile.birthdate || profile.date_of_birth)

@@ -30,7 +30,7 @@ Route::prefix('admin/notifications')
 
         // Page (already exists — keep your existing view route)
         // Route::get('/', [AdminController::class, 'notificationSettings']);
-
+    
         // Users list for targeted send dropdown
         Route::get('/users', [\App\Http\Controllers\AdminController::class, 'getUsersForNotification']);
 
@@ -41,7 +41,7 @@ Route::prefix('admin/notifications')
             ->name('admin.sendTargetedNotification');
 
         // Preferences
-        Route::get('/preferences',  [\App\Http\Controllers\AdminController::class, 'getPreferences']);
+        Route::get('/preferences', [\App\Http\Controllers\AdminController::class, 'getPreferences']);
         Route::post('/preferences', [\App\Http\Controllers\AdminController::class, 'savePreferences'])
             ->name('admin.notifications.savePreferences');
 
@@ -89,7 +89,7 @@ Route::post('/admin/global-management/ai-management/analyze/{id}', [globalManage
 // Mobile document viewer (served as HTML so WebView has same-origin access to files)
 Route::get('/document-viewer', function () {
     $file = request()->query('file', '');
-    $ext  = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+    $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
     $fileUrl = str_starts_with($file, 'http') ? $file : asset('storage/' . $file);
 
     // Convert DOCX to PDF server-side for proper page rendering
@@ -166,25 +166,25 @@ Route::get('/login', function () {
 Route::get('/account-type', function () {
     $token = session('auth_entry_token');
     $expiry = session('auth_entry_expiry', 0);
-    
+
     if (!$token || time() > $expiry) {
         session()->forget(['auth_entry_token', 'auth_entry_expiry']);
         abort(404);
     }
-    
+
     session()->forget(['auth_entry_token', 'auth_entry_expiry']);
     return view('signUp_logIN.accountType');
 });
 // Owner account setup screen — guarded, direct access returns 404
-Route::get('/propertyOwner/account-setup', function() {
+Route::get('/propertyOwner/account-setup', function () {
     $token = session('auth_entry_token');
     $expiry = session('auth_entry_expiry', 0);
-    
+
     if (!$token || time() > $expiry) {
         session()->forget(['auth_entry_token', 'auth_entry_expiry']);
         abort(404);
     }
-    
+
     session()->forget(['auth_entry_token', 'auth_entry_expiry']);
     return app(\App\Http\Controllers\authController::class)->showOwnerAccountSetup();
 })->name('owner.account-setup');
@@ -196,15 +196,15 @@ Route::get('/account-setup', function () {
 });
 
 // Contractor account setup screen — guarded, direct access returns 404
-Route::get('/contractor/account-setup', function() {
+Route::get('/contractor/account-setup', function () {
     $token = session('auth_entry_token');
     $expiry = session('auth_entry_expiry', 0);
-    
+
     if (!$token || time() > $expiry) {
         session()->forget(['auth_entry_token', 'auth_entry_expiry']);
         abort(404);
     }
-    
+
     session()->forget(['auth_entry_token', 'auth_entry_expiry']);
     return app(\App\Http\Controllers\authController::class)->showContractorSetup();
 })->name('contractor.account-setup');
@@ -349,7 +349,7 @@ Route::get('/subs/modal-data', [platformPaymentController::class, 'modalData'])-
 // have this token; anyone who types the URL directly will get 404.
 Route::get('/auth/gate/login', function () {
     session([
-        'auth_entry_token'  => true,
+        'auth_entry_token' => true,
         'auth_entry_expiry' => time() + 30,  // 30-second window
     ]);
     return redirect('/accounts/login');
@@ -357,7 +357,7 @@ Route::get('/auth/gate/login', function () {
 
 Route::get('/auth/gate/signup', function () {
     session([
-        'auth_entry_token'  => true,
+        'auth_entry_token' => true,
         'auth_entry_expiry' => time() + 30,
     ]);
     return redirect('/accounts/signup');
@@ -365,7 +365,7 @@ Route::get('/auth/gate/signup', function () {
 
 Route::get('/auth/gate/account-type', function () {
     session([
-        'auth_entry_token'  => true,
+        'auth_entry_token' => true,
         'auth_entry_expiry' => time() + 30,
     ]);
     return redirect('/account-type');
@@ -373,7 +373,7 @@ Route::get('/auth/gate/account-type', function () {
 
 Route::get('/auth/gate/owner-setup', function () {
     session([
-        'auth_entry_token'  => true,
+        'auth_entry_token' => true,
         'auth_entry_expiry' => time() + 30,
     ]);
     return redirect('/propertyOwner/account-setup');
@@ -381,7 +381,7 @@ Route::get('/auth/gate/owner-setup', function () {
 
 Route::get('/auth/gate/contractor-setup', function () {
     session([
-        'auth_entry_token'  => true,
+        'auth_entry_token' => true,
         'auth_entry_expiry' => time() + 30,
     ]);
     return redirect('/contractor/account-setup');
@@ -389,7 +389,7 @@ Route::get('/auth/gate/contractor-setup', function () {
 
 Route::get('/auth/gate/forgot-password', function () {
     session([
-        'auth_entry_token'  => true,
+        'auth_entry_token' => true,
         'auth_entry_expiry' => time() + 30,
     ]);
     return redirect('/accounts/forgot-password');
@@ -398,29 +398,29 @@ Route::get('/auth/gate/forgot-password', function () {
 
 // Authentication Routes
 // GET pages are guarded: direct URL access returns 404
-Route::get('/accounts/login', function() {
+Route::get('/accounts/login', function () {
     $token = session('auth_entry_token');
     $expiry = session('auth_entry_expiry', 0);
-    
+
     if (!$token || time() > $expiry) {
         session()->forget(['auth_entry_token', 'auth_entry_expiry']);
         abort(404);
     }
-    
+
     session()->forget(['auth_entry_token', 'auth_entry_expiry']);
     return app(\App\Http\Controllers\authController::class)->showLoginForm();
 });
 Route::post('/accounts/login', [authController::class, 'login'])->middleware('throttle:5,1');
 
-Route::get('/accounts/signup', function() {
+Route::get('/accounts/signup', function () {
     $token = session('auth_entry_token');
     $expiry = session('auth_entry_expiry', 0);
-    
+
     if (!$token || time() > $expiry) {
         session()->forget(['auth_entry_token', 'auth_entry_expiry']);
         abort(404);
     }
-    
+
     session()->forget(['auth_entry_token', 'auth_entry_expiry']);
     return app(\App\Http\Controllers\authController::class)->showSignupForm();
 });
@@ -433,15 +433,15 @@ Route::post('/accounts/logout', [authController::class, 'logout']);
 Route::get('/accounts/logout', [authController::class, 'logout']);
 
 // Forgot Password Routes
-Route::get('/accounts/forgot-password', function() {
+Route::get('/accounts/forgot-password', function () {
     $token = session('auth_entry_token');
     $expiry = session('auth_entry_expiry', 0);
-    
+
     if (!$token || time() > $expiry) {
         session()->forget(['auth_entry_token', 'auth_entry_expiry']);
         abort(404);
     }
-    
+
     session()->forget(['auth_entry_token', 'auth_entry_expiry']);
     return app(\App\Http\Controllers\passwordController::class)->showForgotForm();
 })->name('password.forgot');
@@ -604,11 +604,15 @@ Route::get('/admin/user-management/contractors/{id}/edit', [userManagementContro
 Route::put('/admin/user-management/contractors/update/{user_id}', [userManagementController::class, 'updateContractor'])->name('admin.userManagement.contractor.update');
 Route::delete('/admin/user-management/contractors/{id}', [userManagementController::class, 'deleteContractor'])->name('admin.userManagement.contractor.delete');
 Route::get('/admin/user-management/contractor/view', [userManagementController::class, 'viewContractor'])->name('admin.userManagement.contractor.view');
+Route::get('/admin/user-management/contractor/available-owners', [userManagementController::class, 'getAvailablePropertyOwners'])->name('admin.userManagement.contractor.availableOwners');
 Route::post('/admin/user-management/contractor/team-member/store', [userManagementController::class, 'addContractorTeamMember'])->name('admin.userManagement.contractor.teamMember.store');
 Route::get('/admin/user-management/contractor/team-member/{id}/edit', [userManagementController::class, 'fetchContractorTeamMember'])->name('admin.userManagement.contractor.teamMember.edit');
 Route::put('/admin/user-management/contractor/team-member/update/{id}', [userManagementController::class, 'updateContractorTeamMember'])->name('admin.userManagement.contractor.teamMember.update');
+Route::post('/admin/user-management/contractor/team-member/{id}/suspend', [userManagementController::class, 'suspendContractorTeamMember'])->name('admin.userManagement.contractor.teamMember.suspend');
 Route::delete('/admin/user-management/contractor/team-member/deactivate/{id}', [userManagementController::class, 'deactivateContractorTeamMember'])->name('admin.userManagement.contractor.teamMember.deactivate');
 Route::patch('/admin/user-management/contractor/team-member/reactivate/{id}', [userManagementController::class, 'reactivateContractorTeamMember'])->name('admin.userManagement.contractor.teamMember.reactivate');
+Route::post('/admin/user-management/contractor/team-member/{id}/cancel-invitation', [userManagementController::class, 'cancelInvitation'])->name('admin.userManagement.contractor.teamMember.cancelInvitation');
+Route::post('/admin/user-management/contractor/team-member/{id}/reapply-invitation', [userManagementController::class, 'reapplyInvitation'])->name('admin.userManagement.contractor.teamMember.reapplyInvitation');
 Route::post('/admin/user-management/contractor/representative/change', [userManagementController::class, 'changeContractorRepresentative'])->name('admin.userManagement.contractor.representative.change');
 Route::get('/admin/user-management/verification-requests', [userManagementController::class, 'verificationRequest'])->name('admin.userManagement.verificationRequest');
 Route::get('/admin/user-management/suspended-accounts', [userManagementController::class, 'suspendedAccounts'])->name('admin.userManagement.suspendedAccounts');
@@ -865,6 +869,6 @@ Route::fallback(function () {
         'ip' => request()->ip(),
         'user_agent' => request()->userAgent()
     ]);
-    
+
     abort(404);
 });

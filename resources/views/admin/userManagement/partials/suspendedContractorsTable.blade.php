@@ -30,7 +30,7 @@
           <td class="px-6 py-4">
             <div class="flex items-center justify-center gap-2">
               <button class="reactivate-btn p-2 rounded-lg bg-green-50 text-green-600 hover:bg-green-100 transition"
-                      data-id="{{ $contractor->contractor_user_id }}"
+                      data-id="{{ $contractor->contractor_id }}"
                       data-user-type="contractor"
                       data-name="{{ $contractor->name }}"
                       title="Reactivate">
