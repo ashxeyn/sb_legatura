@@ -123,19 +123,21 @@ export default function ContractorProfileScreen({ onLogout, onViewProfile, onOpe
     const loadProfile = async () => {
       try {
         const res = await contractors_service.get_my_contractor_profile();
-        if (res?.success && res.data) {
-          const payload = res.data as any;
-          const dataRoot = payload?.data ?? payload?.contractor ?? payload;
-          const name = dataRoot?.company_name ?? payload?.company_name;
-          const logo = dataRoot?.company_logo ?? dataRoot?.profile_pic ?? payload?.company_logo ?? payload?.profile_pic ?? null;
-          const banner = dataRoot?.company_banner ?? dataRoot?.cover_photo ?? payload?.company_banner ?? payload?.cover_photo ?? null;
+        // Normalize response shapes and prefer fields from contractors table
+        const contractorPayload = res?.data?.data ?? res?.data?.contractor ?? res?.contractor ?? res?.data ?? null;
+        if (res?.success && contractorPayload) {
+          const name = contractorPayload.company_name ?? contractorPayload.contractor_name ?? userData?.company_name;
+          const logo = contractorPayload.company_logo ?? contractorPayload.profile_pic ?? contractorPayload.logo ?? null;
+          const banner = contractorPayload.company_banner ?? contractorPayload.cover_photo ?? contractorPayload.banner ?? null;
           if (isMounted) {
-            setCompanyName(name || userData?.company_name);
+            if (name) setCompanyName(name);
             if (logo) setCompanyLogo(logo);
             if (banner) setCompanyBanner(banner);
           }
         }
-      } catch (e) {}
+      } catch (e) {
+        console.warn('Failed to load contractor profile', e);
+      }
     };
     loadProfile();
     return () => { isMounted = false; };
@@ -143,8 +145,12 @@ export default function ContractorProfileScreen({ onLogout, onViewProfile, onOpe
 
   const getStorageUrl = (path?: string | null) => {
     if (!path) return undefined;
-    const p = String(path);
+    const p = String(path).trim();
     if (p.startsWith('http://') || p.startsWith('https://')) return p;
+    // If value already contains /storage/ preserve it, else prefix storage path
+    if (p.includes('/storage/')) {
+      return p.startsWith('/') ? `${api_config.base_url}${p}` : `${api_config.base_url}/${p}`;
+    }
     return `${api_config.base_url}/storage/${p}`;
   };
 

@@ -706,15 +706,19 @@ export default function ProjectPostDetail({ project, onClose, onPlaceBid, userRo
       {/* Bottom Action Button - Only show Place Bid if user has permission */}
       {userRole === 'contractor' && (
         <View style={styles.bottomBar}>
-          {canBid && onPlaceBid ? (
-            <TouchableOpacity style={styles.bidButton} onPress={onPlaceBid} activeOpacity={0.8}>
+          {onPlaceBid ? (
+            <TouchableOpacity
+              style={styles.bidButton}
+              onPress={() => { if (onPlaceBid) onPlaceBid(); }}
+              activeOpacity={0.8}
+            >
               <MaterialIcons name="gavel" size={20} color="#FFFFFF" />
-              <Text style={styles.bidButtonText}>Place Bid</Text>
+              <Text style={styles.bidButtonText}>{canBid ? 'Place Bid' : 'Apply Bid'}</Text>
             </TouchableOpacity>
           ) : (
-            <View style={[styles.bidButton, { backgroundColor: '#94A3B8' }]}>
-              <MaterialIcons name="visibility" size={20} color="#FFFFFF" />
-              <Text style={styles.bidButtonText}>View Only</Text>
+            <View style={styles.bidButton}>
+              <MaterialIcons name="gavel" size={20} color="#FFFFFF" />
+              <Text style={styles.bidButtonText}>Apply Bid</Text>
             </View>
           )}
         </View>

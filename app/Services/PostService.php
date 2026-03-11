@@ -6,6 +6,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Schema;
+use App\Services\ProfileService;
 
 /**
  * PostService — Showcase / social posting for project portfolios.
@@ -50,6 +52,10 @@ class PostService
                 'highlighted_at'     => null,
                 'boost_tier'         => null,
                 'boost_expiration'   => null,
+                // Some deployed schemas include `rejection_reason` without a default
+                // and disallow NULL; insert an explicit value (empty string) unless
+                // caller provided one.
+                'rejection_reason'   => $data['rejection_reason'] ?? '',
                 'created_at'         => now(),
                 'updated_at'         => now(),
             ]);
@@ -243,18 +249,28 @@ class PostService
         $contractorId = null;
 
         if ($isContractor) {
-            $contractorId = DB::table('contractors')
-                ->where('user_id', $userId)
-                ->value('contractor_id');
+            // Use schema-agnostic resolver to find contractor_id when possible
+            try {
+                $profileSvc = new ProfileService();
+                $cRow = $profileSvc->getContractorByUserId($userId);
+                if ($cRow && isset($cRow->contractor_id)) {
+                    $contractorId = $cRow->contractor_id;
+                }
+            } catch (\Throwable $e) {
+                Log::warning('PostService: profile-based contractor lookup failed: ' . $e->getMessage());
+            }
 
-            // Staff/representative users do not own the contractor account directly;
-            // resolve their parent contractor_id from contractor_users.
-            if (!$contractorId) {
-                $contractorId = DB::table('contractor_users')
-                    ->where('user_id', $userId)
-                    ->where('is_active', 1)
-                    ->where('is_deleted', 0)
-                    ->value('contractor_id');
+            // Fallback to contractor_users lookup when present
+            if (empty($contractorId) && Schema::hasTable('contractor_users')) {
+                try {
+                    $contractorId = DB::table('contractor_users')
+                        ->where('user_id', $userId)
+                        ->where('is_active', 1)
+                        ->where('is_deleted', 0)
+                        ->value('contractor_id');
+                } catch (\Throwable $e) {
+                    Log::warning('PostService contractor_users lookup failed: ' . $e->getMessage());
+                }
             }
         }
 
@@ -310,7 +326,7 @@ class PostService
         // ── 1. Open bidding projects (contractors only) ──
         $projects = collect();
         if ($isContractor) {
-            $projects = DB::table('projects as p')
+            $qb = DB::table('projects as p')
                 ->join('project_relationships as pr', 'p.relationship_id', '=', 'pr.rel_id')
                 ->join('property_owners as po', 'pr.owner_id', '=', 'po.owner_id')
                 ->join('users as u', 'po.user_id', '=', 'u.user_id')
@@ -329,8 +345,20 @@ class PostService
                             ->where('b.contractor_id', $contractorId)
                             ->whereNotIn('b.bid_status', ['cancelled']);
                     });
-                })
-                ->select(
+                });
+
+            // Build owner select expressions defensively to avoid referencing missing columns
+            $ownerProfilePicSelect = Schema::hasColumn('property_owners', 'profile_pic')
+                ? 'po.profile_pic as owner_profile_pic'
+                : (Schema::hasColumn('users', 'profile_pic') ? 'u.profile_pic as owner_profile_pic' : DB::raw('NULL as owner_profile_pic'));
+
+            // Simplified owner name select to avoid parser issues during runtime
+            // (falls back to username; more sophisticated name-building can be
+            // reintroduced after ensuring syntax stability).
+            $ownerNameSelect = DB::raw('u.username as owner_name');
+
+            $projects = $qb->select(
+                    // Basic project fields
                     'p.project_id', 'p.project_title', 'p.project_description',
                     'p.project_location', 'p.budget_range_min', 'p.budget_range_max',
                     'p.lot_size', 'p.floor_area', 'p.property_type', 'p.type_id',
@@ -339,9 +367,9 @@ class PostService
                     'pr.bidding_due as bidding_deadline',
                     'pr.owner_id',
                     'u.user_id as owner_user_id',
-                    'po.profile_pic as owner_profile_pic',
-                    DB::raw("CONCAT(po.first_name, ' ', po.last_name) as owner_name"),
-                    'pr.created_at'
+                    'pr.created_at',
+                    $ownerProfilePicSelect,
+                    $ownerNameSelect
                 )
                 ->orderByDesc('pr.created_at')
                 ->limit($fetchLimit)

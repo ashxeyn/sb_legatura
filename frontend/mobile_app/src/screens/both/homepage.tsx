@@ -1275,7 +1275,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
         {/* Project Images Collage */}
         {project.files && project.files.length > 0 && renderProjectImages(project.files)}
 
-        {/* Footer: Manage vs Place Bid */}
+        {/* Footer: Manage vs Apply/Place Bid */}
         <View style={styles.projectCardFooter}>
           {isOwnProject ? (
             <TouchableOpacity
@@ -1289,7 +1289,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
               <MaterialIcons name="edit" size={18} color="#FFFFFF" />
               <Text style={styles.placeBidButtonText}>Manage Project</Text>
             </TouchableOpacity>
-          ) : canBid ? (
+          ) : (effectiveUserType === 'contractor' || canBid) ? (
             <TouchableOpacity
               style={styles.placeBidButton}
               activeOpacity={0.8}
@@ -1299,7 +1299,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
               }}
             >
               <MaterialIcons name="gavel" size={18} color="#FFFFFF" />
-              <Text style={styles.placeBidButtonText}>Place Bid</Text>
+              <Text style={styles.placeBidButtonText}>Apply Bid</Text>
             </TouchableOpacity>
           ) : (
             <View style={[styles.placeBidButton, { backgroundColor: '#94A3B8' }]}>
@@ -1803,7 +1803,7 @@ export default function HomepageScreen({ userType = 'property_owner', userData, 
           {!loadingFeed && !error && feedItems.length > 0 && (
             <>
               {feedItems.map((item: any, index: number) => (
-                <React.Fragment key={`${item.feed_type}-${item.item_id}`}>
+                <React.Fragment key={`${item.feed_type}-${item.item_id}-${index}`}>
                   {item.feed_type === 'project'
                     ? renderProjectCard(item.data)
                     : item.feed_type === 'contractor'
@@ -2121,12 +2121,12 @@ const renderProfileContent = () => {
       (typeof selectedProject.owner_user_id === 'number' && userData?.user_id && selectedProject.owner_user_id === userData.user_id)
     );
     return (
-      <ProjectPostDetail
+        <ProjectPostDetail
         project={selectedProject}
         userRole={isOwn ? 'owner' : (effectiveUserType === 'contractor' ? 'contractor' : 'owner')}
         canBid={canBid}
         onClose={() => setSelectedProject(null)}
-        onPlaceBid={canBid ? () => {
+        onPlaceBid={(effectiveUserType === 'contractor' || canBid) ? () => {
           setBidProject(selectedProject);
           setSelectedProject(null);
           setShowPlaceBid(true);

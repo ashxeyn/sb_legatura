@@ -141,7 +141,7 @@ class ReviewService
 
         // Scope by role
         if ($role === 'contractor') {
-            $contractor = DB::table('contractors')->where('user_id', $revieweeUserId)->first();
+            $contractor = (new \App\Services\ProfileService())->getContractorByUserId($revieweeUserId);
             if ($contractor) {
                 $query->where('p.selected_contractor_id', $contractor->contractor_id);
             }
@@ -266,7 +266,7 @@ class ReviewService
         // Resolve a display name for the reviewee
         $revieweeName = null;
         if ($revieweeId) {
-            $contractor = DB::table('contractors')->where('user_id', $revieweeId)->first();
+            $contractor = (new \App\Services\ProfileService())->getContractorByUserId($revieweeId);
             if ($contractor) {
                 $revieweeName = $contractor->company_name;
             }

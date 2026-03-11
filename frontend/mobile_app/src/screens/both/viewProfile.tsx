@@ -730,7 +730,30 @@ export default function ViewProfileScreen({ onBack, userData, userToken, initial
       setErrors(prev => ({ ...prev, profile: null }));
 
       const query = id ? `?user_id=${encodeURIComponent(id)}` : `?username=${encodeURIComponent(username)}`;
-      const resp = await api_request(`/api/profile/fetch${query}`);
+
+      // Resolve which role to request when the account type is 'both'.
+      // Priority: explicit activeRoleState -> user's preferred_role -> user_type -> default 'owner'.
+      const userTypeLower = (userState?.user_type || '').toString().toLowerCase();
+      const preferredLower = (userState?.preferred_role || '').toString().toLowerCase();
+      let resolvedRole: string | null = null;
+
+      if (userTypeLower === 'both') {
+        if (activeRoleState) resolvedRole = activeRoleState;
+        else if (preferredLower && preferredLower.indexOf('contractor') !== -1) resolvedRole = 'contractor';
+        else if (preferredLower && (preferredLower.indexOf('owner') !== -1 || preferredLower.indexOf('property') !== -1)) resolvedRole = 'owner';
+        else resolvedRole = 'owner';
+      } else if (userTypeLower === 'staff') {
+        resolvedRole = 'contractor';
+      } else {
+        resolvedRole = userTypeLower || null;
+      }
+
+      if (resolvedRole && !activeRoleState) {
+        setActiveRoleState(resolvedRole);
+      }
+
+      const roleQuery = resolvedRole ? `&role=${encodeURIComponent(resolvedRole)}` : '';
+      const resp = await api_request(`/api/profile/fetch${query}${roleQuery}`);
 
       if (resp?.success && resp.data) {
         const data = resp.data.data || resp.data;

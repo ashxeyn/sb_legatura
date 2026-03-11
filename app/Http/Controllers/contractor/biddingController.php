@@ -13,6 +13,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Services\NotificationService;
 use App\Services\BidRankingService;
+use App\Services\ProfileService;
+use Illuminate\Support\Facades\Schema;
 
 class biddingController extends Controller
 {
@@ -23,6 +25,58 @@ class biddingController extends Controller
         $this->biddingClass = $biddingClass;
     }
 
+    /**
+     * Resolve contractor row for a given user object or user id in a schema-agnostic way.
+     * Returns contractor row or null.
+     */
+    private function resolveContractorForUser($userOrId)
+    {
+        try {
+            $userId = null;
+            if (is_int($userOrId) || ctype_digit((string)$userOrId)) {
+                $userId = (int) $userOrId;
+            } elseif (is_object($userOrId)) {
+                if (isset($userOrId->user_id)) $userId = (int) $userOrId->user_id;
+                elseif (isset($userOrId->id)) $userId = (int) $userOrId->id;
+            } elseif (is_array($userOrId) && isset($userOrId['user_id'])) {
+                $userId = (int) $userOrId['user_id'];
+            }
+
+            if (!$userId) return null;
+
+            // Prefer ProfileService which contains a resilient contractor lookup helper
+            try {
+                $profileSvc = new ProfileService();
+                $contractor = $profileSvc->getContractorByUserId($userId);
+                if ($contractor) return $contractor;
+            } catch (\Throwable $e) {
+                Log::warning('resolveContractorForUser profileSvc failed: ' . $e->getMessage());
+            }
+
+            // Fallback to legacy contractor_users mapping if table exists
+            try {
+                if (Schema::hasTable('contractor_users')) {
+                    $cu = DB::table('contractor_users')
+                        ->where('user_id', $userId)
+                        ->where('is_active', 1)
+                        ->where('is_deleted', 0)
+                        ->first();
+
+                    if ($cu && isset($cu->contractor_id)) {
+                        return DB::table('contractors')->where('contractor_id', $cu->contractor_id)->first();
+                    }
+                }
+            } catch (\Throwable $e) {
+                Log::warning('resolveContractorForUser contractor_users fallback failed: ' . $e->getMessage());
+            }
+
+            return null;
+        } catch (\Throwable $e) {
+            Log::warning('resolveContractorForUser unexpected error: ' . $e->getMessage());
+            return null;
+        }
+    }
+
     public function showProjectOverview($projectId)
     {
         $user = Session::get('user');
@@ -30,10 +84,8 @@ class biddingController extends Controller
             return redirect('/accounts/login');
         }
 
-        // Get contractor info
-        $contractor = DB::table('contractors')
-            ->where('user_id', $user->user_id)
-            ->first();
+        // Get contractor info (schema-agnostic)
+        $contractor = $this->resolveContractorForUser($user);
 
         if (!$contractor) {
             return redirect('/dashboard')->with('error', 'Contractor profile not found.');
@@ -78,10 +130,8 @@ class biddingController extends Controller
                 return response()->json(['success' => false, 'message' => 'User not authenticated.'], 401);
             }
 
-            // Get contractor info
-            $contractor = DB::table('contractors')
-                ->where('user_id', $user->user_id)
-                ->first();
+            // Get contractor info (schema-agnostic)
+            $contractor = $this->resolveContractorForUser($user);
 
             if (!$contractor) {
                 return response()->json(['success' => false, 'message' => 'Contractor profile not found.'], 404);
@@ -197,25 +247,8 @@ class biddingController extends Controller
                 return response()->json(['success' => false, 'message' => 'User not authenticated.'], 401);
             }
 
-            // Get contractor info
-            $contractor = DB::table('contractors')
-                ->where('user_id', $user->user_id)
-                ->first();
-
-            // Also check staff membership (representative) for mobile
-            if (!$contractor) {
-                $contractorUser = DB::table('contractor_users')
-                    ->where('user_id', $user->user_id)
-                    ->where('is_active', 1)
-                    ->where('is_deleted', 0)
-                    ->first();
-
-                if ($contractorUser) {
-                    $contractor = DB::table('contractors')
-                        ->where('contractor_id', $contractorUser->contractor_id)
-                        ->first();
-                }
-            }
+            // Resolve contractor (schema-agnostic)
+            $contractor = $this->resolveContractorForUser($user);
 
             if (!$contractor) {
                 return response()->json(['success' => false, 'message' => 'Contractor profile not found.'], 404);
@@ -299,10 +332,8 @@ class biddingController extends Controller
                 return response()->json(['success' => false, 'message' => 'User not authenticated.'], 401);
             }
 
-            // Get contractor info
-            $contractor = DB::table('contractors')
-                ->where('user_id', $user->user_id)
-                ->first();
+            // Resolve contractor (schema-agnostic)
+            $contractor = $this->resolveContractorForUser($user);
 
             if (!$contractor) {
                 return response()->json(['success' => false, 'message' => 'Contractor profile not found.'], 404);
@@ -370,24 +401,8 @@ class biddingController extends Controller
                 ], 403);
             }
 
-            // Resolve contractor context (owner account or active staff member)
-            $contractor = DB::table('contractors')
-                ->where('user_id', $userId)
-                ->first();
-
-            if (!$contractor) {
-                $contractorUser = DB::table('contractor_users')
-                    ->where('user_id', $userId)
-                    ->where('is_active', 1)
-                    ->where('is_deleted', 0)
-                    ->first();
-
-                if ($contractorUser) {
-                    $contractor = DB::table('contractors')
-                        ->where('contractor_id', $contractorUser->contractor_id)
-                        ->first();
-                }
-            }
+            // Resolve contractor context (schema-agnostic)
+            $contractor = $this->resolveContractorForUser($userId);
 
             if (!$contractor) {
                 return response()->json([
@@ -606,26 +621,8 @@ class biddingController extends Controller
                 ], 403);
             }
 
-            // Get contractor info - check both direct contractor ownership and staff membership (for representatives)
-            $contractor = DB::table('contractors')
-                ->where('user_id', $userId)
-                ->first();
-
-            // If not a direct contractor owner, check if user is a staff member (representative)
-            if (!$contractor) {
-                $contractorUser = DB::table('contractor_users')
-                    ->where('user_id', $userId)
-                    ->where('is_active', 1)
-                    ->where('is_deleted', 0)
-                    ->first();
-
-                if ($contractorUser) {
-                    // Get the contractor this staff member belongs to
-                    $contractor = DB::table('contractors')
-                        ->where('contractor_id', $contractorUser->contractor_id)
-                        ->first();
-                }
-            }
+            // Resolve contractor context (supports multiple schema variants)
+            $contractor = $this->resolveContractorForUser($userId);
 
             if (!$contractor) {
                 return response()->json([
@@ -842,24 +839,8 @@ class biddingController extends Controller
                 ], 400);
             }
 
-            // Get contractor info - check both direct contractor ownership and staff membership
-            $contractor = DB::table('contractors')
-                ->where('user_id', $userId)
-                ->first();
-
-            if (!$contractor) {
-                $contractorUser = DB::table('contractor_users')
-                    ->where('user_id', $userId)
-                    ->where('is_active', 1)
-                    ->where('is_deleted', 0)
-                    ->first();
-
-                if ($contractorUser) {
-                    $contractor = DB::table('contractors')
-                        ->where('contractor_id', $contractorUser->contractor_id)
-                        ->first();
-                }
-            }
+            // Resolve contractor context (schema-agnostic)
+            $contractor = $this->resolveContractorForUser($userId);
 
             if (!$contractor) {
                 return response()->json([
@@ -919,26 +900,8 @@ class biddingController extends Controller
                 ], 400);
             }
 
-            // Get contractor info - check both direct contractor ownership and staff membership
-            $contractor = DB::table('contractors')
-                ->where('user_id', $userId)
-                ->first();
-
-            // If not a direct contractor owner, check if user is a staff member
-            if (!$contractor) {
-                $contractorUser = DB::table('contractor_users')
-                    ->where('user_id', $userId)
-                    ->where('is_active', 1)
-                    ->where('is_deleted', 0)
-                    ->first();
-
-                if ($contractorUser) {
-                    // Get the contractor this staff member belongs to
-                    $contractor = DB::table('contractors')
-                        ->where('contractor_id', $contractorUser->contractor_id)
-                        ->first();
-                }
-            }
+            // Resolve contractor context (schema-agnostic)
+            $contractor = $this->resolveContractorForUser($userId);
 
             if (!$contractor) {
                 return response()->json([

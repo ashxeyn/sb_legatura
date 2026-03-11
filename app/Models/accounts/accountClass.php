@@ -387,7 +387,7 @@ class accountClass
 
     public function getContractorByUserId($userId)
     {
-        return DB::table('contractors')->where('user_id', $userId)->first();
+        return (new \App\Services\ProfileService())->getContractorByUserId($userId);
     }
 
     public function getPropertyOwnerByUserId($userId)

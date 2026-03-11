@@ -10,9 +10,10 @@ import {
   StatusBar,
   ActivityIndicator,
   RefreshControl,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Feather, MaterialIcons, Ionicons } from '@expo/vector-icons';
+import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { api_config } from '../../config/api';
 import ImageFallback from '../../components/imageFallback';
 import { storage_service } from '../../utils/storage';
@@ -23,6 +24,7 @@ import {
   ReviewStats,
   OwnerAbout,
 } from '../../services/profile_service';
+import UserReportModal from '../../components/userReportModal';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -92,6 +94,10 @@ export default function CheckOwnerProfile({ owner, onClose, onSendMessage }: Che
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isOwnProfile, setIsOwnProfile] = useState(false);
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [userReportModalVisible, setUserReportModalVisible] = useState(false);
+  const [userReportInitialReasons, setUserReportInitialReasons] = useState<string[] | undefined>(undefined);
+  const [userReportInitialDescription, setUserReportInitialDescription] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -133,6 +139,28 @@ export default function CheckOwnerProfile({ owner, onClose, onSendMessage }: Che
     setRefreshing(true);
     fetchProfile(true);
   }, [fetchProfile]);
+
+  /* ── Actions ── */
+  const handleReportUser = async () => {
+    setMenuVisible(false);
+    // Open an empty report modal (allow multiple reports regardless of pending status)
+    setUserReportInitialReasons([]);
+    setUserReportInitialDescription(null);
+    setUserReportModalVisible(true);
+  };
+
+  const submitUserReport = React.useCallback(async (reasons: string[], description?: string) => {
+    try {
+      const res = await profile_service.report_user(owner.user_id, reasons, description);
+      if (res && res.success) {
+        return { success: true, message: 'Our team will review this report.' };
+      }
+      return { success: false, message: res?.message || 'Could not submit report.' };
+    } catch (e) {
+      console.error('[CheckOwnerProfile] submitUserReport error', e);
+      return { success: false, message: 'Could not submit report.' };
+    }
+  }, [owner.user_id]);
 
   /* ── Derived values ── */
   const header        = profile?.header;
@@ -497,7 +525,25 @@ export default function CheckOwnerProfile({ owner, onClose, onSendMessage }: Che
         <TouchableOpacity onPress={onClose} style={styles.headerBtn} activeOpacity={0.7}>
           <Feather name="arrow-left" size={20} color={T1} />
         </TouchableOpacity>
+
+        <View style={styles.headerRight}>
+          <TouchableOpacity onPress={() => setMenuVisible(true)} style={styles.headerBtn} activeOpacity={0.7}>
+            <Feather name="more-vertical" size={20} color={T1} />
+          </TouchableOpacity>
+        </View>
       </View>
+
+      {menuVisible && (
+        <TouchableOpacity style={styles.menuOverlay} activeOpacity={1} onPress={() => setMenuVisible(false)}>
+          <View style={[styles.menuContainer, { top: insets.top + 48, right: 12 }]}>
+            {!isOwnProfile && (
+              <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handleReportUser(); }}>
+                <Text style={styles.menuItemText}>Report user</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </TouchableOpacity>
+      )}
 
       <ScrollView
         style={styles.scrollView}
@@ -610,6 +656,13 @@ export default function CheckOwnerProfile({ owner, onClose, onSendMessage }: Che
 
         <View style={{ height: 40 }} />
       </ScrollView>
+      <UserReportModal
+        visible={userReportModalVisible}
+        onClose={() => { setUserReportModalVisible(false); setUserReportInitialReasons(undefined); setUserReportInitialDescription(null); }}
+        onSubmit={submitUserReport}
+        initialSelectedReasons={userReportInitialReasons}
+        initialDescription={userReportInitialDescription}
+      />
     </View>
   );
 }
@@ -678,11 +731,29 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25, shadowRadius: 4, elevation: 3,
   },
   messageBtnText: { fontSize: 14, fontWeight: '600', color: '#fff' },
-  shareBtn: {
-    width: 44, height: 44, borderRadius: 22,
-    borderWidth: 1.5, borderColor: BORDER,
-    justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff',
+  /* shareBtn removed */
+  menuOverlay: {
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999,
   },
+  menuContainer: {
+    position: 'absolute',
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    paddingVertical: 6,
+    minWidth: 140,
+    borderWidth: 1,
+    borderColor: BORDER,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  menuItem: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+  menuItemText: { fontSize: 14, color: T1 },
 
   /* Tabs */
   tabsContainer: { backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: BORDER },

@@ -16,6 +16,7 @@ import {
   Modal,
   Platform,
   RefreshControl,
+  KeyboardAvoidingView,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -195,7 +196,10 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
       const sType = (stored?.user_type || stored?.userType || userData?.user_type || '').toString().toLowerCase();
       const sPref = (stored?.preferred_role || stored?.preferredRole || userData?.preferred_role || userData?.preferredRole || '').toString().toLowerCase();
       const activeFromStored = sType === 'both' ? sPref : (sType === 'property_owner' ? 'owner' : sType);
-      const roleToUse = activeFromStored || activeRole;
+      // Prefer the current in-component `activeRole` (reflects UI/switch state) over potentially stale cached storage
+      const roleToUse = (activeRole && activeRole.length) ? activeRole : (activeFromStored || '');
+      // Debug: log which role we're using to fetch the profile
+      try { console.log('fetchFullProfile: roleToUse=', roleToUse, 'activeRole=', activeRole, 'storedPref=', sPref); } catch (e) {}
       const roleQuery = roleToUse ? `?role=${encodeURIComponent(roleToUse)}` : '';
       const resp = await api_request(`/api/profile/fetch${roleQuery}`);
       if (resp && resp.success && resp.data) {
@@ -732,11 +736,20 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
         setErrors(prev => ({ ...prev, [field]: msg }));
         return false;
       }
-      // Disallow digits or special characters (allow letters and spaces only)
-      const invalidRe = /[^A-Za-z\s]/;
-      if (invalidRe.test(v)) {
-        setErrors(prev => ({ ...prev, [field]: 'No numbers or special characters allowed' }));
-        return false;
+      if (field === 'username') {
+        // Allow letters, numbers and underscore for username
+        const invalidRe = /[^A-Za-z0-9_]/;
+        if (invalidRe.test(v)) {
+          setErrors(prev => ({ ...prev, [field]: 'Only letters, numbers, and underscore are allowed' }));
+          return false;
+        }
+      } else {
+        // Disallow digits or special characters for name fields (allow letters and spaces only)
+        const invalidRe = /[^A-Za-z\s]/;
+        if (invalidRe.test(v)) {
+          setErrors(prev => ({ ...prev, [field]: 'No numbers or special characters allowed' }));
+          return false;
+        }
       }
     }
     // clear error if ok
@@ -1039,7 +1052,12 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
 
 
   return (
-    <SafeAreaView style={styles.container}>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 110 : 80}
+    >
+      <SafeAreaView style={styles.container}>
       {loadingProfile ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#EC7E00" />
@@ -1048,6 +1066,8 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
         >
           {/* Header */}
           <View style={styles.header}>
@@ -1567,7 +1587,8 @@ export default function EditProfileScreen({ navigation, userData, onBackPress, o
       )}
 
       {/* Email and phone removed from this edit form */}
-    </SafeAreaView>
+      </SafeAreaView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -1578,6 +1599,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 20,
+    paddingBottom: 120,
   },
 
   /** HEADER **/

@@ -287,6 +287,23 @@ class propertyOwnerClass
                     ->update([
                         'updated_at' => now()
                     ]);
+
+                // If this user also has contractor role(s), disable associated contractor records
+                $contractorRow = (new \App\Services\ProfileService())->getContractorByUserId($owner->user_id);
+                $contractors = collect();
+                if ($contractorRow && isset($contractorRow->contractor_id)) {
+                    $contractors = collect([$contractorRow->contractor_id]);
+                }
+                if ($contractors && $contractors->isNotEmpty()) {
+                    $contractorModel = new contractorClass();
+                    foreach ($contractors as $contractorId) {
+                        try {
+                            $contractorModel->deleteContractor($contractorId, 'Owner account deleted: ' . $reason);
+                        } catch (\Exception $e) {
+                            \Illuminate\Support\Facades\Log::error("Failed to delete associated contractor {$contractorId}: " . $e->getMessage());
+                        }
+                    }
+                }
             }
 
             return true;

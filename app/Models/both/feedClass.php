@@ -5,6 +5,7 @@ namespace App\Models\both;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * feedClass — Query-builder helper for homepage / feed data.
@@ -226,6 +227,20 @@ class feedClass
                   });
         }
 
+        // Build owner name expression defensively depending on schema
+        $ownerNameExpr = DB::raw("u.username as owner_name");
+        if (Schema::hasColumn('property_owners', 'first_name')) {
+            $ownerNameExpr = DB::raw("TRIM(CONCAT(COALESCE(po.first_name, ''), ' ', COALESCE(po.middle_name, ''), ' ', COALESCE(po.last_name, ''))) as owner_name");
+        } elseif (Schema::hasColumn('users', 'first_name')) {
+            $ownerNameExpr = DB::raw("TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.middle_name, ''), ' ', COALESCE(u.last_name, ''))) as owner_name");
+        }
+
+        $ownerPicExpr = Schema::hasColumn('property_owners', 'profile_pic')
+            ? 'po.profile_pic as owner_profile_pic'
+            : (Schema::hasColumn('users', 'profile_pic') ? 'u.profile_pic as owner_profile_pic' : DB::raw('NULL as owner_profile_pic'));
+
+        $ownerUserIdExpr = Schema::hasColumn('property_owners', 'user_id') ? 'po.user_id as owner_user_id' : 'u.user_id as owner_user_id';
+
         $query->select(
                 'p.project_id',
                 'p.project_title',
@@ -243,9 +258,9 @@ class feedClass
                 'pr.bidding_due as bidding_deadline',
                 DB::raw('DATE(pr.created_at) as created_at'),
                 'pr.owner_id as owner_id',
-                DB::raw("CONCAT(po.first_name, ' ', COALESCE(po.middle_name, ''), ' ', po.last_name) as owner_name"),
-                'po.profile_pic as owner_profile_pic',
-                'po.user_id as owner_user_id'
+                $ownerNameExpr,
+                $ownerPicExpr,
+                $ownerUserIdExpr
             );
 
         // Exclude projects the contractor already bid on
@@ -333,6 +348,20 @@ class feedClass
                   });
         }
 
+        // Build owner display/select expressions defensively
+        $ownerNameExpr = DB::raw("u.username as owner_name");
+        if (Schema::hasColumn('property_owners', 'first_name')) {
+            $ownerNameExpr = DB::raw("TRIM(CONCAT(COALESCE(po.first_name, ''), ' ', COALESCE(po.middle_name, ''), ' ', COALESCE(po.last_name, ''))) as owner_name");
+        } elseif (Schema::hasColumn('users', 'first_name')) {
+            $ownerNameExpr = DB::raw("TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.middle_name, ''), ' ', COALESCE(u.last_name, ''))) as owner_name");
+        }
+
+        $ownerPicExpr = Schema::hasColumn('property_owners', 'profile_pic')
+            ? 'po.profile_pic as owner_profile_pic'
+            : (Schema::hasColumn('users', 'profile_pic') ? 'u.profile_pic as owner_profile_pic' : DB::raw('NULL as owner_profile_pic'));
+
+        $ownerUserIdExpr = Schema::hasColumn('property_owners', 'user_id') ? 'po.user_id as owner_user_id' : 'u.user_id as owner_user_id';
+
         $query->select(
             'p.project_id',
             'p.project_title',
@@ -350,9 +379,9 @@ class feedClass
             'pr.bidding_due as bidding_deadline',
             'pr.created_at',
             'pr.owner_id as owner_id',
-            DB::raw("CONCAT(po.first_name, ' ', COALESCE(po.middle_name, ''), ' ', po.last_name) as owner_name"),
-            'po.profile_pic as owner_profile_pic',
-            'po.user_id as owner_user_id'
+            $ownerNameExpr,
+            $ownerPicExpr,
+            $ownerUserIdExpr
         );
 
         // Exclude projects the contractor already bid on
@@ -537,8 +566,16 @@ class feedClass
                   ->orWhere('p.project_description', 'LIKE', $keyword)
                   ->orWhere('p.project_location', 'LIKE', $keyword)
                   ->orWhere('ct.type_name', 'LIKE', $keyword)
-                  ->orWhere('p.property_type', 'LIKE', $keyword)
-                  ->orWhereRaw("CONCAT(po.first_name, ' ', COALESCE(po.middle_name, ''), ' ', po.last_name) LIKE ?", [$keyword]);
+                  ->orWhere('p.property_type', 'LIKE', $keyword);
+
+                // Owner name search: prefer property_owners.name when available, otherwise use users.name or username
+                if (Schema::hasColumn('property_owners', 'first_name')) {
+                    $q->orWhereRaw("CONCAT(po.first_name, ' ', COALESCE(po.middle_name, ''), ' ', po.last_name) LIKE ?", [$keyword]);
+                } elseif (Schema::hasColumn('users', 'first_name')) {
+                    $q->orWhereRaw("TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.middle_name, ''), ' ', COALESCE(u.last_name, ''))) LIKE ?", [$keyword]);
+                } else {
+                    $q->orWhere('u.username', 'LIKE', $keyword);
+                }
             });
         }
 
@@ -604,7 +641,8 @@ class feedClass
 
         // ── Contractors sub-query ────────────────────────────────────────
         $contractors = DB::table('contractors as c')
-            ->join('users as u', 'c.user_id', '=', 'u.user_id')
+            ->join('property_owners as po', 'c.owner_id', '=', 'po.owner_id')
+            ->join('users as u', 'po.user_id', '=', 'u.user_id')
             ->join('contractor_types as ct', 'c.type_id', '=', 'ct.type_id')
             ->where('c.verification_status', 'approved')
             ->where(function ($q) use ($like) {
@@ -614,7 +652,7 @@ class feedClass
                   ->orWhere('c.business_address', 'LIKE', $like)
                   ->orWhere('ct.type_name', 'LIKE', $like);
             })
-            ->when($excludeUserId, fn($q) => $q->where('c.user_id', '!=', $excludeUserId))
+            ->when($excludeUserId, fn($q) => $q->where('po.user_id', '!=', $excludeUserId))
             ->select(
                 'u.user_id',
                 'u.username',
@@ -635,15 +673,36 @@ class feedClass
             );
 
         // ── Property owners sub-query ────────────────────────────────────
+        // Build company_name expression based on available name columns
+        if (Schema::hasColumn('property_owners', 'first_name')) {
+            $ownerCompanyExpr = DB::raw("TRIM(CONCAT(COALESCE(po.first_name, ''), ' ', COALESCE(po.last_name, ''))) as company_name");
+        } elseif (Schema::hasColumn('users', 'first_name')) {
+            $ownerCompanyExpr = DB::raw("TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))) as company_name");
+        } else {
+            $ownerCompanyExpr = DB::raw("u.username as company_name");
+        }
+
         $owners = DB::table('property_owners as po')
             ->join('users as u', 'po.user_id', '=', 'u.user_id')
             ->where('po.verification_status', 'approved')
             ->where(function ($q) use ($like) {
-                $q->where('u.username', 'LIKE', $like)
-                  ->orWhere('po.first_name', 'LIKE', $like)
-                  ->orWhere('po.last_name', 'LIKE', $like)
-                  ->orWhere('po.address', 'LIKE', $like)
-                  ->orWhereRaw("CONCAT(po.first_name, ' ', po.last_name) LIKE ?", [$like]);
+                // Search using property_owners name fields when present, otherwise use users
+                if (Schema::hasColumn('property_owners', 'first_name')) {
+                    $q->where('u.username', 'LIKE', $like)
+                      ->orWhere('po.first_name', 'LIKE', $like)
+                      ->orWhere('po.last_name', 'LIKE', $like)
+                      ->orWhere('po.address', 'LIKE', $like)
+                      ->orWhereRaw("CONCAT(po.first_name, ' ', po.last_name) LIKE ?", [$like]);
+                } elseif (Schema::hasColumn('users', 'first_name')) {
+                    $q->where('u.username', 'LIKE', $like)
+                      ->orWhere('u.first_name', 'LIKE', $like)
+                      ->orWhere('u.last_name', 'LIKE', $like)
+                      ->orWhere('po.address', 'LIKE', $like)
+                      ->orWhereRaw("TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))) LIKE ?", [$like]);
+                } else {
+                    $q->where('u.username', 'LIKE', $like)
+                      ->orWhere('po.address', 'LIKE', $like);
+                }
             })
             ->when($excludeUserId, fn($q) => $q->where('po.user_id', '!=', $excludeUserId))
             ->select(
@@ -652,7 +711,7 @@ class feedClass
                 'u.profile_pic',
                 'u.cover_photo',
                 DB::raw('NULL as contractor_id'),
-                DB::raw("CONCAT(po.first_name, ' ', po.last_name) as company_name"),
+                $ownerCompanyExpr,
                 DB::raw('NULL as company_logo'),
                 DB::raw('NULL as company_banner'),
                 'po.address',

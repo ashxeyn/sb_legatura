@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\Schema;
 use App\Models\subs\subscriptionPlan;
 
 class payMongoController extends Controller
@@ -46,10 +47,11 @@ class payMongoController extends Controller
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
         }
 
-        // Get Contractor ID
-        $contractor = DB::table('contractors')->where('user_id', is_object($user) ? ($user->user_id ?? $user->id ?? null) : ($user['user_id'] ?? $user['id'] ?? null))->first();
+        // Get Contractor ID (schema-agnostic)
+        $resolvedUserId = is_object($user) ? ($user->user_id ?? $user->id ?? null) : ($user['user_id'] ?? $user['id'] ?? null);
+        $contractor = (new \App\Services\ProfileService())->getContractorByUserId($resolvedUserId);
         if (!$contractor) {
-            Log::error('createSubscriptionCheckout: Contractor profile not found for user ' . $user->user_id);
+            Log::error('createSubscriptionCheckout: Contractor profile not found for user ' . ($resolvedUserId ?? 'unknown'));
             return response()->json(['success' => false, 'message' => 'Contractor profile not found'], 404);
         }
 
@@ -385,18 +387,29 @@ class payMongoController extends Controller
         }
         $user = Session::get('user');
 
-        // Find latest pending payment
-        // Find latest pending payment
-        // We check for pending PayMongo payments for this user (checking both contractor and owner tables)
+        // Find latest pending payment (we check both contractor and owner links)
         $userId = $user->user_id;
+
+        // Resolve owner_id when available and detect if contractors.owner_id exists
+        $ownerId = null;
+        try {
+            $ownerId = DB::table('property_owners')->where('user_id', $userId)->value('owner_id');
+        } catch (\Throwable $e) {
+            $ownerId = null;
+        }
+        $hasOwnerIdCol = Schema::hasColumn('contractors', 'owner_id');
 
         $payment = DB::table('platform_payments')
             ->where('is_approved', 0)
-            ->where(function ($q) use ($userId) {
+            ->where(function ($q) use ($userId, $hasOwnerIdCol, $ownerId) {
                 $q->whereIn(
                     'contractor_id',
-                    function ($sq) use ($userId) {
+                    function ($sq) use ($userId, $hasOwnerIdCol, $ownerId) {
                         $sq->select('contractor_id')->from('contractors')->where('user_id', $userId);
+                        if ($hasOwnerIdCol && $ownerId) {
+                            // Also include contractors linked by owner_id
+                            $sq->orWhere('owner_id', $ownerId);
+                        }
                     }
                 )
                     ->orWhereIn(
@@ -542,7 +555,7 @@ class payMongoController extends Controller
         $userId = is_object($user) ? ($user->user_id ?? $user->id) : ($user['user_id'] ?? $user['id'] ?? null);
 
         try {
-            $contractor = DB::table('contractors')->where('user_id', $userId)->first();
+            $contractor = (new \App\Services\ProfileService())->getContractorByUserId($userId);
 
             if (!$contractor) {
                 return response()->json(['success' => false, 'message' => 'Contractor profile not found'], 404);

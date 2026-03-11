@@ -14,7 +14,7 @@ import {
   Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Feather, MaterialIcons, Ionicons } from '@expo/vector-icons';
+import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { api_config } from '../../config/api';
 import ImageFallback from '../../components/imageFallback';
 import { storage_service } from '../../utils/storage';
@@ -23,6 +23,7 @@ import ShowcasePostDetail from './showcasePostDetail';
 import { highlightService } from '../../services/highlightService';
 import { post_service } from '../../services/post_service';
 import ReportPostModal from '../../components/reportPostModal';
+import UserReportModal from '../../components/userReportModal';
 import {
   profile_service,
   ProfileData,
@@ -126,6 +127,10 @@ export default function CheckProfile({ contractor, onClose, onSendMessage }: Che
   const [showCreateShowcase, setShowCreateShowcase] = useState(false);
   const [selectedShowcasePost, setSelectedShowcasePost] = useState<any>(null);
   const [isOwnProfile, setIsOwnProfile] = useState(false);
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [userReportModalVisible, setUserReportModalVisible] = useState(false);
+  const [userReportInitialReasons, setUserReportInitialReasons] = useState<string[] | undefined>(undefined);
+  const [userReportInitialDescription, setUserReportInitialDescription] = useState<string | null>(null);
   const [highlightingPostId, setHighlightingPostId] = useState<number | null>(null);
   const [activePostMenuId, setActivePostMenuId] = useState<number | null>(null);
   const [reportModalVisible, setReportModalVisible] = useState(false);
@@ -175,6 +180,28 @@ export default function CheckProfile({ contractor, onClose, onSendMessage }: Che
     setRefreshing(true);
     fetchProfile(true);
   }, [fetchProfile]);
+
+  /* ── Actions ── */
+  const handleReportUser = async () => {
+    setMenuVisible(false);
+    // Open an empty report modal (allow multiple reports regardless of pending status)
+    setUserReportInitialReasons([]);
+    setUserReportInitialDescription(null);
+    setUserReportModalVisible(true);
+  };
+
+  const submitUserReport = React.useCallback(async (reasons: string[], description?: string) => {
+    try {
+      const res = await profile_service.report_user(contractor.user_id, reasons, description);
+      if (res && res.success) {
+        return { success: true, message: 'Our team will review this report.' };
+      }
+      return { success: false, message: res?.message || 'Could not submit report.' };
+    } catch (e) {
+      console.error('[CheckProfile] submitUserReport error', e);
+      return { success: false, message: 'Could not submit report.' };
+    }
+  }, [contractor.user_id]);
 
   // ── Derived values (prefer API data, fallback to prop) ──
   const header       = profile?.header;
@@ -777,7 +804,25 @@ export default function CheckProfile({ contractor, onClose, onSendMessage }: Che
         <TouchableOpacity onPress={onClose} style={styles.headerBtn} activeOpacity={0.7}>
           <Feather name="arrow-left" size={20} color={T1} />
         </TouchableOpacity>
+
+        <View style={styles.headerRight}>
+          <TouchableOpacity onPress={() => setMenuVisible(true)} style={styles.headerBtn} activeOpacity={0.7}>
+            <Feather name="more-vertical" size={20} color={T1} />
+          </TouchableOpacity>
+        </View>
       </View>
+
+      {menuVisible && (
+        <TouchableOpacity style={styles.menuOverlay} activeOpacity={1} onPress={() => setMenuVisible(false)}>
+          <View style={[styles.menuContainer, { top: insets.top + 48, right: 12 }]}>
+            {!isOwnProfile && (
+              <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handleReportUser(); }}>
+                <Text style={styles.menuItemText}>Report user</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </TouchableOpacity>
+      )}
 
       <ScrollView
         style={styles.scrollView}
@@ -904,6 +949,13 @@ export default function CheckProfile({ contractor, onClose, onSendMessage }: Che
           setReportType('showcase');
         }}
         onSubmit={submitPostReport}
+      />
+      <UserReportModal
+        visible={userReportModalVisible}
+        onClose={() => { setUserReportModalVisible(false); setUserReportInitialReasons(undefined); setUserReportInitialDescription(null); }}
+        onSubmit={submitUserReport}
+        initialSelectedReasons={userReportInitialReasons}
+        initialDescription={userReportInitialDescription}
       />
     </View>
   );
@@ -1107,6 +1159,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#fff',
   },
+
+  /* shareProfileBtn removed */
 
   // Tabs
   tabsContainer: {
@@ -1612,6 +1666,28 @@ const styles = StyleSheet.create({
     elevation: 8,
     zIndex: 30,
   },
+  menuOverlay: {
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999,
+  },
+  menuContainer: {
+    position: 'absolute',
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    paddingVertical: 6,
+    minWidth: 140,
+    borderWidth: 1,
+    borderColor: BORDER,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  menuItem: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+  menuItemText: { fontSize: 14, color: T1 },
   socialPostImg: {
     width: '100%',
     height: 220,
