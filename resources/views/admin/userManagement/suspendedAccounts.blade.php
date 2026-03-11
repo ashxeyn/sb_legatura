@@ -37,7 +37,7 @@
       <div class="p-8 space-y-6 max-w-7xl mx-auto">
         <!-- Filters Bar -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex flex-wrap items-center justify-between gap-4">
-          <div class="flex items-center gap-3">
+          <div class="flex items-center gap-3 flex-wrap">
             <div class="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700">
               <i class="fi fi-rr-filter text-gray-500"></i>
               <span>Filter By</span>
@@ -49,6 +49,17 @@
               <input type="date" id="dateFrom" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400">
               <label class="text-sm font-medium text-gray-700">To:</label>
               <input type="date" id="dateTo" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400">
+            </div>
+
+            <!-- Contractor Filter (only visible for Staff tab) -->
+            <div id="contractorFilterWrap" class="hidden items-center gap-2">
+              <label class="text-sm font-medium text-gray-700">Company:</label>
+              <select id="contractorFilter" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 min-w-[200px]">
+                <option value="">All Companies</option>
+                @foreach($allContractors ?? [] as $contractor)
+                  <option value="{{ $contractor->contractor_id }}">{{ $contractor->company_name }}</option>
+                @endforeach
+              </select>
             </div>
           </div>
 
@@ -64,6 +75,7 @@
             <div class="flex px-6">
               <button id="saTabContractors" class="sa-tab active px-4 py-3 text-sm font-semibold border-b-2 border-orange-500 text-orange-600 transition-all">Contractors</button>
               <button id="saTabOwners" class="sa-tab px-4 py-3 text-sm font-semibold border-b-2 border-transparent text-gray-600 hover:text-orange-600 hover:border-orange-300 transition-all">Property Owners</button>
+              <button id="saTabStaff" class="sa-tab px-4 py-3 text-sm font-semibold border-b-2 border-transparent text-gray-600 hover:text-orange-600 hover:border-orange-300 transition-all">Staff</button>
             </div>
           </div>
 
@@ -75,6 +87,11 @@
           <!-- Property Owners Table -->
           <div id="ownersTableWrap" class="overflow-x-auto hidden">
             @include('admin.userManagement.partials.suspendedOwnersTable')
+          </div>
+
+          <!-- Staff Table -->
+          <div id="staffTableWrap" class="overflow-x-auto hidden">
+            @include('admin.userManagement.partials.suspendedStaffTable')
           </div>
         </div>
       </div>

@@ -26,8 +26,8 @@
         </td>
         <td class="px-6 py-4 text-center">
           <span class="text-sm text-gray-700 font-medium">
-            @if($contractor->authorized_rep_fname)
-                {{ $contractor->authorized_rep_fname }} {{ $contractor->authorized_rep_lname }}
+            @if($contractor->first_name)
+                {{ $contractor->first_name }} {{ $contractor->last_name }}
             @else
                 <span class="text-gray-400 italic">N/A</span>
             @endif

@@ -22,7 +22,7 @@ class deactivateContractorTeamMemberRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'contractor_user_id' => 'required|exists:contractor_staff,staff_id',
+            'staff_id' => 'required|exists:contractor_staff,staff_id',
             'deletion_reason' => 'required|string|min:10',
         ];
     }
@@ -35,8 +35,8 @@ class deactivateContractorTeamMemberRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'contractor_user_id.required' => 'Team member ID is required.',
-            'contractor_user_id.exists' => 'Team member not found.',
+            'staff_id.required' => 'Team member ID is required.',
+            'staff_id.exists' => 'Team member not found.',
             'deletion_reason.required' => 'Deactivation reason is required.',
             'deletion_reason.min' => 'Reason must be at least 10 characters.',
         ];

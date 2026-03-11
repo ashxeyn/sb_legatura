@@ -89,6 +89,10 @@ document.addEventListener('DOMContentLoaded', function () {
     dateFromInput.addEventListener('change', function () {
       if (this.value) {
         dateToInput.min = this.value;
+        // If dateTo is already set and is before dateFrom, clear it
+        if (dateToInput.value && dateToInput.value < this.value) {
+          dateToInput.value = '';
+        }
       }
       handleFilterChange();
     });
@@ -97,6 +101,10 @@ document.addEventListener('DOMContentLoaded', function () {
     dateToInput.addEventListener('change', function () {
       if (this.value) {
         dateFromInput.max = this.value;
+        // If dateFrom is already set and is after dateTo, clear it
+        if (dateFromInput.value && dateFromInput.value > this.value) {
+          dateFromInput.value = '';
+        }
       }
       handleFilterChange();
     });
@@ -368,6 +376,89 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
+  // PSGC Address Loading for Add Modal
+  const addProvince = document.getElementById('owner_address_province');
+  const addCity = document.getElementById('owner_address_city');
+  const addBarangay = document.getElementById('owner_address_barangay');
+
+  if (addProvince) {
+    addProvince.addEventListener('change', function () {
+      const provinceCode = this.value;
+
+      addCity.innerHTML = '<option value="">Loading...</option>';
+      addCity.disabled = true;
+      addBarangay.innerHTML = '<option value="">Select City First</option>';
+      addBarangay.disabled = true;
+
+      if (provinceCode) {
+        fetch('/api/psgc/provinces/' + provinceCode + '/cities')
+          .then(response => response.json())
+          .then(json => {
+            console.log('Cities response:', json);
+            const data = json.data || json || [];
+            if (!Array.isArray(data)) {
+              console.error('Cities data is not an array:', data);
+              addCity.innerHTML = '<option value="">Error: Invalid data format</option>';
+              return;
+            }
+            addCity.innerHTML = '<option value="">Select City/Municipality</option>';
+            data.forEach(function (city) {
+              const option = document.createElement('option');
+              option.value = city.code;
+              option.setAttribute('data-name', city.name);
+              option.textContent = city.name;
+              addCity.appendChild(option);
+            });
+            addCity.disabled = false;
+          })
+          .catch(error => {
+            console.error('Error loading cities:', error);
+            addCity.innerHTML = '<option value="">Error loading cities</option>';
+          });
+      } else {
+        addCity.innerHTML = '<option value="">Select Province First</option>';
+      }
+    });
+  }
+
+  if (addCity) {
+    addCity.addEventListener('change', function () {
+      const cityCode = this.value;
+
+      addBarangay.innerHTML = '<option value="">Loading...</option>';
+      addBarangay.disabled = true;
+
+      if (cityCode) {
+        fetch('/api/psgc/cities/' + cityCode + '/barangays')
+          .then(response => response.json())
+          .then(json => {
+            console.log('Barangays response:', json);
+            const data = json.data || json || [];
+            if (!Array.isArray(data)) {
+              console.error('Barangays data is not an array:', data);
+              addBarangay.innerHTML = '<option value="">Error: Invalid data format</option>';
+              return;
+            }
+            addBarangay.innerHTML = '<option value="">Select Barangay</option>';
+            data.forEach(function (barangay) {
+              const option = document.createElement('option');
+              option.value = barangay.code;
+              option.setAttribute('data-name', barangay.name);
+              option.textContent = barangay.name;
+              addBarangay.appendChild(option);
+            });
+            addBarangay.disabled = false;
+          })
+          .catch(error => {
+            console.error('Error loading barangays:', error);
+            addBarangay.innerHTML = '<option value="">Error loading barangays</option>';
+          });
+      } else {
+        addBarangay.innerHTML = '<option value="">Select City First</option>';
+      }
+    });
+  }
+
   function setupFileUpload(uploadId, areaId, fileNameId) {
     const upload = document.getElementById(uploadId);
     const area = document.getElementById(areaId);
@@ -612,7 +703,6 @@ document.addEventListener('DOMContentLoaded', function () {
       document.getElementById('edit_middle_name').value = owner.middle_name || '';
       document.getElementById('edit_last_name').value = owner.last_name;
       document.getElementById('edit_date_of_birth').value = owner.date_of_birth;
-      document.getElementById('edit_phone_number').value = owner.phone_number;
       document.getElementById('edit_email').value = user.email;
       document.getElementById('edit_username').value = user.username;
       document.getElementById('edit_street_address').value = owner.street_address;

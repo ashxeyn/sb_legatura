@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Mar 11, 2026 at 09:57 AM
+-- Generation Time: Mar 10, 2026 at 03:57 PM
 -- Server version: 11.4.5-MariaDB
 -- PHP Version: 8.2.12
 
@@ -257,6 +257,7 @@ CREATE TABLE `contractors` (
   `services_offered` text NOT NULL,
   `business_address` text NOT NULL,
   `company_email` varchar(100) NOT NULL,
+  `company_phone` varchar(20) NOT NULL,
   `company_website` varchar(255) DEFAULT NULL,
   `company_social_media` varchar(255) DEFAULT NULL,
   `company_description` text DEFAULT NULL,
@@ -280,33 +281,6 @@ CREATE TABLE `contractors` (
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data for table `contractors`
---
-
-INSERT INTO `contractors` (`contractor_id`, `owner_id`, `company_logo`, `company_banner`, `company_name`, `company_start_date`, `years_of_experience`, `type_id`, `contractor_type_other`, `services_offered`, `business_address`, `company_email`, `company_website`, `company_social_media`, `company_description`, `picab_number`, `picab_category`, `picab_expiration_date`, `business_permit_number`, `business_permit_city`, `business_permit_expiration`, `tin_business_reg_number`, `dti_sec_registration_photo`, `verification_status`, `verification_date`, `is_active`, `suspension_until`, `suspension_reason`, `deletion_reason`, `rejection_reason`, `completed_projects`, `created_at`, `updated_at`) VALUES
-(1, 1, NULL, NULL, 'Dela Cruz Builders', '2026-03-11', 10, 1, NULL, 'Residential Construction', 'Iligan City', 'contact@dcbuilders.com', NULL, NULL, NULL, 'PCAB-123', 'A', '2027-01-01', 'BP-001', 'Iligan', '2026-12-31', 'TIN-111', 'dti.jpg', 'approved', NULL, 1, NULL, NULL, NULL, NULL, 0, '2026-03-10 16:08:38', '2026-03-10 16:08:38'),
-(2, 2, NULL, NULL, 'Clara Engineering', '2026-03-11', 15, 2, NULL, 'Civil Engineering', 'Cebu City', 'info@claraeng.com', NULL, NULL, NULL, 'PCAB-456', 'AAA', '2028-01-01', 'BP-002', 'Cebu', '2026-12-31', 'TIN-222', 'dti.jpg', 'approved', NULL, 1, NULL, NULL, NULL, NULL, 0, '2026-03-10 16:08:38', '2026-03-10 16:08:38'),
-(3, 3, NULL, NULL, 'Penduko Construction', '2026-03-11', 5, 1, NULL, 'Landscaping & Masonry', 'Davao City', 'pedro@penduko.com', NULL, NULL, NULL, 'PCAB-789', 'B', '2025-12-31', 'BP-003', 'Davao', '2026-12-31', 'TIN-333', 'dti.jpg', 'pending', NULL, 1, NULL, NULL, NULL, NULL, 0, '2026-03-10 16:08:38', '2026-03-10 16:08:38'),
-(4, 5, NULL, NULL, 'Bautista Paving', '2026-03-11', 8, 3, NULL, 'Road Construction', 'CDO', 'russel@bautista.com', NULL, NULL, NULL, 'PCAB-101', 'AA', '2026-06-01', 'BP-004', 'CDO', '2026-12-31', 'TIN-444', 'dti.jpg', 'rejected', NULL, 1, NULL, NULL, NULL, NULL, 0, '2026-03-10 16:08:38', '2026-03-10 16:08:38'),
-(5, 7, NULL, NULL, 'Soberano Interiors', '2026-03-11', 4, 2, NULL, 'Interior Design', 'Makati', 'liza@soberano.com', NULL, NULL, NULL, 'PCAB-201', 'D', '2027-01-01', 'BP-201', 'Makati', '2026-12-31', 'TIN-201', 'dti.jpg', 'approved', NULL, 1, NULL, NULL, NULL, NULL, 0, '2026-03-10 16:08:38', '2026-03-10 16:08:38'),
-(6, 9, NULL, NULL, 'Wurtzbach Structures', '2026-03-11', 12, 1, NULL, 'High Rise Building', 'Pasig', 'pia@wurtzbach.com', NULL, NULL, NULL, 'PCAB-202', 'AAAA', '2028-01-01', 'BP-202', 'Pasig', '2026-12-31', 'TIN-202', 'dti.jpg', 'approved', NULL, 1, NULL, NULL, NULL, NULL, 0, '2026-03-10 16:08:38', '2026-03-10 16:08:38'),
-(7, 11, NULL, NULL, 'Pacquiao Strength', '2026-03-11', 20, 1, NULL, 'Heavy Infrastructure', 'Mandaluyong', 'manny@pacquiao.com', NULL, NULL, NULL, 'PCAB-203', 'AAA', '2027-01-01', 'BP-203', 'Mandaluyong', '2026-12-31', 'TIN-203', 'dti.jpg', 'pending', NULL, 1, NULL, NULL, NULL, NULL, 0, '2026-03-10 16:08:38', '2026-03-10 16:08:38'),
-(8, 13, NULL, NULL, 'Bonifacio Revive', '2026-03-11', 6, 3, NULL, 'Heritage Restoration', 'Marikina', 'andres@bonifacio.com', NULL, NULL, NULL, 'PCAB-204', 'B', '2027-01-01', 'BP-204', 'Marikina', '2026-12-31', 'TIN-204', 'dti.jpg', 'pending', NULL, 1, NULL, NULL, NULL, NULL, 0, '2026-03-10 16:08:38', '2026-03-10 16:08:38'),
-(9, 15, NULL, NULL, 'Aguinaldo Estates', '2026-03-11', 10, 1, NULL, 'Real Estate Dev', 'Paranaque', 'emilio@aguinaldo.com', NULL, NULL, NULL, 'PCAB-205', 'AA', '2027-01-01', 'BP-205', 'Paranaque', '2026-12-31', 'TIN-205', 'dti.jpg', 'pending', NULL, 1, NULL, NULL, NULL, NULL, 0, '2026-03-10 16:08:38', '2026-03-10 16:08:38'),
-(10, 17, NULL, NULL, 'Magsaysay Roads', '2026-03-11', 15, 3, NULL, 'Public Works', 'Valenzuela', 'ramon@magsaysay.com', NULL, NULL, NULL, 'PCAB-206', 'AAA', '2027-01-01', 'BP-206', 'Valenzuela', '2026-12-31', 'TIN-206', 'dti.jpg', 'rejected', NULL, 1, NULL, NULL, NULL, NULL, 0, '2026-03-10 16:08:38', '2026-03-10 16:08:38'),
-(11, 19, NULL, NULL, 'FrancisM Paints', '2026-03-11', 9, 2, NULL, 'Artistic Painting', 'Navotas', 'kiko@fm.com', NULL, NULL, NULL, 'PCAB-207', 'C', '2027-01-01', 'BP-207', 'Navotas', '2026-12-31', 'TIN-207', 'dti.jpg', 'rejected', NULL, 1, NULL, NULL, NULL, NULL, 0, '2026-03-10 16:08:38', '2026-03-10 16:08:38'),
-(12, 21, NULL, NULL, 'Lea Sounds', '2026-03-11', 5, 2, NULL, 'Acoustical Engr', 'Bacolod', 'lea@salonga.com', NULL, NULL, NULL, 'PCAB-208', 'B', '2027-01-01', 'BP-208', 'Bacolod', '2026-12-31', 'TIN-208', 'dti.jpg', 'approved', NULL, 1, NULL, NULL, NULL, NULL, 0, '2026-03-10 16:08:38', '2026-03-10 16:08:38'),
-(13, 23, NULL, NULL, 'Sara Steel', '2026-03-11', 11, 1, NULL, 'Steel Fabrication', 'Zamboanga', 'sara@duterte.com', NULL, NULL, NULL, 'PCAB-209', 'A', '2027-01-01', 'BP-209', 'Zamboanga', '2026-12-31', 'TIN-209', 'dti.jpg', 'approved', NULL, 1, NULL, NULL, NULL, NULL, 0, '2026-03-10 16:08:38', '2026-03-10 16:08:38'),
-(14, 25, NULL, NULL, 'Vico Green', '2026-03-11', 3, 3, NULL, 'Eco-Friendly Construction', 'Pasig', 'vico@sotto.com', NULL, NULL, NULL, 'PCAB-210', 'Trade/E', '2027-01-01', 'BP-210', 'Pasig', '2026-12-31', 'TIN-210', 'dti.jpg', 'approved', NULL, 1, NULL, NULL, NULL, NULL, 0, '2026-03-10 16:08:38', '2026-03-10 16:08:38'),
-(15, 27, NULL, NULL, 'Risa Roofs', '2026-03-11', 7, 2, NULL, 'Roofing Specialist', 'QC', 'risa@hontiveros.com', NULL, NULL, NULL, 'PCAB-211', 'C', '2027-01-01', 'BP-211', 'QC', '2026-12-31', 'TIN-211', 'dti.jpg', 'pending', NULL, 1, NULL, NULL, NULL, NULL, 0, '2026-03-10 16:08:38', '2026-03-10 16:08:38'),
-(16, 29, NULL, NULL, 'Bongbong Bridges', '2026-03-11', 18, 1, NULL, 'Bridge Construction', 'Manila', 'bbm@marcos.com', NULL, NULL, NULL, 'PCAB-212', 'AAA', '2027-01-01', 'BP-212', 'Manila', '2026-12-31', 'TIN-212', 'dti.jpg', 'pending', NULL, 1, NULL, NULL, NULL, NULL, 0, '2026-03-10 16:08:38', '2026-03-10 16:08:38'),
-(17, 31, NULL, NULL, 'Robin Action', '2026-03-11', 2, 2, NULL, 'Rapid Construction', 'QC', 'robin@padilla.com', NULL, NULL, NULL, 'PCAB-213', 'D', '2027-01-01', 'BP-213', 'QC', '2026-12-31', 'TIN-213', 'dti.jpg', 'deleted', NULL, 1, NULL, NULL, NULL, NULL, 0, '2026-03-10 16:08:38', '2026-03-10 16:08:38'),
-(18, 33, NULL, NULL, 'Vice Designs', '2026-03-11', 8, 2, NULL, 'Fashionable Architecture', 'QC', 'vice@ganda.com', NULL, NULL, NULL, 'PCAB-214', 'B', '2027-01-01', 'BP-214', 'QC', '2026-12-31', 'TIN-214', 'dti.jpg', 'approved', NULL, 1, NULL, NULL, NULL, NULL, 0, '2026-03-10 16:08:38', '2026-03-10 16:08:38'),
-(19, 35, NULL, NULL, 'Kathryn Luxury', '2026-03-11', 6, 1, NULL, 'Modern Mansion', 'QC', 'kath@bernardo.com', NULL, NULL, NULL, 'PCAB-215', 'A', '2027-01-01', 'BP-215', 'QC', '2026-12-31', 'TIN-215', 'dti.jpg', 'approved', NULL, 1, NULL, NULL, NULL, NULL, 0, '2026-03-10 16:08:38', '2026-03-10 16:08:38'),
-(20, 37, NULL, NULL, 'Nadine Nature', '2026-03-11', 4, 3, NULL, 'Sustainable Cabins', 'QC', 'nadine@lustre.com', NULL, NULL, NULL, 'PCAB-216', 'C', '2027-01-01', 'BP-216', 'QC', '2026-12-31', 'TIN-216', 'dti.jpg', 'approved', NULL, 1, NULL, NULL, NULL, NULL, 0, '2026-03-10 16:08:38', '2026-03-10 16:08:38'),
-(21, 39, NULL, NULL, 'Joshua Jobs', '2026-03-11', 2, 1, NULL, 'Renovation', 'QC', 'josh@garcia.com', NULL, NULL, NULL, 'PCAB-217', 'D', '2027-01-01', 'BP-217', 'QC', '2026-12-31', 'TIN-217', 'dti.jpg', 'approved', NULL, 1, NULL, NULL, NULL, NULL, 0, '2026-03-10 16:08:38', '2026-03-10 16:08:38');
-
 -- --------------------------------------------------------
 
 --
@@ -319,32 +293,12 @@ CREATE TABLE `contractor_staff` (
   `owner_id` int(11) NOT NULL,
   `company_role` enum('manager','engineer','others','architect','representative') DEFAULT NULL,
   `role_if_others` varchar(255) DEFAULT NULL,
-  `company_role_before` varchar(50) DEFAULT NULL,
   `is_active` tinyint(1) DEFAULT 1,
-  `is_suspended` tinyint(4) NOT NULL DEFAULT 0,
   `suspension_until` date DEFAULT NULL,
   `suspension_reason` text DEFAULT NULL,
   `deletion_reason` text DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `contractor_staff`
---
-
-INSERT INTO `contractor_staff` (`staff_id`, `contractor_id`, `owner_id`, `company_role`, `role_if_others`, `company_role_before`, `is_active`, `is_suspended`, `suspension_until`, `suspension_reason`, `deletion_reason`, `created_at`) VALUES
-(1, 1, 6, 'others', 'Twirly Mascot', 'engineer', 1, 0, NULL, NULL, NULL, '2026-03-10 16:08:59'),
-(2, 1, 8, 'architect', NULL, NULL, 1, 0, NULL, NULL, NULL, '2026-03-10 16:08:59'),
-(3, 2, 10, 'architect', NULL, NULL, 1, 0, NULL, NULL, NULL, '2026-03-10 16:08:59'),
-(4, 2, 12, 'representative', NULL, NULL, 1, 0, NULL, NULL, NULL, '2026-03-10 16:08:59'),
-(5, 3, 14, 'engineer', NULL, NULL, 1, 0, NULL, NULL, NULL, '2026-03-10 16:08:59'),
-(6, 4, 16, 'representative', NULL, NULL, 1, 0, NULL, NULL, NULL, '2026-03-10 16:08:59'),
-(7, 1, 18, 'others', 'Mcdo Crewmate', NULL, 1, 0, NULL, NULL, NULL, '2026-03-10 16:08:59'),
-(8, 1, 20, 'representative', NULL, 'engineer', 1, 0, NULL, NULL, NULL, '2026-03-10 16:08:59'),
-(9, 1, 4, 'others', 'Jollibee Crew', NULL, 0, 0, NULL, NULL, 'asdadasd', '2026-03-10 23:05:58'),
-(10, 1, 35, 'engineer', NULL, 'representative', 1, 0, '2026-03-31', 'sdsadasdasdasda', NULL, '2026-03-10 23:05:58'),
-(11, 1, 37, 'manager', NULL, 'representative', 1, 0, NULL, NULL, NULL, '2026-03-10 23:11:09'),
-(12, 1, 39, 'engineer', NULL, NULL, 0, 0, NULL, NULL, NULL, '2026-03-11 00:16:32');
 
 -- --------------------------------------------------------
 
@@ -3117,52 +3071,6 @@ CREATE TABLE `property_owners` (
   `created_at` timestamp NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data for table `property_owners`
---
-
-INSERT INTO `property_owners` (`owner_id`, `user_id`, `profile_pic`, `cover_photo`, `address`, `date_of_birth`, `age`, `occupation_id`, `occupation_other`, `valid_id_id`, `valid_id_photo`, `valid_id_back_photo`, `police_clearance`, `verification_status`, `is_active`, `suspension_until`, `rejection_reason`, `deletion_reason`, `suspension_reason`, `verification_date`, `created_at`) VALUES
-(1, 1, NULL, NULL, 'Iligan City', '1990-05-15', 33, 1, NULL, 2, NULL, 'id_back.jpg', 'pc.jpg', 'approved', 1, NULL, NULL, NULL, NULL, '2026-03-10 17:42:27', '2026-03-10 16:08:21'),
-(2, 2, NULL, NULL, 'Cebu City', '1985-10-20', 38, 1, NULL, 3, NULL, 'id_back.jpg', 'pc.jpg', 'approved', 1, NULL, NULL, NULL, NULL, '2026-03-10 17:42:27', '2026-03-10 16:08:21'),
-(3, 3, NULL, NULL, 'Davao City', '1992-12-01', 31, 1, NULL, 4, NULL, 'id_back.jpg', 'pc.jpg', 'pending', 0, NULL, NULL, NULL, NULL, '2026-03-10 17:40:55', '2026-03-10 16:08:21'),
-(4, 4, NULL, NULL, 'Manila', '1995-03-10', 28, 1, NULL, 5, NULL, 'id_back.jpg', 'pc.jpg', 'approved', 1, NULL, NULL, NULL, NULL, '2026-03-10 17:42:27', '2026-03-10 16:08:21'),
-(5, 5, NULL, NULL, 'Cagayan de Oro', '1988-07-25', 35, 1, NULL, 1, NULL, 'id_back.jpg', 'pc.jpg', 'rejected', 0, NULL, NULL, NULL, NULL, '2026-03-10 17:40:55', '2026-03-10 16:08:21'),
-(6, 6, NULL, NULL, 'Quezon City', '1990-01-01', 34, 2, NULL, 2, NULL, 'img.jpg', 'pc.jpg', 'approved', 1, NULL, NULL, NULL, NULL, '2026-03-10 17:42:27', '2026-03-10 16:08:21'),
-(7, 7, NULL, NULL, 'Makati', '1991-02-02', 33, 2, NULL, 3, NULL, 'img.jpg', 'pc.jpg', 'approved', 1, NULL, NULL, NULL, NULL, '2026-03-10 17:42:27', '2026-03-10 16:08:21'),
-(8, 8, NULL, NULL, 'Taguig', '1992-03-03', 32, 2, NULL, 4, NULL, 'img.jpg', 'pc.jpg', 'approved', 1, NULL, NULL, NULL, NULL, '2026-03-10 17:42:27', '2026-03-10 16:08:21'),
-(9, 9, NULL, NULL, 'Pasig', '1993-04-04', 31, 2, NULL, 5, NULL, 'img.jpg', 'pc.jpg', 'approved', 1, NULL, NULL, NULL, NULL, '2026-03-10 17:42:27', '2026-03-10 16:08:21'),
-(10, 10, NULL, NULL, 'Pasay', '1994-05-05', 30, 2, NULL, 1, NULL, 'img.jpg', 'pc.jpg', 'approved', 1, NULL, NULL, NULL, NULL, '2026-03-10 17:42:27', '2026-03-10 16:08:21'),
-(11, 11, NULL, NULL, 'Mandaluyong', '1995-06-06', 29, 3, NULL, 2, NULL, 'img.jpg', 'pc.jpg', 'pending', 0, NULL, NULL, NULL, NULL, '2026-03-10 17:40:55', '2026-03-10 16:08:21'),
-(12, 12, NULL, NULL, 'San Juan', '1996-07-07', 28, 3, NULL, 3, NULL, 'img.jpg', 'pc.jpg', 'pending', 0, NULL, NULL, NULL, NULL, '2026-03-10 17:40:55', '2026-03-10 16:08:21'),
-(13, 13, NULL, NULL, 'Marikina', '1997-08-08', 27, 3, NULL, 4, NULL, 'img.jpg', 'pc.jpg', 'pending', 0, NULL, NULL, NULL, NULL, '2026-03-10 17:40:55', '2026-03-10 16:08:21'),
-(14, 14, NULL, NULL, 'Las Pinas', '1998-09-09', 26, 3, NULL, 5, NULL, 'img.jpg', 'pc.jpg', 'pending', 0, NULL, NULL, NULL, NULL, '2026-03-10 17:40:55', '2026-03-10 16:08:21'),
-(15, 15, NULL, NULL, 'Paranaque', '1999-10-10', 25, 3, NULL, 1, NULL, 'img.jpg', 'pc.jpg', 'pending', 0, NULL, NULL, NULL, NULL, '2026-03-10 17:40:55', '2026-03-10 16:08:21'),
-(16, 16, NULL, NULL, 'Muntinlupa', '2000-11-11', 23, 4, NULL, 2, NULL, 'img.jpg', 'pc.jpg', 'rejected', 0, NULL, NULL, NULL, NULL, '2026-03-10 17:40:55', '2026-03-10 16:08:21'),
-(17, 17, NULL, NULL, 'Valenzuela', '2001-12-12', 22, 4, NULL, 3, NULL, 'img.jpg', 'pc.jpg', 'rejected', 0, NULL, NULL, NULL, NULL, '2026-03-10 17:40:55', '2026-03-10 16:08:21'),
-(18, 18, NULL, NULL, 'Malabon', '2002-01-13', 22, 4, NULL, 4, NULL, 'img.jpg', 'pc.jpg', 'rejected', 0, NULL, NULL, NULL, NULL, '2026-03-10 17:40:55', '2026-03-10 16:08:21'),
-(19, 19, NULL, NULL, 'Navotas', '2003-02-14', 21, 4, NULL, 5, NULL, 'img.jpg', 'pc.jpg', 'rejected', 0, NULL, NULL, NULL, NULL, '2026-03-10 17:40:55', '2026-03-10 16:08:21'),
-(20, 20, NULL, NULL, 'Caloocan', '2004-03-15', 20, 4, NULL, 1, NULL, 'img.jpg', 'pc.jpg', 'rejected', 0, NULL, NULL, NULL, NULL, '2026-03-10 17:40:55', '2026-03-10 16:08:21'),
-(21, 21, NULL, NULL, 'Bacolod', '1980-01-01', 44, 5, NULL, 2, NULL, 'img.jpg', 'pc.jpg', 'approved', 1, NULL, NULL, NULL, NULL, '2026-03-10 17:42:27', '2026-03-10 16:08:21'),
-(22, 22, NULL, NULL, 'Iloilo', '1981-01-01', 43, 5, NULL, 3, NULL, 'img.jpg', 'pc.jpg', 'approved', 1, NULL, NULL, NULL, NULL, '2026-03-10 17:42:27', '2026-03-10 16:08:21'),
-(23, 23, NULL, NULL, 'Zamboanga', '1982-01-01', 42, 5, NULL, 4, NULL, 'img.jpg', 'pc.jpg', 'approved', 1, NULL, NULL, NULL, NULL, '2026-03-10 17:42:27', '2026-03-10 16:08:21'),
-(24, 24, NULL, NULL, 'General Santos', '1983-01-01', 41, 5, NULL, 5, NULL, 'img.jpg', 'pc.jpg', 'approved', 1, NULL, NULL, NULL, NULL, '2026-03-10 17:42:27', '2026-03-10 16:08:21'),
-(25, 25, NULL, NULL, 'Bagiuo', '1984-01-01', 40, 5, NULL, 1, NULL, 'img.jpg', 'pc.jpg', 'approved', 1, NULL, NULL, NULL, NULL, '2026-03-10 17:42:27', '2026-03-10 16:08:21'),
-(26, 26, NULL, NULL, 'Angeles', '1985-01-01', 39, 6, NULL, 2, NULL, 'img.jpg', 'pc.jpg', 'pending', 0, NULL, NULL, NULL, NULL, '2026-03-10 17:40:55', '2026-03-10 16:08:21'),
-(27, 27, NULL, NULL, 'Olongapo', '1986-01-01', 38, 6, NULL, 3, NULL, 'img.jpg', 'pc.jpg', 'pending', 0, NULL, NULL, NULL, NULL, '2026-03-10 17:40:55', '2026-03-10 16:08:21'),
-(28, 28, NULL, NULL, 'Lucena', '1987-01-01', 37, 6, NULL, 4, NULL, 'img.jpg', 'pc.jpg', 'pending', 0, NULL, NULL, NULL, NULL, '2026-03-10 17:40:55', '2026-03-10 16:08:21'),
-(29, 29, NULL, NULL, 'Batangas', '1988-01-01', 36, 6, NULL, 5, NULL, 'img.jpg', 'pc.jpg', 'pending', 0, NULL, NULL, NULL, NULL, '2026-03-10 17:40:55', '2026-03-10 16:08:21'),
-(30, 30, NULL, NULL, 'Legazpi', '1989-01-01', 35, 6, NULL, 1, NULL, 'img.jpg', 'pc.jpg', 'pending', 0, NULL, NULL, NULL, NULL, '2026-03-10 17:40:55', '2026-03-10 16:08:21'),
-(31, 31, NULL, NULL, 'Naga', '1990-01-01', 34, 7, NULL, 2, NULL, 'img.jpg', 'pc.jpg', 'deleted', 0, NULL, NULL, NULL, NULL, '2026-03-10 17:40:55', '2026-03-10 16:08:21'),
-(32, 32, NULL, NULL, 'Puerto Princesa', '1991-01-01', 33, 7, NULL, 3, NULL, 'img.jpg', 'pc.jpg', 'deleted', 0, NULL, NULL, NULL, NULL, '2026-03-10 17:40:55', '2026-03-10 16:08:21'),
-(33, 33, NULL, NULL, 'Tacloban', '1992-01-01', 32, 7, NULL, 4, NULL, 'img.jpg', 'pc.jpg', 'approved', 1, NULL, NULL, NULL, NULL, '2026-03-10 17:42:27', '2026-03-10 16:08:21'),
-(34, 34, NULL, NULL, 'Ormoc', '1993-01-01', 31, 7, NULL, 5, NULL, 'img.jpg', 'pc.jpg', 'approved', 1, NULL, NULL, NULL, NULL, '2026-03-10 17:42:27', '2026-03-10 16:08:21'),
-(35, 35, NULL, NULL, 'Dumaguete', '1994-01-01', 30, 7, NULL, 1, NULL, 'img.jpg', 'pc.jpg', 'approved', 1, NULL, NULL, NULL, NULL, '2026-03-10 17:42:27', '2026-03-10 16:08:21'),
-(36, 36, NULL, NULL, 'Tagbilaran', '1995-01-01', 29, NULL, NULL, 2, NULL, 'img.jpg', 'pc.jpg', 'approved', 1, NULL, NULL, NULL, NULL, '2026-03-10 17:42:27', '2026-03-10 16:08:21'),
-(37, 37, NULL, NULL, 'Surigao', '1996-01-01', 28, NULL, NULL, 3, NULL, 'img.jpg', 'pc.jpg', 'approved', 1, NULL, NULL, NULL, NULL, '2026-03-10 17:42:27', '2026-03-10 16:08:21'),
-(38, 38, NULL, NULL, 'Butuan', '1997-01-01', 27, NULL, NULL, 4, NULL, 'img.jpg', 'pc.jpg', 'approved', 1, NULL, NULL, NULL, NULL, '2026-03-10 17:42:27', '2026-03-10 16:08:21'),
-(39, 39, NULL, NULL, 'Cotabato', '1998-01-01', 26, NULL, NULL, 5, NULL, 'img.jpg', 'pc.jpg', 'approved', 1, NULL, NULL, NULL, NULL, '2026-03-10 17:42:27', '2026-03-10 16:08:21'),
-(40, 40, NULL, NULL, 'Pagadian', '1999-01-01', 25, NULL, NULL, 1, NULL, 'img.jpg', 'pc.jpg', 'approved', 1, NULL, NULL, NULL, NULL, '2026-03-10 17:42:27', '2026-03-10 16:08:21');
-
 -- --------------------------------------------------------
 
 --
@@ -3418,53 +3326,6 @@ CREATE TABLE `users` (
   `created_at` timestamp NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `users`
---
-
-INSERT INTO `users` (`user_id`, `username`, `email`, `password_hash`, `OTP_hash`, `bio`, `user_type`, `preferred_role`, `first_name`, `middle_name`, `last_name`, `created_at`, `updated_at`) VALUES
-(1, 'juan_dev', 'juan@example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', NULL, NULL, 'both', NULL, 'Juan', NULL, 'Dela Cruz', '2026-03-10 16:08:11', '2026-03-10 16:08:11'),
-(2, 'maria_const', 'maria@example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', NULL, NULL, 'both', NULL, 'Maria', NULL, 'Clara', '2026-03-10 16:08:11', '2026-03-10 16:08:11'),
-(3, 'pedro_builds', 'pedro@example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', NULL, NULL, 'both', NULL, 'Pedro', NULL, 'Penduko', '2026-03-10 16:08:11', '2026-03-10 16:08:11'),
-(4, 'eliza_owner', 'eliza@example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', NULL, NULL, 'both', NULL, 'Eliza', NULL, 'Santos', '2026-03-10 16:08:11', '2026-03-11 07:05:58'),
-(5, 'russel_engr', 'russel@example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', NULL, NULL, 'both', NULL, 'Russel', NULL, 'Bautista', '2026-03-10 16:08:11', '2026-03-10 16:08:11'),
-(6, 'admin_test', 'admin@legatura.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', NULL, NULL, 'both', NULL, 'System', NULL, 'Admin', '2026-03-10 16:08:11', '2026-03-10 16:08:11'),
-(7, 'user_6', 'user6@test.com', 'hash', NULL, NULL, 'property_owner', NULL, 'Ricardo', NULL, 'Dalisay', '2026-03-10 16:08:11', '2026-03-10 16:08:11'),
-(8, 'user_7', 'user7@test.com', 'hash', NULL, NULL, 'property_owner', NULL, 'Liza', NULL, 'Soberano', '2026-03-10 16:08:11', '2026-03-11 08:19:42'),
-(9, 'user_8', 'user8@test.com', 'hash', NULL, NULL, 'property_owner', NULL, 'Vic', NULL, 'Sotto', '2026-03-10 16:08:11', '2026-03-10 16:08:11'),
-(10, 'user_9', 'user9@test.com', 'hash', NULL, NULL, 'both', NULL, 'Pia', NULL, 'Wurtzbach', '2026-03-10 16:08:11', '2026-03-10 16:08:11'),
-(11, 'user_10', 'user10@test.com', 'hash', NULL, NULL, 'property_owner', NULL, 'Catriona', NULL, 'Gray', '2026-03-10 16:08:11', '2026-03-10 16:08:11'),
-(12, 'user_11', 'user11@test.com', 'hash', NULL, NULL, 'both', NULL, 'Manny', NULL, 'Pacquiao', '2026-03-10 16:08:11', '2026-03-10 16:08:11'),
-(13, 'user_12', 'user12@test.com', 'hash', NULL, NULL, 'property_owner', NULL, 'Jose', NULL, 'Rizal', '2026-03-10 16:08:11', '2026-03-10 16:08:11'),
-(14, 'user_13', 'user13@test.com', 'hash', NULL, NULL, 'both', NULL, 'Andres', NULL, 'Bonifacio', '2026-03-10 16:08:11', '2026-03-10 16:08:11'),
-(15, 'user_14', 'user14@test.com', 'hash', NULL, NULL, 'property_owner', NULL, 'Apolinario', NULL, 'Mabini', '2026-03-10 16:08:11', '2026-03-10 16:08:11'),
-(16, 'user_15', 'user15@test.com', 'hash', NULL, NULL, 'both', NULL, 'Emilio', NULL, 'Aguinaldo', '2026-03-10 16:08:11', '2026-03-10 16:08:11'),
-(17, 'user_16', 'user16@test.com', 'hash', NULL, NULL, 'property_owner', NULL, 'Cory', NULL, 'Aquino', '2026-03-10 16:08:11', '2026-03-10 16:08:11'),
-(18, 'user_17', 'user17@test.com', 'hash', NULL, NULL, 'property_owner', NULL, 'Ramon', NULL, 'Magsaysay', '2026-03-10 16:08:11', '2026-03-11 08:19:15'),
-(19, 'user_18', 'user18@test.com', 'hash', NULL, NULL, 'property_owner', NULL, 'Miriam', NULL, 'Santiago', '2026-03-10 16:08:11', '2026-03-10 16:08:11'),
-(20, 'user_19', 'user19@test.com', 'hash', NULL, NULL, 'property_owner', NULL, 'Francis', NULL, 'Magalona', '2026-03-10 16:08:11', '2026-03-11 08:18:52'),
-(21, 'user_20', 'user20@test.com', 'hash', NULL, NULL, 'property_owner', NULL, 'Gary', NULL, 'Valenciano', '2026-03-10 16:08:11', '2026-03-10 16:08:11'),
-(22, 'user_21', 'user21@test.com', 'hash', NULL, NULL, 'both', NULL, 'Lea', NULL, 'Salonga', '2026-03-10 16:08:11', '2026-03-10 16:08:11'),
-(23, 'user_22', 'user22@test.com', 'hash', NULL, NULL, 'property_owner', NULL, 'Bong', NULL, 'Go', '2026-03-10 16:08:11', '2026-03-10 16:08:11'),
-(24, 'user_23', 'user23@test.com', 'hash', NULL, NULL, 'both', NULL, 'Sara', NULL, 'Duterte', '2026-03-10 16:08:11', '2026-03-10 16:08:11'),
-(25, 'user_24', 'user24@test.com', 'hash', NULL, NULL, 'property_owner', NULL, 'Isko', NULL, 'Moreno', '2026-03-10 16:08:11', '2026-03-10 16:08:11'),
-(26, 'user_25', 'user25@test.com', 'hash', NULL, NULL, 'both', NULL, 'Vico', NULL, 'Sotto', '2026-03-10 16:08:11', '2026-03-10 16:08:11'),
-(27, 'user_26', 'user26@test.com', 'hash', NULL, NULL, 'property_owner', NULL, 'Chel', NULL, 'Diokno', '2026-03-10 16:08:11', '2026-03-10 16:08:11'),
-(28, 'user_27', 'user27@test.com', 'hash', NULL, NULL, 'both', NULL, 'Risa', NULL, 'Hontiveros', '2026-03-10 16:08:11', '2026-03-10 16:08:11'),
-(29, 'user_28', 'user28@test.com', 'hash', NULL, NULL, 'property_owner', NULL, 'Grace', NULL, 'Poe', '2026-03-10 16:08:11', '2026-03-10 16:08:11'),
-(30, 'user_29', 'user29@test.com', 'hash', NULL, NULL, 'both', NULL, 'Bongbong', NULL, 'Marcos', '2026-03-10 16:08:11', '2026-03-10 16:08:11'),
-(31, 'user_30', 'user30@test.com', 'hash', NULL, NULL, 'property_owner', NULL, 'Leni', NULL, 'Robredo', '2026-03-10 16:08:11', '2026-03-10 16:08:11'),
-(32, 'user_31', 'user31@test.com', 'hash', NULL, NULL, 'both', NULL, 'Robin', NULL, 'Padilla', '2026-03-10 16:08:11', '2026-03-10 16:08:11'),
-(33, 'user_32', 'user32@test.com', 'hash', NULL, NULL, 'property_owner', NULL, 'Coco', NULL, 'Martin', '2026-03-10 16:08:11', '2026-03-10 16:08:11'),
-(34, 'user_33', 'user33@test.com', 'hash', NULL, NULL, 'both', NULL, 'Vice', NULL, 'Ganda', '2026-03-10 16:08:11', '2026-03-10 16:08:11'),
-(35, 'user_34', 'user34@test.com', 'hash', NULL, NULL, 'both', NULL, 'Anne', NULL, 'Curtis', '2026-03-10 16:08:11', '2026-03-11 07:05:58'),
-(36, 'user_35', 'user35@test.com', 'hash', NULL, NULL, 'both', NULL, 'Kathryn', NULL, 'Bernardo', '2026-03-10 16:08:11', '2026-03-10 16:08:11'),
-(37, 'user_36', 'user36@test.com', 'hash', NULL, NULL, 'both', NULL, 'Daniel', NULL, 'Padilla', '2026-03-10 16:08:11', '2026-03-11 07:11:09'),
-(38, 'user_37', 'user37@test.com', 'hash', NULL, NULL, 'both', NULL, 'Nadine', NULL, 'Lustre', '2026-03-10 16:08:11', '2026-03-10 16:08:11'),
-(39, 'user_38', 'user38@test.com', 'hash', NULL, NULL, 'property_owner', NULL, 'James', NULL, 'Reid', '2026-03-10 16:08:11', '2026-03-11 08:17:44'),
-(40, 'user_39', 'user39@test.com', 'hash', NULL, NULL, 'both', NULL, 'Joshua', NULL, 'Garcia', '2026-03-10 16:08:11', '2026-03-10 16:08:11'),
-(41, 'user_40', 'user40@test.com', 'hash', NULL, NULL, 'property_owner', NULL, 'Julia', NULL, 'Barretto', '2026-03-10 16:08:11', '2026-03-10 16:08:11');
 
 -- --------------------------------------------------------
 
@@ -3836,9 +3697,7 @@ ALTER TABLE `project_updates`
 --
 ALTER TABLE `property_owners`
   ADD PRIMARY KEY (`owner_id`),
-  ADD KEY `fk_owner_user` (`user_id`),
-  ADD KEY `fk_owner_occupation` (`occupation_id`),
-  ADD KEY `fk_owner_valid_id` (`valid_id_id`);
+  ADD KEY `fk_owner_user` (`user_id`);
 
 --
 -- Indexes for table `report_attachments`
@@ -3973,13 +3832,13 @@ ALTER TABLE `content_reports`
 -- AUTO_INCREMENT for table `contractors`
 --
 ALTER TABLE `contractors`
-  MODIFY `contractor_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
+  MODIFY `contractor_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `contractor_staff`
 --
 ALTER TABLE `contractor_staff`
-  MODIFY `staff_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
+  MODIFY `staff_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `contractor_types`
@@ -4153,7 +4012,7 @@ ALTER TABLE `project_updates`
 -- AUTO_INCREMENT for table `property_owners`
 --
 ALTER TABLE `property_owners`
-  MODIFY `owner_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=41;
+  MODIFY `owner_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `report_attachments`
@@ -4201,7 +4060,7 @@ ALTER TABLE `termination_proof`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=42;
+  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `user_activity_logs`
@@ -4314,7 +4173,7 @@ ALTER TABLE `milestone_payments`
   ADD CONSTRAINT `milestone_payments_ibfk_1` FOREIGN KEY (`item_id`) REFERENCES `milestone_items` (`item_id`),
   ADD CONSTRAINT `milestone_payments_ibfk_3` FOREIGN KEY (`project_id`) REFERENCES `projects` (`project_id`),
   ADD CONSTRAINT `milestone_payments_ibfk_4` FOREIGN KEY (`owner_id`) REFERENCES `property_owners` (`owner_id`),
-  ADD CONSTRAINT `milestone_payments_ibfk_5` FOREIGN KEY (`contractor_user_id`) REFERENCES `beforesirrham`.`contractor_users` (`contractor_user_id`);
+  ADD CONSTRAINT `milestone_payments_ibfk_5` FOREIGN KEY (`contractor_user_id`) REFERENCES `contractor_users` (`contractor_user_id`);
 
 --
 -- Constraints for table `notifications`
@@ -4382,9 +4241,7 @@ ALTER TABLE `project_relationships`
 -- Constraints for table `property_owners`
 --
 ALTER TABLE `property_owners`
-  ADD CONSTRAINT `fk_owner_occupation` FOREIGN KEY (`occupation_id`) REFERENCES `occupations` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
-  ADD CONSTRAINT `fk_owner_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `fk_owner_valid_id` FOREIGN KEY (`valid_id_id`) REFERENCES `valid_ids` (`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+  ADD CONSTRAINT `fk_owner_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `reviews`

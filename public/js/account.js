@@ -335,7 +335,8 @@ document.addEventListener('DOMContentLoaded', function() {
             if (provinceCode) {
                 fetch('/api/psgc/provinces/' + provinceCode + '/cities')
                     .then(response => response.json())
-                    .then(data => {
+                    .then(json => {
+                        const data = json.data || json || [];
                         console.debug('account.js: cities fetched for province', provinceCode, data && data.length ? data.length : 0);
                         citySelect.innerHTML = '<option value="">Select City/Municipality</option>';
                         data.forEach(function(city) {
@@ -369,7 +370,8 @@ document.addEventListener('DOMContentLoaded', function() {
             if (cityCode) {
                 fetch('/api/psgc/cities/' + cityCode + '/barangays')
                     .then(response => response.json())
-                    .then(data => {
+                    .then(json => {
+                        const data = json.data || json || [];
                         barangaySelect.innerHTML = '<option value="">Select Barangay</option>';
                         data.forEach(function(barangay) {
                             const option = document.createElement('option');

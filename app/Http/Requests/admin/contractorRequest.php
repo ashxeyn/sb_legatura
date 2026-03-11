@@ -19,15 +19,15 @@ class contractorRequest extends FormRequest
         $data = [];
 
         if ($this->has('first_name') && $this->first_name) {
-            $data['first_name'] = strtoupper(trim($this->first_name));
+            $data['first_name'] = ucwords(strtolower(trim($this->first_name)));
         }
 
         if ($this->has('middle_name') && $this->middle_name) {
-            $data['middle_name'] = strtoupper(trim($this->middle_name));
+            $data['middle_name'] = ucwords(strtolower(trim($this->middle_name)));
         }
 
         if ($this->has('last_name') && $this->last_name) {
-            $data['last_name'] = strtoupper(trim($this->last_name));
+            $data['last_name'] = ucwords(strtolower(trim($this->last_name)));
         }
 
         if (!empty($data)) {

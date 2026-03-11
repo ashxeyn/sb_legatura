@@ -114,15 +114,6 @@
                           <p class="font-semibold text-gray-800">{{ $propertyOwner->age }}</p>
                         </div>
                       </div>
-                      <div class="flex items-center gap-3 bg-gray-50 p-4 rounded-lg hover:bg-gradient-to-br hover:from-blue-50 hover:to-blue-100 transition-all duration-300 hover:shadow-md hover:-translate-y-1 cursor-pointer">
-                        <div class="w-11 h-11 bg-blue-100 rounded-full grid place-items-center hover:scale-110 transition-transform">
-                          <i class="fi fi-rr-phone-call text-blue-600"></i>
-                        </div>
-                        <div>
-                          <p class="text-xs text-gray-500">Contact No.</p>
-                          <p class="font-semibold text-gray-800">{{ $propertyOwner->contact_number ?? 'N/A' }}</p>
-                        </div>
-                      </div>
                       <div class="flex items-center gap-3 bg-gray-50 p-4 rounded-lg hover:bg-gradient-to-br hover:from-purple-50 hover:to-purple-100 transition-all duration-300 hover:shadow-md hover:-translate-y-1 cursor-pointer">
                         <div class="w-11 h-11 bg-purple-100 rounded-full grid place-items-center hover:scale-110 transition-transform">
                           <i class="fi fi-rr-envelope text-purple-600"></i>

@@ -128,13 +128,8 @@
                 class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Company Email</label>
-              <input type="email" name="company_email" placeholder="company@example.com"
-                class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
-            </div>
-            <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">Date of Incorporation</label>
-              <input type="date" name="company_start_date"
+              <input type="date" name="company_start_date" max="{{ date('Y-m-d', strtotime('-1 day')) }}"
                 class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
             </div>
             <div>
@@ -424,13 +419,9 @@
                   class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Company Email</label>
-                <input type="email" id="edit_company_email" name="company_email" placeholder="company@example.com"
-                  class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
-              </div>
-              <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Date of Incorporation</label>
                 <input type="date" id="edit_company_start_date" name="company_start_date"
+                  max="{{ date('Y-m-d', strtotime('-1 day')) }}"
                   class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
               </div>
               <div>
@@ -477,17 +468,20 @@
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">First Name</label>
                 <input type="text" id="edit_first_name" name="first_name" placeholder="Enter first name"
+                  style="text-transform: capitalize;"
                   class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Middle Name <span
                     class="text-gray-400">(optional)</span></label>
                 <input type="text" id="edit_middle_name" name="middle_name" placeholder="Enter middle name"
+                  style="text-transform: capitalize;"
                   class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Last Name</label>
                 <input type="text" id="edit_last_name" name="last_name" placeholder="Enter last name"
+                  style="text-transform: capitalize;"
                   class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition">
               </div>
               <div>
@@ -536,7 +530,8 @@
                       <option value="">Select Province</option>
                       @foreach($provinces as $province)
                         <option value="{{ $province['code'] }}" data-name="{{ $province['name'] }}">
-                          {{ $province['name'] }}</option>
+                          {{ $province['name'] }}
+                        </option>
                       @endforeach
                     </select>
                   </div>
